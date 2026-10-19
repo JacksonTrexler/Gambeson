@@ -5,6 +5,10 @@
 
 [sub_resource type="TileSet" id="TileSet_museum"]
 tile_size = Vector2i(32, 32)
+custom_data_layer_0/name = "unit_id"
+custom_data_layer_0/type = 4
+custom_data_layer_1/name = "tile_id"
+custom_data_layer_1/type = 4
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_recruit"]
 animations = [{
@@ -26,7 +30,7 @@ layout_mode = 3
 anchors_preset = 0
 script = ExtResource("2_battle")
 
-[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1311312230]
+[node name="TileMapLayer" type="TileMapLayer" parent="GM" unique_id=1311312230]
 tile_set = SubResource("TileSet_museum")
 
 [node name="Unit" type="Node2D" parent="." unique_id=874105671]
