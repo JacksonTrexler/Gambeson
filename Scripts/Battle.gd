@@ -3,7 +3,7 @@ extends Node2D
 
 signal phase_changed(was: Phase, now: Phase)
 signal turn_changed(was: Faction, now: Faction)
-signal initiative_rolled(totals: Dictionary[Faction, int])
+signal initiative_rolled(rolls: Dictionary[Faction, Array])
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
@@ -27,6 +27,8 @@ var turn: Faction:
 		turn_changed.emit(was, v)
 
 var order: Array[Faction] = []  # turn order, highest initiative first
+var rolls: Dictionary[Faction, Array] = {}  # this battle's initiative d20s, per faction
+var _coin: Dictionary[Faction, float] = {}  # last-resort tie-breaker, flipped once per roll
 
 # Which unit stands on which cell. TileSet custom data is per tile type, so it can't hold this.
 var units: Dictionary[Vector2i, Unit] = {}
@@ -60,25 +62,53 @@ func move(u: Unit, c: Vector2i) -> bool:
 	return true
 
 
-# Each living unit rolls a d20 and its faction sums them; highest total goes first. Ties re-roll.
+# Each living unit rolls a d20 and its faction sums them; highest total goes first.
 func roll_initiative() -> Array[Faction]:
-	var totals: Dictionary[Faction, int] = {}
-	while true:
-		totals.clear()
-		for u in units.values():
-			if u.faction and u.is_alive():
-				totals[u.faction] = totals.get(u.faction, 0) + rng.randi_range(1, 20)
-		var distinct := {}
-		for t in totals.values():
-			distinct[t] = true
-		if distinct.size() == totals.size():
-			break
+	rolls.clear()
+	_coin.clear()
+	for u in units.values():
+		if u.faction and u.is_alive():
+			if u.faction not in rolls:
+				rolls[u.faction] = []
+				_coin[u.faction] = rng.randf()
+			rolls[u.faction].append(rng.randi_range(1, 20))
 	var o: Array[Faction] = []
-	o.assign(totals.keys())
-	o.sort_custom(func(a, b): return totals[a] > totals[b])
-	print("Initiative: ", ", ".join(o.map(func(f): return "%s %d" % [f.name, totals[f]])))
-	initiative_rolled.emit(totals)
+	o.assign(rolls.keys())
+	o.sort_custom(func(a, b): return a == _first(a, b))
+	print("Initiative: ", ", ".join(o.map(func(f): return "%s %d" % [f.name, total(f)])))
+	initiative_rolled.emit(rolls)
 	return o
+
+
+func total(f: Faction) -> int:
+	return rolls[f].reduce(func(sum, d): return sum + d, 0)
+
+
+func _first(a: Faction, b: Faction) -> Faction:
+	if total(a) != total(b):
+		return a if total(a) > total(b) else b
+	return settle_tie(a, b)
+
+
+# Equal initiative totals: more dexterity on the field, then the best single die, then a coin flip.
+func settle_tie(a: Faction, b: Faction) -> Faction:
+	var da := _dexterity(a)
+	var db := _dexterity(b)
+	if da != db:
+		return a if da > db else b
+	var ba: int = rolls[a].max()
+	var bb: int = rolls[b].max()
+	if ba != bb:
+		return a if ba > bb else b
+	return a if _coin[a] > _coin[b] else b
+
+
+func _dexterity(f: Faction) -> int:
+	var sum := 0
+	for u in units.values():
+		if u.faction == f and u.is_alive():
+			sum += u.dexterity
+	return sum
 
 
 func end_turn() -> void:

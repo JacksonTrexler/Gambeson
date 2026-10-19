@@ -63,6 +63,14 @@ var skills: Array[Skill]:
 				s.append(k)
 		return s
 
+var actives: Array[Skill]:
+	get:
+		return _of_kind(Skill.Kind.ACTIVE)
+
+var passives: Array[Skill]:
+	get:
+		return _of_kind(Skill.Kind.PASSIVE)
+
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var bar: ProgressBar = $HpBar
 
@@ -128,3 +136,9 @@ func _trimmed(c: Color) -> StyleBoxFlat:
 	box.border_color = faction.primary
 	box.set_border_width_all(1)
 	return box
+
+
+func _of_kind(k: Skill.Kind) -> Array[Skill]:
+	var s: Array[Skill] = []
+	s.assign(skills.filter(func(x: Skill): return x.kind == k))
+	return s
