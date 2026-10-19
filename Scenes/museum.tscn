@@ -1,3 +1,36 @@
 [gd_scene format=3 uid="uid://bf85hfeniu24c"]
 
-[node name="Node2D" type="Node2D" unique_id=676903265]
+[ext_resource type="Texture2D" uid="uid://7oob72icuuic" path="res://Units/Recruit.png" id="1_recruit"]
+[ext_resource type="Script" uid="uid://deeax2pddrme0" path="res://Scripts/Battle.gd" id="2_battle"]
+
+[sub_resource type="TileSet" id="TileSet_museum"]
+tile_size = Vector2i(32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_recruit"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_recruit")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="Node2D" type="Node2D" unique_id=1995734216]
+
+[node name="Camera2D2" type="Camera2D" parent="." unique_id=1593884593]
+
+[node name="GM" type="Control" parent="." unique_id=1874940631]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("2_battle")
+
+[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1311312230]
+tile_set = SubResource("TileSet_museum")
+
+[node name="Unit" type="Node2D" parent="." unique_id=874105671]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Unit" unique_id=219921045]
+sprite_frames = SubResource("SpriteFrames_recruit")
+autoplay = "default"
