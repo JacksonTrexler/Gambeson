@@ -1,68 +1,62 @@
 class_name Battle
-extends Control
+extends Node2D
 
-signal state_changed(old_state: State, new_state: State)
+signal phase_changed(was: Phase, now: Phase)
 
-enum State {
-	ACTIVE,
-	WAIT,
-	PASSIVE,
-}
+enum Phase { PLAYER, ENEMY, OVER }
 
-var state: State = State.WAIT
+var phase := Phase.PLAYER:
+	set(v):
+		if v == phase:
+			return
+		var was := phase
+		_exit(was)
+		phase = v
+		phase_changed.emit(was, v)  # before _enter, so a chained change arrives in order
+		_enter(v)
+
+# Which unit stands on which cell. TileSet custom data is per tile type, so it can't hold this.
+var units: Dictionary[Vector2i, Unit] = {}
+
+@onready var map: TileMapLayer = $Map
 
 
 func _ready() -> void:
-	_enter_state(state)
+	for u: Unit in $Units.get_children():
+		u.died.connect(_on_died)
+		move(u, u.cell)
+	_enter(phase)
 
 
-func _process(delta: float) -> void:
-	match state:
-		State.ACTIVE:
-			_process_active(delta)
-		State.WAIT:
-			_process_wait(delta)
-		State.PASSIVE:
-			_process_passive(delta)
+func unit_at(c: Vector2i) -> Unit:
+	return units.get(c)
 
 
-func set_state(new_state: State) -> void:
-	if new_state == state:
-		return
-	var old_state := state
-	_exit_state(old_state)
-	state = new_state
-	_enter_state(new_state)
-	state_changed.emit(old_state, new_state)
+# The one place a unit's cell changes, so `units` and positions never drift apart.
+func move(u: Unit, c: Vector2i) -> bool:
+	var other := unit_at(c)
+	if other and other != u:
+		return false
+	if unit_at(u.cell) == u:
+		units.erase(u.cell)
+	u.cell = c
+	units[c] = u
+	u.position = map.map_to_local(c)
+	return true
 
 
-func _enter_state(s: State) -> void:
-	match s:
-		State.ACTIVE:
-			pass
-		State.WAIT:
-			pass
-		State.PASSIVE:
-			pass
+func _on_died(u: Unit) -> void:
+	units.erase(u.cell)
+	var teams := {}
+	for o in units.values():
+		teams[o.team] = true
+	if teams.size() < 2:
+		phase = Phase.OVER
 
 
-func _exit_state(s: State) -> void:
-	match s:
-		State.ACTIVE:
-			pass
-		State.WAIT:
-			pass
-		State.PASSIVE:
-			pass
-
-
-func _process_active(_delta: float) -> void:
+func _enter(_p: Phase) -> void:
 	pass
 
 
-func _process_wait(_delta: float) -> void:
-	pass
-
-
-func _process_passive(_delta: float) -> void:
+func _exit(_p: Phase) -> void:
 	pass

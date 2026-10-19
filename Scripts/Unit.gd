@@ -1,53 +1,86 @@
 class_name Unit
 extends Node2D
 
-signal health_changed(old_value: int, new_value: int)
-signal energy_changed(old_value: int, new_value: int)
-signal died
+signal hp_changed(was: int, now: int)
+signal ep_changed(was: int, now: int)
+signal died(u: Unit)
 
-@export var max_health: int = 100
-@export var max_energy: int = 100
+@export var cell: Vector2i
+@export var team := 0
 
-var health: int = max_health
-var energy: int = max_energy
+@export var max_hp := 10:
+	set(m):
+		max_hp = m
+		if hp > m:
+			hp = m
+@export var max_ep := 10:
+	set(m):
+		max_ep = m
+		if ep > m:
+			ep = m
+
+# Core stats. Full names: `int` is a builtin type and a `str` member would hide str().
+@export_group("Stats")
+@export var strength := 5
+@export var dexterity := 5
+@export var constitution := 5
+@export var intelligence := 5
+@export var wisdom := 5
+@export var charisma := 5
+
+# Starts at 0 and fills in _ready, so HP bars get an initial hp_changed(0, max_hp).
+var hp := 0:
+	set(v):
+		v = clampi(v, 0, max_hp)
+		if v == hp:
+			return
+		var was := hp
+		hp = v
+		hp_changed.emit(was, v)
+		if v == 0:  # local v, not hp: a listener may have changed hp re-entrantly
+			died.emit(self)
+
+var ep := 0:
+	set(v):
+		v = clampi(v, 0, max_ep)
+		if v == ep:
+			return
+		var was := ep
+		ep = v
+		ep_changed.emit(was, v)
 
 
 func _ready() -> void:
-	health = max_health
-	energy = max_energy
+	hp = max_hp
+	ep = max_ep
 
 
-func _process(_delta: float) -> void:
-	pass
+func damage(d: int) -> void:
+	hp -= maxi(d, 0)
 
 
-func set_health(value: int) -> void:
-	var new_value := clampi(value, 0, max_health)
-	if new_value == health:
-		return
-	var old_value := health
-	health = new_value
-	health_changed.emit(old_value, new_value)
-	if health == 0:
-		died.emit()
+# Dead units stay dead; use revive().
+func heal(h: int) -> void:
+	if is_alive():
+		hp += maxi(h, 0)
 
 
-func set_energy(value: int) -> void:
-	var new_value := clampi(value, 0, max_energy)
-	if new_value == energy:
-		return
-	var old_value := energy
-	energy = new_value
-	energy_changed.emit(old_value, new_value)
+func revive(h: int) -> void:
+	if not is_alive():
+		hp = maxi(h, 1)
 
 
-func change_health(amount: int) -> void:
-	set_health(health + amount)
+# Pays an action cost; false (and nothing spent) if the unit can't afford it.
+func spend(e: int) -> bool:
+	if e < 0 or e > ep:
+		return false
+	ep -= e
+	return true
 
 
-func change_energy(amount: int) -> void:
-	set_energy(energy + amount)
+func restore(e: int) -> void:
+	ep += maxi(e, 0)
 
 
 func is_alive() -> bool:
-	return health > 0
+	return hp > 0
