@@ -1,12 +1,12 @@
-# gamb - run / debug Gambeson outside the Godot editor.
+# god - run / debug Gambeson outside the Godot editor.   (gun = god run, gebug = god debug)
 #
-#   Util\gamb [run]  [godot args]   run the main scene        Util\gamb --scene res://Scenes/Battle.tscn
-#   Util\gamb debug  [godot args]   terminal debugger (-d)    Util\gamb debug -b res://unit.gd:42 --debug-collisions
-#   Util\gamb editor                open the editor
-#   Util\gamb import                re-import assets / class_name cache after editing outside the editor
+#   god [run]  [godot args]   run the main scene        god --scene res://Scenes/Battle.tscn
+#   god debug  [godot args]   terminal debugger (-d)    god debug -b res://unit.gd:42 --debug-collisions
+#   god editor                open the editor
+#   god import                re-import assets / class_name cache after editing outside the editor
 #
 # Everything after the command goes straight to Godot (see `godot --help`); args after ++ go to the game.
-# Set $env:GODOT_BIN to use a specific Godot build (e.g. the .NET one for C#).
+# Set GODOT_BIN to use a specific Godot build (e.g. the .NET one for C#). Bash version: Util/god.
 
 $root = Split-Path -Parent $PSScriptRoot
 if (-not (Test-Path "$root\project.godot")) { Write-Host "No project.godot in $root" -ForegroundColor Red; exit 1 }

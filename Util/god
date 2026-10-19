@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# god - run / debug Gambeson outside the Godot editor.   (gun = god run, gebug = god debug)
+#
+#   god [run]  [godot args]   run the main scene        god --scene res://Scenes/Battle.tscn
+#   god debug  [godot args]   terminal debugger (-d)    god debug -b res://unit.gd:42 --debug-collisions
+#   god editor                open the editor
+#   god import                re-import assets / class_name cache after editing outside the editor
+#
+# Everything after the command goes straight to Godot (see `godot --help`); args after ++ go to the game.
+# Set GODOT_BIN to use a specific Godot build (e.g. the .NET one for C#). PowerShell version: Util/god.ps1.
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+[ -f "$root/project.godot" ] || { echo "No project.godot in $root" >&2; exit 1; }
+command -v cygpath >/dev/null && root="$(cygpath -w "$root")"   # Git Bash: Godot wants a Windows path
+
+find_godot() {
+    # On Windows the *_console.exe build keeps output (and the -d prompt) in this terminal.
+    local IFS=: d f
+    for d in $PATH; do for f in "$d"/Godot_v*_console.exe; do [ -x "$f" ] && echo "$f"; done; done | sort -r
+    command -v godot || command -v godot4
+}
+godot="${GODOT_BIN:-$(find_godot | head -n1)}"
+[ -n "$godot" ] || { echo "Godot not found on PATH; set GODOT_BIN" >&2; exit 1; }
+
+cmd=run
+case "${1:-}" in -*|++|'') ;; *) cmd=$1; shift ;; esac
+
+# .godot/ is gitignored, so a fresh clone needs one import before assets load.
+if [[ $cmd == run || $cmd == debug ]] && [ ! -d "$root/.godot" ]; then "$godot" --headless --path "$root" --import; fi
+
+usage() { sed -n '2,10s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"; }
+case $cmd in
+    run)    exec "$godot" --path "$root" "$@" ;;
+    debug)  exec "$godot" --path "$root" -d "$@" ;;
+    import) exec "$godot" --headless --path "$root" --import "$@" ;;
+    editor) "${godot/_console/}" -e --path "$root" "$@" >/dev/null 2>&1 & ;;
+    help)   usage ;;
+    *)      usage; exit 1 ;;
+esac
