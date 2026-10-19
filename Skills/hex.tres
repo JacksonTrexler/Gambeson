@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_unluck"]
+script = ExtResource("2_effect")
+kind = 0
+amount = -1.0
+turns = 3
+
+[resource]
+script = ExtResource("1_skill")
+name = "Hex"
+kind = 0
+tags = Array[StringName]([&"dark", &"magic", &"wis"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_unluck")])
+cost = 2
+radius = 5.0
+hostile = true
+damage = 1

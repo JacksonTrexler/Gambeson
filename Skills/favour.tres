@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_luck"]
+script = ExtResource("2_effect")
+kind = 0
+amount = 1.0
+
+[sub_resource type="Resource" id="Effect_mitigate"]
+script = ExtResource("2_effect")
+kind = 1
+amount = 0.01
+tags = Array[StringName]([&"physical", &"dark"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Favour"
+kind = 1
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_luck"), SubResource("Effect_mitigate")])

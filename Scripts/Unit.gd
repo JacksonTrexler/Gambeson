@@ -10,6 +10,7 @@ const OUTLINE := preload("res://Shaders/outline.gdshader")
 @export var cell: Vector2i
 @export var faction: Faction
 @export var learned: Array[Skill] = []
+@export var movement := 5
 
 @export var max_hp := 10:
 	set(m):
@@ -71,6 +72,21 @@ var passives: Array[Skill]:
 	get:
 		return _of_kind(Skill.Kind.PASSIVE)
 
+var timed: Dictionary[Effect, int] = {}  # effects others put on this unit -> turns left
+
+# Passives' effects plus timed ones (e.g. Hex).
+var effects: Array[Effect]:
+	get:
+		var e: Array[Effect] = []
+		for s in passives:
+			e.append_array(s.effects)
+		e.append_array(timed.keys())
+		return e
+
+var luck: int:
+	get:
+		return roundi(_sum(Effect.Kind.LUCK))
+
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var bar: ProgressBar = $HpBar
 
@@ -84,6 +100,45 @@ func _ready() -> void:
 
 func damage(d: int) -> void:
 	hp -= maxi(d, 0)
+
+
+# A tagged attack: mitigation is rounded down and damage taken up, unless the unit is lucky.
+# Returns the damage taken.
+func hit(raw: float, tags: Array[StringName]) -> int:
+	var m := mitigation(tags)
+	if m >= 1.0:
+		return 0  # immune: no leftover fraction to round up
+	var saved := Luck.settle(raw * m, luck, true)
+	var taken := Luck.settle(maxf(raw - saved, 0.0), luck, false)
+	damage(taken)
+	return taken
+
+
+# Fraction of a hit with these tags that's blocked (additive, capped at 100%).
+func mitigation(tags: Array[StringName]) -> float:
+	var t := Tags.expand(tags)
+	var m := 0.0
+	for e in effects:
+		if e.kind == Effect.Kind.MITIGATE and e.tags.any(func(x): return x in t):
+			m += _amount(e)
+	return minf(m, 1.0)
+
+
+func initiative_bonus() -> int:
+	return roundi(_sum(Effect.Kind.INITIATIVE))
+
+
+# Re-applying the same effect refreshes its timer rather than stacking.
+func afflict(e: Effect) -> void:
+	timed[e] = e.turns
+
+
+# End of this unit's faction turn: timed effects count down.
+func tick() -> void:
+	for e in timed.keys():
+		timed[e] -= 1
+		if timed[e] <= 0:
+			timed.erase(e)
 
 
 # Dead units stay dead; use revive().
@@ -142,3 +197,17 @@ func _of_kind(k: Skill.Kind) -> Array[Skill]:
 	var s: Array[Skill] = []
 	s.assign(skills.filter(func(x: Skill): return x.kind == k))
 	return s
+
+
+func _sum(k: Effect.Kind) -> float:
+	var total := 0.0
+	for e in effects:
+		if e.kind == k:
+			total += _amount(e)
+	return total
+
+
+func _amount(e: Effect) -> float:
+	if e.per_stat:
+		return e.amount * floori(get(e.per_stat) / float(e.per))
+	return e.amount
