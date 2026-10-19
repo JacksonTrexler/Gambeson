@@ -2,7 +2,9 @@
 
 [ext_resource type="Script" uid="uid://deeax2pddrme0" path="res://Scripts/Battle.gd" id="1_battle"]
 [ext_resource type="Texture2D" path="res://Tiles/placeholder.png" id="2_tiles"]
-[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="3_unit"]
+[ext_resource type="PackedScene" path="res://Scenes/villager.tscn" id="3_villager"]
+[ext_resource type="Resource" path="res://Factions/lancin.tres" id="4_lancin"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="5_nemes"]
 
 [sub_resource type="TileSetAtlasSource" id="Atlas_placeholder"]
 texture = ExtResource("2_tiles")
@@ -32,5 +34,18 @@ tile_set = SubResource("TileSet_museum")
 
 [node name="Units" type="Node2D" parent="Battle" unique_id=562321038]
 
-[node name="Recruit" parent="Battle/Units" unique_id=1625404691 instance=ExtResource("3_unit")]
-cell = Vector2i(4, 3)
+[node name="Villager1" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(1, 2)
+faction = ExtResource("4_lancin")
+
+[node name="Villager2" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(1, 5)
+faction = ExtResource("4_lancin")
+
+[node name="Villager3" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(8, 2)
+faction = ExtResource("5_nemes")
+
+[node name="Villager4" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(8, 5)
+faction = ExtResource("5_nemes")

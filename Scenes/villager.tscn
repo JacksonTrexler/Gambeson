@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+
+[node name="Villager" instance=ExtResource("1_unit")]
+strength = 12
+dexterity = 12
+constitution = 12
+intelligence = 8
+wisdom = 12
+charisma = 8
