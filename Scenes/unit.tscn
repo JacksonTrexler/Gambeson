@@ -22,9 +22,14 @@ sprite_frames = SubResource("SpriteFrames_recruit")
 autoplay = &"default"
 
 [node name="HpBar" type="ProgressBar" parent="."]
-offset_left = -12.0
-offset_top = -19.0
-offset_right = 12.0
-offset_bottom = -15.0
+mouse_filter = 2
+show_percentage = false
+
+[node name="ReserveBar" type="ProgressBar" parent="."]
+visible = false
+mouse_filter = 2
+show_percentage = false
+
+[node name="EnergyBar" type="ProgressBar" parent="."]
 mouse_filter = 2
 show_percentage = false

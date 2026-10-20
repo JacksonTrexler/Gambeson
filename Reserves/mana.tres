@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Reserve" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="1_script"]
+
+
+[resource]
+script = ExtResource("1_script")
+name = "Mana"
+color = Color(0.25, 0.5, 0.95, 1)
+only = Array[StringName]([&"magic"])

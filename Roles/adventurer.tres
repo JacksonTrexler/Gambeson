@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Journeyer.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="6_slot"]
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("6_slot")
+skill = ExtResource("4_strike")
+
+
+[resource]
+script = ExtResource("1_script")
+name = "Adventurer"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
+stats = Dictionary[StringName, int]({&"strength": 11, &"dexterity": 13, &"constitution": 11, &"intelligence": 10, &"wisdom": 12, &"charisma": 11})

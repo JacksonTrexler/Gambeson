@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Choice.gd" id="1_choice"]
+
+[node name="Choice" type="VBoxContainer"]
+alignment = 1
+script = ExtResource("1_choice")
+
+[node name="Prompt" type="Label" parent="."]
+horizontal_alignment = 1
+
+[node name="Options" type="HBoxContainer" parent="."]
+alignment = 1

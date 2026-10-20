@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Resource" path="res://Roles/wizard.tres" id="2_wizard"]
+[ext_resource type="Resource" path="res://Skills/hex.tres" id="4_hex"]
+[ext_resource type="Resource" path="res://Skills/arcanist.tres" id="5_arcanist"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="6_reserve"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="7_mana"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+
+[sub_resource type="Resource" id="Slot_hex"]
+script = ExtResource("9_slot")
+skill = ExtResource("4_hex")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_arcanist"]
+script = ExtResource("9_slot")
+skill = ExtResource("5_arcanist")
+rank = 3
+
+[node name="Icor" instance=ExtResource("1_unit")]
+role = ExtResource("2_wizard")
+title = "of Red"
+level = 5
+learned = Array[ExtResource("9_slot")]([SubResource("Slot_hex"), SubResource("Slot_arcanist")])
+max_hp = 14
+max_energy = 4
+reserves = Dictionary[ExtResource("6_reserve"), int]({ExtResource("7_mana"): 12})
+strength = 8
+dexterity = 10
+constitution = 8
+intelligence = 18
+wisdom = 10
+charisma = 8

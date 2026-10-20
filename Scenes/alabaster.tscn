@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/GolemClay.png" id="2_look"]
+[ext_resource type="Resource" path="res://Races/golem.tres" id="3_golem"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
+[ext_resource type="Resource" path="res://Skills/stoneskin.tres" id="5_stoneskin"]
+[ext_resource type="Resource" path="res://Skills/stonegift.tres" id="6_stonegift"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("9_slot")
+skill = ExtResource("4_strike")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_stoneskin"]
+script = ExtResource("9_slot")
+skill = ExtResource("5_stoneskin")
+rank = 1
+
+[sub_resource type="Resource" id="Slot_stonegift"]
+script = ExtResource("9_slot")
+skill = ExtResource("6_stonegift")
+rank = 1
+
+[node name="Alabaster" instance=ExtResource("1_unit")]
+race = ExtResource("3_golem")
+look = ExtResource("2_look")
+level = 5
+learned = Array[ExtResource("9_slot")]([SubResource("Slot_strike"), SubResource("Slot_stoneskin"), SubResource("Slot_stonegift")])
+max_hp = 30
+strength = 18
+dexterity = 8
+constitution = 20
+intelligence = 8
+wisdom = 8
+charisma = 8

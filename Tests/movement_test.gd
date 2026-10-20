@@ -47,7 +47,7 @@ func test_squeeze() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1)})
 	v(3).moved = 4.0
 	ok(b.travel(v(3), Vector2i(6, 1)).is_empty(), "luck 0: standard, stops short")
-	v(3).afflict(hex.effects[0])
+	v(3).afflict(hex.effects[0], 3)
 	ok(b.travel(v(3), Vector2i(6, 1)).is_empty(), "unlucky: stops short too")
 
 
@@ -61,7 +61,7 @@ func test_trap() -> void:
 	stage(nemes, {v(3): Vector2i(4, 4)})
 	v(3).moved = 4.5
 	ok(b.travel(v(3), Vector2i(5, 4)).is_empty(), "luck 0 stops short")
-	v(3).afflict(hex.effects[0])
+	v(3).afflict(hex.effects[0], 3)
 	ok(b.travel(v(3), Vector2i(5, 4)) == cells([Vector2i(5, 4)]), "unlucky stumbles onto it")
 	stage(lancin, {v(1): Vector2i(4, 4)})
 	ok(b.travel(v(1), Vector2i(5, 4)) == cells([Vector2i(5, 4)]), "with movement to spare anyone walks onto an unknown trap")
@@ -107,5 +107,5 @@ func test_blockers() -> void:
 
 func test_move_cost_effects() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1)})
-	v(3).afflict(effect("move_cost", -1, [&"rough"]))  # a Pathfinder-style passive, as data
+	v(3).afflict(effect("move_cost", -1, [&"rough"]), 99)  # a Pathfinder-style passive, as data
 	ok(b.travel(v(3), Vector2i(8, 1)).size() == 3 and v(3).moved == 3.0, "rough costs 1 with the effect")

@@ -1,11 +1,18 @@
 [gd_scene format=3]
 
 [ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
-[ext_resource type="Script" path="res://Scripts/Skill.gd" id="2_skill"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="3_strike"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="4_human"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("9_slot")
+skill = ExtResource("3_strike")
+rank = 1
 
 [node name="Villager" instance=ExtResource("1_unit")]
-innate = Array[ExtResource("2_skill")]([ExtResource("3_strike")])
+race = ExtResource("4_human")
+innate = Array[ExtResource("9_slot")]([SubResource("Slot_strike")])
 strength = 12
 dexterity = 12
 constitution = 12

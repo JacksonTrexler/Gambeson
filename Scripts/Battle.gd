@@ -8,6 +8,9 @@ signal initiative_rolled(rolls: Dictionary[Faction, Array])
 enum Phase { INITIATIVE, TURNS, OVER }
 
 const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
+const UNIT := preload("res://Scenes/unit.tscn")
+
+@export var spawns: Dictionary[Faction, Vector2i] = {}  # where a player's starter joins each side
 
 var phase := Phase.INITIATIVE:
 	set(v):
@@ -41,9 +44,15 @@ var rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	if Game.starter:
+		$Units.add_child(starter(Game.starter), true)
+		Game.starter = {}  # used up
 	for u: Unit in $Units.get_children():
+		if not move(u, u.cell):
+			push_error("%s has no free cell at %s" % [u.name, u.cell])
+			u.free()
+			continue
 		u.died.connect(_on_died)
-		move(u, u.cell)
 	_enter(phase)
 
 
@@ -62,6 +71,21 @@ func move(u: Unit, c: Vector2i) -> bool:
 	units[c] = u
 	u.position = map.map_to_local(c)
 	return true
+
+
+# The player's starter unit from the entry screen: {faction, role, name}.
+func starter(s: Dictionary) -> Unit:
+	var u: Unit = UNIT.instantiate()
+	u.name = s.name.validate_node_name()
+	u.nick = s.name
+	u.faction = s.faction
+	u.role = s.role
+	for k in s.role.stats:
+		assert(k in Unit.CORE, "role stat %s isn't a unit stat" % k)
+		u.set(k, s.role.stats[k])
+	assert(s.faction in spawns, "no spawn for %s" % s.faction.name)
+	u.cell = spawns[s.faction]
+	return u
 
 
 # --- Initiative and tie-breaks
@@ -162,24 +186,40 @@ func _flip(g: Array) -> Array:
 
 # --- Skills
 
-# Uses an active skill on a target in reach, paying its AP and resource cost.
+# Uses an active skill on a target in reach, paying its AP and cost. Damage comes from the skill's
+# tier for the caster's rank, once per rank for multi-hit skills (Strike III).
 func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	if not _acting(caster) or skill not in caster.actives or not target.is_alive():
 		return false
 	if skill.hostile == (target.faction == caster.faction) or not in_reach(caster, skill, target):
 		return false
-	if not caster.can_afford(skill):
+	if not caster.pay_for(skill):
 		return false
-	caster.pay(skill.ap, &"skill")
-	caster.spend(skill.cost, skill.resource)
-	for e in skill.effects:
-		target.afflict(e)
-	var power := maxi(skill.power + (caster.mod(skill.stat) if skill.stat else 0), 0)
-	if skill.direct:
-		target.damage(power)
-	else:
-		target.hit(power, skill.tags, caster)
+	var r := caster.rank(skill)
+	for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
+		target.afflict(e, skill.turns, r)
+	var t := skill.tier(r)
+	if not t:
+		return true
+	assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
+	var hits := r if skill.hits_per_rank else 1
+	for i in hits:
+		if not target.is_alive():
+			break
+		var power := maxi(t.power + roll(t.dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0), 0)
+		if t.direct:
+			target.damage(power)
+		else:
+			target.hit(power, skill.tags, caster)
 	return true
+
+
+# Dice as Vector2i(count, sides): Vector2i(1, 6) is d6.
+func roll(dice: Vector2i) -> int:
+	var sum := 0
+	for i in dice.x:
+		sum += rng.randi_range(1, dice.y)
+	return sum
 
 
 # Skill range + the caster's reach (its reach stat, +0.05 per size point) + 0.02 per size point

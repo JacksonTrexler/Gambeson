@@ -1,7 +1,8 @@
 extends Test
 
 # Full AI battles on the museum map, checking invariants after every action.
-# The AI: Hex the nearest un-hexed enemy in reach, close in on the nearest enemy, Strike while AP lasts.
+# The AI: Hex the nearest un-hexed enemy in reach, Stonegift an ally, close in on the nearest enemy,
+# Strike while AP lasts.
 
 const MAX_TURNS := 100
 
@@ -60,6 +61,12 @@ func act(u: Unit, log: Array[String]) -> void:
 		for f in foes:
 			if not f.timed.has(hex.effects[0]) and b.cast(u, hex, f):
 				log.append("%s hexes %s" % [u.name, f.name])
+				break
+	var gift: Skill = load("res://Skills/stonegift.tres")
+	if gift in u.actives:
+		for f in b.members(u.faction):
+			if f != u and not f.timed.has(gift.grants.effects[0]) and b.cast(u, gift, f):
+				log.append("%s gifts %s" % [u.name, f.name])
 				break
 	var t: Unit = foes[0]
 	if not b.in_reach(u, strike, t):

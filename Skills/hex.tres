@@ -1,22 +1,37 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
-[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
-
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="4_reserve"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="5_mana"]
 [sub_resource type="Resource" id="Effect_unluck"]
 script = ExtResource("2_effect")
 stat = "luck"
 amount = -1.0
-turns = 3
+per_rank = true
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+power = 1
+direct = true
+
+[sub_resource type="Resource" id="Tier_3"]
+script = ExtResource("3_tier")
+rank = 3
+dice = Vector2i(1, 6)
+stat = &"wisdom"
+
 
 [resource]
-script = ExtResource("1_skill")
+script = ExtResource("1_script")
 name = "Hex"
 tags = Array[StringName]([&"dark", &"magic", &"wis"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_unluck")])
 ap = 4.0
 cost = 2
+ap_with = Dictionary[ExtResource("4_reserve"), float]({ExtResource("5_mana"): 0.5})
 radius = 5.0
-hostile = true
-power = 1
-direct = true
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1"), SubResource("Tier_3")])
+turns = 3

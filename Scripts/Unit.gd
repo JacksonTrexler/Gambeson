@@ -3,6 +3,7 @@ extends Node2D
 
 signal hp_changed(was: int, now: int)
 signal energy_changed(was: int, now: int)
+signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
 
 const OUTLINE := preload("res://Shaders/outline.gdshader")
@@ -10,11 +11,30 @@ const OUTLINE := preload("res://Shaders/outline.gdshader")
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
+const ENERGY_COLOR := Color("#e8c547")
+const HP_COLOR := Color("#3fbf4f")
+
+
+# A timed effect on this unit: turns left, and the rank of the skill that applied it.
+class Applied:
+	var turns: int
+	var rank: int
+
+	func _init(t: int, r: int) -> void:
+		turns = t
+		rank = r
+
 
 @export var cell: Vector2i
 @export var faction: Faction
-@export var innate: Array[Skill] = []  # from the unit's kind/class scene (villagers: Strike)
-@export var learned: Array[Skill] = []  # per unit
+@export var role: Role
+@export var race: Race
+@export var nick := ""  # the name the player gave it (node names get sanitised)
+@export var title := ""  # "of Red"
+@export var level := 1
+@export var look: Texture2D  # sprite; falls back to the role's, then the scene's
+@export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
+@export var learned: Array[Slot] = []  # per unit
 
 @export var max_hp := 10:
 	set(m):
@@ -22,12 +42,15 @@ const BASE_AP := 10.0
 		if hp > m:
 			hp = m
 		if is_node_ready():
-			_show_hp()
+			_show_bars()
 @export var max_energy := 10:
 	set(m):
 		max_energy = m
 		if energy > m:
 			energy = m
+		if is_node_ready():
+			_show_bars()
+@export var reserves: Dictionary[Reserve, int] = {}  # extra energy types -> max (Icor: mana 12)
 
 @export_group("Stats")
 @export var strength := 5
@@ -38,9 +61,9 @@ const BASE_AP := 10.0
 @export var charisma := 5
 @export var movement := 5  # movement points per turn
 @export var reach := 0.0  # added to skill ranges; weapons and passives raise it
-@export var size := 3  # Medium (Human)
+@export var size := 3  # Medium, when the unit has no race
 
-# Starts at 0 and fills in _ready, so HP bars get an initial hp_changed(0, max_hp).
+# Starts at 0 and fills in _ready, so bars get an initial hp_changed(0, max_hp).
 var hp := 0:
 	set(v):
 		v = clampi(v, 0, max_hp)
@@ -52,7 +75,7 @@ var hp := 0:
 		if v == 0:  # local v, not hp: a listener may have changed hp re-entrantly
 			died.emit(self)
 
-# The default resource skills are paid in; classes may add others (mana, stamina...).
+# The default energy every unit has; reserves (mana...) are extra.
 var energy := 0:
 	set(v):
 		v = clampi(v, 0, max_energy)
@@ -62,67 +85,128 @@ var energy := 0:
 		energy = v
 		energy_changed.emit(was, v)
 
+var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
-var timed: Dictionary[Effect, int] = {}  # effects others put on this unit -> turns left
+var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
+var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 
-var skills: Array[Skill]:
+# Every skill entry, the role's first; a skill listed twice keeps its highest rank.
+var slots: Array[Slot]:
 	get:
-		var s: Array[Skill] = []
-		for k in innate + learned:
-			if k and k not in s:
-				s.append(k)
-		return s
+		var best := {}
+		for s in _role_slots + innate + learned:
+			if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
+				best[s.skill] = s
+		var out: Array[Slot] = []
+		out.assign(best.values())
+		return out
 
 var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
-		s.assign(skills.filter(func(k: Skill): return not k.passive))
+		s.assign(slots.filter(func(x: Slot): return not x.skill.passive).map(func(x: Slot): return x.skill))
+		return s
+
+# Passive entries that are on.
+var on_passives: Array[Slot]:
+	get:
+		var s: Array[Slot] = []
+		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on))
 		return s
 
 var passives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
-		s.assign(skills.filter(func(k: Skill): return k.passive))
+		s.assign(on_passives.map(func(x: Slot): return x.skill))
 		return s
-
-# Passives' effects plus timed ones (e.g. Hex).
-var effects: Array[Effect]:
-	get:
-		var e: Array[Effect] = []
-		for s in passives:
-			e.append_array(s.effects)
-		e.append_array(timed.keys())
-		return e
 
 var luck: int:
 	get:
 		return roundi(stat(&"luck"))
 
 @onready var sprite: AnimatedSprite2D = $Sprite
-@onready var bar: ProgressBar = $HpBar
+@onready var hp_bar: ProgressBar = $HpBar
+@onready var energy_bar: ProgressBar = $EnergyBar
+@onready var reserve_bar: ProgressBar = $ReserveBar
 
 
 func _ready() -> void:
-	hp_changed.connect(_show_hp)
+	# Skill entries hold per-unit state (rank, toggles), but scenes and roles share them: copy.
+	_role_slots.assign((role.innate if role else []).map(func(s: Slot): return s.duplicate()))
+	innate.assign(innate.map(func(s: Slot): return s.duplicate()))
+	learned.assign(learned.map(func(s: Slot): return s.duplicate()))
+	if role and not race:
+		race = role.race
+	if role and not look:
+		look = role.look
+	_show_look()
+	_layout_bars()
 	_show_faction()
+	hp_changed.connect(_show_bars.unbind(2))
+	energy_changed.connect(_show_bars.unbind(2))
+	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
 	energy = max_energy
+	for r in reserves:
+		set_store(r, reserves[r])
+	_show_bars()
 
 
-# Base value (core stats only) plus every effect on that stat whose tags match the query.
+func rank(s: Skill) -> int:
+	for x in slots:
+		if x.skill == s:
+			return x.rank
+	return 0
+
+
+# Base value (core stats only) plus every effect on that stat whose tags match the query;
+# "mul" effects then multiply the total (Stoneskin halves dexterity).
 func stat(s: StringName, tags: Array[StringName] = []) -> float:
 	var t := Tags.expand(tags)
-	var sum: float = get(s) if s in CORE else 0.0
-	for e in effects:
-		if e.stat == s and (e.tags.is_empty() or e.tags.any(func(x): return x in t)):
-			sum += e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1)
-	return sum
+	var sum: float = 0.0
+	if s == &"size" and race:
+		sum = race.size
+	elif s in CORE:
+		sum = get(s)
+	var factor := 1.0
+	for pair in _effects():
+		var e: Effect = pair[0]
+		if e.stat != s or not (e.tags.is_empty() or e.tags.any(func(x): return x in t)):
+			continue
+		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
+			continue
+		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1)
+		if e.op == "mul":
+			factor *= amount
+		else:
+			sum += amount
+	return sum * factor
 
 
-# d20-style modifier: 10-11 -> 0, 12-13 -> +1, 8-9 -> -1.
-func mod(s: StringName) -> int:
-	return floori((stat(s) - 10) / 2.0)
+# d20-style modifier: 10-11 -> 0, 12-13 -> +1, 8-9 -> -1. With a skill's tags, stand-in
+# passives may swap the stat (see scaling()).
+func mod(s: StringName, tags: Array[StringName] = []) -> int:
+	return floori((scaling(s, tags) - 10) / 2.0)
+
+
+# The stat value a skill with these tags scales on, after stand-in passives (Arcanist
+# Perspective: int for wis/cha on magic skills). Below rank 5 the replaced stat must be at least
+# (100% - 20% x rank) of the stand-in used, so the stand-in caps at replaced / (1 - 0.2 x rank).
+# From rank 5 there's no cap, and each rank past 5 adds 20% of the replaced stat.
+func scaling(s: StringName, tags: Array[StringName]) -> float:
+	var base := stat(s)
+	var best := base
+	for x in on_passives:
+		var p := x.skill
+		if not (p.stand_in and s in p.replaces and p.tags.any(func(t): return t in tags)):
+			continue
+		var other := stat(p.stand_in)
+		if x.rank < 5:
+			best = maxf(best, minf(other, base / (1.0 - 0.2 * x.rank)))
+		else:
+			best = maxf(best, other + 0.2 * (x.rank - 5) * base)
+	return best
 
 
 func damage(d: int) -> void:
@@ -149,15 +233,54 @@ func heal(h: int) -> void:
 		hp += maxi(h, 0)
 
 
+func store(r: Reserve) -> int:
+	return stores.get(r, 0)
+
+
+func set_store(r: Reserve, v: int) -> void:
+	v = clampi(v, 0, reserves.get(r, 0))
+	var was := store(r)
+	if v == was:
+		return
+	stores[r] = v
+	reserve_changed.emit(r, was, v)
+
+
+# What pays for a skill: a reserve that makes it cheaper (Hex: mana), then Energy, then any
+# reserve allowed for its tags. Returns the Reserve, &"energy", or null if nothing can.
+func funding(s: Skill) -> Variant:
+	var allowed := reserves.keys().filter(func(r: Reserve): return r.only.is_empty() or r.only.any(func(t): return t in s.tags))
+	for r: Reserve in allowed:
+		if s.ap_with.has(r) and store(r) >= s.cost:
+			return r
+	if energy >= s.cost:
+		return &"energy"
+	for r: Reserve in allowed:
+		if store(r) >= s.cost:
+			return r
+	return null
+
+
+func ap_cost(s: Skill, fund: Variant) -> float:
+	if fund is Reserve:
+		return s.ap * s.ap_with.get(fund, 1.0)
+	return s.ap
+
+
 func can_afford(s: Skill) -> bool:
-	return ap_for(&"skill") >= s.ap - 0.0001 and get(s.resource) >= s.cost
+	var fund: Variant = funding(s)
+	return fund != null and ap_for(&"skill") >= ap_cost(s, fund) - 0.0001
 
 
-# Pays a skill's resource cost; false (and nothing spent) if the unit can't afford it.
-func spend(n: int, res := &"energy") -> bool:
-	if n < 0 or n > get(res):
+# Pays a skill's AP and cost from its funding. False (and nothing spent) if it can't.
+func pay_for(s: Skill) -> bool:
+	var fund: Variant = funding(s)
+	if fund == null or not pay(ap_cost(s, fund), &"skill"):
 		return false
-	set(res, get(res) - n)
+	if fund is Reserve:
+		set_store(fund, store(fund) - s.cost)
+	else:
+		energy -= s.cost
 	return true
 
 
@@ -190,16 +313,18 @@ func pay(n: float, use: StringName) -> bool:
 	return true
 
 
-# Re-applying the same effect refreshes its timer rather than stacking.
-func afflict(e: Effect) -> void:
-	timed[e] = e.turns
+# Puts an effect on this unit for some of its faction's turns. Re-applying refreshes the timer
+# (keeping the higher rank) rather than stacking.
+func afflict(e: Effect, turns: int, at_rank := 1) -> void:
+	var r := maxi(at_rank, timed[e].rank) if e in timed else at_rank
+	timed[e] = Applied.new(turns, r)
 
 
 # End of this unit's faction turn: timed effects count down.
 func tick() -> void:
 	for e in timed.keys():
-		timed[e] -= 1
-		if timed[e] <= 0:
+		timed[e].turns -= 1
+		if timed[e].turns <= 0:
 			timed.erase(e)
 
 
@@ -207,12 +332,72 @@ func is_alive() -> bool:
 	return hp > 0
 
 
-func _show_hp(_was := 0, _now := 0) -> void:
-	bar.max_value = max_hp
-	bar.value = hp
+# [effect, rank] for every passive (that's on) and timed effect. A timed effect the unit's own
+# passives already give doesn't count twice (Stonegift on a Stoneskin golem).
+func _effects() -> Array:
+	var out := []
+	var own := {}
+	for x in on_passives:
+		for e in x.skill.effects:
+			out.append([e, x.rank])
+			own[e] = true
+	for e in timed:
+		if e not in own:
+			out.append([e, timed[e].rank])
+	return out
 
 
-# Stand-in art: faction primary outlines the sprite and trims the HP bar; secondary backs the bar.
+# The reserve with the largest pool: the one shown above Energy (Wizards: mana).
+func main_reserve() -> Reserve:
+	var main: Reserve = null
+	for r in reserves:
+		if main == null or reserves[r] > reserves[main]:
+			main = r
+	return main
+
+
+func _show_look() -> void:
+	if look:
+		var frames := SpriteFrames.new()
+		frames.add_frame(&"default", look)
+		sprite.sprite_frames = frames
+		sprite.play(&"default")
+
+
+# Bars stack up from just above the sprite's head: a slim yellow Energy bar, the main reserve
+# (if any; Energy then fades back as the secondary pool), HP on top.
+func _layout_bars() -> void:
+	var main := main_reserve()
+	energy_bar.add_theme_stylebox_override("fill", _flat(ENERGY_COLOR))
+	energy_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
+	energy_bar.modulate.a = 0.45 if main else 1.0
+	reserve_bar.visible = main != null
+	if main:
+		reserve_bar.add_theme_stylebox_override("fill", _flat(main.color))
+		reserve_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
+	hp_bar.add_theme_stylebox_override("fill", _flat(HP_COLOR))
+	var y := -sprite.sprite_frames.get_frame_texture(&"default", 0).get_height() / 2.0 - 1.0
+	for pair in [[energy_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]]:
+		var bar: ProgressBar = pair[0]
+		if not bar.visible:
+			continue
+		bar.size = Vector2(24, pair[1])
+		bar.position = Vector2(-12, y - pair[1])
+		y -= pair[1] + 1.0
+
+
+func _show_bars() -> void:
+	hp_bar.max_value = max_hp
+	hp_bar.value = hp
+	energy_bar.max_value = maxi(max_energy, 1)
+	energy_bar.value = energy
+	var main := main_reserve()
+	if main:
+		reserve_bar.max_value = reserves[main]
+		reserve_bar.value = store(main)
+
+
+# Stand-in art: faction primary outlines the sprite and trims the HP bar; secondary backs it.
 func _show_faction() -> void:
 	if not faction:
 		return
@@ -220,13 +405,18 @@ func _show_faction() -> void:
 	mat.shader = OUTLINE
 	mat.set_shader_parameter("color", faction.primary)
 	sprite.material = mat
-	bar.add_theme_stylebox_override("background", _trimmed(faction.secondary))
-	bar.add_theme_stylebox_override("fill", _trimmed(Color("#3fbf4f")))
+	hp_bar.add_theme_stylebox_override("background", _trimmed(faction.secondary))
+	hp_bar.add_theme_stylebox_override("fill", _trimmed(HP_COLOR))
 
 
 func _trimmed(c: Color) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = c
+	var box := _flat(c)
 	box.border_color = faction.primary
 	box.set_border_width_all(1)
+	return box
+
+
+func _flat(c: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = c
 	return box

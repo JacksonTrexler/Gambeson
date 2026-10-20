@@ -1,13 +1,19 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
-[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+power = 1
+stat = &"strength"
+
 
 [resource]
-script = ExtResource("1_skill")
+script = ExtResource("1_script")
 name = "Strike"
 tags = Array[StringName]([&"physical", &"str"])
 ap = 3.0
 radius = 1.0
-hostile = true
-power = 1
-stat = &"strength"
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+hits_per_rank = true

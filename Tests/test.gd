@@ -2,7 +2,8 @@ class_name Test
 extends RefCounted
 
 # Base for test suites. Tests/run.gd builds a fresh, seeded museum battle for every test_* method.
-# Villagers 1-2 are Lancin (Favour), 3-4 Nemes (Wary, Hex); all have Strike.
+# Villagers 1-2 are Lancin (Favour), 3-4 Nemes (Wary, Hex); all have Strike. Champions:
+# Alabaster (Lancin) and Icor (Nemes).
 
 var b: Battle
 var tree: SceneTree  # for tests that build their own battles
@@ -32,8 +33,19 @@ func effect(stat: String, amount: float, tags: Array[StringName] = []) -> Effect
 	e.stat = stat
 	e.amount = amount
 	e.tags = tags
-	e.turns = 99
 	return e
+
+
+func slot(s: Skill, r := 1) -> Slot:
+	var x := Slot.new()
+	x.skill = s
+	x.rank = r
+	return x
+
+
+# Just the four villagers, on their usual cells (the museum's champions step out).
+func villagers_only() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(8, 2), v(4): Vector2i(8, 5)})
 
 
 # Clears the board except the given units, placed at the given cells, and starts f's turn.

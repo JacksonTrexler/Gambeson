@@ -1,0 +1,76 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/choice.tscn" id="2_choice"]
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="3_faction"]
+[ext_resource type="Resource" path="res://Factions/lancin.tres" id="4_lancin"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="5_nemes"]
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="6_role"]
+[ext_resource type="Resource" path="res://Roles/adventurer.tres" id="7_adventurer"]
+[ext_resource type="Resource" path="res://Roles/fighter.tres" id="8_fighter"]
+[ext_resource type="Resource" path="res://Roles/paladin.tres" id="9_paladin"]
+
+[sub_resource type="Theme" id="Theme_small"]
+default_font_size = 10
+
+[node name="Entry" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme_small")
+script = ExtResource("1_entry")
+sides = Array[ExtResource("3_faction")]([ExtResource("4_lancin"), ExtResource("5_nemes")])
+roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin")])
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.13, 0.16, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Form" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Title" type="Label" parent="Center/Form"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Gambeson"
+horizontal_alignment = 1
+
+[node name="Side" parent="Center/Form" instance=ExtResource("2_choice")]
+unique_name_in_owner = true
+layout_mode = 2
+prompt = "Which side will you take?"
+
+[node name="Role" parent="Center/Form" instance=ExtResource("2_choice")]
+unique_name_in_owner = true
+layout_mode = 2
+prompt = "What is your starter's class?"
+
+[node name="Name" type="LineEdit" parent="Center/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Your starter's name"
+alignment = 1
+max_length = 20
+
+[node name="Play" type="Button" parent="Center/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Play"

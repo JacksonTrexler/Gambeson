@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/RedMage.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Wizard"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[sub_resource type="Resource" id="Effect_skin"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.4
+above_hp = 0.85
+
+[sub_resource type="Resource" id="Effect_slow"]
+script = ExtResource("2_effect")
+stat = "dexterity"
+op = "mul"
+amount = 0.5
+above_hp = 0.85
+
+
+[resource]
+script = ExtResource("1_script")
+name = "Stoneskin"
+passive = true
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_skin"), SubResource("Effect_slow")])

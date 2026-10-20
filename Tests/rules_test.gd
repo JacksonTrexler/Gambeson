@@ -18,10 +18,10 @@ func test_tags() -> void:
 func test_stats() -> void:
 	var u := v(1)
 	ok(u.stat(&"strength") == 12 and u.mod(&"strength") == 1 and u.mod(&"intelligence") == -1, "d20 mods: 12 -> +1, 8 -> -1")
-	u.afflict(effect("strength", 2))
+	u.afflict(effect("strength", 2), 99)
 	ok(u.stat(&"strength") == 14 and u.mod(&"strength") == 2, "effects add to core stats")
 	ok(u.stat(&"nonsense") == 0.0, "unknown stats are 0")
-	u.afflict(effect("mitigate", 0.1))
+	u.afflict(effect("mitigate", 0.1), 99)
 	ok(is_equal_approx(u.mitigation([&"fire"]), 0.1), "untagged effects apply to every query")
 
 
@@ -48,24 +48,25 @@ func test_wary() -> void:
 
 func test_manifest() -> void:
 	var u := v(1)
-	u.learned = [manifest]
+	u.learned = [slot(manifest)]
 	u.charisma = 25
 	ok(u.luck == 2, "cha 25 -> +2")
 	u.charisma = 8
 	ok(u.luck == 0, "cha 8 -> +0")
-	u.learned = [manifest, favour]
+	u.learned = [slot(manifest), slot(favour)]
 	u.charisma = 19
 	ok(u.luck == 2, "stacks with Favour")
 
 
 func test_contest_chain() -> void:
+	villagers_only()
 	b.rolls = {lancin: [10, 5], nemes: [7, 7]}
 	ok(b.total(lancin) == 15 and b.total(nemes) == 15, "15-15 (Nemes 14 + Wary)")
 	var st := b.rng.state
 	ok(b.contest([nemes, lancin], [b.total]) == [lancin, nemes], "tie -> best luck")
 	ok(b.rng.state == st, "no coin when luck settles it")
-	v(1).afflict(hex.effects[0])
-	v(2).afflict(hex.effects[0])
+	v(1).afflict(hex.effects[0], 3)
+	v(2).afflict(hex.effects[0], 3)
 	v(4).dexterity = 13
 	ok(b.contest([lancin, nemes], [b.total]) == [nemes, lancin], "luck tie -> dexterity")
 	v(4).dexterity = 12
@@ -85,6 +86,7 @@ func test_contest_sides() -> void:
 
 
 func test_initiative() -> void:
+	villagers_only()
 	var sums := true
 	for seed in 100:
 		b.rng.seed = seed

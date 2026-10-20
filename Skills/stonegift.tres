@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Resource" path="res://Skills/stoneskin.tres" id="4_stoneskin"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Stonegift"
+tags = Array[StringName]([&"earth"])
+ap = 4.0
+cost = 2
+radius = 2.0
+hostile = false
+grants = ExtResource("4_stoneskin")
+turns = 3
