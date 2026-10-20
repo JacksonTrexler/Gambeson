@@ -5,6 +5,7 @@
 #   god debug  [godot args]   terminal debugger (-d)    god debug -b res://unit.gd:42 --debug-collisions
 #   god editor                open the editor
 #   god import                re-import assets / class_name cache after editing outside the editor
+#   god test                  import, then run every Tests/*_test.gd headless
 #
 # Everything after the command goes straight to Godot (see `godot --help`); args after ++ go to the game.
 # Set GODOT_BIN to use a specific Godot build (e.g. the .NET one for C#). PowerShell version: Util/god.ps1.
@@ -28,11 +29,12 @@ case "${1:-}" in -*|++|'') ;; *) cmd=$1; shift ;; esac
 # .godot/ is gitignored, so a fresh clone needs one import before assets load.
 if [[ $cmd == run || $cmd == debug ]] && [ ! -d "$root/.godot" ]; then "$godot" --headless --path "$root" --import; fi
 
-usage() { sed -n '2,10s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"; }
+usage() { sed -n '2,11s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"; }
 case $cmd in
     run)    exec "$godot" --path "$root" "$@" ;;
     debug)  exec "$godot" --path "$root" -d "$@" ;;
     import) exec "$godot" --headless --path "$root" --import "$@" ;;
+    test)   "$godot" --headless --path "$root" --import >/dev/null 2>&1; exec "$godot" --headless --path "$root" -s res://Tests/run.gd "$@" ;;
     editor) "${godot/_console/}" -e --path "$root" "$@" >/dev/null 2>&1 & ;;
     help)   usage ;;
     *)      usage; exit 1 ;;

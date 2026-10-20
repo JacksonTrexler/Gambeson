@@ -5,7 +5,7 @@
 
 [sub_resource type="Resource" id="Effect_luck"]
 script = ExtResource("2_effect")
-kind = 0
+stat = "luck"
 amount = 1.0
 per_stat = &"charisma"
 per = 10
@@ -13,5 +13,5 @@ per = 10
 [resource]
 script = ExtResource("1_skill")
 name = "Manifest"
-kind = 1
+passive = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_luck")])

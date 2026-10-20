@@ -4,6 +4,7 @@
 #   god debug  [godot args]   terminal debugger (-d)    god debug -b res://unit.gd:42 --debug-collisions
 #   god editor                open the editor
 #   god import                re-import assets / class_name cache after editing outside the editor
+#   god test                  import, then run every Tests/*_test.gd headless
 #
 # Everything after the command goes straight to Godot (see `godot --help`); args after ++ go to the game.
 # Set GODOT_BIN to use a specific Godot build (e.g. the .NET one for C#). Bash version: Util/god.
@@ -29,7 +30,8 @@ switch ($cmd) {
     'run'    { & $godot --path $root @rest }
     'debug'  { & $godot --path $root -d @rest }
     'import' { & $godot --headless --path $root --import @rest }
+    'test'   { & $godot --headless --path $root --import *> $null; & $godot --headless --path $root -s res://Tests/run.gd @rest }
     'editor' { Start-Process ($godot -replace '_console', '') -ArgumentList (@('-e', '--path', "`"$root`"") + $rest); exit 0 }
-    default  { Get-Content $PSCommandPath -TotalCount 9 | ForEach-Object { $_ -replace '^# ?', '' }; exit [int]($cmd -ne 'help') }
+    default  { Get-Content $PSCommandPath -TotalCount 10 | ForEach-Object { $_ -replace '^# ?', '' }; exit [int]($cmd -ne 'help') }
 }
 exit $LASTEXITCODE

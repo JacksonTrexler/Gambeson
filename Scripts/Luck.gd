@@ -1,12 +1,17 @@
 class_name Luck
 
-# Luck decides ties and rounding. At 1 or more, fractions round the holder's way; at 0 or
-# less they round against it (mitigation down, damage taken up).
-static func settle(x: float, luck: int, more_is_better: bool) -> int:
+# Near misses within this much count as rounding, decided by net luck (standard: a miss).
+const MARGIN := 0.5
+
+
+# Rounding decided by net luck (my luck minus my opponent's, or just mine with no opponent):
+#   net > 0: rounds my way.   net == 0: the situation's standard rule.   net < 0: against me.
+# up_is_good: whether rounding up favours me. standard_up: the rule at net 0 (default: against me).
+static func settle(x: float, net: int, up_is_good: bool, standard_up := not up_is_good) -> int:
 	x = snappedf(x, 0.0001)  # 100 * 0.01 must be 1, not 1.0000001
-	return ceili(x) if (luck >= 1) == more_is_better else floori(x)
-
-
-# Near misses: each luck past 1 stretches thresholds (like movement reach) by 0.1.
-static func reach(luck: int) -> float:
-	return 0.1 * maxi(luck - 1, 0)
+	var up := standard_up
+	if net > 0:
+		up = up_is_good
+	elif net < 0:
+		up = not up_is_good
+	return ceili(x) if up else floori(x)

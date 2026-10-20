@@ -1,16 +1,17 @@
 class_name Skill
 extends Resource
 
-# ACTIVE: chosen on the unit's turn and paid for with EP. PASSIVE: always on, no cost.
-enum Kind { ACTIVE, PASSIVE }
-
 @export var name := ""
-@export var kind := Kind.ACTIVE
-@export var tags: Array[StringName] = []  # e.g. dark, magic, wis
-@export var effects: Array[Effect] = []  # passives: always on the holder; actives: put on the target
+@export var passive := false  # passives are always on and cost nothing
+@export var tags: Array[StringName] = []  # e.g. physical, dark, magic, str, wis
+@export var effects: Array[Effect] = []  # passives: on the holder; actives: put on the target
 
 @export_group("Active")
-@export var cost := 0  # EP
-@export var radius := 0.0  # circle, in tiles between cell centres
+@export var ap := 0.0
+@export var resource := &"energy"  # what `cost` is paid in
+@export var cost := 0
+@export var radius := 0.0  # range before reach and size
 @export var hostile := true  # targets enemies (false: allies)
-@export var damage := 0  # direct: skips mitigation
+@export var power := 0  # damage
+@export var stat := &""  # adds the caster's mod in this stat to power, e.g. strength
+@export var direct := false  # skips mitigation

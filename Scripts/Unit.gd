@@ -2,15 +2,19 @@ class_name Unit
 extends Node2D
 
 signal hp_changed(was: int, now: int)
-signal ep_changed(was: int, now: int)
+signal energy_changed(was: int, now: int)
 signal died(u: Unit)
 
 const OUTLINE := preload("res://Shaders/outline.gdshader")
+# Stats with a base value on the unit; effects add to these and to any other named stat.
+const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
+		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
+const BASE_AP := 10.0
 
 @export var cell: Vector2i
 @export var faction: Faction
-@export var learned: Array[Skill] = []
-@export var movement := 5
+@export var innate: Array[Skill] = []  # from the unit's kind/class scene (villagers: Strike)
+@export var learned: Array[Skill] = []  # per unit
 
 @export var max_hp := 10:
 	set(m):
@@ -19,13 +23,12 @@ const OUTLINE := preload("res://Shaders/outline.gdshader")
 			hp = m
 		if is_node_ready():
 			_show_hp()
-@export var max_ep := 10:
+@export var max_energy := 10:
 	set(m):
-		max_ep = m
-		if ep > m:
-			ep = m
+		max_energy = m
+		if energy > m:
+			energy = m
 
-# Core stats. Full names: `int` is a builtin type and a `str` member would hide str().
 @export_group("Stats")
 @export var strength := 5
 @export var dexterity := 5
@@ -33,6 +36,9 @@ const OUTLINE := preload("res://Shaders/outline.gdshader")
 @export var intelligence := 5
 @export var wisdom := 5
 @export var charisma := 5
+@export var movement := 5  # movement points per turn
+@export var reach := 0.0  # added to skill ranges; weapons and passives raise it
+@export var size := 3  # Medium (Human)
 
 # Starts at 0 and fills in _ready, so HP bars get an initial hp_changed(0, max_hp).
 var hp := 0:
@@ -46,33 +52,39 @@ var hp := 0:
 		if v == 0:  # local v, not hp: a listener may have changed hp re-entrantly
 			died.emit(self)
 
-var ep := 0:
+# The default resource skills are paid in; classes may add others (mana, stamina...).
+var energy := 0:
 	set(v):
-		v = clampi(v, 0, max_ep)
-		if v == ep:
+		v = clampi(v, 0, max_energy)
+		if v == energy:
 			return
-		var was := ep
-		ep = v
-		ep_changed.emit(was, v)
+		var was := energy
+		energy = v
+		energy_changed.emit(was, v)
 
-# Everything the unit can use. Only learned skills so far; class, gear and faction skills merge in here.
+var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
+var moved := 0.0  # movement spent this turn
+var timed: Dictionary[Effect, int] = {}  # effects others put on this unit -> turns left
+
 var skills: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
-		for k in learned:
+		for k in innate + learned:
 			if k and k not in s:
 				s.append(k)
 		return s
 
 var actives: Array[Skill]:
 	get:
-		return _of_kind(Skill.Kind.ACTIVE)
+		var s: Array[Skill] = []
+		s.assign(skills.filter(func(k: Skill): return not k.passive))
+		return s
 
 var passives: Array[Skill]:
 	get:
-		return _of_kind(Skill.Kind.PASSIVE)
-
-var timed: Dictionary[Effect, int] = {}  # effects others put on this unit -> turns left
+		var s: Array[Skill] = []
+		s.assign(skills.filter(func(k: Skill): return k.passive))
+		return s
 
 # Passives' effects plus timed ones (e.g. Hex).
 var effects: Array[Effect]:
@@ -85,7 +97,7 @@ var effects: Array[Effect]:
 
 var luck: int:
 	get:
-		return roundi(_sum(Effect.Kind.LUCK))
+		return roundi(stat(&"luck"))
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var bar: ProgressBar = $HpBar
@@ -95,37 +107,87 @@ func _ready() -> void:
 	hp_changed.connect(_show_hp)
 	_show_faction()
 	hp = max_hp
-	ep = max_ep
+	energy = max_energy
+
+
+# Base value (core stats only) plus every effect on that stat whose tags match the query.
+func stat(s: StringName, tags: Array[StringName] = []) -> float:
+	var t := Tags.expand(tags)
+	var sum: float = get(s) if s in CORE else 0.0
+	for e in effects:
+		if e.stat == s and (e.tags.is_empty() or e.tags.any(func(x): return x in t)):
+			sum += e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1)
+	return sum
+
+
+# d20-style modifier: 10-11 -> 0, 12-13 -> +1, 8-9 -> -1.
+func mod(s: StringName) -> int:
+	return floori((stat(s) - 10) / 2.0)
 
 
 func damage(d: int) -> void:
 	hp -= maxi(d, 0)
 
 
-# A tagged attack: mitigation is rounded down and damage taken up, unless the unit is lucky.
-# Returns the damage taken.
-func hit(raw: float, tags: Array[StringName]) -> int:
-	var m := mitigation(tags)
-	if m >= 1.0:
-		return 0  # immune: no leftover fraction to round up
-	var saved := Luck.settle(raw * m, luck, true)
-	var taken := Luck.settle(maxf(raw - saved, 0.0), luck, false)
+# A tagged attack. Mitigation applies, then net luck (mine minus the attacker's) rounds what's
+# left: up (against me) unless I'm luckier. Returns the damage taken.
+func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
+	var net := luck - (by.luck if by else 0)
+	var taken := Luck.settle(raw * (1.0 - mitigation(tags)), net, false)
 	damage(taken)
 	return taken
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
 func mitigation(tags: Array[StringName]) -> float:
-	var t := Tags.expand(tags)
-	var m := 0.0
-	for e in effects:
-		if e.kind == Effect.Kind.MITIGATE and e.tags.any(func(x): return x in t):
-			m += _amount(e)
-	return minf(m, 1.0)
+	return minf(stat(&"mitigate", tags), 1.0)
 
 
-func initiative_bonus() -> int:
-	return roundi(_sum(Effect.Kind.INITIATIVE))
+# Dead units stay dead.
+func heal(h: int) -> void:
+	if is_alive():
+		hp += maxi(h, 0)
+
+
+func can_afford(s: Skill) -> bool:
+	return ap_for(&"skill") >= s.ap - 0.0001 and get(s.resource) >= s.cost
+
+
+# Pays a skill's resource cost; false (and nothing spent) if the unit can't afford it.
+func spend(n: int, res := &"energy") -> bool:
+	if n < 0 or n > get(res):
+		return false
+	set(res, get(res) - n)
+	return true
+
+
+# Start of this unit's faction turn: fresh AP and movement.
+func refresh() -> void:
+	var dex := mod(&"dexterity")
+	var wis := mod(&"wisdom")
+	# general, then dex (moving only), then wis (skills only); negative mods cut the general pool
+	ap = [AP.new(BASE_AP + mini(dex, 0) + mini(wis, 0)), AP.new(maxi(dex, 0), &"move"), AP.new(maxi(wis, 0), &"skill")]
+	moved = 0.0
+
+
+# AP available for a use (&"move" or &"skill").
+func ap_for(use: StringName) -> float:
+	var sum := 0.0
+	for p in ap:
+		if p.only == use or p.only == &"":
+			sum += p.amount
+	return sum
+
+
+# Pays AP for a use, draining pools reserved for it before general ones.
+func pay(n: float, use: StringName) -> bool:
+	if n > ap_for(use) + 0.0001:
+		return false
+	for p in ap.filter(func(x: AP): return x.only == use) + ap.filter(func(x: AP): return x.only == &""):
+		var take := minf(p.amount, n)
+		p.amount -= take
+		n -= take
+	return true
 
 
 # Re-applying the same effect refreshes its timer rather than stacking.
@@ -139,29 +201,6 @@ func tick() -> void:
 		timed[e] -= 1
 		if timed[e] <= 0:
 			timed.erase(e)
-
-
-# Dead units stay dead; use revive().
-func heal(h: int) -> void:
-	if is_alive():
-		hp += maxi(h, 0)
-
-
-func revive(h: int) -> void:
-	if not is_alive():
-		hp = maxi(h, 1)
-
-
-# Pays an action cost; false (and nothing spent) if the unit can't afford it.
-func spend(e: int) -> bool:
-	if e < 0 or e > ep:
-		return false
-	ep -= e
-	return true
-
-
-func restore(e: int) -> void:
-	ep += maxi(e, 0)
 
 
 func is_alive() -> bool:
@@ -191,23 +230,3 @@ func _trimmed(c: Color) -> StyleBoxFlat:
 	box.border_color = faction.primary
 	box.set_border_width_all(1)
 	return box
-
-
-func _of_kind(k: Skill.Kind) -> Array[Skill]:
-	var s: Array[Skill] = []
-	s.assign(skills.filter(func(x: Skill): return x.kind == k))
-	return s
-
-
-func _sum(k: Effect.Kind) -> float:
-	var total := 0.0
-	for e in effects:
-		if e.kind == k:
-			total += _amount(e)
-	return total
-
-
-func _amount(e: Effect) -> float:
-	if e.per_stat:
-		return e.amount * floori(get(e.per_stat) / float(e.per))
-	return e.amount

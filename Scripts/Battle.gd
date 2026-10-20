@@ -7,23 +7,26 @@ signal initiative_rolled(rolls: Dictionary[Faction, Array])
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
+const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
+
 var phase := Phase.INITIATIVE:
 	set(v):
 		if v == phase:
 			return
 		var was := phase
-		_exit(was)
 		phase = v
 		phase_changed.emit(was, v)  # before _enter, so a chained change arrives in order
 		_enter(v)
 
-# Whose turn it is.
+# Whose turn it is. Its units get fresh AP and movement as it starts.
 var turn: Faction:
 	set(v):
 		if v == turn:
 			return
 		var was := turn
 		turn = v
+		for u in members(v):
+			u.refresh()
 		turn_changed.emit(was, v)
 
 var order: Array[Faction] = []  # turn order, highest initiative first
@@ -61,6 +64,8 @@ func move(u: Unit, c: Vector2i) -> bool:
 	return true
 
 
+# --- Initiative and tie-breaks
+
 # Each living unit rolls a d20 and its faction sums them (+ Wary-style bonus); highest goes first.
 func roll_initiative() -> Array[Faction]:
 	rolls.clear()
@@ -84,13 +89,13 @@ func total(f: Faction) -> int:
 func initiative_bonus(f: Faction) -> int:
 	var best := 0
 	for u in members(f):
-		best = maxi(best, u.initiative_bonus())
+		best = maxi(best, roundi(u.stat(&"initiative")))
 	return best
 
 
 # Orders sides best-first. Each key is tried in turn, then the side's best luck, then its total
 # dexterity; a coin decides only sides still tied after all of that.
-# A side is a Unit, a Faction, or an Array of Units (e.g. "Company A").
+# A side is a Unit, a Faction, an Array of Units (e.g. "Company A"), or anything the keys rank.
 func contest(sides: Array, keys: Array[Callable] = []) -> Array:
 	var chain: Array = keys.duplicate()
 	chain.append_array([best_luck, dexterity])
@@ -126,7 +131,7 @@ func best_luck(side) -> int:
 func dexterity(side) -> int:
 	var sum := 0
 	for u in members(side):
-		sum += u.dexterity
+		sum += roundi(u.stat(&"dexterity"))
 	return sum
 
 
@@ -140,7 +145,7 @@ func members(side) -> Array[Unit]:
 	elif side is Array:
 		pool = side
 	var out: Array[Unit] = []
-	out.assign(pool.filter(func(u): return u.is_alive()))
+	out.assign(pool.filter(func(u): return u is Unit and u.is_alive()))
 	return out
 
 
@@ -155,87 +160,128 @@ func _flip(g: Array) -> Array:
 	return g
 
 
-# Uses an active skill on a target in range. Direct damage skips mitigation.
+# --- Skills
+
+# Uses an active skill on a target in reach, paying its AP and resource cost.
 func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
-	if phase != Phase.TURNS or caster.faction != turn:
+	if not _acting(caster) or skill not in caster.actives or not target.is_alive():
 		return false
-	if skill not in caster.actives or not caster.is_alive() or not target.is_alive():
+	if skill.hostile == (target.faction == caster.faction) or not in_reach(caster, skill, target):
 		return false
-	if skill.hostile == (target.faction == caster.faction):
+	if not caster.can_afford(skill):
 		return false
-	if not in_radius(caster.cell, target.cell, skill.radius):
-		return false
-	if not caster.spend(skill.cost):
-		return false
+	caster.pay(skill.ap, &"skill")
+	caster.spend(skill.cost, skill.resource)
 	for e in skill.effects:
 		target.afflict(e)
-	target.damage(skill.damage)
+	var power := maxi(skill.power + (caster.mod(skill.stat) if skill.stat else 0), 0)
+	if skill.direct:
+		target.damage(power)
+	else:
+		target.hit(power, skill.tags, caster)
 	return true
 
 
-# Circle, not diamond: straight-line distance between cell centres.
-func in_radius(a: Vector2i, b: Vector2i, r: float) -> bool:
-	return Vector2(a).distance_to(Vector2(b)) <= r + 0.0001
+# Skill range + the caster's reach (its reach stat, +0.05 per size point) + 0.02 per size point
+# of the target (bigger targets are easier to reach).
+func skill_range(caster: Unit, skill: Skill, target: Unit) -> float:
+	return skill.radius + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * target.stat(&"size")
 
 
-# Straight-line move up to `movement` tiles (a circle; luck past 1 adds 0.1 reach per point).
-# Each tile of movement passes the nearest tile on the line; when tiles are equally near, the
-# lucky pick better ground, the unlucky worse, and luck 0 flips a coin. Returns the tiles passed.
+# Circle geometry. A near miss (within Luck.MARGIN) is rounding: in only if the caster is luckier.
+func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
+	var over := Vector2(caster.cell).distance_to(Vector2(target.cell)) - skill_range(caster, skill, target)
+	if over <= 0.0001:
+		return true
+	return over < Luck.MARGIN and caster.luck - target.luck > 0
+
+
+# --- Movement
+
+# Walks the straight line toward `dest`, paying movement and the same AP per step: leaving a tile
+# costs its exit, entering costs its enter (plus the unit's move_cost effects for that ground).
+# Stops where movement or AP runs out, before a hole, and short of other units. Short by a
+# fraction, net luck can squeeze one more tile in - but never luckily onto secretly bad ground.
+# Returns the tiles passed.
 func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	var passed: Array[Vector2i] = []
-	if not u.is_alive() or dest == u.cell or unit_at(dest) or not on_map(dest):
+	if not _acting(u) or dest == u.cell:
 		return passed
-	var d := Vector2(u.cell).distance_to(Vector2(dest))
-	if d > u.movement + Luck.reach(u.luck) + 0.0001:
-		return passed
-	var steps := ceili(d - 0.0001)
-	var avoid: Array[Vector2i] = [u.cell, dest]  # don't "pass" the start, or reach the end early
-	for k in range(1, steps + 1):
-		if k == steps:
-			avoid.erase(dest)
-		var c := _nearest(Vector2(u.cell).lerp(Vector2(dest), float(k) / steps), u.luck, avoid)
-		if not on_map(c):
-			passed.clear()  # holes in the map block the line
-			return passed
+	var left := minf(u.stat(&"movement") - u.moved, u.ap_for(&"move"))
+	var spent: Array[float] = []
+	var at := u.cell
+	for c in line(u.cell, dest, u.luck, u):
+		if not on_map(c) or left <= 0.0001:
+			break
+		var t := terrain(c)
+		var cost := step(u, at, c)
+		if cost > left + 0.0001:
+			var trap := t.hidden and t.worth() < 0
+			if Luck.settle(left / cost, u.luck, not trap, false) < 1:
+				break
+			cost = left  # squeezed in on what was left
+		left -= cost
+		spent.append(cost)
 		passed.append(c)
-	move(u, dest)
+		at = c
+	while not passed.is_empty() and unit_at(passed[-1]):  # units can be passed, not stood on
+		passed.pop_back()
+		spent.pop_back()
+	if not passed.is_empty():
+		var total_cost: float = spent.reduce(func(sum, x): return sum + x, 0.0)
+		u.moved += total_cost
+		u.pay(total_cost, &"move")
+		move(u, passed[-1])
 	return passed
+
+
+# Movement to step from one tile onto the next: leaving costs `from`'s exit, entering costs `to`'s
+# enter, plus the unit's move_cost effects for that ground (u may be null: terrain only).
+func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
+	var t := terrain(to)
+	return maxf(terrain(from).exit + t.enter + (u.stat(&"move_cost", t.tags) if u else 0.0), 0.0)
+
+
+# The straight line from a to b as ceil(distance) distinct tiles, each the one nearest its point
+# on the line (never one already passed). Equally near tiles go through contest(): better and
+# cheaper ground (entering and leaving it) for the lucky, worse for the unlucky, a coin at luck 0.
+func line(a: Vector2i, b: Vector2i, luck: int, u: Unit = null) -> Array[Vector2i]:
+	var path: Array[Vector2i] = []
+	var n := ceili(Vector2(a).distance_to(Vector2(b)) - 0.0001)
+	var s := signi(luck)
+	for k in range(1, n):
+		var p := Vector2(a).lerp(Vector2(b), float(k) / n)
+		var near := []
+		for x in [floori(p.x), ceili(p.x)]:
+			for y in [floori(p.y), ceili(p.y)]:
+				var c := Vector2i(x, y)
+				if c not in near and c != a and c != b and c not in path:
+					near.append(c)
+		if near.is_empty():
+			near = [Vector2i(p.round())]
+		var prev: Vector2i = path.back() if path else a
+		path.append(contest(near, [
+			func(c: Vector2i) -> float: return -snappedf(Vector2(c).distance_to(p), 0.0001),
+			func(c: Vector2i) -> int: return int(on_map(c)),
+			func(c: Vector2i) -> int: return s * terrain(c).worth(),
+			func(c: Vector2i) -> float: return -s * (step(u, prev, c) + terrain(c).exit),
+		])[0])
+	if n > 0:
+		path.append(b)
+	return path
 
 
 func on_map(c: Vector2i) -> bool:
 	return map.get_cell_source_id(c) != -1
 
 
-# Tile custom data "effect": -1 bad, 0 neutral, +1 good.
-func tile_effect(c: Vector2i) -> int:
-	var t := map.get_cell_tile_data(c)
-	return t.get_custom_data("effect") if t else 0
+func terrain(c: Vector2i) -> Terrain:
+	var d := map.get_cell_tile_data(c)
+	var t: Terrain = d.get_custom_data("terrain") if d else null
+	return t if t else PLAIN
 
 
-# The tile nearest a point on the path, never one of `avoid` (start tile, or the destination
-# before the last step) if anything else is as near. Ties go through contest() on tile effect:
-# lucky units want the best ground, unlucky the worst, luck 0 leaves it to the coin.
-func _nearest(p: Vector2, luck: int, avoid: Array[Vector2i] = []) -> Vector2i:
-	var near: Array[Vector2i] = []
-	for x in _axis(p.x):
-		for y in _axis(p.y):
-			if on_map(Vector2i(x, y)):
-				near.append(Vector2i(x, y))
-	if near.is_empty():
-		return Vector2i(p.round())
-	var fresh := near.filter(func(c): return c not in avoid)
-	if not fresh.is_empty():
-		near.assign(fresh)
-	return contest(near, [func(c: Vector2i) -> int: return signi(luck) * tile_effect(c)])[0]
-
-
-# Cells nearest a coordinate: one, or both neighbours when it sits exactly between them.
-func _axis(v: float) -> Array[int]:
-	var out: Array[int] = [roundi(v)]
-	if is_equal_approx(v - floorf(v), 0.5):
-		out.assign([floori(v), ceili(v)])
-	return out
-
+# --- Turns
 
 func end_turn() -> void:
 	if phase != Phase.TURNS:
@@ -245,8 +291,13 @@ func end_turn() -> void:
 	turn = order[(order.find(turn) + 1) % order.size()]
 
 
+func _acting(u: Unit) -> bool:
+	return phase == Phase.TURNS and u.faction == turn and u.is_alive()
+
+
 func _on_died(u: Unit) -> void:
 	units.erase(u.cell)
+	u.timed.clear()  # nothing ticks for the dead
 	for o in units.values():
 		if o.faction == u.faction:
 			return  # faction still standing
@@ -265,7 +316,3 @@ func _enter(p: Phase) -> void:
 			phase = Phase.TURNS if order.size() > 1 else Phase.OVER
 		Phase.TURNS:
 			turn = order[0]
-
-
-func _exit(_p: Phase) -> void:
-	pass
