@@ -24,6 +24,8 @@ skill = ExtResource("6_stonegift")
 rank = 1
 
 [node name="Alabaster" instance=ExtResource("1_unit")]
+vibe = "Unyielding"
+aura = 1
 race = ExtResource("3_golem")
 look = ExtResource("2_look")
 level = 5

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_see"]
+script = ExtResource("2_effect")
+stat = "nullify"
+amount = 1.0
+per_rank = true
+tags = Array[StringName]([&"light"])
+
+[resource]
+script = ExtResource("1_script")
+name = "Lightvision"
+passive = true
+tags = Array[StringName]([&"light", &"sight"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_see")])

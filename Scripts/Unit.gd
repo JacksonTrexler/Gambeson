@@ -33,6 +33,16 @@ class Applied:
 @export var title := ""  # "of Red"
 @export var level := 1
 @export var look: Texture2D  # sprite; falls back to the role's, then the scene's
+@export var tags: Array[StringName] = []  # what it is, beyond race and role (monster, undead...)
+@export var vibe := ""  # the impression it gives off ("Smouldering", "Reeking")
+@export var aura := 0  # -2 ominous .. +2 benevolent
+
+@export_group("Persona")  # what it advertises; the Persona skill's rank says how much
+@export var as_ally := false  # presents as the observer's ally (rank 2)
+@export var shows_vibe: Array[String] = []  # rank 1
+@export var shows_tags: Array[StringName] = []  # rank 3: identity
+@export var shows_name := ""  # rank 3: the name it goes by while presenting that identity
+@export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
 
@@ -88,6 +98,7 @@ var energy := 0:
 var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
+var ground: Array[StringName] = []  # tags of the tile it stands on (Battle keeps this current)
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 
@@ -176,6 +187,8 @@ func stat(s: StringName, tags: Array[StringName] = []) -> float:
 			continue
 		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
 			continue
+		if pair[1] < e.min_rank or e.unless_on.any(func(x): return x in ground):
+			continue
 		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1)
 		if e.op == "mul":
 			factor *= amount
@@ -246,12 +259,16 @@ func set_store(r: Reserve, v: int) -> void:
 	reserve_changed.emit(r, was, v)
 
 
-# What pays for a skill: a reserve that makes it cheaper (Hex: mana), then Energy, then any
-# reserve allowed for its tags. Returns the Reserve, &"energy", or null if nothing can.
+# What pays for a skill: a reserve that makes it cheaper (Hex: mana), then one dedicated to its tags
+# (mana for magic, so Energy is kept for generic skills), then Energy, then any other reserve.
+# Returns the Reserve, &"energy", or null if nothing can.
 func funding(s: Skill) -> Variant:
 	var allowed := reserves.keys().filter(func(r: Reserve): return r.only.is_empty() or r.only.any(func(t): return t in s.tags))
 	for r: Reserve in allowed:
 		if s.ap_with.has(r) and store(r) >= s.cost:
+			return r
+	for r: Reserve in allowed:
+		if not r.only.is_empty() and store(r) >= s.cost:
 			return r
 	if energy >= s.cost:
 		return &"energy"

@@ -4,6 +4,11 @@
 
 [resource]
 script = ExtResource("1_terrain")
-name = "Trap"
+name = "Spike Trap"
 tags = Array[StringName]([&"bad", &"trap"])
-hidden = true
+concealment = 2
+looks_like = &"Grass"
+shape = "disturbed earth?"
+vibe = "a prickle of unease"
+dice = Vector2i(1, 6)
+damage_tags = Array[StringName]([&"trap", &"pierce"])

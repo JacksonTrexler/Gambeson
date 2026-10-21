@@ -39,6 +39,22 @@ var rolls: Dictionary[Faction, Array] = {}  # this battle's initiative d20s, per
 var units: Dictionary[Vector2i, Unit] = {}
 
 var rng := RandomNumberGenerator.new()
+var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
+var revealed: Dictionary[Vector2i, bool] = {}  # sprung traps: no longer concealed
+
+
+# Concealment laid over tiles: levels by cell, lasting some of the caster faction's turns.
+class Zone:
+	var kind: StringName
+	var levels: Dictionary[Vector2i, int]
+	var turns: int
+	var faction: Faction
+
+	func _init(k: StringName, l: Dictionary[Vector2i, int], t: int, f: Faction) -> void:
+		kind = k
+		levels = l
+		turns = t
+		faction = f
 
 @onready var map: TileMapLayer = $Map
 
@@ -70,6 +86,7 @@ func move(u: Unit, c: Vector2i) -> bool:
 	u.cell = c
 	units[c] = u
 	u.position = map.map_to_local(c)
+	u.ground = terrain(c).tags
 	return true
 
 
@@ -214,6 +231,36 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	return true
 
 
+# Area skills, cast on a cell (Darkstone): within radius + radius_per_rank x rank, lays its zone
+# kind of concealment at rank - distance levels on every tile around the centre.
+func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
+	if not _acting(caster) or skill not in caster.actives or skill.zone == &"" or not on_map(c):
+		return false
+	var r := caster.rank(skill)
+	if Vector2(caster.cell).distance_to(Vector2(c)) > skill.radius + skill.radius_per_rank * r + 0.0001:
+		return false
+	if not caster.pay_for(skill):
+		return false
+	var levels: Dictionary[Vector2i, int] = {}
+	for x in range(c.x - r, c.x + r + 1):
+		for y in range(c.y - r, c.y + r + 1):
+			var at := Vector2i(x, y)
+			var lv := r - floori(Vector2(at).distance_to(Vector2(c)))
+			if lv > 0 and on_map(at):
+				levels[at] = lv
+	zones.append(Zone.new(skill.zone, levels, skill.turns, caster.faction))
+	return true
+
+
+# A tile whose terrain is still concealed (an unsprung trap).
+func hidden(c: Vector2i) -> bool:
+	return terrain(c).concealment > 0 and c not in revealed
+
+
+func read(o: Unit, target: Variant) -> Read:
+	return Perception.unit(self, o, target) if target is Unit else Perception.tile(self, o, target)
+
+
 # Dice as Vector2i(count, sides): Vector2i(1, 6) is d6.
 func roll(dice: Vector2i) -> int:
 	var sum := 0
@@ -240,9 +287,9 @@ func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
 
 # Walks the straight line toward `dest`, paying movement and the same AP per step: leaving a tile
 # costs its exit, entering costs its enter (plus the unit's move_cost effects for that ground).
-# Stops where movement or AP runs out, before a hole, and short of other units. Short by a
-# fraction, net luck can squeeze one more tile in - but never luckily onto secretly bad ground.
-# Returns the tiles passed.
+# Stops where movement or AP runs out, before a hole, short of other units, and on a trap (which
+# springs). Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground
+# the unit doesn't know is bad. Returns the tiles passed.
 func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	var passed: Array[Vector2i] = []
 	if not _acting(u) or dest == u.cell:
@@ -256,14 +303,16 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		var t := terrain(c)
 		var cost := step(u, at, c)
 		if cost > left + 0.0001:
-			var trap := t.hidden and t.worth() < 0
-			if Luck.settle(left / cost, u.luck, not trap, false) < 1:
+			var unknown_bad := t.worth() < 0 and not read(u, c).known_bad()
+			if Luck.settle(left / cost, u.luck, not unknown_bad, false) < 1:
 				break
 			cost = left  # squeezed in on what was left
 		left -= cost
 		spent.append(cost)
 		passed.append(c)
 		at = c
+		if t.is_trap() and not unit_at(c):
+			break  # stepped on a trap
 	while not passed.is_empty() and unit_at(passed[-1]):  # units can be passed, not stood on
 		passed.pop_back()
 		spent.pop_back()
@@ -272,7 +321,20 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		u.moved += total_cost
 		u.pay(total_cost, &"move")
 		move(u, passed[-1])
+		if terrain(u.cell).is_trap():
+			spring(u.cell, u)
 	return passed
+
+
+# A trap goes off: it's revealed, and hits whoever stepped on it plus anyone in its blast. Units
+# with Wary V (trap_power) make the traps they set off hit their enemies harder.
+func spring(c: Vector2i, by: Unit) -> void:
+	var t := terrain(c)
+	revealed[c] = true
+	var raw := roll(t.dice)
+	for v in units.values().filter(func(x): return x == by or Vector2(x.cell).distance_to(Vector2(c)) <= t.blast + 0.0001):
+		var boost := 1.0 + (by.stat(&"trap_power") if v.faction != by.faction else 0.0)
+		v.hit(raw * boost, t.damage_tags)
 
 
 # Movement to step from one tile onto the next: leaving costs `from`'s exit, entering costs `to`'s
@@ -328,6 +390,9 @@ func end_turn() -> void:
 		return
 	for u in members(turn):
 		u.tick()
+	for z in zones.filter(func(x: Zone): return x.faction == turn):
+		z.turns -= 1
+	zones.assign(zones.filter(func(x: Zone): return x.turns > 0))
 	turn = order[(order.find(turn) + 1) % order.size()]
 
 
@@ -343,6 +408,7 @@ func _on_died(u: Unit) -> void:
 			return  # faction still standing
 	var i := order.find(u.faction)
 	order.erase(u.faction)
+	zones.assign(zones.filter(func(z: Zone): return z.faction != u.faction))  # nothing left to tick them
 	if order.size() < 2:
 		phase = Phase.OVER
 	elif turn == u.faction:

@@ -14,8 +14,28 @@ stat = "mitigate"
 amount = 0.2
 tags = Array[StringName]([&"ambush"])
 
+[sub_resource type="Resource" id="Effect_traps"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.25
+per_rank = true
+tags = Array[StringName]([&"trap"])
+
+[sub_resource type="Resource" id="Effect_spot"]
+script = ExtResource("2_effect")
+stat = "recon"
+amount = 0.5
+per_rank = true
+tags = Array[StringName]([&"trap"])
+
+[sub_resource type="Resource" id="Effect_snare"]
+script = ExtResource("2_effect")
+stat = "trap_power"
+amount = 0.25
+min_rank = 5
+
 [resource]
 script = ExtResource("1_skill")
 name = "Wary"
 passive = true
-effects = Array[ExtResource("2_effect")]([SubResource("Effect_initiative"), SubResource("Effect_ambush")])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_initiative"), SubResource("Effect_ambush"), SubResource("Effect_traps"), SubResource("Effect_spot"), SubResource("Effect_snare")])

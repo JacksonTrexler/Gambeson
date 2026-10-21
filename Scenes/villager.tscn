@@ -11,6 +11,8 @@ skill = ExtResource("3_strike")
 rank = 1
 
 [node name="Villager" instance=ExtResource("1_unit")]
+vibe = "Earthy"
+aura = 0
 race = ExtResource("4_human")
 innate = Array[ExtResource("9_slot")]([SubResource("Slot_strike")])
 strength = 12

@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/Elmit.png" id="2_look"]
+[ext_resource type="Resource" path="res://Skills/oceanic.tres" id="3_oceanic"]
+[ext_resource type="Resource" path="res://Skills/tonefoolery.tres" id="4_tonefoolery"]
+[ext_resource type="Resource" path="res://Skills/persona.tres" id="5_persona"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="6_strike"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+
+[sub_resource type="Resource" id="Slot_oceanic"]
+script = ExtResource("9_slot")
+skill = ExtResource("3_oceanic")
+rank = 1
+
+[sub_resource type="Resource" id="Slot_tone"]
+script = ExtResource("9_slot")
+skill = ExtResource("4_tonefoolery")
+rank = 2
+
+[sub_resource type="Resource" id="Slot_persona"]
+script = ExtResource("9_slot")
+skill = ExtResource("5_persona")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("9_slot")
+skill = ExtResource("6_strike")
+rank = 1
+
+[node name="Siren" instance=ExtResource("1_unit")]
+look = ExtResource("2_look")
+tags = Array[StringName]([&"monster", &"siren"])
+vibe = "Briny, hungry"
+aura = -2
+as_ally = true
+shows_vibe = Array[String](["Harmless", "Beautiful", "Serene"])
+shows_tags = Array[StringName]([&"holy"])
+learned = Array[ExtResource("9_slot")]([SubResource("Slot_strike"), SubResource("Slot_oceanic"), SubResource("Slot_tone"), SubResource("Slot_persona")])
+max_hp = 16
+strength = 12
+dexterity = 12
+constitution = 12
+intelligence = 12
+wisdom = 12
+charisma = 18

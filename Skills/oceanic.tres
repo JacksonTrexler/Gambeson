@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_str"]
+script = ExtResource("2_effect")
+stat = "strength"
+amount = -4.0
+unless_on = Array[StringName]([&"water", &"wet"])
+
+[sub_resource type="Resource" id="Effect_dex"]
+script = ExtResource("2_effect")
+stat = "dexterity"
+amount = -4.0
+unless_on = Array[StringName]([&"water", &"wet"])
+
+[sub_resource type="Resource" id="Effect_con"]
+script = ExtResource("2_effect")
+stat = "constitution"
+amount = -4.0
+unless_on = Array[StringName]([&"water", &"wet"])
+
+[resource]
+script = ExtResource("1_script")
+name = "Oceanic"
+passive = true
+tags = Array[StringName]([&"physical"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_str"), SubResource("Effect_dex"), SubResource("Effect_con")])

@@ -1,8 +1,7 @@
 extends Test
 
-# Full AI battles on the museum map, checking invariants after every action.
-# The AI: Hex the nearest un-hexed enemy in reach, Stonegift an ally, close in on the nearest enemy,
-# Strike while AP lasts.
+# Full battles on the museum map played by the game AI (Scripts/AI.gd), checking invariants after
+# every unit's turn.
 
 const MAX_TURNS := 100
 
@@ -37,7 +36,7 @@ func fight(seed: int) -> Dictionary:
 				ok(b.travel(other, other.cell + Vector2i.RIGHT).is_empty(), "seed %d: only the turn's faction moves" % seed)
 				break
 		for u in b.members(b.turn):
-			act(u, log)
+			log.append_array(AI.act(b, u))
 			check(seed)
 			if b.phase != Battle.Phase.TURNS:
 				break
@@ -48,32 +47,6 @@ func fight(seed: int) -> Dictionary:
 			winner = alive[0] if alive else "nobody"}
 	scene.free()
 	return result
-
-
-func act(u: Unit, log: Array[String]) -> void:
-	if not u.is_alive():
-		return
-	var foes := b.units.values().filter(func(o): return o.faction != u.faction)
-	if foes.is_empty():
-		return
-	foes.sort_custom(func(x, y): return u.cell.distance_squared_to(x.cell) < u.cell.distance_squared_to(y.cell))
-	if hex in u.actives:
-		for f in foes:
-			if not f.timed.has(hex.effects[0]) and b.cast(u, hex, f):
-				log.append("%s hexes %s" % [u.name, f.name])
-				break
-	var gift: Skill = load("res://Skills/stonegift.tres")
-	if gift in u.actives:
-		for f in b.members(u.faction):
-			if f != u and not f.timed.has(gift.grants.effects[0]) and b.cast(u, gift, f):
-				log.append("%s gifts %s" % [u.name, f.name])
-				break
-	var t: Unit = foes[0]
-	if not b.in_reach(u, strike, t):
-		var p := b.travel(u, t.cell)
-		log.append("%s moves %s" % [u.name, p])
-	while t.is_alive() and b.cast(u, strike, t):
-		log.append("%s strikes %s -> %d" % [u.name, t.name, t.hp])
 
 
 func check(seed: int) -> void:

@@ -15,7 +15,11 @@ extends Resource
 @export var tiers: Array[Tier] = []  # damage by rank; none: no damage
 @export var hits_per_rank := false  # Strike III hits three times
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
-@export var turns := 0  # how many of the target's turns put-on effects last
+@export var turns := 0  # how many of the target's turns put-on effects last (zones: the caster's)
+
+@export_group("Area")  # cast on a cell rather than a unit (Darkstone)
+@export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels
+@export var radius_per_rank := 0.0  # range grows with rank (Darkstone: 1 + rank)
 
 @export_group("Stand-in")  # passive: one stat stands in for others on skills sharing a tag with it
 @export var stand_in := &""  # Arcanist Perspective: intelligence

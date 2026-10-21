@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+
+
+[resource]
+script = ExtResource("1_script")
+name = "Darkstone"
+tags = Array[StringName]([&"dark", &"magic", &"cha"])
+ap = 4.0
+cost = 3
+radius = 1.0
+hostile = false
+turns = 3
+zone = &"dark"
+radius_per_rank = 1.0

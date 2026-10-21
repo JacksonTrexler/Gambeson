@@ -19,6 +19,8 @@ skill = ExtResource("5_arcanist")
 rank = 3
 
 [node name="Icor" instance=ExtResource("1_unit")]
+vibe = "Smouldering"
+aura = -1
 role = ExtResource("2_wizard")
 title = "of Red"
 level = 5
