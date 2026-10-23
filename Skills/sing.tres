@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Sing"
+tags = Array[StringName]([&"sound", &"cha"])
+ap = 3.0
+cost = 2
+radius_stat = &"charisma"
+sing = 1
+hostile = false

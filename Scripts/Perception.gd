@@ -21,7 +21,7 @@ const OMINOUS := "Menacing, cold"
 # and whatever it doesn't cover gets twisted (more of it, more consistently, the higher the trickery).
 static func unit(b: Battle, o: Unit, t: Unit) -> Read:
 	var r := Read.new()
-	var recon := o.stat(&"recon", t.tags)
+	var recon: float = o.stat(&"recon", t.tags) + o.suspicion_at(t.cell) + o.marks.get(t, 0)
 	var left := _left(o, _levels(b, t.cell, t))
 	_sense(r, left, recon, o.luck - t.luck)
 	_place(r, o, t, _main(left))
@@ -82,7 +82,7 @@ static func tile(b: Battle, o: Unit, c: Vector2i) -> Read:
 	var r := Read.new()
 	var ter := b.terrain(c)
 	var left := _left(o, _levels(b, c))
-	_sense(r, left, o.stat(&"recon", ter.tags), o.luck)
+	_sense(r, left, o.stat(&"recon", ter.tags) + o.suspicion_at(c) + o.marks.get(c, 0), o.luck)
 	r.cell = c
 	if r.net > -4:
 		r.aura = ter.worth()
@@ -131,9 +131,14 @@ static func _levels(b: Battle, c: Vector2i, t: Unit = null) -> Dictionary:
 		for k in KINDS:
 			var own := roundi(plain if k == &"" else t.stat(&"concealment", [k]) - plain)
 			lv[k] = maxi(lv.get(k, 0), own)
+		var peel := t.exposed  # levels it has lost, deepest kind first
+		while peel > 0 and lv.values().any(func(x): return x > 0):
+			var deepest: StringName = lv.keys().reduce(func(a, k): return k if lv[k] > lv[a] else a)
+			lv[deepest] -= 1
+			peel -= 1
 	elif b.hidden(c):
 		var ter := b.terrain(c)
-		lv[ter.kind] = maxi(lv.get(ter.kind, 0), ter.concealment)
+		lv[ter.kind] = maxi(lv.get(ter.kind, 0), ter.concealment - b.exposed.get(c, 0))
 	return lv
 
 
@@ -183,6 +188,8 @@ static func _lie(o: Unit, t: Unit, r: Read, p: int) -> void:
 		r.name = t.shows_name  # its real name would give it away
 	if reach and p >= 2 and r.net < 3:
 		r.skills = []  # so would its real skills
+	if reach and t.shows_boon:
+		r.boon = t.shows_boon
 	var flips := func(field: StringName) -> bool:
 		return field not in faked and _chance(o, t, field) < r.twist
 	if r.faction and flips.call(&"faction"):

@@ -15,6 +15,20 @@ const ENERGY_COLOR := Color("#e8c547")
 const HP_COLOR := Color("#3fbf4f")
 
 
+# Suspicion earned for an area by a passed check (or a warning from an ally); lasts the battle.
+class Suspicion:
+	const RADIUS := 2.0
+	var center: Vector2i
+	var levels: int
+
+	func _init(c: Vector2i, l: int) -> void:
+		center = c
+		levels = l
+
+	func covers(c: Vector2i) -> bool:
+		return Battle.dist(center, c) <= RADIUS + 0.0001
+
+
 # A timed effect on this unit: turns left, and the rank of the skill that applied it.
 class Applied:
 	var turns: int
@@ -42,6 +56,7 @@ class Applied:
 @export var shows_vibe: Array[String] = []  # rank 1
 @export var shows_tags: Array[StringName] = []  # rank 3: identity
 @export var shows_name := ""  # rank 3: the name it goes by while presenting that identity
+@export var shows_boon := ""  # what it claims to be doing for whoever it's fooling ("something extremely beneficial")
 @export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
@@ -72,6 +87,7 @@ class Applied:
 @export var movement := 5  # movement points per turn
 @export var reach := 0.0  # added to skill ranges; weapons and passives raise it
 @export var size := 3  # Medium, when the unit has no race
+@export_enum("aggressive", "ambusher") var ai := "aggressive"  # ambushers hold still until attacked
 
 # Starts at 0 and fills in _ready, so bars get an initial hp_changed(0, max_hp).
 var hp := 0:
@@ -99,6 +115,12 @@ var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
 var ground: Array[StringName] = []  # tags of the tile it stands on (Battle keeps this current)
+var acted := false  # moved or used a skill this turn (idle units look around harder)
+var provoked := false  # hit by a hostile skill: ambushers stop waiting
+var exposed := 0  # concealment levels it has lost (bumped into, attacked from hiding)
+var suspicion: Array[Suspicion] = []  # earned by passed checks, each for an area: counts against concealment and trickery
+var marks := {}  # Detective: recon on particular units (by Unit) or tiles (by cell)
+var grappler: Unit  # holding it (Drown); moving away takes a strength check
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 
@@ -188,6 +210,8 @@ func stat(s: StringName, tags: Array[StringName] = []) -> float:
 		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
 			continue
 		if pair[1] < e.min_rank or e.unless_on.any(func(x): return x in ground):
+			continue
+		if not e.only_on.is_empty() and not e.only_on.any(func(x): return x in ground):
 			continue
 		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1)
 		if e.op == "mul":
@@ -308,6 +332,37 @@ func refresh() -> void:
 	# general, then dex (moving only), then wis (skills only); negative mods cut the general pool
 	ap = [AP.new(BASE_AP + mini(dex, 0) + mini(wis, 0)), AP.new(maxi(dex, 0), &"move"), AP.new(maxi(wis, 0), &"skill")]
 	moved = 0.0
+	acted = false
+
+
+# Suspicion it has earned about things at `c`.
+func suspicion_at(c: Vector2i) -> int:
+	var sum := 0
+	for i in suspicion:
+		if i.covers(c):
+			sum += i.levels
+	return sum
+
+
+func suspect(c: Vector2i, levels: int) -> void:
+	suspicion.append(Suspicion.new(c, levels))
+
+
+# Loses up to `levels` of suspicion covering `c`, newest first (Sing).
+func forget(c: Vector2i, levels: int) -> void:
+	for i in range(suspicion.size() - 1, -1, -1):
+		if levels <= 0:
+			break
+		if suspicion[i].covers(c):
+			var take := mini(suspicion[i].levels, levels)
+			suspicion[i].levels -= take
+			levels -= take
+	suspicion.assign(suspicion.filter(func(x: Suspicion): return x.levels > 0))
+
+
+# How far it notices obscured things to investigate: its wis mod (at least 1), plus effects.
+func investigation() -> float:
+	return maxf(mod(&"wisdom"), 1) + stat(&"investigation")
 
 
 # AP available for a use (&"move" or &"skill").
@@ -347,6 +402,10 @@ func tick() -> void:
 
 func is_alive() -> bool:
 	return hp > 0
+
+
+func aquatic() -> bool:
+	return &"aquatic" in tags or stat(&"aquatic") > 0
 
 
 # [effect, rank] for every passive (that's on) and timed effect. A timed effect the unit's own

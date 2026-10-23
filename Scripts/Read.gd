@@ -41,6 +41,7 @@ var role: Role
 
 var skills: Array[Skill] = []
 var effects: Array[Effect] = []
+var boon := ""  # what a deceiver claims to be doing for you
 
 
 func located() -> bool:

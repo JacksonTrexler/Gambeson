@@ -11,11 +11,22 @@ extends Resource
 @export var cost := 0  # paid in Energy, or a reserve that can pay for this skill's tags
 @export var ap_with: Dictionary[Reserve, float] = {}  # AP factor when fully paid with a reserve (Hex: mana 0.5)
 @export var radius := 0.0  # range before reach and size
+@export var radius_stat := &""  # adds the caster's mod in this stat to the range (Sing: charisma)
 @export var hostile := true  # targets enemies (false: allies)
 @export var tiers: Array[Tier] = []  # damage by rank; none: no damage
 @export var hits_per_rank := false  # Strike III hits three times
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
 @export var turns := 0  # how many of the target's turns put-on effects last (zones: the caster's)
+@export var crit_trusting := false  # double damage on targets that don't read the caster as hostile (Rake)
+@export var watch := false  # Ambush / Coordinate: sets a watch with another skill of the same hostility
+@export var reaction := false  # passive: uses the unit's first active on enemies that run into it (Opportunist)
+# Sing: any target; costs all the caster's movement left. Allies and the fooled are called over
+# (the fooled unless they see through it); those onto it lose this many levels of suspicion.
+@export var sing := 0
+
+@export_group("Drown")  # a strength check to grab; the grabbed are dragged into water
+@export var drown := Vector2i.ZERO  # damage in water, + the caster's str mod
+@export var drown_aquatic := Vector2i.ZERO  # ...for those who breathe underwater
 
 @export_group("Area")  # cast on a cell rather than a unit (Darkstone)
 @export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels

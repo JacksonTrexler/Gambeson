@@ -44,7 +44,7 @@ func test_trap_springs() -> void:
 	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(9, 0)})
 	ok(b.travel(v(1), Vector2i(7, 4)) == cells([TRAP]) and v(1).cell == TRAP, "the move stops on the trap")
 	ok(v(1).hp == 7, "4 pierce: Favour 1% (pierce is physical), luck rounds 3.96 down -> 3")
-	ok(b.revealed.has(TRAP) and b.read(v(2), TRAP).known_bad(), "sprung: revealed, and now everyone knows")
+	ok(b.exposed.has(TRAP) and b.read(v(2), TRAP).known_bad(), "sprung: revealed, and now everyone knows")
 	stage(nemes, {v(3): Vector2i(4, 4), v(1): Vector2i(0, 0)})
 	b.travel(v(3), Vector2i(7, 4))
 	ok(v(3).hp == 7, "Wary I: 25% off trap damage, 4 -> 3")
@@ -105,7 +105,7 @@ func test_siren_fools() -> void:
 	v(1).afflict(effect("recon", 3), 9)
 	var sharp := b.read(v(1), siren())
 	ok(not sharp.deceived and sharp.faction == nemes and sharp.vibe == "Briny, hungry" and sharp.aura == -2, "recon 3 sees the truth")
-	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 4, "...what it is, and (net 3) its skills")
+	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 6, "...what it is, and (net 3) its skills")
 
 
 func test_tonefoolery_doubles() -> void:
@@ -152,7 +152,7 @@ func test_ai_avoids_known_traps() -> void:
 	v(3).learned[0].rank = 6  # trap recon 3: knows (5,4) is a trap
 	stage(nemes, {v(3): Vector2i(3, 4), v(1): Vector2i(7, 4)})
 	AI.act(b, v(3))
-	ok(not b.revealed.has(TRAP) and v(3).cell != TRAP, "walks around a trap it knows about")
+	ok(not b.exposed.has(TRAP) and v(3).cell != TRAP, "walks around a trap it knows about")
 
 
 func cells(a: Array) -> Array[Vector2i]:

@@ -8,6 +8,7 @@ signal initiative_rolled(rolls: Dictionary[Faction, Array])
 enum Phase { INITIATIVE, TURNS, OVER }
 
 const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
+const DC := 10  # base difficulty of checks
 const UNIT := preload("res://Scenes/unit.tscn")
 
 @export var spawns: Dictionary[Faction, Vector2i] = {}  # where a player's starter joins each side
@@ -30,6 +31,7 @@ var turn: Faction:
 		turn = v
 		for u in members(v):
 			u.refresh()
+		watches.assign(watches.filter(func(w: Watch): return w.caster.faction != v))  # set "until next round"
 		turn_changed.emit(was, v)
 
 var order: Array[Faction] = []  # turn order, highest initiative first
@@ -40,7 +42,8 @@ var units: Dictionary[Vector2i, Unit] = {}
 
 var rng := RandomNumberGenerator.new()
 var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
-var revealed: Dictionary[Vector2i, bool] = {}  # sprung traps: no longer concealed
+var exposed: Dictionary[Vector2i, int] = {}  # concealment levels tiles have lost (sprung traps)
+var watches: Array[Watch] = []  # Ambush / Coordinate tiles
 
 
 # Concealment laid over tiles: levels by cell, lasting some of the caster faction's turns.
@@ -55,6 +58,21 @@ class Zone:
 		levels = l
 		turns = t
 		faction = f
+
+# Ambush / Coordinate: tiles where the caster uses `skill` on whoever it reads as an enemy (or ally)
+# stepping in, until its side's next turn. Each tile fires once.
+class Watch:
+	var caster: Unit
+	var skill: Skill
+	var cells: Array[Vector2i]
+	var any: bool  # on whoever enters, friend or foe
+
+	func _init(c: Unit, s: Skill, at: Array[Vector2i], a: bool) -> void:
+		caster = c
+		skill = s
+		cells = at
+		any = a
+
 
 @onready var map: TileMapLayer = $Map
 
@@ -208,27 +226,148 @@ func _flip(g: Array) -> Array:
 func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	if not _acting(caster) or skill not in caster.actives or not target.is_alive():
 		return false
-	if skill.hostile == (target.faction == caster.faction) or not in_reach(caster, skill, target):
+	if not skill.sing and skill.hostile == (target.faction == caster.faction):
+		return false
+	if skill.sing and (target == caster or caster.stat(&"movement") - caster.moved < 1):
+		return false  # Sing is paid for with movement
+	if not in_reach(caster, skill, target):
 		return false
 	if not caster.pay_for(skill):
 		return false
+	caster.acted = true
+	use(caster, skill, target)
+	return true
+
+
+# What a skill does to its target, already paid for (casts, reactions, watches). An attack from a
+# unit the target can't make out costs the attacker a level of concealment and gives the target a
+# free check to identify it.
+func use(caster: Unit, skill: Skill, target: Unit) -> void:
 	var r := caster.rank(skill)
+	var t := skill.tier(r)
+	var unseen := false
+	var hiding := false
+	var trusted := false
+	if skill.hostile:
+		target.provoked = true
+		var seen := read(target, caster)
+		unseen = (t != null or skill.drown) and (seen.net < 0 or seen.deceived or seen.faction == null)
+		hiding = seen.net < 0
+		trusted = seen.faction == target.faction
 	for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
 		target.afflict(e, skill.turns, r)
-	var t := skill.tier(r)
-	if not t:
-		return true
-	assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
-	var hits := r if skill.hits_per_rank else 1
-	for i in hits:
-		if not target.is_alive():
-			break
-		var power := maxi(t.power + roll(t.dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0), 0)
-		if t.direct:
-			target.damage(power)
+	if skill.sing:
+		_sing(caster, skill, target)
+	if skill.drown:
+		_grab(caster, skill, target)
+	if t:
+		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
+		for i in (r if skill.hits_per_rank else 1):
+			if not target.is_alive():
+				break
+			var power := maxi(t.power + roll(t.dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0), 0)
+			if trusted and skill.crit_trusting:
+				power *= 2  # they never saw it coming
+			if t.direct:
+				target.damage(power)
+			else:
+				target.hit(power, skill.tags, caster)
+	if unseen:
+		if hiding:
+			caster.exposed += 1  # only concealment it really had
+		if target.is_alive():
+			Investigation.run(self, target, caster)
+
+
+# Sing, paid for with all the caster's movement left. Allies come when called. Units it's fooling
+# must pass a wis check (DC 10 + its cha mod) or take it for a blessing and walk over - and if they
+# pass, they see it for what it is. Units onto it lose suspicion of it unless they pass that check.
+func _sing(caster: Unit, skill: Skill, target: Unit) -> void:
+	caster.moved = caster.stat(&"movement")
+	var dc := DC + caster.mod(&"charisma")
+	if target.faction == caster.faction:
+		_lure(caster, target)
+	elif read(target, caster).deceived:
+		if check(target, dc):
+			Investigation.succeed(self, target, caster)
 		else:
-			target.hit(power, skill.tags, caster)
-	return true
+			_lure(caster, target)
+	elif not check(target, dc):
+		target.forget(caster.cell, skill.sing)
+
+
+# The lured walk up beside the caster, up to their own movement.
+func _lure(caster: Unit, target: Unit) -> void:
+	var spot: Variant = _beside(caster.cell, target)
+	if spot != null:
+		travel(target, spot, true)
+
+
+# The free cell next to `c` that's cheapest for `u` to walk to (its own, if it's already there).
+# Planning mustn't use up the battle's rng, so it's restored.
+func _beside(c: Vector2i, u: Unit) -> Variant:
+	var state := rng.state
+	var best: Variant = null
+	var best_cost := INF
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			var at := c + Vector2i(dx, dy)
+			if at == c or not on_map(at) or (unit_at(at) and unit_at(at) != u):
+				continue
+			var cost := 0.0
+			var prev := u.cell
+			for p in line(u.cell, at, u.luck, u):
+				cost += step(u, prev, p)
+				prev = p
+			cost += dist(at, u.cell) * 0.001  # equal cost: nearer
+			if cost < best_cost:
+				best = at
+				best_cost = cost
+	rng.state = state
+	return best
+
+
+# Drown: a strength check against DC 10 + the target's str mod (only if it knows what it's facing).
+# Grabbed, it's Grappled; unless it's already in water it's dragged into the nearest water within
+# the caster's movement left, and the caster comes along (into the water if it can, else beside it).
+# Underwater it takes the drown dice + the caster's str mod.
+func _grab(caster: Unit, skill: Skill, target: Unit) -> void:
+	var aware := not read(target, caster).deceived
+	if not check(caster, DC + (target.mod(&"strength") if aware else 0), &"strength"):
+		return
+	target.grappler = caster
+	var pool: Variant = target.cell if &"water" in target.ground else pool_near(target.cell, floori(caster.stat(&"movement") - caster.moved))
+	if pool == null:
+		return
+	if pool != target.cell:
+		caster.moved += steps(target.cell, pool)
+		move(target, pool)
+	if &"water" not in caster.ground or steps(caster.cell, pool) > 1:
+		var dive: Variant = pool_near(pool, 1, caster.cell)
+		if dive != null and steps(caster.cell, dive) <= caster.stat(&"movement") - caster.moved:
+			caster.moved += steps(caster.cell, dive)
+			move(caster, dive)
+		elif steps(caster.cell, pool) > 1:
+			var spot: Variant = _beside(pool, caster)
+			if spot != null:
+				move(caster, spot)  # dragging it there already took the steps
+	var dice := skill.drown_aquatic if target.aquatic() else skill.drown
+	target.hit(roll(dice) + caster.mod(&"strength"), [&"drown"], caster)
+
+
+# The nearest free water tile within `reach` steps of `c`, nearest to `from` (default `c`). Null
+# if none.
+func pool_near(c: Vector2i, reach: int, from: Variant = null) -> Variant:
+	var o: Vector2i = from if from != null else c
+	var best: Variant = null
+	for x in range(c.x - reach, c.x + reach + 1):
+		for y in range(c.y - reach, c.y + reach + 1):
+			var at := Vector2i(x, y)
+			if not on_map(at) or unit_at(at) or &"water" not in terrain(at).tags:
+				continue
+			if best == null or dist(at, o) < dist(best, o):
+				best = at
+	return best
 
 
 # Area skills, cast on a cell (Darkstone): within radius + radius_per_rank x rank, lays its zone
@@ -237,24 +376,43 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	if not _acting(caster) or skill not in caster.actives or skill.zone == &"" or not on_map(c):
 		return false
 	var r := caster.rank(skill)
-	if Vector2(caster.cell).distance_to(Vector2(c)) > skill.radius + skill.radius_per_rank * r + 0.0001:
+	if dist(caster.cell, c) > skill.radius + skill.radius_per_rank * r + 0.0001:
 		return false
 	if not caster.pay_for(skill):
 		return false
+	caster.acted = true
 	var levels: Dictionary[Vector2i, int] = {}
 	for x in range(c.x - r, c.x + r + 1):
 		for y in range(c.y - r, c.y + r + 1):
 			var at := Vector2i(x, y)
-			var lv := r - floori(Vector2(at).distance_to(Vector2(c)))
+			var lv := r - floori(dist(at, c))
 			if lv > 0 and on_map(at):
 				levels[at] = lv
 	zones.append(Zone.new(skill.zone, levels, skill.turns, caster.faction))
 	return true
 
 
-# A tile whose terrain is still concealed (an unsprung trap).
+# Ambush / Coordinate: watch up to rank tiles within `skill`'s range (an offensive skill for an
+# ambush, a support skill to coordinate). `any`: fire on whoever enters, not just those read as
+# enemies (allies).
+func set_watch(caster: Unit, which: Skill, skill: Skill, cells: Array[Vector2i], any := false) -> bool:
+	if not _acting(caster) or which not in caster.actives or skill not in caster.actives or not which.watch:
+		return false
+	if skill.hostile != which.hostile or cells.is_empty() or cells.size() > caster.rank(which):
+		return false
+	for c in cells:
+		if not on_map(c) or dist(caster.cell, c) > skill_range(caster, skill) + 0.0001:
+			return false
+	if not caster.pay_for(which):
+		return false
+	caster.acted = true
+	watches.append(Watch.new(caster, skill, cells.duplicate(), any))
+	return true
+
+
+# A tile whose terrain still has concealment left (traps not yet fully exposed).
 func hidden(c: Vector2i) -> bool:
-	return terrain(c).concealment > 0 and c not in revealed
+	return terrain(c).concealment - exposed.get(c, 0) > 0
 
 
 func read(o: Unit, target: Variant) -> Read:
@@ -270,14 +428,31 @@ func roll(dice: Vector2i) -> int:
 
 
 # Skill range + the caster's reach (its reach stat, +0.05 per size point) + 0.02 per size point
-# of the target (bigger targets are easier to reach).
-func skill_range(caster: Unit, skill: Skill, target: Unit) -> float:
-	return skill.radius + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * target.stat(&"size")
+# of the target (bigger targets are easier to reach; a Medium one when there's no target yet).
+func skill_range(caster: Unit, skill: Skill, size := 3.0) -> float:
+	var r := skill.radius + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * size
+	return r + (caster.mod(skill.radius_stat) if skill.radius_stat else 0)
+
+
+static func dist(a: Vector2i, b: Vector2i) -> float:
+	return Vector2(a).distance_to(Vector2(b))
+
+
+# Steps between cells, diagonals counting as 1 (drags, grapples, being beside something).
+static func steps(a: Vector2i, b: Vector2i) -> int:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+
+# d20 + a stat mod (wisdom unless said) against `dc`. Meeting it exactly passes, unless the unit's
+# luck is negative (the unlucky fail checks they'd otherwise pass).
+func check(u: Unit, dc: int, stat := &"wisdom") -> bool:
+	var total := rng.randi_range(1, 20) + u.mod(stat)
+	return total > dc or (total == dc and u.luck >= 0)
 
 
 # Circle geometry. A near miss (within Luck.MARGIN) is rounding: in only if the caster is luckier.
 func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
-	var over := Vector2(caster.cell).distance_to(Vector2(target.cell)) - skill_range(caster, skill, target)
+	var over := dist(caster.cell, target.cell) - skill_range(caster, skill, target.stat(&"size"))
 	if over <= 0.0001:
 		return true
 	return over < Luck.MARGIN and caster.luck - target.luck > 0
@@ -287,18 +462,43 @@ func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
 
 # Walks the straight line toward `dest`, paying movement and the same AP per step: leaving a tile
 # costs its exit, entering costs its enter (plus the unit's move_cost effects for that ground).
-# Stops where movement or AP runs out, before a hole, short of other units, and on a trap (which
-# springs). Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground
-# the unit doesn't know is bad. Returns the tiles passed.
-func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
+# Stops where movement or AP runs out, before a hole, short of other units, on a trap (which
+# springs) and on an ambushed tile. Allies can be passed; running into an enemy stops it (and
+# exposes the enemy if it couldn't be made out). Short by a fraction, net luck can squeeze one more
+# tile in - but never luckily onto ground the unit doesn't know is bad. Ends with a look around
+# (a contact check). Returns the tiles passed.
+func travel(u: Unit, dest: Vector2i, compelled := false) -> Array[Vector2i]:
 	var passed: Array[Vector2i] = []
-	if not _acting(u) or dest == u.cell:
+	if not (compelled or _acting(u)) or dest == u.cell or not u.is_alive():
 		return passed
-	var left := minf(u.stat(&"movement") - u.moved, u.ap_for(&"move"))
+	# Compelled (lured): its full movement, paid for by whoever compelled it.
+	var left := u.stat(&"movement") if compelled else minf(u.stat(&"movement") - u.moved, u.ap_for(&"move"))
+	if u.grappler and not compelled:
+		var g := u.grappler
+		if not g.is_alive() or steps(g.cell, u.cell) > 1:
+			u.grappler = null
+		else:
+			# Breaking free costs the grappler's str mod in movement (at least 1), and a str check.
+			var cost := maxf(g.mod(&"strength"), 1)
+			if left < cost:
+				return passed
+			u.moved += cost
+			u.pay(cost, &"move")
+			u.acted = true
+			left -= cost
+			if not check(u, DC + g.mod(&"strength"), &"strength"):
+				return passed
+			u.grappler = null
 	var spent: Array[float] = []
 	var at := u.cell
+	var had: Variant = Investigation.lead(self, u)
+	var bumped: Unit = null
+	var fired: Array[Watch] = []
 	for c in line(u.cell, dest, u.luck, u):
 		if not on_map(c) or left <= 0.0001:
+			break
+		if unit_at(c) and unit_at(c).faction != u.faction:
+			bumped = unit_at(c)
 			break
 		var t := terrain(c)
 		var cost := step(u, at, c)
@@ -311,28 +511,72 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		spent.append(cost)
 		passed.append(c)
 		at = c
+		var w := _watching(u, c)
+		if w:
+			fired.append(w)
+			if w.skill.hostile:
+				break  # ambushed
 		if t.is_trap() and not unit_at(c):
 			break  # stepped on a trap
 	while not passed.is_empty() and unit_at(passed[-1]):  # units can be passed, not stood on
 		passed.pop_back()
 		spent.pop_back()
 	if not passed.is_empty():
-		var total_cost: float = spent.reduce(func(sum, x): return sum + x, 0.0)
-		u.moved += total_cost
-		u.pay(total_cost, &"move")
+		if not compelled:
+			var total_cost: float = spent.reduce(func(sum, x): return sum + x, 0.0)
+			u.moved += total_cost
+			u.pay(total_cost, &"move")
 		move(u, passed[-1])
 		if terrain(u.cell).is_trap():
 			spring(u.cell, u)
+	if (not passed.is_empty() or bumped) and not compelled:
+		u.acted = true
+	for w in fired:  # in reach of the watched tile was checked when it fired
+		if u.is_alive() and w.caster.is_alive():
+			use(w.caster, w.skill, u)
+	if bumped and u.is_alive():
+		bump(u, bumped)
+	if not passed.is_empty() and u.is_alive() and not compelled:  # the lured think nothing of it
+		var now: Variant = Investigation.lead(self, u)
+		if now != null and (typeof(now) != typeof(had) or now != had):
+			Investigation.run(self, u, now)  # something new came into range
 	return passed
 
 
-# A trap goes off: it's revealed, and hits whoever stepped on it plus anyone in its blast. Units
-# with Wary V (trap_power) make the traps they set off hit their enemies harder.
+# Ran into an enemy: if the mover couldn't fully make it out, it loses two levels of concealment;
+# a unit with a reaction passive (Opportunist) uses its first active on the mover.
+func bump(u: Unit, e: Unit) -> void:
+	if read(u, e).net < 0:
+		e.exposed += 2
+	if e.passives.any(func(s: Skill): return s.reaction) and not e.actives.is_empty():
+		var s := e.actives[0]
+		if s.hostile and in_reach(e, s, u):
+			use(e, s, u)
+
+
+# The first watch on `c` that fires on `u` (and uses up that tile). A watch whose caster can no
+# longer reach the tile (it moved) lets the mover through.
+func _watching(u: Unit, c: Vector2i) -> Watch:
+	for w in watches:
+		if c not in w.cells or w.caster == u or not w.caster.is_alive():
+			continue
+		if dist(w.caster.cell, c) > skill_range(w.caster, w.skill, u.stat(&"size")) + 0.0001:
+			continue
+		var r := read(w.caster, u)
+		var fits: bool = w.any or (r.faction != null and (r.faction != w.caster.faction) == w.skill.hostile)
+		if fits:
+			w.cells.erase(c)
+			return w
+	return null
+
+
+# A trap goes off: it loses two levels of concealment, and hits whoever stepped on it plus anyone
+# in its blast. Units with Wary V (trap_power) make the traps they set off hit enemies harder.
 func spring(c: Vector2i, by: Unit) -> void:
 	var t := terrain(c)
-	revealed[c] = true
+	exposed[c] = exposed.get(c, 0) + 2
 	var raw := roll(t.dice)
-	for v in units.values().filter(func(x): return x == by or Vector2(x.cell).distance_to(Vector2(c)) <= t.blast + 0.0001):
+	for v in units.values().filter(func(x): return x == by or dist(x.cell, c) <= t.blast + 0.0001):
 		var boost := 1.0 + (by.stat(&"trap_power") if v.faction != by.faction else 0.0)
 		v.hit(raw * boost, t.damage_tags)
 
@@ -349,7 +593,7 @@ func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
 # cheaper ground (entering and leaving it) for the lucky, worse for the unlucky, a coin at luck 0.
 func line(a: Vector2i, b: Vector2i, luck: int, u: Unit = null) -> Array[Vector2i]:
 	var path: Array[Vector2i] = []
-	var n := ceili(Vector2(a).distance_to(Vector2(b)) - 0.0001)
+	var n := ceili(dist(a, b) - 0.0001)
 	var s := signi(luck)
 	for k in range(1, n):
 		var p := Vector2(a).lerp(Vector2(b), float(k) / n)
@@ -389,6 +633,8 @@ func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
 	for u in members(turn):
+		if not u.acted:
+			Investigation.run(self, u)  # held still: looks around again
 		u.tick()
 	for z in zones.filter(func(x: Zone): return x.faction == turn):
 		z.turns -= 1
