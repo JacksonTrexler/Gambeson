@@ -8,10 +8,14 @@ extends Resource
 # regen / poison: that fraction of max HP healed / lost as the unit's side starts a turn.
 # sleep: above 0, the unit can't act (Battle wakes it when an ally ends the turn beside it).
 # ap / dex_ap: that fraction more AP each turn - the general and wis pools / the dex pool (Haste).
+# relay: per point of strength mod, that share off the size penalty for moving through units - its
+# own moves, and allies' through it - which can turn it into a boost (Battle.pass_cost()).
+# trap_word: word of the traps it lays carries (1 + this) times as far, and allies it doesn't reach
+# still get a vibe of them (Hazard Expert; Battle.lay()).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
-		"command", "party", "regen", "poison", "sleep", "ap", "dex_ap") var stat := "luck"
+		"command", "party", "regen", "poison", "sleep", "ap", "dex_ap", "relay", "trap_word") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these; empty: always
@@ -26,7 +30,7 @@ extends Resource
 
 
 const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_power": "Trap power",
-		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP"}
+		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP", "trap_word": "Trap word"}
 const HARMFUL := ["move_cost", "poison", "sleep"]  # more of these is worse for whoever has them
 
 
@@ -81,6 +85,10 @@ func value(rank := 1) -> String:
 		text = "can't act till an ally ends the turn beside it"
 	elif stat in ["ap", "dex_ap"]:
 		text = _signed(x * 100.0) + "%"
+	elif stat == "trap_word":
+		text = "word of traps it sets carries x%s as far; allies out of earshot get a vibe of them" % Skill.num(1.0 + x)
+	elif stat == "relay":
+		text = "%s%% per strength mod off moving through units, for itself and allies through it (can become a boost)" % Skill.num(x * 100.0)
 	else:
 		text = _signed(x)
 	if per_stat:

@@ -13,6 +13,7 @@ enum Phase { INITIATIVE, TURNS, OVER }
 const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
 const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
+const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
 
 @export var spawns: Dictionary[Faction, Vector2i] = {}  # where a player's starter joins each side
 
@@ -42,6 +43,7 @@ var turn: Faction:
 
 var order: Array[Faction] = []  # turn order, highest initiative first
 var rolls: Dictionary[Faction, Array] = {}  # this battle's initiative d20s, per faction
+var unit_rolls: Dictionary[Unit, int] = {}  # the same d20s, by who rolled them
 
 # Which unit stands on which cell. TileSet custom data is per tile type, so it can't hold this.
 var units: Dictionary[Vector2i, Unit] = {}
@@ -49,6 +51,22 @@ var units: Dictionary[Vector2i, Unit] = {}
 var rng := RandomNumberGenerator.new()
 var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
 var revealed: Dictionary[Vector2i, bool] = {}  # sprung traps: no longer concealed
+var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), over the ground
+
+
+# A trap a unit laid on a tile. Who knows of it sees it plainly; with Hazard Expert (`word`), its
+# setter's allies who weren't told still get a vibe that traps were set there.
+class Snare:
+	var terrain: Terrain  # the ground with the trap in it, standing in for the map's (Battle.terrain())
+	var by: Unit
+	var faction: Faction
+	var known: Dictionary[Unit, bool] = {}
+	var word := false
+
+	func _init(t: Terrain, u: Unit) -> void:
+		terrain = t
+		by = u
+		faction = u.faction
 
 
 # Concealment laid over tiles: levels by cell, lasting some of the caster faction's turns.
@@ -120,11 +138,13 @@ func starter(s: Dictionary) -> Unit:
 # Each living unit rolls a d20 and its faction sums them (+ Wary-style bonus); highest goes first.
 func roll_initiative() -> Array[Faction]:
 	rolls.clear()
+	unit_rolls.clear()
 	for u in units.values():
 		if u.faction and u.is_alive():
 			if u.faction not in rolls:
 				rolls[u.faction] = []
-			rolls[u.faction].append(rng.randi_range(1, 20))
+			unit_rolls[u] = rng.randi_range(1, 20)
+			rolls[u.faction].append(unit_rolls[u])
 	var o: Array[Faction] = []
 	o.assign(contest(rolls.keys(), [total]))
 	print("Initiative: ", ", ".join(o.map(func(f): return "%s %d" % [f.name, total(f)])))
@@ -216,7 +236,7 @@ func _flip(g: Array) -> Array:
 # Uses an active skill on a target in reach, paying its AP and cost. Damage comes from the skill's
 # tier for the caster's rank, once per rank for multi-hit skills (Strike III).
 func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
-	if not _acting(caster) or skill not in caster.actives or not target.is_alive():
+	if not _acting(caster) or skill not in caster.actives or skill.on_tile() or not target.is_alive():
 		return false
 	if skill.hostile == (target.faction == caster.faction) or not in_reach(caster, skill, target):
 		return false
@@ -268,18 +288,60 @@ func _expose(u: Unit) -> void:
 		u.exposed += 1
 
 
-# Area skills, cast on a cell (Darkstone): within area_reach(), lays its zone kind of concealment
-# on the tiles around the centre (see zone_levels()).
+# Skills cast on a cell, within area_reach(): area skills (Darkstone) lay their zone kind of
+# concealment on the tiles around it (see zone_levels()); trap skills (Snare) lay a trap there (lay()).
 func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
-	if not _acting(caster) or skill not in caster.actives or skill.zone == &"" or not on_map(c):
+	if not _acting(caster) or skill not in caster.actives or not skill.on_tile() or not on_map(c):
 		return false
 	if Vector2(caster.cell).distance_to(Vector2(c)) > area_reach(caster, skill) + 0.0001:
 		return false
+	if skill.lays and (unit_at(c) or terrain(c).is_trap()):
+		return false
 	if not caster.pay_for(skill):
 		return false
-	zones.append(Zone.new(skill.zone, zone_levels(caster.rank(skill), c), skill.turns, caster.faction))
+	if skill.lays:
+		lay(caster, skill, c)
+	else:
+		zones.append(Zone.new(skill.zone, zone_levels(caster.rank(skill), c), skill.turns, caster.faction))
 	used.emit(caster, skill, c, 0)
 	return true
+
+
+# A trap skill's trap, laid into the ground at c: the skill's `lays` with its concealment and dice
+# multiplier times the setter's rank, plus the setter's mod in its bonus stat. The setter knows it;
+# for skills tagged trap, so do allies within its charisma mod in tiles (at least 1; trap_word
+# multiplies that: Hazard Expert), and with trap_word, allies further off get a vibe of it.
+func lay(u: Unit, skill: Skill, c: Vector2i) -> Snare:
+	var r := u.rank(skill)
+	var ground := terrain(c)
+	var t: Terrain = ground.duplicate()
+	var plan := skill.lays
+	t.name = plan.name
+	var tags: Array[StringName] = []
+	tags.assign(ground.tags + plan.tags)
+	t.tags = tags
+	t.concealment = plan.concealment * r
+	t.kind = plan.kind
+	t.looks_like = StringName(ground.name)
+	t.shape = plan.shape
+	t.vibe = plan.vibe
+	t.dice = plan.dice
+	t.times = plan.times * r
+	t.bonus = plan.bonus + (u.mod(plan.bonus_stat, skill.tags) if plan.bonus_stat else 0)
+	t.damage_tags = plan.damage_tags
+	t.blast = plan.blast
+	t.reveals = plan.reveals
+	var snare := Snare.new(t, u)
+	snare.known[u] = true
+	if &"trap" in skill.tags:
+		var word := maxf(u.mod(&"charisma"), 1.0) * (1.0 + u.stat(&"trap_word"))
+		for o in members(u.faction):
+			if roundi(Vector2(o.cell).distance_to(Vector2(u.cell))) <= word:
+				snare.known[o] = true
+		snare.word = u.stat(&"trap_word") > 0.0
+	snares[c] = snare
+	revealed.erase(c)
+	return snare
 
 
 # How far from the caster an area skill can be centred: radius + radius_per_rank x rank.
@@ -344,8 +406,8 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	if not passed.is_empty():
 		var from := u.cell
 		var total_cost: float = w.costs.reduce(func(sum, x): return sum + x, 0.0)
-		u.moved += total_cost
-		u.pay(total_cost, &"move")
+		u.moved += total_cost  # a Relay boost can take it below what it's walked
+		u.pay(maxf(total_cost, 0.0), &"move")
 		move(u, passed[-1])
 		for c in passed:  # stepping in happens on the unit's own turn, which isn't one of those counted
 			for e in terrain(c).afflicts:
@@ -358,18 +420,21 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 
 # The walk toward `dest`: {line, path, costs} - the straight line, the tiles kept, and what each
 # cost. Leaving a tile costs its exit, entering costs its enter (plus the unit's move_cost effects
-# for that ground). Stops where movement or AP runs out, before a hole, short of other units, and on
-# a trap. Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground
-# the unit doesn't know is bad.
+# for that ground), and moving through another unit costs pass_cost(). Stops where movement or AP
+# runs out, before a hole, short of other units (they can be passed, not stood on), and on a trap.
+# Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground the
+# unit doesn't know is bad.
 # `expected` gives the walk as `u` sees it coming: ground it can't make out counts as plain, units it
 # can't locate aren't in the way, and the rng is left as it was (so the real walk takes this line).
 func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 	var state := rng.state
 	var ground := func(c: Vector2i) -> Terrain:
 		return terrain(c) if not expected or read(u, c).net >= 0 else PLAIN
-	var blocked := func(c: Vector2i) -> bool:
+	var in_way := func(c: Vector2i) -> Unit:
 		var o := unit_at(c)
-		return o != null and (not expected or read(u, o).located())
+		return o if o and o != u and (not expected or read(u, o).located()) else null
+	var blocked := func(c: Vector2i) -> bool:
+		return in_way.call(c) != null
 	var path: Array[Vector2i] = []
 	var costs: Array[float] = []
 	var left := u.move_left()
@@ -380,6 +445,9 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 			break
 		var t: Terrain = ground.call(c)
 		var cost := _cost(u, from, t)
+		var other: Unit = in_way.call(c)
+		if other:
+			cost += pass_cost(u, other)
 		if cost > left + 0.0001:
 			var unknown_bad := t.worth() < 0 and not read(u, c).known_bad()
 			if Luck.settle(left / cost, u.luck, not unknown_bad, false) < 1:
@@ -399,13 +467,30 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 	return {line = ln, path = path, costs = costs}
 
 
-# A trap goes off: it's revealed, and hits whoever stepped on it plus anyone in its blast. Units
-# with Wary V (trap_power) make the traps they set off hit their enemies harder.
+# Extra movement for u to move through o's tile: o's size, less a share per point of dex mod - u's,
+# and o's too if they're allies (it steps aside) - and per point of strength mod with Relay (u's,
+# and an ally o's: it gives u a shove). Only Relay can take it below 0, a boost onward.
+func pass_cost(u: Unit, o: Unit) -> float:
+	var ally := o.faction == u.faction
+	var off := PASS_SHARE * (u.mod(&"dexterity") + (o.mod(&"dexterity") if ally else 0))
+	var relay := _relay(u) + (_relay(o) if ally else 0.0)
+	var cost := o.stat(&"size") * (1.0 - off - relay)
+	return cost if relay > 0.0 else maxf(cost, 0.0)
+
+
+func _relay(u: Unit) -> float:
+	return maxf(u.stat(&"relay") * u.mod(&"strength"), 0.0)
+
+
+# A trap goes off: most are revealed for good (Terrain.reveals), and it hits whoever stepped on it
+# plus anyone in its blast. Units with Wary V (trap_power) make the traps they set off hit their
+# enemies harder.
 func spring(c: Vector2i, by: Unit) -> void:
 	var t := terrain(c)
-	revealed[c] = true
+	if t.reveals:
+		revealed[c] = true
 	sprung.emit(c, by)
-	var raw := roll(t.dice)
+	var raw := roll(t.dice) * t.times + t.bonus
 	for v in units.values().filter(func(x): return x == by or Vector2(x.cell).distance_to(Vector2(c)) <= t.blast + 0.0001):
 		var boost := 1.0 + (by.stat(&"trap_power") if v.faction != by.faction else 0.0)
 		v.hit(raw * boost, t.damage_tags)
@@ -455,6 +540,8 @@ func on_map(c: Vector2i) -> bool:
 
 
 func terrain(c: Vector2i) -> Terrain:
+	if c in snares:
+		return snares[c].terrain
 	var d := map.get_cell_tile_data(c)
 	var t: Terrain = d.get_custom_data("terrain") if d else null
 	return t if t else PLAIN

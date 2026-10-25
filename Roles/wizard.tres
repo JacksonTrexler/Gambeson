@@ -3,9 +3,12 @@
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/RedMage.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="20_skill"]
+[ext_resource type="Resource" path="res://Skills/darkstone.tres" id="21_opt_darkstone"]
 
 [resource]
 script = ExtResource("1_script")
 name = "Wizard"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_darkstone")])

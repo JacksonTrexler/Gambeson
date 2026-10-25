@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Terrain.gd" id="2_terrain"]
+
+[sub_resource type="Resource" id="Terrain_snare"]
+script = ExtResource("2_terrain")
+name = "Snare"
+tags = Array[StringName]([&"trap", &"detrimental"])
+concealment = 1
+shape = "a glint of wire?"
+vibe = "a prickle of unease"
+dice = Vector2i(1, 4)
+bonus_stat = &"dexterity"
+damage_tags = Array[StringName]([&"trap", &"pierce"])
+
+[resource]
+script = ExtResource("1_script")
+name = "Snare"
+tags = Array[StringName]([&"trap", &"physical", &"pierce", &"dex"])
+ap = 4.0
+cost = 2
+radius = 1.5
+lays = SubResource("Terrain_snare")

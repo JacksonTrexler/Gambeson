@@ -53,7 +53,7 @@ static func _foe(u: Unit, r: Read) -> bool:
 static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
 	var best := []
 	var best_score := 0.0
-	for s in u.actives.filter(func(x: Skill): return x.hostile and x.zone == &""):
+	for s in u.actives.filter(func(x: Skill): return x.hostile and not x.on_tile()):
 		for t in reads:
 			var r: Read = reads[t]
 			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not u.can_afford(s):

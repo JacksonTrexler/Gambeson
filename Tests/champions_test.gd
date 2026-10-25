@@ -89,7 +89,8 @@ func test_alabaster() -> void:
 	var u := alabaster()
 	ok(u.race.name == "Stone Golem" and u.stat(&"size") == 4 and u.level == 5, "Stone Golem, Large, level 5")
 	ok(u.strength == 18 and u.constitution == 20 and u.intelligence == 8 and u.charisma == 8, "str high, con 20, rest 8")
-	ok(u.rank(strike) == 3 and u.passives == [stoneskin] and stonegift in u.actives, "Strike III, Stoneskin, Stonegift")
+	ok(u.rank(strike) == 3 and u.passives == [stoneskin, load("res://Skills/relay.tres")] and stonegift in u.actives,
+			"Strike III, Stoneskin, Stonegift, Relay")
 	ok(u.sprite.sprite_frames.get_frame_texture(&"default", 0).resource_path == "res://Units/GolemClay.png", "golem sprite")
 
 

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_relay"]
+script = ExtResource("2_effect")
+stat = "relay"
+amount = 0.1
+
+[resource]
+script = ExtResource("1_script")
+name = "Relay"
+passive = true
+tags = Array[StringName]([&"physical", &"str"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_relay")])

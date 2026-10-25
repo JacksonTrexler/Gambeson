@@ -60,6 +60,8 @@ func _draw() -> void:
 		draw_rect(_rect(hud.charge, 1.5), Color(FOE, 0.15))
 	if sel and hud.armed:
 		_draw_targeting(sel, hud.armed, pulse)
+	for c in hud.traps:
+		_caltrop(c, GOLD if hud.traps[c] else FOE)
 	for u in cmd.party:
 		_badge(u.cell, false)
 	if cmd.leader.is_alive():
@@ -103,13 +105,17 @@ func _draw_plan(sel: Unit) -> void:
 func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 	var b := hud.battle
 	var col := FOE if s.hostile else FRIEND
-	if s.zone:
+	if s.on_tile():
 		_ring(_center(sel.cell), b.area_reach(sel, s) * TILE, Color(GOLD, 0.6), true)
 		var c := hud.hover
 		if c != HUD.NOWHERE and hud.why_not(sel, s, c) == "":
-			var levels := b.zone_levels(sel.rank(s), c)
-			for at in levels:
-				draw_rect(_rect(at, 1), Color(ZONE, 0.18 + 0.12 * levels[at]))
+			if s.lays:
+				_brackets(_rect(c, 1.5), Color(GOLD, pulse), 6.0)
+				_caltrop(c, Color(GOLD, 0.5 + 0.3 * pulse))
+			else:
+				var levels := b.zone_levels(sel.rank(s), c)
+				for at in levels:
+					draw_rect(_rect(at, 1), Color(ZONE, 0.18 + 0.12 * levels[at]))
 		return
 	_ring(_center(sel.cell), b.skill_range(sel, s) * TILE, Color(col, 0.55), true)
 	for u in hud.marked:
@@ -156,6 +162,18 @@ func draw_top() -> void:
 		for z in [["z", Vector2.ZERO, 6], ["Z", Vector2(3, -4), 8]]:
 			top.draw_string_outline(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], 2, Color(0, 0, 0, 0.7))
 			top.draw_string(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], col)
+
+
+# A known trap: a little four-spiked caltrop low in the tile (gold for your side's own).
+func _caltrop(c: Vector2i, col: Color) -> void:
+	var at := _center(c) + Vector2(0, 9)
+	for i in 4:
+		var d := Vector2.from_angle(TAU * i / 4.0 + PI / 4.0) * 4.0
+		draw_line(at - d, at + d, Color(0, 0, 0, 0.5), 2.5)
+	for i in 4:
+		var d := Vector2.from_angle(TAU * i / 4.0 + PI / 4.0) * 4.0
+		draw_line(at, at + d, col, 1.5)
+	draw_circle(at, 1.5, col)
 
 
 # A diamond in the tile's top-left corner: filled for the leader, hollow for party members.

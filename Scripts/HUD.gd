@@ -6,7 +6,8 @@ extends CanvasLayer
 # primary skill (slot 1) on it; or press a hotbar number (or click the slot) to arm a skill, then
 # click its target. A toggled passive switches instead. Ctrl-click strikes at a tile whatever seems
 # to be there - empty, or only suspected - and Shift-click selects a foe instead of attacking it.
-# B opens the spellbook, H holds an ally where it is, P invites it to the party (or lets it go), Tab
+# B opens the spellbook, S the skills (spending skill points), H holds an ally where it is, P invites
+# it to the party (or lets it go), Tab
 # steps through units taking orders, Space ends the turn, Esc or right-click backs out. Command
 # decides who takes orders and which of their slots. Allies left without orders act on their own as
 # the turn ends, and other sides play themselves, paced so they can be followed.
@@ -29,6 +30,7 @@ const GROUND := {&"safe": Color("#7cc4ff"), &"unsure": Color("#f2c94c"), &"bad":
 const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it scrolls
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
 # (slowest in the middle), hold at the bottom, fade out, and round again from the top.
+const TRANSITION := 1.0  # seconds a turn change takes on screen (other sides wait it out)
 const SCROLL_HOLD := 2.0  # seconds
 const SCROLL_FADE := 0.35
 const SCROLL_SPEED := 10.0  # average px a second while scrolling
@@ -50,10 +52,16 @@ var charge := NOWHERE  # the hovered foe (or tile) a click would walk up to and 
 var marked: Array[Unit] = []  # what the armed skill could be used on
 var dubious: Dictionary[Vector2i, String] = {}  # tiles where something is only suspected, and the hint
 var sleepers: Array[Unit] = []  # units the player can see are asleep, as of the last refresh
+var traps: Dictionary[Vector2i, bool] = {}  # traps the player's side knows of: true for ones it laid
 var grounds: Dictionary[Vector2i, StringName] = {}  # ground() for every tile, as of the last refresh
 var _icons := {}  # [source id, atlas coords] -> AtlasTexture, for the tile pane
 var _pane_list := ""  # what the pane's effect list last showed (a new one scrolls from the start)
 var _scroll_t := 0.0  # seconds into the effect list's auto-scroll
+var _spinning: Array[Label] = []  # initiative dice still rolling
+var _intro: Tween  # the initiative roll on screen
+var _turn_show: Tween  # the turn change on screen
+
+signal intro_done
 var round_no := 0
 var overlay: Overlay
 var _last_turn := 999  # order index of the previous turn, for counting rounds
@@ -81,6 +89,7 @@ var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 @onready var spellbook: Spellbook = %Spellbook
 @onready var over: PanelContainer = %Over
 @onready var pane: PanelContainer = %TilePane
+@onready var skills: SkillTree = %Skills
 
 
 static func shade(c: Color) -> Color:
@@ -113,19 +122,39 @@ func _ready() -> void:
 	party_button.pressed.connect(toggle_party)
 	end_button.pressed.connect(end_turn)
 	spellbook.switched.connect(func(s: Skill): switch(spellbook.unit, s))
+	skills.unlocked.connect(_on_unlocked)
+	skills.leveled.connect(_on_leveled)
+	%SkillsIcon.pressed.connect(toggle_skills)
+	%BookIcon.pressed.connect(toggle_spellbook)
+	%CogIcon.pressed.connect(_say.bind("Settings are coming soon"))
+	%CharacterIcon.pressed.connect(_say.bind("The character sheet is coming soon"))
 	%MenuButton.pressed.connect(func(): get_tree().change_scene_to_file(menu_scene))
 	banner.modulate.a = 0.0
-	for c: Control in [tip, spellbook, over]:
+	for c: Control in [tip, spellbook, skills, over]:
 		c.hide()
 	if not battle.rolls.is_empty():
 		_log("[color=#6b7180]Initiative: %s[/color]" % ", ".join(battle.order.map(
 				func(f: Faction): return "%s %d" % [f.name, battle.total(f)])))
 	_log("You lead %s." % _tag(command.leader))
 	_rebuild_bar()
+	_begin.call_deferred()
+
+
+# The battle opens: the initiative roll plays out (when the HUD is paced to be watched), then the
+# first turn starts.
+func _begin() -> void:
+	if pace > 0.0 and battle.phase == Battle.Phase.TURNS and not battle.unit_rolls.is_empty():
+		busy = true
+		_mark()
+		_show_initiative()
+		await intro_done
+		if not is_inside_tree():
+			return
+		busy = false
 	if battle.phase == Battle.Phase.TURNS:
-		_on_turn.call_deferred(null, battle.turn)
+		_on_turn(null, battle.turn)
 	elif battle.phase == Battle.Phase.OVER:
-		_on_phase.call_deferred(Battle.Phase.TURNS, Battle.Phase.OVER)
+		_on_phase(Battle.Phase.TURNS, Battle.Phase.OVER)
 
 
 func _exit_tree() -> void:
@@ -136,6 +165,8 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	for l in _spinning:
+		l.text = str(randi_range(1, 20))
 	if pane.visible:
 		_auto_scroll(delta)
 	if _dirty:
@@ -156,14 +187,18 @@ func _input(e: InputEvent) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if %Initiative.visible and (e is InputEventKey or e is InputEventMouseButton) and e.is_pressed():
+		_end_intro()  # any key or click skips the roll
+		get_viewport().set_input_as_handled()
+		return
 	if e is InputEventMouseMotion:
 		hover_cell(_cell_at(e.position))
 		return
 	if e is InputEventMouseButton:
 		if not e.pressed or e.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
-		if spellbook.visible:
-			spellbook.hide()
+		if _panel_open():
+			_close_panels()
 		elif e.button_index == MOUSE_BUTTON_LEFT:
 			click(_cell_at(e.position), e.ctrl_pressed or e.meta_pressed, e.shift_pressed)
 		else:
@@ -176,6 +211,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		cancel()
 	elif e.is_action_pressed(&"spellbook"):
 		toggle_spellbook()
+	elif e.is_action_pressed(&"skills"):
+		toggle_skills()
 	elif e.is_action_pressed(&"end_turn"):
 		end_turn()
 	elif e.is_action_pressed(&"hold"):
@@ -286,8 +323,8 @@ func switch(u: Unit, s: Skill) -> void:
 
 
 func cancel() -> void:
-	if spellbook.visible:
-		spellbook.hide()
+	if _panel_open():
+		_close_panels()
 	elif armed:
 		disarm()
 	else:
@@ -330,10 +367,37 @@ func toggle_spellbook() -> void:
 	if spellbook.visible:
 		spellbook.hide()
 	else:
+		skills.hide()
 		if not (selected and known(selected)):
 			select(observer())
 		if selected:
 			_open_book()
+	_update_tip()
+
+
+# S or the dock's branch: the selected unit's skill points and what they could unlock (your own
+# side's units; another side's selected opens your leader's).
+func toggle_skills() -> void:
+	_mark()
+	if skills.visible:
+		skills.hide()
+	else:
+		spellbook.hide()
+		if not (selected and known(selected)):
+			select(observer())
+		if selected:
+			_open_skills()
+	_update_tip()
+
+
+func _panel_open() -> bool:
+	return spellbook.visible or skills.visible
+
+
+func _close_panels() -> void:
+	spellbook.hide()
+	skills.hide()
+	_mark()
 	_update_tip()
 
 
@@ -415,7 +479,7 @@ func foe(u: Unit) -> bool:
 # Units the armed skill could be used on, as far as the player can tell.
 func targets() -> Array[Unit]:
 	var out: Array[Unit] = []
-	if selected and armed and not armed.zone:
+	if selected and armed and not armed.on_tile():
 		for t: Unit in battle.units.values():
 			if unit_seen(t.cell) == t and why_not(selected, armed, t) == "":
 				out.append(t)
@@ -436,9 +500,11 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 		if not battle.in_reach(u, s, target):
 			return "Out of reach"
 	elif target is Vector2i:
-		var span := battle.area_reach(u, s) if s.zone else battle.skill_range(u, s)
+		var span := battle.area_reach(u, s) if s.on_tile() else battle.skill_range(u, s)
 		if not battle.on_map(target) or Vector2(u.cell).distance_to(Vector2(target)) > span + 0.0001:
 			return "Out of reach"
+		if s.lays and (unit_seen(target) or tile_view(target).trap == true):
+			return "Can't set a trap there"
 	else:
 		return "Pick a unit"
 	return _short(u, s) if not u.can_afford(s) else ""
@@ -452,10 +518,10 @@ func _use_on(c: Vector2i, force := false) -> void:
 	if not _orders(u):
 		disarm()
 		return
-	if force and s.hostile and not s.zone:
+	if force and s.hostile and not s.on_tile():
 		_strike_at(u, s, c)
 		return
-	var target: Variant = c if s.zone else unit_seen(c)
+	var target: Variant = c if s.on_tile() else unit_seen(c)
 	var why := why_not(u, s, target)
 	if why == "Pick a unit":
 		_say("Pick a unit, or Ctrl-click to strike at the tile" if s.hostile else why)
@@ -463,7 +529,7 @@ func _use_on(c: Vector2i, force := false) -> void:
 	if why == "Out of reach" or why == "Already fallen":
 		_say(why)
 		return
-	if not (battle.cast_at(u, s, c) if s.zone else battle.cast(u, s, target)):
+	if not (battle.cast_at(u, s, c) if s.on_tile() else battle.cast(u, s, target)):
 		_say(why if why else "%s doesn't take" % s.name)
 		return
 	_done(u)
@@ -494,7 +560,7 @@ func _done(u: Unit) -> void:
 # The skill a click on a foe uses: slot 1, if it's an attack the unit may be told to use.
 func _primary(u: Unit) -> Skill:
 	var s: Skill = u.hotbar[0] if not u.hotbar.is_empty() else null
-	return s if s and not s.passive and s.hostile and not s.zone and command.slot_open(u, 0) else null
+	return s if s and not s.passive and s.hostile and not s.on_tile() and command.slot_open(u, 0) else null
 
 
 # Where u would walk to use s on whatever is at c: the cheapest tile it expects to reach that has c
@@ -553,11 +619,15 @@ func _move(u: Unit, c: Vector2i) -> void:
 
 
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
-func _act_alone(f: Faction, units: Array[Unit]) -> void:
+func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 	busy = true
 	armed = null
 	plan = {}
 	_mark()
+	if pace > 0.0 and wait > 0.0:
+		await get_tree().create_timer(wait).timeout
+		if not is_inside_tree():
+			return
 	for u in units:
 		if battle.phase != Battle.Phase.TURNS or battle.turn != f:
 			break
@@ -591,12 +661,12 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 	_last_turn = i
 	var mine := now == command.faction() and command.leader.is_alive()
 	_log("[color=#6b7180]Round %d · %s[/color]" % [round_no, now.name])
-	_banner("Your turn" if mine else "%s's turn" % now.name, GOLD if mine else shade(now.primary))
+	_transition(now, mine)
 	if mine:
 		command.new_turn()
 		select(command.leader)
 	elif auto:
-		_act_alone(now, battle.members(now))
+		_act_alone(now, battle.members(now), TRANSITION)
 	_mark()
 
 
@@ -619,10 +689,18 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 
 func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 	_mark()
+	if skill.lays and not known(caster):
+		if unit_seen(caster.cell) == caster:
+			_log("%s is setting something up." % _tag(caster))
+		return  # where, and what, is theirs to know
 	var text := "%s uses %s %s" % [_tag(caster), skill.name, Skill.roman(caster.rank(skill))]
 	if at is Unit and at != caster:
 		text += " on " + _tag(at)
-	elif at is Vector2i and not skill.zone:
+	elif at is Vector2i and skill.lays:
+		var told: int = battle.snares[at].known.size() - 1 if at in battle.snares else 0
+		text = "%s sets a %s%s" % [_tag(caster), skill.lays.name.to_lower(),
+				" and tells %d %s where" % [told, "ally" if told == 1 else "allies"] if told > 0 else ""]
+	elif at is Vector2i and not skill.on_tile():
 		text += ", but strikes only air"
 	if at is Unit and dealt > 0:
 		if _hp_shows(at):
@@ -679,8 +757,11 @@ func _refresh() -> void:
 	_find_reach()
 	_show_units()
 	grounds.clear()
+	traps.clear()
 	for c in battle.map.get_used_cells():
 		grounds[c] = ground(c)
+		if tile_view(c).trap == true:
+			traps[c] = c in battle.snares and battle.snares[c].faction == command.faction()
 	marked = targets()
 	sleepers.assign(battle.units.values().filter(func(u: Unit): return unit_seen(u.cell) == u and sleeping(u)))
 	card.set_info(_info(selected) if selected else {})
@@ -692,6 +773,13 @@ func _refresh() -> void:
 			_open_book()
 		else:
 			spellbook.hide()
+	if skills.visible:
+		if selected and known(selected):
+			_open_skills()
+		else:
+			skills.hide()
+	var lead := command.leader
+	%SkillsIcon.badge = lead.is_alive() and lead.skill_points > 0 or command.party.any(func(u: Unit): return u.skill_points > 0)
 	_update_tip()
 
 
@@ -716,7 +804,7 @@ func _show_units() -> void:
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
 # effects (auto-scrolling when long), and notes on what's uncertain about it.
 func _show_pane() -> void:
-	pane.visible = hover != NOWHERE and not spellbook.visible
+	pane.visible = hover != NOWHERE and not _panel_open()
 	if not pane.visible:
 		_pane_list = ""
 		return
@@ -752,7 +840,8 @@ func _tile_effects(c: Vector2i, r: Read) -> Array:
 		out.append(["Beneficial" if r.worth > 0 else "Detrimental", FRIEND if r.worth > 0 else FOE])
 	if r.trap == true:
 		var t := battle.terrain(c)
-		out.append(["Trap: %dd%d %s" % [t.dice.x, t.dice.y, " ".join(t.damage_tags.filter(func(x): return x != &"trap"))], FOE])
+		var dmg := "%dd%d" % [t.dice.x, t.dice.y] + (" x%d" % t.times if t.times != 1 else "") + (" %+d" % t.bonus if t.bonus else "")
+		out.append(["Trap: %s %s" % [dmg, " ".join(t.damage_tags.filter(func(x): return x != &"trap"))], FOE])
 	for group in Effect.conditions(r.effects):
 		out.append([Effect.summarize(group), _tone(group)])
 	for when in [[r.afflicts, "on entering"], [r.at_end, "at turn end"]]:
@@ -777,10 +866,17 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 		out.append([_sentence(r.hint), GROUND[&"unsure"]])
 	if c in dubious:
 		out.append(["Something may be here" + (": " + dubious[c] if dubious[c] else ""), GROUND[&"unsure"]])
+	if c in battle.snares and battle.snares[c].faction == command.faction() and tile_view(c).trap == true:
+		out.append(["Set by %s" % _name(battle.snares[c].by), GOLD])
 	for z in battle.zones:
 		if c in z.levels and z.faction == command.faction():
 			out.append(["Your %s cover %d, %d turns left" % [z.kind, z.levels[c], z.turns], MUTED])
 	var u := selected if selected and known(selected) else null
+	var there := unit_seen(c)
+	if u and there and there != u:
+		var extra := battle.pass_cost(u, there)
+		out.append(["%s through %s: %s%s move" % [_name(u), _name(there), "+" if extra >= 0.0 else "", Skill.num(extra)],
+				FRIEND if extra < 0.0 else MUTED])
 	if u and r.cost != null:
 		var t := battle.terrain(c)
 		var own := maxf(t.enter + u.stat(&"move_cost", t.tags), 0.0)
@@ -869,6 +965,31 @@ func _tile_icon(c: Vector2i) -> Texture2D:
 	return _icons[key]
 
 
+func _open_skills() -> void:
+	skills.open(selected, _name(selected), _can_spend(selected))
+
+
+# Skill points are the player's to spend for the leader and the party.
+func _can_spend(u: Unit) -> bool:
+	return u != null and not busy and command.ours(u)
+
+
+func _on_unlocked(s: Skill) -> void:
+	var u := skills.unit
+	if _can_spend(u) and u.unlock(s):
+		_log("%s learns %s." % [_tag(u), s.name])
+		_rebuild_bar()
+	_mark()
+
+
+func _on_leveled() -> void:
+	var u := skills.unit
+	if _can_spend(u):
+		u.level_up()
+		_log("%s reaches level %d." % [_tag(u), u.level])
+	_mark()
+
+
 func _open_book() -> void:
 	var u := selected
 	spellbook.open(u, _name(u), _editable(u), func(s: Skill) -> bool: return _orders(u) and command.may_use(u, s))
@@ -939,6 +1060,8 @@ func _hint() -> String:
 		return "The battle is over."
 	if not command.leader.is_alive():
 		return "Your leader has fallen; your allies fight on."
+	if %Initiative.visible:
+		return "Rolling for initiative... (any key skips)"
 	if busy:
 		return "%s acting..." % ("Your allies are" if battle.turn == command.faction() else battle.turn.name + " is")
 	if battle.turn != command.faction():
@@ -1055,6 +1178,8 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["Party", GOLD])
 		else:
 			chips.append(["Ally", shade(u.faction.primary)])
+		if command.ours(u) and u.skill_points > 0:
+			chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
 		if u.asleep():
 			chips.append(["Asleep", SLEEP])
 		elif battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS and u != command.leader:
@@ -1111,7 +1236,7 @@ func _info(u: Unit) -> Dictionary:
 
 
 func _update_tip() -> void:
-	var text := "" if spellbook.visible else _tip_text()
+	var text := "" if _panel_open() else _tip_text()
 	tip.visible = text != ""
 	if tip.visible:
 		tip_label.text = text
@@ -1124,14 +1249,14 @@ func _tip_text() -> String:
 		return ""
 	var u := unit_seen(hover)
 	if armed and selected:
-		if not u and not armed.zone:
+		if not u and not armed.on_tile():
 			if not armed.hostile:
 				return "%s\nPick a unit" % armed.name
 			var why_tile := why_not(selected, armed, hover)
 			return "%s\n%s" % [armed.name, why_tile if why_tile else "Ctrl-click to strike at whatever may be here"]
-		var target: Variant = hover if armed.zone else u
+		var target: Variant = hover if armed.on_tile() else u
 		var why := why_not(selected, armed, target)
-		var head := armed.name + (" on " + _name(u) if u and not armed.zone else "")
+		var head := armed.name + (" on " + _name(u) if u and not armed.on_tile() else "")
 		return "%s\n%s" % [head, why if why else "Click to use: " + _forecast(selected, armed)]
 	if u:
 		return _unit_line(u) + ("\n" + _charge_line(selected, hover) if charge == hover else "")
@@ -1322,6 +1447,135 @@ func _log(text: String) -> void:
 func _say(text: String) -> void:
 	_note = text
 	_mark()
+
+
+# A turn changes hands (about a second): the screen dims as a band in the side's colour sweeps in
+# to centre with its name, holds, and sweeps on.
+func _transition(f: Faction, mine: bool) -> void:
+	var band: Control = %Band
+	var curtain: ColorRect = %Curtain
+	%BandTitle.text = f.name
+	%BandSub.text = "%s · Round %d" % ["Your turn" if mine else "Their turn", maxi(round_no, 1)]
+	%BandFill.color = Color(f.primary.darkened(0.3), 0.92)
+	if pace <= 0.0:
+		return  # unwatched: no show
+	if _turn_show:
+		_turn_show.kill()
+	var across := band.get_viewport_rect().size.x
+	band.position.x = -across
+	band.show()
+	curtain.show()
+	curtain.modulate.a = 0.0
+	_turn_show = create_tween()
+	_turn_show.tween_property(curtain, "modulate:a", 1.0, 0.22)
+	_turn_show.parallel().tween_property(band, "position:x", 0.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_turn_show.tween_interval(TRANSITION - 0.56)
+	_turn_show.tween_property(band, "position:x", across, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	_turn_show.parallel().tween_property(curtain, "modulate:a", 0.0, 0.28)
+	_turn_show.tween_callback(band.hide)
+	_turn_show.tween_callback(curtain.hide)
+
+
+# The opening initiative roll, as the player sees it: by side in turn order, each unit's d20
+# (units the player can't make out, or can't tell the side of - a persona's lie - roll as "?"),
+# the side's best bonus and its total.
+func initiative_rows() -> Array:
+	var out := []
+	for f in battle.order:
+		var dice := []
+		for u: Unit in battle.unit_rolls:
+			if u.faction == f:
+				var plain := known(u) or (unit_seen(u.cell) == u and view(u).faction == u.faction)
+				dice.append([u if plain else null, battle.unit_rolls[u]])
+		out.append([f, dice, battle.initiative_bonus(f), battle.total(f)])
+	return out
+
+
+# Every die spins, then lands on its number one after another; the totals follow and the side
+# that goes first is called out. Any key or click skips it.
+func _show_initiative() -> void:
+	var rows := initiative_rows()
+	_clear(%InitRows)
+	_spinning.clear()
+	var dice: Array[Label] = []
+	var finals: Array[int] = []
+	var totals: Array[Label] = []
+	for row in rows:
+		var f: Faction = row[0]
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override(&"separation", 4)
+		var side := Label.new()
+		side.text = f.name
+		side.custom_minimum_size.x = 36
+		side.add_theme_color_override(&"font_color", shade(f.primary))
+		line.add_child(side)
+		var chips := HBoxContainer.new()
+		chips.add_theme_constant_override(&"separation", 2)
+		chips.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(chips)
+		for d in row[1]:
+			var chip := VBoxContainer.new()
+			chip.add_theme_constant_override(&"separation", 0)
+			var u: Unit = d[0]
+			var face := TextureRect.new()
+			face.custom_minimum_size = Vector2(14, 14)
+			face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			face.texture = u.sprite.sprite_frames.get_frame_texture(&"default", 0) if u else null
+			face.tooltip_text = _name(u) if u else "Something unseen"
+			chip.add_child(face)
+			var die := Label.new()
+			die.text = "?"
+			die.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			die.add_theme_font_size_override(&"font_size", 8)
+			chip.add_child(die)
+			chips.add_child(chip)
+			dice.append(die)
+			finals.append(d[1])
+		var total := Label.new()
+		total.custom_minimum_size.x = 30
+		total.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		total.add_theme_color_override(&"font_color", GOLD)
+		line.add_child(total)
+		totals.append(total)
+		%InitRows.add_child(line)
+	%InitFoot.text = ""
+	var panel: Control = %Initiative
+	panel.modulate.a = 0.0
+	panel.show()
+	panel.reset_size()
+	_spinning.assign(dice)
+	_intro = create_tween()
+	_intro.tween_property(panel, "modulate:a", 1.0, 0.15)
+	_intro.tween_interval(0.35)
+	for i in dice.size():
+		_intro.tween_callback(_land.bind(dice[i], finals[i]))
+		_intro.tween_interval(0.12)
+	_intro.tween_interval(0.2)
+	_intro.tween_callback(func():
+		for r in rows.size():
+			var bonus: int = rows[r][2]
+			totals[r].text = "= %d%s" % [rows[r][3], " (+%d)" % bonus if bonus else ""]
+		%InitFoot.text = "%s go%s first" % ["You" if rows[0][0] == command.faction() else rows[0][0].name,
+				"" if rows[0][0] == command.faction() else "es"])
+	_intro.tween_interval(0.9)
+	_intro.tween_property(panel, "modulate:a", 0.0, 0.25)
+	_intro.tween_callback(_end_intro)
+
+
+func _land(die: Label, value: int) -> void:
+	_spinning.erase(die)
+	die.text = str(value)
+	die.add_theme_color_override(&"font_color", GOLD if value == 20 else (FOE if value == 1 else Color.WHITE))
+
+
+func _end_intro() -> void:
+	if _intro:
+		_intro.kill()
+		_intro = null
+	_spinning.clear()
+	%Initiative.hide()
+	intro_done.emit()
 
 
 func _banner(text: String, col: Color) -> void:

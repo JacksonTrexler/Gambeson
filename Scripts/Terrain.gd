@@ -22,9 +22,13 @@ extends Resource
 @export var turns := 0  # unless an effect sets its own; counted from the unit's next turn
 
 @export_group("Trap")  # sprung when a unit steps on it
-@export var dice := Vector2i.ZERO  # damage
+@export var dice := Vector2i.ZERO  # damage: the roll x `times`, + `bonus`
+@export var times := 1
+@export var bonus := 0
+@export var bonus_stat := &""  # laid by a skill (Battle.lay()): `bonus` is the setter's mod in this (Snare: dexterity)
 @export var damage_tags: Array[StringName] = []  # trap, pierce...
 @export var blast := 0.0  # hits every unit within this radius, not just the one who stepped on it
+@export var reveals := true  # sprung, it loses all its concealment (most traps)
 
 
 func is_trap() -> bool:

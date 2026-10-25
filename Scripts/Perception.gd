@@ -14,6 +14,7 @@ const KINDS := {
 	&"sound": {sense = &"hearing", hints = ["muffled steps?", "a silence that feels deliberate"]},
 }
 const BENEVOLENT := "Serene, warm"
+const TRAPS_SET := "traps were set here"
 const OMINOUS := "Menacing, cold"
 
 
@@ -76,12 +77,15 @@ static func unit(b: Battle, o: Unit, t: Unit) -> Read:
 	return r
 
 
-# What `o` knows about the tile at `c`. A trap looks like what it imitates until recon reaches it,
-# unless a zone (darkness) hides the ground altogether.
+# What `o` knows about the tile at `c`. A trap looks like what it imitates until recon reaches it -
+# or o was told of it (a laid trap's setter, and the allies it told) - unless a zone (darkness) hides
+# the ground altogether. Allies of a setter with trap_word who weren't told get a vibe of it.
 static func tile(b: Battle, o: Unit, c: Vector2i) -> Read:
 	var r := Read.new()
 	var ter := b.terrain(c)
-	var left := _left(o, _levels(b, c))
+	var snare: Battle.Snare = b.snares.get(c)
+	var hidden := b.hidden(c) and not (snare and o in snare.known)
+	var left := _left(o, _levels(b, c, null, hidden))
 	_sense(r, left, o.stat(&"recon", ter.tags), o.luck)
 	r.cell = c
 	if r.net > -4:
@@ -98,9 +102,11 @@ static func tile(b: Battle, o: Unit, c: Vector2i) -> Read:
 	if r.net >= 1:
 		r.worth = ter.worth()
 	var shrouded := b.zones.any(func(z): return c in z.levels)
-	if b.hidden(c) and r.net < 0 and not shrouded:
+	if hidden and r.net < 0 and not shrouded:
 		r.name = ter.looks_like
 		r.hint = {-2: ter.shape, -3: ter.vibe}.get(r.net, "")
+		if snare and snare.word and o.faction == snare.faction:
+			r.hint = TRAPS_SET
 	elif r.net in [-2, -3]:
 		r.hint = _kind(_main(left)).hints[-2 - r.net]
 	return r
@@ -131,8 +137,8 @@ static func cover(b: Battle, t: Unit) -> int:
 
 
 # Concealment levels at a cell by kind: zones over it, plus the unit's own (less what it's lost to
-# exposure, deepest kinds first) or the tile's.
-static func _levels(b: Battle, c: Vector2i, t: Unit = null) -> Dictionary:
+# exposure, deepest kinds first) or the tile's hidden trap (unless `trap` is false: the observer knows).
+static func _levels(b: Battle, c: Vector2i, t: Unit = null, trap := true) -> Dictionary:
 	var lv := {}
 	for z in b.zones:
 		if c in z.levels:
@@ -147,7 +153,7 @@ static func _levels(b: Battle, c: Vector2i, t: Unit = null) -> Dictionary:
 			if lv.get(deepest, 0) <= 0:
 				break
 			lv[deepest] -= 1
-	elif b.hidden(c):
+	elif trap and b.hidden(c):
 		var ter := b.terrain(c)
 		lv[ter.kind] = maxi(lv.get(ter.kind, 0), ter.concealment)
 	return lv

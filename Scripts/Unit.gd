@@ -50,6 +50,8 @@ class Applied:
 # Skills on the hotbar by slot, null where empty (see Skill.fits_bar()). Left empty, it fills with
 # the unit's actives, then its toggled passives.
 @export var hotbar: Array[Skill] = []
+@export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
+@export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
 
 @export var max_hp := 10:
 	set(m):
@@ -215,6 +217,47 @@ func bar_place(s: Skill, i: int) -> bool:
 func bar_clear(i: int) -> void:
 	if i >= 0 and i < hotbar.size():
 		hotbar[i] = null
+
+
+func level_up() -> void:
+	level += 1
+	skill_points += 1
+
+
+# The skills on offer to it, by where they come from: its class, its species, and what it's come
+# to know.
+func sources() -> Dictionary:
+	return {
+		&"class": role.options if role else ([] as Array[Skill]),
+		&"species": race.options if race else ([] as Array[Skill]),
+		&"knowledge": lore,
+	}
+
+
+# sources(), less the skills it already has: what a skill point could unlock.
+func options() -> Dictionary:
+	var out := {}
+	var all := sources()
+	for k in all:
+		var fresh: Array[Skill] = []
+		fresh.assign(all[k].filter(func(x: Skill): return x and rank(x) == 0))
+		out[k] = fresh
+	return out
+
+
+# Spends a skill point on one of options(), learning it at rank I (onto the hotbar's first free
+# slot if it goes there). False if it can't.
+func unlock(s: Skill) -> bool:
+	if skill_points <= 0 or not options().values().any(func(list: Array): return s in list):
+		return false
+	var x := Slot.new()
+	x.skill = s
+	learned.append(x)
+	skill_points -= 1
+	var free := hotbar.find(null)
+	if s.fits_bar() and free >= 0:
+		hotbar[free] = s
+	return true
 
 
 func _fill_bar() -> void:

@@ -22,6 +22,9 @@ extends Resource
 @export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels
 @export var radius_per_rank := 0.0  # range grows with rank (Darkstone: 1 + rank)
 
+@export_group("Trap")  # cast on a cell, lays a trap there (Snare; Battle.lay())
+@export var lays: Terrain  # the trap: its concealment and dice multiplier are per rank
+
 @export_group("Stand-in")  # passive: one stat stands in for others on skills sharing a tag with it
 @export var stand_in := &""  # Arcanist Perspective: intelligence
 @export var replaces: Array[StringName] = []  # wisdom, charisma
@@ -38,6 +41,11 @@ func tier(rank: int) -> Tier:
 # Has a part its holder works by hand - it's cast, or switched on and off - so it goes on the hotbar.
 func fits_bar() -> bool:
 	return not passive or toggle
+
+
+# Aimed at a tile rather than a unit: area skills and trap skills.
+func on_tile() -> bool:
+	return zone != &"" or lays != null
 
 
 static func roman(n: int) -> String:
@@ -70,6 +78,12 @@ func describe(rank := 1) -> String:
 		lines.append("%s · %s" % [kind, summary()])
 		if zone:
 			lines.append("Lays %s concealment around a tile for %d turns" % [zone, turns])
+		if lays:
+			var bonus := " + %s" % String(lays.bonus_stat).left(3) if lays.bonus_stat else ""
+			lines.append("Sets a %s: concealment %d, %dd%d x %d%s %s" % [lays.name.to_lower(), lays.concealment * rank,
+					lays.dice.x, lays.dice.y, lays.times * rank, bonus, " ".join(lays.damage_tags.filter(func(t): return t != &"trap"))])
+			if &"trap" in tags:
+				lines.append("Allies within its charisma mod in tiles learn where it is")
 		var t := tier(rank)
 		if t:
 			var dmg := _damage(t)
