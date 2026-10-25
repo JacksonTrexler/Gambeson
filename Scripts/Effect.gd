@@ -5,10 +5,11 @@ extends Resource
 # (and stores names, not numbers, so reordering it can't corrupt saved skills).
 # Perception stats take a kind as their tag: concealment/nullify [dark], trickery [sound], recon [trap].
 # command / party: added to how far the leader's orders reach and how big its party can be.
+# regen: that fraction of max HP healed as the unit's side starts a turn; poison: that much damage.
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
-		"command", "party") var stat := "luck"
+		"command", "party", "regen", "poison") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these; empty: always
@@ -20,16 +21,39 @@ extends Resource
 @export var unless_on: Array[StringName] = []  # off while the unit stands on ground with these tags (Oceanic: water, wet)
 
 
-# "Luck -3", "Damage taken -40% (physical), above 85% HP", at a skill rank.
+const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_power": "Trap power",
+		"regen": "Heal", "poison": "Poison"}
+const HARMFUL := ["move_cost", "poison"]  # more of these is worse for whoever has them
+
+
+# "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
 func describe(rank := 1) -> String:
+	return "%s: %s" % [title(), value(rank)]
+
+
+func title() -> String:
+	return TITLES.get(stat, stat.capitalize())
+
+
+# +1 if it helps whoever has it, -1 if it hurts them.
+func helps() -> int:
+	var up := amount > 1.0 if op == "mul" else amount > 0.0
+	return (1 if up else -1) * (-1 if stat in HARMFUL else 1)
+
+
+func value(rank := 1) -> String:
 	var x := amount * (rank if per_rank else 1)
 	var text: String
 	if op == "mul":
-		text = "%s x%s" % [stat.capitalize(), Skill.num(x)]
+		text = "x" + Skill.num(x)
 	elif stat == "mitigate":
-		text = "Damage taken %s%%" % _signed(-x * 100.0)
+		text = _signed(-x * 100.0) + "%"
+	elif stat == "regen":
+		text = "%s%% each turn" % Skill.num(x * 100.0)
+	elif stat == "poison":
+		text = "%s each turn" % Skill.num(x)
 	else:
-		text = "%s %s" % [stat.capitalize(), _signed(x)]
+		text = _signed(x)
 	if per_stat:
 		text += " per %d %s" % [per, per_stat]
 	if not tags.is_empty():

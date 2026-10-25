@@ -14,6 +14,7 @@ const BASE_AP := 10.0
 const HOTBAR := 4  # hotbar slots every unit has for now; higher levels will add more
 const ENERGY_COLOR := Color("#e8c547")
 const HP_COLOR := Color("#3fbf4f")
+const SHAPE_EDGE := Color("#8a8f9c")  # outline of a shape whose side can't be told
 
 
 # A timed effect on this unit: turns left, and the rank of the skill that applied it.
@@ -103,7 +104,10 @@ var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
 var ground: Array[StringName] = []  # tags of the tile it stands on (Battle keeps this current)
+var footing: Terrain  # the tile it stands on, whose effects it has while there (Battle keeps this current)
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
+var exposed := 0  # concealment levels lost to attacking or being hit (Battle.cast); back as its side's turn starts
+var shown: Read  # how the player's side sees it (see appear()); null: as it is
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
@@ -224,6 +228,15 @@ func _fill_bar() -> void:
 		hotbar[i] = picks[i].skill
 
 
+# Passives (on) that stop working on ground with these tags (Oceanic on water).
+func paused_on(ground_tags: Array[StringName]) -> Array[Skill]:
+	var out: Array[Skill] = []
+	for s in passives:
+		if s.effects.any(func(e: Effect): return e.unless_on.any(func(t): return t in ground_tags)):
+			out.append(s)
+	return out
+
+
 # Base value (core stats only) plus every effect on that stat whose tags match the query;
 # "mul" effects then multiply the total (Stoneskin halves dexterity).
 func stat(s: StringName, tags: Array[StringName] = []) -> float:
@@ -338,8 +351,24 @@ func ap_cost(s: Skill, fund: Variant) -> float:
 
 
 func can_afford(s: Skill) -> bool:
+	return can_afford_after(s, 0.0)
+
+
+# Whether it could still pay for s after walking `steps` movement first (which takes move-only AP,
+# then general AP the skill might have needed).
+func can_afford_after(s: Skill, steps: float) -> bool:
 	var fund: Variant = funding(s)
-	return fund != null and ap_for(&"skill") >= ap_cost(s, fund) - 0.0001
+	if fund == null:
+		return false
+	var general := 0.0
+	var move_only := 0.0
+	for p in ap:
+		if p.only == &"":
+			general += p.amount
+		elif p.only == &"move":
+			move_only += p.amount
+	var left := ap_for(&"skill") - maxf(steps - move_only, 0.0)
+	return general >= maxf(steps - move_only, 0.0) - 0.0001 and left >= ap_cost(s, fund) - 0.0001
 
 
 # Pays a skill's AP and cost from its funding. False (and nothing spent) if it can't.
@@ -354,13 +383,14 @@ func pay_for(s: Skill) -> bool:
 	return true
 
 
-# Start of this unit's faction turn: fresh AP and movement.
+# Start of this unit's faction turn: fresh AP and movement, and it can slip back into hiding.
 func refresh() -> void:
 	var dex := mod(&"dexterity")
 	var wis := mod(&"wisdom")
 	# general, then dex (moving only), then wis (skills only); negative mods cut the general pool
 	ap = [AP.new(BASE_AP + mini(dex, 0) + mini(wis, 0)), AP.new(maxi(dex, 0), &"move"), AP.new(maxi(wis, 0), &"skill")]
 	moved = 0.0
+	exposed = 0
 
 
 # What refresh() hands out: every pool together.
@@ -416,8 +446,9 @@ func is_alive() -> bool:
 	return hp > 0
 
 
-# [effect, rank] for every passive (that's on) and timed effect. A timed effect the unit's own
-# passives already give doesn't count twice (Stonegift on a Stoneskin golem).
+# [effect, rank] for every passive (that's on), timed effect, and effect of the ground it stands
+# on. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
+# Stoneskin golem).
 func _effects() -> Array:
 	var out := []
 	var own := {}
@@ -428,6 +459,9 @@ func _effects() -> Array:
 	for e in timed:
 		if e not in own:
 			out.append([e, timed[e].rank])
+	if footing:
+		for e in footing.effects:
+			out.append([e, 1])
 	return out
 
 
@@ -470,32 +504,56 @@ func _layout_bars() -> void:
 		y -= pair[1] + 1.0
 
 
+# How the player's side sees it (the HUD calls this; until then it's drawn as it is). Not located:
+# not drawn at all. Located with its side unknown: a black shape with no side colours and no bars.
+# Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
+# whatever of HP, energy and reserves can be made out. null: as it is.
+func appear(r: Read) -> void:
+	shown = r
+	visible = r == null or r.located()
+	_show_side(faction if r == null else r.faction, r != null and r.faction == null)
+	_show_bars()
+
+
 func _show_bars() -> void:
-	hp_bar.max_value = max_hp
-	hp_bar.value = hp
-	energy_bar.max_value = maxi(max_energy, 1)
-	energy_bar.value = energy
+	var r := shown
 	var main := main_reserve()
+	hp_bar.visible = r == null or r.hp != null
+	energy_bar.visible = r == null or r.energy != null
+	reserve_bar.visible = main != null and energy_bar.visible
+	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
+	hp_bar.value = r.hp if r and r.hp != null else hp
+	energy_bar.max_value = maxi(max_energy, 1)
+	energy_bar.value = r.energy if r and r.energy != null else energy
 	if main:
 		reserve_bar.max_value = reserves[main]
-		reserve_bar.value = store(main)
+		reserve_bar.value = r.stores.get(main, 0) if r else store(main)
 
 
-# Stand-in art: faction primary outlines the sprite and trims the HP bar; secondary backs it.
 func _show_faction() -> void:
-	if not faction:
-		return
-	var mat := ShaderMaterial.new()
-	mat.shader = OUTLINE
-	mat.set_shader_parameter("color", faction.primary)
-	sprite.material = mat
-	hp_bar.add_theme_stylebox_override("background", _trimmed(faction.secondary))
-	hp_bar.add_theme_stylebox_override("fill", _trimmed(HP_COLOR))
+	_show_side(faction, false)
 
 
-func _trimmed(c: Color) -> StyleBoxFlat:
+# Stand-in art: the side's primary outlines the sprite and trims the HP bar; secondary backs it.
+# A shape is painted black inside a neutral outline.
+func _show_side(f: Faction, shape: bool) -> void:
+	var mat := sprite.material as ShaderMaterial
+	if not mat:
+		if not f and not shape:
+			return
+		mat = ShaderMaterial.new()
+		mat.shader = OUTLINE
+		sprite.material = mat
+	mat.set_shader_parameter("color", SHAPE_EDGE if shape else (f.primary if f else Color.TRANSPARENT))
+	mat.set_shader_parameter("shadow", shape)
+	if f:
+		hp_bar.add_theme_stylebox_override("background", _trimmed(f.secondary, f.primary))
+		hp_bar.add_theme_stylebox_override("fill", _trimmed(HP_COLOR, f.primary))
+
+
+func _trimmed(c: Color, trim: Color) -> StyleBoxFlat:
 	var box := _flat(c)
-	box.border_color = faction.primary
+	box.border_color = trim
 	box.set_border_width_all(1)
 	return box
 

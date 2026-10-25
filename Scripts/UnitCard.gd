@@ -13,10 +13,12 @@ var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 @onready var rows: VBoxContainer = $Rows
 
 
-# info: {name, sub, look: Texture2D, chips: [[text, Color]], rows: [[label, value, max, Color]]}.
-# A row whose max is null shows its value as text alone. No info: a prompt to pick someone.
+# info: {name, sub, look: Texture2D, shape: bool, chips: [[text, Color]], rows: [[label, value,
+# max, Color]]}. shape: only a black outline of it shows. A row whose max is null shows its value
+# as text alone. No info: a prompt to pick someone.
 func set_info(info: Dictionary) -> void:
 	portrait.texture = info.get("look")
+	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("shape", false) else Color.WHITE
 	title.text = info.get("name", "")
 	sub.text = info.get("sub", "Click a unit to select it")
 	for c in chips.get_children() + rows.get_children():

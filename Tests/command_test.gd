@@ -27,6 +27,24 @@ func test_reach() -> void:
 	ok(c.reach() == 3 and c.party_size() == 4, "command and party effects add on")
 
 
+func test_slots() -> void:
+	var al := unit("Alabaster")
+	var c := Command.new(b, v(1))
+	ok(c.slots() == 0 and not c.slot_open(al, 0) and c.slot_open(v(1), 3), "cha 8: allies take move orders only; the leader uses everything")
+	v(1).charisma = 12
+	ok(c.slots() == 1 and c.slot_open(al, 0) and not c.slot_open(al, 1), "cha 12 (+1): slot 1")
+	ok(c.may_use(al, strike) and not c.may_use(al, load("res://Skills/stonegift.tres")), "Strike sits in slot 1, Stonegift in 2")
+	v(1).charisma = 14
+	ok(c.slots() == 2, "cha 14 (+2): slots 1-2")
+
+
+func test_afford_after_walking() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2)})
+	ok(v(1).can_afford_after(strike, 5.0), "12 AP: walking 5 leaves 7 for Strike's 3")
+	ok(not v(1).can_afford_after(strike, 10.0), "walking 10 leaves the wis pool's 1 and 1 general")
+	ok(v(1).can_afford_after(strike, 0.0) == v(1).can_afford(strike), "standing still is plain can_afford")
+
+
 func test_tiles() -> void:
 	ok(Command.tiles(Vector2i(0, 0), Vector2i(1, 1)) == 1, "a diagonal step is 1 tile")
 	ok(Command.tiles(Vector2i(0, 0), Vector2i(2, 1)) == 2 and Command.tiles(Vector2i(0, 0), Vector2i(2, 2)) == 3, "(2,1) is 2 tiles, (2,2) is 3")
@@ -106,11 +124,20 @@ func test_toggle() -> void:
 
 func test_text() -> void:
 	ok(Skill.roman(1) == "I" and Skill.roman(4) == "IV" and Skill.roman(9) == "IX" and Skill.roman(14) == "XIV", "numerals")
-	ok("Deals 1d6 + wis" in hex.describe(3) and "Luck -3 for 3 turns" in hex.describe(3), "Hex III: d6 + wis, luck -3")
+	ok("Deals 1d6 + wis" in hex.describe(3) and "Luck: -3 for 3 turns" in hex.describe(3), "Hex III: d6 + wis, luck -3")
 	ok("Deals 1, unblockable" in hex.describe(1), "Hex I: 1 direct")
 	ok("3 hits of 1 + str" in strike.describe(3) and "hits" not in strike.describe(1), "Strike III")
-	ok("Damage taken -40%, above 85% HP" in stoneskin.describe() and "Dexterity x0.5" in stoneskin.describe(), "Stoneskin")
+	ok("Damage taken: -40%, above 85% HP" in stoneskin.describe() and "Dexterity: x0.5" in stoneskin.describe(), "Stoneskin")
 	ok(hex.summary() == "4 AP · 2 cost · range 5" and arcanist.summary() == "Toggle" and favour.summary() == "Always on", "one-liners")
+
+
+func test_tile_reads() -> void:
+	var bramble := b.read(v(1), Vector2i(2, 2))
+	ok(bramble.cost == 1 and bramble.exit == 1 and same(bramble.tags, [&"bramble", &"sticky"]), "a seen tile: costs and what the ground is")
+	var shrine := b.read(v(1), Vector2i(5, 2))
+	ok(same(shrine.tags, [&"shrine"]) and shrine.worth == null, "beneficial or detrimental takes a closer look than recon 0")
+	var trap := b.read(v(1), Vector2i(5, 4))
+	ok(trap.cost == null and trap.exit == null and trap.tags.is_empty() and trap.hint == "disturbed earth?", "a hidden trap gives away only a hint")
 
 
 func test_expected_walk() -> void:

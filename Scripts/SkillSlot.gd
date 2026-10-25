@@ -25,6 +25,7 @@ var armed := false  # waiting for a target
 var on := false  # a toggled passive that's switched on
 var usable := true  # the unit can use it now (takes orders, can pay)
 var editable := true  # skills can be dragged in and out
+var locked := false  # out of reach of the leader's orders (Command.slots())
 var _dragging := false
 
 
@@ -53,7 +54,8 @@ func _init() -> void:
 	gui_input.connect(_on_gui_input)
 
 
-func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: bool, can_edit: bool) -> void:
+func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: bool, can_edit: bool,
+		is_locked := false) -> void:
 	index = i
 	skill = s
 	rank = r
@@ -61,6 +63,7 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	on = is_on
 	usable = can_use
 	editable = can_edit
+	locked = is_locked
 	tooltip_text = ("[%s] %s %s\n%s" % [_key(), s.name, Skill.roman(r), s.describe(r)]) if s else \
 			"[%s] Empty - drag a skill here from the spellbook (B)" % _key()
 	queue_redraw()
@@ -71,7 +74,10 @@ func _draw() -> void:
 	var fs := 6
 	var mid := (size.y - font.get_height(fs)) / 2.0 + font.get_ascent(fs)
 	draw_rect(Rect2(2, 2, 9, size.y - 4), Color(1, 1, 1, 0.07))
-	draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, Color(1, 1, 1, 0.55))
+	if locked:
+		_lock(Vector2(6.5, size.y / 2.0 + 1.0))
+	else:
+		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, Color(1, 1, 1, 0.55))
 	if not skill:
 		draw_string(font, Vector2(15, mid), "empty", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
 		return
@@ -89,6 +95,13 @@ func _draw() -> void:
 			Color(0.92, 0.93, 0.96, dim))
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
+
+
+# A small padlock centred on at.
+func _lock(at: Vector2) -> void:
+	var col := Color(1, 1, 1, 0.45)
+	draw_arc(at + Vector2(0, -1.5), 1.6, PI, TAU, 6, col, 1.0)
+	draw_rect(Rect2(at + Vector2(-2.5, -1.5), Vector2(5, 4)), col)
 
 
 func _key() -> String:

@@ -37,6 +37,8 @@ var turn: Faction:
 		for u in members(v):
 			u.refresh()
 		turn_changed.emit(was, v)
+		for u in members(v):  # after the signal: poison can end a side, and with it this turn
+			_mend(u)
 
 var order: Array[Faction] = []  # turn order, highest initiative first
 var rolls: Dictionary[Faction, Array] = {}  # this battle's initiative d20s, per faction
@@ -93,7 +95,8 @@ func move(u: Unit, c: Vector2i) -> bool:
 	u.cell = c
 	units[c] = u
 	u.position = map.map_to_local(c)
-	u.ground = terrain(c).tags
+	u.footing = terrain(c)
+	u.ground = u.footing.tags
 	return true
 
 
@@ -235,8 +238,34 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 				target.damage(power)
 			else:
 				target.hit(power, skill.tags, caster)
+	if skill.hostile:
+		_expose(target)
+		_expose(caster)
 	used.emit(caster, skill, target, before - target.hp)
 	return true
+
+
+# A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
+# Ctrl-click): whoever is there takes it as an ordinary cast. If it doesn't land - nobody there, or
+# not quite in reach of what is - it's spent on thin air, as long as the tile itself was in reach
+# of a Medium target. Returns &"hit", &"miss", or &"" when it couldn't be tried at all.
+func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
+	if not _acting(caster) or skill not in caster.actives or not skill.hostile or skill.zone != &"" or not on_map(c):
+		return &""
+	var t := unit_at(c)
+	if t and t != caster and cast(caster, skill, t):
+		return &"hit"
+	if Vector2(caster.cell).distance_to(Vector2(c)) > skill_range(caster, skill) + 0.0001 or not caster.pay_for(skill):
+		return &""
+	used.emit(caster, skill, c, 0)
+	return &"miss"
+
+
+# Hitting a unit, or attacking, gives away where it is: a hidden one loses a level of concealment
+# until its side's next turn starts.
+func _expose(u: Unit) -> void:
+	if Perception.cover(self, u) > 0:
+		u.exposed += 1
 
 
 # Area skills, cast on a cell (Darkstone): within area_reach(), lays its zone kind of concealment
@@ -318,6 +347,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		u.moved += total_cost
 		u.pay(total_cost, &"move")
 		move(u, passed[-1])
+		for c in passed:
+			for e in terrain(c).afflicts:
+				u.afflict(e, terrain(c).turns)
 		traveled.emit(u, from, passed)
 		if terrain(u.cell).is_trap():
 			spring(u.cell, u)
@@ -429,6 +461,17 @@ func terrain(c: Vector2i) -> Terrain:
 
 
 # --- Turns
+
+# As a unit's side starts its turn: regen heals that fraction of its max HP (rounded by its luck),
+# then poison hurts.
+func _mend(u: Unit) -> void:
+	var regen := u.stat(&"regen")
+	if regen > 0.0:
+		u.heal(Luck.settle(regen * u.max_hp, u.luck, true))
+	var poison := u.stat(&"poison")
+	if poison > 0.0 and u.is_alive():
+		u.damage(Luck.settle(poison, u.luck, false))
+
 
 func end_turn() -> void:
 	if phase != Phase.TURNS:

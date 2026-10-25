@@ -197,7 +197,7 @@ layout_mode = 2
 theme_type_variation = &"Muted"
 theme_override_colors/font_color = Color(0.42, 0.44, 0.5, 1)
 theme_override_font_sizes/font_size = 5
-text = "1-4 skills · B spellbook · H hold · P party · Tab next unit · Esc back"
+text = "Click foe: attack · Ctrl-click: strike tile · Shift-click: inspect · 1-4 skills · B spellbook · H hold · P party · Tab next · Esc back"
 autowrap_mode = 3
 
 [node name="EndTurn" type="Button" parent="Root/Right/Column"]
@@ -353,6 +353,84 @@ layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 0
 text = "Main menu"
+
+[node name="TilePane" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(104, 0)
+layout_mode = 0
+offset_right = 104.0
+offset_bottom = 30.0
+mouse_filter = 2
+
+[node name="Column" type="VBoxContainer" parent="Root/TilePane"]
+layout_mode = 2
+theme_override_constants/separation = 2
+mouse_filter = 2
+
+[node name="Head" type="HBoxContainer" parent="Root/TilePane/Column"]
+layout_mode = 2
+theme_override_constants/separation = 3
+mouse_filter = 2
+
+[node name="TileMark" type="ColorRect" parent="Root/TilePane/Column/Head"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(2, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TileIcon" type="TextureRect" parent="Root/TilePane/Column/Head"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Names" type="VBoxContainer" parent="Root/TilePane/Column/Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+alignment = 1
+mouse_filter = 2
+
+[node name="TileName" type="Label" parent="Root/TilePane/Column/Head/Names"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Title"
+
+[node name="TileCost" type="Label" parent="Root/TilePane/Column/Head/Names"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+
+[node name="EffectsTitle" type="Label" parent="Root/TilePane/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+theme_override_font_sizes/font_size = 5
+text = "EFFECTS"
+
+[node name="TileScroll" type="ScrollContainer" parent="Root/TilePane/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 3
+
+[node name="TileLines" type="VBoxContainer" parent="Root/TilePane/Column/TileScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="TileNotes" type="VBoxContainer" parent="Root/TilePane/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
 
 [node name="Tip" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true

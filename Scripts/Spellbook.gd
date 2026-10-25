@@ -18,13 +18,14 @@ func _ready() -> void:
 	%BookClose.pressed.connect(hide)
 
 
-func open(u: Unit, title: String, can_edit: bool, can_switch: bool) -> void:
+# can_switch(skill): whether that toggled passive may be switched right now.
+func open(u: Unit, title: String, can_edit: bool, can_switch: Callable) -> void:
 	unit = u
 	fill(title, can_edit, can_switch)
 	show()
 
 
-func fill(title: String, can_edit: bool, can_switch: bool) -> void:
+func fill(title: String, can_edit: bool, can_switch: Callable) -> void:
 	heading.text = "Spellbook · " + title
 	for c in actives.get_children() + passives.get_children():
 		c.get_parent().remove_child(c)
@@ -33,7 +34,7 @@ func fill(title: String, can_edit: bool, can_switch: bool) -> void:
 	entries.sort_custom(func(a: Slot, b: Slot) -> bool:
 		return a.rank > b.rank or (a.rank == b.rank and a.skill.name < b.skill.name))
 	for x in entries:
-		var e := SkillEntry.new(x.skill, x.rank, x.on, can_edit, can_switch)
+		var e := SkillEntry.new(x.skill, x.rank, x.on, can_edit, can_switch.call(x.skill))
 		e.switched.connect(switched.emit)
 		(passives if x.skill.passive else actives).add_child(e)
 	for list in [actives, passives]:

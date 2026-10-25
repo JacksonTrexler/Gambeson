@@ -89,7 +89,11 @@ static func tile(b: Battle, o: Unit, c: Vector2i) -> Read:
 	if r.net >= 0:
 		r.name = ter.name
 		r.cost = ter.enter
+		r.exit = ter.exit
 		r.trap = ter.is_trap()
+		r.tags.assign(ter.tags.filter(func(t): return t not in [&"beneficial", &"detrimental"]))  # those: worth, at 1
+		r.effects.assign(ter.effects)
+		r.afflicts.assign(ter.afflicts)
 	if r.net >= 1:
 		r.worth = ter.worth()
 	var shrouded := b.zones.any(func(z): return c in z.levels)
@@ -120,7 +124,13 @@ static func _kind(k: StringName) -> Dictionary:
 	return KINDS.get(k, KINDS[&""])
 
 
-# Concealment levels at a cell by kind: zones over it, plus the unit's own or the tile's.
+# How much concealment a unit has where it stands, before anyone's nullify (exposure taken off).
+static func cover(b: Battle, t: Unit) -> int:
+	return _levels(b, t.cell, t).values().reduce(func(sum, x): return sum + x, 0)
+
+
+# Concealment levels at a cell by kind: zones over it, plus the unit's own (less what it's lost to
+# exposure, deepest kinds first) or the tile's.
 static func _levels(b: Battle, c: Vector2i, t: Unit = null) -> Dictionary:
 	var lv := {}
 	for z in b.zones:
@@ -131,6 +141,11 @@ static func _levels(b: Battle, c: Vector2i, t: Unit = null) -> Dictionary:
 		for k in KINDS:
 			var own := roundi(plain if k == &"" else t.stat(&"concealment", [k]) - plain)
 			lv[k] = maxi(lv.get(k, 0), own)
+		for i in t.exposed:
+			var deepest := _main(lv)
+			if lv.get(deepest, 0) <= 0:
+				break
+			lv[deepest] -= 1
 	elif b.hidden(c):
 		var ter := b.terrain(c)
 		lv[ter.kind] = maxi(lv.get(ter.kind, 0), ter.concealment)

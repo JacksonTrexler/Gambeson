@@ -52,7 +52,7 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 		b.focus_mode = FOCUS_NONE
 		b.custom_minimum_size.x = 20
 		b.size_flags_vertical = SIZE_SHRINK_CENTER
-		b.tooltip_text = "Switch %s on or off" % s.name if can_switch else "Only on your turn, for units taking orders"
+		b.tooltip_text = "Switch %s on or off" % s.name if can_switch else "Only on your turn, for units taking orders, from a slot they'll use"
 		b.pressed.connect(func(): switched.emit(skill))
 		row.add_child(b)
 

@@ -3,7 +3,8 @@ extends Node2D
 
 # What the HUD marks on the battlefield, drawn between the map and the units: the hovered tile, the
 # selected unit, the leader and its party, allies taking orders and how far orders reach, where the
-# selected unit can walk and the move being planned, and an armed skill's reach and targets.
+# selected unit can walk and the move being planned, the foe a click would attack, an armed skill's
+# reach and targets, and tiles where something is only suspected.
 # Floating numbers go on `top`, above the units; walking is animated here too.
 
 const TILE := 32.0
@@ -13,6 +14,8 @@ const MOVE := Color("#7cc4ff")
 const FOE := Color("#ff6b5e")
 const FRIEND := Color("#6fdc8c")
 const ZONE := Color("#5b3f9e")
+const DUBIOUS := Color("#b39ddb")
+const SHADE := {&"safe": 0.16, &"unsure": 0.26, &"bad": 0.45}  # reach shading strength by ground
 
 var hud: HUD
 var top: Node2D
@@ -32,6 +35,10 @@ func _draw() -> void:
 	var sel := hud.selected
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
 	var mine := hud.my_turn()
+	for c in hud.dubious:
+		draw_rect(_rect(c, 2), Color(DUBIOUS, 0.12))
+		draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6, 10,
+				Color(DUBIOUS, 0.25 + 0.2 * pulse))
 	if hud.hover != HUD.NOWHERE:
 		draw_rect(_rect(hud.hover, 0.5), Color(1, 1, 1, 0.3), false, 1.0)
 	if mine:
@@ -46,6 +53,9 @@ func _draw() -> void:
 		_draw_reach(sel)
 	if not hud.plan.is_empty():
 		_draw_plan(sel)
+	if hud.charge != HUD.NOWHERE:
+		_brackets(_rect(hud.charge, 1.5), Color(FOE, pulse), 6.0)
+		draw_rect(_rect(hud.charge, 1.5), Color(FOE, 0.15))
 	if sel and hud.armed:
 		_draw_targeting(sel, hud.armed, pulse)
 	for u in cmd.party:
@@ -56,13 +66,15 @@ func _draw() -> void:
 		_brackets(_rect(sel.cell, 0.5), Color(GOLD if hud.known(sel) else Color.WHITE, pulse), 7.0)
 
 
-# Tiles the selected unit expects to reach, shaded, with a line around the area.
+# Tiles the selected unit expects to reach, shaded by how the ground is judged (HUD.ground()),
+# with a line around the area.
 func _draw_reach(sel: Unit) -> void:
 	var inside := func(c: Vector2i) -> bool: return c in hud.reach or c == sel.cell
 	var sides := [[Vector2i.UP, 0, 1], [Vector2i.RIGHT, 1, 2], [Vector2i.DOWN, 2, 3], [Vector2i.LEFT, 3, 0]]
 	for c in hud.reach:
 		var r := _rect(c)
-		draw_rect(r.grow(-1), Color(MOVE, 0.16))
+		var kind: StringName = hud.grounds.get(c, &"safe")
+		draw_rect(r.grow(-1), Color(HUD.GROUND[kind], SHADE[kind]))
 		var corners := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
 		for s in sides:
 			if not inside.call(c + s[0]):
@@ -97,7 +109,7 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 				draw_rect(_rect(at, 1), Color(ZONE, 0.18 + 0.12 * levels[at]))
 		return
 	_ring(_center(sel.cell), b.skill_range(sel, s) * TILE, Color(col, 0.55), true)
-	for u in hud.targets():
+	for u in hud.marked:
 		_brackets(_rect(u.cell, 1.5), Color(col, pulse), 6.0)
 		if u.cell == hud.hover:
 			draw_rect(_rect(u.cell, 1.5), Color(col, 0.18))

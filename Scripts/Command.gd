@@ -5,7 +5,9 @@ extends RefCounted
 # orders to allies within reach() tiles of it: its charisma mod, at least 1. It can also gather a
 # party of up to party_size() allies (the same mod, at least 1), who hear its orders from
 # PARTY_REACH times as far. The command and party stats (effects) add to the reach and party size.
-# Allies without an order this turn act on their own when it ends.
+# A commanded ally uses only the first slots() of its hotbar - the leader's charisma mod - so at +0
+# or below it can only be told to move. Allies without an order this turn act on their own when it
+# ends.
 
 const PARTY_REACH := 2.0
 
@@ -39,6 +41,26 @@ func party_reach() -> float:
 
 func party_size() -> int:
 	return maxi(leader.mod(&"charisma") + roundi(leader.stat(&"party")), 1)
+
+
+# How many hotbar slots, from the first, a commanded ally will use.
+func slots() -> int:
+	return maxi(leader.mod(&"charisma"), 0)
+
+
+# Whether u may be told to use hotbar slot i: the leader uses all of its own.
+func slot_open(u: Unit, i: int) -> bool:
+	return u == leader or i < slots()
+
+
+# Whether u may be told to use (or switch) s: it must sit in a slot that's open to orders.
+func may_use(u: Unit, s: Skill) -> bool:
+	if u == leader:
+		return true
+	for i in mini(slots(), u.hotbar.size()):
+		if u.hotbar[i] == s:
+			return true
+	return false
 
 
 # The leader and its party: the units that are the player's own.
