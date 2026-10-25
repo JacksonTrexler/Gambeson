@@ -5,7 +5,7 @@ extends Node2D
 # selected unit, the leader and its party, allies taking orders and how far orders reach, where the
 # selected unit can walk and the move being planned, the foe a click would attack, an armed skill's
 # reach and targets, and tiles where something is only suspected.
-# Floating numbers go on `top`, above the units; walking is animated here too.
+# Floating numbers and sleepers' "zZ" go on `top`, above the units; walking is animated here too.
 
 const TILE := 32.0
 const STEP_TIME := 0.07  # seconds per tile when a unit walks
@@ -25,6 +25,8 @@ var _walks: Dictionary[Unit, Tween] = {}
 
 func _process(_delta: float) -> void:
 	queue_redraw()  # selection pulses
+	if top:
+		top.queue_redraw()
 
 
 func _draw() -> void:
@@ -64,6 +66,7 @@ func _draw() -> void:
 		_badge(cmd.leader.cell, true)
 	if sel and sel.is_alive():
 		_brackets(_rect(sel.cell, 0.5), Color(GOLD if hud.known(sel) else Color.WHITE, pulse), 7.0)
+
 
 
 # Tiles the selected unit expects to reach, shaded by how the ground is judged (HUD.ground()),
@@ -140,6 +143,19 @@ func _ring(at: Vector2, radius: float, col: Color, dashed: bool) -> void:
 	var n := maxi(int(TAU * radius / 5.0), 8)
 	for i in range(0, n, 2):
 		draw_arc(at, radius, TAU * i / n, TAU * (i + 1) / n, 3, col, 1.0)
+
+
+# Drawn on `top`, above the units: a "zZ" by the bars of each unit seen to be asleep.
+func draw_top() -> void:
+	if not hud:
+		return
+	var font := ThemeDB.fallback_font
+	var col := Color(HUD.SLEEP, 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 3.0))
+	for u in hud.sleepers:
+		var at := u.position + Vector2(13, -TILE / 2.0 + 4)
+		for z in [["z", Vector2.ZERO, 6], ["Z", Vector2(3, -4), 8]]:
+			top.draw_string_outline(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], 2, Color(0, 0, 0, 0.7))
+			top.draw_string(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], col)
 
 
 # A diamond in the tile's top-left corner: filled for the leader, hollow for party members.

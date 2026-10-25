@@ -17,8 +17,9 @@ extends Resource
 
 @export_group("Effects")
 @export var effects: Array[Effect] = []  # on whoever stands here (Shrine: Heal, regen 0.1)
-@export var afflicts: Array[Effect] = []  # put on whoever steps here, for `turns` of their turns (Poison)
-@export var turns := 0
+@export var afflicts: Array[Effect] = []  # put on whoever steps here, for `turns` of their turns
+@export var at_end: Array[Effect] = []  # put on whoever ends its side's turn here, likewise (Magic Stew)
+@export var turns := 0  # unless an effect sets its own; counted from the unit's next turn
 
 @export_group("Trap")  # sprung when a unit steps on it
 @export var dice := Vector2i.ZERO  # damage

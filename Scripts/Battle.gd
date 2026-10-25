@@ -225,7 +225,7 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	var r := caster.rank(skill)
 	var before := target.hp
 	for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
-		target.afflict(e, skill.turns, r)
+		target.afflict(e, e.turns if e.turns else skill.turns, r)
 	var t := skill.tier(r)
 	if t:
 		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
@@ -347,9 +347,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		u.moved += total_cost
 		u.pay(total_cost, &"move")
 		move(u, passed[-1])
-		for c in passed:
+		for c in passed:  # stepping in happens on the unit's own turn, which isn't one of those counted
 			for e in terrain(c).afflicts:
-				u.afflict(e, terrain(c).turns)
+				u.afflict(e, (e.turns if e.turns else terrain(c).turns) + 1)
 		traveled.emit(u, from, passed)
 		if terrain(u.cell).is_trap():
 			spring(u.cell, u)
@@ -462,21 +462,30 @@ func terrain(c: Vector2i) -> Terrain:
 
 # --- Turns
 
-# As a unit's side starts its turn: regen heals that fraction of its max HP (rounded by its luck),
-# then poison hurts.
+# As a unit's side starts its turn: regen heals that fraction of its max HP, then poison takes that
+# fraction (each rounded by its luck).
 func _mend(u: Unit) -> void:
 	var regen := u.stat(&"regen")
 	if regen > 0.0:
 		u.heal(Luck.settle(regen * u.max_hp, u.luck, true))
 	var poison := u.stat(&"poison")
 	if poison > 0.0 and u.is_alive():
-		u.damage(Luck.settle(poison, u.luck, false))
+		u.damage(Luck.settle(poison * u.max_hp, u.luck, false))
 
 
+# The turn passes. Ground puts its turn-end effects on whoever is on it (Magic Stew); a sleeper
+# with an ally beside it wakes up; then timed effects count down and zones wear off.
 func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
-	for u in members(turn):
+	var side := members(turn)
+	for u in side:
+		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
+			u.afflict(e, (e.turns if e.turns else u.footing.turns) + 1)  # + 1: the tick below takes this turn
+	for u in side:
+		if u.asleep() and side.any(func(o: Unit): return o != u and next_to(o.cell, u.cell)):
+			u.wake()
+	for u in side:
 		u.tick()
 	for z in zones.filter(func(x: Zone): return x.faction == turn):
 		z.turns -= 1
@@ -485,7 +494,12 @@ func end_turn() -> void:
 
 
 func _acting(u: Unit) -> bool:
-	return phase == Phase.TURNS and u.faction == turn and u.is_alive()
+	return phase == Phase.TURNS and u.faction == turn and u.is_alive() and not u.asleep()
+
+
+# Touching, diagonals included.
+static func next_to(a: Vector2i, b: Vector2i) -> bool:
+	return a != b and absi(a.x - b.x) <= 1 and absi(a.y - b.y) <= 1
 
 
 func _on_died(u: Unit) -> void:

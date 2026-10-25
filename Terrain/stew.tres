@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="Terrain" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Terrain.gd" id="1_terrain"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_heal"]
+script = ExtResource("2_effect")
+stat = "regen"
+amount = 0.15
+
+[sub_resource type="Resource" id="Effect_poison"]
+script = ExtResource("2_effect")
+stat = "poison"
+amount = 0.05
+turns = 3
+
+[sub_resource type="Resource" id="Effect_sleep"]
+script = ExtResource("2_effect")
+stat = "sleep"
+amount = 1.0
+turns = 1
+
+[sub_resource type="Resource" id="Effect_haste_ap"]
+script = ExtResource("2_effect")
+stat = "ap"
+amount = 0.1
+name = "Haste"
+turns = 3
+
+[sub_resource type="Resource" id="Effect_haste_dex"]
+script = ExtResource("2_effect")
+stat = "dex_ap"
+amount = 0.2
+name = "Haste"
+turns = 3
+
+[resource]
+script = ExtResource("1_terrain")
+name = "Magic Stew"
+enter = 4
+tags = Array[StringName]([&"stew", &"moist"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_heal")])
+at_end = Array[ExtResource("2_effect")]([SubResource("Effect_poison"), SubResource("Effect_sleep"), SubResource("Effect_haste_ap"), SubResource("Effect_haste_dex")])

@@ -7,19 +7,19 @@
 script = ExtResource("2_effect")
 stat = "strength"
 amount = -4.0
-unless_on = Array[StringName]([&"water", &"wet"])
+unless_on = Array[StringName]([&"water", &"wet", &"moist"])
 
 [sub_resource type="Resource" id="Effect_dex"]
 script = ExtResource("2_effect")
 stat = "dexterity"
 amount = -4.0
-unless_on = Array[StringName]([&"water", &"wet"])
+unless_on = Array[StringName]([&"water", &"wet", &"moist"])
 
 [sub_resource type="Resource" id="Effect_con"]
 script = ExtResource("2_effect")
 stat = "constitution"
 amount = -4.0
-unless_on = Array[StringName]([&"water", &"wet"])
+unless_on = Array[StringName]([&"water", &"wet", &"moist"])
 
 [resource]
 script = ExtResource("1_script")

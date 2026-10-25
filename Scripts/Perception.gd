@@ -94,6 +94,7 @@ static func tile(b: Battle, o: Unit, c: Vector2i) -> Read:
 		r.tags.assign(ter.tags.filter(func(t): return t not in [&"beneficial", &"detrimental"]))  # those: worth, at 1
 		r.effects.assign(ter.effects)
 		r.afflicts.assign(ter.afflicts)
+		r.at_end.assign(ter.at_end)
 	if r.net >= 1:
 		r.worth = ter.worth()
 	var shrouded := b.zones.any(func(z): return c in z.levels)

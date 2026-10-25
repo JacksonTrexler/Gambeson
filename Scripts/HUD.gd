@@ -24,11 +24,12 @@ const FOE := Color("#ff6b5e")
 const FRIEND := Color("#6fdc8c")
 const AP_COLOR := Color("#7cc4ff")
 const MOVE_COLOR := Color("#b8c0cc")
+const SLEEP := Color("#9db4ff")
 const GROUND := {&"safe": Color("#7cc4ff"), &"unsure": Color("#f2c94c"), &"bad": Color("#a32424")}
 const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it scrolls
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
 # (slowest in the middle), hold at the bottom, fade out, and round again from the top.
-const SCROLL_HOLD := 3.0  # seconds
+const SCROLL_HOLD := 2.0  # seconds
 const SCROLL_FADE := 0.35
 const SCROLL_SPEED := 10.0  # average px a second while scrolling
 const SCROLL_EASE := 0.7  # how much faster than average the ends go, and slower the middle
@@ -48,6 +49,7 @@ var reach: Dictionary[Vector2i, float] = {}  # tiles the selected unit expects t
 var charge := NOWHERE  # the hovered foe (or tile) a click would walk up to and attack
 var marked: Array[Unit] = []  # what the armed skill could be used on
 var dubious: Dictionary[Vector2i, String] = {}  # tiles where something is only suspected, and the hint
+var sleepers: Array[Unit] = []  # units the player can see are asleep, as of the last refresh
 var grounds: Dictionary[Vector2i, StringName] = {}  # ground() for every tile, as of the last refresh
 var _icons := {}  # [source id, atlas coords] -> AtlasTexture, for the tile pane
 var _pane_list := ""  # what the pane's effect list last showed (a new one scrolls from the start)
@@ -71,7 +73,6 @@ var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 @onready var order_list: VBoxContainer = %Order
 @onready var party_title: Label = %PartyTitle
 @onready var roster: VBoxContainer = %Roster
-@onready var reach_label: Label = %Reach
 @onready var log_box: RichTextLabel = %Log
 @onready var end_button: Button = %EndTurn
 @onready var banner: Label = %Banner
@@ -94,6 +95,7 @@ func _ready() -> void:
 	battle.move_child(overlay, battle.map.get_index() + 1)
 	overlay.top = Node2D.new()
 	overlay.top.z_index = 10
+	overlay.top.draw.connect(overlay.draw_top)
 	battle.add_child(overlay.top)
 	battle.turn_changed.connect(_on_turn, CONNECT_DEFERRED)
 	battle.phase_changed.connect(_on_phase, CONNECT_DEFERRED)
@@ -128,6 +130,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	if is_instance_valid(overlay):
+		overlay.hud = null  # it may draw once more before it goes
 		overlay.top.queue_free()
 		overlay.queue_free()
 
@@ -397,6 +400,11 @@ func ground(c: Vector2i) -> StringName:
 func unit_seen(c: Vector2i) -> Unit:
 	var u := battle.unit_at(c)
 	return u if u and (known(u) or view(u).located()) else null
+
+
+# Asleep, as far as the player can tell (another side's sleep shows only to a close look).
+func sleeping(u: Unit) -> bool:
+	return u.asleep() if known(u) else view(u).effects.any(func(e: Effect): return e.stat == "sleep")
 
 
 # A unit the player would attack by clicking it: not on their side, nor reading as a friend.
@@ -674,6 +682,7 @@ func _refresh() -> void:
 	for c in battle.map.get_used_cells():
 		grounds[c] = ground(c)
 	marked = targets()
+	sleepers.assign(battle.units.values().filter(func(u: Unit): return unit_seen(u.cell) == u and sleeping(u)))
 	card.set_info(_info(selected) if selected else {})
 	_refresh_bar()
 	_refresh_buttons()
@@ -734,8 +743,9 @@ func _show_pane() -> void:
 	_place_pane()
 
 
-# [text, colour] for each thing the tile is known to do: beneficial or detrimental, a trap, effects
-# on whoever stands or steps there, sticky ground, and what the ground is.
+# [text, colour] for each thing the tile is known to do: beneficial or detrimental, a trap,
+# conditions on whoever stands there, steps in or ends a turn there (Effect.conditions: Haste's two
+# effects are one line), sticky ground, and what whoever stands there is (Moist, Wet).
 func _tile_effects(c: Vector2i, r: Read) -> Array:
 	var out := []
 	if r.worth != null and r.worth != 0:
@@ -743,16 +753,21 @@ func _tile_effects(c: Vector2i, r: Read) -> Array:
 	if r.trap == true:
 		var t := battle.terrain(c)
 		out.append(["Trap: %dd%d %s" % [t.dice.x, t.dice.y, " ".join(t.damage_tags.filter(func(x): return x != &"trap"))], FOE])
-	for e in r.effects:
-		out.append([e.describe(), FRIEND if e.helps() > 0 else FOE])
-	for e in r.afflicts:
-		out.append(["%s, %d turns, on stepping in" % [e.describe(), battle.terrain(c).turns], FRIEND if e.helps() > 0 else FOE])
+	for group in Effect.conditions(r.effects):
+		out.append([Effect.summarize(group), _tone(group)])
+	for when in [[r.afflicts, "on entering"], [r.at_end, "at turn end"]]:
+		for group in Effect.conditions(when[0]):
+			var n: int = group[0].turns if group[0].turns else battle.terrain(c).turns
+			out.append(["%s · %d turn%s · %s" % [Effect.summarize(group), n, "" if n == 1 else "s", when[1]], _tone(group)])
 	if r.exit:
 		out.append(["Sticky: +%d to leave" % r.exit, MUTED])
-	var kinds := r.tags.filter(func(t): return t not in [&"trap", &"sticky"] and String(t) not in r.name.to_lower())
-	if not kinds.is_empty():
-		out.append(["Ground: " + ", ".join(kinds), MUTED])
+	for t in r.tags.filter(func(t): return t not in [&"trap", &"sticky"] and String(t) not in r.name.to_lower()):
+		out.append([String(t).capitalize(), MUTED])
 	return out
+
+
+func _tone(group: Array[Effect]) -> Color:
+	return FRIEND if group.reduce(func(sum: int, e: Effect): return sum + e.helps(), 0) > 0 else FOE
 
 
 # [text, colour] for what's uncertain about the tile, and how it bears on the selected unit.
@@ -935,6 +950,8 @@ func _hint() -> String:
 		return "Click a target for %s. Esc or right-click cancels." % armed.name
 	if _orders(u):
 		return "Click a tile to move there, a foe to attack it with slot 1. Keys 1-%d use skills." % u.bar_size()
+	if known(u) and u.asleep():
+		return "Asleep. An ally ending the turn beside it wakes it for the next one."
 	if known(u):
 		return "Too far to hear you. Bring %s within %s." % [_name(command.leader),
 				_tiles(command.party_reach() if u in command.party else float(command.reach()))]
@@ -959,7 +976,7 @@ func _refresh_side() -> void:
 		l.tooltip_text = "Initiative: the side's d20s plus its best bonus"
 		l.mouse_filter = Control.MOUSE_FILTER_PASS
 		order_list.add_child(l)
-	party_title.text = "PARTY  %d/%d" % [command.party.size(), command.party_size()]
+	party_title.text = "PARTY  %d/%d  (?)" % [command.party.size(), command.party_size()]
 	_clear(roster)
 	for u in [command.leader] + command.party:
 		var b := Button.new()
@@ -986,13 +1003,29 @@ func _refresh_side() -> void:
 		hp.offset_top = -3
 		hp.offset_bottom = -2
 		roster.add_child(b)
-	if command.party.size() < command.party_size():
+	var help := _party_help()
+	party_title.tooltip_text = help
+	for i in command.party_size() - command.party.size():
 		var l := Label.new()
 		l.theme_type_variation = &"Muted"
-		l.text = "Select an ally nearby and press P to invite it."
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.text = "  open slot"
+		l.add_theme_color_override(&"font_color", Color(MUTED, 0.5))
+		l.mouse_filter = Control.MOUSE_FILTER_PASS
+		l.tooltip_text = help
 		roster.add_child(l)
-	reach_label.text = "Orders reach %s; party %s." % [_tiles(command.reach()), Skill.num(command.party_reach())]
+
+
+# How the party and orders work, for the party header's tooltip.
+func _party_help() -> String:
+	var leader := _name(command.leader)
+	var n := command.slots()
+	return "\n".join([
+		"Your party: up to %d %s (%s's charisma)." % [command.party_size(), "ally" if command.party_size() == 1 else "allies", leader],
+		"Select an ally within %s of %s and press P to invite it; P again lets it go." % [_tiles(command.reach()), leader],
+		"Orders reach allies within %s of %s; party members hear them from %s." % [_tiles(command.reach()), leader, _tiles(command.party_reach())],
+		"Commanded allies use hotbar slot%s 1%s." % ["" if n == 1 else "s", "" if n == 1 else "-%d" % n] if n > 0
+				else "Commanded allies only take move orders.",
+	])
 
 
 static func _sentence(s: String) -> String:
@@ -1022,7 +1055,9 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["Party", GOLD])
 		else:
 			chips.append(["Ally", shade(u.faction.primary)])
-		if battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS and u != command.leader:
+		if u.asleep():
+			chips.append(["Asleep", SLEEP])
+		elif battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS and u != command.leader:
 			if u in command.ordered:
 				chips.append(["Ordered", MUTED])
 			elif command.can_order(u):
@@ -1057,6 +1092,8 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["Friendly", FRIEND])
 		else:
 			chips.append(["Enemy", FOE])
+		if sleeping(u):
+			chips.append(["Asleep", SLEEP])
 		if r.vibe:
 			chips.append([r.vibe, MUTED])
 		var rows := []
@@ -1195,6 +1232,8 @@ func _why_no_orders(u: Unit) -> String:
 		return "Wait for your turn"
 	if not u.is_alive():
 		return "Fallen"
+	if u.asleep():
+		return "Asleep: an ally ending the turn beside it wakes it"
 	return "Too far: bring %s within %s" % [_name(command.leader),
 			_tiles(command.party_reach() if u in command.party else float(command.reach()))]
 

@@ -385,17 +385,25 @@ func pay_for(s: Skill) -> bool:
 
 # Start of this unit's faction turn: fresh AP and movement, and it can slip back into hiding.
 func refresh() -> void:
-	var dex := mod(&"dexterity")
-	var wis := mod(&"wisdom")
-	# general, then dex (moving only), then wis (skills only); negative mods cut the general pool
-	ap = [AP.new(BASE_AP + mini(dex, 0) + mini(wis, 0)), AP.new(maxi(dex, 0), &"move"), AP.new(maxi(wis, 0), &"skill")]
+	ap = _pools()
 	moved = 0.0
 	exposed = 0
 
 
 # What refresh() hands out: every pool together.
 func full_ap() -> float:
-	return BASE_AP + mod(&"dexterity") + mod(&"wisdom")
+	return _pools().reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
+
+
+# General, then dex (moving only), then wis (skills only); negative mods cut the general pool.
+# Haste: ap adds that fraction to the general and wis pools, dex_ap to the dex pool.
+func _pools() -> Array[AP]:
+	var dex := mod(&"dexterity")
+	var wis := mod(&"wisdom")
+	var more := 1.0 + stat(&"ap")
+	var out: Array[AP] = [AP.new((BASE_AP + mini(dex, 0) + mini(wis, 0)) * more),
+			AP.new(maxi(dex, 0) * (1.0 + stat(&"dex_ap")), &"move"), AP.new(maxi(wis, 0) * more, &"skill")]
+	return out
 
 
 func ap_left() -> float:
@@ -444,6 +452,16 @@ func tick() -> void:
 
 func is_alive() -> bool:
 	return hp > 0
+
+
+func asleep() -> bool:
+	return stat(&"sleep") > 0.0
+
+
+func wake() -> void:
+	for e in timed.keys():
+		if e.stat == "sleep":
+			timed.erase(e)
 
 
 # [effect, rank] for every passive (that's on), timed effect, and effect of the ground it stands

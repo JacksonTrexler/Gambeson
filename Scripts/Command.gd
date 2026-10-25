@@ -77,10 +77,10 @@ func in_range(u: Unit) -> bool:
 	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach()))
 
 
-# Takes an order right now: alive, on the leader's side on its turn, and in range.
+# Takes an order right now: alive and awake, on the leader's side on its turn, and in range.
 func can_order(u: Unit) -> bool:
-	return u != null and u.is_alive() and leader.is_alive() and battle.phase == Battle.Phase.TURNS \
-			and battle.turn == leader.faction and in_range(u)
+	return u != null and u.is_alive() and not u.asleep() and leader.is_alive() \
+			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u)
 
 
 # Allies join from within plain order range while there's room.

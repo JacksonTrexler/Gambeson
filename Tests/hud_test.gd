@@ -293,14 +293,14 @@ func test_tile_effects() -> void:
 	v(1).afflict(effect("recon", 1), 9)
 	h._show_pane()
 	ok(lines.call() == ["Beneficial", "Heal: 10% each turn"], "a closer look (recon 1) also tells it's beneficial")
-	var extra: Array[Effect] = [effect("luck", 1), effect("mitigate", 0.1), effect("poison", 1), effect("movement", -1), effect("reach", 1)]
+	var extra: Array[Effect] = [effect("luck", 1), effect("mitigate", 0.1), effect("poison", 0.05), effect("movement", -1), effect("reach", 1)]
 	var kept := shrine.effects.duplicate()
 	shrine.effects.append_array(extra)
 	h._show_pane()
 	await tree.process_frame
 	var scroll: ScrollContainer = h.get_node("%TileScroll")
 	ok(lines.call().size() == 7 and scroll.size.y <= HUD.PANE_LIST + 0.5, "a long list is capped")
-	ok("Poison: 1 each turn" in lines.call(), "harmful effects listed too")
+	ok("Poison: 5% each turn" in lines.call(), "harmful effects listed too")
 	var list: Control = h.get_node("%TileLines")
 	var span: float = list.get_combined_minimum_size().y - HUD.PANE_LIST
 	var travel := maxf(span / HUD.SCROLL_SPEED, 1.0)
@@ -325,6 +325,44 @@ func test_tile_effects() -> void:
 	h.hover_cell(Vector2i(5, 2))
 	ok(h._scroll_t == 0.0, "a newly hovered tile starts over")
 	shrine.effects.assign(kept)
+	h.free()
+
+
+func test_party_help() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(8, 2)})
+	var h := await start(v(1))
+	h._refresh()
+	var help: String = h.party_title.tooltip_text
+	ok("press P to invite" in help and "Orders reach allies within 1 tile" in help and "only take move orders" in help,
+			"the party header's tooltip explains the party, orders and command slots")
+	ok(h.party_title.mouse_filter != Control.MOUSE_FILTER_IGNORE, "and the header can be hovered for it")
+	var open: Array = h.roster.get_children().filter(func(c): return c is Label)
+	ok(open.size() == 1 and open[0].tooltip_text == help, "an open party slot shows, with the same tooltip")
+	ok(not h.has_node("%Reach"), "the description is off the panel")
+	h.free()
+
+
+func test_stew_pane() -> void:
+	stage(lancin, {v(1): Vector2i(3, 0), v(2): Vector2i(2, 0), v(3): Vector2i(8, 6)})
+	var h := await start(v(1))
+	h.hover_cell(Vector2i(4, 0))
+	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.text)
+	ok(h.get_node("%TileName").text == "Magic Stew" and h.get_node("%TileCost").text == "Move 4", "the magic stew: 4 to enter")
+	ok(lines == ["Heal: 15% each turn",
+			"Poison: 5% each turn · 3 turns · at turn end",
+			"Sleep: can't act till an ally ends the turn beside it · 1 turn · at turn end",
+			"Haste: AP +10%, Dex AP +20% · 3 turns · at turn end",
+			"Moist"], "its effects, Haste as one condition (%s)" % [lines])
+	h.click(Vector2i(4, 0))
+	ok(v(1).cell == Vector2i(4, 0) and not v(1).asleep(), "wading in, the leader's still awake")
+	b.end_turn()
+	b.end_turn()
+	await tree.process_frame
+	h._refresh()
+	ok(v(1).asleep() and v(1) in h.sleepers and h._info(v(1)).chips.any(func(c): return c[0] == "Asleep"), "it ended the turn there: asleep, and it shows")
+	h.select(v(1))
+	h.click(Vector2i(4, 1))
+	ok(v(1).cell == Vector2i(4, 0) and h._note.begins_with("Asleep"), "a sleeper can't be ordered, and the hint says why")
 	h.free()
 
 

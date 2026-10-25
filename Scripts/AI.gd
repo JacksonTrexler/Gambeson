@@ -12,7 +12,7 @@ const GUESS_HP := 10.0  # when it can't make out a target's HP
 
 static func act(b: Battle, u: Unit) -> Array[String]:
 	var log: Array[String] = []
-	if not u.is_alive():
+	if not u.is_alive() or u.asleep():
 		return log
 	var reads := {}
 	for o in b.units.values():
@@ -64,7 +64,8 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 				best_score = v
 	if best.is_empty():
 		return false
-	b.cast(u, best[0], best[1])
+	if not b.cast(u, best[0], best[1]):
+		return false
 	log.append("%s uses %s on %s -> %d" % [u.name, best[0].name, best[1].name, best[1].hp])
 	reads[best[1]] = b.read(u, best[1])
 	return true

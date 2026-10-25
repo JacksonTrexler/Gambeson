@@ -6,7 +6,7 @@ extends RefCounted
 #   -4 nothing at all         -3 an aura and an area of suspicion   -2 a vague shape (hint)
 #   -1 there, but no details   0 name, faction, HP / tile name, movement cost
 #    1 identity, stats, vibe, good or bad ground   2 level, class   3 skills, effects
-# A tile seen at 0 also gives what it does to whoever stands or steps on it.
+# A tile seen at 0 also gives what it does to whoever stands on it, steps on it, or ends a turn there.
 
 var net := 0
 var seen := true  # no sight concealment left (dark, light, plain)
@@ -44,6 +44,7 @@ var role: Role
 var skills: Array[Skill] = []
 var effects: Array[Effect] = []  # unit: timed effects on it (3); tile: on whoever stands there (0)
 var afflicts: Array[Effect] = []  # tile: put on whoever steps there (0)
+var at_end: Array[Effect] = []  # tile: put on whoever ends its turn there (0)
 
 
 func located() -> bool:
