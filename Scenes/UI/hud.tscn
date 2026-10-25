@@ -1,0 +1,368 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/HUD.gd" id="1_hud"]
+[ext_resource type="Theme" path="res://Scenes/UI/theme.tres" id="2_theme"]
+[ext_resource type="Script" path="res://Scripts/UnitCard.gd" id="3_card"]
+[ext_resource type="Script" path="res://Scripts/Spellbook.gd" id="4_book"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+
+[node name="Left" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 3.0
+offset_right = 77.0
+offset_bottom = -3.0
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Root/Left"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Card" type="VBoxContainer" parent="Root/Left/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+script = ExtResource("3_card")
+
+[node name="Head" type="HBoxContainer" parent="Root/Left/Column/Card"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Portrait" type="TextureRect" parent="Root/Left/Column/Card/Head"]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Names" type="VBoxContainer" parent="Root/Left/Column/Card/Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Name" type="Label" parent="Root/Left/Column/Card/Head/Names"]
+layout_mode = 2
+theme_type_variation = &"Title"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Sub" type="Label" parent="Root/Left/Column/Card/Head/Names"]
+layout_mode = 2
+theme_type_variation = &"Muted"
+autowrap_mode = 3
+
+[node name="Chips" type="HFlowContainer" parent="Root/Left/Column/Card"]
+layout_mode = 2
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
+
+[node name="Rows" type="VBoxContainer" parent="Root/Left/Column/Card"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Sep" type="HSeparator" parent="Root/Left/Column"]
+layout_mode = 2
+
+[node name="BarTitle" type="Label" parent="Root/Left/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+text = "HOTBAR"
+
+[node name="Hotbar" type="VBoxContainer" parent="Root/Left/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Spacer" type="Control" parent="Root/Left/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Hint" type="Label" parent="Root/Left/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+autowrap_mode = 3
+
+[node name="BookButton" type="Button" parent="Root/Left/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Every skill this unit knows, by rank. Drag skills onto the hotbar. (B)"
+text = "Spellbook  (B)"
+
+[node name="Orders" type="HBoxContainer" parent="Root/Left/Column"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HoldButton" type="Button" parent="Root/Left/Column/Orders"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+tooltip_text = "Keep the selected ally where it is: it won't act on its own this turn (H)"
+text = "Hold"
+
+[node name="PartyButton" type="Button" parent="Root/Left/Column/Orders"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "Invite"
+
+[node name="Right" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -77.0
+offset_top = 3.0
+offset_right = -3.0
+offset_bottom = -3.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Root/Right"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Round" type="Label" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+text = "Round 1"
+
+[node name="Turn" type="Label" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Title"
+
+[node name="Order" type="VBoxContainer" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Sep" type="HSeparator" parent="Root/Right/Column"]
+layout_mode = 2
+
+[node name="PartyTitle" type="Label" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+
+[node name="Roster" type="VBoxContainer" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="Reach" type="Label" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+autowrap_mode = 3
+
+[node name="Sep2" type="HSeparator" parent="Root/Right/Column"]
+layout_mode = 2
+
+[node name="LogTitle" type="Label" parent="Root/Right/Column"]
+layout_mode = 2
+theme_type_variation = &"Muted"
+text = "LOG"
+
+[node name="Log" type="RichTextLabel" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="Keys" type="Label" parent="Root/Right/Column"]
+layout_mode = 2
+theme_type_variation = &"Muted"
+theme_override_colors/font_color = Color(0.42, 0.44, 0.5, 1)
+theme_override_font_sizes/font_size = 5
+text = "1-4 skills · B spellbook · H hold · P party · Tab next unit · Esc back"
+autowrap_mode = 3
+
+[node name="EndTurn" type="Button" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Allies you haven't given an order act on their own, then the turn passes (Space)"
+text = "End turn  (Space)"
+
+[node name="Banner" type="Label" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_top = 14.0
+offset_right = 120.0
+offset_bottom = 34.0
+grow_horizontal = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spellbook" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -110.0
+offset_right = 150.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_book")
+
+[node name="Column" type="VBoxContainer" parent="Root/Spellbook"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Head" type="HBoxContainer" parent="Root/Spellbook/Column"]
+layout_mode = 2
+
+[node name="BookTitle" type="Label" parent="Root/Spellbook/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Title"
+
+[node name="BookClose" type="Button" parent="Root/Spellbook/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Close (B or Esc)"
+text = "Close"
+
+[node name="Cols" type="HBoxContainer" parent="Root/Spellbook/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ActiveCol" type="VBoxContainer" parent="Root/Spellbook/Column/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActiveTitle" type="Label" parent="Root/Spellbook/Column/Cols/ActiveCol"]
+layout_mode = 2
+theme_type_variation = &"Muted"
+text = "ACTIVE"
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Spellbook/Column/Cols/ActiveCol"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Actives" type="VBoxContainer" parent="Root/Spellbook/Column/Cols/ActiveCol/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PassiveCol" type="VBoxContainer" parent="Root/Spellbook/Column/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PassiveTitle" type="Label" parent="Root/Spellbook/Column/Cols/PassiveCol"]
+layout_mode = 2
+theme_type_variation = &"Muted"
+text = "PASSIVE"
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Spellbook/Column/Cols/PassiveCol"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Passives" type="VBoxContainer" parent="Root/Spellbook/Column/Cols/PassiveCol/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="BookHint" type="Label" parent="Root/Spellbook/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+autowrap_mode = 3
+
+[node name="Over" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -36.0
+offset_right = 80.0
+offset_bottom = 36.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Root/Over"]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="OverTitle" type="Label" parent="Root/Over/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Title"
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+
+[node name="OverText" type="Label" parent="Root/Over/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="MenuButton" type="Button" parent="Root/Over/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "Main menu"
+
+[node name="Tip" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 12.0
+mouse_filter = 2
+theme_type_variation = &"Tip"
+
+[node name="TipLabel" type="Label" parent="Root/Tip"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 6

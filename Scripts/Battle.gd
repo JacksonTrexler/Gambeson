@@ -4,13 +4,19 @@ extends Node2D
 signal phase_changed(was: Phase, now: Phase)
 signal turn_changed(was: Faction, now: Faction)
 signal initiative_rolled(rolls: Dictionary[Faction, Array])
+signal traveled(u: Unit, from: Vector2i, path: Array[Vector2i])
+signal used(caster: Unit, skill: Skill, at: Variant, dealt: int)  # at: the target Unit, or a cell
+signal sprung(c: Vector2i, by: Unit)
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
 const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
 const UNIT := preload("res://Scenes/unit.tscn")
+const MEDIUM := 3  # size assumed for a target not yet chosen
 
 @export var spawns: Dictionary[Faction, Vector2i] = {}  # where a player's starter joins each side
+
+var player: Unit  # the starter made on the entry screen; null when there's none
 
 var phase := Phase.INITIATIVE:
 	set(v):
@@ -61,7 +67,8 @@ class Zone:
 
 func _ready() -> void:
 	if Game.starter:
-		$Units.add_child(starter(Game.starter), true)
+		player = starter(Game.starter)
+		$Units.add_child(player, true)
 		Game.starter = {}  # used up
 	for u: Unit in $Units.get_children():
 		if not move(u, u.cell):
@@ -213,34 +220,46 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	if not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
+	var before := target.hp
 	for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
 		target.afflict(e, skill.turns, r)
 	var t := skill.tier(r)
-	if not t:
-		return true
-	assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
-	var hits := r if skill.hits_per_rank else 1
-	for i in hits:
-		if not target.is_alive():
-			break
-		var power := maxi(t.power + roll(t.dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0), 0)
-		if t.direct:
-			target.damage(power)
-		else:
-			target.hit(power, skill.tags, caster)
+	if t:
+		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
+		var hits := r if skill.hits_per_rank else 1
+		for i in hits:
+			if not target.is_alive():
+				break
+			var power := maxi(t.power + roll(t.dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0), 0)
+			if t.direct:
+				target.damage(power)
+			else:
+				target.hit(power, skill.tags, caster)
+	used.emit(caster, skill, target, before - target.hp)
 	return true
 
 
-# Area skills, cast on a cell (Darkstone): within radius + radius_per_rank x rank, lays its zone
-# kind of concealment at rank - distance levels on every tile around the centre.
+# Area skills, cast on a cell (Darkstone): within area_reach(), lays its zone kind of concealment
+# on the tiles around the centre (see zone_levels()).
 func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	if not _acting(caster) or skill not in caster.actives or skill.zone == &"" or not on_map(c):
 		return false
-	var r := caster.rank(skill)
-	if Vector2(caster.cell).distance_to(Vector2(c)) > skill.radius + skill.radius_per_rank * r + 0.0001:
+	if Vector2(caster.cell).distance_to(Vector2(c)) > area_reach(caster, skill) + 0.0001:
 		return false
 	if not caster.pay_for(skill):
 		return false
+	zones.append(Zone.new(skill.zone, zone_levels(caster.rank(skill), c), skill.turns, caster.faction))
+	used.emit(caster, skill, c, 0)
+	return true
+
+
+# How far from the caster an area skill can be centred: radius + radius_per_rank x rank.
+func area_reach(caster: Unit, skill: Skill) -> float:
+	return skill.radius + skill.radius_per_rank * caster.rank(skill)
+
+
+# The levels an area skill of rank r lays around c: rank - distance on every tile that leaves above 0.
+func zone_levels(r: int, c: Vector2i) -> Dictionary[Vector2i, int]:
 	var levels: Dictionary[Vector2i, int] = {}
 	for x in range(c.x - r, c.x + r + 1):
 		for y in range(c.y - r, c.y + r + 1):
@@ -248,8 +267,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 			var lv := r - floori(Vector2(at).distance_to(Vector2(c)))
 			if lv > 0 and on_map(at):
 				levels[at] = lv
-	zones.append(Zone.new(skill.zone, levels, skill.turns, caster.faction))
-	return true
+	return levels
 
 
 # A tile whose terrain is still concealed (an unsprung trap).
@@ -270,9 +288,10 @@ func roll(dice: Vector2i) -> int:
 
 
 # Skill range + the caster's reach (its reach stat, +0.05 per size point) + 0.02 per size point
-# of the target (bigger targets are easier to reach).
-func skill_range(caster: Unit, skill: Skill, target: Unit) -> float:
-	return skill.radius + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * target.stat(&"size")
+# of the target (bigger targets are easier to reach). No target: a Medium one.
+func skill_range(caster: Unit, skill: Skill, target: Unit = null) -> float:
+	var size: float = target.stat(&"size") if target else float(MEDIUM)
+	return skill.radius + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * size
 
 
 # Circle geometry. A near miss (within Luck.MARGIN) is rounding: in only if the caster is luckier.
@@ -285,45 +304,67 @@ func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
 
 # --- Movement
 
-# Walks the straight line toward `dest`, paying movement and the same AP per step: leaving a tile
-# costs its exit, entering costs its enter (plus the unit's move_cost effects for that ground).
-# Stops where movement or AP runs out, before a hole, short of other units, and on a trap (which
-# springs). Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground
-# the unit doesn't know is bad. Returns the tiles passed.
+# Walks the straight line toward `dest` (see walk()), paying movement and the same AP per step.
+# A trap it stops on springs. Returns the tiles passed.
 func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	var passed: Array[Vector2i] = []
 	if not _acting(u) or dest == u.cell:
 		return passed
-	var left := minf(u.stat(&"movement") - u.moved, u.ap_for(&"move"))
-	var spent: Array[float] = []
-	var at := u.cell
-	for c in line(u.cell, dest, u.luck, u):
+	var w := walk(u, dest)
+	passed = w.path
+	if not passed.is_empty():
+		var from := u.cell
+		var total_cost: float = w.costs.reduce(func(sum, x): return sum + x, 0.0)
+		u.moved += total_cost
+		u.pay(total_cost, &"move")
+		move(u, passed[-1])
+		traveled.emit(u, from, passed)
+		if terrain(u.cell).is_trap():
+			spring(u.cell, u)
+	return passed
+
+
+# The walk toward `dest`: {line, path, costs} - the straight line, the tiles kept, and what each
+# cost. Leaving a tile costs its exit, entering costs its enter (plus the unit's move_cost effects
+# for that ground). Stops where movement or AP runs out, before a hole, short of other units, and on
+# a trap. Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground
+# the unit doesn't know is bad.
+# `expected` gives the walk as `u` sees it coming: ground it can't make out counts as plain, units it
+# can't locate aren't in the way, and the rng is left as it was (so the real walk takes this line).
+func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
+	var state := rng.state
+	var ground := func(c: Vector2i) -> Terrain:
+		return terrain(c) if not expected or read(u, c).net >= 0 else PLAIN
+	var blocked := func(c: Vector2i) -> bool:
+		var o := unit_at(c)
+		return o != null and (not expected or read(u, o).located())
+	var path: Array[Vector2i] = []
+	var costs: Array[float] = []
+	var left := u.move_left()
+	var ln := line(u.cell, dest, u.luck, u)
+	var from: Terrain = ground.call(u.cell)
+	for c in ln:
 		if not on_map(c) or left <= 0.0001:
 			break
-		var t := terrain(c)
-		var cost := step(u, at, c)
+		var t: Terrain = ground.call(c)
+		var cost := _cost(u, from, t)
 		if cost > left + 0.0001:
 			var unknown_bad := t.worth() < 0 and not read(u, c).known_bad()
 			if Luck.settle(left / cost, u.luck, not unknown_bad, false) < 1:
 				break
 			cost = left  # squeezed in on what was left
 		left -= cost
-		spent.append(cost)
-		passed.append(c)
-		at = c
-		if t.is_trap() and not unit_at(c):
+		costs.append(cost)
+		path.append(c)
+		from = t
+		if t.is_trap() and not blocked.call(c):
 			break  # stepped on a trap
-	while not passed.is_empty() and unit_at(passed[-1]):  # units can be passed, not stood on
-		passed.pop_back()
-		spent.pop_back()
-	if not passed.is_empty():
-		var total_cost: float = spent.reduce(func(sum, x): return sum + x, 0.0)
-		u.moved += total_cost
-		u.pay(total_cost, &"move")
-		move(u, passed[-1])
-		if terrain(u.cell).is_trap():
-			spring(u.cell, u)
-	return passed
+	while not path.is_empty() and blocked.call(path[-1]):  # units can be passed, not stood on
+		path.pop_back()
+		costs.pop_back()
+	if expected:
+		rng.state = state
+	return {line = ln, path = path, costs = costs}
 
 
 # A trap goes off: it's revealed, and hits whoever stepped on it plus anyone in its blast. Units
@@ -331,6 +372,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 func spring(c: Vector2i, by: Unit) -> void:
 	var t := terrain(c)
 	revealed[c] = true
+	sprung.emit(c, by)
 	var raw := roll(t.dice)
 	for v in units.values().filter(func(x): return x == by or Vector2(x.cell).distance_to(Vector2(c)) <= t.blast + 0.0001):
 		var boost := 1.0 + (by.stat(&"trap_power") if v.faction != by.faction else 0.0)
@@ -340,8 +382,11 @@ func spring(c: Vector2i, by: Unit) -> void:
 # Movement to step from one tile onto the next: leaving costs `from`'s exit, entering costs `to`'s
 # enter, plus the unit's move_cost effects for that ground (u may be null: terrain only).
 func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
-	var t := terrain(to)
-	return maxf(terrain(from).exit + t.enter + (u.stat(&"move_cost", t.tags) if u else 0.0), 0.0)
+	return _cost(u, terrain(from), terrain(to))
+
+
+func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
+	return maxf(from.exit + to.enter + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
 
 
 # The straight line from a to b as ceil(distance) distinct tiles, each the one nearest its point

@@ -11,6 +11,7 @@ const OUTLINE := preload("res://Shaders/outline.gdshader")
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
+const HOTBAR := 4  # hotbar slots every unit has for now; higher levels will add more
 const ENERGY_COLOR := Color("#e8c547")
 const HP_COLOR := Color("#3fbf4f")
 
@@ -45,6 +46,9 @@ class Applied:
 @export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
+# Skills on the hotbar by slot, null where empty (see Skill.fits_bar()). Left empty, it fills with
+# the unit's actives, then its toggled passives.
+@export var hotbar: Array[Skill] = []
 
 @export var max_hp := 10:
 	set(m):
@@ -151,6 +155,7 @@ func _ready() -> void:
 		race = role.race
 	if role and not look:
 		look = role.look
+	_fill_bar()
 	_show_look()
 	_layout_bars()
 	_show_faction()
@@ -169,6 +174,54 @@ func rank(s: Skill) -> int:
 		if x.skill == s:
 			return x.rank
 	return 0
+
+
+func is_on(s: Skill) -> bool:
+	for x in slots:
+		if x.skill == s:
+			return x.on
+	return false
+
+
+# Switches a passive that has a toggle on or off. False if the unit has no such skill.
+func toggle(s: Skill) -> bool:
+	for x in slots:
+		if x.skill == s and s.passive and s.toggle:
+			x.on = not x.on
+			return true
+	return false
+
+
+func bar_size() -> int:
+	return HOTBAR
+
+
+# Puts one of the unit's skills in hotbar slot i. A skill already on the bar swaps places with
+# whatever is in i.
+func bar_place(s: Skill, i: int) -> bool:
+	if i < 0 or i >= hotbar.size() or not s or not s.fits_bar() or rank(s) == 0:
+		return false
+	var old := hotbar.find(s)
+	if old >= 0:
+		hotbar[old] = hotbar[i]
+	hotbar[i] = s
+	return true
+
+
+func bar_clear(i: int) -> void:
+	if i >= 0 and i < hotbar.size():
+		hotbar[i] = null
+
+
+func _fill_bar() -> void:
+	var fresh := hotbar.is_empty()
+	hotbar.resize(bar_size())
+	if not fresh:
+		return
+	var picks := slots.filter(func(x: Slot): return not x.skill.passive)
+	picks.append_array(slots.filter(func(x: Slot): return x.skill.passive and x.skill.fits_bar()))
+	for i in mini(picks.size(), hotbar.size()):
+		hotbar[i] = picks[i].skill
 
 
 # Base value (core stats only) plus every effect on that stat whose tags match the query;
@@ -308,6 +361,20 @@ func refresh() -> void:
 	# general, then dex (moving only), then wis (skills only); negative mods cut the general pool
 	ap = [AP.new(BASE_AP + mini(dex, 0) + mini(wis, 0)), AP.new(maxi(dex, 0), &"move"), AP.new(maxi(wis, 0), &"skill")]
 	moved = 0.0
+
+
+# What refresh() hands out: every pool together.
+func full_ap() -> float:
+	return BASE_AP + mod(&"dexterity") + mod(&"wisdom")
+
+
+func ap_left() -> float:
+	return ap.reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
+
+
+# Movement it can still make this turn: what's left of its movement, as far as its AP allows.
+func move_left() -> float:
+	return minf(stat(&"movement") - moved, ap_for(&"move"))
 
 
 # AP available for a use (&"move" or &"skill").

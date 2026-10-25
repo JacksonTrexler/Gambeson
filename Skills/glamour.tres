@@ -14,5 +14,6 @@ tags = Array[StringName]([&"sight"])
 script = ExtResource("1_script")
 name = "Glamour"
 passive = true
+toggle = true
 tags = Array[StringName]([&"sight"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_trick")])
