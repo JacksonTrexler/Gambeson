@@ -17,7 +17,7 @@ damage_tags = Array[StringName]([&"trap", &"pierce"])
 [resource]
 script = ExtResource("1_script")
 name = "Snare"
-tags = Array[StringName]([&"trap", &"physical", &"pierce", &"dex"])
+tags = Array[StringName]([&"trap", &"physical", &"pierce", &"dex", &"specialist"])
 ap = 4.0
 cost = 2
 radius = 1.5

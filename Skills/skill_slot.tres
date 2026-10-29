@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Skill Slot +1"
+passive = true
+tags = Array[StringName]([])
+stub = "?3"
+plan = "An untyped slot that acts like a base slot, slightly darker. Sits at the center, locked until current slots are filled: the hotbar's center or the tree's?"

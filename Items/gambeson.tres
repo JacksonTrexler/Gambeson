@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Gambeson"
+tags = Array[StringName]([&"cloth", &"padded"])
+defense = 10
+per_level = 0.5
+plus_dex = true

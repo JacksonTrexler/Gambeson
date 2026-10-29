@@ -98,26 +98,26 @@ func test_idle() -> void:
 
 func test_default_bar() -> void:
 	var siren := unit("Siren")
-	ok(same(unit("Icor").hotbar, [hex, arcanist, null, null]), "Icor: Hex, then its toggled Arcanist Perspective")
-	ok(same(siren.hotbar, [strike, tonefoolery, persona, null]), "Siren: Strike, then its toggles; Oceanic has none")
-	ok(same(v(1).hotbar, [strike, null, null, null]) and v(1).bar_size() == Unit.HOTBAR, "4 slots; Favour stays off the bar")
+	ok(same(unit("Icor").hotbar, [hex, arcanist, null, null, null, null]), "Icor (level 5): 5 slots and a clover slot; Hex, then its toggled Arcanist Perspective")
+	ok(same(siren.hotbar, [strike, tonefoolery, persona, null, null]), "Siren: Strike, then its toggles; Oceanic has none")
+	ok(same(v(1).hotbar, [strike, null, null, null, null]) and v(1).slot_count() == Unit.SLOTS, "4 slots and a clover one; Favour stays off the bar")
 
 
 func test_bar_place() -> void:
 	var u := unit("Icor")
-	ok(u.bar_place(arcanist, 3) and same(u.hotbar, [hex, null, null, arcanist]), "a skill on the bar moves, swapping with the empty slot")
-	ok(u.bar_place(hex, 3) and same(u.hotbar, [arcanist, null, null, hex]), "...or with the skill there")
+	ok(u.bar_place(arcanist, 3) and same(u.hotbar, [hex, null, null, arcanist, null, null]), "a skill on the bar moves, swapping with the empty slot")
+	ok(u.bar_place(hex, 3) and same(u.hotbar, [arcanist, null, null, hex, null, null]), "...or with the skill there")
 	ok(not u.bar_place(strike, 1), "not a skill it doesn't have")
 	ok(not v(1).bar_place(favour, 1), "not a passive without a toggle")
-	ok(not u.bar_place(hex, 4), "no fifth slot yet")
+	ok(u.bar_place(hex, 4) and not u.bar_place(hex, 5) and not u.bar_place(hex, 6), "a fifth slot at level 5; not the clover slot while unlucky, nor past it")
 	u.bar_clear(0)
-	ok(same(u.hotbar, [null, null, null, hex]), "cleared")
+	ok(same(u.hotbar, [null, null, null, null, hex, null]), "cleared")
 
 
 func test_toggle() -> void:
 	var u := unit("Icor")
-	ok(u.toggle(arcanist) and not u.is_on(arcanist) and u.scaling(&"wisdom", [&"magic"]) == 10, "switched off: plain wis")
-	ok(u.toggle(arcanist) and u.is_on(arcanist) and u.scaling(&"wisdom", [&"magic"]) == 18, "and back on")
+	ok(u.toggle(arcanist) and not u.is_on(arcanist) and u.scaling(&"wisdom", [&"magical"]) == 10, "switched off: plain wis")
+	ok(u.toggle(arcanist) and u.is_on(arcanist) and u.scaling(&"wisdom", [&"magical"]) == 18, "and back on")
 	ok(not v(1).toggle(favour) and v(1).is_on(favour), "Favour has no toggle")
 	ok(not u.toggle(hex), "actives don't toggle")
 

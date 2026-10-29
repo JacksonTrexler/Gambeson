@@ -71,7 +71,7 @@ func test_darkstone() -> void:
 	ok(b.cast_at(icor(), darkstone, Vector2i(5, 3)), "cast at (5,3)")
 	var z: Battle.Zone = b.zones[0]
 	ok(z.levels[Vector2i(5, 3)] == 2 and z.levels[Vector2i(4, 3)] == 1 and z.levels[Vector2i(6, 2)] == 1 and not z.levels.has(Vector2i(5, 5)), "rank - distance: 2 at the centre, 1 around, none at 2 away")
-	ok(icor().store(load("res://Reserves/mana.tres")) == 9, "3 mana (it's magic)")
+	ok(icor().store(load("res://Reserves/mana.tres")) == 9, "3 mana (it's magical)")
 	var r := b.read(v(3), v(1))
 	ok(r.net == -2 and r.hint == "a shape in the dark?" and r.located() and r.faction == null and not r.seen and r.heard, "a unit in darkness 2: a shape, located, unseen but heard")
 	v(3).learned.append(slot(darkvision, 1))

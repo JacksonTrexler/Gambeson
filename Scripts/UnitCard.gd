@@ -15,12 +15,12 @@ var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 
 # info: {name, sub, look: Texture2D, shape: bool, chips: [[text, Color]], rows: [[label, value,
 # max, Color]]}. shape: only a black outline of it shows. A row whose max is null shows its value
-# as text alone. No info: a prompt to pick someone.
+# as text alone. No info: nothing selected.
 func set_info(info: Dictionary) -> void:
 	portrait.texture = info.get("look")
 	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("shape", false) else Color.WHITE
 	title.text = info.get("name", "")
-	sub.text = info.get("sub", "Click a unit to select it")
+	sub.text = info.get("sub", "Nothing selected")
 	for c in chips.get_children() + rows.get_children():
 		c.get_parent().remove_child(c)
 		c.queue_free()

@@ -38,4 +38,5 @@ min_rank = 5
 script = ExtResource("1_skill")
 name = "Wary"
 passive = true
+tags = Array[StringName]([&"martial"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_initiative"), SubResource("Effect_ambush"), SubResource("Effect_traps"), SubResource("Effect_spot"), SubResource("Effect_snare")])

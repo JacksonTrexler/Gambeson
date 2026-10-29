@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="4_reserve"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="5_mana"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+
+[sub_resource type="Resource" id="Effect_ally"]
+script = ExtResource("2_effect")
+stat = "defense"
+amount = 1.0
+tags = Array[StringName]([&"magical"])
+per_rank = true
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+dice = Vector2i(1, 4)
+stat = &"intelligence"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Hydera"
+tags = Array[StringName]([&"water", &"magical", &"int"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_ally")])
+ap = 3.0
+cost = 2
+cost_per_rank = true
+cost_with = Dictionary[ExtResource("4_reserve"), float]({ExtResource("5_mana"): 0.5})
+radius_mod = &"intelligence"
+hostile = false
+dual = true
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+turns = 3
+turns_per_rank = 0

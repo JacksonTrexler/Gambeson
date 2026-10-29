@@ -12,5 +12,5 @@ amount = 1.0
 script = ExtResource("1_script")
 name = "Hazard Expert"
 passive = true
-tags = Array[StringName]([&"trap"])
+tags = Array[StringName]([&"trap", &"specialist"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_word")])

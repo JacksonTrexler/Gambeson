@@ -104,7 +104,7 @@ func _draw_plan(sel: Unit) -> void:
 
 func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 	var b := hud.battle
-	var col := FOE if s.hostile else FRIEND
+	var col := GOLD if s.dual else (FOE if s.hostile else FRIEND)
 	if s.on_tile():
 		_ring(_center(sel.cell), b.area_reach(sel, s) * TILE, Color(GOLD, 0.6), true)
 		var c := hud.hover
@@ -119,9 +119,10 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 		return
 	_ring(_center(sel.cell), b.skill_range(sel, s) * TILE, Color(col, 0.55), true)
 	for u in hud.marked:
-		_brackets(_rect(u.cell, 1.5), Color(col, pulse), 6.0)
+		var mark := (FOE if hud.foe(u) else FRIEND) if s.dual else col
+		_brackets(_rect(u.cell, 1.5), Color(mark, pulse), 6.0)
 		if u.cell == hud.hover:
-			draw_rect(_rect(u.cell, 1.5), Color(col, 0.18))
+			draw_rect(_rect(u.cell, 1.5), Color(mark, 0.18))
 
 
 # The tile's centre in this node's space (the map sits at the battle's origin, as this does).

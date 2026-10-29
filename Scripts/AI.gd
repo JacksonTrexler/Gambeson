@@ -37,7 +37,7 @@ static func score(u: Unit, s: Skill, r: Read) -> float:
 	if t:
 		dmg = (t.power + t.dice.x * (t.dice.y + 1) / 2.0 + (u.mod(t.stat, s.tags) if t.stat else 0)) * (u.rank(s) if s.hits_per_rank else 1)
 	var hp: float = r.hp if r.hp != null else GUESS_HP
-	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if not s.effects.is_empty() else 0.0)
+	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and not s.effects.is_empty() else 0.0)
 	return value - _hate(r)
 
 
@@ -49,19 +49,26 @@ static func _foe(u: Unit, r: Read) -> bool:
 	return r.located() and r.faction != null and r.faction != u.faction
 
 
-# Casts the best hostile skill it can right now; false if nothing is in reach and affordable.
+# Casts the best hostile skill it can right now; false if nothing is in reach and affordable. The
+# beloved are spared only while there are other foes to fight.
 static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
 	var best := []
 	var best_score := 0.0
-	for s in u.actives.filter(func(x: Skill): return x.hostile and not x.on_tile()):
+	var spared := []
+	for s in u.actives.filter(func(x: Skill): return x.for_foes() and not x.on_tile()):
 		for t in reads:
 			var r: Read = reads[t]
 			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not u.can_afford(s):
 				continue
-			var v := score(u, s, r) - (1.0 if not s.effects.is_empty() and s.effects[0] in r.effects else 0.0)
+			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0)
 			if v > best_score:
 				best = [s, t]
 				best_score = v
+			elif spared.is_empty() and _hate(r) > 0.0:
+				spared = [s, t]
+	if best.is_empty() and not spared.is_empty() and reads.keys().all(
+			func(t: Unit): return not t.is_alive() or not _foe(u, reads[t]) or _hate(reads[t]) > 0.0):
+		best = spared
 	if best.is_empty():
 		return false
 	if not b.cast(u, best[0], best[1]):

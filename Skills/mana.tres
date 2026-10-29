@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="2_mana"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Mana"
+passive = true
+tags = Array[StringName]([&"magical"])
+glyph = "Mn"
+opens = ExtResource("2_mana")

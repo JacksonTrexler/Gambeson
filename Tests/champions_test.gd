@@ -22,43 +22,46 @@ func test_icor() -> void:
 	ok(u.role.name == "Wizard" and u.title == "of Red" and u.level == 5 and u.race.name == "Human", "Wizard of Red, level 5")
 	ok(u.intelligence == 18 and u.constitution == 8, "high int, low con")
 	ok(u.store(mana) == 12 and u.energy == 4 and u.hp == 14, "12 mana, a little energy")
-	ok(u.rank(hex) == 3 and u.rank(arcanist) == 3 and u.passives == [arcanist], "Hex III, Arcanist Perspective III (on)")
+	ok(u.rank(hex) == 3 and u.rank(arcanist) == 3 and u.passives == [load("res://Skills/mana.tres"), arcanist], "Hex III, Arcanist Perspective III (on), and the Wizard's Mana I")
 	ok(u.sprite.sprite_frames.get_frame_texture(&"default", 0).resource_path == "res://Units/RedMage.png", "RedMage sprite from the Wizard role")
 
 
 func test_arcanist() -> void:
 	var u := icor()
-	ok(u.scaling(&"wisdom", [&"magic"]) == 18 and u.mod(&"wisdom", [&"magic"]) == 4, "rank 3: int 18 stands in for wis 10 (cap 10 / 0.4 = 25)")
-	ok(u.scaling(&"wisdom", [&"physical"]) == 10, "only for magic skills")
-	ok(u.scaling(&"charisma", [&"magic"]) == 18, "cha too (cap 8 / 0.4 = 20)")
-	ok(u.scaling(&"strength", [&"magic"]) == 8, "not other stats")
+	ok(u.scaling(&"wisdom", [&"magical"]) == 18 and u.mod(&"wisdom", [&"magical"]) == 4, "rank 3: int 18 stands in for wis 10 (cap 10 / 0.4 = 25)")
+	ok(u.scaling(&"wisdom", [&"physical"]) == 10, "only for magical skills")
+	ok(u.scaling(&"charisma", [&"magical"]) == 18, "cha too (cap 8 / 0.4 = 20)")
+	ok(u.scaling(&"strength", [&"magical"]) == 8, "not other stats")
 	var s := u.learned[1]
 	s.rank = 1
 	u.wisdom = 18
 	u.intelligence = 20
-	ok(u.scaling(&"wisdom", [&"magic"]) == 20, "rank 1: 18 wis allows 20 int")
+	ok(u.scaling(&"wisdom", [&"magical"]) == 20, "rank 1: 18 wis allows 20 int")
 	u.intelligence = 25
-	ok(is_equal_approx(u.scaling(&"wisdom", [&"magic"]), 22.5), "...capped at 18 / 0.8 = 22.5")
+	ok(is_equal_approx(u.scaling(&"wisdom", [&"magical"]), 22.5), "...capped at 18 / 0.8 = 22.5")
 	u.intelligence = 18
 	u.wisdom = 0
 	s.rank = 4
-	ok(u.scaling(&"wisdom", [&"magic"]) == 0, "rank 4 with 0 wis: nothing to stand in for")
+	ok(u.scaling(&"wisdom", [&"magical"]) == 0, "rank 4 with 0 wis: nothing to stand in for")
 	s.rank = 5
-	ok(u.scaling(&"wisdom", [&"magic"]) == 18, "rank 5: full int even with 0 wis")
+	ok(u.scaling(&"wisdom", [&"magical"]) == 18, "rank 5: full int even with 0 wis")
 	u.wisdom = 10
 	s.rank = 6
-	ok(is_equal_approx(u.scaling(&"wisdom", [&"magic"]), 20), "rank 6: + 20% of wis")
+	ok(is_equal_approx(u.scaling(&"wisdom", [&"magical"]), 20), "rank 6: + 20% of wis")
 	s.rank = 11
-	ok(is_equal_approx(u.scaling(&"wisdom", [&"magic"]), 30), "rank 11: + 120% of wis")
+	ok(is_equal_approx(u.scaling(&"wisdom", [&"magical"]), 30), "rank 11: + 120% of wis")
 	u.intelligence = 6
-	ok(u.scaling(&"wisdom", [&"magic"]) == 6 + 12.0, "uses whichever is better")
+	ok(u.scaling(&"wisdom", [&"magical"]) == 6 + 12.0, "uses whichever is better")
 	s.on = false
-	ok(u.scaling(&"wisdom", [&"magic"]) == 10, "toggled off: plain wis")
+	ok(u.scaling(&"wisdom", [&"magical"]) == 10, "toggled off: plain wis")
 
 
 func test_hex_iii() -> void:
 	stage(nemes, {icor(): Vector2i(7, 3), v(1): Vector2i(3, 3)})
 	var seen := {}
+	var crits := {}
+	var d20 := [0]
+	b.attacked.connect(func(_c, _t, d: int, _total, _def): d20[0] = d)
 	for seed in 60:
 		b.rng.seed = seed
 		v(1).max_hp = 50
@@ -67,8 +70,9 @@ func test_hex_iii() -> void:
 		icor().set_store(mana, 12)
 		icor().refresh()
 		ok(b.cast(icor(), hex, v(1)), "Hex III cast")
-		seen[50 - v(1).hp] = true
+		(crits if d20[0] == 20 else seen)[50 - v(1).hp] = true
 	ok(seen.keys().all(func(d): return d >= 5 and d <= 10) and seen.size() == 6, "d6 + 4 (int for wis): 5-10, all seen (%s)" % [seen.keys()])
+	ok(not crits.is_empty() and crits.keys().all(func(d): return d % 2 == 0 and d >= 10 and d <= 20), "a natural 20 doubles it (%s)" % [crits.keys()])
 	ok(v(1).luck == -2 and v(1).timed[hex.effects[0]].rank == 3, "luck -3 (Favour's +1 -> -2)")
 	ok(icor().store(mana) == 10 and icor().energy == 4, "paid 2 mana, no energy")
 	ok(is_equal_approx(icor().ap_for(&"skill"), 8.0), "fully paid with mana: AP halved to 2")
@@ -81,7 +85,7 @@ func test_mana_rules() -> void:
 	icor().set_store(mana, 12)
 	icor().energy = 0
 	icor().learned.append(slot(stonegift))
-	ok(icor().funding(stonegift) == null, "mana can't pay for non-magic skills")
+	ok(icor().funding(stonegift) == null, "mana can't pay for non-magical skills")
 	icor().learned.pop_back()
 
 
@@ -135,9 +139,18 @@ func test_bars() -> void:
 	ok((vil.energy_bar.get_theme_stylebox("fill") as StyleBoxFlat).bg_color == Unit.ENERGY_COLOR, "Energy is yellow")
 	ok(vil.energy_bar.size.y < vil.hp_bar.size.y and vil.energy_bar.position.y > vil.hp_bar.position.y, "slimmer, under HP")
 	ok(ic.reserve_bar.visible and (ic.reserve_bar.get_theme_stylebox("fill") as StyleBoxFlat).bg_color == mana.color, "Icor: blue Mana bar")
-	ok(ic.hp_bar.position.y + ic.hp_bar.size.y < ic.reserve_bar.position.y and ic.reserve_bar.position.y + ic.reserve_bar.size.y < ic.energy_bar.position.y, "HP, then Mana, then Energy, not overlapping")
+	ok(ic.hp_bar.position.y + ic.hp_bar.size.y == ic.reserve_bar.position.y and ic.reserve_bar.position.y + ic.reserve_bar.size.y == ic.energy_bar.position.y, "HP, then 2px of Mana, then 2px of Energy, in one block")
 	ok(ic.energy_bar.modulate.a < 1.0, "Energy faded behind Mana")
 	ok(ic.reserve_bar.value == 12 and ic.energy_bar.value == 4, "values")
+	var trim := vil.trim.get_theme_stylebox("panel") as StyleBoxFlat
+	ok(vil.trim.visible and trim.border_color == lancin.primary.darkened(Unit.TRIM_DARKEN) and not trim.draw_center,
+			"the block is trimmed in its side's colour, darkened")
+	ok(vil.energy_bar.size.y == 2 and vil.energy_bar.position.y == vil.hp_bar.position.y + vil.hp_bar.size.y, "2px of Energy right under HP")
+	ok(vil.trim.position.y == vil.hp_bar.position.y - 1 and vil.trim.size.y == vil.hp_bar.size.y + vil.energy_bar.size.y + 2,
+			"the trim a pixel out around both")
+	ok(ic.trim.size.y == ic.hp_bar.size.y + ic.reserve_bar.size.y + ic.energy_bar.size.y + 2, "and around Mana too")
+	ok(vil.glow.visible and Color(vil.glow.modulate, 1.0) == lancin.primary and vil.glow.modulate.a < 1.0 and vil.sprite.material == null,
+			"a faint glow of its side's colour instead of an outline")
 	ic.set_store(mana, 7)
 	ok(ic.reserve_bar.value == 7, "Mana bar follows")
 	var top := -ic.sprite.sprite_frames.get_frame_texture(&"default", 0).get_height() / 2.0
@@ -172,15 +185,22 @@ func test_entry() -> void:
 	ok(sides[0].icon.resource_path.ends_with("GolemClay.png") and sides[1].icon.resource_path.ends_with("RedMage.png"), "Alabaster stands for Lancin, Icor for Nemes")
 	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling"], "classes")
 	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png"], "class sprites")
-	ok(play.disabled, "Play starts disabled")
+	ok(side.value == lancin and role.value.name == "Adventurer" and nm.text == "" and nm.placeholder_text == "Shrike" and not play.disabled,
+			"it starts on the demo's defaults: Shrike (muted, in the empty box), a Lancin Adventurer, ready to play")
+	var enter := InputEventKey.new()
+	enter.keycode = KEY_ENTER
+	enter.pressed = true
+	e._unhandled_input(enter)
+	ok(Game.starter.faction == lancin and Game.starter.role.name == "Adventurer" and Game.starter.name == "Shrike", "Enter starts the demo")
+	Game.starter = {}
 	sides[1].button_pressed = true
 	roles[2].button_pressed = true
-	ok(play.disabled, "still needs a name")
+	nm.text = "   "
 	nm.text_changed.emit("   ")
-	ok(play.disabled, "blank names don't count")
+	ok(not play.disabled and e.chosen_name() == "Shrike", "a blank name is still Shrike")
 	nm.text = "Pip"
 	nm.text_changed.emit("Pip")
-	ok(not play.disabled, "enabled once everything's chosen")
+	ok(not play.disabled and e.chosen_name() == "Pip", "until another is typed")
 	play.pressed.emit()
 	ok(Game.starter.faction == nemes and Game.starter.role.name == "Paladin" and Game.starter.name == "Pip", "Play records the choices")
 	e.free()

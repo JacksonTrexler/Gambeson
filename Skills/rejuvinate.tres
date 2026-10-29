@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Rejuvinate"
+passive = false
+tags = Array[StringName]([&"divine", &"cha"])
+stub = "?12"
+plan = "Active, 3 AP, 5 Energy, range: rank. Regeneration for 3 turns of (10% + 5% x rank) of the recipient's max HP, + the caster's cha mod. Strength decays 5% per tile beyond 1 from the caster, with no decay when paid entirely with mana. Is the decay fixed when cast, and is the spelling on purpose?"

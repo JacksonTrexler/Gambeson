@@ -7,4 +7,4 @@
 script = ExtResource("1_script")
 name = "Mana"
 color = Color(0.25, 0.5, 0.95, 1)
-only = Array[StringName]([&"magic"])
+only = Array[StringName]([&"magical"])

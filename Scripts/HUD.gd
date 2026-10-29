@@ -7,10 +7,11 @@ extends CanvasLayer
 # click its target. A toggled passive switches instead. Ctrl-click strikes at a tile whatever seems
 # to be there - empty, or only suspected - and Shift-click selects a foe instead of attacking it.
 # B opens the spellbook, S the skills (spending skill points), H holds an ally where it is, P invites
-# it to the party (or lets it go), Tab
-# steps through units taking orders, Space ends the turn, Esc or right-click backs out. Command
-# decides who takes orders and which of their slots. Allies left without orders act on their own as
-# the turn ends, and other sides play themselves, paced so they can be followed.
+# it to the party (or lets it go), Tab steps through units taking orders, Space ends the turn, Esc or
+# right-click backs out. The cog opens Settings, with a Guide to all this; nothing on screen
+# explains it otherwise. Command decides who takes orders and which of their slots. Allies left
+# without orders act on their own as the turn ends, and other sides play themselves, paced so they
+# can be followed.
 # Other sides are shown only as the player's units make them out (Perception, shared across the
 # side): unlocated units aren't drawn, ones whose side can't be told are black shapes, and areas
 # where something is only suspected are marked. Ground is judged the same way - safe, unsure (not
@@ -69,6 +70,7 @@ var _dirty := true
 var _reach_of: Unit  # whose reach `reach` holds, until something changes
 var _note := ""  # a passing message for the hint line ("Out of reach")
 var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
+var _roll := {}  # the attack roll the next used signal is for (_on_attacked())
 
 @onready var card: UnitCard = %Card
 @onready var bar: VBoxContainer = %Hotbar
@@ -90,6 +92,7 @@ var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 @onready var over: PanelContainer = %Over
 @onready var pane: PanelContainer = %TilePane
 @onready var skills: SkillTree = %Skills
+@onready var settings: PanelContainer = %Settings
 
 
 static func shade(c: Color) -> Color:
@@ -110,11 +113,12 @@ func _ready() -> void:
 	battle.phase_changed.connect(_on_phase, CONNECT_DEFERRED)
 	battle.traveled.connect(overlay.walk)
 	battle.traveled.connect(_mark.unbind(3))
+	battle.attacked.connect(_on_attacked)
 	battle.used.connect(_on_used)
 	battle.sprung.connect(_on_sprung)
 	for u: Unit in battle.get_node("Units").get_children():
 		u.hp_changed.connect(_on_hp.bind(u))
-		u.energy_changed.connect(_mark.unbind(2))
+		u.energy_changed.connect(_on_energy.bind(u))
 		u.reserve_changed.connect(_mark.unbind(3))
 		u.died.connect(_on_died)
 	book_button.pressed.connect(toggle_spellbook)
@@ -123,14 +127,16 @@ func _ready() -> void:
 	end_button.pressed.connect(end_turn)
 	spellbook.switched.connect(func(s: Skill): switch(spellbook.unit, s))
 	skills.unlocked.connect(_on_unlocked)
+	skills.raised.connect(_on_raised)
 	skills.leveled.connect(_on_leveled)
 	%SkillsIcon.pressed.connect(toggle_skills)
 	%BookIcon.pressed.connect(toggle_spellbook)
-	%CogIcon.pressed.connect(_say.bind("Settings are coming soon"))
+	%CogIcon.pressed.connect(toggle_settings)
+	%SettingsClose.pressed.connect(_close_panels)
 	%CharacterIcon.pressed.connect(_say.bind("The character sheet is coming soon"))
 	%MenuButton.pressed.connect(func(): get_tree().change_scene_to_file(menu_scene))
 	banner.modulate.a = 0.0
-	for c: Control in [tip, spellbook, skills, over]:
+	for c: Control in [tip, spellbook, skills, settings, over]:
 		c.hide()
 	if not battle.rolls.is_empty():
 		_log("[color=#6b7180]Initiative: %s[/color]" % ", ".join(battle.order.map(
@@ -296,6 +302,8 @@ func use_slot(i: int) -> void:
 		_say(_why_no_orders(u))
 	elif not command.slot_open(u, i):
 		_say(_why_locked())
+	elif not u.slot_works(i):
+		_say(SkillSlot.NO_LUCK)
 	elif s.passive:
 		switch(u, s)
 	elif armed == s:
@@ -368,6 +376,7 @@ func toggle_spellbook() -> void:
 		spellbook.hide()
 	else:
 		skills.hide()
+		settings.hide()
 		if not (selected and known(selected)):
 			select(observer())
 		if selected:
@@ -383,6 +392,7 @@ func toggle_skills() -> void:
 		skills.hide()
 	else:
 		spellbook.hide()
+		settings.hide()
 		if not (selected and known(selected)):
 			select(observer())
 		if selected:
@@ -391,12 +401,21 @@ func toggle_skills() -> void:
 
 
 func _panel_open() -> bool:
-	return spellbook.visible or skills.visible
+	return spellbook.visible or skills.visible or settings.visible
+
+
+# The cog: settings, and the Guide to how the game is played.
+func toggle_settings() -> void:
+	var open := not settings.visible
+	_close_panels()
+	settings.visible = open
+	_update_tip()
 
 
 func _close_panels() -> void:
 	spellbook.hide()
 	skills.hide()
+	settings.hide()
 	_mark()
 	_update_tip()
 
@@ -493,9 +512,9 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 		if not target.is_alive():
 			return "Already fallen"
 		var ally: bool = target.faction == u.faction if known(target) else _reads_as_ally(target)
-		if s.hostile and ally:
+		if ally and not s.for_allies():
 			return "%s is for foes" % s.name
-		if not s.hostile and not ally:
+		if not ally and not s.for_foes():
 			return "%s is for allies" % s.name
 		if not battle.in_reach(u, s, target):
 			return "Out of reach"
@@ -518,13 +537,13 @@ func _use_on(c: Vector2i, force := false) -> void:
 	if not _orders(u):
 		disarm()
 		return
-	if force and s.hostile and not s.on_tile():
+	if force and s.for_foes() and not s.on_tile():
 		_strike_at(u, s, c)
 		return
 	var target: Variant = c if s.on_tile() else unit_seen(c)
 	var why := why_not(u, s, target)
 	if why == "Pick a unit":
-		_say("Pick a unit, or Ctrl-click to strike at the tile" if s.hostile else why)
+		_say("Pick a unit, or Ctrl-click to strike at the tile" if s.for_foes() else why)
 		return
 	if why == "Out of reach" or why == "Already fallen":
 		_say(why)
@@ -560,7 +579,7 @@ func _done(u: Unit) -> void:
 # The skill a click on a foe uses: slot 1, if it's an attack the unit may be told to use.
 func _primary(u: Unit) -> Skill:
 	var s: Skill = u.hotbar[0] if not u.hotbar.is_empty() else null
-	return s if s and not s.passive and s.hostile and not s.on_tile() and command.slot_open(u, 0) else null
+	return s if s and not s.passive and s.for_foes() and not s.on_tile() and command.slot_open(u, 0) else null
 
 
 # Where u would walk to use s on whatever is at c: the cheapest tile it expects to reach that has c
@@ -687,8 +706,16 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 			u.appear(null)  # the battle's over: everyone shows as they are
 
 
+# An attack roll, kept for the log line _on_used() writes next.
+func _on_attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int) -> void:
+	_roll = {caster = caster, target = target, d20 = d20, total = total, defense = defense,
+			hit = d20 == 20 or total >= defense, crit = d20 == 20}
+
+
 func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 	_mark()
+	var roll := _roll if _roll.get("caster") == caster and _roll.get("target") == at else {}
+	_roll = {}
 	if skill.lays and not known(caster):
 		if unit_seen(caster.cell) == caster:
 			_log("%s is setting something up." % _tag(caster))
@@ -702,6 +729,15 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 				" and tells %d %s where" % [told, "ally" if told == 1 else "allies"] if told > 0 else ""]
 	elif at is Vector2i and not skill.on_tile():
 		text += ", but strikes only air"
+	if not roll.is_empty():
+		text += _roll_text(roll, at)
+		if not roll.hit:
+			if unit_seen(at.cell) == at:
+				overlay.float_text(at, "Miss", MUTED)
+			_log(text)
+			return
+		if roll.crit and unit_seen(at.cell) == at:
+			overlay.float_text(at, "Critical!", GOLD)
 	if at is Unit and dealt > 0:
 		if _hp_shows(at):
 			text += " [color=#ff6b5e]-%d[/color]" % dealt
@@ -710,6 +746,25 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 			if known(caster):
 				overlay.float_text(at, "Hit!", FOE)
 	_log(text)
+
+
+# " (rolls 14 vs Defense 11)", " (natural 20)", " (rolls 6): misses" - Defense left out when the
+# player can't make it out.
+func _roll_text(roll: Dictionary, target: Unit) -> String:
+	var against := " vs Defense %d" % roll.defense if _defense_shows(target) else ""
+	var result := "natural 20" if roll.crit else ("rolls %d%s" % [roll.total, against])
+	return " [color=#6b7180](%s)[/color]%s" % [result, "" if roll.hit else ": misses"]
+
+
+# Whether the player can make out u's Defense: its own side, or one it can identify (armor shows).
+func _defense_shows(u: Unit) -> bool:
+	return known(u) or view(u).net >= 0
+
+
+func _on_energy(was: int, now: int, u: Unit) -> void:
+	_mark()
+	if now > was and battle.phase == Battle.Phase.TURNS and (known(u) or view(u).energy != null):
+		overlay.float_text(u, "+%d EN" % (now - was), Unit.ENERGY_COLOR)
 
 
 func _on_sprung(_c: Vector2i, by: Unit) -> void:
@@ -982,6 +1037,14 @@ func _on_unlocked(s: Skill) -> void:
 	_mark()
 
 
+func _on_raised(s: Skill) -> void:
+	var u := skills.unit
+	if _can_spend(u) and u.raise(s):
+		_log("%s raises %s to rank %s." % [_tag(u), s.name, Skill.roman(u.rank(s))])
+		_rebuild_bar()
+	_mark()
+
+
 func _on_leveled() -> void:
 	var u := skills.unit
 	if _can_spend(u):
@@ -996,7 +1059,7 @@ func _open_book() -> void:
 
 
 func _rebuild_bar() -> void:
-	var n := selected.bar_size() if selected and known(selected) else Unit.HOTBAR
+	var n := _bar_slots(selected if selected and known(selected) else null)
 	if bar.get_child_count() == n:
 		return
 	for c in bar.get_children():
@@ -1011,7 +1074,19 @@ func _rebuild_bar() -> void:
 		bar.add_child(s)
 
 
+# Hotbar slots shown for u: all of them, but its clover slot (the last) only while it's lucky or holds
+# a skill.
+func _bar_slots(u: Unit) -> int:
+	if not u:
+		return Unit.SLOTS
+	var c := u.clover()
+	if c >= 0 and u.luck <= 0 and (c >= u.hotbar.size() or u.hotbar[c] == null):
+		return c
+	return u.bar_size()
+
+
 func _refresh_bar() -> void:
+	_rebuild_bar()
 	var u := selected if selected and known(selected) else null
 	bar.visible = u != null or not selected  # other sides' skills aren't the player's to see
 	%BarTitle.visible = bar.visible
@@ -1021,16 +1096,25 @@ func _refresh_bar() -> void:
 		var i := slot.index
 		var s: Skill = u.hotbar[i] if u and i < u.hotbar.size() else null
 		var locked := u != null and known(u) and u != command.leader and not command.slot_open(u, i)
-		var usable := orders and s != null and not locked and (s.passive or u.can_afford(s))
+		var works := u == null or u.slot_works(i)
+		var usable := orders and s != null and not locked and works and (s.passive or u.can_afford(s))
 		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit, locked)
+		slot.set_kind(u.slot_kind(i) if u else &"", works)
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked()
 
 
 func _on_dropped(i: int, s: Skill, _from: int) -> void:
-	if selected and _editable(selected):
-		if not selected.bar_place(s, i):
-			_say("%s doesn't know %s" % [_name(selected), s.name])
+	var u := selected
+	if u and _editable(u):
+		if not u.bar_place(s, i):
+			var kind: String = Skill.CATEGORIES.get(u.slot_kind(i), "")
+			if u.rank(s) == 0:
+				_say("%s doesn't know %s" % [_name(u), s.name])
+			elif not u.slot_works(i):
+				_say(SkillSlot.NO_LUCK)
+			elif kind:
+				_say("%s slots hold only %s skills" % [kind, kind.to_lower()])
 		_mark()
 
 
@@ -1051,10 +1135,12 @@ func _refresh_buttons() -> void:
 	party_button.tooltip_text = "Let %s go from your party (P)" % _name(u) if member else \
 			"Invite the selected ally to your party (P)\n%s" % (_why_no_join(u) if u else "Select an ally first")
 	hint.text = _note if _note else _hint()
+	hint.visible = hint.text != ""
 	hint.add_theme_color_override(&"font_color", GOLD if _note else MUTED)
 	end_button.disabled = not my_turn()
 
 
+# What's going on that the screen doesn't already show; how to play is in the Guide (Settings).
 func _hint() -> String:
 	if battle.phase == Battle.Phase.OVER:
 		return "The battle is over."
@@ -1067,18 +1153,12 @@ func _hint() -> String:
 	if battle.turn != command.faction():
 		return "Waiting for %s." % battle.turn.name
 	var u := selected
-	if not u:
-		return "Click a unit to select it. Tab steps through units taking orders."
-	if armed:
-		return "Click a target for %s. Esc or right-click cancels." % armed.name
-	if _orders(u):
-		return "Click a tile to move there, a foe to attack it with slot 1. Keys 1-%d use skills." % u.bar_size()
-	if known(u) and u.asleep():
+	if not u or not known(u) or _orders(u):
+		return ""
+	if u.asleep():
 		return "Asleep. An ally ending the turn beside it wakes it for the next one."
-	if known(u):
-		return "Too far to hear you. Bring %s within %s." % [_name(command.leader),
-				_tiles(command.party_reach() if u in command.party else float(command.reach()))]
-	return "What your side can make out. Shift-click inspects a foe without attacking."
+	return "Too far to hear you. Bring %s within %s." % [_name(command.leader),
+			_tiles(command.party_reach() if u in command.party else float(command.reach()))]
 
 
 func _refresh_side() -> void:
@@ -1196,6 +1276,7 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["EN", u.energy, u.max_energy, Unit.ENERGY_COLOR])
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
+		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
 		info.rows = rows
 	else:
 		var r := view(u)
@@ -1230,9 +1311,20 @@ func _info(u: Unit) -> Dictionary:
 			rows.append(["HP", "?", null, MUTED])
 		if r.energy != null:
 			rows.append(["EN", r.energy, null, Unit.ENERGY_COLOR])
+		if r.net >= 0:
+			rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
 		info.rows = rows
 	info.chips = chips
 	return info
+
+
+# "11 · Gambeson", "2 · unarmored", with tagged Defense after: "+2 vs magical".
+func _defense_line(u: Unit) -> String:
+	var text := "%d · %s" % [u.defense(), u.armor.name if u.armor else "unarmored"]
+	var tagged := u.tagged_defense()
+	for t in tagged:
+		text += ", %+d vs %s" % [tagged[t], t]
+	return text
 
 
 func _update_tip() -> void:
@@ -1250,14 +1342,14 @@ func _tip_text() -> String:
 	var u := unit_seen(hover)
 	if armed and selected:
 		if not u and not armed.on_tile():
-			if not armed.hostile:
+			if not armed.for_foes():
 				return "%s\nPick a unit" % armed.name
 			var why_tile := why_not(selected, armed, hover)
 			return "%s\n%s" % [armed.name, why_tile if why_tile else "Ctrl-click to strike at whatever may be here"]
 		var target: Variant = hover if armed.on_tile() else u
 		var why := why_not(selected, armed, target)
 		var head := armed.name + (" on " + _name(u) if u and not armed.on_tile() else "")
-		return "%s\n%s" % [head, why if why else "Click to use: " + _forecast(selected, armed)]
+		return "%s\n%s" % [head, why if why else "Click to use: " + _forecast(selected, armed, target if target is Unit else null)]
 	if u:
 		return _unit_line(u) + ("\n" + _charge_line(selected, hover) if charge == hover else "")
 	var lines: PackedStringArray = []
@@ -1309,21 +1401,28 @@ func _charge_line(u: Unit, c: Vector2i) -> String:
 			return "Click: walk closer (out of reach this turn)"
 		return _short(u, s) if not u.can_afford(s) else "Out of reach of %s" % s.name
 	var walk := "walk %s, then " % _cost_text(plan.get("path", []), reach[a.dest]) if a.dest != u.cell else ""
-	return "Click: %s%s %s\n%s" % [walk, s.name, Skill.roman(u.rank(s)), _forecast(u, s)]
+	return "Click: %s%s %s\n%s" % [walk, s.name, Skill.roman(u.rank(s)), _forecast(u, s, unit_seen(c))]
 
 
-# What using s would cost and roughly do (before mitigation and luck).
-func _forecast(u: Unit, s: Skill) -> String:
+# What using s on target would cost and roughly do (before mitigation and luck): AP, cost, the
+# chance to hit (when the target's Defense can be made out) and the damage of a hit - or, for a dual
+# skill used on an ally, the effects it gets.
+func _forecast(u: Unit, s: Skill, target: Unit = null) -> String:
 	var fund: Variant = u.funding(s)
 	var text := "%s AP" % Skill.num(u.ap_cost(s, fund))
-	if s.cost:
-		text += ", %d %s" % [s.cost, fund.name if fund is Reserve else "energy"]
+	if u.cost_from(s, fund):
+		text += ", %d %s" % [u.cost_from(s, fund), fund.name if fund is Reserve else "energy"]
+	if s.dual and target and not foe(target):
+		var n := s.lasts(u.rank(s))
+		return text + " · %s, %d turn%s" % [", ".join(s.effects.map(func(e: Effect): return e.describe(u.rank(s)))), n, "" if n == 1 else "s"]
+	if target and s.attacks():
+		text += " · %s to hit" % ("%d%%" % roundi(Battle.hit_chance(u, s, target) * 100.0) if _defense_shows(target) else "?%")
 	var t := s.tier(u.rank(s))
 	if t:
 		var hits := u.rank(s) if s.hits_per_rank else 1
-		var bonus := u.mod(t.stat, s.tags) if t.stat else 0
-		var lo := maxi(t.power + t.dice.x + bonus, 0) * hits
-		var hi := maxi(t.power + t.dice.x * t.dice.y + bonus, 0) * hits
+		var bonus := u.mod(u.wielded(t.stat, s.tags), s.tags) if t.stat else 0
+		var lo := maxi(t.power + t.dice.x + bonus, 1) * hits
+		var hi := maxi(t.power + t.dice.x * t.dice.y + bonus, 1) * hits
 		text += " · %s damage" % (str(lo) if lo == hi else "%d-%d" % [lo, hi])
 	return text
 

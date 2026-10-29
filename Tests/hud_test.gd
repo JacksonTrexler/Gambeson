@@ -55,7 +55,7 @@ func test_keys_and_targets() -> void:
 	ok(h.armed == strike, "1 arms Strike")
 	ok(h.targets().size() == 1 and h.targets()[0] == v(3), "the enemy in reach is its one target")
 	h.hover_cell(Vector2i(5, 3))
-	ok("Click to use: 3 AP · 2 damage" in h.tip_label.text, "hovering it forecasts the cost and damage")
+	ok("Click to use: 3 AP · 100% to hit · 2 damage" in h.tip_label.text, "hovering it forecasts the cost, chance to hit and damage")
 	h.click(Vector2i(5, 3))
 	ok(v(3).hp == 8 and h.armed == null and v(1) in h.command.ordered, "clicking it strikes (1 + str mod 1)")
 	h._unhandled_input(key(KEY_1))
@@ -118,9 +118,10 @@ func test_spellbook_and_bar() -> void:
 	ok(h.spellbook.visible and h.spellbook.unit == icor, "B opens the selected unit's spellbook")
 	var actives := h.spellbook.actives.get_children()
 	var passives := h.spellbook.passives.get_children()
-	ok(actives.size() == 1 and actives[0].skill == hex and passives.size() == 1 and passives[0].skill == arcanist, "Hex under Active, Arcanist Perspective under Passive")
+	ok(actives.size() == 1 and actives[0].skill == hex and passives.size() == 2 and passives[0].skill == arcanist and passives[1].skill.name == "Mana",
+			"Hex under Active; Arcanist Perspective III, then the Wizard's Mana I, under Passive")
 	ok(actives[0].get_child(0).get_child(0).text == "III", "ranks in numerals")
-	ok(passives[0].draggable, "a toggled passive can go on the bar")
+	ok(passives[0].draggable and not passives[1].draggable, "a toggled passive can go on the bar")
 	var slot: SkillSlot = h.bar.get_child(3)
 	var data := {skill = arcanist, from = -1}
 	ok(slot._can_drop_data(Vector2.ZERO, data), "a hotbar slot takes it")
@@ -184,13 +185,13 @@ func test_drawn_as_seen() -> void:
 	v(3).afflict(effect("concealment", 3), 9)
 	v(4).afflict(effect("concealment", 1), 9)
 	var h := await start(v(1))
-	var shadow := func(u: Unit) -> bool: return (u.sprite.material as ShaderMaterial).get_shader_parameter("shadow")
-	var edge := func(u: Unit) -> Color: return (u.sprite.material as ShaderMaterial).get_shader_parameter("color")
+	var shadow := func(u: Unit) -> bool: return u.sprite.modulate == Unit.SHAPE
+	var edge := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0) if u.glow.visible else Color.TRANSPARENT
 	ok(not icor.visible, "unlocated: not drawn at all")
 	ok(not v(3).visible and not h.dubious.is_empty() and h.dubious.keys().all(func(c): return Vector2(c).distance_to(Vector2(5, 5)) < 3),
 			"only suspected: not drawn, but the area it may be in is marked")
 	ok(v(4).visible and shadow.call(v(4)) and not v(4).hp_bar.visible and edge.call(v(4)) == Unit.SHAPE_EDGE,
-			"located, side unknown: a black shape, neutral outline, no bars")
+			"located, side unknown: a black shape, neutral glow, no bars")
 	ok(h._info(v(4)).shape and h._info(v(4)).chips[0][0] == "Unknown", "the card shows a shape too")
 	ok(siren.visible and not shadow.call(siren) and edge.call(siren) == lancin.primary, "the Siren wears the side its persona claims")
 	ok(v(1).visible and edge.call(v(1)) == lancin.primary and not shadow.call(v(1)), "your own as they are")
@@ -412,7 +413,11 @@ func test_skills_screen() -> void:
 	h.get_node("%SkillsIcon").pressed.emit()
 	ok(h.skills.visible, "the dock's branch opens skills")
 	h.get_node("%CogIcon").pressed.emit()
-	ok(h._note.contains("coming soon"), "the cog is a placeholder")
+	ok(h.settings.visible and not h.skills.visible, "the cog opens Settings, closing skills")
+	ok("Ctrl-click a tile" in h.get_node("%Guide").text and not h.hint.visible, "with the Guide; no instructions sit on screen")
+	h.get_node("%CogIcon").pressed.emit()
+	ok(not h.settings.visible, "and closes it")
+	h.toggle_skills()
 	h.select(v(1))
 	h._refresh()
 	ok(h.skills.unit == v(1) and not h.get_node("%LevelUp").visible, "another ally's skills show, but aren't yours to spend")
@@ -458,4 +463,158 @@ func test_initiative_and_turns() -> void:
 	ok(not nemes_row.any(func(d): return d[0] == unit("Siren")), "nor does the Siren's persona slip: its side isn't shown")
 	h._transition(nemes, false)
 	ok(h.get_node("%BandTitle").text == "Nemes" and h.get_node("%BandSub").text.begins_with("Their turn"), "the turn change names the side")
+	h.free()
+
+
+func test_clover_bar() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	var h := await start(v(1))
+	h.select(v(1))
+	h._refresh()
+	var c := h.bar.get_child(4) as SkillSlot
+	ok(h.bar.get_child_count() == 5 and c.clover and c.works, "a lucky leader: 4 slots and a working clover fifth")
+	ok(not (h.bar.get_child(3) as SkillSlot).clover and "Clover slot" in c.tooltip_text, "only the fifth; it says what it is")
+	v(1).afflict(effect("luck", -1), 3)
+	h._refresh()
+	ok(h.bar.get_child_count() == 4, "luck gone, nothing in it: hidden")
+	v(1).timed.clear()
+	ok(v(1).bar_place(strike, 4), "Strike moved into it")
+	v(1).afflict(effect("luck", -1), 3)
+	h._refresh()
+	c = h.bar.get_child(4) as SkillSlot
+	ok(h.bar.get_child_count() == 5 and c.clover and not c.works and not c.usable and c.skill == strike,
+			"luck gone with a skill in it: shown, greyed out")
+	h.use_slot(4)
+	ok(h.armed == null and h._note == SkillSlot.NO_LUCK, "and it can't be used: %s" % h._note)
+	h.free()
+
+
+func test_attack_feedback() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(3).armor = load("res://Items/plate.tres")
+	var h := await start(v(1))
+	h.select(v(1))
+	h._refresh()
+	ok(h._info(v(1)).rows.any(func(r): return r[0] == "DF" and r[1] == "2 · unarmored"), "the card shows Defense: 2, unarmored")
+	ok(h._info(v(3)).rows.any(func(r): return r[0] == "DF" and r[1] == "20 · Plate"), "...and a foe's it can make out: Plate, 20")
+	h.use_slot(0)
+	h.hover_cell(Vector2i(5, 3))
+	ok("10% to hit" in h.tip_label.text, "the forecast: 10%% against Plate (%s)" % h.tip_label.text)
+	var rolled := []
+	b.attacked.connect(func(_c, _t, d20: int, _total, _def): rolled.append(d20))
+	h.click(Vector2i(5, 3))
+	var text := h.log_box.get_parsed_text()
+	ok(rolled.size() == 1, "one attack roll")
+	if rolled[0] == 20:
+		ok("natural 20" in text, "a natural 20 is logged: %s" % text)
+	else:
+		ok("(rolls %d vs Defense 20)" % (rolled[0] + 1) in text, "the roll is logged against Defense: %s" % text)
+		ok(("misses" in text) == (rolled[0] < 19), "and whether it missed")
+	h.free()
+
+
+func test_hidden_defense() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(3).afflict(effect("concealment", 1), 9)
+	var h := await start(v(1))
+	h.select(v(1))
+	h._refresh()
+	ok(h.view(v(3)).net < 0 and not h._info(v(3)).rows.any(func(r): return r[0] == "DF"), "a foe it can't identify: no Defense on the card")
+	ok("?% to hit" in h._forecast(v(1), strike, v(3)), "nor a chance to hit")
+	h.free()
+
+
+func shrike() -> Unit:
+	var u := b.starter({faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Shrike"})
+	b.get_node("Units").add_child(u)
+	return u
+
+
+func test_adventurer_skills_screen() -> void:
+	var u := shrike()
+	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	var h := await start(u)
+	var igna: Skill = load("res://Skills/igna.tres")
+	var sola: Skill = load("res://Skills/sola.tres")
+	var hazard: Skill = load("res://Skills/hazard_expert.tres")
+	h.toggle_skills()
+	await tree.process_frame
+	var w: SkillWheel = h.get_node("%Wheel")
+	ok(w.is_visible_in_tree() and not h.get_node("%ClassCol").visible and h.get_node("%DetailCol").visible,
+			"the Adventurer's class skills: a wheel, not a list")
+	ok(w.skills().size() == 23 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
+			"every skill on it (%d), Skill Slot +1 at the centre" % w.skills().size())
+	ok(h.skills.size.x >= SkillTree.TREE_SIZE.x - 0.5, "a wider panel for it (%s)" % h.skills.size)
+	ok(h.skills.picked == hex and h.get_node("%DetailName").text == "Hex" and h.get_node("%DetailState").text == "Tier 1 · Can be learned now",
+			"Hex shows first: the first it can learn")
+	var act: Button = h.get_node("%DetailButton")
+	ok(act.text == "Unlock · 1 pt" and act.disabled and act.tooltip_text == "Needs 1 skill point", "no point yet (%s)" % act.text)
+	u.skill_points = 3
+	h._refresh()
+	ok(not act.disabled, "a point: it can be unlocked")
+	act.pressed.emit()
+	h._refresh()
+	ok(u.rank(hex) == 1 and u.skill_points == 2 and "learns Hex" in h.log_box.get_parsed_text(), "unlocked from the detail column")
+	ok(h.get_node("%DetailName").text == "Hex I" and act.text == "Rank II · 2 pts" and not act.disabled, "then it can go up a rank, for 2")
+	act.pressed.emit()
+	h._refresh()
+	ok(u.rank(hex) == 2 and u.skill_points == 0 and "raises Hex to rank II" in h.log_box.get_parsed_text(), "rank II")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = w.spot(sola)
+	w._gui_input(click)
+	ok(h.skills.picked == sola and w.selected == sola and h.get_node("%DetailName").text == "Sola", "clicking a skill on the wheel shows it")
+	ok("On an ally" in h.get_node("%DetailText").text, "with what it does")
+	h.skills.pick(hazard)
+	ok(h.get_node("%DetailState").text == "Tier 2 · Learn Snare first" and act.disabled, "Hazard Expert: tier 2, after Snare")
+	h.skills.pick(igna)
+	ok(h.get_node("%DetailState").text == "Tier 1 · Not built yet. Waits on open question 10 (todo.md)" and not act.visible
+			and h.get_node("%DetailText").text == igna.plan, "a stub: the question it waits on, and its plan")
+	ok(w._get_tooltip(w.spot(igna)).begins_with("Igna · tier 1\n") and "Waits on open question 10" in w._get_tooltip(w.spot(igna)) and w._get_tooltip(Vector2(-50, -50)) == "", "the wheel's tooltips")
+	ok(w.state_of(igna) == &"stub" and w.state_of(hex) == &"learned" and w.state_of(sola) == &"open" and w.state_of(hazard) == &"locked",
+			"how each is drawn")
+	h._refresh()
+	ok(h.skills.picked == igna, "the pick survives a refresh")
+	h.free()
+
+
+func test_dual_spell_ui() -> void:
+	var u := shrike()
+	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3), v(3): Vector2i(4, 4)})
+	var sola: Skill = load("res://Skills/sola.tres")
+	u.skill_points = 1
+	u.unlock(sola)
+	var h := await start(u)
+	h.select(u)
+	h._refresh()
+	h.use_slot(1)
+	h._refresh()
+	ok(h.armed == sola and v(1) in h.marked and v(3) in h.marked, "Sola armed: an ally and a foe in reach are both targets")
+	h.hover_cell(Vector2i(5, 3))
+	ok("3 AP, 2 energy · Persona: +1, 1 turn" in h.tip_label.text and "to hit" not in h.tip_label.text, "on the ally: its cost, and what it gets (%s)" % h.tip_label.text)
+	h.hover_cell(Vector2i(4, 4))
+	ok("to hit" in h.tip_label.text and "1-4 damage" in h.tip_label.text, "on the foe: the chance to hit, and damage (%s)" % h.tip_label.text)
+	h.click(Vector2i(5, 3))
+	ok(v(1).stat(&"persona") == 1.0 and h.armed == null, "clicked on the ally: it gets the persona")
+	h.free()
+
+
+func test_typed_slot_bar() -> void:
+	var u := shrike()
+	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(8, 6)})
+	var sola: Skill = load("res://Skills/sola.tres")
+	u.skill_points = 10
+	for k in ["sola", "nadira", "astera", "magic_slot"]:
+		u.unlock(load("res://Skills/%s.tres" % k))
+	var h := await start(u)
+	h.select(u)
+	h._refresh()
+	var m := h.bar.get_child(4) as SkillSlot
+	ok(h.bar.get_child_count() == 5 and m.kind == &"magical" and "Magic slot: holds only magic skills" in m.tooltip_text,
+			"a Magic slot on the bar; the unlucky clover slot after it is hidden")
+	h._on_dropped(4, strike, 0)
+	ok(u.hotbar[4] == null and h._note == "Magic slots hold only magic skills", "Strike won't go in (%s)" % h._note)
+	h._on_dropped(4, sola, 1)
+	ok(u.hotbar[4] == sola and u.hotbar[1] == null, "Sola will")
 	h.free()

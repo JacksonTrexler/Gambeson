@@ -24,6 +24,8 @@ theme = SubResource("Theme_small")
 script = ExtResource("1_entry")
 sides = Array[ExtResource("3_faction")]([ExtResource("4_lancin"), ExtResource("5_nemes")])
 roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin")])
+default_side = ExtResource("4_lancin")
+default_role = ExtResource("7_adventurer")
 
 [node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
@@ -65,7 +67,7 @@ prompt = "What is your starter's class?"
 [node name="Name" type="LineEdit" parent="Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
-placeholder_text = "Your starter's name"
+placeholder_text = "Shrike"
 alignment = 1
 max_length = 20
 

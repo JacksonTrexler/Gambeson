@@ -27,7 +27,7 @@ stat = &"wisdom"
 [resource]
 script = ExtResource("1_script")
 name = "Hex"
-tags = Array[StringName]([&"dark", &"magic", &"wis"])
+tags = Array[StringName]([&"dark", &"magical", &"wis"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_unluck")])
 ap = 4.0
 cost = 2

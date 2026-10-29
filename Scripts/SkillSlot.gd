@@ -10,13 +10,17 @@ signal cleared(index: int)
 
 # Stripe colour by a skill's first tag that has one.
 const TINTS := {
-	&"magic": Color("#a179f2"), &"dark": Color("#7b6fe0"), &"physical": Color("#c9ced8"),
+	&"magical": Color("#a179f2"), &"dark": Color("#7b6fe0"), &"physical": Color("#c9ced8"),
 	&"earth": Color("#c8a165"), &"sound": Color("#4fc1b0"), &"sight": Color("#62b6e8"),
 	&"light": Color("#f3da72"),
 }
 const PLAIN_TINT := Color("#8a90a0")
 const GOLD := Color("#e8c547")
 const ON := Color("#3fbf4f")
+const CLOVER := Color("#5fd068")  # the clover slot a lucky unit gets (Unit.clover()); brighter than Specialist green
+# Typed slots (Unit.granted_slots()): dull red, purple and green. Skill trees colour their roots the same.
+const TYPES := {&"martial": Color("#b0574f"), &"magical": Color("#8d6bc9"), &"specialist": Color("#6b9a5e")}
+const NO_LUCK := "The clover slot only works while this unit is lucky"
 
 var index := 0
 var skill: Skill
@@ -26,6 +30,9 @@ var on := false  # a toggled passive that's switched on
 var usable := true  # the unit can use it now (takes orders, can pay)
 var editable := true  # skills can be dragged in and out
 var locked := false  # out of reach of the leader's orders (Command.slots())
+var kind := &""  # its unit's slot kind (Unit.slot_kinds()): &"" plain, &"clover", or a type (magical...)
+var clover := false  # the unit's clover slot
+var works := true  # false: a clover slot whose unit isn't lucky now - greyed out until it is
 var _dragging := false
 
 
@@ -69,19 +76,46 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	queue_redraw()
 
 
+# The slot's kind on its unit (plain, clover or typed), and whether it works now.
+func set_kind(k: StringName, does_work: bool) -> void:
+	kind = k
+	clover = k == &"clover"
+	works = does_work
+	if clover:
+		tooltip_text = "Clover slot: luck rounds this unit's slots up\n" + (tooltip_text if works else NO_LUCK)
+	elif k in TYPES:
+		var cat: String = Skill.CATEGORIES.get(k, String(k))
+		tooltip_text = "%s slot: holds only %s skills\n%s" % [cat, cat.to_lower(), tooltip_text]
+	queue_redraw()
+
+
+# The colour that marks its kind, or null for a plain slot.
+func _mark() -> Variant:
+	if clover:
+		return CLOVER
+	return TYPES.get(kind)
+
+
 func _draw() -> void:
 	var font := get_theme_font(&"font")
 	var fs := 6
 	var mid := (size.y - font.get_height(fs)) / 2.0 + font.get_ascent(fs)
-	draw_rect(Rect2(2, 2, 9, size.y - 4), Color(1, 1, 1, 0.07))
+	var fade := 1.0 if works else 0.4
+	var tone: Variant = _mark()
+	if tone != null:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(tone, 0.12 * fade))
+		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(tone, 0.5 * fade), false, 1.0)
+	draw_rect(Rect2(2, 2, 9, size.y - 4), Color(tone, 0.3 * fade) if tone != null else Color(1, 1, 1, 0.07))
 	if locked:
 		_lock(Vector2(6.5, size.y / 2.0 + 1.0))
 	else:
-		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, Color(1, 1, 1, 0.55))
+		var key_col := Color(tone.lightened(0.35), fade) if tone != null else Color(1, 1, 1, 0.55)
+		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, key_col)
 	if not skill:
-		draw_string(font, Vector2(15, mid), "empty", HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
+		var blank := "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "empty")
+		draw_string(font, Vector2(15, mid), blank, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
 		return
-	var dim := 1.0 if usable and (on or not skill.passive) else 0.45
+	var dim := 1.0 if usable and works and (on or not skill.passive) else 0.45
 	draw_rect(Rect2(12, 2, 1.5, size.y - 4), tint(skill) * Color(1, 1, 1, dim))
 	var right := size.x - 3
 	var numeral := Skill.roman(rank)

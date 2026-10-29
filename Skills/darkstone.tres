@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 name = "Darkstone"
-tags = Array[StringName]([&"dark", &"magic", &"cha"])
+tags = Array[StringName]([&"dark", &"magical", &"cha"])
 ap = 4.0
 cost = 3
 radius = 1.0

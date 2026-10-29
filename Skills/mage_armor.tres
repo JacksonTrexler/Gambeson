@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_armor"]
+script = ExtResource("2_effect")
+stat = "defense"
+amount = 1.0
+per_mod = &"intelligence"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Mage Armor"
+passive = true
+toggle = true
+tags = Array[StringName]([&"magical", &"int"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_armor")])

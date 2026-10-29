@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://Scripts/Spellbook.gd" id="4_book"]
 [ext_resource type="Script" path="res://Scripts/IconButton.gd" id="5_icon"]
 [ext_resource type="Script" path="res://Scripts/SkillTree.gd" id="6_tree"]
+[ext_resource type="Script" path="res://Scripts/SkillWheel.gd" id="7_wheel"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -188,14 +189,6 @@ layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
-
-[node name="Keys" type="Label" parent="Root/Right/Column"]
-layout_mode = 2
-theme_type_variation = &"Muted"
-theme_override_colors/font_color = Color(0.42, 0.44, 0.5, 1)
-theme_override_font_sizes/font_size = 5
-text = "Click foe: attack · Ctrl-click: strike tile · Shift-click: inspect · 1-4 skills · B spellbook · S skills · H hold · P party · Tab next · Esc back"
-autowrap_mode = 3
 
 [node name="EndTurn" type="Button" parent="Root/Right/Column"]
 unique_name_in_owner = true
@@ -508,6 +501,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 5
 
 [node name="ClassCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -528,43 +522,106 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="SpeciesCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+[node name="WheelCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_constants/separation = 2
 
-[node name="SpeciesTitle" type="Label" parent="Root/Skills/Column/Cols/SpeciesCol"]
+[node name="WheelTitle" type="Label" parent="Root/Skills/Column/Cols/WheelCol"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Muted"
 clip_text = true
 
-[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/SpeciesCol"]
+[node name="Wheel" type="Control" parent="Root/Skills/Column/Cols/WheelCol"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(196, 176)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("7_wheel")
+
+[node name="DetailCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(98, 0)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="DetailName" type="Label" parent="Root/Skills/Column/Cols/DetailCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Title"
+autowrap_mode = 3
+
+[node name="DetailState" type="Label" parent="Root/Skills/Column/Cols/DetailCol"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(98, 0)
+layout_mode = 2
+theme_type_variation = &"Muted"
+theme_override_colors/font_color = Color(0.91, 0.77, 0.28, 1)
+autowrap_mode = 3
+
+[node name="DetailScroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/DetailCol"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="SpeciesList" type="VBoxContainer" parent="Root/Skills/Column/Cols/SpeciesCol/Scroll"]
+[node name="DetailText" type="Label" parent="Root/Skills/Column/Cols/DetailCol/DetailScroll"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Muted"
+autowrap_mode = 3
+
+[node name="DetailButton" type="Button" parent="Root/Skills/Column/Cols/DetailCol"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="SideCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="SpeciesCol" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SpeciesTitle" type="Label" parent="Root/Skills/Column/Cols/SideCol/SpeciesCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+clip_text = true
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/SideCol/SpeciesCol"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SpeciesList" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol/SpeciesCol/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="KnowledgeCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+[node name="KnowledgeCol" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol"]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="KnowledgeTitle" type="Label" parent="Root/Skills/Column/Cols/KnowledgeCol"]
+[node name="KnowledgeTitle" type="Label" parent="Root/Skills/Column/Cols/SideCol/KnowledgeCol"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Muted"
 clip_text = true
 
-[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/KnowledgeCol"]
+[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/SideCol/KnowledgeCol"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="KnowledgeList" type="VBoxContainer" parent="Root/Skills/Column/Cols/KnowledgeCol/Scroll"]
+[node name="KnowledgeList" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol/KnowledgeCol/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -587,6 +644,67 @@ layout_mode = 2
 focus_mode = 0
 tooltip_text = "Debug builds only: gain a level, and a skill point"
 text = "Level up (debug)"
+
+[node name="Settings" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -110.0
+offset_right = 150.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Root/Settings"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Head" type="HBoxContainer" parent="Root/Settings/Column"]
+layout_mode = 2
+
+[node name="SettingsTitle" type="Label" parent="Root/Settings/Column/Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Title"
+text = "Settings"
+
+[node name="SettingsClose" type="Button" parent="Root/Settings/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Close (Esc)"
+text = "Close"
+
+[node name="GuideTitle" type="Label" parent="Root/Settings/Column"]
+layout_mode = 2
+theme_type_variation = &"Muted"
+text = "GUIDE"
+
+[node name="Guide" type="RichTextLabel" parent="Root/Settings/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[color=#e8c547]Selecting[/color]
+Click a unit to select it; Tab steps through the units taking orders. Shift-click a foe to look it over without attacking.
+
+[color=#e8c547]Moving and acting[/color]
+With a unit that takes orders selected, hover a tile to plan a move and click to walk there. Click a foe to walk into reach and use slot 1 on it. A number key (or clicking a slot) arms that skill: click its target, or press it again to put it away. A switched passive turns on or off instead. Ctrl-click a tile to strike at whatever may be there. Esc or right-click backs out.
+
+[color=#e8c547]Your side[/color]
+Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own.
+
+[color=#e8c547]Panels[/color]
+B: spellbook - drag skills onto the hotbar. S: skills - spend skill points: 1 to learn a skill, 1 + rank² to raise it a rank. An Adventurer's class skills form a wheel: click a skill to see what it does and what it needs. A skill's tier is 1 plus the skills learned before it; a Wizard's Mana rank is the highest tier of spell it casts cheaply with mana. A dashed circle with a number is a skill not built yet, waiting on that open question.
+
+[color=#e8c547]Reading the board[/color]
+While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A black shape is something you can't identify; a marked area is where something is only suspected. Attacks roll d20 + a mod against Defense; the forecast gives the chance to hit when you can make the target out. A green-trimmed slot is a lucky unit's clover slot: it greys out while that luck is gone. Red, purple and green slots hold only martial, magic and specialist skills."
 
 [node name="Over" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true

@@ -12,7 +12,7 @@ stat = &"strength"
 [resource]
 script = ExtResource("1_script")
 name = "Strike"
-tags = Array[StringName]([&"physical", &"str"])
+tags = Array[StringName]([&"physical", &"str", &"martial"])
 ap = 3.0
 radius = 1.0
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])

@@ -7,6 +7,7 @@ signal initiative_rolled(rolls: Dictionary[Faction, Array])
 signal traveled(u: Unit, from: Vector2i, path: Array[Vector2i])
 signal used(caster: Unit, skill: Skill, at: Variant, dealt: int)  # at: the target Unit, or a cell
 signal sprung(c: Vector2i, by: Unit)
+signal attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int)  # an attack roll (cast())
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
@@ -128,6 +129,7 @@ func starter(s: Dictionary) -> Unit:
 	for k in s.role.stats:
 		assert(k in Unit.CORE, "role stat %s isn't a unit stat" % k)
 		u.set(k, s.role.stats[k])
+	u.reserves.merge(s.role.reserves)
 	assert(s.faction in spawns, "no spawn for %s" % s.faction.name)
 	u.cell = spawns[s.faction]
 	return u
@@ -233,36 +235,62 @@ func _flip(g: Array) -> Array:
 
 # --- Skills
 
-# Uses an active skill on a target in reach, paying its AP and cost. Damage comes from the skill's
-# tier for the caster's rank, once per rank for multi-hit skills (Strike III).
+# Uses an active skill on a target in reach, paying its AP and cost. Used on a foe, an attack
+# (Skill.attacks()) rolls first: d20 + the caster's attack mod against the target's Defense for the
+# skill's tags. A natural 20 always hits and doubles the damage; a miss does nothing but give the
+# target away (it was aimed at). Damage comes from the skill's tier for the caster's rank - at least
+# 1 before the target's mitigation - once per rank for multi-hit skills (Strike III). A dual skill
+# (the starter spells) puts its effects only on allies, and deals its damage only to foes.
 func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	if not _acting(caster) or skill not in caster.actives or skill.on_tile() or not target.is_alive():
 		return false
-	if skill.hostile == (target.faction == caster.faction) or not in_reach(caster, skill, target):
+	var foe := target.faction != caster.faction
+	if not (skill.for_foes() if foe else skill.for_allies()) or not in_reach(caster, skill, target):
 		return false
 	if not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
 	var before := target.hp
-	for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
-		target.afflict(e, e.turns if e.turns else skill.turns, r)
-	var t := skill.tier(r)
+	var crit := false
+	if foe and skill.attacks():
+		var d20 := rng.randi_range(1, 20)
+		var total := d20 + caster.attack_mod(skill)
+		var defense := target.defense(skill.tags)
+		crit = d20 == 20
+		attacked.emit(caster, target, d20, total, defense)
+		if not crit and total < defense:
+			_expose(target)
+			used.emit(caster, skill, target, 0)
+			return true
+	if not (skill.dual and foe):
+		for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
+			target.afflict(e, e.turns if e.turns else skill.lasts(r), r)
+	var t := skill.tier(r) if foe or not skill.dual else null
 	if t:
 		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
 		var hits := r if skill.hits_per_rank else 1
 		for i in hits:
 			if not target.is_alive():
 				break
-			var power := maxi(t.power + roll(t.dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0), 0)
+			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) if t.stat else 0
+			var power := maxi(t.power + roll(t.dice) + bonus, 1) * (2 if crit else 1)
 			if t.direct:
 				target.damage(power)
 			else:
 				target.hit(power, skill.tags, caster)
-	if skill.hostile:
+	if foe:
 		_expose(target)
 		_expose(caster)
 	used.emit(caster, skill, target, before - target.hp)
 	return true
+
+
+# The chance (0-1) an attack with s by u hits t: the d20 rolls that reach t's Defense, a natural
+# 20 always among them.
+static func hit_chance(u: Unit, s: Skill, t: Unit) -> float:
+	if not s.attacks():
+		return 1.0
+	return clampi(21 - (t.defense(s.tags) - u.attack_mod(s)), 1, 20) / 20.0
 
 
 # A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
@@ -270,7 +298,7 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 # not quite in reach of what is - it's spent on thin air, as long as the tile itself was in reach
 # of a Medium target. Returns &"hit", &"miss", or &"" when it couldn't be tried at all.
 func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
-	if not _acting(caster) or skill not in caster.actives or not skill.hostile or skill.zone != &"" or not on_map(c):
+	if not _acting(caster) or skill not in caster.actives or not skill.for_foes() or skill.zone != &"" or not on_map(c):
 		return &""
 	var t := unit_at(c)
 	if t and t != caster and cast(caster, skill, t):
@@ -378,11 +406,12 @@ func roll(dice: Vector2i) -> int:
 	return sum
 
 
-# Skill range + the caster's reach (its reach stat, +0.05 per size point) + 0.02 per size point
-# of the target (bigger targets are easier to reach). No target: a Medium one.
+# Skill range (Skill.span(): the starter spells' grows with int mod) + the caster's reach (its reach
+# stat, +0.05 per size point) + 0.02 per size point of the target (bigger targets are easier to
+# reach). No target: a Medium one.
 func skill_range(caster: Unit, skill: Skill, target: Unit = null) -> float:
 	var size: float = target.stat(&"size") if target else float(MEDIUM)
-	return skill.radius + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * size
+	return skill.span(caster) + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * size
 
 
 # Circle geometry. A near miss (within Luck.MARGIN) is rounding: in only if the caster is luckier.
@@ -560,12 +589,15 @@ func _mend(u: Unit) -> void:
 		u.damage(Luck.settle(poison * u.max_hp, u.luck, false))
 
 
-# The turn passes. Ground puts its turn-end effects on whoever is on it (Magic Stew); a sleeper
-# with an ally beside it wakes up; then timed effects count down and zones wear off.
+# The turn passes. Units that rested get energy back (Unit.recover()); ground puts its turn-end
+# effects on whoever is on it (Magic Stew); a sleeper with an ally beside it wakes up; then timed
+# effects count down and zones wear off.
 func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
 	var side := members(turn)
+	for u in side:
+		u.recover()
 	for u in side:
 		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
 			u.afflict(e, (e.turns if e.turns else u.footing.turns) + 1)  # + 1: the tick below takes this turn

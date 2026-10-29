@@ -3,12 +3,28 @@
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/RedMage.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="5_reserve"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="6_mana"]
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="20_skill"]
 [ext_resource type="Resource" path="res://Skills/darkstone.tres" id="21_opt_darkstone"]
+[ext_resource type="Resource" path="res://Skills/mage_armor.tres" id="22_opt_mage_armor"]
+[ext_resource type="Resource" path="res://Skills/mana.tres" id="23_opt_mana"]
+[ext_resource type="Resource" path="res://Skills/sola.tres" id="30_opt_sola"]
+[ext_resource type="Resource" path="res://Skills/nadira.tres" id="31_opt_nadira"]
+[ext_resource type="Resource" path="res://Skills/astera.tres" id="32_opt_astera"]
+[ext_resource type="Resource" path="res://Skills/terestera.tres" id="33_opt_terestera"]
+[ext_resource type="Resource" path="res://Skills/hydera.tres" id="34_opt_hydera"]
+
+[sub_resource type="Resource" id="Slot_mana"]
+script = ExtResource("4_slot")
+skill = ExtResource("23_opt_mana")
 
 [resource]
 script = ExtResource("1_script")
 name = "Wizard"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
-options = Array[ExtResource("20_skill")]([ExtResource("21_opt_darkstone")])
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_mana")])
+options = Array[ExtResource("20_skill")]([ExtResource("23_opt_mana"), ExtResource("22_opt_mage_armor"), ExtResource("21_opt_darkstone"), ExtResource("30_opt_sola"), ExtResource("31_opt_nadira"), ExtResource("32_opt_astera"), ExtResource("33_opt_terestera"), ExtResource("34_opt_hydera")])
+reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10})
