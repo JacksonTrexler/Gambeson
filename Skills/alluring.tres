@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_persona"]
+script = ExtResource("2_effect")
+stat = "persona"
+amount = 1.0
+per_rank = true
+
+[resource]
+script = ExtResource("1_script")
+name = "Alluring"
+passive = true
+tags = Array[StringName]([&"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_persona")])
+stance = "Friendly"
+shows_vibe = Array[String](["Harmless", "Beautiful", "Serene", "Safe"])
+shows_tags = Array[StringName]([&"holy"])
+shows_adjectives = Array[String](["Beautiful", "Radiant", "Serene", "Harmless"])
+shows_nouns = Dictionary[String, String]({
+"Beauty": ":D",
+"Lady": ";)",
+"Songstress": ":3"
+})

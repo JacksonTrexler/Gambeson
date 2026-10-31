@@ -1,0 +1,110 @@
+# Done: design rules (decided)
+
+`[x]` done · `(?N)` an open question in `docs/todo/` that may still change it · *Now:* what the game does today. Index: `completed.md`.
+
+Every skill follows these, so skill descriptions don't repeat them.
+
+- **Costs and numbers.** Where a skill's eAP, cost, duration, tags or other numbers aren't given, pick sensible ones. Every one of them stays exposed in the editor for tuning later.
+- **Luck rounds up.** Divisions in formulas (level / 2, level / 4, (con mod + wis mod) / 2) round down, or up for a unit with positive luck.
+- **Damage floor.** Nothing on the attacker's side (mods, debuffs) can bring an attack below 1 damage: if it hits, it does damage. (?1)
+- **Range.** Every skill aimed at another unit has a range: the skill's own, plus the caster's reach and both units' sizes. A small unit may have to walk a little further to bring another small unit into range. A skill cast on others can always reach an adjacent unit. Past adjacent, a skill may put a % penalty on its roll instead of a hard limit; how much is up to the skill.
+- **Attack rolls.** Most `offensive` skills roll d20 + an attack mod against the target's Defense; meeting it hits. A skill whose nature calls for something else checks that instead (a Siren's charm: cha against wis). (?5)
+  - The attack mod is the skill's stat, from its stat tag (Strike: str; Hex: wis).
+  - Weapons can let strength attacks use another stat: dex for bows, daggers and rapiers; a spellcasting stat for enchanted weapons. The unit uses whichever is best.
+  - A natural 20 hits and doubles the damage.
+  - A miss does nothing to the target. The target still loses a level of concealment, since it was aimed at; the attacker loses one only on a hit.
+  - Skills, passives and equipment can change any of this.
+- **Defense** (AC means the same thing) is set by armor, then raised or lowered by skills and equipment (Mage Armor, Sundered).
+  - Bonuses can be untagged, counting against everything, or tagged: `physical`, `magical`, `blunt`, `fire`, `dark`, `whimsical`…
+  - Tagged Defense counts against attacks carrying that tag or a child of it: `physical` covers `slash`, `pierce` and `blunt`.
+  - Unarmored: dex mod + con mod. Poor, often worse than nothing, for most low-level units.
+  - **Gambeson** (the game's namesake, and the most common armor): the higher of 10 and level / 2, + dex mod.
+  - **Plate**: the higher of 20 and level.
+  - **Robe** (`cloth`): the higher of 8 and level / 4.
+  - Plate and Robe don't add dex mod, unless passives or skills say so.
+- **Mitigation** is separate from Defense: a % cut to damage taken, tagged the same way. It can add up past 100%, but blocks at most 100%; later mitigation-reducing effects can eat into the overage.
+- **Checks.** Each skill sets its own check: a contest of the same stat (a Siren dragging a unit into water: str against str) or one stat against another (a Siren's charm: its cha against the target's wis). `defensive` checks are the ones a unit makes to avoid or lessen harm, and they trigger its `defensive` passives. `offensive` checks are the ones it makes to act on others.
+- **Checks first.** If a skill's check passes, it almost always does *something*, even when its stat would otherwise give nothing or worse.
+- **Skill slots.** A unit has **4 + level / 4** slots: 4 at levels 1–3, 5 at 4–7, and so on. Slots are the definitive limit on what it can equip, actives and passives alike. Passives take the last slots, keeping the low number keys free for actives. Slots are meant to be scarce: by mid to late game, players choose which of a unit's learned skills suit its build. NPCs and monsters come pre-configured, with extra slots as they need them (`Unit.extra_slots`).
+- **Clover slot.** When luck rounds level / 4 up, the extra slot is a **clover slot**, clover green (a different shade from Specialist slots). (?6)
+  - It works only while the unit is lucky. If its luck drops, the slot greys out, keeping its skill.
+  - If a level makes the rounding exact, it becomes a plain slot.
+- **Losing a slot.** When a unit loses a slot (a slot-granting skill removed, a slot debuff), the most recently equipped skill drops. Its slot deactivates and dims, and the skill stays there. If the slot comes back, the skill works again. (?7)
+- **Hotbar order.** The hotbar is a vertical list; a horizontal layout may come later as an option. Skills that work through another unit's skills in order read its hotbar top to bottom (Snapping Turtle) or bottom to top (Silent Strike).
+- **Typed slots.** Martial, Magic and Specialist slots only hold skills from a tree with that tag (`martial`, `magical`, `specialist`; skills on a tree's root carry its tag). In the hotbar they're dull red, purple and green. Slots granted by skills sit after a unit's sure slots and before its clover slot.
+- **Learning.** Skills are learned with skill points, quest rewards and the like. A learned skill shows in the spellbook and equips itself when a slot is free (Settings toggle, on by default).
+- **Investigating.** A skill that deceives (Hide, Clever Disguise) rolls once as it's used: d20 + its stat's mod + rank − the unit's dissonance penalty. Each investigator rolls d20 + wis mod against that one roll, at advantage within (its wis mod − rank) tiles; meeting it sees through the skill's effects. It's the standard investigation roll, the same one units make on coming into contact with hidden units.
+- **Persona and insight.** What a unit shows (its persona) can differ from what it is, and its **dissonance** says by how much. Anyone can attempt to front, but without charisma they won't be very good at it.
+  - **Persona** is how a unit tries to look and act. **Personify** is a privilege of more charismatic units: modulating how they look and act to some end. Sirens don't personify: their persona is in their nature.
+  - **Personify**, used (mid-small AP), opens a modal where the unit changes or adds up to rank persona items: its vibe, stance, the level it claims, its identity tags, the name it goes by. Words and tags come from dropdown lists (all of them, for now): type to filter, Enter takes the top of the list. A unit starts advertising when it selects something, and stops when it deselects everything or long-clicks **Clear**.
+  - **Fronting** (persona, Embellish, Brood) fools allies without trickery, unless they're **insightful** (positive wis mod, or a bonus to reading others). Fooling enemies, or insightful allies, takes trickery.
+  - Persona tries to trick allies unless a skill says it doesn't. Not all relationships are equal partnerships, and many don't last. Sirens fool their own side by default, though what they advertise there is "I'm on your side".
+  - **Stances.** From Persona III a unit can advertise itself as on the wrong team, to those it convinces:
+    - **Enemy**: treated as hostile.
+    - **Aggressive**: treated as dangerous, to be avoided.
+    - **Passive**: mostly ignored.
+    - **Friendly**: a candidate for support skills; a perceived provider of support and general back-up. (Persona II is enough for this one.)
+    - **Traitor**: explicitly against its actual allies and for its actual enemies.
+  - Units can't command or share a party with one another unless both consider themselves on the same team. A Traitor that fools a commander can take up its party slots and pretend to follow its commands; enemies and allies can grow suspicious.
+    - Traitors act on their own team's turn. On enemy turns they get no AP or energy back: they carry on from their previous turn, behaving as whatever they're pretending to be.
+    - Commanded, a traitor may accept the order or refuse it. Most refuse orders to attack their real allies: the commander rolls investigation for suspicion, at advantage. Units of positive cha may instead whiff on purpose with hostile skills on their real allies, which hardly arouses suspicion: the commander rolls at disadvantage. (Skills committing a traitor to the bit may come later: a Cultist, Oath or Devotee tree.)
+    - Not resting on its own team's turns is suspicious, and counts as refusing an order if it's being commanded.
+  - **Suspicion** is a buff a unit builds up against the enemies and tiles it's suspicious of: each stack defeats a rank of their trickery and concealment, for it alone.
+    - Units fooled by an enemy look harder as their turn starts, and when it damages them with a skill that objectively isn't a support skill: d20 + wis mod against the deceiver's d20 + cha mod + its persona (to its allies) or its trickery (to its enemies) − its dissonance. Passing grows a stack.
+    - Units passively investigate the nearest suspicious object (tiles, and units on them, where they make out something but not what) the first time they see it, and whenever they *finish* a turn: the nearest within their wis mod in tiles. With wis mod 0 or less, they look only at adjacent tiles, once every (1 − wis mod) turns: at 0, still every turn, but they aren't particularly good at it.
+    - Every consecutive turn a unit has rested widens that look by a tile, takes in one more tile and adds +1 to its checks. The rested bonus to checks and range is capped at the unit's total wis.
+    - Checks on tiles that aren't adjacent take −1 a tile away from the chosen centre (the unit itself, or the tile it Observes).
+    - Investigation skills (Observe, Eyes Forward) check every tile in their area, not just the suspicious ones. AI and players rely on contextual clues to pick good areas to search actively. Where nothing hides, there's nothing to find: no roll.
+    - First looks stay: units also inspect a suspicious thing the first time they see it.
+    - Looking around at turn end takes the nearest suspicious tiles first. Eyes Forward, when it fires, replaces it: a look ahead rather than around.
+    - Suspicion doesn't decay, and finding nothing on a suspected tile doesn't clear it (for now).
+  - **Evidence.** A unit that hides leaves debris: the better the job, the less of it and the further off. 15 is a good result (1–2), 14 is mid, and a poor job leaves 3–4 within a few tiles. Its kind follows the tile's tags, else the area's: rubble (stone, indoors, city), leaves (tree, outdoors), disturbed foliage and twigs (grass, shrubbery, forest), depressions (mud, snow, sand, mountains, desert, taiga). It's a contextual clue for picking where to search.
+    - Moving while hidden leaves debris near the walking path, one less than hiding would.
+    - Debris is destroyed when stepped on, disappears when its hidden unit is revealed, and despawns once the unit is further from it than its placement range + its dex mod.
+  - **Hard to read.** A negative cha mod counts against teammates' reads of the unit, often clashing with the reader's positive wis: a poor communicator and a reader with little to go on don't understand each other well. A high cha doesn't make up for a reader's low wis: that's what persona is for.
+    - **Enraptured** units (convinced the Siren is their ally, with no suspicion) take its Sing for a support skill and walk in. Sirens can't make units that aren't convinced walk toward them, though unconvinced units may well walk up to hit them. Singing at suspicious units works their suspicion off instead, a stack at a time.
+    - Suspicion wears off through skills: Sing, and Pray to Eros.
+  - **Ramut's Ire.** As soon as trickery or concealment is detected stalling a fight, Ramut's Ire builds on the units doing it, a rank a turn, for the rest of the battle: once stalling is detected, it's time to wrap things up. Each rank defeats a rank of their concealment and trickery. A side that sees its foes but won't engage them (all Passive or Aggressive) counts as stalled too. It waits out a grace: as many turns in a row in which a side made out no combatants as the smallest side has units remaining. The grace can be tuned per battle (stealth missions, lore and experience oriented battles where the objective isn't "kill them all").
+  - Fooling allies changes how they act: healers that ignore foot-soldiers to focus on the commander, or villagers with **Craven** behaviour that won't advance without a stronger (higher-level, as they perceive it) unit present, and that move away from units advertising Aggressive.
+  - **Reading others.** Persona also shows real information that's normally hidden from less perceptive units. The player's panels follow the same rules as the map: no cheating. Units with low wis make limited judgments of others, by the reader's wis mod:
+    - 0 or more: as recon shows.
+    - −1 to −3 (allies): no details. A unit is healthy or unhealthy, and is described by words from its stats as they seem instead of its stats: "Shrike, Strong, Bloodied". **Imposing** (strong all round), **Average** (spread out, unremarkable), **Insignificant** (generally bad), or a stat that stands out ("Strong", "Smart"); and **Charming** or **Nervous** for particularly high or low charisma.
+    - −3 or less: falls for an enemy's persona without the need for trickery.
+    - −4 or less (allies): it's an ally, an enemy or neutral, and looks like a noun: its persona's, or its class's. Casters are "Caster", martial classes "Soldier", specialists "Tradefolk" (Bards and Rogues among them); Adventurers, villagers and the like are "Everyman"; monsters "Beast".
+    - Your own side is no exception. Unperceptive leaders may not be fully aware of how their units are suffering, or be able to use them to their full potential: they can miss the details of an ally's effects and skills, or miss them altogether.
+  - **Healer behaviours**: pragmatic priests keep MVPs (by level) alive when it's efficient; benevolent druids heal those most in need; loyal Adventurers prefer their party members. Most strategies have a slight general preference for commanders.
+  - **The lure** (Sirens): units approach the Siren, then it uses Drown and Rake on them, depending on its AP, active hostility and access to water. It doesn't break off because an enemy came close.
+  - An insightful unit gets a read on how true another's presentation is. Dissonance 0: "X is as they appear; they make no attempt to appear otherwise." 1: "X is pretending to be something they aren't" (or "to have something they lack"), or "X is trying to look strong" (or weak). 2+: "X isn't as glittering or shining, or princess-like as they would have others believe": its persona's adjectives and the stats it fronts or feints, and its noun.
+  - **Dissonance** is worked out from the lie itself: a tally of how many persona items the unit puts forward. It's a penalty to the unit's own trickery or persona check: a less believable lie. A skill that sets up the unit's look (Alluring) cuts that penalty by its rank: a practised lie. Investigators have an easier time telling a unit isn't what it seems when its trickery is outlandish, or it lies about a lot. (Ideally it's also harder to pretend to be something you very much aren't: a wolf in sheep's clothing is harder to pull off than a wolf that looks like a scary dog. Later.)
+- **Healing.** Heals restore HP. Negative effects tagged `wound` are cleared by a heal of an equivalent rank on the afflicted unit: a heal of rank r clears wounds of rank r or lower. Some heals compare rank × rank instead (Renew). Healing over time (regen) clears them too, at its rank, each time it heals: a great use for HoT and regeneration effects. Snare's bleed is a wound. Wounds should be dangerous, but particularly answerable with general healing. Only healing skills and effects clear wounds, and by default they must be at least equal in rank. A bleed hurts only as the afflicted unit's side finishes its turn, once its allies are done acting: not as it's put on, nor on the caster's side's turn.
+- **Pray** (tier 1, on every Divinity tree): an effect that depends on the god the unit worships.
+  - Ramut (war, power): the Ire's turn timer is cut by rank.
+  - Eros (love, healing): rank units within rank tiles that can see the unit lose a stack of suspicion of it (no help in hiding).
+  - Sol (light, fire): destroys dark tile effects (most notably tiles obscured by darkness) within rank tiles.
+  - Urlo (magic, energy): enchants rank unenchanted pieces of equipment within rank tiles, weapon > armor > trinket. An item is enchanted or not, never more. One with a unique enchanted effect uses that instead. A skill on an item may have its own enchantment effect; without one, its rank goes up by 1. Effects that don't scale by rank get +1 (damage, defense); an item that can't be scaled at all (Heart +1) is skipped as unenchantable.
+  - Luun (dark, jovial): the tiles within rank tiles fall under an allied magical darkness (radial, like Vetruvis), +1 concealment to allies in it, for rank turns.
+  - Drael (water, air): cleanses rank ranks of debuffs, the highest-ranked effect first. Single target, range rank.
+  - Vetruvis (earth, music): allied difficult terrain, disturbed earth, within rank tiles, for rank turns: enemies pay 50% more movement to enter it, multiplying with the ground's other costs.
+  - Drael cleanses ranks, not whole effects, and only allies (itself included); Ramut's Ire isn't its to lift.
+- **Grapples.** A held unit may attempt to escape by moving away from its grappler. The attempt takes 1 + the grappler's grapple mod tiles of movement. Grapplers try not to move off and let go, unless standing where they are becomes a very bad idea.
+- **Persona looks.** A unit's persona is how it attempts to present itself. Skills can carry a look (Alluring's serene, safe one), which any unit with the skill puts forward.
+- **Log grammar.** Each line leads with the actor, then the skill and its rank (or a plain verb), then an arrow to the target: `Icor Hex III --> Alabaster (21 - 4)`.
+  - `-->` when it lands; `-x>` when it misses, is resisted or fails: `Icor Hex III -x> Alabaster (10 - 15)`.
+  - Rolls follow in parentheses, the actor's first: `(ours - theirs)`. A roll the player can't make out is dropped, not shown as `?`: `(15)`. A natural 20 is `(nat 20)`.
+  - HP lost or gained trails in colour: `-7`.
+  - Short present-tense verbs, no closing period: "suspects" (not "grows suspicious of"), "falls", "refuses".
+  - What happens with no actor names its source as one: `Trap --> Lancin`, `Ramut's Ire II --> Siren`.
+  - Lines follow cause and effect: a unit falls after the hit that felled it.
+- **Effect durations.** Effects put on a unit last that many of its side's turns. When it's that side's turn as they're put on, the current turn doesn't count: Terestera's 3 turns on an ally cover the 3 enemy turns that follow, as Hex's 3 turns on an enemy do.
+- **Ranks.** No rank cap. Unlocking a skill costs 1 point; raising it from rank r to r + 1 costs **1 + r²**: II costs 2, III 5, IV 10, V 17.
+- **Tiers.** A skill's tier is 1 plus how many skills must be learned before it's reached: the skills it comes after, and theirs in turn, or the count a capstone needs. A tree's centre and core, the first skill of each root, and a class's listed options are tier 1.
+- **Resource bonuses** are whatever a resource gives a skill paid with it (Hex: half AP paid with Mana).
+- **Mana.** Basic spells (the starter spells) cost 2 Energy × rank. Mana is twice as efficient for them: half cost, for a unit whose **Mana** passive's rank reaches the spell's tier. Mages and Wizards start with Mana I.
+- **Energy recovery.** Every unit gets energy back as its side's turn ends.
+  - Resting (it neither moved nor spent AP): (con mod + wis mod) / 2 a turn, at least 1.
+  - Below 0, a point every (1 − that) turns rested instead: at −2, one every 3 turns.
+  - Light activity (it spent only dex-move or wis-skill AP): half as fast.
+  - Anything more: none, so units that lean on their skills run dry over a battle.
+  - The Adventurer's starting passives give its Energy the resource bonuses of each category's resources (see Adventurer).
+- **Vision.** You see what your leader sees. **Synergy** works between a party leader and a party member in command range: while the member is selected to take orders, you see what it sees. If the member has Synergy, it works whenever the leader orders that member; if the leader has it, it works for all of its party members. Your own units always show.
+- **No static hints.** Nothing like "Click a tile…" or the key legend sits on screen. Dynamic information stays: tooltips (after 1 s), the tile pane, move and damage forecasts, and status lines ("Waiting for Nemes"). How to play is in the **Guide** under Settings.

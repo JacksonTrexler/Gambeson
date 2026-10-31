@@ -60,8 +60,7 @@ alignment = 1
 [node name="Name" type="Label" parent="Root/Left/Column/Card/Head/Names"]
 layout_mode = 2
 theme_type_variation = &"Title"
-clip_text = true
-text_overrun_behavior = 3
+autowrap_mode = 3
 
 [node name="Sub" type="Label" parent="Root/Left/Column/Card/Head/Names"]
 layout_mode = 2
@@ -534,6 +533,12 @@ layout_mode = 2
 theme_type_variation = &"Muted"
 clip_text = true
 
+[node name="WheelTabs" type="HBoxContainer" parent="Root/Skills/Column/Cols/WheelCol"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
 [node name="Wheel" type="Control" parent="Root/Skills/Column/Cols/WheelCol"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(196, 176)
@@ -701,7 +706,7 @@ With a unit that takes orders selected, hover a tile to plan a move and click to
 Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own.
 
 [color=#e8c547]Panels[/color]
-B: spellbook - drag skills onto the hotbar. S: skills - spend skill points: 1 to learn a skill, 1 + rank² to raise it a rank. An Adventurer's class skills form a wheel: click a skill to see what it does and what it needs. A skill's tier is 1 plus the skills learned before it; a Wizard's Mana rank is the highest tier of spell it casts cheaply with mana. A dashed circle with a number is a skill not built yet, waiting on that open question.
+B: spellbook - drag skills onto the hotbar. S: skills - spend skill points: 1 to learn a skill, 1 + rank² to raise it a rank. An Adventurer's class skills form a wheel: click a skill to see what it does and what it needs. Rogues and Bards have a second wheel, Calling: Freedom, in a tab above it. A skill's tier is 1 plus the skills learned before it; a Wizard's Mana rank is the highest tier of spell it casts cheaply with mana. A dashed circle with a number is a skill not built yet, waiting on that open question.
 
 [color=#e8c547]Reading the board[/color]
 While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A black shape is something you can't identify; a marked area is where something is only suspected. Attacks roll d20 + a mod against Defense; the forecast gives the chance to hit when you can make the target out. A green-trimmed slot is a lucky unit's clover slot: it greys out while that luck is gone. Red, purple and green slots hold only martial, magic and specialist skills."

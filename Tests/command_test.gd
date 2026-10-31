@@ -99,7 +99,8 @@ func test_idle() -> void:
 func test_default_bar() -> void:
 	var siren := unit("Siren")
 	ok(same(unit("Icor").hotbar, [hex, arcanist, null, null, null, null]), "Icor (level 5): 5 slots and a clover slot; Hex, then its toggled Arcanist Perspective")
-	ok(same(siren.hotbar, [strike, tonefoolery, persona, null, null]), "Siren: Strike, then its toggles; Oceanic has none")
+	ok(same(siren.hotbar, [load("res://Skills/rake.tres"), load("res://Skills/drown.tres"), load("res://Skills/sing.tres"), tonefoolery, null]),
+			"Siren: Rake, Drown and Sing, then a toggle; Oceanic has none, Personify is left for want of a slot (the last is its clover slot)")
 	ok(same(v(1).hotbar, [strike, null, null, null, null]) and v(1).slot_count() == Unit.SLOTS, "4 slots and a clover one; Favour stays off the bar")
 
 
@@ -133,9 +134,9 @@ func test_text() -> void:
 
 func test_tile_reads() -> void:
 	var bramble := b.read(v(1), Vector2i(2, 2))
-	ok(bramble.cost == 1 and bramble.exit == 1 and same(bramble.tags, [&"bramble", &"sticky"]), "a seen tile: costs and what the ground is")
+	ok(bramble.cost == 1 and bramble.exit == 1 and same(bramble.tags, [&"bramble", &"sticky", &"shrubbery"]), "a seen tile: costs and what the ground is")
 	var shrine := b.read(v(1), Vector2i(5, 2))
-	ok(same(shrine.tags, [&"shrine"]) and shrine.worth == null, "beneficial or detrimental takes a closer look than recon 0")
+	ok(same(shrine.tags, [&"shrine", &"stone"]) and shrine.worth == null, "beneficial or detrimental takes a closer look than recon 0")
 	var trap := b.read(v(1), Vector2i(5, 4))
 	ok(trap.cost == null and trap.exit == null and trap.tags.is_empty() and trap.hint == "disturbed earth?", "a hidden trap gives away only a hint")
 

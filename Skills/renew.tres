@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Renew"
+tags = Array[StringName]([&"divine", &"wis"])
+ap = 3.0
+cost = 2
+radius = 2.0
+hostile = false
+heal_mods = Array[StringName]([&"wisdom"])
+squared = true
+restores = 1.0

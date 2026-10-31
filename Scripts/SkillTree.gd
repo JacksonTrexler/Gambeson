@@ -3,20 +3,23 @@ extends PanelContainer
 
 # A unit's skill points and the skills on offer to it, by where they come from: its class, its
 # species, and what it's come to know (Unit.sources()). A class with a skill tree (the Adventurer)
-# shows it as a wheel (SkillWheel): the skill picked there shows beside it - what it does, what
-# learning it takes - with its Unlock or Rank up button. Other classes list their skills, as do
-# species and knowledge. Unlocking spends a point; raising a skill from rank r costs 1 + r^2.
+# shows it as a wheel (SkillWheel), a tab at a time where it has more than one (the Rogue's own and
+# its Calling: Freedom): the skill picked there shows beside it - what it does, what learning it
+# takes - with its Unlock or Rank up button. Other classes list their skills, as do species and
+# knowledge. Unlocking spends a point; raising a skill from rank r costs 1 + r^2.
 
 signal unlocked(skill: Skill)
 signal raised(skill: Skill)
 signal leveled  # the debug level-up
 
 const LIST_SIZE := Vector2(300, 220)
-const TREE_SIZE := Vector2(404, 232)
+const TREE_SIZE := Vector2(440, 252)
 
 var unit: Unit
 var picked: Skill  # the wheel's pick, shown in the detail column
+var tab := 0  # the tab of its class's tree on the wheel (Role.trees())
 var can_spend := false
+var _title := ""
 
 @onready var heading: Label = %SkillsTitle
 @onready var points: Label = %SkillPoints
@@ -36,12 +39,14 @@ func _ready() -> void:
 func open(u: Unit, title: String, spend: bool) -> void:
 	if u != unit:
 		picked = null
+		tab = 0
 	unit = u
 	fill(title, spend)
 	show()
 
 
 func fill(title: String, spend: bool) -> void:
+	_title = title
 	can_spend = spend
 	heading.text = "Skills · " + title
 	var n := unit.skill_points
@@ -77,7 +82,10 @@ func fill(title: String, spend: bool) -> void:
 			none.text = "Skills it learns of will show here." if col[2] == &"knowledge" else "Nothing on offer."
 			list.add_child(none)
 	if tree:
-		wheel.show_unit(unit, can_spend and n > 0, picked)
+		var trees := unit.role.trees()
+		tab = clampi(tab, 0, trees.size() - 1)
+		_fill_tabs(trees)
+		wheel.show_unit(unit, can_spend and n > 0, picked, trees[tab])
 		if not picked or picked not in wheel.skills():
 			picked = _first_pick()
 			wheel.selected = picked
@@ -85,6 +93,43 @@ func fill(title: String, spend: bool) -> void:
 	footer.text = "A skill point comes with each level; rank r to r + 1 costs 1 + r² points." if can_spend \
 			else "Only your party's skills can be chosen."
 	level_button.visible = can_spend and OS.is_debug_build()
+
+
+# A button per tab of the class's tree, in place of the wheel's title, where it has more than one.
+func _fill_tabs(trees: Array[SkillTab]) -> void:
+	var box: HBoxContainer = %WheelTabs
+	for c in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
+	box.visible = trees.size() > 1
+	%WheelTitle.visible = not box.visible
+	if not box.visible:
+		return
+	var group := ButtonGroup.new()
+	for i in trees.size():
+		var t := trees[i]
+		var b := Button.new()
+		b.text = "%s · %s" % [(t.kind if t.kind else "Class").to_upper(), t.name.to_upper()]
+		b.flat = true
+		for state in [&"normal", &"hover", &"pressed", &"hover_pressed"]:  # the same margins pressed or not
+			b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		b.toggle_mode = true
+		b.button_group = group
+		b.button_pressed = i == tab
+		b.focus_mode = FOCUS_NONE
+		b.add_theme_font_size_override(&"font_size", 6)
+		b.add_theme_color_override(&"font_color", Color(0.6, 0.63, 0.7))
+		b.tooltip_text = t.title()
+		b.pressed.connect(show_tab.bind(i))
+		box.add_child(b)
+
+
+# Puts the class tree's tab i on the wheel.
+func show_tab(i: int) -> void:
+	if i != tab:
+		tab = i
+		picked = null
+		fill(_title, can_spend)
 
 
 # Shows s in the detail column (a click on the wheel).

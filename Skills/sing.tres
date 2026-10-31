@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_movement"]
+script = ExtResource("2_effect")
+stat = "movement"
+amount = 1.0
+per_rank = true
+
+[resource]
+script = ExtResource("1_script")
+name = "Sing"
+tags = Array[StringName]([&"sound", &"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_movement")])
+ap = 3.0
+cost = 2
+radius_per_rank = 1.0
+radius_mod = &"charisma"
+dual = true
+rolls = false
+turns = 2
+pull = 1
+auto = true
+resisted = &"wisdom"

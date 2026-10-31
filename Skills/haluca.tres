@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_scrambled"]
+script = ExtResource("2_effect")
+stat = "scrambled"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Haluca"
+tags = Array[StringName]([&"earth", &"magical", &"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_scrambled")])
+ap = 4.0
+cost = 2
+radius_mod = &"charisma"
+radius_per_rank = 1.0
+save = &"wisdom"
+turns_per_rank = 1
+turns_mod = &"charisma"

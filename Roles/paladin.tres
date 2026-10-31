@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="20_skill"]
 [ext_resource type="Resource" path="res://Skills/favour.tres" id="21_opt_favour"]
 [ext_resource type="Resource" path="res://Skills/lightvision.tres" id="22_opt_lightvision"]
+[ext_resource type="Resource" path="res://Skills/renew.tres" id="23_opt_renew"]
+[ext_resource type="Resource" path="res://Skills/pray.tres" id="24_opt_pray"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
@@ -15,9 +17,11 @@ skill = ExtResource("4_strike")
 
 [resource]
 script = ExtResource("1_script")
+noun = "Soldier"
 name = "Paladin"
+god = &"eros"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 12, &"dexterity": 10, &"constitution": 13, &"intelligence": 8, &"wisdom": 11, &"charisma": 13})
-options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision")])
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("23_opt_renew"), ExtResource("24_opt_pray")])

@@ -33,6 +33,7 @@ var locked := false  # out of reach of the leader's orders (Command.slots())
 var kind := &""  # its unit's slot kind (Unit.slot_kinds()): &"" plain, &"clover", or a type (magical...)
 var clover := false  # the unit's clover slot
 var works := true  # false: a clover slot whose unit isn't lucky now - greyed out until it is
+var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
 
@@ -62,7 +63,7 @@ func _init() -> void:
 
 
 func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: bool, can_edit: bool,
-		is_locked := false) -> void:
+		is_locked := false, knows := 2) -> void:
 	index = i
 	skill = s
 	rank = r
@@ -71,8 +72,15 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	usable = can_use
 	editable = can_edit
 	locked = is_locked
-	tooltip_text = ("[%s] %s %s\n%s" % [_key(), s.name, Skill.roman(r), s.describe(r)]) if s else \
-			"[%s] Empty - drag a skill here from the spellbook (B)" % _key()
+	sense = knows
+	if not s:
+		tooltip_text = "[%s] Empty - drag a skill here from the spellbook (B)" % _key()
+	elif sense == 0:
+		tooltip_text = "[%s] Something it can do; your side can't make out what" % _key()
+	elif sense == 1:
+		tooltip_text = "[%s] %s\nYour side can't make out more of it" % [_key(), s.name]
+	else:
+		tooltip_text = "[%s] %s %s\n%s" % [_key(), s.name, Skill.roman(r), s.describe(r)]
 	queue_redraw()
 
 
@@ -116,9 +124,12 @@ func _draw() -> void:
 		draw_string(font, Vector2(15, mid), blank, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
 		return
 	var dim := 1.0 if usable and works and (on or not skill.passive) else 0.45
+	if sense == 0:
+		draw_string(font, Vector2(16, mid + 0.5), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1, 0.35))
+		return
 	draw_rect(Rect2(12, 2, 1.5, size.y - 4), tint(skill) * Color(1, 1, 1, dim))
 	var right := size.x - 3
-	var numeral := Skill.roman(rank)
+	var numeral := Skill.roman(rank) if sense == 2 else ""
 	var nw := font.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	draw_string(font, Vector2(right - nw, mid), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, GOLD * Color(1, 1, 1, dim))
 	right -= nw + 2

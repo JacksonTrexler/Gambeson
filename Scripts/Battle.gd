@@ -8,6 +8,17 @@ signal traveled(u: Unit, from: Vector2i, path: Array[Vector2i])
 signal used(caster: Unit, skill: Skill, at: Variant, dealt: int)  # at: the target Unit, or a cell
 signal sprung(c: Vector2i, by: Unit)
 signal attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int)  # an attack roll (cast())
+signal contested(caster: Unit, target: Unit, total: int, against: int)  # a contest in place of one (Drown): won when total >= against
+signal investigated(by: Unit, of: Unit, skill: Skill, total: int, against: int, close: bool)  # investigate(): seen through when total >= against
+signal stalled(u: Unit, rank: int)  # u stalls the fight: Ramut's Ire builds on it, to this rank (_check_stall())
+signal struggled(u: Unit, by: Unit, total: int, against: int)  # u, held, tries to move away from by's grip (_break_free()): free when total > against
+signal gripped(u: Unit, by: Unit, dealt: int)  # u, still held as its turn ends, takes by's grip (_grip())
+signal inspected(by: Unit, at: Vector2i, total: int, against: int)  # inspect(): by grows suspicious of the tile when total >= against
+signal prayed(u: Unit, god: StringName, rank: int)  # pray(): u prays to its god (Pray)
+signal untangled(by: Unit, of: Unit, total: int, against: int)  # inspect(): by, under Haluca, sees of's tags straight when total >= against
+signal refused(u: Unit, leader: Unit)  # a traitor in leader's party won't do as it's told, or acted on its own side's turn (_refuse())
+signal doubted(by: Unit, of: Unit, total: int, against: int)  # doubt(): by grows suspicious of `of` when total >= against
+signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
@@ -36,8 +47,11 @@ var turn: Faction:
 			return
 		var was := turn
 		turn = v
+		turns_begun += 1
 		for u in members(v):
 			u.refresh()
+		for u in members(v):
+			_look_harder(u)
 		turn_changed.emit(was, v)
 		for u in members(v):  # after the signal: poison can end a side, and with it this turn
 			_mend(u)
@@ -52,7 +66,58 @@ var units: Dictionary[Vector2i, Unit] = {}
 var rng := RandomNumberGenerator.new()
 var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
 var revealed: Dictionary[Vector2i, bool] = {}  # sprung traps: no longer concealed
+const IRE: Skill = preload("res://Skills/ramuts_ire.tres")
+
+# Ramut's Ire waits out this many stalled turns in a row, times the units still standing on the smallest
+# side (stealth missions, quieter battles: more; < 0: never; _check_stall()).
+@export var ire_grace := 1.0
+var stalled_turns: Dictionary[Faction, int] = {}  # each side's turns in a row ended with none of its units making out a foe
+var hastened: Dictionary[Faction, int] = {}  # turns taken off each side's wait for the Ire (Pray, to Ramut)
+var turns_begun := 0  # sides' turns started so far this battle: when an effect was put on (Unit.Applied.since)
+var stalling: Array[Unit] = []  # units stalling the fight as the last turn ended: Ramut's Ire builds on them (_check_stall())
 var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), over the ground
+var debris: Dictionary[Vector2i, Debris] = {}  # evidence hiding units leave behind (_scatter())
+var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
+@export var area_tags: Array[StringName] = []  # what the whole battlefield is (indoors, city, forest, desert...): debris where its tiles say nothing
+
+# What a hiding unit leaves on the ground, by the tags of the tile (then the area): the first that
+# matches. Tiles matching none get none.
+const DEBRIS_KINDS := [
+	[[&"stone", &"indoors", &"city"], "Rubble"],
+	[[&"tree", &"outdoors"], "Leaves"],
+	[[&"grass", &"shrubbery", &"forest"], "Disturbed foliage, twigs"],
+	[[&"mud", &"snow", &"sand", &"mountains", &"desert", &"taiga"], "Depressions"],
+]
+const CLEAN_HIDE := 15  # a hiding roll this high or more is a good job: little debris, further off
+const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
+# By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
+const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
+const EARTHWORK_COST := 1.5  # disturbed earth: what entering it costs its side's enemies, times the usual
+
+
+# Evidence a unit left hiding: whoever can make out the tile sees it (but not who left it).
+class Debris:
+	var kind: String
+	var by: Unit
+	var faction: Faction
+	var since: int
+	var far := 4  # how far off it could have been left: past this + its hider's dex mod, the trail's gone cold
+
+	func _init(k: String, u: Unit, t: int) -> void:
+		kind = k
+		by = u
+		faction = u.faction
+		since = t
+
+
+# Disturbed earth (Pray, to Vetruvis): its side's enemies wade through it, for some of that side's turns.
+class Earthwork:
+	var faction: Faction
+	var turns: int
+
+	func _init(f: Faction, t: int) -> void:
+		faction = f
+		turns = t
 
 
 # A trap a unit laid on a tile. Who knows of it sees it plainly; with Hazard Expert (`word`), its
@@ -76,12 +141,14 @@ class Zone:
 	var levels: Dictionary[Vector2i, int]
 	var turns: int
 	var faction: Faction
+	var allied := false  # conceals only its side's units in it, and not the ground (Pray, to Luun)
 
-	func _init(k: StringName, l: Dictionary[Vector2i, int], t: int, f: Faction) -> void:
+	func _init(k: StringName, l: Dictionary[Vector2i, int], t: int, f: Faction, a := false) -> void:
 		kind = k
 		levels = l
 		turns = t
 		faction = f
+		allied = a
 
 @onready var map: TileMapLayer = $Map
 
@@ -240,31 +307,112 @@ func _flip(g: Array) -> Array:
 # skill's tags. A natural 20 always hits and doubles the damage; a miss does nothing but give the
 # target away (it was aimed at). Damage comes from the skill's tier for the caster's rank - at least
 # 1 before the target's mitigation - once per rank for multi-hit skills (Strike III). A dual skill
-# (the starter spells) puts its effects only on allies, and deals its damage only to foes.
-func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
+# (the starter spells) puts its effects only on allies, and deals its damage only to foes. Effects
+# put on the side whose turn it is get a turn more, since this one isn't among those counted. Skills
+# that are investigated (Hide) are, by the enemies that could see the target as it was used: the
+# target rolls once, d20 + its mod in the skill's stat + rank - its dissonance, and its effects keep
+# that roll for whoever investigates them. A roll an ally's Self-evaluation is in reach of is seen
+# (evaluated). A foe a hostile skill hurts, while it's fooled by the caster, looks harder at it
+# (doubt()). An automatic skill (Sing) is used on the caster and lands on the nearest units in range
+# (auto_targets()), paid once. A traitor told to turn a hostile skill on its real allies refuses, or
+# with a positive cha mod misses on purpose - and either way its leader looks harder at it.
+func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if not _acting(caster) or skill not in caster.actives or skill.on_tile() or not target.is_alive():
 		return false
+	if (skill.on_self(caster) or (skill.auto and not spreading)) and target != caster:
+		return false
+	if skill.auto and not spreading:
+		var to := auto_targets(caster, skill)
+		if to.is_empty() or not caster.pay_for(skill):
+			return false
+		for t in to:
+			cast(caster, skill, t, true)
+		return true
+	if posing(caster) and target.faction == caster.faction and target != caster and skill.hostile:
+		if caster.mod(&"charisma") <= 0 or not in_reach(caster, skill, target):
+			_refuse(caster)
+			return false
+		if not caster.pay_for(skill):
+			return false
+		attacked.emit(caster, target, 1, 1 + caster.attack_mod(skill), target.defense(skill.tags))  # a miss, on purpose
+		used.emit(caster, skill, target, 0)
+		doubt(caster.follows, caster, -1)  # a whiff: hardly suspicious
+		return true
 	var foe := target.faction != caster.faction
+	if foe and not skill.for_foes() and read(caster, target).attitude(caster) == &"ally":
+		foe = false  # support for a foe it takes for an ally (a Friendly stance)
 	if not (skill.for_foes() if foe else skill.for_allies()) or not in_reach(caster, skill, target):
 		return false
-	if not caster.pay_for(skill):
+	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags_to else null
+	if foe and skill.drags_to and spot == null:
+		return false
+	if not spreading and not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
 	var before := target.hp
 	var crit := false
+	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
+	if spot != null:
+		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) - drag_penalty(skill, r, Command.tiles(target.cell, spot))
+		var theirs := rng.randi_range(1, 20) + target.mod(skill.stat(), skill.tags)
+		contested.emit(caster, target, mine, theirs)
+		if mine < theirs:
+			_expose(target)
+			_expose(caster)
+			used.emit(caster, skill, target, 0)
+			return true
+		drag(caster, target, spot, skill.drags_to)
+	if foe and skill.save:
+		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + r
+		var theirs := rng.randi_range(1, 20) + target.mod(skill.save)
+		contested.emit(caster, target, mine, theirs)
+		if theirs > mine:  # the caster wins ties
+			_expose(caster)
+			used.emit(caster, skill, target, 0)
+			return true
+		saved_against = mine
 	if foe and skill.attacks():
 		var d20 := rng.randi_range(1, 20)
 		var total := d20 + caster.attack_mod(skill)
 		var defense := target.defense(skill.tags)
 		crit = d20 == 20
 		attacked.emit(caster, target, d20, total, defense)
+		_evaluate(caster, skill, d20, total)
 		if not crit and total < defense:
 			_expose(target)
 			used.emit(caster, skill, target, 0)
 			return true
+	var eyes := watchers(target) if skill.investigated else ([] as Array[Unit])
+	var put: Array[Unit.Applied] = []
 	if not (skill.dual and foe):
 		for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
-			target.afflict(e, e.turns if e.turns else skill.lasts(r), r)
+			var n := e.turns if e.turns else skill.lasts(r, caster)
+			var a := target.afflict(e, n + (1 if n and target.faction == turn else 0), r)
+			a.fades = skill.fades
+			a.until_move = skill.until_move
+			a.lasting = skill.grip != Vector2i.ZERO  # held until it breaks free
+			a.skill = skill
+			a.by = caster
+			a.since = turns_begun
+			a.roll = saved_against
+			put.append(a)
+	if skill.investigated:
+		var d20 := rng.randi_range(1, 20)
+		var guise := d20 + target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty()
+		var seen := _evaluate(target, skill, d20, guise)
+		for a in put:
+			a.roll = guise
+			a.evaluated = seen
+		investigate(target, skill, eyes, guise)
+		if skill.effects.any(func(e: Effect): return e.stat == "concealment"):
+			_scatter(target, guise)
+	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
+		pull(target, caster, skill.pull * r)
+	if skill.prays:
+		pray(caster, r, target)
+	if not foe and skill.heals():
+		mend(target, skill.healing(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(r), skill.per_wound * r)
+		target.regain(skill.restores * r)
 	var t := skill.tier(r) if foe or not skill.dual else null
 	if t:
 		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
@@ -272,7 +420,7 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 		for i in hits:
 			if not target.is_alive():
 				break
-			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) if t.stat else 0
+			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) if t.stat else 0
 			var power := maxi(t.power + roll(t.dice) + bonus, 1) * (2 if crit else 1)
 			if t.direct:
 				target.damage(power)
@@ -281,7 +429,413 @@ func cast(caster: Unit, skill: Skill, target: Unit) -> bool:
 	if foe:
 		_expose(target)
 		_expose(caster)
+	caster.heading = Vector2i.ZERO
+	_tidy_debris()
 	used.emit(caster, skill, target, before - target.hp)
+	if foe and skill.hostile and target.hp < before and target.is_alive() and read(target, caster).deceived:
+		doubt(target, caster)
+	return true
+
+
+# Whom an automatic skill (Sing) lands on: the nearest units in range the caster can place, allies
+# and foes alike, no more than its rank.
+func auto_targets(caster: Unit, skill: Skill) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for o: Unit in units.values():
+		if o != caster and o.is_alive() and read(caster, o).located() and in_reach(caster, skill, o):
+			out.append(o)
+	out.sort_custom(func(x: Unit, y: Unit): return Vector2(x.cell).distance_to(Vector2(caster.cell)) < Vector2(y.cell).distance_to(Vector2(caster.cell)))
+	return out.slice(0, caster.rank(skill))
+
+
+# A traitor in the party of a leader on another side (Unit.follows): it acts on that leader's turn
+# too, on whatever AP its own turn left it, pretending (Command).
+func posing(u: Unit) -> bool:
+	return u.follows != null and u.follows.faction != u.faction
+
+
+# A traitor won't do as it's told, or acted on its own side's turn when it should have rested: its
+# leader looks harder at it, at advantage.
+func _refuse(u: Unit) -> void:
+	refused.emit(u, u.follows)
+	doubt(u.follows, u, 1)
+
+
+# Whether foe t walks toward caster's skill (Sing): only enraptured - convinced the caster is its ally,
+# with no suspicion of it - taking it for support. A suspicious one won't, but the song works on its
+# suspicion: d20 + the caster's mod in the skill's stat against d20 + its mod in the skill's
+# `resisted` stat (the caster wins ties) takes a stack off. One that isn't convinced, with none to
+# take, the song does nothing to (it may well walk up to hit the caster all the same).
+func _lured(caster: Unit, skill: Skill, t: Unit) -> bool:
+	if t.suspects(caster) == 0:
+		return read(t, caster).attitude(t) == &"ally"
+	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags)
+	var theirs := rng.randi_range(1, 20) + t.mod(skill.resisted)
+	contested.emit(caster, t, mine, theirs)
+	if mine >= theirs:
+		suspect(t, caster, -1)
+	return false
+
+
+# o grows n stacks more suspicious of t, a unit or a tile (fewer, for a negative n; none left, it
+# trusts it again).
+func suspect(o: Unit, t: Variant, n := 1) -> void:
+	var k := o.suspects(t) + n
+	if k > 0:
+		o.suspicion[t] = k
+	else:
+		o.suspicion.erase(t)
+
+
+# o looks harder at t, which fools it: d20 + its wis mod (the better of two within wis mod - lie tiles,
+# or with edge 1; the worse of two with edge -1) against t's own check, d20 + its cha mod + its lie -
+# its dissonance penalty (a less believable lie, the more it lies). The lie is its persona to its
+# allies, its trickery to its enemies. Meeting it, o grows a stack more suspicious of t.
+func doubt(o: Unit, t: Unit, edge := 0) -> bool:
+	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
+	var d20 := rng.randi_range(1, 20)
+	var other := rng.randi_range(1, 20)
+	if edge < 0:
+		d20 = mini(d20, other)
+	elif edge > 0 or Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie:
+		d20 = maxi(d20, other)
+	var total := d20 + o.mod(&"wisdom")
+	var against := rng.randi_range(1, 20) + t.mod(&"charisma") + lie - t.dissonance_penalty()
+	if total >= against:
+		suspect(o, t)
+	doubted.emit(o, t, total, against)
+	return total >= against
+
+
+# As its side's turn starts, u looks harder (doubt()) at each enemy it can place that fools it: the
+# enraptured come round on their own, given time. And it inspects the nearest suspicious thing it
+# hasn't before (_first_look()).
+func _look_harder(u: Unit) -> void:
+	if u.asleep():
+		return
+	for t: Unit in units.values():
+		if t.faction != u.faction and t.is_alive():
+			var r := read(u, t)
+			if r.deceived and r.located():
+				doubt(u, t)
+	_first_look(u)
+
+
+# Tiles where o makes out something suspicious but not what: a hint (a vague shape, a vibe) of a
+# hidden trap or a hidden unit there, or one it already suspects and still can't make out; or an ally
+# whose tags it sees scrambled (Haluca). Nearest first.
+func suspicious(o: Unit) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for c in map.get_used_cells():
+		var r := read(o, c)
+		if c != o.cell and (r.hint != "" or (o.suspects(c) > 0 and r.net < 0)):
+			out.append(c)
+	for t: Unit in units.values():
+		if t != o and t.is_alive() and t.cell not in out:
+			var r := read(o, t)
+			if r.located() and (r.hint != "" or (o.suspects(t) + o.suspects(t.cell) > 0 and r.net < 0) or (t.faction == o.faction and o.scrambles(t))):
+				out.append(t.cell)
+	out.sort_custom(func(x: Vector2i, y: Vector2i): return Vector2(x).distance_to(Vector2(o.cell)) < Vector2(y).distance_to(Vector2(o.cell)))
+	return out
+
+
+# The first time o sees something suspicious, it inspects the nearest such thing it hasn't yet.
+func _first_look(o: Unit) -> void:
+	for c in suspicious(o):
+		if c not in o.noticed:
+			o.noticed[c] = true
+			inspect(o, c)
+			return
+
+
+# As its side's turn ends, o looks around (asleep, it doesn't): the nearest suspicious things within its
+# wis mod in tiles, one of them - more often than not. With wis mod 0 or less it looks only at what's
+# beside it, once every (1 - wis mod) turns: at 0, every turn; at -1, every other. Each turn in a row
+# it has rested widens its look by a tile, takes in one thing more and adds +1 to its checks, up to
+# its wis. Moving last with Eyes Forward, it looks ahead instead (_look_ahead()).
+func _watch(o: Unit) -> void:
+	if _look_ahead(o):
+		return
+	var m := o.mod(&"wisdom")
+	if m <= 0:
+		o.unwatched += 1
+		if o.unwatched < 1 - m:
+			return
+	o.unwatched = 0
+	survey(o, o.cell, o.rested_turns)
+
+
+# o inspects around `center` as if it had rested `rested` turns in a row (capped at its wis): the
+# suspicious things within max(wis mod, 1) + rested tiles of it, nearest the centre first, 1 + rested
+# of them, at +rested. Its turn's end (_watch()).
+func survey(o: Unit, center: Vector2i, rested: int) -> int:
+	var r := mini(rested, roundi(o.stat(&"wisdom")))
+	var reach := maxi(o.mod(&"wisdom"), 1) + r
+	var near := suspicious(o).filter(func(c: Vector2i): return Command.tiles(center, c) <= reach)
+	near.sort_custom(func(x: Vector2i, y: Vector2i): return Command.tiles(center, x) < Command.tiles(center, y))
+	var n := 0
+	for c in near.slice(0, 1 + r):
+		o.noticed[c] = true
+		inspect(o, c, center, r)
+		n += 1
+	return n
+
+
+# Observe: o searches every tile within max(wis mod, 1) + rank of `center`, as if it had rested rank
+# turns (+rank, capped at its wis) - not just what looks suspicious: where to look is its to judge.
+func observe(o: Unit, center: Vector2i, rank: int) -> int:
+	var r := mini(rank, roundi(o.stat(&"wisdom")))
+	var reach := maxi(o.mod(&"wisdom"), 1) + r
+	return search(o, map.get_used_cells().filter(func(c: Vector2i): return Command.tiles(center, c) <= reach), center, r)
+
+
+# An investigation skill's look (Observe, Eyes Forward): o inspects every one of `cells` but its own,
+# at +bonus, from `center`. How many it grew suspicious of.
+func search(o: Unit, cells: Array, center: Variant = null, bonus := 0) -> int:
+	var found := 0
+	for c: Vector2i in cells:
+		if c != o.cell and inspect(o, c, center, bonus):
+			o.noticed[c] = true
+			found += 1
+	return found
+
+
+# Eyes Forward: a unit ending its turn on a move looks ahead the way it went - rank + wis mod tiles on,
+# rank to either side - inspecting every tile there, in place of looking around. False if it didn't.
+func _look_ahead(o: Unit) -> bool:
+	var rank := roundi(o.stat(&"eyes_forward"))
+	var way := o.heading
+	o.heading = Vector2i.ZERO
+	if rank <= 0 or way == Vector2i.ZERO:
+		return false
+	var dir := Vector2(way).normalized()
+	var ahead := rank + o.mod(&"wisdom")
+	var strip: Array[Vector2i] = []
+	for c in map.get_used_cells():
+		var rel := Vector2(c - o.cell)
+		var along := rel.dot(dir)
+		if along > 0.0 and along <= ahead + 0.5 and absf(rel.cross(dir)) <= rank + 0.5:
+			strip.append(c)
+	search(o, strip)
+	return true
+
+
+# What looking at c from a distance costs o's check: nothing beside it; further off, a point a tile
+# from `center` (where it's looking from, or around: Observe), cut to tiles / (rank + 1) by Special
+# Eyes.
+func distance_penalty(o: Unit, center: Vector2i, c: Vector2i) -> int:
+	if Command.tiles(o.cell, c) <= 1:
+		return 0
+	return Command.tiles(center, c) / (roundi(o.stat(&"keen_eyes")) + 1)
+
+
+# o investigates a tile: d20 + its wis mod + bonus - the distance penalty, against d20 + the
+# concealment there - a hidden enemy's, or a trap's it wasn't told of. Meeting it, it grows a stack
+# more suspicious of the tile (of what hides there), and of the enemy hiding on it. With nothing
+# hidden there, there's nothing to find: no roll. An ally there whose tags o sees scrambled (Haluca):
+# the same check against the spell's roll sets them straight (untangled).
+func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
+	var t := unit_at(c)
+	var hiding := Perception.cover(self, t) if t and t.faction != o.faction else 0
+	var snare: Snare = snares.get(c)
+	var trap := terrain(c).concealment if hidden(c) and not (snare and o in snare.known) else 0
+	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
+	if hiding <= 0 and trap <= 0 and not mixed:
+		return false
+	var total := rng.randi_range(1, 20) + o.mod(&"wisdom") + bonus - distance_penalty(o, center if center != null else o.cell, c)
+	if mixed and hiding <= 0 and trap <= 0:
+		var a := o.scrambled()
+		if total >= a.roll:
+			a.through.append(t)
+		untangled.emit(o, t, total, a.roll)
+		return total >= a.roll
+	var against := rng.randi_range(1, 20) + maxi(hiding, trap)
+	if total >= against:
+		suspect(o, c)
+		if hiding > 0:
+			suspect(o, t)
+	inspected.emit(o, c, total, against)
+	return total >= against
+
+
+# u prays to its god (Unit.deity(); Pray), at rank r, on `target` (Drael's alone isn't on itself).
+# Ramut: its side waits r turns less for the Ire. Eros: up to r units within r tiles that can see u -
+# the nearest first - lose a stack of suspicion of it (only those that see it: it's no help in
+# hiding). Sol: darkness within r tiles is gone. Urlo: enchants r unenchanted items of its allies
+# within r tiles (Unit.enchant()). Luun: the ground within r tiles under darkness for r turns that
+# conceals only its side, a level. Drael: r ranks of debuffs off the target, highest rank first
+# (cleanse()). Vetruvis: the ground within r tiles is disturbed earth its enemies wade through, for r
+# turns.
+func pray(u: Unit, r: int, target: Unit = null) -> void:
+	match u.deity():
+		&"ramut":
+			hastened[u.faction] = hastened.get(u.faction, 0) + r
+		&"eros":
+			var near: Array[Unit] = []
+			for o: Unit in units.values():
+				if o != u and o.is_alive() and o.suspects(u) > 0 and Command.tiles(o.cell, u.cell) <= r and not o.asleep() and read(o, u).located():
+					near.append(o)
+			near.sort_custom(func(x: Unit, y: Unit): return Command.tiles(x.cell, u.cell) < Command.tiles(y.cell, u.cell))
+			for o: Unit in near.slice(0, r):
+				suspect(o, u, -1)
+		&"sol":
+			for z in zones.filter(func(x: Zone): return x.kind == &"dark"):
+				for c in z.levels.keys():
+					if Command.tiles(u.cell, c) <= r:
+						z.levels.erase(c)
+			zones.assign(zones.filter(func(x: Zone): return not x.levels.is_empty()))
+		&"urlo":
+			var left := r
+			var near := members(u.faction).filter(func(o: Unit): return Command.tiles(o.cell, u.cell) <= r)
+			near.sort_custom(func(x: Unit, y: Unit): return Command.tiles(x.cell, u.cell) < Command.tiles(y.cell, u.cell))
+			for o: Unit in near:
+				left -= o.enchant(left)
+		&"luun":
+			var levels: Dictionary[Vector2i, int] = {}
+			for c in map.get_used_cells():
+				if Command.tiles(u.cell, c) <= r:
+					levels[c] = 1
+			zones.append(Zone.new(&"dark", levels, r, u.faction, true))
+		&"drael":
+			cleanse(target if target else u, r)
+		&"vetruvis":
+			for c in map.get_used_cells():
+				if Command.tiles(u.cell, c) <= r:
+					earthworks[c] = Earthwork.new(u.faction, r)
+	prayed.emit(u, u.deity(), r)
+
+
+# Takes r ranks of debuffs (effects that hurt it) off t, the highest-ranked first: each loses ranks
+# until it has none left, or r runs out. Ramut's Ire isn't Drael's to lift. How many ranks came off.
+func cleanse(t: Unit, r: int) -> int:
+	var bad := t.timed.keys().filter(func(e: Effect): return e.helps() < 0 and e.stat != "ire")
+	bad.sort_custom(func(x: Effect, y: Effect): return t.timed[x].rank > t.timed[y].rank)
+	var left := r
+	for e: Effect in bad:
+		if left <= 0:
+			break
+		var a: Unit.Applied = t.timed[e]
+		var off := mini(left, a.rank)
+		a.rank -= off
+		left -= off
+		if a.rank <= 0:
+			t.timed.erase(e)
+	return r - left
+
+
+# A unit hid (its roll: a skill's investigated roll), or moved while hidden (`along` its path): it
+# leaves debris on tiles around it - around the path, one fewer - by their tags (debris_kind()). How
+# much and how far off goes by how well it hid (LITTER): a good job (CLEAN_HIDE or more) leaves 1-2,
+# 2-4 tiles off; a middling one (FAIR_HIDE) 2-3, 1-3 off; a poor one 3-4, within 2.
+func _scatter(u: Unit, roll: int, along: Array[Vector2i] = []) -> void:
+	var band: Array = LITTER[0 if roll >= CLEAN_HIDE else (1 if roll >= FAIR_HIDE else 2)]
+	var n := rng.randi_range(band[0][0], band[0][1]) - (1 if not along.is_empty() else 0)
+	var from: Array[Vector2i] = along.duplicate()
+	if from.is_empty():
+		from.append(u.cell)
+	var spots: Array[Vector2i] = []
+	for c in map.get_used_cells():
+		var d := 99
+		for p in from:
+			d = mini(d, Command.tiles(p, c))
+		if c != u.cell and c not in along and d >= band[1][0] and d <= band[1][1] and debris_kind(c) != "":
+			spots.append(c)
+	for i in mini(n, spots.size()):
+		var k := rng.randi_range(i, spots.size() - 1)
+		var c := spots[k]
+		spots[k] = spots[i]
+		spots[i] = c
+		debris[c] = Debris.new(debris_kind(c), u, turns_begun)
+		debris[c].far = band[1][1]
+
+
+# What u's hiding is worth, for the debris moving leaves: the roll its concealment was put on with
+# (Hide's), else a fresh d20 + its dex mod.
+func _hide_roll(u: Unit) -> int:
+	var best := 0
+	for e in u.timed:
+		if e.stat == "concealment":
+			best = maxi(best, u.timed[e].roll)
+	return best if best > 0 else rng.randi_range(1, 20) + u.mod(&"dexterity")
+
+
+# Debris goes once its hider is revealed (no concealment left, or fallen), or has gone further from
+# it than it could have been left (Debris.far) + the hider's dex mod: the trail's cold.
+func _tidy_debris() -> void:
+	for c in debris.keys():
+		var d: Debris = debris[c]
+		if not is_instance_valid(d.by) or not d.by.is_alive() or Perception.cover(self, d.by) <= 0 \
+				or Command.tiles(d.by.cell, c) > d.far + d.by.mod(&"dexterity"):
+			debris.erase(c)
+
+
+# A tag that only says what the ground is made of, for debris (DEBRIS_KINDS).
+static func material(tag: StringName) -> bool:
+	return DEBRIS_KINDS.any(func(k: Array): return tag in k[0])
+
+
+# The debris a hiding unit leaves on c: by the tile's tags, then the area's (DEBRIS_KINDS); "" for none.
+func debris_kind(c: Vector2i) -> String:
+	for tags in [terrain(c).tags, area_tags]:
+		for k in DEBRIS_KINDS:
+			if k[0].any(func(t: StringName): return t in tags):
+				return k[1]
+	return ""
+
+
+# Debris o can make out (it reads the ground there) that its own side didn't leave: clues to where
+# enemies hide.
+func evidence(o: Unit) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for c in debris:
+		if debris[c].faction != o.faction and read(o, c).net >= 0:
+			out.append(c)
+	return out
+
+
+# Its enemies that can see u: awake foes that make it out in plain sight (net -1 or better, seen).
+func watchers(u: Unit) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for o: Unit in units.values():
+		if o.faction != u.faction and o.is_alive() and not o.asleep():
+			var r := read(o, u)
+			if r.net >= -1 and r.seen:
+				out.append(o)
+	return out
+
+
+# Each of `eyes` looks into what skill just did to u (Hide, Clever Disguise): d20 + its wis mod -
+# the better of two d20s within (wis mod - rank) tiles of u - against the roll u made using it.
+# Meeting it, it sees through the skill's effects on u for as long as they last.
+func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void:
+	var r := u.rank(skill)
+	for o in eyes:
+		var close := Command.tiles(o.cell, u.cell) <= o.mod(&"wisdom") - r
+		var d20 := rng.randi_range(1, 20)
+		if close:
+			d20 = maxi(d20, rng.randi_range(1, 20))
+		var total := d20 + o.mod(&"wisdom")
+		if total >= against:
+			for e in skill.effects:
+				if e in u.timed:
+					u.timed[e].known_to.append(o)
+		investigated.emit(o, u, skill, total, against, close)
+
+
+# u's awake allies, itself among them, whose Self-evaluation reaches it: they see the rolls it makes.
+func evaluators(u: Unit) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for o: Unit in units.values():
+		if o.faction == u.faction and o.is_alive() and not o.asleep() and o.evaluates() > 0 and Command.tiles(o.cell, u.cell) <= o.evaluates():
+			out.append(o)
+	return out
+
+
+# A roll u just made using skill (d20, and its total), seen if one of its evaluators() is in reach.
+func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
+	if evaluators(u).is_empty():
+		return false
+	evaluated.emit(u, skill, d20, total)
 	return true
 
 
@@ -327,16 +881,20 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		return false
 	if not caster.pay_for(skill):
 		return false
-	if skill.lays:
+	if skill.observes:
+		observe(caster, c, caster.rank(skill))
+	elif skill.lays:
 		lay(caster, skill, c)
 	else:
 		zones.append(Zone.new(skill.zone, zone_levels(caster.rank(skill), c), skill.turns, caster.faction))
+	caster.heading = Vector2i.ZERO
 	used.emit(caster, skill, c, 0)
 	return true
 
 
 # A trap skill's trap, laid into the ground at c: the skill's `lays` with its concealment and dice
-# multiplier times the setter's rank, plus the setter's mod in its bonus stat. The setter knows it;
+# multiplier times the setter's rank, plus the setter's mod in its bonus stat; its wounds (Snare:
+# Bleeding) last rank + that mod turns, at least 1. The setter knows it;
 # for skills tagged trap, so do allies within its charisma mod in tiles (at least 1; trap_word
 # multiplies that: Hazard Expert), and with trap_word, allies further off get a vibe of it.
 func lay(u: Unit, skill: Skill, c: Vector2i) -> Snare:
@@ -359,6 +917,9 @@ func lay(u: Unit, skill: Skill, c: Vector2i) -> Snare:
 	t.damage_tags = plan.damage_tags
 	t.blast = plan.blast
 	t.reveals = plan.reveals
+	t.level = r
+	t.wounds = plan.wounds
+	t.wound_turns = maxi(r + (u.mod(plan.bonus_stat, skill.tags) if plan.bonus_stat else 0), 1)
 	var snare := Snare.new(t, u)
 	snare.known[u] = true
 	if &"trap" in skill.tags:
@@ -374,7 +935,7 @@ func lay(u: Unit, skill: Skill, c: Vector2i) -> Snare:
 
 # How far from the caster an area skill can be centred: radius + radius_per_rank x rank.
 func area_reach(caster: Unit, skill: Skill) -> float:
-	return skill.radius + skill.radius_per_rank * caster.rank(skill)
+	return skill.span(caster)
 
 
 # The levels an area skill of rank r lays around c: rank - distance on every tile that leaves above 0.
@@ -396,6 +957,20 @@ func hidden(c: Vector2i) -> bool:
 
 func read(o: Unit, target: Variant) -> Read:
 	return Perception.unit(self, o, target) if target is Unit else Perception.tile(self, o, target)
+
+
+# Each takes the other for a teammate (Command: only teammates give each other orders or share a
+# party). A persona's stance can put it on the wrong team in an ally's eyes (Read.attitude()); not
+# making out its side at all, they still trust it.
+func teammates(a: Unit, c: Unit) -> bool:
+	return a == c or (_trusts(a, c) and _trusts(c, a))
+
+
+func _trusts(o: Unit, t: Unit) -> bool:
+	if o.stance == "Traitor" and o.faction != t.faction:
+		return true  # it pretends to
+	var r := read(o, t)
+	return r.faction == null or r.attitude(o) == &"ally"
 
 
 # Dice as Vector2i(count, sides): Vector2i(1, 6) is d6.
@@ -425,26 +1000,77 @@ func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
 # --- Movement
 
 # Walks the straight line toward `dest` (see walk()), paying movement and the same AP per step.
-# A trap it stops on springs. Returns the tiles passed.
+# A trap it stops on springs. Ground a unit standing still passes by (Meander: Unit.passes_by())
+# does nothing to it. Held, it must break free first (_break_free()). Returns the tiles passed.
 func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	var passed: Array[Vector2i] = []
 	if not _acting(u) or dest == u.cell:
+		return passed
+	if held_by(u) and not _break_free(u):
 		return passed
 	var w := walk(u, dest)
 	passed = w.path
 	if not passed.is_empty():
 		var from := u.cell
-		var total_cost: float = w.costs.reduce(func(sum, x): return sum + x, 0.0)
-		u.moved += total_cost  # a Relay boost can take it below what it's walked
-		u.pay(maxf(total_cost, 0.0), &"move")
+		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
+		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
 		move(u, passed[-1])
-		for c in passed:  # stepping in happens on the unit's own turn, which isn't one of those counted
-			for e in terrain(c).afflicts:
-				u.afflict(e, (e.turns if e.turns else terrain(c).turns) + 1)
+		for i in touched:  # stepping in happens on the unit's own turn, which isn't one of those counted
+			for e in terrain(passed[i]).afflicts:
+				u.afflict(e, (e.turns if e.turns else terrain(passed[i]).turns) + 1)
+		u.heading = Vector2i(signi(passed[-1].x - from.x), signi(passed[-1].y - from.y))
+		for c in passed:  # trodden into the ground
+			debris.erase(c)
+		if Perception.cover(self, u) > 0:
+			_scatter(u, _hide_roll(u), passed)
+		_tidy_debris()
 		traveled.emit(u, from, passed)
-		if terrain(u.cell).is_trap():
+		if terrain(u.cell).is_trap() and passed.size() - 1 in touched:
 			spring(u.cell, u)
+		if u.is_alive():
+			_first_look(u)
 	return passed
+
+
+# The grip holding u (a grapple: Drown's effects), or null.
+func held_by(u: Unit) -> Unit.Applied:
+	for e in u.timed:
+		var a := u.timed[e]
+		if a.lasting and a.skill and a.skill.grip != Vector2i.ZERO:
+			return a
+	return null
+
+
+# What trying to break free costs u in movement: 1 + its holder's mod in the grip's stat tiles (at
+# least 1); 0 when nothing holds it.
+func escape_cost(u: Unit) -> float:
+	var a := held_by(u)
+	if a == null:
+		return 0.0
+	return float(maxi(1 + a.by.mod(a.skill.stat(), a.skill.tags), 1)) if a.by else 1.0
+
+
+# Held, u tries to move away from its holder: it spends escape_cost() movement, then d20 + its mod in
+# the grip's stat against its holder's (the holder keeps it on a tie). Won, the grip's gone and it
+# walks on with what movement it has left. A holder that's fallen, or isn't beside it, has let go.
+func _break_free(u: Unit) -> bool:
+	var a := held_by(u)
+	var by := a.by
+	var s := a.skill
+	if not by or not by.is_alive() or not next_to(by.cell, u.cell):
+		_let_go(u, s)
+		return true
+	var cost := escape_cost(u)
+	if u.move_left() < cost - 0.0001:
+		return false
+	u.walked(0, cost)
+	var theirs := rng.randi_range(1, 20) + u.mod(s.stat(), s.tags)
+	var mine := rng.randi_range(1, 20) + by.mod(s.stat(), s.tags)
+	struggled.emit(u, by, theirs, mine)
+	if theirs > mine:
+		_let_go(u, s)
+		return true
+	return false
 
 
 # The walk toward `dest`: {line, path, costs} - the straight line, the tiles kept, and what each
@@ -466,14 +1092,16 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		return in_way.call(c) != null
 	var path: Array[Vector2i] = []
 	var costs: Array[float] = []
-	var left := u.move_left()
+	var left := u.move_left() - escape_cost(u)
+	if held_by(u) and not expected:
+		left = 0.0  # held: travel() breaks it free first
 	var ln := line(u.cell, dest, u.luck, u)
 	var from: Terrain = ground.call(u.cell)
 	for c in ln:
 		if not on_map(c) or left <= 0.0001:
 			break
 		var t: Terrain = ground.call(c)
-		var cost := _cost(u, from, t)
+		var cost := _cost(u, from, t) * wading(u, c)
 		var other: Unit = in_way.call(c)
 		if other:
 			cost += pass_cost(u, other)
@@ -486,7 +1114,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		costs.append(cost)
 		path.append(c)
 		from = t
-		if t.is_trap() and not blocked.call(c):
+		if t.is_trap() and not blocked.call(c) and not u.passes_by(t, path.size()):
 			break  # stepped on a trap
 	while not path.is_empty() and blocked.call(path[-1]):  # units can be passed, not stood on
 		path.pop_back()
@@ -512,8 +1140,8 @@ func _relay(u: Unit) -> float:
 
 
 # A trap goes off: most are revealed for good (Terrain.reveals), and it hits whoever stepped on it
-# plus anyone in its blast. Units with Wary V (trap_power) make the traps they set off hit their
-# enemies harder.
+# plus anyone in its blast, putting its wounds on them at its level (Snare: Bleeding). Units with Wary
+# V (trap_power) make the traps they set off hit their enemies harder.
 func spring(c: Vector2i, by: Unit) -> void:
 	var t := terrain(c)
 	if t.reveals:
@@ -523,12 +1151,23 @@ func spring(c: Vector2i, by: Unit) -> void:
 	for v in units.values().filter(func(x): return x == by or Vector2(x.cell).distance_to(Vector2(c)) <= t.blast + 0.0001):
 		var boost := 1.0 + (by.stat(&"trap_power") if v.faction != by.faction else 0.0)
 		v.hit(raw * boost, t.damage_tags)
+		for e in t.wounds:  # + 1 on its own turn, which doesn't count
+			var a: Unit.Applied = v.afflict(e, t.wound_turns + (1 if v.faction == turn else 0), t.level)
+			a.by = snares[c].by if c in snares else null
+			a.since = turns_begun
 
 
 # Movement to step from one tile onto the next: leaving costs `from`'s exit, entering costs `to`'s
-# enter, plus the unit's move_cost effects for that ground (u may be null: terrain only).
+# enter, plus the unit's move_cost effects for that ground (u may be null: terrain only), times
+# wading().
 func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
-	return _cost(u, terrain(from), terrain(to))
+	return _cost(u, terrain(from), terrain(to)) * wading(u, to)
+
+
+# Disturbed earth (Pray, to Vetruvis) costs its side's enemies EARTHWORK_COST times as much to enter,
+# on top of whatever the ground and their effects already make it cost.
+func wading(u: Unit, c: Vector2i) -> float:
+	return EARTHWORK_COST if u and c in earthworks and earthworks[c].faction != u.faction else 1.0
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
@@ -578,18 +1217,34 @@ func terrain(c: Vector2i) -> Terrain:
 
 # --- Turns
 
-# As a unit's side starts its turn: regen heals that fraction of its max HP, then poison takes that
-# fraction (each rounded by its luck).
+# As a unit's side starts its turn: regen heals that fraction of its max HP (clearing wounds up to the
+# rank of the strongest regen on it), then poison takes that fraction (each rounded by its luck).
 func _mend(u: Unit) -> void:
 	var regen := u.stat(&"regen")
 	if regen > 0.0:
-		u.heal(Luck.settle(regen * u.max_hp, u.luck, true))
+		var power := 0
+		for pair in u._effects():
+			if pair[0].stat == "regen":
+				power = maxi(power, pair[1])
+		mend(u, Luck.settle(regen * u.max_hp, u.luck, true), power)
 	var poison := u.stat(&"poison")
 	if poison > 0.0 and u.is_alive():
 		u.damage(Luck.settle(poison * u.max_hp, u.luck, false))
 
 
-# The turn passes. Units that rested get energy back (Unit.recover()); ground puts its turn-end
+# As its side's turn ends, each bleed on u takes its dice + the mod of whoever put it on (at least 1) -
+# but not the turn it was put on.
+func _bleed(u: Unit) -> void:
+	for e in u.timed.keys():
+		if e.stat == "bleed" and u.is_alive() and u.timed[e].since != turns_begun:
+			var by := u.timed[e].by
+			u.damage(maxi(roll(e.dice) + (by.mod(e.dice_mod) if by and e.dice_mod else 0), 1))
+
+
+# The turn passes. Units that rested get energy back (Unit.recover()), and every unit awake looks
+# around (_watch()); a traitor in another side's party that didn't rest gives
+# itself away (_refuse()); held ones take their holder's grip (_grip()), and wounds bleed (_bleed());
+# Ramut's Ire looks for a stall (_check_stall()); ground puts its turn-end
 # effects on whoever is on it (Magic Stew); a sleeper with an ally beside it wakes up; then timed
 # effects count down and zones wear off.
 func end_turn() -> void:
@@ -597,7 +1252,17 @@ func end_turn() -> void:
 		return
 	var side := members(turn)
 	for u in side:
+		var rested := u.activity() == &"rest"
 		u.recover()
+		u.rested_turns = u.rested_turns + 1 if rested else 0
+		if not u.asleep():
+			_watch(u)
+		if not rested and posing(u):
+			_refuse(u)
+	for u in side:
+		_grip(u)
+		_bleed(u)
+	side = members(turn)  # a grip can drown one, a wound bleed one out
 	for u in side:
 		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
 			u.afflict(e, (e.turns if e.turns else u.footing.turns) + 1)  # + 1: the tick below takes this turn
@@ -609,11 +1274,225 @@ func end_turn() -> void:
 	for z in zones.filter(func(x: Zone): return x.faction == turn):
 		z.turns -= 1
 	zones.assign(zones.filter(func(x: Zone): return x.turns > 0))
+	for c in earthworks.keys():
+		if earthworks[c].faction == turn:
+			earthworks[c].turns -= 1
+			if earthworks[c].turns <= 0:
+				earthworks.erase(c)
+	_tidy_debris()
+	_check_stall()
+	if phase != Phase.TURNS:
+		return
 	turn = order[(order.find(turn) + 1) % order.size()]
 
 
+# A side's turn ends. If none of its units could make out a single foe it would fight while enemies
+# stand (only the Passive or Aggressive they seem to be counts too), the turn was stalled, by the foes
+# hiding or posing (concealment, trickery, a front); a turn that wasn't starts its count over. Once
+# more turns in a row have stalled than its grace(), Ramut's Ire builds a rank on each of them, a rank
+# a stalled turn.
+func _check_stall() -> void:
+	var side := members(turn)
+	var foes: Array = units.values().filter(func(t: Unit): return t.faction != turn and t.is_alive())
+	stalling.clear()
+	if side.is_empty() or foes.is_empty() or foes.any(func(t: Unit): return side.any(_sees_foe.bind(t))):
+		stalled_turns[turn] = 0
+		return
+	stalled_turns[turn] = stalled_turns.get(turn, 0) + 1
+	for t: Unit in foes:
+		if _hides(t):
+			stalling.append(t)
+	if ire_grace < 0.0 or stalled_turns[turn] <= grace(turn):
+		return
+	for u in stalling:
+		_ire(u)
+
+
+# Stalled turns in a row side f waits out before the Ire: the units still standing on the smallest side
+# in the fight, times ire_grace, less whatever its prayers to Ramut took off (at least 0).
+func grace(f: Faction) -> float:
+	var counts := {}
+	for u: Unit in units.values():
+		if u.is_alive():
+			counts[u.faction] = counts.get(u.faction, 0) + 1
+	var fewest: int = counts.values().min() if not counts.is_empty() else 0
+	return maxf(ire_grace * fewest - hastened.get(f, 0), 0.0)
+
+
+func _sees_foe(o: Unit, t: Unit) -> bool:
+	var r := read(o, t)
+	return r.located() and r.attitude(o) == &"foe"
+
+
+# Hides or poses: concealment, trickery or a front of its own.
+func _hides(t: Unit) -> bool:
+	var kinds: Array[StringName] = [&"dark", &"light", &"sound", &"sight"]
+	return t.stat(&"concealment", kinds) > 0 or t.stat(&"trickery", kinds) > 0 or Perception.fronts(t)
+
+
+# Ramut's Ire builds a rank on u, each defeating a rank of its concealment and trickery, against
+# everyone, for the rest of the battle: what it took to stop the stall stays taken.
+func _ire(u: Unit) -> void:
+	var rank := 1
+	for e in IRE.effects:
+		rank = (u.timed[e].rank + 1) if e in u.timed else 1
+		var a := u.afflict(e, 0, rank)
+		a.skill = IRE
+		a.lasting = true
+	stalled.emit(u, rank)
+
+
+# Still held as its side's turn ends (a grapple: Drown's effects), u takes the grip's dice + its
+# holder's mod in the grip's stat - and, fooled by its holder, looks harder at it. A holder that's
+# fallen, or isn't beside it any more, lets go.
+func _grip(u: Unit) -> void:
+	var a := held_by(u)
+	if a == null:
+		return
+	var by := a.by
+	var s := a.skill
+	if not by or not by.is_alive() or not next_to(by.cell, u.cell):
+		_let_go(u, s)
+		return
+	var before := u.hp
+	u.hit(roll(s.grip) + by.mod(s.stat(), s.tags), s.tags, by)
+	gripped.emit(u, by, before - u.hp)
+	if u.is_alive() and u.hp < before and read(u, by).deceived:
+		doubt(u, by)
+
+
+func _let_go(u: Unit, s: Skill) -> void:
+	for e in s.effects:
+		u.timed.erase(e)
+
+
+# Forced movement: t is drawn up to n tiles toward `to`, a step at a time, stopping beside it or at
+# anything in the way (Sing). Ground it's dragged over does nothing to it.
+func pull(t: Unit, to: Unit, n: int) -> void:
+	for i in n:
+		if next_to(t.cell, to.cell):
+			return
+		var d := to.cell - t.cell
+		var c := t.cell + Vector2i(signi(d.x), signi(d.y))
+		if not on_map(c) or not move(t, c):
+			return
+
+
+# A heal: its wounds of rank `power` or less cleared (an effect's wound flag), then hp back, plus
+# per_wound for each wound cleared (First Aid: rank). Returns the wounds cleared.
+func mend(t: Unit, hp: int, power: int, per_wound := 0) -> int:
+	var n := 0
+	for e in t.timed.keys():
+		if e.wound and t.timed[e].rank <= power:
+			t.timed.erase(e)
+			n += 1
+	t.heal(hp + per_wound * n)
+	return n
+
+
+# Where a dragging skill (Drown) would take t: the nearest free ground with its tag, by how far t
+# must be dragged, that the caster could walk to (within its movement); null if there's none.
+func drag_spot(caster: Unit, skill: Skill, t: Unit) -> Variant:
+	var best: Variant = null
+	for c in map.get_used_cells():
+		if skill.drags_to not in terrain(c).tags or (unit_at(c) and unit_at(c) != t):
+			continue
+		if Command.tiles(caster.cell, c) > caster.stat(&"movement"):
+			continue
+		if best == null or Command.tiles(t.cell, c) < Command.tiles(t.cell, best) or (Command.tiles(t.cell, c) == Command.tiles(t.cell, best)
+				and Command.tiles(caster.cell, c) < Command.tiles(caster.cell, best)):
+			best = c
+	return best
+
+
+# Off a dragging skill's contest roll: 1 a tile it must drag the foe, less (rank - 1) a tile.
+static func drag_penalty(skill: Skill, rank: int, n: int) -> int:
+	return maxi(1 - (rank - 1), 0) * n
+
+
+# Drags t onto `to` and the caster in beside it: onto free ground with the tag if there's any (Drown:
+# submerging both), else the nearest free tile. Ground passed over does nothing to either.
+func drag(caster: Unit, t: Unit, to: Vector2i, tag: StringName) -> void:
+	move(t, to)
+	var best := []
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			var c := to + Vector2i(dx, dy)
+			if c == to or not on_map(c) or (unit_at(c) and unit_at(c) != caster):
+				continue
+			var key := [int(tag in terrain(c).tags), -Command.tiles(caster.cell, c)]
+			if best.is_empty() or key > best[0]:
+				best = [key, c]
+	if not best.is_empty() and best[1] != caster.cell:
+		move(caster, best[1])
+
+
+# What a persona of rank p can put forward through Personify: stances (Friendly from II, the wrong
+# team from III), a level it claims (II), and a name from its pools (III).
+static func stances(p: int) -> Array[String]:
+	var out: Array[String] = [""]
+	if p >= 2:
+		out.append("Friendly")
+	if p >= 3:
+		out.append_array(["Enemy", "Aggressive", "Passive", "Traitor"])
+	return out
+
+
+# Personify's active half (Skill.hybrid): pays its AP, then changes what u's persona puts forward, as
+# far as its persona rank allows - up to its Personify rank of changes a use (persona_changes()). It
+# advertises while it puts anything forward, and stops once it puts nothing (or clears it all).
+# changes: {vibe: Array[String] (I), stance: String (II: Friendly; III: the rest), shows_level: int
+# (II; 0: none claimed), tags: Array[StringName] (identity, III), adjective, noun: String (III),
+# clear: bool (everything off, as one change)}.
+func personify(u: Unit, s: Skill, changes: Dictionary) -> bool:
+	if not _acting(u) or not s.hybrid or u.rank(s) == 0 or persona_changes(u, s, changes) > u.rank(s) or not u.pay_for(s):
+		return false
+	var p := persona_rank(u, s)
+	if changes.get("clear", false):
+		changes = {vibe = [], stance = "", shows_level = 0, tags = [], adjective = "", noun = ""}
+	if changes.get("stance", u.stance) in stances(p):
+		u.stance = changes.get("stance", u.stance)
+	if p >= 2:
+		u.shows_level = maxi(changes.get("shows_level", u.shows_level), 0)
+	if p >= 1 and changes.has("vibe"):
+		u.shows_vibe.assign(changes.vibe)
+	if p >= 3 and changes.has("tags"):
+		u.shows_tags.assign(changes.tags)
+	if p >= 3 and (changes.has("adjective") or changes.has("noun")):
+		u.set_alias(changes.get("adjective", ""), changes.get("noun", ""))
+	var forward := not (u.shows_vibe.is_empty() and u.shows_tags.is_empty()) or u.stance != "" or u.shows_level > 0 or u.alias != ""
+	if forward != u.is_on(s):
+		u.toggle(s)
+	used.emit(u, s, u, 0)
+	return true
+
+
+# How many things `changes` changes about u's persona: its stance, the level it claims and the name it
+# goes by count one each; each vibe word or identity tag put on or taken off, one each. Clearing it
+# all is one.
+static func persona_changes(u: Unit, _s: Skill, changes: Dictionary) -> int:
+	if changes.get("clear", false):
+		return 1
+	var n := 0
+	for k in ["stance", "shows_level"]:
+		if changes.has(k) and changes[k] != u.get(k):
+			n += 1
+	if (changes.has("adjective") or changes.has("noun")) and (changes.get("adjective", "") + " " + changes.get("noun", "")).strip_edges() != u.alias:
+		n += 1
+	for pair in [["vibe", u.shows_vibe], ["tags", u.shows_tags]]:
+		if changes.has(pair[0]):
+			var now: Array = changes[pair[0]]
+			n += now.filter(func(x): return x not in pair[1]).size() + pair[1].filter(func(x): return x not in now).size()
+	return n
+
+
+# u's persona rank with s switched on.
+static func persona_rank(u: Unit, s: Skill) -> int:
+	return roundi(u.stat(&"persona")) + (0 if u.is_on(s) else u.rank(s))
+
+
 func _acting(u: Unit) -> bool:
-	return phase == Phase.TURNS and u.faction == turn and u.is_alive() and not u.asleep()
+	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.asleep()
 
 
 # Touching, diagonals included.

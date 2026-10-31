@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Physical Intelligence"
+passive = true
+tags = Array[StringName]([&"magical", &"pillar"])
+stand_in = &"strength"
+replaces = Array[StringName]([&"intelligence"])

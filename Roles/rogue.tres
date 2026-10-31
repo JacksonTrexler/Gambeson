@@ -1,0 +1,117 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Elman.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/move_plus_one.tres" id="s_move_plus_one"]
+[ext_resource type="Resource" path="res://Skills/hide.tres" id="s_hide"]
+[ext_resource type="Resource" path="res://Skills/darkvision.tres" id="s_darkvision"]
+[ext_resource type="Resource" path="res://Skills/self_evaluation.tres" id="s_self_evaluation"]
+[ext_resource type="Resource" path="res://Skills/meander.tres" id="s_meander"]
+[ext_resource type="Resource" path="res://Skills/clever_disguise.tres" id="s_clever_disguise"]
+[ext_resource type="Resource" path="res://Skills/snare.tres" id="s_snare"]
+[ext_resource type="Resource" path="res://Skills/hazard_expert.tres" id="s_hazard_expert"]
+[ext_resource type="Resource" path="res://Skills/wary.tres" id="s_wary"]
+
+[ext_resource type="Resource" path="res://Skills/brood.tres" id="s_brood"]
+[ext_resource type="Resource" path="res://Skills/first_aid.tres" id="s_first_aid"]
+[ext_resource type="Resource" path="res://Skills/observe.tres" id="s_observe"]
+[ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="s_eyes_forward"]
+[ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
+[sub_resource type="Resource" id="Slot_move_plus_one"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_move_plus_one")
+
+[sub_resource type="Resource" id="Branch_wary"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_wary")
+
+[sub_resource type="Resource" id="Root_Blade"]
+script = ExtResource("6_root")
+name = "Blade"
+tag = &"martial"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary")])
+
+[sub_resource type="Resource" id="Branch_meander"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_meander")
+
+[sub_resource type="Resource" id="Branch_clever_disguise"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_clever_disguise")
+after = Array[ExtResource("5_skill")]([ExtResource("s_meander")])
+
+[sub_resource type="Resource" id="Branch_brood"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_brood")
+after = Array[ExtResource("5_skill")]([ExtResource("s_meander")])
+
+[sub_resource type="Resource" id="Root_Shadow"]
+script = ExtResource("6_root")
+name = "Shadow"
+tag = &"specialist"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_meander"), SubResource("Branch_clever_disguise"), SubResource("Branch_brood")])
+
+[sub_resource type="Resource" id="Branch_snare"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_snare")
+
+[sub_resource type="Resource" id="Branch_hazard_expert"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_hazard_expert")
+after = Array[ExtResource("5_skill")]([ExtResource("s_snare")])
+
+[sub_resource type="Resource" id="Root_Traps"]
+script = ExtResource("6_root")
+name = "Traps"
+tag = &"specialist"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_snare"), SubResource("Branch_hazard_expert")])
+
+[sub_resource type="Resource" id="Branch_observe"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_observe")
+
+[sub_resource type="Resource" id="Branch_eyes_forward"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_eyes_forward")
+after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
+
+[sub_resource type="Resource" id="Branch_special_eyes"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_special_eyes")
+after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
+
+[sub_resource type="Resource" id="Root_Eyes"]
+script = ExtResource("6_root")
+name = "Eyes"
+tag = &"specialist"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_observe"), SubResource("Branch_eyes_forward"), SubResource("Branch_special_eyes")])
+
+[sub_resource type="Resource" id="Tab_Freedom"]
+script = ExtResource("8_tab")
+name = "Freedom"
+kind = "Calling"
+center = ExtResource("s_hide")
+core = Array[ExtResource("5_skill")]([ExtResource("s_move_plus_one"), ExtResource("s_darkvision"), ExtResource("s_self_evaluation"), ExtResource("s_first_aid")])
+roots = Array[ExtResource("6_root")]([SubResource("Root_Shadow"), SubResource("Root_Traps"), SubResource("Root_Eyes")])
+
+[resource]
+script = ExtResource("1_script")
+noun = "Tradefolk"
+name = "Rogue"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_move_plus_one")])
+stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 15, &"constitution": 10, &"intelligence": 11, &"wisdom": 12, &"charisma": 11})
+roots = Array[ExtResource("6_root")]([SubResource("Root_Blade")])
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom")])

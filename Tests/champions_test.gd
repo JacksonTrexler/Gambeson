@@ -126,10 +126,12 @@ func test_stonegift() -> void:
 	ok(not b.cast(alabaster(), stonegift, v(3)), "allies only")
 	ok(b.cast(alabaster(), stonegift, v(1)), "on an ally within 2")
 	ok(is_equal_approx(v(1).mitigation([&"slash"]), 0.41) and v(1).stat(&"dexterity") == 6, "ally gets Stoneskin (+ Favour's 1%), dex 12 -> 6")
-	ok(v(1).timed[stoneskin.effects[0]].turns == 3 and alabaster().energy == 8, "for 3 turns, 2 energy")
+	ok(v(1).timed[stoneskin.effects[0]].turns == 4 and alabaster().energy == 8, "for 3 turns (after this one, its own side's), 2 energy")
 	for i in 6:
 		b.end_turn()
-	ok(v(1).mitigation([&"slash"]) == 0.01, "worn off after 3 Lancin turns")
+	ok(is_equal_approx(v(1).mitigation([&"slash"]), 0.41), "still on through 3 Nemes turns")
+	b.end_turn()
+	ok(v(1).mitigation([&"slash"]) == 0.01, "worn off as its 3rd Lancin turn after the cast ends")
 
 
 func test_bars() -> void:
@@ -183,8 +185,8 @@ func test_entry() -> void:
 	var roles := role.get_node("Options").get_children()
 	ok(sides.map(func(x): return x.text) == ["Lancin", "Nemes"], "sides")
 	ok(sides[0].icon.resource_path.ends_with("GolemClay.png") and sides[1].icon.resource_path.ends_with("RedMage.png"), "Alabaster stands for Lancin, Icor for Nemes")
-	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling"], "classes")
-	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png"], "class sprites")
+	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling", "Rogue", "Bard"], "classes")
+	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png", "Elman.png", "Doebour.png"], "class sprites")
 	ok(side.value == lancin and role.value.name == "Adventurer" and nm.text == "" and nm.placeholder_text == "Shrike" and not play.disabled,
 			"it starts on the demo's defaults: Shrike (muted, in the empty box), a Lancin Adventurer, ready to play")
 	var enter := InputEventKey.new()

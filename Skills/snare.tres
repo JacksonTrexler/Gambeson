@@ -2,6 +2,16 @@
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
 [ext_resource type="Script" path="res://Scripts/Terrain.gd" id="2_terrain"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="3_effect"]
+
+[sub_resource type="Resource" id="Effect_bleeding"]
+script = ExtResource("3_effect")
+stat = "bleed"
+amount = 1.0
+name = "Bleeding"
+wound = true
+dice = Vector2i(1, 4)
+dice_mod = &"dexterity"
 
 [sub_resource type="Resource" id="Terrain_snare"]
 script = ExtResource("2_terrain")
@@ -13,6 +23,7 @@ vibe = "a prickle of unease"
 dice = Vector2i(1, 4)
 bonus_stat = &"dexterity"
 damage_tags = Array[StringName]([&"trap", &"pierce"])
+wounds = Array[ExtResource("3_effect")]([SubResource("Effect_bleeding")])
 
 [resource]
 script = ExtResource("1_script")

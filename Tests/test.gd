@@ -48,7 +48,8 @@ func villagers_only() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(8, 2), v(4): Vector2i(8, 5)})
 
 
-# Clears the board except the given units, placed at the given cells, and starts f's turn.
+# Clears the board except the given units, placed at the given cells, and starts f's turn - calm:
+# nobody suspicious of anything from the looks it took as it started (calm()).
 func stage(f: Faction, placed: Dictionary) -> void:
 	for u: Unit in b.units.values():
 		b.units.erase(u.cell)
@@ -58,3 +59,10 @@ func stage(f: Faction, placed: Dictionary) -> void:
 	b.order.assign([lancin, nemes])
 	b.turn = null
 	b.turn = f
+	calm()
+
+
+# Nobody suspicious of anything (each unit's first looks are still taken), for tests of plain reads.
+func calm() -> void:
+	for u: Unit in b.get_node("Units").get_children():
+		u.suspicion.clear()

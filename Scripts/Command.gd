@@ -68,50 +68,63 @@ func ours(u: Unit) -> bool:
 	return u == leader or u in party
 
 
-# Close enough to the leader to hear its orders (whoever's turn it is).
+# Close enough to the leader to hear its orders (whoever's turn it is): an ally, or a traitor of
+# another side posing as one in its party (Battle.posing()).
 func in_range(u: Unit) -> bool:
 	if u == leader:
 		return true
-	if not leader.is_alive() or u.faction != leader.faction:
+	if not leader.is_alive() or (u.faction != leader.faction and u.follows != leader):
 		return false
 	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach()))
 
 
-# Takes an order right now: alive and awake, on the leader's side on its turn, and in range.
+# Takes an order right now: alive and awake, on the leader's side on its turn, in range, and each
+# taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
 	return u != null and u.is_alive() and not u.asleep() and leader.is_alive() \
-			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u)
+			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u) \
+			and battle.teammates(leader, u)
 
 
-# Allies join from within plain order range while there's room.
+# Allies join from within plain order range while there's room, if each takes the other for a
+# teammate - a traitor of another side among them, pretending.
 func can_join(u: Unit) -> bool:
-	return u != leader and u.is_alive() and leader.is_alive() and u.faction == leader.faction \
-			and u not in party and party.size() < party_size() and tiles(leader.cell, u.cell) <= reach()
+	return u != leader and u.is_alive() and leader.is_alive() \
+			and u not in party and party.size() < party_size() and tiles(leader.cell, u.cell) <= reach() \
+			and battle.teammates(leader, u)
 
 
 func join(u: Unit) -> bool:
 	if not can_join(u):
 		return false
 	party.append(u)
+	u.follows = leader
 	return true
 
 
 func leave(u: Unit) -> void:
 	party.erase(u)
+	if u.follows == leader:
+		u.follows = null
 
 
 func order(u: Unit) -> void:
 	ordered[u] = true
 
 
-# Allies on the leader's side with no order this turn: they act on their own as it ends.
+# Allies on the leader's side with no order this turn, and traitors posing in its party: they act on
+# their own as it ends.
 func idle() -> Array[Unit]:
 	var out: Array[Unit] = []
-	out.assign(battle.members(leader.faction).filter(func(u: Unit): return u != leader and u not in ordered))
+	for u in battle.members(leader.faction) + party.filter(func(x: Unit): return x.faction != leader.faction and x.is_alive()):
+		if u != leader and u not in ordered:
+			out.append(u)
 	return out
 
 
-# The leader's side starts a turn: orders are fresh, and the fallen leave the party.
+# The leader's side starts a turn: orders are fresh, and the fallen leave the party, as do those it
+# no longer takes for teammates (a traitor seen through).
 func new_turn() -> void:
 	ordered.clear()
-	party.assign(party.filter(func(u: Unit): return u.is_alive()))
+	for u in party.filter(func(x: Unit): return not x.is_alive() or not battle.teammates(leader, x)):
+		leave(u)

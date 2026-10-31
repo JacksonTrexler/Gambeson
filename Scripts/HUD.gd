@@ -71,6 +71,8 @@ var _reach_of: Unit  # whose reach `reach` holds, until something changes
 var _note := ""  # a passing message for the hint line ("Out of reach")
 var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 var _roll := {}  # the attack roll the next used signal is for (_on_attacked())
+var _looks: Array = []  # [by, total, against, whether the player knows `against`]: investigations of the skill being used, logged after it
+var _falls: Array[String] = []  # "X falls" lines, held until the hit that did it is logged (_flush_falls())
 
 @onready var card: UnitCard = %Card
 @onready var bar: VBoxContainer = %Hotbar
@@ -93,6 +95,8 @@ var _roll := {}  # the attack roll the next used signal is for (_on_attacked())
 @onready var pane: PanelContainer = %TilePane
 @onready var skills: SkillTree = %Skills
 @onready var settings: PanelContainer = %Settings
+var persona := PersonaPanel.new()  # Personify's active half
+var _personifying: Array = []  # [unit, skill] the persona panel is open for
 
 
 static func shade(c: Color) -> Color:
@@ -114,8 +118,12 @@ func _ready() -> void:
 	battle.traveled.connect(overlay.walk)
 	battle.traveled.connect(_mark.unbind(3))
 	battle.attacked.connect(_on_attacked)
+	battle.contested.connect(_on_contested)
 	battle.used.connect(_on_used)
 	battle.sprung.connect(_on_sprung)
+	battle.investigated.connect(func(by: Unit, of: Unit, s: Skill, total: int, against: int, _close: bool):
+		_looks.append([by, total, against, roll_known(of, s)]))
+	battle.evaluated.connect(_on_evaluated)
 	for u: Unit in battle.get_node("Units").get_children():
 		u.hp_changed.connect(_on_hp.bind(u))
 		u.energy_changed.connect(_on_energy.bind(u))
@@ -133,6 +141,15 @@ func _ready() -> void:
 	%BookIcon.pressed.connect(toggle_spellbook)
 	%CogIcon.pressed.connect(toggle_settings)
 	%SettingsClose.pressed.connect(_close_panels)
+	settings.get_parent().add_child(persona)
+	persona.done.connect(_on_personified)
+	battle.stalled.connect(_on_stalled)
+	battle.struggled.connect(_on_struggled)
+	battle.gripped.connect(_on_gripped)
+	battle.doubted.connect(_on_doubted)
+	battle.inspected.connect(_on_inspected)
+	battle.untangled.connect(_on_untangled)
+	battle.refused.connect(_on_refused)
 	%CharacterIcon.pressed.connect(_say.bind("The character sheet is coming soon"))
 	%MenuButton.pressed.connect(func(): get_tree().change_scene_to_file(menu_scene))
 	banner.modulate.a = 0.0
@@ -141,7 +158,7 @@ func _ready() -> void:
 	if not battle.rolls.is_empty():
 		_log("[color=#6b7180]Initiative: %s[/color]" % ", ".join(battle.order.map(
 				func(f: Faction): return "%s %d" % [f.name, battle.total(f)])))
-	_log("You lead %s." % _tag(command.leader))
+	_log("You lead %s" % _tag(command.leader))
 	_rebuild_bar()
 	_begin.call_deferred()
 
@@ -275,7 +292,7 @@ func click(c: Vector2i, force := false, inspect := false) -> void:
 		_charge(me, c, force)
 	elif u:
 		select(u)
-	elif selected and known(selected) and battle.turn == command.faction():
+	elif selected and hand(selected) and battle.turn == command.faction():
 		if _orders(selected):
 			_move(selected, c)
 		else:
@@ -295,17 +312,35 @@ func hover_cell(c: Vector2i) -> void:
 # A hotbar slot's key or click: arms an active (again: disarms it), switches a toggled passive.
 func use_slot(i: int) -> void:
 	var u := selected
-	if not u or not known(u) or i < 0 or i >= u.hotbar.size() or not u.hotbar[i]:
+	if not u or not hand(u) or i < 0 or i >= u.hotbar.size() or not u.hotbar[i]:
 		return
 	var s: Skill = u.hotbar[i]
 	if not _orders(u):
 		_say(_why_no_orders(u))
+	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
+		_say("Your side can't make out what %s could do there" % _name(u))
 	elif not command.slot_open(u, i):
 		_say(_why_locked())
 	elif not u.slot_works(i):
 		_say(SkillSlot.NO_LUCK)
+	elif s.passive and s.hybrid:
+		if not command.may_use(u, s):
+			return
+		if not u.can_afford(s):
+			_say(_short(u, s))
+		else:
+			_close_panels()
+			_personifying = [u, s]
+			persona.open(u, s, Battle.persona_rank(u, s))
 	elif s.passive:
 		switch(u, s)
+	elif s.on_self(u) or s.auto:
+		if not u.can_afford(s):
+			_say(_short(u, s))
+		elif battle.cast(u, s, u):
+			_done(u)
+		else:
+			_say("%s doesn't take" % s.name)
 	elif armed == s:
 		disarm()
 	elif not u.can_afford(s):
@@ -344,7 +379,7 @@ func hold() -> void:
 	if not u or u == command.leader or not _orders(u) or u in command.ordered:
 		return
 	command.order(u)
-	_log("%s holds." % _tag(u))
+	_log("%s holds" % _tag(u))
 	_mark()
 
 
@@ -354,9 +389,9 @@ func toggle_party() -> void:
 		return
 	if u in command.party:
 		command.leave(u)
-		_log("%s leaves your party." % _tag(u))
+		_log("%s leaves your party" % _tag(u))
 	elif command.join(u):
-		_log("%s joins your party." % _tag(u))
+		_log("%s joins your party" % _tag(u))
 	else:
 		_say(_why_no_join(u))
 	_mark()
@@ -401,7 +436,7 @@ func toggle_skills() -> void:
 
 
 func _panel_open() -> bool:
-	return spellbook.visible or skills.visible or settings.visible
+	return spellbook.visible or skills.visible or settings.visible or persona.visible
 
 
 # The cog: settings, and the Guide to how the game is played.
@@ -416,6 +451,7 @@ func _close_panels() -> void:
 	spellbook.hide()
 	skills.hide()
 	settings.hide()
+	persona.hide()
 	_mark()
 	_update_tip()
 
@@ -437,6 +473,12 @@ func known(u: Unit) -> bool:
 	return u.faction == command.faction()
 
 
+# Units the player gives orders to as its own: its side's, and a traitor posing in its party (whose
+# insides the player still only knows as it reads them).
+func hand(u: Unit) -> bool:
+	return known(u) or command.ours(u)
+
+
 # Someone on the player's side still standing: the leader if it can be.
 func observer() -> Unit:
 	if command.leader.is_alive():
@@ -445,18 +487,28 @@ func observer() -> Unit:
 	return allies[0] if allies else null
 
 
-# What the player's side makes out about a unit: the clearest read any of its units has (they
-# share what they see). With no one left to look, nothing.
+# What the player's side makes out about a unit: the clearest read any of its other units has (they
+# share what they see) - the most detail, then not fooled. With no one left to look, nothing.
 func view(u: Unit) -> Read:
 	var best: Read = null
 	for o in battle.members(command.faction()):
+		if o == u:
+			continue
 		var r := battle.read(o, u)
-		if best == null or r.net > best.net:
+		if best == null or _clearer(r, best):
 			best = r
 	if best == null:
 		best = Read.new()
 		best.net = -4
 	return best
+
+
+func _clearer(a: Read, b: Read) -> bool:
+	if a.net != b.net:
+		return a.net > b.net
+	if (a.hp != null) != (b.hp != null):
+		return a.hp != null
+	return b.deceived and not a.deceived
 
 
 func tile_view(c: Vector2i) -> Read:
@@ -511,6 +563,8 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 	if target is Unit:
 		if not target.is_alive():
 			return "Already fallen"
+		if (s.on_self(u) or s.auto) and target != u:
+			return "%s is used on oneself" % s.name if s.on_self(u) else "%s is used at once, on whoever is nearest" % s.name
 		var ally: bool = target.faction == u.faction if known(target) else _reads_as_ally(target)
 		if ally and not s.for_allies():
 			return "%s is for foes" % s.name
@@ -568,6 +622,69 @@ func _strike_at(u: Unit, s: Skill, c: Vector2i) -> void:
 
 
 # The order went through: the unit has acted, and whatever was armed is spent.
+# The persona panel's Done: Personify pays its AP and puts the picks forward.
+func _on_personified(changes: Dictionary) -> void:
+	var u: Unit = _personifying[0]
+	if battle.personify(u, _personifying[1], changes):
+		_done(u)
+	else:
+		_say("%s doesn't take" % _personifying[1].name)
+	_update_tip()
+
+
+# Ramut's Ire builds on a unit stalling the fight. Who it is shows only where the player can place it.
+func _on_stalled(u: Unit, rank: int) -> void:
+	var who := _tag(u) if known(u) or view(u).located() else "something"
+	_log("%s %s --> %s" % [Battle.IRE.name, Skill.roman(rank), who])
+	_mark()
+
+
+# A held unit tries to break free of its holder's grip (Drown), where the player can make out either.
+func _on_struggled(u: Unit, by: Unit, total: int, against: int) -> void:
+	if not (known(u) or known(by) or view(u).located()):
+		return
+	_log("%s breaks free%s%s%s" % [_tag(u), _arrow(total > against), _tag(by), _rolls(total, against if known(by) else null)])
+	_mark()
+
+
+# Still held as its turn ends, it takes the grip.
+func _on_gripped(u: Unit, by: Unit, dealt: int) -> void:
+	if not (known(u) or known(by) or view(u).located()):
+		return
+	var a := battle.held_by(u)
+	var grip := "%s %s" % [a.skill.name, Skill.roman(by.rank(a.skill))] if a and a.skill else "grip"
+	_log("%s %s%s%s%s" % [_tag(by), grip, _arrow(true), _tag(u), " [color=#ff6b5e]-%d[/color]" % dealt if _hp_shows(u) else ""])
+	_mark()
+
+
+# One of the player's units grows suspicious of a tile it inspected.
+func _on_inspected(by: Unit, at: Vector2i, total: int, against: int) -> void:
+	if known(by) and total >= against:
+		_log("%s suspects %d, %d%s" % [_tag(by), at.x, at.y, _rolls(total, null)])
+		_mark()
+
+
+# One of the player's units, under Haluca, sees an ally's tags straight again.
+func _on_untangled(by: Unit, of: Unit, total: int, against: int) -> void:
+	if known(by) and total >= against:
+		_log("%s sees through Haluca%s%s%s" % [_tag(by), _arrow(true), _tag(of), _rolls(total, against)])
+		_mark()
+
+
+# A traitor posing in the player's party won't do as it's told (or acted on its own side's turn).
+func _on_refused(u: Unit, leader: Unit) -> void:
+	if leader == command.leader:
+		_log("%s refuses %s" % [_tag(u), _tag(leader)])
+		_mark()
+
+
+# One of the player's units grows suspicious of a unit fooling it (its roll, but not the liar's).
+func _on_doubted(by: Unit, of: Unit, total: int, against: int) -> void:
+	if known(by) and total >= against:
+		_log("%s suspects %s%s" % [_tag(by), _tag(of), _rolls(total, null)])
+		_mark()
+
+
 func _done(u: Unit) -> void:
 	command.order(u)
 	armed = null
@@ -629,7 +746,10 @@ func _move(u: Unit, c: Vector2i) -> void:
 	if c == u.cell:
 		return
 	if battle.travel(u, c).is_empty():
-		_say("Can't get any closer" if u.move_left() > 0.0001 else "No movement left this turn")
+		if battle.held_by(u):
+			_say("Held fast: breaking free takes %s movement and a %s contest" % [Skill.num(battle.escape_cost(u)), String(battle.held_by(u).skill.stat()).left(3)])
+		else:
+			_say("Can't get any closer" if u.move_left() > 0.0001 else "No movement left this turn")
 		return
 	command.order(u)
 	_note = ""
@@ -712,23 +832,32 @@ func _on_attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int
 			hit = d20 == 20 or total >= defense, crit = d20 == 20}
 
 
+# A contest in place of an attack roll (Drown), likewise.
+func _on_contested(caster: Unit, target: Unit, total: int, against: int) -> void:
+	_roll = {caster = caster, target = target, total = total, against = against, hit = total >= against, crit = false}
+
+
 func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 	_mark()
+	var looks := _looks
+	_looks = []
 	var roll := _roll if _roll.get("caster") == caster and _roll.get("target") == at else {}
 	_roll = {}
 	if skill.lays and not known(caster):
 		if unit_seen(caster.cell) == caster:
-			_log("%s is setting something up." % _tag(caster))
+			_log("%s is setting something up" % _tag(caster))
 		return  # where, and what, is theirs to know
-	var text := "%s uses %s %s" % [_tag(caster), skill.name, Skill.roman(caster.rank(skill))]
+	var hit: bool = roll.is_empty() or roll.hit
+	var text := "%s %s %s" % [_tag(caster), skill.name, Skill.roman(caster.rank(skill))]
 	if at is Unit and at != caster:
-		text += " on " + _tag(at)
+		text += _arrow(hit) + _tag(at)
 	elif at is Vector2i and skill.lays:
 		var told: int = battle.snares[at].known.size() - 1 if at in battle.snares else 0
-		text = "%s sets a %s%s" % [_tag(caster), skill.lays.name.to_lower(),
-				" and tells %d %s where" % [told, "ally" if told == 1 else "allies"] if told > 0 else ""]
+		text += "%s%d, %d%s" % [_arrow(true), at.x, at.y, ", %d %s told" % [told, "ally" if told == 1 else "allies"] if told > 0 else ""]
 	elif at is Vector2i and not skill.on_tile():
-		text += ", but strikes only air"
+		text += _arrow(false) + "air"
+	elif at is Vector2i:
+		text += "%s%d, %d" % [_arrow(true), at.x, at.y]
 	if not roll.is_empty():
 		text += _roll_text(roll, at)
 		if not roll.hit:
@@ -741,19 +870,54 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 	if at is Unit and dealt > 0:
 		if _hp_shows(at):
 			text += " [color=#ff6b5e]-%d[/color]" % dealt
-		else:
-			text += " and lands a hit"
-			if known(caster):
-				overlay.float_text(at, "Hit!", FOE)
+		elif known(caster):
+			overlay.float_text(at, "Hit!", FOE)
 	_log(text)
+	for l in looks:
+		_log("%s investigates%s%s%s" % [_tag(l[0]), _arrow(l[1] >= l[2]), _tag(at) if at is Unit else _tag(caster),
+				_rolls(l[1], l[2] if l[3] else null)])
+	_flush_falls()
 
 
-# " (rolls 14 vs Defense 11)", " (natural 20)", " (rolls 6): misses" - Defense left out when the
-# player can't make it out.
+# Logs the units that fell, after whatever felled them: a skill's line (_on_used()), else - a grip,
+# a bleed, a trap - once the moment's lines are in.
+func _flush_falls() -> void:
+	for line in _falls:
+		_log(line)
+	_falls.clear()
+
+
+# Whether the player knows the roll u's skill was put on it with (Clever Disguise): u is on its
+# side, and an ally's Self-evaluation saw it.
+func roll_known(u: Unit, s: Skill) -> bool:
+	return u.faction == command.faction() and s.effects.any(func(e: Effect): return e in u.timed and u.timed[e].evaluated)
+
+
+# An ally's Self-evaluation saw a roll u made: on the player's side, it tallies up above u.
+func _on_evaluated(u: Unit, _s: Skill, d20: int, total: int) -> void:
+	if u.faction == command.faction():
+		overlay.float_roll(u, d20, total)
+	_mark()
+
+
+# An attack roll or contest, the log's way: " (14 - 11)" against Defense (or the other side's roll),
+# " (14)" where the player can't make Defense out, " (nat 20)".
 func _roll_text(roll: Dictionary, target: Unit) -> String:
-	var against := " vs Defense %d" % roll.defense if _defense_shows(target) else ""
-	var result := "natural 20" if roll.crit else ("rolls %d%s" % [roll.total, against])
-	return " [color=#6b7180](%s)[/color]%s" % [result, "" if roll.hit else ": misses"]
+	if roll.has("against"):
+		return _rolls(roll.total, roll.against)
+	if roll.crit:
+		return " [color=#6b7180](nat 20)[/color]"
+	return _rolls(roll.total, roll.defense if _defense_shows(target) else null)
+
+
+# The log's rolls: " (ours - theirs)", or " (ours)" where theirs is unknown to the player.
+func _rolls(total: int, against: Variant) -> String:
+	return " [color=#6b7180](%d%s)[/color]" % [total, " - %d" % against if against != null else ""]
+
+
+# The log's arrow from actor to target: " --> " when it lands, " -x> " when it misses or fails.
+func _arrow(landed: bool) -> String:
+	return " --> " if landed else " -x> "
 
 
 # Whether the player can make out u's Defense: its own side, or one it can identify (armor shows).
@@ -770,7 +934,7 @@ func _on_energy(was: int, now: int, u: Unit) -> void:
 func _on_sprung(_c: Vector2i, by: Unit) -> void:
 	if unit_seen(by.cell) == by:
 		overlay.float_text(by, "Trap!", GOLD)
-	_log("A trap springs under %s!" % _tag(by))
+	_log("Trap --> %s" % _tag(by))
 
 
 func _on_hp(was: int, now: int, u: Unit) -> void:
@@ -790,12 +954,13 @@ func _hp_shows(u: Unit) -> bool:
 func _on_died(u: Unit) -> void:
 	command.leave(u)
 	overlay.fade(u)
-	_log("%s falls." % _tag(u))
+	_falls.append("%s falls" % _tag(u))
+	_flush_falls.call_deferred()
 	if u == selected:
 		select(null)
 	if u == command.leader:
 		_banner("%s has fallen" % _name(u), FOE)
-		_log("Your allies fight on alone.")
+		_falls.append("Your allies fight on alone")
 		if auto and battle.phase == Battle.Phase.TURNS and battle.turn == command.faction() and not busy:
 			_act_alone.call_deferred(command.faction(), command.idle())
 	_mark()
@@ -905,7 +1070,7 @@ func _tile_effects(c: Vector2i, r: Read) -> Array:
 			out.append(["%s · %d turn%s · %s" % [Effect.summarize(group), n, "" if n == 1 else "s", when[1]], _tone(group)])
 	if r.exit:
 		out.append(["Sticky: +%d to leave" % r.exit, MUTED])
-	for t in r.tags.filter(func(t): return t not in [&"trap", &"sticky"] and String(t) not in r.name.to_lower()):
+	for t in r.tags.filter(func(t): return t not in [&"trap", &"sticky"] and String(t) not in r.name.to_lower() and not Battle.material(t)):
 		out.append([String(t).capitalize(), MUTED])
 	return out
 
@@ -925,7 +1090,15 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 		out.append(["Set by %s" % _name(battle.snares[c].by), GOLD])
 	for z in battle.zones:
 		if c in z.levels and z.faction == command.faction():
-			out.append(["Your %s cover %d, %d turns left" % [z.kind, z.levels[c], z.turns], MUTED])
+			out.append(["Your %s cover %d%s, %d turns left" % [z.kind, z.levels[c], " (hides only your side)" if z.allied else "", z.turns], MUTED])
+	if c in battle.debris and r.net >= 0:
+		var d: Battle.Debris = battle.debris[c]
+		out.append([d.kind + (": left by %s hiding" % _name(d.by) if d.faction == command.faction() else ": someone hid nearby?"),
+				MUTED if d.faction == command.faction() else GROUND[&"unsure"]])
+	if c in battle.earthworks:
+		var ours := battle.earthworks[c].faction == command.faction()
+		var who := " (yours): your enemies pay" if ours else ": you pay"
+		out.append(["Disturbed earth%s 50%% more to enter, %d turns left" % [who, battle.earthworks[c].turns], FRIEND if ours else FOE])
 	var u := selected if selected and known(selected) else null
 	var there := unit_seen(c)
 	if u and there and there != u:
@@ -1032,7 +1205,7 @@ func _can_spend(u: Unit) -> bool:
 func _on_unlocked(s: Skill) -> void:
 	var u := skills.unit
 	if _can_spend(u) and u.unlock(s):
-		_log("%s learns %s." % [_tag(u), s.name])
+		_log("%s learns %s" % [_tag(u), s.name])
 		_rebuild_bar()
 	_mark()
 
@@ -1040,7 +1213,7 @@ func _on_unlocked(s: Skill) -> void:
 func _on_raised(s: Skill) -> void:
 	var u := skills.unit
 	if _can_spend(u) and u.raise(s):
-		_log("%s raises %s to rank %s." % [_tag(u), s.name, Skill.roman(u.rank(s))])
+		_log("%s raises %s to rank %s" % [_tag(u), s.name, Skill.roman(u.rank(s))])
 		_rebuild_bar()
 	_mark()
 
@@ -1049,7 +1222,7 @@ func _on_leveled() -> void:
 	var u := skills.unit
 	if _can_spend(u):
 		u.level_up()
-		_log("%s reaches level %d." % [_tag(u), u.level])
+		_log("%s reaches level %d" % [_tag(u), u.level])
 	_mark()
 
 
@@ -1059,7 +1232,7 @@ func _open_book() -> void:
 
 
 func _rebuild_bar() -> void:
-	var n := _bar_slots(selected if selected and known(selected) else null)
+	var n := _bar_slots(selected if selected and hand(selected) else null)
 	if bar.get_child_count() == n:
 		return
 	for c in bar.get_children():
@@ -1087,21 +1260,31 @@ func _bar_slots(u: Unit) -> int:
 
 func _refresh_bar() -> void:
 	_rebuild_bar()
-	var u := selected if selected and known(selected) else null
+	var u := selected if selected and hand(selected) else null
 	bar.visible = u != null or not selected  # other sides' skills aren't the player's to see
 	%BarTitle.visible = bar.visible
 	var orders := u != null and _orders(u)
 	var edit := u != null and _editable(u)
+	var r := view(u) if u and u != command.leader else null
 	for slot: SkillSlot in bar.get_children():
 		var i := slot.index
 		var s: Skill = u.hotbar[i] if u and i < u.hotbar.size() else null
-		var locked := u != null and known(u) and u != command.leader and not command.slot_open(u, i)
+		var locked := u != null and hand(u) and u != command.leader and not command.slot_open(u, i)
 		var works := u == null or u.slot_works(i)
-		var usable := orders and s != null and not locked and works and (s.passive or u.can_afford(s))
-		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit, locked)
+		var sense := skill_sense(u, s, r)
+		var usable := orders and s != null and sense > 0 and not locked and works and (s.passive or u.can_afford(s))
+		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit, locked, sense)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked()
+
+
+# How much of u's skill s the player's side makes out (r: its read of u): 2 all of it (the leader's
+# own, or net 3), 1 its name (an ally's kit), 0 nothing - an unperceptive side can't use it.
+func skill_sense(u: Unit, s: Skill, r: Read) -> int:
+	if u == null or s == null or u == command.leader or s in r.skills:
+		return 2
+	return 1 if s in r.kit else 0
 
 
 func _on_dropped(i: int, s: Skill, _from: int) -> void:
@@ -1153,7 +1336,7 @@ func _hint() -> String:
 	if battle.turn != command.faction():
 		return "Waiting for %s." % battle.turn.name
 	var u := selected
-	if not u or not known(u) or _orders(u):
+	if not u or not hand(u) or _orders(u):
 		return ""
 	if u.asleep():
 		return "Asleep. An ally ending the turn beside it wakes it for the next one."
@@ -1248,27 +1431,15 @@ func _clear(box: Container) -> void:
 func _info(u: Unit) -> Dictionary:
 	var info := {look = u.sprite.sprite_frames.get_frame_texture(&"default", 0)}
 	var chips := []
-	if known(u):
+	if u == command.leader:  # it knows itself; everyone else, the side sees as it reads them
 		info.name = _name(u)
 		var kind := " ".join([u.race.name if u.race else "", u.role.name if u.role else ""]).strip_edges()
 		info.sub = "Lv %d %s" % [u.level, kind if kind else ", ".join(u.tags)]
-		if u == command.leader:
-			chips.append(["Leader", GOLD])
-		elif u in command.party:
-			chips.append(["Party", GOLD])
-		else:
-			chips.append(["Ally", shade(u.faction.primary)])
-		if command.ours(u) and u.skill_points > 0:
+		chips.append(["Leader", GOLD])
+		if u.skill_points > 0:
 			chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
 		if u.asleep():
 			chips.append(["Asleep", SLEEP])
-		elif battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS and u != command.leader:
-			if u in command.ordered:
-				chips.append(["Ordered", MUTED])
-			elif command.can_order(u):
-				chips.append(["Takes orders", FRIEND])
-			else:
-				chips.append(["Out of range", MUTED])
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
 		var main := u.main_reserve()
 		if main:
@@ -1277,45 +1448,124 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
+		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return u.stat(x))), null, MUTED])
 		info.rows = rows
+		info.effects = effect_icons(u) + suspicion_icons(u.suspicion)
+		info.chips = chips
+		return info
+	var r := view(u)
+	info.name = r.name if r.name else ("Looks like a %s" % r.looks if r.looks else "Unknown")
+	info.face = r.face
+	info.shape = r.faction == null
+	var parts: PackedStringArray = []
+	if r.level != null:
+		parts.append("Lv %d" % r.level)
+	if r.role:
+		parts.append(r.role.name)
+	elif not r.tags.is_empty():
+		parts.append(" ".join(r.tags.map(func(t): return String(t).capitalize())))
+	if not parts:
+		parts.append(_sentence(r.hint) if r.hint else ("Kind unknown" if r.name else "Hard to make out"))
+	info.sub = " ".join(parts)
+	if r.faction == null:
+		chips.append(["Unknown", MUTED])
+	elif r.stance in [&"aggressive", &"passive", &"traitor"]:
+		chips.append([String(r.stance).capitalize(), FOE if r.attitude(observer()) == &"avoid" else MUTED])
+	elif known(u) and r.faction == command.faction():
+		chips.append(["Party", GOLD] if u in command.party else ["Ally", shade(u.faction.primary)])
+	elif r.faction == command.faction():
+		chips.append(["Friendly", FRIEND])
 	else:
-		var r := view(u)
-		info.name = r.name if r.name else "Unknown"
-		info.shape = r.faction == null
-		var parts: PackedStringArray = []
-		if r.level != null:
-			parts.append("Lv %d" % r.level)
-		if r.role:
-			parts.append(r.role.name)
-		elif not r.tags.is_empty():
-			parts.append(" ".join(r.tags.map(func(t): return String(t).capitalize())))
-		if not parts:
-			parts.append(_sentence(r.hint) if r.hint else ("Kind unknown" if r.name else "Hard to make out"))
-		info.sub = " ".join(parts)
-		if r.faction == null:
-			chips.append(["Unknown", MUTED])
-		elif r.faction == command.faction():
-			chips.append(["Friendly", FRIEND])
+		chips.append(["Enemy", FOE])
+	if command.ours(u) and u.skill_points > 0:
+		chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
+	for word in r.traits:
+		chips.append([word, MUTED])
+	if sleeping(u):
+		chips.append(["Asleep", SLEEP])
+	elif known(u) and battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS:
+		if u in command.ordered:
+			chips.append(["Ordered", MUTED])
+		elif command.can_order(u):
+			chips.append(["Takes orders", FRIEND])
 		else:
-			chips.append(["Enemy", FOE])
-		if sleeping(u):
-			chips.append(["Asleep", SLEEP])
-		if r.vibe:
-			chips.append([r.vibe, MUTED])
-		var rows := []
-		if r.hp != null:
-			rows.append(["HP", r.hp, r.max_hp, Unit.HP_COLOR])
-		elif r.healthy != null:
-			rows.append(["HP", "Healthy" if r.healthy else "Bloodied", null, Unit.HP_COLOR if r.healthy else FOE])
-		else:
-			rows.append(["HP", "?", null, MUTED])
-		if r.energy != null:
-			rows.append(["EN", r.energy, null, Unit.ENERGY_COLOR])
-		if r.net >= 0:
-			rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
-		info.rows = rows
+			chips.append(["Out of range", MUTED])
+	if r.vibe:
+		chips.append([r.vibe, MUTED])
+	var rows := []
+	if r.hp != null:
+		rows.append(["HP", r.hp, r.max_hp, Unit.HP_COLOR])
+	elif r.healthy != null:
+		rows.append(["HP", "Healthy" if r.healthy else "Bloodied", null, Unit.HP_COLOR if r.healthy else FOE])
+	else:
+		rows.append(["HP", "?", null, MUTED])
+	if r.energy != null:
+		rows.append(["EN", r.energy, null, Unit.ENERGY_COLOR])
+	if known(u) and command.can_order(u):  # what it has left to follow orders with
+		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
+		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
+	if r.net >= 0:
+		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
+	if not r.stats.is_empty():
+		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return r.stats[x])), null, MUTED])
+	info.rows = rows
+	if known(u):
+		info.effects = effect_icons(u, r.effects) + suspicion_icons(r.suspects)
+		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
+			info.effects = [["?", MUTED, "Something's affecting %s; your side can't make out what" % _name(u), ""]]
+	info.note = "" if known(u) and r.insight.ends_with("appear otherwise.") else r.insight  # an honest ally goes without saying
 	info.chips = chips
 	return info
+
+
+# [mark, colour, tooltip, roll] for what's timed on u, an icon per skill that put it on (its mark:
+# Clever Disguise's "CD") or per condition (its first letters: "Po"), green if it helps. roll: the
+# roll it was put on with, where the player knows it (roll_known()), else "". only: just these
+# effects (what the side can make out), unless null.
+func effect_icons(u: Unit, only: Variant = null) -> Array:
+	var out := []
+	var at := {}
+	for e: Effect in u.timed:
+		if only != null and e not in only:
+			continue
+		var a: Unit.Applied = u.timed[e]
+		var key: Variant = a.skill if a.skill else e.label()
+		var line := e.describe(a.rank) + _time_left(a)
+		if key in at:
+			out[at[key]][2] += "\n" + line
+			continue
+		at[key] = out.size()
+		var known_roll := a.evaluated and a.roll != 0 and u.faction == command.faction()
+		out.append([a.skill.mark() if a.skill else e.label().left(2), FRIEND if e.helps() > 0 else FOE,
+				(a.skill.name + "\n" if a.skill else "") + line + ("\nRolled %d" % a.roll if known_roll else ""),
+				str(a.roll) if known_roll else ""])
+	return out
+
+
+# [mark, colour, tooltip, roll] for each unit one has grown suspicious of (Battle.suspect()): a buff
+# against that unit alone.
+func suspicion_icons(of: Dictionary) -> Array:
+	var out := []
+	for t: Variant in of:
+		if t is Vector2i:
+			out.append(["Su", FRIEND, "Suspicious of the ground at %d, %d\nSees through %d rank%s of what hides there" % [t.x, t.y, of[t], "" if of[t] == 1 else "s"], ""])
+		elif t.is_alive():
+			out.append(["Su", FRIEND, "Suspicious of %s\nSees through %d rank%s of its trickery and concealment" % [_name(t), of[t], "" if of[t] == 1 else "s"], ""])
+	return out
+
+
+# " · 2 turns left", " · until it moves", " · until it breaks free", " · 1 turn left, then fading".
+func _time_left(a: Unit.Applied) -> String:
+	if a.lasting:
+		return " · until it breaks free" if a.skill and a.skill.grip != Vector2i.ZERO else " · for the rest of the battle"
+	if a.until_move and a.turns == 0:
+		return " · until it moves"
+	return " · %d turn%s left%s" % [a.turns, "" if a.turns == 1 else "s", ", then fading" if a.fades and a.rank > 1 else ""]
+
+
+# "76 BST": its six core stats added up (what Embellish inflates).
+func _bst_line(stats: Array) -> String:
+	return "%d BST" % roundi(stats.reduce(func(sum, x): return sum + x, 0.0))
 
 
 # "11 · Gambeson", "2 · unarmored", with tagged Defense after: "+2 vs magical".
@@ -1377,7 +1627,7 @@ func _cost_text(path: Array, cost: float) -> String:
 
 
 func _unit_line(u: Unit) -> String:
-	if known(u):
+	if u == command.leader:
 		return "%s\nHP %d/%d" % [_name(u), u.hp, u.max_hp]
 	var r := view(u)
 	var text: String = r.name if r.name else "Something"
@@ -1387,6 +1637,8 @@ func _unit_line(u: Unit) -> String:
 		text += "\nHP %d/%d" % [r.hp, r.max_hp]
 	elif r.healthy != null:
 		text += "\n" + ("Healthy" if r.healthy else "Bloodied")
+	if not r.traits.is_empty():
+		text += "\n" + ", ".join(r.traits)
 	if r.vibe:
 		text += "\n" + r.vibe
 	return text
@@ -1413,14 +1665,14 @@ func _forecast(u: Unit, s: Skill, target: Unit = null) -> String:
 	if u.cost_from(s, fund):
 		text += ", %d %s" % [u.cost_from(s, fund), fund.name if fund is Reserve else "energy"]
 	if s.dual and target and not foe(target):
-		var n := s.lasts(u.rank(s))
+		var n := s.lasts(u.rank(s), u)
 		return text + " · %s, %d turn%s" % [", ".join(s.effects.map(func(e: Effect): return e.describe(u.rank(s)))), n, "" if n == 1 else "s"]
 	if target and s.attacks():
 		text += " · %s to hit" % ("%d%%" % roundi(Battle.hit_chance(u, s, target) * 100.0) if _defense_shows(target) else "?%")
 	var t := s.tier(u.rank(s))
 	if t:
 		var hits := u.rank(s) if s.hits_per_rank else 1
-		var bonus := u.mod(u.wielded(t.stat, s.tags), s.tags) if t.stat else 0
+		var bonus := u.mod(u.wielded(t.stat, s.tags), s.tags) + u.weapon_bonus(t.stat) if t.stat else 0
 		var lo := maxi(t.power + t.dice.x + bonus, 1) * hits
 		var hi := maxi(t.power + t.dice.x * t.dice.y + bonus, 1) * hits
 		text += " · %s damage" % (str(lo) if lo == hi else "%d-%d" % [lo, hi])
@@ -1448,7 +1700,7 @@ func _why_locked() -> String:
 func _why_no_orders(u: Unit) -> String:
 	if battle.phase != Battle.Phase.TURNS:
 		return "The battle is over"
-	if not known(u):
+	if not hand(u):
 		return "Not yours to command"
 	if not command.leader.is_alive():
 		return "Your leader has fallen"
@@ -1463,7 +1715,7 @@ func _why_no_orders(u: Unit) -> String:
 
 
 func _why_no_join(u: Unit) -> String:
-	if not known(u) or u == command.leader:
+	if not (known(u) or command.can_join(u)) or u == command.leader:
 		return "Only allies can join"
 	if command.party.size() >= command.party_size():
 		return "Party full (%d/%d)" % [command.party.size(), command.party_size()]

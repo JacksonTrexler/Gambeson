@@ -9,6 +9,8 @@
 [ext_resource type="Resource" path="res://Roles/adventurer.tres" id="7_adventurer"]
 [ext_resource type="Resource" path="res://Roles/fighter.tres" id="8_fighter"]
 [ext_resource type="Resource" path="res://Roles/paladin.tres" id="9_paladin"]
+[ext_resource type="Resource" path="res://Roles/rogue.tres" id="10_rogue"]
+[ext_resource type="Resource" path="res://Roles/bard.tres" id="11_bard"]
 
 [sub_resource type="Theme" id="Theme_small"]
 default_font_size = 10
@@ -23,7 +25,7 @@ grow_vertical = 2
 theme = SubResource("Theme_small")
 script = ExtResource("1_entry")
 sides = Array[ExtResource("3_faction")]([ExtResource("4_lancin"), ExtResource("5_nemes")])
-roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin")])
+roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin"), ExtResource("10_rogue"), ExtResource("11_bard")])
 default_side = ExtResource("4_lancin")
 default_role = ExtResource("7_adventurer")
 

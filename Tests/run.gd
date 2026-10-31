@@ -23,6 +23,7 @@ func _initialize() -> void:
 			await process_frame
 			t.b = scene.get_node("Battle")
 			t.tree = self
+			t.calm()
 			await t.call(m.name)
 			checks += t.checks
 			for f in t.failures:

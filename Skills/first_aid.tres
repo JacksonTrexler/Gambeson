@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+name = "First Aid"
+tags = Array[StringName]([&"physical", &"specialist"])
+ap = 3.0
+cost = 1
+radius = 1.0
+hostile = false
+heal_mods = Array[StringName]([&"dexterity", &"wisdom"])
+heal_split = 2
+heal_bonus = 1
+per_wound = 1

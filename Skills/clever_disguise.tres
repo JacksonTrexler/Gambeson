@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_trickery"]
+script = ExtResource("2_effect")
+stat = "trickery"
+amount = 1.0
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Clever Disguise"
+tags = Array[StringName]([&"specialist", &"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_trickery")])
+rank_cost = 4
+ap = 3.0
+cost = 2
+hostile = false
+turns_per_rank = 1
+fades = true
+self_only = true
+investigated = true

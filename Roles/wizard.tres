@@ -22,6 +22,7 @@ skill = ExtResource("23_opt_mana")
 
 [resource]
 script = ExtResource("1_script")
+noun = "Caster"
 name = "Wizard"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")

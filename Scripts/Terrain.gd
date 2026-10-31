@@ -20,6 +20,7 @@ extends Resource
 @export var afflicts: Array[Effect] = []  # put on whoever steps here, for `turns` of their turns
 @export var at_end: Array[Effect] = []  # put on whoever ends its side's turn here, likewise (Magic Stew)
 @export var turns := 0  # unless an effect sets its own; counted from the unit's next turn
+@export var level := 1  # how strong what it does to whoever steps on it is (afflicts, its trap): a unit standing still at this Meander rank or above passes it by
 
 @export_group("Trap")  # sprung when a unit steps on it
 @export var dice := Vector2i.ZERO  # damage: the roll x `times`, + `bonus`
@@ -29,6 +30,8 @@ extends Resource
 @export var damage_tags: Array[StringName] = []  # trap, pierce...
 @export var blast := 0.0  # hits every unit within this radius, not just the one who stepped on it
 @export var reveals := true  # sprung, it loses all its concealment (most traps)
+@export var wounds: Array[Effect] = []  # put on whoever it hits, at its level (Snare: Bleeding)...
+@export var wound_turns := 1  # ...for this many turns (laid by a skill: rank + the setter's mod in bonus_stat)
 
 
 func is_trap() -> bool:

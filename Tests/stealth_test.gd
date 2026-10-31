@@ -14,11 +14,12 @@ func test_strike_at_hidden() -> void:
 	b.attempt(v(1), strike, Vector2i(5, 3))
 	ok(v(3).exposed == 2 and b.read(v(1), v(3)).located(), "hit again: located")
 	b.end_turn()
-	ok(v(3).exposed == 0 and b.read(v(1), v(3)).net == -4, "back in hiding as its side's turn starts")
+	ok(v(3).exposed == 0 and b.read(v(1), v(3)).net == -4 + v(1).suspects(v(3)) + v(1).suspects(v(3).cell),
+			"back in hiding as its side's turn starts (less what v(1) grew suspicious of, looking around as its turn ended)")
 
 
 func test_attacker_exposed() -> void:
-	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 5)})  # v(4) in plain sight: no stall, no Ire
 	v(3).afflict(effect("concealment", 2), 9)
 	ok(b.cast(v(3), strike, v(1)) and v(3).exposed == 1, "attacking from hiding gives it away")
 	b.end_turn()

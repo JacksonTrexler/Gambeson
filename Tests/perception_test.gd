@@ -91,21 +91,42 @@ func test_siren() -> void:
 	b.move(s, Vector2i(7, 4))
 	ok(s.stat(&"strength") == 8 and s.stat(&"dexterity") == 8 and s.stat(&"constitution") == 8 and s.stat(&"intelligence") == 12, "on grass: physical stats -4")
 	b.move(s, Vector2i(8, 6))
-	ok(roundi(s.stat(&"persona")) == 3 and Perception.trickery(s, Read.new()) == 2.0, "Persona III, Tonefoolery II")
+	ok(roundi(s.stat(&"persona")) == 4 and Perception.trickery(s, Read.new()) == 2.0, "Persona IV (Alluring), Tonefoolery II")
 
 
 func test_siren_fools() -> void:
 	var r := b.read(v(1), siren())
 	ok(r.deceived and r.twist == 1.0, "trickery 2 vs recon 0: fooled, fully")
-	ok(r.faction == lancin and r.vibe == "Harmless, Beautiful, Serene" and r.aura == 2 and r.tags == [&"holy"], "reads as a harmless, holy ally")
+	ok(r.faction == lancin and r.vibe == "Harmless, Beautiful, Serene, Safe" and r.aura == 2 and r.tags == [&"holy"], "reads as a harmless, holy ally")
 	ok(r.healthy == false and r.hp == 1, "unpresented fields are inverted (full health reads as nearly dead)")
-	ok(r.name == "" and r.skills.is_empty(), "posing as something else, it hides its name and skills")
+	var s := siren()
+	ok(r.name == s.alias and r.face == s.alias_face and r.skills.is_empty(), "posing as someone else, it goes by a made-up name (%s) and hides its skills" % r.name)
+	var words := s.alias.split(" ")
+	ok(words.size() == 2 and words[0] in s.shows_adjectives and s.shows_nouns.get(words[1]) == s.alias_face,
+			"an adjective and a noun from its pools, with the noun's stand-in sprite (%s %s)" % [s.alias, s.alias_face])
 	var ally := b.read(v(3), siren())
-	ok(not ally.deceived and ally.faction == nemes and ally.hp == 16, "its own side isn't fooled")
+	ok(ally.deceived and ally.faction == nemes and ally.hp == 16 and ally.name == s.alias, "its own side: its trickery fools them too, but nothing's twisted")
 	v(1).afflict(effect("recon", 3), 9)
 	var sharp := b.read(v(1), siren())
 	ok(not sharp.deceived and sharp.faction == nemes and sharp.vibe == "Briny, hungry" and sharp.aura == -2, "recon 3 sees the truth")
-	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 4, "...what it is, and (net 3) its skills")
+	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 6, "...what it is, and (net 3) its skills")
+	ok(sharp.name == "Siren" and sharp.face == "", "...and its real name and look")
+
+
+func test_alias_pools() -> void:
+	var s := siren()
+	var seen := {}
+	for i in 60:
+		s._pick_alias()
+		seen[s.alias] = s.alias_face
+	ok(seen.size() > 4 and seen.keys().all(func(n: String): return n.split(" ")[0] in s.shows_adjectives and n.split(" ")[1] in s.shows_nouns),
+			"names mix and match its pools (%s)" % ", ".join(seen.keys()))
+	ok(seen.get("Radiant Lady", ";)") == ";)" and seen.get("Serene Songstress", ":3") == ":3" and seen.get("Beautiful Beauty", ":D") == ":D", "each noun keeps its face")
+	ok(v(1).alias == "" and v(1).alias_face == "", "no pools: no alias")
+	var none: Array[String] = []
+	s.shows_adjectives = none
+	s._pick_alias()
+	ok(s.alias in s.shows_nouns and s.alias_face == s.shows_nouns[s.alias], "an empty pool: the other word alone (%s)" % s.alias)
 
 
 func test_tonefoolery_doubles() -> void:
@@ -165,6 +186,7 @@ func test_ai_wont_hit_unknowns() -> void:
 	icor().learned.append(slot(darkstone, 2))
 	stage(nemes, {icor(): Vector2i(7, 1), v(3): Vector2i(5, 3), v(1): Vector2i(4, 3)})
 	b.cast_at(icor(), darkstone, Vector2i(5, 3))  # v(3) in darkness 2: a shape, side unknown
+	v(1).noticed[v(3).cell] = true  # it's had its look (Battle._first_look())
 	b.end_turn()
 	ok(b.turn == lancin and b.read(v(1), v(3)).faction == null, "Lancin can't tell whose side the shape is on")
 	AI.act(b, v(1))

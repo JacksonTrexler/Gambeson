@@ -4,7 +4,8 @@ extends Node2D
 # What the HUD marks on the battlefield, drawn between the map and the units: the hovered tile, the
 # selected unit, the leader and its party, allies taking orders and how far orders reach, where the
 # selected unit can walk and the move being planned, the foe a click would attack, an armed skill's
-# reach and targets, and tiles where something is only suspected.
+# reach and targets, tiles where something is only suspected, debris hiding units left, and disturbed
+# earth.
 # Floating numbers and sleepers' "zZ" go on `top`, above the units; walking is animated here too.
 
 const TILE := 32.0
@@ -15,12 +16,15 @@ const FOE := Color("#ff6b5e")
 const FRIEND := Color("#6fdc8c")
 const ZONE := Color("#5b3f9e")
 const DUBIOUS := Color("#b39ddb")
+const DEBRIS := Color("#c9a66b")
+const EARTH := Color("#8a6a45")
 const SHADE := {&"safe": 0.16, &"unsure": 0.26, &"bad": 0.45}  # reach shading strength by ground
 
 var hud: HUD
 var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
+var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
 
 
 func _process(_delta: float) -> void:
@@ -41,6 +45,11 @@ func _draw() -> void:
 		draw_rect(_rect(c, 2), Color(DUBIOUS, 0.12))
 		draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6, 10,
 				Color(DUBIOUS, 0.25 + 0.2 * pulse))
+	for c in b.earthworks:
+		_earth(c)
+	for c in b.debris:
+		if hud.tile_view(c).net >= 0:
+			_debris(c)
 	if hud.hover != HUD.NOWHERE:
 		draw_rect(_rect(hud.hover, 0.5), Color(1, 1, 1, 0.3), false, 1.0)
 	if mine:
@@ -112,6 +121,9 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 			if s.lays:
 				_brackets(_rect(c, 1.5), Color(GOLD, pulse), 6.0)
 				_caltrop(c, Color(GOLD, 0.5 + 0.3 * pulse))
+			elif s.observes:  # what it would look over: wis mod (at least 1) + rank tiles around c
+				_ring(_center(c), (maxi(sel.mod(&"wisdom"), 1) + sel.rank(s)) * TILE, Color(FRIEND, 0.4 + 0.3 * pulse), false)
+				_brackets(_rect(c, 1.5), Color(FRIEND, pulse), 6.0)
 			else:
 				var levels := b.zone_levels(sel.rank(s), c)
 				for at in levels:
@@ -177,6 +189,24 @@ func _caltrop(c: Vector2i, col: Color) -> void:
 	draw_circle(at, 1.5, col)
 
 
+# A few short strokes scattered low in the tile: debris (Battle.debris).
+func _debris(c: Vector2i) -> void:
+	var at := _center(c)
+	for s in [[Vector2(-8, 6), 0.4], [Vector2(-1, 10), -0.6], [Vector2(6, 5), 1.1]]:
+		var d := Vector2.from_angle(s[1]) * 2.5
+		draw_line(at + s[0] - d, at + s[0] + d, Color(0, 0, 0, 0.45), 2.5)
+		draw_line(at + s[0] - d, at + s[0] + d, DEBRIS, 1.2)
+
+
+# Disturbed earth (Battle.earthworks): a brown wash, furrowed.
+func _earth(c: Vector2i) -> void:
+	var r := _rect(c, 1)
+	draw_rect(r, Color(EARTH, 0.22))
+	for i in 3:
+		var y := r.position.y + r.size.y * (i + 1) / 4.0
+		draw_line(Vector2(r.position.x + 4, y), Vector2(r.end.x - 4, y - 3), Color(EARTH, 0.5), 1.0)
+
+
 # A diamond in the tile's top-left corner: filled for the leader, hollow for party members.
 func _badge(c: Vector2i, filled: bool) -> void:
 	var o := _rect(c).position + Vector2(5, 5)
@@ -189,6 +219,30 @@ func _badge(c: Vector2i, filled: bool) -> void:
 
 # A number (or word) that rises off a unit and fades. Ones that pop together stack upward.
 func float_text(u: Unit, text: String, col: Color) -> void:
+	var l := _float(u, text, col)
+	var tw := l.create_tween()
+	tw.tween_property(l, "position:y", l.position.y - 10, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.tween_callback(l.queue_free)
+
+
+# A roll an ally's Self-evaluation saw, tallied up above u like the initiative dice: the d20
+# spins, lands, then its mods take it to the total, which holds a moment and fades.
+func float_roll(u: Unit, d20: int, total: int) -> void:
+	var l := _float(u, "?", Color.WHITE)
+	var tw := l.create_tween()
+	tw.tween_method(func(_i: int): l.text = str(_dice.randi_range(1, 20)), 0, 8, 0.36)
+	tw.tween_callback(func():
+		l.text = str(d20)
+		l.add_theme_color_override(&"font_color", GOLD if d20 == 20 else (FOE if d20 == 1 else Color.WHITE)))
+	tw.tween_interval(0.3)
+	tw.tween_callback(func(): l.text = "%d %s %d = %d" % [d20, "+" if total >= d20 else "-", absi(total - d20), total])
+	tw.tween_interval(0.9)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(l.queue_free)
+
+
+func _float(u: Unit, text: String, col: Color) -> Label:
 	var now := Time.get_ticks_msec() / 1000.0
 	var n := 0
 	if u in _recent and now - _recent[u][0] < 0.5:
@@ -202,13 +256,10 @@ func float_text(u: Unit, text: String, col: Color) -> void:
 	l.add_theme_color_override(&"font_color", col)
 	l.add_theme_color_override(&"font_outline_color", Color(0, 0, 0, 0.9))
 	l.add_theme_constant_override(&"outline_size", 3)
-	l.size = Vector2(48, 12)
-	l.position = u.position + Vector2(-24, -30 - 8 * n)
+	l.size = Vector2(64, 12)
+	l.position = u.position + Vector2(-32, -30 - 8 * n)
 	top.add_child(l)
-	var tw := l.create_tween()
-	tw.tween_property(l, "position:y", l.position.y - 10, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
-	tw.tween_callback(l.queue_free)
+	return l
 
 
 # Battle.traveled: the unit's already on its new cell; walk its sprite there tile by tile.

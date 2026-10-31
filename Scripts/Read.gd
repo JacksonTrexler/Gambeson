@@ -20,6 +20,7 @@ var hint := ""  # "disturbed earth?" (-2), "a prickle of unease" (-3)
 var aura: Variant = null  # -2 ominous .. +2 benevolent (-3 up)
 
 var name := ""  # unit name, tile name (or what the tile looks like)
+var face := ""  # text standing in for the sprite a persona's name claims (";)"); empty: its own
 var faction: Faction
 var hp: Variant = null
 var max_hp: Variant = null
@@ -35,6 +36,10 @@ var stats := {}
 var strengths: Array[StringName] = []
 var weaknesses: Array[StringName] = []
 var vibe := ""
+var traits: Array[String] = []  # words for it in place of details, from a low-wisdom ally ("Strong")
+var looks := ""  # what it looks like to an ally of wis mod -4 or less ("Caster")
+var stance := &""  # the side it presents as to this observer (Unit.stance, lowercase): friendly, enemy, aggressive, passive, traitor
+var insight := ""  # how true its presentation is, read by an insightful observer (Perception.insight())
 var affected: Variant = null  # under timed effects (buffs and debuffs aren't told apart yet)
 var worth: Variant = null  # tile: +1 beneficial, -1 detrimental (Terrain.worth())
 
@@ -42,9 +47,23 @@ var level: Variant = null
 var role: Role
 
 var skills: Array[Skill] = []
+var kit: Array[Skill] = []  # an ally's skills, by name only: allies tell each other what they can do (net 0); the details take net 3 (skills)
 var effects: Array[Effect] = []  # unit: timed effects on it (3); tile: on whoever stands there (0)
+var suspects := {}  # unit: the units it's grown suspicious of -> stacks (3)
 var afflicts: Array[Effect] = []  # tile: put on whoever steps there (0)
 var at_end: Array[Effect] = []  # tile: put on whoever ends its turn there (0)
+
+
+# How observer o takes it: &"ally", &"foe", &"avoid" (aggressive), &"ignore" (passive), or &""
+# when it can't tell its side.
+func attitude(o: Unit) -> StringName:
+	if faction == null:
+		return &""
+	if stance == &"passive":
+		return &"ignore"
+	if faction == o.faction:
+		return &"ally"
+	return &"avoid" if stance == &"aggressive" else &"foe"
 
 
 func located() -> bool:

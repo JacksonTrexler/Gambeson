@@ -167,6 +167,9 @@ func test_what_shows() -> void:
 	var info := h._info(siren)
 	ok(info.chips[0][0] == "Friendly" and info.name != "Siren", "the Siren's persona: it shows as a friend, not by name")
 	ok(not ("Siren" in h._tag(siren)), "nor does the log give it away")
+	ok(info.name == siren.alias and info.face == siren.alias_face and siren.alias in h._tag(siren), "its card and the log use its made-up name (%s)" % siren.alias)
+	h.card.set_info(info)
+	ok(h.card.face.text == siren.alias_face and h.card.portrait.texture == null, "its card shows the stand-in sprite (%s)" % siren.alias_face)
 	h.use_slot(0)
 	ok(h.targets().is_empty(), "Strike offers neither the 'friend' nor a unit it can't make out")
 	h.click(Vector2i(4, 6))
@@ -194,6 +197,8 @@ func test_drawn_as_seen() -> void:
 			"located, side unknown: a black shape, neutral glow, no bars")
 	ok(h._info(v(4)).shape and h._info(v(4)).chips[0][0] == "Unknown", "the card shows a shape too")
 	ok(siren.visible and not shadow.call(siren) and edge.call(siren) == lancin.primary, "the Siren wears the side its persona claims")
+	ok(not siren.sprite.visible and siren._face.visible and siren._face.text == siren.alias_face, "...and the stand-in sprite of its made-up name")
+	ok(v(1).sprite.visible and v(1)._face == null, "others look like themselves")
 	ok(v(1).visible and edge.call(v(1)) == lancin.primary and not shadow.call(v(1)), "your own as they are")
 	v(4).timed.clear()
 	h._refresh()
@@ -506,10 +511,10 @@ func test_attack_feedback() -> void:
 	var text := h.log_box.get_parsed_text()
 	ok(rolled.size() == 1, "one attack roll")
 	if rolled[0] == 20:
-		ok("natural 20" in text, "a natural 20 is logged: %s" % text)
+		ok("(nat 20)" in text, "a natural 20 is logged: %s" % text)
 	else:
-		ok("(rolls %d vs Defense 20)" % (rolled[0] + 1) in text, "the roll is logged against Defense: %s" % text)
-		ok(("misses" in text) == (rolled[0] < 19), "and whether it missed")
+		ok("(%d - 20)" % (rolled[0] + 1) in text, "the roll is logged against Defense: %s" % text)
+		ok((" -x> " in text) == (rolled[0] < 19), "and whether it missed: -x> or -->")
 	h.free()
 
 
@@ -542,8 +547,9 @@ func test_adventurer_skills_screen() -> void:
 	var w: SkillWheel = h.get_node("%Wheel")
 	ok(w.is_visible_in_tree() and not h.get_node("%ClassCol").visible and h.get_node("%DetailCol").visible,
 			"the Adventurer's class skills: a wheel, not a list")
-	ok(w.skills().size() == 23 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
+	ok(w.skills().size() == 37 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
 			"every skill on it (%d), Skill Slot +1 at the centre" % w.skills().size())
+	ok(h.get_node("%WheelTitle").visible and not h.get_node("%WheelTabs").visible, "one tab: a title, no tabs")
 	ok(h.skills.size.x >= SkillTree.TREE_SIZE.x - 0.5, "a wider panel for it (%s)" % h.skills.size)
 	ok(h.skills.picked == hex and h.get_node("%DetailName").text == "Hex" and h.get_node("%DetailState").text == "Tier 1 · Can be learned now",
 			"Hex shows first: the first it can learn")
@@ -617,4 +623,72 @@ func test_typed_slot_bar() -> void:
 	ok(u.hotbar[4] == null and h._note == "Magic slots hold only magic skills", "Strike won't go in (%s)" % h._note)
 	h._on_dropped(4, sola, 1)
 	ok(u.hotbar[4] == sola and u.hotbar[1] == null, "Sola will")
+	h.free()
+
+
+func test_hide_ui() -> void:
+	var hide: Skill = load("res://Skills/hide.tres")
+	v(1).learned.append(slot(hide))
+	v(1).hotbar[1] = hide
+	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
+	var h := await start(v(1))
+	h.select(v(1))
+	h.use_slot(1)
+	ok(hide.effects[0] in v(1).timed and h.armed == null, "Hide goes off at once: there's no target to pick")
+	var text := h.log_box.get_parsed_text()
+	var look := text.find(" investigates ")
+	ok(text.find(" Hide I\n") >= 0 and look > text.find(" Hide I\n") and (" investigates --> " in text or " investigates -x> " in text),
+			"logged, then the watcher's investigation (%s)" % text)
+	ok(h.why_not(v(1), hide, v(2)) == "Hide is used on oneself", "not on others")
+	h.free()
+
+
+func test_self_evaluation_ui() -> void:
+	var clever: Skill = load("res://Skills/clever_disguise.tres")
+	v(1).learned.append(slot(clever))
+	v(1).hotbar[1] = clever
+	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
+	var h := await start(v(1))
+	h.select(v(1))
+	h.use_slot(1)
+	ok(RegEx.create_from_string(r"investigates -[-x]> \S+ \(\d+\)").search(h.log_box.get_parsed_text()) != null, "its own roll stays unknown: dropped (%s)" % h.log_box.get_parsed_text())
+	var icons := h.effect_icons(v(1))
+	ok(icons.size() == 1 and icons[0][0] == "CD" and icons[0][1] == HUD.FRIEND and icons[0][3] == "" and "Clever Disguise\nTrickery: +1 · 2 turns left" in icons[0][2],
+			"an icon for the disguise, with no roll on it (%s)" % [icons])
+	v(1).learned.append(slot(load("res://Skills/self_evaluation.tres")))
+	v(1).refresh()
+	var floats := h.overlay.top.get_child_count()
+	h.use_slot(1)
+	var a: Unit.Applied = v(1).timed[clever.effects[0]]
+	ok(h.overlay.top.get_child_count() == floats + 1, "with Self-evaluation, the roll pops up over it")
+	ok(" - %d)" % a.roll in h.log_box.get_parsed_text(), "and the log has it")
+	icons = h.effect_icons(v(1))
+	ok(icons[0][3] == str(a.roll) and "Rolled %d" % a.roll in icons[0][2], "and its icon is labelled with it (%s)" % [icons])
+	h._refresh()
+	var card: UnitCard = h.card
+	ok(card.effects.visible and card.effects.get_child_count() == 1 and card.effects.get_child(0).get_child(0).get_child(1).text == str(a.roll),
+			"on the card: the disguise's icon, its roll in the corner")
+	h.free()
+
+
+func test_tabbed_skills_screen() -> void:
+	var rogue: Role = load("res://Roles/rogue.tres")
+	var hide: Skill = load("res://Skills/hide.tres")
+	var u := b.starter({faction = lancin, role = rogue, name = "Wren"})
+	b.get_node("Units").add_child(u)
+	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	var h := await start(u)
+	h.toggle_skills()
+	await tree.process_frame
+	var w: SkillWheel = h.get_node("%Wheel")
+	var tabs: HBoxContainer = h.get_node("%WheelTabs")
+	ok(tabs.visible and not h.get_node("%WheelTitle").visible
+			and tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM"], "a tab per part of its tree, in place of the title")
+	ok(w.skills().size() == 2 and strike in w.skills() and load("res://Skills/wary.tres") in w.skills(), "its own: Strike, Wary")
+	(tabs.get_child(1) as Button).pressed.emit()
+	ok(h.skills.tab == 1 and w.spot(hide).is_equal_approx(w.size / 2.0) and load("res://Skills/snare.tres") in w.skills()
+			and load("res://Skills/move_plus_one.tres") in w.skills(), "Calling: Freedom: Hide at the centre, Snare, Move +1...")
+	ok(h.skills.picked in w.skills() and (tabs.get_child(1) as Button).button_pressed, "picking from the tab shown")
+	h._refresh()
+	ok(h.skills.tab == 1, "the tab holds through a refresh")
 	h.free()

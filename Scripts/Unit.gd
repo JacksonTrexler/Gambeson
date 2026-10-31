@@ -16,14 +16,27 @@ const HP_COLOR := Color("#3fbf4f")
 const SHAPE_EDGE := Color("#8a8f9c")  # glow of a shape whose side can't be told
 const SHAPE := Color(0.03, 0.03, 0.03)  # what a shape is painted
 const GLOW := 0.55  # how strongly a unit glows in its side's colour
+# The gods units pray to (god; Pray: Battle.pray()), by domain.
+const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
+		&"drael": "water, air", &"vetruvis": "earth, music"}
 const TRIM_DARKEN := 0.45  # bar trim: the side's primary, this much darker
 const BAR_WIDTH := 24.0
 
 
 # A timed effect on this unit: turns left, and the rank of the skill that applied it.
 class Applied:
-	var turns: int
+	var turns: int  # 0 with until_move: no limit
 	var rank: int
+	var fades := false  # when its turns run out, it loses a rank a turn instead of ending (Clever Disguise)
+	var until_move := false  # ends once its holder moves, rather than standing still (Hide; still())
+	var known_to: Array[Unit] = []  # units that saw through it (Battle.investigate()): it doesn't count against them
+	var skill: Skill  # the skill that put it on, if one did
+	var roll := 0  # what investigators must beat: its user's one roll as it was put on (Clever Disguise: d20 + cha mod + rank)
+	var evaluated := false  # an ally's Self-evaluation saw that roll, so its side knows it
+	var by: Unit  # the unit that put it on (a grapple's holder)
+	var since := -1  # the side's turn it was put on (Battle.turns_begun): a bleed doesn't take that one
+	var lasting := false  # no limit: it lasts until something ends it (a grapple: breaking free), or all battle (Ramut's Ire)
+	var through: Array[Unit] = []  # allies its holder has seen straight through it (Haluca: their tags unscrambled; Battle.inspect())
 
 	func _init(t: int, r: int) -> void:
 		turns = t
@@ -41,12 +54,25 @@ class Applied:
 @export var tags: Array[StringName] = []  # what it is, beyond race and role (monster, undead...)
 @export var vibe := ""  # the impression it gives off ("Smouldering", "Reeking")
 @export var aura := 0  # -2 ominous .. +2 benevolent
+# How its AI acts beyond the usual: craven (won't advance without an ally it reads as higher-level
+# near: AI.CRAVEN_REACH); lure (serene and still until unmasked, singing, drowning and raking what comes into reach: AI._ambush()).
+@export var behaviour := &""
+# Whom it heals first (AI._heal()): benevolent (the default: those most in need), pragmatic (its MVPs,
+# by the level it reads, when a heal wouldn't go to waste) or loyal (its party first).
+@export var tends := &""
+@export var god := &""  # whom it prays to (Pray), one of GODS; empty: its class's (Role.god)
 
 @export_group("Persona")  # what it advertises; the Persona skill's rank says how much
-@export var as_ally := false  # presents as the observer's ally (rank 2)
+# The side it presents as, to those it fools (Read.stance): Friendly (rank 2) passes for their ally;
+# from rank 3 it can claim the wrong team - Enemy (hostile), Aggressive (to be avoided), Passive
+# (mostly ignored), Traitor (against its real allies, for its real enemies).
+@export var stance := ""  # "", Friendly, Enemy, Aggressive, Passive or Traitor
+@export var shows_level := 0  # rank 2: the level it claims to those it fools (0: it advertises its own)
 @export var shows_vibe: Array[String] = []  # rank 1
 @export var shows_tags: Array[StringName] = []  # rank 3: identity
-@export var shows_name := ""  # rank 3: the name it goes by while presenting that identity
+@export var shows_adjectives: Array[String] = []  # rank 3: the first word of the name it goes by, one picked per battle ("Radiant")
+@export var shows_nouns: Dictionary[String, String] = {}  # rank 3: the second, each with text standing in for its sprite ("Lady": ";)")
+@export var extra_dissonance := 0  # on top of what its persona puts forward (dissonance())
 @export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
@@ -55,6 +81,7 @@ class Applied:
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
+@export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
 @export var max_hp := 10:
 	set(m):
@@ -112,14 +139,26 @@ var energy := 0:
 var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
+var steps := 0  # tiles walked this turn (still())
 var ground: Array[StringName] = []  # tags of the tile it stands on (Battle keeps this current)
 var footing: Terrain  # the tile it stands on, whose effects it has while there (Battle keeps this current)
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var exposed := 0  # concealment levels lost to attacking or being hit (Battle.cast); back as its side's turn starts
 var shown: Read  # how the player's side sees it (see appear()); null: as it is
 var rest := 0.0  # energy recovered towards the next whole point (recover())
+var alias := ""  # the name its persona goes by (rank 3), picked from its pools as it's set up: "Radiant Lady"
+var alias_face := ""  # the stand-in sprite of that name's noun: ";)"
+var alias_noun := ""  # that name's noun: "Lady"
+var follows: Unit  # the leader whose party it's in (Command.join())
+var suspicion := {}  # stacks against the units (and tiles: Vector2i) it's grown suspicious of: each sees through a rank of their trickery and concealment (Battle.suspect())
+var noticed := {}  # tiles where it has inspected something suspicious (Battle._first_look())
+var rested_turns := 0  # its side's turns in a row it has rested through: it looks further and better (Battle.survey())
+var unwatched := 0  # its turns since it last looked around (Battle._watch(): wis mod 0 or less looks only every few)
+var heading := Vector2i.ZERO  # the way its last move this turn went, if moving was the last thing it did (Eyes Forward)
+var _face: Label  # draws a persona's stand-in sprite in place of its own (_show_face())
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 var _ap_start: Array[float] = []  # each AP pool as its turn started, to tell how hard it worked (activity())
+var _walk_ap: Array[float] = []  # of each AP pool, what walking took this turn (activity(): standing still doesn't count)
 var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arranged for (_arrange())
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
@@ -173,6 +212,8 @@ func _ready() -> void:
 		race = role.race
 	if role and not look:
 		look = role.look
+	_take_looks()
+	_pick_alias()
 	_fill_bar()
 	_show_look()
 	_layout_bars()
@@ -210,9 +251,9 @@ func toggle(s: Skill) -> bool:
 	return false
 
 
-# Its sure skill slots: 4 + level / 4, rounded down.
+# Its sure skill slots: 4 + level / 4, rounded down, + any extra (NPCs and monsters).
 func slot_count() -> int:
-	return SLOTS + floori(level / 4.0)
+	return SLOTS + floori(level / 4.0) + extra_slots
 
 
 # Slots its passives grant (Basic Magic Skill Slot +1), in the order it learned them: each one's type
@@ -362,9 +403,12 @@ func unlock(s: Skill) -> bool:
 
 
 # Skill points to raise s from its rank r to r + 1: 1 + r^2 (II costs 2, III 5, IV 10). Unlocking
-# (r = 0) is the same rule: 1.
+# (r = 0) is the same rule: 1. A skill with its own rank_cost charges that for II, times its
+# rank_growth each rank after (Clever Disguise: 4, 8, 16).
 func raise_cost(s: Skill) -> int:
 	var r := rank(s)
+	if s.rank_cost > 0 and r > 0:
+		return roundi(s.rank_cost * pow(s.rank_growth, r - 1))
 	return 1 + r * r
 
 
@@ -431,8 +475,9 @@ func paused_on(ground_tags: Array[StringName]) -> Array[Skill]:
 
 
 # Base value (core stats only) plus every effect on that stat whose tags match the query;
-# "mul" effects then multiply the total (Stoneskin halves dexterity).
-func stat(s: StringName, tags: Array[StringName] = []) -> float:
+# "mul" effects then multiply the total (Stoneskin halves dexterity). As `viewer` sees it: timed
+# effects it saw through (Hide, against an investigator who passed) don't count.
+func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null) -> float:
 	var t := Tags.expand(tags)
 	var sum: float = 0.0
 	if s == &"size" and race:
@@ -440,7 +485,7 @@ func stat(s: StringName, tags: Array[StringName] = []) -> float:
 	elif s in CORE:
 		sum = get(s)
 	var factor := 1.0
-	for pair in _effects():
+	for pair in _effects(viewer):
 		var e: Effect = pair[0]
 		if e.stat != s or not (e.tags.is_empty() or e.tags.any(func(x): return x in t)):
 			continue
@@ -456,6 +501,59 @@ func stat(s: StringName, tags: Array[StringName] = []) -> float:
 		else:
 			sum += amount
 	return sum * factor
+
+
+# The god it prays to: its own, else its class's.
+func deity() -> StringName:
+	return god if god else (role.god if role else &"")
+
+
+# Stacks of suspicion it has of t, a unit or a tile (Battle.suspect()).
+func suspects(t: Variant) -> int:
+	return suspicion.get(t, 0)
+
+
+# How far what it shows is from the truth: what insightful units read of it (Perception.insight()),
+# and a penalty to its own deceiving checks - a less believable lie. A point for each thing its
+# persona puts forward at its rank - each vibe word (I), its stance and a level it claims (II), each
+# identity tag and the name it goes by (III) - one each for fronting its stats (Embellish, Brood),
+# plus extra_dissonance.
+func dissonance() -> int:
+	var p := roundi(stat(&"persona"))
+	var n := extra_dissonance + int(stat(&"embellish") > 0) + int(stat(&"brood") > 0)
+	if p >= 1:
+		n += shows_vibe.size()
+	if p >= 2:
+		n += int(stance in Battle.stances(p) and stance != "") + int(shows_level > 0)
+	if p >= 3:
+		n += shows_tags.size() + int(alias != "")
+	return n
+
+
+# Dissonance as it counts against its own rolls: cut by the rank of a skill carrying the look it puts
+# forward (Alluring: a practised lie), but no lower than 0.
+func dissonance_penalty() -> int:
+	var practised := 0
+	for x in slots:
+		if x.skill.has_look():
+			practised = maxi(practised, x.rank)
+	return maxi(dissonance() - practised, 0)
+
+
+# Conspire's rank while it's switched on, else 0: allies near it let its persona fool them.
+func conspiring() -> int:
+	return roundi(stat(&"conspire"))
+
+
+# Has Conspire, switched off: its allies see straight through its persona.
+func candid() -> bool:
+	return slots.any(func(x: Slot): return x.skill.passive and not x.on and x.skill.effects.any(func(e: Effect): return e.stat == "conspire"))
+
+
+# Reads others well enough that only trickery fools it: a positive wis mod, or a bonus to reading
+# others (insight).
+func insightful() -> bool:
+	return mod(&"wisdom") > 0 or stat(&"insight") > 0
 
 
 # d20-style modifier: 10-11 -> 0, 12-13 -> +1, 8-9 -> -1. With a skill's tags, stand-in
@@ -491,7 +589,10 @@ func damage(d: int) -> void:
 # left: up (against me) unless I'm luckier. Returns the damage taken.
 func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 	var net := luck - (by.luck if by else 0)
-	var taken := Luck.settle(raw * (1.0 - mitigation(tags)), net, false)
+	var cut := mitigation(tags)
+	if by and by.faction == faction:
+		cut = minf(cut + stat(&"ally_mitigate"), 1.0)  # friendly fire (Conspire)
+	var taken := Luck.settle(raw * (1.0 - cut), net, false)
 	damage(taken)
 	return taken
 
@@ -528,7 +629,44 @@ func armor_defense() -> int:
 	if not armor:
 		return mod(&"dexterity") + mod(&"constitution")
 	var floor_or_level := maxi(armor.defense, rounded(level * armor.per_level))
-	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0)
+	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + armor.enchant
+
+
+# Damage its weapon adds to attacks scaling on s: an enchanted weapon's +1 a rank, on strength attacks.
+func weapon_bonus(s: StringName) -> int:
+	return weapon.enchant if weapon and s == &"strength" else 0
+
+
+# Pray, to Urlo: enchants up to n of its unenchanted items, weapon first, then armor: what an item
+# becomes enchanted (Item.enchanted_as), else a copy of its own at +1. Items with nothing to scale
+# would be skipped (none yet). How many it enchanted.
+func enchant(n: int) -> int:
+	var done := 0
+	for slot in [&"weapon", &"armor"]:
+		var item: Item = get(slot)
+		if done < n and item and not item.enchanted():
+			if item.enchanted_as:
+				set(slot, item.enchanted_as)
+			else:
+				item = item.duplicate()
+				item.enchant = 1
+				set(slot, item)
+			done += 1
+	return done
+
+
+# Haluca on it: it sees everyone's tags scrambled. The effect's Applied, or null.
+func scrambled() -> Applied:
+	for e in timed:
+		if e.stat == "scrambled":
+			return timed[e]
+	return null
+
+
+# It sees t's tags scrambled: it's under Haluca and hasn't seen t straight since.
+func scrambles(t: Unit) -> bool:
+	var a := scrambled()
+	return a != null and t != self and t not in a.through
 
 
 # What it adds to s's attack roll: its mod in the skill's stat (Skill.stat()), or in a stat its
@@ -684,23 +822,64 @@ func pay_for(s: Skill) -> bool:
 func refresh() -> void:
 	ap = _pools()
 	_ap_start.assign(ap.map(func(p: AP): return p.amount))
+	_walk_ap.assign(ap.map(func(_p: AP): return 0.0))
 	moved = 0.0
+	steps = 0
 	exposed = 0
 
 
 # How hard it worked this turn: &"rest" (it didn't move or spend AP), &"light" (it only spent its
-# dex move or wis skill AP, leaving the general pool whole) or &"busy".
+# dex move or wis skill AP, leaving the general pool whole) or &"busy". Walking while standing still
+# (Meander) doesn't count.
 func activity() -> StringName:
+	var walking := still()
 	var general := 0.0
 	var spent := 0.0
 	for i in mini(ap.size(), _ap_start.size()):
-		var used := _ap_start[i] - ap[i].amount
+		var used := _ap_start[i] - ap[i].amount - (_walk_ap[i] if walking and i < _walk_ap.size() else 0.0)
 		spent += used
 		if ap[i].only == &"":
 			general += used
-	if spent < 0.0001 and is_zero_approx(moved):
+	if spent < 0.0001 and (is_zero_approx(moved) or walking):
 		return &"rest"
 	return &"light" if general < 0.0001 else &"busy"
+
+
+# Whether it's still technically standing still this turn, `extra` tiles on: no tiles walked, or no
+# more than its Meander rank (switched on).
+func still(extra := 0) -> bool:
+	return steps + extra <= meander()
+
+
+# How many tiles a turn it can walk while standing still (Meander, while on).
+func meander() -> int:
+	return roundi(stat(&"meander"))
+
+
+# How many tiles off it sees an ally's rolls, its own among them (Self-evaluation; Battle.evaluators()).
+func evaluates() -> int:
+	return roundi(stat(&"evaluates"))
+
+
+# Whether stepping onto ground t, `extra` tiles into a walk, leaves it untouched: standing still
+# (Meander) there, at a rank no lower than the ground's level.
+func passes_by(t: Terrain, extra: int) -> bool:
+	return still(extra) and t.level <= meander()
+
+
+# Pays for walking n tiles that took `cost` movement (and as much move AP), counting them towards
+# still(). Once it's walked further than standing still allows, what lasts until it moves ends (Hide).
+func walked(n: int, cost: float) -> void:
+	var before := ap.map(func(p: AP): return p.amount)
+	moved += cost  # a Relay boost can take it below what it's walked
+	pay(maxf(cost, 0.0), &"move")
+	for i in mini(ap.size(), _walk_ap.size()):
+		_walk_ap[i] += before[i] - ap[i].amount
+	steps += n
+	if not still():
+		for e in timed.keys():
+			if timed[e].until_move:
+				timed.erase(e)
 
 
 # Energy back as its side's turn ends, by activity(). Resting: (con mod + wis mod) / 2 a turn,
@@ -742,6 +921,16 @@ func _pools() -> Array[AP]:
 	return out
 
 
+# Gets n AP back into its general pool, up to what that pool started the turn with (Renew).
+# Returns what it got.
+func regain(n: float) -> float:
+	if n <= 0.0 or ap.is_empty() or _ap_start.is_empty():
+		return 0.0
+	var got := clampf(_ap_start[0] - ap[0].amount, 0.0, n)
+	ap[0].amount += got
+	return got
+
+
 func ap_left() -> float:
 	return ap.reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
 
@@ -773,16 +962,27 @@ func pay(n: float, use: StringName) -> bool:
 
 # Puts an effect on this unit for some of its faction's turns. Re-applying refreshes the timer
 # (keeping the higher rank) rather than stacking.
-func afflict(e: Effect, turns: int, at_rank := 1) -> void:
+func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 	var r := maxi(at_rank, timed[e].rank) if e in timed else at_rank
 	timed[e] = Applied.new(turns, r)
+	return timed[e]
 
 
-# End of this unit's faction turn: timed effects count down.
+# End of this unit's faction turn: timed effects count down. One that fades loses a rank instead
+# of ending, a turn at a time; one lasting until it moves (with no turns set), or until something
+# ends it (lasting), doesn't count down.
 func tick() -> void:
 	for e in timed.keys():
-		timed[e].turns -= 1
-		if timed[e].turns <= 0:
+		var a := timed[e]
+		if a.lasting or (a.until_move and a.turns == 0):
+			continue
+		a.turns -= 1
+		if a.turns > 0:
+			continue
+		if a.fades and a.rank > 1:
+			a.rank -= 1
+			a.turns = 1
+		else:
 			timed.erase(e)
 
 
@@ -802,8 +1002,8 @@ func wake() -> void:
 
 # [effect, rank] for every passive (that's on), timed effect, and effect of the ground it stands
 # on. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
-# Stoneskin golem).
-func _effects() -> Array:
+# Stoneskin golem), nor does one `viewer` saw through.
+func _effects(viewer: Unit = null) -> Array:
 	var out := []
 	var own := {}
 	for x in on_passives:
@@ -811,7 +1011,7 @@ func _effects() -> Array:
 			out.append([e, x.rank])
 			own[e] = true
 	for e in timed:
-		if e not in own:
+		if e not in own and not (viewer and viewer in timed[e].known_to):
 			out.append([e, timed[e].rank])
 	if footing:
 		for e in footing.effects:
@@ -826,6 +1026,42 @@ func main_reserve() -> Reserve:
 		if main == null or reserves[r] > reserves[main]:
 			main = r
 	return main
+
+
+# Puts forward the look its skills carry (Alluring), on top of its own: a stance if it has none, and
+# their vibe words, tags and name pools.
+func _take_looks() -> void:
+	for x in slots:
+		var s := x.skill
+		if not s.has_look():
+			continue
+		if stance == "":
+			stance = s.stance
+		for w in s.shows_vibe:
+			if w not in shows_vibe:
+				shows_vibe.append(w)
+		for t in s.shows_tags:
+			if t not in shows_tags:
+				shows_tags.append(t)
+		for w in s.shows_adjectives:
+			if w not in shows_adjectives:
+				shows_adjectives.append(w)
+		shows_nouns.merge(s.shows_nouns)
+
+
+# The name its persona goes by: an adjective and a noun from its pools, at random ("Serene
+# Songstress"), or the one word if a pool is empty. Nouns bring their stand-in sprite.
+func _pick_alias() -> void:
+	var adjective: String = shows_adjectives.pick_random() if not shows_adjectives.is_empty() else ""
+	var noun: String = shows_nouns.keys().pick_random() if not shows_nouns.is_empty() else ""
+	set_alias(adjective, noun)
+
+
+# Goes by this name from its pools (Personify), its noun bringing its stand-in sprite.
+func set_alias(adjective: String, noun: String) -> void:
+	alias = (adjective + " " + noun).strip_edges()
+	alias_face = shows_nouns.get(noun, "")
+	alias_noun = noun
 
 
 func _show_look() -> void:
@@ -873,12 +1109,34 @@ func _stack() -> void:
 # How the player's side sees it (the HUD calls this; until then it's drawn as it is). Not located:
 # not drawn at all. Located with its side unknown: a black shape with no side colours and no bars.
 # Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
-# whatever of HP, energy and reserves can be made out. null: as it is.
+# whatever of HP, energy and reserves can be made out. A persona posing as someone shows that
+# name's stand-in sprite instead of its own. null: as it is.
 func appear(r: Read) -> void:
 	shown = r
 	visible = r == null or r.located()
 	_show_side(faction if r == null else r.faction, r != null and r.faction == null)
+	_show_face(r.face if r else "")
 	_show_bars()
+
+
+# Text in place of its sprite (";)"), until the nouns personas claim have sprites; "": its own.
+func _show_face(text: String) -> void:
+	sprite.visible = text == ""
+	if text and not _face:
+		_face = Label.new()
+		var tex := sprite.sprite_frames.get_frame_texture(&"default", 0)
+		_face.size = tex.get_size() if tex else Vector2(16, 16)
+		_face.position = -_face.size / 2.0
+		_face.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_face.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_face.add_theme_font_size_override(&"font_size", 10)
+		_face.add_theme_constant_override(&"outline_size", 3)
+		_face.add_theme_color_override(&"font_outline_color", Color(0, 0, 0, 0.85))
+		_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sprite.add_sibling(_face)
+	if _face:
+		_face.visible = text != ""
+		_face.text = text
 
 
 func _show_bars() -> void:

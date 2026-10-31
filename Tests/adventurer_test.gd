@@ -87,12 +87,12 @@ func test_starter_spells_on_allies() -> void:
 	u.refresh()
 	ok(sola.for_allies() and sola.for_foes() and not sola.hostile, "Sola works on allies and foes alike")
 	ok(b.cast(u, sola, v(1)), "cast on an ally")
-	ok(v(1).stat(&"persona") == 1.0 and v(1).timed[sola.effects[0]].turns == 1, "it gets +1 persona for rank (1) turns")
+	ok(v(1).stat(&"persona") == 1.0 and v(1).timed[sola.effects[0]].turns == 2, "it gets +1 persona for rank (1) turns, after this one")
 	ok(u.energy == u.max_energy - 2 and is_equal_approx(u.ap_left(), u.full_ap() - 3.0), "2 energy (2 x rank I), 3 AP")
 	u.learned[-1].rank = 3
 	u.refresh()
 	b.cast(u, sola, v(1))
-	ok(v(1).timed[sola.effects[0]].turns == 3 and u.energy == u.max_energy - 8, "rank III: 3 turns, for 6 energy")
+	ok(v(1).timed[sola.effects[0]].turns == 4 and u.energy == u.max_energy - 8, "rank III: 3 turns (after this one), for 6 energy")
 	ok(is_equal_approx(b.skill_range(u, sola), 1.21), "range int mod (0), but always the adjacent: 1 + reach and sizes")
 	u.intelligence = 16
 	ok(is_equal_approx(b.skill_range(u, sola), 3.21), "int 16: range 3")
@@ -133,7 +133,7 @@ func test_defense_spells() -> void:
 	var plain := v(1).defense()
 	ok(b.cast(u, terestera, v(1)) and v(1).defense([&"pierce"]) == plain + 2 and v(1).defense() == plain,
 			"Terestera II: +2 physical Defense, nothing against the rest")
-	ok(v(1).timed[terestera.effects[0]].turns == 3, "for 3 turns")
+	ok(v(1).timed[terestera.effects[0]].turns == 4, "for 3 turns, after this one")
 	ok(b.cast(u, hydera, v(1)) and v(1).defense([&"magical"]) == plain + 1, "Hydera I: +1 magical Defense")
 	ok(v(1).tagged_defense() == {&"physical": 2, &"magical": 1}, "both show on its card (%s)" % v(1).tagged_defense())
 	u.free()
@@ -147,7 +147,7 @@ func test_shadow_and_luck_spells() -> void:
 	u.refresh()
 	var luck := v(1).luck
 	ok(b.cast(u, nadira, v(1)) and Perception.cover(b, v(1)) == 1, "Nadira: a level of dark concealment")
-	ok(b.cast(u, astera, v(1)) and v(1).luck == luck + 1 and v(1).timed[astera.effects[0]].turns == 2, "Astera II: +1 luck for 2 turns")
+	ok(b.cast(u, astera, v(1)) and v(1).luck == luck + 1 and v(1).timed[astera.effects[0]].turns == 3, "Astera II: +1 luck for 2 turns, after this one")
 	u.free()
 
 
