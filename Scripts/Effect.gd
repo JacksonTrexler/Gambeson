@@ -40,12 +40,21 @@ extends Resource
 # Perception.unit(), Battle.inspect()).
 # ire: that many ranks of its concealment and trickery defeated, against everyone (Ramut's Ire,
 # a rank a stalled turn; Perception).
+# coordinate: linked with the others the same Coordinate linked, it makes out what the best of them do,
+# up to its rank in levels better (Battle.read()).
+# max_hp: added to max HP (Burning Blade: str mod; Unit.refit()).
+# powered: its Energy is Power, which never comes back on its own (Powerful; Unit.powered()).
+# pulse: as its side's turn starts, once every (its side's lives left, at least 1) turns, it heals
+# allies within PULSE_REACH tiles (1d4 + 5% of their max HP) x this (Regeneration Pulse; Battle._pulse()).
+# damage: that fraction more damage dealt with skills (wauaw; Battle.cast()).
+# unmask_gain / uncover_gain: Sweet Nothings back for unmasking a foe it took for friendly or neutral /
+# for each level of concealment it takes off a hiding foe (Analysis Dialysis; Battle._dialysis()).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
 		"command", "party", "regen", "poison", "sleep", "ap", "dex_ap", "relay", "trap_word",
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
-		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled") var stat := "luck"
+		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -61,12 +70,14 @@ extends Resource
 @export var wound := false  # tagged wound: a heal of at least its rank clears it (Battle.mend())
 @export var dice := Vector2i.ZERO  # bleed: rolled each turn...
 @export var dice_mod := &""  # ...plus the mod in this of whoever put it on (Snare: dexterity)
+@export var arc := false  # put on a unit: its amount is a step, climbing a step a turn to the middle of its turns, then back down (wauaw: 10%, 20%, 30%, 20%, 10%)
 
 
 const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_power": "Trap power",
 		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP", "trap_word": "Trap word",
 		"slots": "Skill slots", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
-		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled"}
+		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt",
+		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse"}
 const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled"]  # more of these is worse for whoever has them
 
 
@@ -125,12 +136,21 @@ func value(rank := 1) -> String:
 		text = "held: must break free to move, and takes its holder's grip each turn it ends held"
 	elif stat == "ire":
 		text = "%s rank%s of its concealment and trickery defeated, against everyone" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
-	elif stat in ["ap", "dex_ap"]:
+	elif stat in ["ap", "dex_ap", "damage"]:
 		text = _signed(x * 100.0) + "%"
+	elif stat in ["unmask_gain", "uncover_gain"]:
+		return "%s Sweet Nothing%s for %s" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s",
+				"unmasking a foe it took for friendly or neutral" if stat == "unmask_gain" else "each level of concealment it takes off a hiding foe"]
 	elif stat == "eyes_forward":
 		return "ending its turn on a move, inspects every tile %s + wis mod tiles ahead and %s to either side" % [Skill.num(x), Skill.num(x)]
 	elif stat == "scrambled":
 		return "sees everyone's tags scrambled, until it investigates an ally"
+	elif stat == "powered":
+		return "its Energy is Power: it never comes back on its own"
+	elif stat == "pulse":
+		return "every (its side's lives left) turns, heals allies within %d tiles (1d4 + 5%% of their max HP) x %s" % [Battle.PULSE_REACH, Skill.num(x)]
+	elif stat == "coordinate":
+		return "linked: makes out what the best of the others linked do, up to %s level%s better" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat == "keen_eyes":
 		return "its checks on things not beside it lose only tiles away / %s" % Skill.num(x + 1.0)
 	elif stat == "trap_word":
@@ -157,6 +177,8 @@ func value(rank := 1) -> String:
 		text += ", except on %s" % " or ".join(unless_on)
 	if wound:
 		text += "; a wound, healed away"
+	if arc:
+		text += " a step, climbing a step a turn to the middle of its turns, then back down"
 	return text
 
 

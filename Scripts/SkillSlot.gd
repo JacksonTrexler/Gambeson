@@ -33,6 +33,7 @@ var locked := false  # out of reach of the leader's orders (Command.slots())
 var kind := &""  # its unit's slot kind (Unit.slot_kinds()): &"" plain, &"clover", or a type (magical...)
 var clover := false  # the unit's clover slot
 var works := true  # false: a clover slot whose unit isn't lucky now - greyed out until it is
+var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it isn't
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
@@ -97,6 +98,14 @@ func set_kind(k: StringName, does_work: bool) -> void:
 	queue_redraw()
 
 
+# Its skill is disabled for n more turns (0: it isn't): greyed out and struck through.
+func set_off(n: int) -> void:
+	off = n
+	if n > 0:
+		tooltip_text = "Disabled for %d more turn%s\n%s" % [n, "" if n == 1 else "s", tooltip_text]
+	queue_redraw()
+
+
 # The colour that marks its kind, or null for a plain slot.
 func _mark() -> Variant:
 	if clover:
@@ -138,6 +147,8 @@ func _draw() -> void:
 		right -= 6
 	draw_string(font, Vector2(16, mid + 0.5), skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - 16, 7,
 			Color(0.92, 0.93, 0.96, dim))
+	if off > 0:
+		draw_line(Vector2(15, size.y / 2.0), Vector2(right, size.y / 2.0), Color(1, 0.45, 0.4, 0.8), 1.0)
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
 

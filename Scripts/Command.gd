@@ -78,10 +78,10 @@ func in_range(u: Unit) -> bool:
 	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach()))
 
 
-# Takes an order right now: alive and awake, on the leader's side on its turn, in range, and each
+# Takes an order right now: alive and awake, not one that acts on its own (uncontrolled), on the leader's side on its turn, in range, and each
 # taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
-	return u != null and u.is_alive() and not u.asleep() and leader.is_alive() \
+	return u != null and u.is_alive() and not u.asleep() and not u.uncontrolled and leader.is_alive() \
 			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u) \
 			and battle.teammates(leader, u)
 
@@ -89,7 +89,7 @@ func can_order(u: Unit) -> bool:
 # Allies join from within plain order range while there's room, if each takes the other for a
 # teammate - a traitor of another side among them, pretending.
 func can_join(u: Unit) -> bool:
-	return u != leader and u.is_alive() and leader.is_alive() \
+	return u != leader and u.is_alive() and leader.is_alive() and not u.uncontrolled \
 			and u not in party and party.size() < party_size() and tiles(leader.cell, u.cell) <= reach() \
 			and battle.teammates(leader, u)
 

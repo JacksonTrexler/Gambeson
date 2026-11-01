@@ -9,5 +9,8 @@
     - A natural 1 has no special effect. Should it always miss?
     - Multi-hit skills (Strike III) roll once for all their hits. Or once per hit?
     - Hostile skills without damage roll too, and their effects land only on a hit (Hex's luck penalty). Is that right for Silent Strike-style skills too?
-6. Rounding 1/4 up means a lucky unit has a clover fifth slot from level 1 (at levels 1–3: 5 slots). Intended? And is the clover slot untyped, like a base slot?
-7. Your slot-loss answer stopped mid-sentence: "If it 'reactivates' for any reason (level down / slot debuff ends etc.)". I took it as: the skill in it works again. Right? And is "level down" a real thing, or did you mean regaining a level?
+6. Is the clover slot untyped, like a base slot? (Built that way.)
+24. Slots, as built:
+    - A skill goes into the clover slot only on its unit's own side's turn; other slots can be rearranged any time. Right?
+    - Unlucky, the clover slot is hidden, remembering its skill; it comes back with the luck. A slot lost any other way (a slot-granting skill removed) still dims in place, per the earlier rule. Should those disappear too?
+    - Is "level down" a real thing (a unit losing levels), or did you mean regaining a level?

@@ -11,7 +11,10 @@ class_name AI
 # held unit tries to break free by moving away, and its holder stays put rather than let go, unless
 # the ground it stands on is bad. A traitor posing in another side's party plays along:
 # on that side's turn it keeps up with its leader; on its own, it rests unless it can make a kill.
-# With no foe to go after, a unit with Observe searches where the clues point.
+# With no foe to go after, a unit with Observe searches where the clues point. A skittish unit (a
+# Regeneration Probe) only keeps away from its foes. A channeling unit (the Astral Princess's Metea)
+# strikes where the blast takes in the most foes, and begins channeling where they gather. A unit
+# with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it.
 # Kept small on purpose: score() and the move choice are the places to grow it.
 
 const KILL := 5.0  # bonus for a hit that should finish the target
@@ -22,6 +25,7 @@ const COMMANDER := 0.25  # how much most healers favour a commander
 const PARTY := 1.0  # how much a loyal healer favours its party
 const WOUND := 0.25  # how much a healer wants to clear a wound it can see
 const WARY := 10.0  # cost of ending a walk beside a unit it takes for aggressive
+const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
 static func act(b: Battle, u: Unit) -> Array[String]:
@@ -42,6 +46,10 @@ static func act(b: Battle, u: Unit) -> Array[String]:
 		return log
 	_heal(b, u, reads, log)
 	_support(b, u, reads, log)
+	if u.behaviour == &"skittish":
+		_keep_away(b, u, reads, log)
+		return log
+	_channel(b, u, reads, log)
 	var rooted := _rooted(b, u)
 	if not rooted and _flee(b, u, reads, log):
 		reads = {}
@@ -72,7 +80,7 @@ static func score(u: Unit, s: Skill, r: Read) -> float:
 	if t:
 		dmg = (t.power + t.dice.x * (t.dice.y + 1) / 2.0 + (u.mod(t.stat, s.tags) if t.stat else 0)) * (u.rank(s) if s.hits_per_rank else 1)
 	var hp: float = r.hp if r.hp != null else GUESS_HP
-	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and not s.effects.is_empty() else 0.0) \
+	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) else 0.0) \
 			+ (KILL if s.drags_to else 0.0)  # into the water: the Siren's favourite
 	return value - _hate(r)
 
@@ -108,25 +116,10 @@ static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 		var r: Read = reads[o]
 		if o.is_alive() and r.located() and r.attitude(u) == &"avoid" and Command.tiles(r.cell, u.cell) <= CRAVEN_REACH:
 			scary.append(r.cell)
-	if scary.is_empty():
+	if scary.is_empty() or not _away(b, u, scary):
 		return false
-	var gap := func(c: Vector2i) -> int:
-		return scary.map(func(x: Vector2i): return Command.tiles(x, c)).min()
-	var best := u.cell
-	var reach := ceili(u.move_left())
-	for dx in range(-reach, reach + 1):
-		for dy in range(-reach, reach + 1):
-			var c := u.cell + Vector2i(dx, dy)
-			if c == u.cell or not b.on_map(c):
-				continue
-			var path: Array = b.walk(u, c, true).path
-			if not path.is_empty() and gap.call(path[-1]) > gap.call(best):
-				best = path[-1]
-	if best == u.cell:
-		return false
-	var p := b.travel(u, best)
-	log.append("%s backs away %s" % [u.name, p])
-	return not p.is_empty()
+	log.append("%s backs away" % u.name)
+	return true
 
 
 # Casts the best hostile skill it can right now; false if nothing is in reach and affordable. The
@@ -313,6 +306,63 @@ static func _rooted(b: Battle, u: Unit) -> bool:
 			and not b.read(u, u.cell).known_bad()
 
 
+# A skittish unit keeps away from the foes it can place: to the tile it can reach furthest from the
+# nearest of them.
+static func _keep_away(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+	var foes: Array[Vector2i] = []
+	for o: Unit in reads:
+		if o.is_alive() and _foe(u, reads[o]):
+			foes.append(reads[o].cell)
+	if not foes.is_empty() and _away(b, u, foes):
+		log.append("%s keeps away" % u.name)
+
+
+# Walks to the tile it can reach (as it expects the walk to go) furthest from the nearest of `from`.
+# False if there's nowhere better.
+static func _away(b: Battle, u: Unit, from: Array[Vector2i]) -> bool:
+	var gap := func(c: Vector2i) -> int:
+		return from.map(func(x: Vector2i): return Command.tiles(x, c)).min()
+	var best := u.cell
+	var reach := ceili(u.move_left())
+	for dx in range(-reach, reach + 1):
+		for dy in range(-reach, reach + 1):
+			var c := u.cell + Vector2i(dx, dy)
+			if c == u.cell or not b.on_map(c):
+				continue
+			var path: Array = b.walk(u, c, true).path
+			if not path.is_empty() and gap.call(path[-1]) > gap.call(best):
+				best = path[-1]
+	return best != u.cell and not b.travel(u, best).is_empty()
+
+
+# A channeled skill (Metea): holding one, it strikes the tile it can that takes in the most foes it can
+# place (less its allies); not yet, it begins where foes gather within its reach - where a blast
+# would take in the most of them, a tile further out to allow for their moving.
+static func _channel(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+	for s: Skill in u.actives.filter(func(x: Skill): return x.channel):
+		var radius := s.blast * u.rank(s)
+		var striking := u.channel != null and u.channel.skill == s
+		if not striking and (u.channel != null or not u.can_afford(s)):
+			continue
+		var cells: Array = b.strike_tiles(u) if striking else b.map.get_used_cells().filter(
+				func(c: Vector2i): return Vector2(u.cell).distance_to(Vector2(c)) <= b.area_reach(u, s) + 0.0001)
+		var best: Variant = null
+		var most := 0.0
+		for c: Vector2i in cells:
+			var v := 0.0
+			for o: Unit in reads:
+				var r: Read = reads[o]
+				if o.is_alive() and r.located() and Vector2(r.cell).distance_to(Vector2(c)) <= radius + (0.0 if striking else 1.0) + 0.0001:
+					v += 1.0 if _foe(u, r) else (-1.0 if r.attitude(u) == &"ally" else 0.0)
+			if v > most:
+				best = c
+				most = v
+		if best != null and b.cast_at(u, s, best):
+			log.append("%s %s %s at %s" % [u.name, "strikes with" if striking else "channels", s.name, best])
+			for o in reads:
+				reads[o] = b.read(u, o)
+
+
 # A traitor posing in another side's party, on that side's turn: it stays beside its leader.
 static func _keep_up(b: Battle, u: Unit, log: Array[String]) -> void:
 	var lead := u.follows
@@ -322,13 +372,17 @@ static func _keep_up(b: Battle, u: Unit, log: Array[String]) -> void:
 	log.append("%s keeps up %s" % [u.name, p])
 
 
+# The foe to go after: the nearest, the hated last - and by its strategy, the strongest (or weakest) it
+# reads, a level against STRONG tiles.
 static func _best_target(u: Unit, reads: Dictionary) -> Unit:
 	var best: Unit = null
 	var best_score := -INF
 	for t in reads:
-		if not _foe(u, reads[t]):
+		if not _foe(u, reads[t]) or not t.is_alive():
 			continue
-		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t])
+		var lv: float = reads[t].level if reads[t].level != null else 0.0
+		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) \
+				+ STRONG * lv * (int(&"strongest" in u.strategy) - int(&"weakest" in u.strategy))
 		if v > best_score:
 			best = t
 			best_score = v

@@ -1,0 +1,82 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" path="res://Scripts/Battle.gd" id="1_battle"]
+[ext_resource type="Texture2D" path="res://Tiles/placeholder.png" id="2_tiles"]
+[ext_resource type="PackedScene" path="res://Scenes/villager.tscn" id="3_villager"]
+[ext_resource type="Resource" path="res://Factions/lancin.tres" id="4_lancin"]
+[ext_resource type="Resource" path="res://Factions/astral.tres" id="5_astral"]
+[ext_resource type="PackedScene" path="res://Scenes/shade.tscn" id="6_shade"]
+[ext_resource type="PackedScene" path="res://Scenes/astral_princess.tscn" id="7_princess"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="8_nemes"]
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="9_faction"]
+[ext_resource type="Resource" path="res://Terrain/grass.tres" id="10_grass"]
+[ext_resource type="Resource" path="res://Terrain/rough.tres" id="11_rough"]
+[ext_resource type="Resource" path="res://Terrain/tall_grass.tres" id="12_tall"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="13_item"]
+[ext_resource type="Resource" path="res://Items/starblade.tres" id="14_starblade"]
+
+[sub_resource type="TileSetAtlasSource" id="Atlas_placeholder"]
+texture = ExtResource("2_tiles")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/custom_data_0 = ExtResource("10_grass")
+0:0/3 = 3
+0:0/3/modulate = Color(0.45, 0.7, 0.35, 1)
+0:0/3/custom_data_0 = ExtResource("12_tall")
+1:0/0 = 0
+1:0/0/custom_data_0 = ExtResource("11_rough")
+
+[sub_resource type="TileSet" id="TileSet_envoy"]
+tile_size = Vector2i(32, 32)
+custom_data_layer_0/name = "terrain"
+custom_data_layer_0/type = 24
+sources/0 = SubResource("Atlas_placeholder")
+
+[node name="AstralEnvoy" type="Node2D"]
+
+[node name="Camera" type="Camera2D" parent="."]
+position = Vector2(224, 160)
+
+[node name="Battle" type="Node2D" parent="."]
+script = ExtResource("1_battle")
+spawns = Dictionary[ExtResource("9_faction"), Vector2i]({ExtResource("4_lancin"): Vector2i(1, 4), ExtResource("8_nemes"): Vector2i(1, 5)})
+rewards = Array[ExtResource("13_item")]([ExtResource("14_starblade")])
+area_tags = Array[StringName]([&"outdoors", &"grass"])
+
+[node name="Map" type="TileMapLayer" parent="Battle"]
+tile_map_data = PackedByteArray("AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAkAAAAAAAAAAAABAAAAAAAAAAAAAAABAAEAAAAAAAAAAAABAAIAAAAAAAAAAAABAAMAAAAAAAAAAAABAAQAAAAAAAAAAAABAAUAAAAAAAAAAAABAAYAAAAAAAAAAAABAAcAAAAAAAAAAAABAAgAAAAAAAAAAAABAAkAAAAAAAAAAAACAAAAAAAAAAAAAAACAAEAAAAAAAAAAwACAAIAAAAAAAAAAAACAAMAAAAAAAAAAAACAAQAAAAAAAAAAAACAAUAAAAAAAAAAAACAAYAAAAAAAAAAAACAAcAAAAAAAAAAAACAAgAAAAAAAAAAAACAAkAAAAAAAAAAAADAAAAAAAAAAAAAAADAAEAAAAAAAAAAAADAAIAAAAAAAAAAAADAAMAAAAAAAAAAAADAAQAAAAAAAAAAAADAAUAAAAAAAAAAAADAAYAAAAAAAAAAAADAAcAAAAAAAAAAAADAAgAAAABAAAAAAADAAkAAAAAAAAAAAAEAAAAAAAAAAAAAAAEAAEAAAAAAAAAAAAEAAIAAAAAAAAAAAAEAAMAAAAAAAAAAAAEAAQAAAAAAAAAAwAEAAUAAAAAAAAAAwAEAAYAAAAAAAAAAAAEAAcAAAAAAAAAAAAEAAgAAAAAAAAAAAAEAAkAAAAAAAAAAAAFAAAAAAAAAAAAAAAFAAEAAAAAAAAAAAAFAAIAAAABAAAAAAAFAAMAAAAAAAAAAAAFAAQAAAAAAAAAAAAFAAUAAAAAAAAAAwAFAAYAAAAAAAAAAAAFAAcAAAAAAAAAAAAFAAgAAAAAAAAAAAAFAAkAAAAAAAAAAAAGAAAAAAAAAAAAAAAGAAEAAAAAAAAAAAAGAAIAAAAAAAAAAAAGAAMAAAAAAAAAAAAGAAQAAAAAAAAAAAAGAAUAAAAAAAAAAAAGAAYAAAAAAAAAAAAGAAcAAAABAAAAAAAGAAgAAAAAAAAAAwAGAAkAAAAAAAAAAAAHAAAAAAAAAAAAAAAHAAEAAAAAAAAAAAAHAAIAAAAAAAAAAAAHAAMAAAAAAAAAAAAHAAQAAAABAAAAAAAHAAUAAAAAAAAAAAAHAAYAAAAAAAAAAAAHAAcAAAAAAAAAAAAHAAgAAAAAAAAAAwAHAAkAAAAAAAAAAAAIAAAAAAAAAAAAAAAIAAEAAAAAAAAAAwAIAAIAAAAAAAAAAwAIAAMAAAAAAAAAAAAIAAQAAAAAAAAAAAAIAAUAAAAAAAAAAAAIAAYAAAAAAAAAAAAIAAcAAAAAAAAAAAAIAAgAAAAAAAAAAAAIAAkAAAAAAAAAAAAJAAAAAAAAAAAAAAAJAAEAAAAAAAAAAwAJAAIAAAAAAAAAAAAJAAMAAAABAAAAAAAJAAQAAAAAAAAAAAAJAAUAAAAAAAAAAAAJAAYAAAAAAAAAAAAJAAcAAAAAAAAAAAAJAAgAAAAAAAAAAAAJAAkAAAAAAAAAAAAKAAAAAAAAAAAAAAAKAAEAAAAAAAAAAAAKAAIAAAAAAAAAAAAKAAMAAAAAAAAAAAAKAAQAAAAAAAAAAAAKAAUAAAAAAAAAAAAKAAYAAAAAAAAAAwAKAAcAAAAAAAAAAAAKAAgAAAABAAAAAAAKAAkAAAAAAAAAAAALAAAAAAAAAAAAAAALAAEAAAAAAAAAAAALAAIAAAAAAAAAAAALAAMAAAAAAAAAAAALAAQAAAAAAAAAAAALAAUAAAAAAAAAAAALAAYAAAAAAAAAAAALAAcAAAAAAAAAAwALAAgAAAAAAAAAAAALAAkAAAAAAAAAAAAMAAAAAAAAAAAAAAAMAAEAAAABAAAAAAAMAAIAAAAAAAAAAAAMAAMAAAAAAAAAAAAMAAQAAAAAAAAAAwAMAAUAAAAAAAAAAwAMAAYAAAAAAAAAAAAMAAcAAAAAAAAAAAAMAAgAAAAAAAAAAAAMAAkAAAAAAAAAAAANAAAAAAAAAAAAAAANAAEAAAAAAAAAAAANAAIAAAAAAAAAAAANAAMAAAAAAAAAAAANAAQAAAAAAAAAAAANAAUAAAAAAAAAAAANAAYAAAAAAAAAAAANAAcAAAAAAAAAAAANAAgAAAAAAAAAAAANAAkAAAAAAAAAAAA=")
+tile_set = SubResource("TileSet_envoy")
+
+[node name="Units" type="Node2D" parent="Battle"]
+
+[node name="Villager1" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(1, 2)
+faction = ExtResource("4_lancin")
+with_player = true
+
+[node name="Villager2" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(1, 7)
+faction = ExtResource("4_lancin")
+with_player = true
+
+[node name="Villager3" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(2, 4)
+faction = ExtResource("4_lancin")
+with_player = true
+
+[node name="Villager4" parent="Battle/Units" instance=ExtResource("3_villager")]
+cell = Vector2i(2, 6)
+faction = ExtResource("4_lancin")
+with_player = true
+
+[node name="Shade1" parent="Battle/Units" instance=ExtResource("6_shade")]
+cell = Vector2i(3, 3)
+faction = ExtResource("4_lancin")
+
+[node name="Shade2" parent="Battle/Units" instance=ExtResource("6_shade")]
+cell = Vector2i(3, 6)
+faction = ExtResource("4_lancin")
+
+[node name="AstralPrincess" parent="Battle/Units" instance=ExtResource("7_princess")]
+cell = Vector2i(11, 5)
+faction = ExtResource("5_astral")

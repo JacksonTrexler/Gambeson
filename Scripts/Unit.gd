@@ -5,6 +5,7 @@ signal hp_changed(was: int, now: int)
 signal energy_changed(was: int, now: int)
 signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
+signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
@@ -12,6 +13,7 @@ const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"i
 const BASE_AP := 10.0
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
 const ENERGY_COLOR := Color("#e8c547")
+const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full
 const HP_COLOR := Color("#3fbf4f")
 const SHAPE_EDGE := Color("#8a8f9c")  # glow of a shape whose side can't be told
 const SHAPE := Color(0.03, 0.03, 0.03)  # what a shape is painted
@@ -21,6 +23,17 @@ const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light,
 		&"drael": "water, air", &"vetruvis": "earth, music"}
 const TRIM_DARKEN := 0.45  # bar trim: the side's primary, this much darker
 const BAR_WIDTH := 24.0
+
+
+# A channel it holds (Metea): the skill, where it was cast, and its side's turns since.
+class Channel:
+	var skill: Skill
+	var at: Vector2i
+	var turns := 0
+
+	func _init(s: Skill, c: Vector2i) -> void:
+		skill = s
+		at = c
 
 
 # A timed effect on this unit: turns left, and the rank of the skill that applied it.
@@ -37,10 +50,20 @@ class Applied:
 	var since := -1  # the side's turn it was put on (Battle.turns_begun): a bleed doesn't take that one
 	var lasting := false  # no limit: it lasts until something ends it (a grapple: breaking free), or all battle (Ramut's Ire)
 	var through: Array[Unit] = []  # allies its holder has seen straight through it (Haluca: their tags unscrambled; Battle.inspect())
+	var total := 0  # the turns it was put on for: an arc's strength goes by how far through them it is (wauaw)
+	var scale := 1.0  # its strength, set as it was put on
 
 	func _init(t: int, r: int) -> void:
 		turns = t
 		rank = r
+
+	# How strong it is now, for effect e: its scale, and for an arc (Effect.arc) the steps it has
+	# climbed - one a turn to the middle of its turns, then back down (5 turns: 1, 2, 3, 2, 1).
+	func strength(e: Effect) -> float:
+		if not e.arc or total <= 0:
+			return scale
+		var i := clampi(total - turns, 0, total - 1)
+		return scale * (mini(i, total - 1 - i) + 1)
 
 
 @export var cell: Vector2i
@@ -61,6 +84,11 @@ class Applied:
 # by the level it reads, when a heal wouldn't go to waste) or loyal (its party first).
 @export var tends := &""
 @export var god := &""  # whom it prays to (Pray), one of GODS; empty: its class's (Role.god)
+@export var uncontrolled := false  # on the player's side, but it takes no orders and joins no party: it acts on its own (the Astral Envoy's shades)
+@export var with_player := false  # joins whichever side the player's starter is on (Battle._ready(): the Astral Envoy's villagers and shades)
+@export var hearts := 0  # extra lives of its own, on top of its items' (lives())
+@export var loot: Loot  # what it may drop as it falls (Battle._on_died())
+@export var summons: PackedScene  # comes with each heart it spends, as it gets up (the Astral Princess: a Regeneration Probe)
 
 @export_group("Persona")  # what it advertises; the Persona skill's rank says how much
 # The side it presents as, to those it fools (Read.stance): Friendly (rank 2) passes for their ally;
@@ -73,6 +101,8 @@ class Applied:
 @export var shows_adjectives: Array[String] = []  # rank 3: the first word of the name it goes by, one picked per battle ("Radiant")
 @export var shows_nouns: Dictionary[String, String] = {}  # rank 3: the second, each with text standing in for its sprite ("Lady": ";)")
 @export var extra_dissonance := 0  # on top of what its persona puts forward (dissonance())
+@export var intention := ""  # what it means to do, read by insight (the Astral Princess: "Purge evil")
+@export var strategy: Array[StringName] = []  # how it picks its targets, read by insight, driving its AI (AI._best_target()): closest, strongest, weakest
 @export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
@@ -102,6 +132,7 @@ class Applied:
 @export_group("Equipment")
 @export var armor: Item  # sets its Defense (none: dex mod + con mod; see armor_defense())
 @export var weapon: Item  # can let its strength attacks use another stat (wielded())
+@export var trinket: Item  # Heart Up
 
 @export_group("Stats")
 @export var strength := 5
@@ -123,7 +154,11 @@ var hp := 0:
 		var was := hp
 		hp = v
 		hp_changed.emit(was, v)
-		if v == 0:  # local v, not hp: a listener may have changed hp re-entrantly
+		if v == 0 and not reviving and lives_left() > 0:  # local v, not hp: a listener may have changed hp re-entrantly
+			hearts_used += 1
+			reviving = true
+			downed.emit(self)
+		elif v == 0:
 			died.emit(self)
 
 # The default energy every unit has; reserves (mana...) are extra.
@@ -160,6 +195,12 @@ var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate ski
 var _ap_start: Array[float] = []  # each AP pool as its turn started, to tell how hard it worked (activity())
 var _walk_ap: Array[float] = []  # of each AP pool, what walking took this turn (activity(): standing still doesn't count)
 var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arranged for (_arrange())
+var hearts_used := 0  # hearts spent getting back up this battle
+var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
+var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
+var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
+var _hp_bonus := 0  # what its items and passives add to its max HP now (refit())
+var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> its turns left: they can't be used, and passives stop working
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
 var slots: Array[Slot]:
@@ -175,20 +216,29 @@ var slots: Array[Slot]:
 var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
-		s.assign(slots.filter(func(x: Slot): return not x.skill.passive).map(func(x: Slot): return x.skill))
+		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and x.skill not in disabled).map(func(x: Slot): return x.skill))
 		return s
 
-# Passive entries that are on.
+# Passive entries that are on (and not disabled).
 var on_passives: Array[Slot]:
 	get:
 		var s: Array[Slot] = []
-		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on))
+		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and x.skill not in disabled))
 		return s
 
 var passives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
 		s.assign(on_passives.map(func(x: Slot): return x.skill))
+		return s
+
+# What it can do, as others read it: its actives and passives that are on, and what's disabled.
+var kit: Array[Skill]:
+	get:
+		var s: Array[Skill] = actives + passives
+		for x in disabled:
+			if x not in s:
+				s.append(x)
 		return s
 
 var luck: int:
@@ -218,14 +268,24 @@ func _ready() -> void:
 	_show_look()
 	_layout_bars()
 	_show_faction()
+	refit()
 	hp_changed.connect(_show_bars.unbind(2))
 	energy_changed.connect(_show_bars.unbind(2))
 	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
 	energy = max_energy
-	for r in reserves:
-		set_store(r, reserves[r])
+	for r in pools():
+		set_store(r, pools()[r])
 	_show_bars()
+	set_process(powered())
+
+
+# Power (powered()) pulses its bar: white above 75%, blue when full.
+func _process(_delta: float) -> void:
+	var full := float(energy) / maxi(max_energy, 1)
+	var beat := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0)
+	var to := Color(0.7, 0.9, 1.8) if full >= 1.0 else Color(1.7, 1.7, 1.7)
+	energy_bar.self_modulate = Color.WHITE.lerp(to, beat) if full > 0.75 else Color.WHITE
 
 
 func rank(s: Skill) -> int:
@@ -493,7 +553,7 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null) -> f
 			continue
 		if pair[1] < e.min_rank or e.unless_on.any(func(x): return x in ground):
 			continue
-		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1)
+		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1) * pair[2]
 		if e.per_mod:
 			amount *= mod(e.per_mod)
 		if e.op == "mul":
@@ -606,7 +666,7 @@ func mitigation(tags: Array[StringName]) -> float:
 # untagged ones always, tagged ones against attacks carrying that tag or a child of it (physical
 # Defense counts against a pierce).
 func defense(tags: Array[StringName] = []) -> int:
-	return armor_defense() + roundi(stat(&"defense", tags))
+	return armor_defense() + roundi(stat(&"defense", tags)) + (hearts_used if trinket and trinket.spent_defense else 0)
 
 
 # The Defense it has on top against attacks carrying a particular tag: tag -> how much more (Hydera:
@@ -624,10 +684,13 @@ func tagged_defense() -> Dictionary:
 
 
 # Defense from armor alone. Unarmored: dex mod + con mod. Armored: the higher of the armor's floor
-# and level x its per_level (rounded down, or up while lucky), plus dex mod if the armor allows it.
+# and level x its per_level (rounded down, or up while lucky), plus dex mod if the armor allows it;
+# Heart Up-Link: level + the higher of con mod and the hearts it has spent.
 func armor_defense() -> int:
 	if not armor:
 		return mod(&"dexterity") + mod(&"constitution")
+	if armor.heart_defense:
+		return level + maxi(mod(&"constitution"), hearts_used) + armor.enchant
 	var floor_or_level := maxi(armor.defense, rounded(level * armor.per_level))
 	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + armor.enchant
 
@@ -663,6 +726,14 @@ func scrambled() -> Applied:
 	return null
 
 
+# Coordinate on it, linking it with others: the effect's Applied (by: whoever cast it), or null.
+func linked() -> Applied:
+	for e in timed:
+		if e.stat == "coordinate":
+			return timed[e]
+	return null
+
+
 # It sees t's tags scrambled: it's under Haluca and hasn't seen t straight since.
 func scrambles(t: Unit) -> bool:
 	var a := scrambled()
@@ -687,18 +758,113 @@ func wielded(s: StringName, tags: Array[StringName] = []) -> StringName:
 	return best
 
 
+# Its lives beyond the one it has: its own hearts, and its items' (Heart Up; Heart Up-Link: con mod).
+func lives() -> int:
+	var n := hearts
+	for it in items():
+		n += it.hearts + (maxi(mod(it.hearts_mod), 0) if it.hearts_mod else 0)
+	return n
+
+
+func lives_left() -> int:
+	return maxi(lives() - hearts_used, 0)
+
+
+# What it has equipped: weapon, armor, trinket.
+func items() -> Array[Item]:
+	var out: Array[Item] = []
+	for it in [weapon, armor, trinket]:
+		if it:
+			out.append(it)
+	return out
+
+
+# Whether it can wear it: the slot is one it equips, and it meets the item's requirement (Heart
+# Up-Link: a positive con mod).
+func can_wear(it: Item) -> bool:
+	return it != null and it.slot in ["weapon", "armor", "trinket"] and (not it.requires or mod(it.requires) > 0)
+
+
+# Puts it on in its slot, returning what was there (null if nothing, or if it can't wear it: then
+# nothing changes). Its max HP follows (refit()).
+func equip(it: Item) -> Item:
+	if not can_wear(it):
+		return null
+	var old: Item = get(it.slot)
+	set(it.slot, it)
+	refit()
+	return old
+
+
+# Takes off what's in a slot, returning it.
+func unequip(slot: String) -> Item:
+	var old: Item = get(slot)
+	set(slot, null)
+	refit()
+	return old
+
+
+# Max HP from its base and what its items and passives add (max_hp effects: Burning Blade), at least 1.
+func refit() -> void:
+	var bonus := roundi(stat(&"max_hp"))
+	max_hp = maxi(max_hp - _hp_bonus + bonus, 1)
+	_hp_bonus = bonus
+
+
+# Its six core stats as they are, unchanged by effects, added up: Starblade's measure of a target.
+func base_total() -> int:
+	return strength + dexterity + constitution + intelligence + wisdom + charisma
+
+
+# Its Energy is Power (Powerful): it never comes back on its own - only what gives it back does
+# (Starblade).
+func powered() -> bool:
+	return stat(&"powered") > 0.0
+
+
+# Energy damage (Smite): what gets through mitigation (and luck, as hit()) drains its Energy first;
+# once that's gone, `carry` of the rest goes on to HP. Returns the HP taken.
+func drain(raw: float, tags: Array[StringName], by: Unit, carry: float) -> int:
+	var net := luck - (by.luck if by else 0)
+	var taken := Luck.settle(raw * (1.0 - mitigation(tags)), net, false)
+	var off := mini(energy, taken)
+	energy -= off
+	var over := Luck.settle((taken - off) * carry, net, false)
+	damage(over)
+	return over
+
+
 # Dead units stay dead.
 func heal(h: int) -> void:
 	if is_alive():
 		hp += maxi(h, 0)
 
 
+# Every reserve it has, by max: its own (reserves), and those its passives give - each the holder's
+# mod in the passive's reserve_mod x its rank, no less than 0 (Sweet Nothings: cha mod x rank).
+func pools() -> Dictionary[Reserve, int]:
+	var out: Dictionary[Reserve, int] = reserves.duplicate()
+	for x in on_passives:
+		var r := x.skill.reserve
+		if r:
+			out[r] = out.get(r, 0) + maxi(mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1, 0) * x.rank
+	return out
+
+
 func store(r: Reserve) -> int:
 	return stores.get(r, 0)
 
 
+# Points back into its reserves that come back a certain way (Reserve.on_kill: a foe it slew;
+# Reserve.patron: its patron satisfied), up to their max.
+func gain(how: StringName, n: int) -> void:
+	for r in pools():
+		if n > 0 and ((how == &"kill" and r.on_kill > 0) or (how == &"patron" and r.patron)):
+			set_store(r, store(r) + (r.on_kill if how == &"kill" else n))
+
+
 func set_store(r: Reserve, v: int) -> void:
-	v = clampi(v, 0, reserves.get(r, 0))
+	v = clampi(v, 0, pools().get(r, 0))
 	var was := store(r)
 	if v == was:
 		return
@@ -711,10 +877,13 @@ func price(s: Skill) -> int:
 	return s.price(rank(s))
 
 
-# What s costs it paid from fund: price(), times the best cost_with factor of any reserve that
+# What s costs it paid from fund: a reserve that pays whole costs takes its few points for any cost
+# (Sweet Nothings: 1); otherwise price(), times the best cost_with factor of any reserve that
 # payment counts as, where its passives open that reserve up to s's tier (Mana I: the starter spells
 # at half cost). Rounded up.
 func cost_from(s: Skill, fund: Variant) -> int:
+	if fund is Reserve and fund.whole > 0:
+		return fund.whole if price(s) > 0 or s.needs == fund else 0
 	var factor := 1.0
 	for r in s.cost_with:
 		if pays_as(s, fund, r) and opened(r) >= tier(s):
@@ -736,17 +905,20 @@ func tier(s: Skill) -> int:
 	return maxi(role.tier(s) if role else 0, 1)
 
 
-# What pays for a skill: a reserve that makes it cheaper (Hex: mana, for AP; the starter spells:
-# mana, for cost), then one dedicated to its tags (mana for magical skills, so Energy is kept for
-# generic skills), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
+# What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else a
+# reserve that makes it cheaper (Hex: mana, for AP; the starter spells: mana, for cost; a Warlock's
+# dearer skills: a Sweet Nothing), then one dedicated to its tags (mana for magical skills, so Energy
+# is kept for generic skills), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
 # nothing can.
 func funding(s: Skill) -> Variant:
-	var allowed := reserves.keys().filter(func(r: Reserve): return r.only.is_empty() or r.only.any(func(t): return t in s.tags))
+	var allowed := pools().keys().filter(func(r: Reserve): return r.only.is_empty() or r.only.any(func(t): return t in s.tags))
+	if s.needs:
+		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
 	for r: Reserve in allowed:
 		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and store(r) >= cost_from(s, r):
 			return r
 	for r: Reserve in allowed:
-		if not r.only.is_empty() and store(r) >= cost_from(s, r):
+		if not r.only.is_empty() and r.whole == 0 and store(r) >= cost_from(s, r):
 			return r
 	if energy >= cost_from(s, &"energy"):
 		return &"energy"
@@ -818,6 +990,21 @@ func pay_for(s: Skill) -> bool:
 	return true
 
 
+# Whether it could pay a channeled skill's strike now.
+func can_strike(s: Skill) -> bool:
+	return energy >= s.strike_cost and ap_for(&"skill") >= s.strike_ap - 0.0001
+
+
+# Pays a channeled skill's strike (Metea): its strike AP, and its strike cost in Energy. False (and
+# nothing spent) if it can't.
+func pay_strike(s: Skill) -> bool:
+	if not can_strike(s):
+		return false
+	pay(s.strike_ap, &"skill")
+	energy -= s.strike_cost
+	return true
+
+
 # Start of this unit's faction turn: fresh AP and movement, and it can slip back into hiding.
 func refresh() -> void:
 	ap = _pools()
@@ -882,10 +1069,12 @@ func walked(n: int, cost: float) -> void:
 				timed.erase(e)
 
 
-# Energy back as its side's turn ends, by activity(). Resting: (con mod + wis mod) / 2 a turn,
+# Energy back as its side's turn ends, by activity() - but never Power (powered()). Resting: (con mod + wis mod) / 2 a turn,
 # rounded down (up while lucky), at least 1; below 0, a point every (1 - that) turns rested
 # instead (-2: one every 3). Light activity: half as fast. Busy: none. Returns what it got back.
 func recover() -> int:
+	if powered():
+		return 0
 	var k := rounded((mod(&"constitution") + mod(&"wisdom")) / 2.0)
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
 	match activity():
@@ -968,10 +1157,71 @@ func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 	return timed[e]
 
 
-# End of this unit's faction turn: timed effects count down. One that fades loses a rank instead
+# Switches s off for some of its turns (Brainfog); a pillar skill takes every pillar skill with it.
+func disable(s: Skill, turns: int) -> void:
+	for x in (pillars() if s.pillar() else [s] as Array[Skill]):
+		disabled[x] = maxi(disabled.get(x, 0), turns)
+
+
+# Its pillar skills: those its build stands on (Powerful), easiest to disable - one goes, all go.
+func pillars() -> Array[Skill]:
+	var out: Array[Skill] = []
+	for x in slots:
+		if x.skill.pillar():
+			out.append(x.skill)
+	return out
+
+
+# Its skills in the slots a disabling skill reaches, right to left, a slot at a time (each an
+# Array[Skill]): its pillar skills first, as one - they sit in its last sure slots - then the passives
+# that are always on (they fill the bar from the bottom), then what's on its hotbar from the last slot
+# back, then any other actives it has. Skills already disabled are skipped.
+func disable_order() -> Array[Array]:
+	var out: Array[Array] = []
+	var seen := {}
+	var group := func(list: Array[Skill]) -> void:
+		var fresh: Array[Skill] = []
+		for s in list:
+			if s and s not in seen and s not in disabled and rank(s) > 0:
+				seen[s] = true
+				fresh.append(s)
+		if not fresh.is_empty():
+			out.append(fresh)
+	group.call(pillars())
+	var rest: Array[Skill] = []
+	for x in slots:
+		if x.skill.passive and not x.skill.fits_bar():
+			rest.append(x.skill)
+	rest.reverse()
+	for i in range(hotbar.size() - 1, -1, -1):
+		rest.append(hotbar[i])
+	for x in slots:
+		if not x.skill.passive:
+			rest.append(x.skill)
+	for s in rest:
+		group.call([s] as Array[Skill])
+	return out
+
+
+# What a slot of disable_order() adds to the check against disabling it: its skill's rank, or for
+# the pillar skills (one slot), their median rank.
+func slot_weight(group: Array) -> int:
+	var ranks := group.map(func(s: Skill): return rank(s))
+	ranks.sort()
+	var n := ranks.size()
+	if n == 0:
+		return 0
+	return ranks[n / 2] if n % 2 else roundi((ranks[n / 2 - 1] + ranks[n / 2]) / 2.0)
+
+
+# End of this unit's faction turn: timed effects count down, and so do disabled skills. One that fades loses a rank instead
 # of ending, a turn at a time; one lasting until it moves (with no turns set), or until something
 # ends it (lasting), doesn't count down.
 func tick() -> void:
+	for s in disabled.keys():
+		disabled[s] -= 1
+		if disabled[s] <= 0:
+			disabled.erase(s)
 	for e in timed.keys():
 		var a := timed[e]
 		if a.lasting or (a.until_move and a.turns == 0):
@@ -1000,30 +1250,34 @@ func wake() -> void:
 			timed.erase(e)
 
 
-# [effect, rank] for every passive (that's on), timed effect, and effect of the ground it stands
-# on. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
+# [effect, rank, strength] for every passive (that's on), timed effect, effect of the ground it stands
+# on, and effect of its items. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
 # Stoneskin golem), nor does one `viewer` saw through.
 func _effects(viewer: Unit = null) -> Array:
 	var out := []
 	var own := {}
 	for x in on_passives:
 		for e in x.skill.effects:
-			out.append([e, x.rank])
+			out.append([e, x.rank, 1.0])
 			own[e] = true
 	for e in timed:
 		if e not in own and not (viewer and viewer in timed[e].known_to):
-			out.append([e, timed[e].rank])
+			out.append([e, timed[e].rank, timed[e].strength(e)])
 	if footing:
 		for e in footing.effects:
-			out.append([e, 1])
+			out.append([e, 1, 1.0])
+	for it in items():
+		for e in it.effects:
+			out.append([e, 1, 1.0])
 	return out
 
 
 # The reserve with the largest pool: the one shown above Energy (Wizards: mana).
 func main_reserve() -> Reserve:
 	var main: Reserve = null
-	for r in reserves:
-		if main == null or reserves[r] > reserves[main]:
+	var all := pools()
+	for r in all:
+		if main == null or all[r] > all[main]:
 			main = r
 	return main
 
@@ -1077,7 +1331,7 @@ func _show_look() -> void:
 # side trims the block (_show_side()).
 func _layout_bars() -> void:
 	var main := main_reserve()
-	energy_bar.add_theme_stylebox_override("fill", _flat(ENERGY_COLOR))
+	energy_bar.add_theme_stylebox_override("fill", _flat(POWER_COLOR if powered() else ENERGY_COLOR))
 	energy_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	energy_bar.modulate.a = 0.45 if main else 1.0
 	if main:
@@ -1150,7 +1404,7 @@ func _show_bars() -> void:
 	energy_bar.max_value = maxi(max_energy, 1)
 	energy_bar.value = r.energy if r and r.energy != null else energy
 	if main:
-		reserve_bar.max_value = reserves[main]
+		reserve_bar.max_value = maxi(pools()[main], 1)
 		reserve_bar.value = r.stores.get(main, 0) if r else store(main)
 	_stack()
 

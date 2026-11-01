@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_unmask"]
+script = ExtResource("2_effect")
+stat = "unmask_gain"
+amount = 2.0
+per_rank = true
+
+[sub_resource type="Resource" id="Effect_uncover"]
+script = ExtResource("2_effect")
+stat = "uncover_gain"
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Analysis Dialysis"
+passive = true
+tags = Array[StringName]([&"warlock", &"magical"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_unmask"), SubResource("Effect_uncover")])

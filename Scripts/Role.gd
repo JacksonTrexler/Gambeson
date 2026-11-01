@@ -18,6 +18,7 @@ extends Resource
 @export var core: Array[Skill] = []  # around it, with its innate skills: a first choice at any time (Hex)
 @export var roots: Array[SkillRoot] = []  # reaching out from there (Magic, Martial, Specialist)
 @export var tabs: Array[SkillTab] = []  # more of its tree, beside its own, each a wheel of its own (Rogue: Calling: Freedom)
+@export var shared: Array[Skill] = []  # a static tier 1 row on every tab's core ring, learned from the start as innate skills (Warlock: Hex, Sweet Nothings, Chant)
 
 
 func has_tree() -> bool:
@@ -25,27 +26,38 @@ func has_tree() -> bool:
 
 
 # Its tree, a tab at a time: its own (named after it, with its innate skills on the core ring
-# where no other tab has them), then its tabs.
+# where no other tab has them; left out when that leaves it empty beside other tabs), then its tabs,
+# each with the shared row first on its core ring (Warlock: a tab per patron).
 func trees() -> Array[SkillTab]:
 	var own := SkillTab.new()
 	own.name = name
 	own.center = center
 	for x in innate:
-		if x and x.skill and x.skill not in own.core and not tabs.any(func(t: SkillTab): return t and t.offers(x.skill)):
+		if x and x.skill and x.skill not in own.core and x.skill not in shared and not tabs.any(func(t: SkillTab): return t and t.offers(x.skill)):
 			own.core.append(x.skill)
 	for s in core:
 		if s and s not in own.core:
 			own.core.append(s)
 	own.roots = roots
-	var out: Array[SkillTab] = [own]
-	out.append_array(tabs.filter(func(t: SkillTab): return t != null))
+	var out: Array[SkillTab] = []
+	if own.center or not own.core.is_empty() or not own.roots.is_empty() or tabs.is_empty():
+		out.append(own)
+	for t in tabs:
+		if t and not shared.is_empty():
+			var copy: SkillTab = t.duplicate()
+			var row: Array[Skill] = []
+			row.assign(shared.filter(func(s: Skill): return s != null and s not in t.core) + t.core)
+			copy.core = row
+			out.append(copy)
+		elif t:
+			out.append(t)
 	return out
 
 
 # Every skill it offers: its options, then its tree's centres, cores and roots, tab by tab.
 func offered() -> Array[Skill]:
 	var out: Array[Skill] = []
-	var firsts: Array = options + ([center] if center else []) + core
+	var firsts: Array = options + ([center] if center else []) + core + shared
 	for t in tabs:
 		if t:
 			firsts.append_array(([t.center] if t.center else []) + t.core)
@@ -68,7 +80,7 @@ func tier(s: Skill) -> int:
 	if root:
 		var seen: Array[Skill] = []
 		return 1 + maxi(_before(s, seen).size(), root.branch(s).needs)
-	if s in offered() or innate.any(func(x: Slot): return x and x.skill == s):
+	if s in offered() or innate.any(func(x: Slot): return x and x.skill == s) or s in shared:
 		return 1
 	return 0
 

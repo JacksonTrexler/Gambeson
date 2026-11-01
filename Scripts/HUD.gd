@@ -96,6 +96,7 @@ var _falls: Array[String] = []  # "X falls" lines, held until the hit that did i
 @onready var skills: SkillTree = %Skills
 @onready var settings: PanelContainer = %Settings
 var persona := PersonaPanel.new()  # Personify's active half
+var sheet := CharacterSheet.new()  # the character icon: equipment, hearts and the stash
 var _personifying: Array = []  # [unit, skill] the persona panel is open for
 
 
@@ -124,11 +125,13 @@ func _ready() -> void:
 	battle.investigated.connect(func(by: Unit, of: Unit, s: Skill, total: int, against: int, _close: bool):
 		_looks.append([by, total, against, roll_known(of, s)]))
 	battle.evaluated.connect(_on_evaluated)
+	battle.downed.connect(_on_downed)
+	battle.revived.connect(_on_revived)
+	battle.dropped.connect(_on_dropped_item)
+	battle.pulsed.connect(_on_pulsed)
+	battle.exploded.connect(_on_exploded)
 	for u: Unit in battle.get_node("Units").get_children():
-		u.hp_changed.connect(_on_hp.bind(u))
-		u.energy_changed.connect(_on_energy.bind(u))
-		u.reserve_changed.connect(_mark.unbind(3))
-		u.died.connect(_on_died)
+		_watch_unit(u)
 	book_button.pressed.connect(toggle_spellbook)
 	hold_button.pressed.connect(hold)
 	party_button.pressed.connect(toggle_party)
@@ -142,6 +145,11 @@ func _ready() -> void:
 	%CogIcon.pressed.connect(toggle_settings)
 	%SettingsClose.pressed.connect(_close_panels)
 	settings.get_parent().add_child(persona)
+	settings.get_parent().add_child(sheet)
+	sheet.hide()
+	sheet.equipped.connect(_on_equipped)
+	sheet.unequipped.connect(_on_unequipped)
+	sheet.used_up.connect(_on_used_up)
 	persona.done.connect(_on_personified)
 	battle.stalled.connect(_on_stalled)
 	battle.struggled.connect(_on_struggled)
@@ -150,7 +158,7 @@ func _ready() -> void:
 	battle.inspected.connect(_on_inspected)
 	battle.untangled.connect(_on_untangled)
 	battle.refused.connect(_on_refused)
-	%CharacterIcon.pressed.connect(_say.bind("The character sheet is coming soon"))
+	%CharacterIcon.pressed.connect(toggle_sheet)
 	%MenuButton.pressed.connect(func(): get_tree().change_scene_to_file(menu_scene))
 	banner.modulate.a = 0.0
 	for c: Control in [tip, spellbook, skills, settings, over]:
@@ -323,6 +331,8 @@ func use_slot(i: int) -> void:
 		_say(_why_locked())
 	elif not u.slot_works(i):
 		_say(SkillSlot.NO_LUCK)
+	elif s in u.disabled:
+		_say("%s's %s is disabled for %d more turn%s" % [_name(u), s.name, u.disabled[s], "" if u.disabled[s] == 1 else "s"])
 	elif s.passive and s.hybrid:
 		if not command.may_use(u, s):
 			return
@@ -436,7 +446,61 @@ func toggle_skills() -> void:
 
 
 func _panel_open() -> bool:
-	return spellbook.visible or skills.visible or settings.visible or persona.visible
+	return spellbook.visible or skills.visible or settings.visible or persona.visible or sheet.visible
+
+
+# The character icon: the selected unit's sheet (else the leader's), its items changeable on its side's
+# turn - or once the battle's over - if it's the player's own.
+func toggle_sheet() -> void:
+	var open := not sheet.visible
+	_close_panels()
+	if open:
+		var u := selected if selected and hand(selected) else command.leader
+		sheet.open(u, _outfits(u))
+
+
+func _outfits(u: Unit) -> bool:
+	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and u.is_alive()))
+
+
+# The player's starter keeps what it has on, and its hearts, for the next battle.
+func _keep_outfit(u: Unit) -> void:
+	if u == battle.player:
+		Game.outfit = {}
+		for slot in CharacterSheet.SLOTS:
+			if u.get(slot):
+				Game.outfit[slot] = u.get(slot)
+		Game.hearts = u.hearts
+
+
+func _on_equipped(u: Unit, it: Item) -> void:
+	if not _outfits(u) or it not in Game.stash or not u.can_wear(it):
+		return
+	Game.stash.erase(it)
+	var old := u.equip(it)
+	if old:
+		Game.stash.append(old)
+	_log("%s puts on %s" % [_tag(u), it.name])
+	_keep_outfit(u)
+	sheet.open(u, true)
+	_mark()
+
+
+func _on_unequipped(u: Unit, slot: String) -> void:
+	if _outfits(u) and u.get(slot):
+		Game.stash.append(u.unequip(slot))
+		_keep_outfit(u)
+		sheet.open(u, true)
+		_mark()
+
+
+func _on_used_up(u: Unit, it: Item) -> void:
+	if _outfits(u) and it in Game.stash and battle.use_item(u, it):
+		Game.stash.erase(it)
+		_log("%s uses %s" % [_tag(u), it.name])
+		_keep_outfit(u)
+		sheet.open(u, true)
+		_mark()
 
 
 # The cog: settings, and the Guide to how the game is played.
@@ -452,6 +516,7 @@ func _close_panels() -> void:
 	skills.hide()
 	settings.hide()
 	persona.hide()
+	sheet.hide()
 	_mark()
 	_update_tip()
 
@@ -572,6 +637,10 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 			return "%s is for allies" % s.name
 		if not battle.in_reach(u, s, target):
 			return "Out of reach"
+	elif target is Vector2i and s.channel and u.channel and u.channel.skill == s:
+		if target not in battle.strike_tiles(u):
+			return "Out of the channel's reach: %d tile%s from where it was cast" % [u.channel.turns, "" if u.channel.turns == 1 else "s"]
+		return "" if u.can_strike(s) else "Not enough to strike: %s AP, %d Energy" % [Skill.num(s.strike_ap), s.strike_cost]
 	elif target is Vector2i:
 		var span := battle.area_reach(u, s) if s.on_tile() else battle.skill_range(u, s)
 		if not battle.on_map(target) or Vector2(u.cell).distance_to(Vector2(target)) > span + 0.0001:
@@ -816,6 +885,10 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	var winner: Faction = left[0].faction if left else null
 	%OverTitle.text = "Victory" if winner == command.faction() else "Defeat"
 	%OverText.text = "%s holds the field." % winner.name if winner else "No one is left standing."
+	var won: Array[Item] = battle.winnings(command.faction()) if winner == command.faction() else ([] as Array[Item])
+	if not won.is_empty():
+		Game.stash.append_array(won)
+		%OverText.text += "\nSpoils: %s" % ", ".join(won.map(func(it: Item): return it.name))
 	_log("[color=#e8c547]%s[/color]" % %OverText.text)
 	spellbook.hide()
 	select(null)
@@ -945,6 +1018,51 @@ func _on_hp(was: int, now: int, u: Unit) -> void:
 		overlay.float_text(u, "-%d" % (was - now), FOE)
 	elif now > was:
 		overlay.float_text(u, "+%d" % (now - was), FRIEND)
+
+
+func _watch_unit(u: Unit) -> void:
+	u.hp_changed.connect(_on_hp.bind(u))
+	u.energy_changed.connect(_on_energy.bind(u))
+	u.reserve_changed.connect(_mark.unbind(3))
+	u.died.connect(_on_died)
+
+
+# Down with a heart spent: it lies faded where it fell until the turn ends.
+func _on_downed(u: Unit) -> void:
+	u.modulate.a = 0.45
+	_falls.append("%s is down, a heart spent (%d left)" % [_tag(u), u.lives_left()])
+	_flush_falls.call_deferred()
+	_mark()
+
+
+# Back up as the turn ends - with whatever it brings (a Regeneration Probe), which the HUD now follows.
+func _on_revived(u: Unit, came: Unit) -> void:
+	u.modulate.a = 1.0
+	_log("%s gets back up" % _tag(u))
+	if came:
+		_watch_unit(came)
+		_log("%s appears beside it" % _tag(came))
+	_mark()
+
+
+func _on_dropped_item(u: Unit, it: Item) -> void:
+	_falls.append("%s drops %s" % [_tag(u), it.name])
+	_flush_falls.call_deferred()
+
+
+# A Regeneration Pulse the player's side can see: who it healed, and by how much.
+func _on_pulsed(u: Unit, healed: Dictionary) -> void:
+	if unit_seen(u.cell) != u:
+		return
+	var parts := healed.keys().filter(func(o: Unit): return healed[o] > 0).map(func(o: Unit): return "%s [color=#3fbf4f]+%d[/color]" % [_tag(o), healed[o]])
+	_log("%s pulses%s" % [_tag(u), ": " + ", ".join(parts) if parts else ", healing no one"])
+
+
+# A channeled skill's blast: what it did to each unit caught in it.
+func _on_exploded(_u: Unit, s: Skill, _at: Vector2i, hit: Dictionary) -> void:
+	var parts := hit.keys().map(func(o: Unit): return "%s [color=#ff6b5e]-%d[/color]" % [_tag(o), hit[o]] if _hp_shows(o) else _tag(o))
+	_log("%s's blast%s" % [s.name, " catches " + ", ".join(parts) if parts else " catches no one"])
+	_mark()
 
 
 func _hp_shows(u: Unit) -> bool:
@@ -1247,13 +1365,13 @@ func _rebuild_bar() -> void:
 		bar.add_child(s)
 
 
-# Hotbar slots shown for u: all of them, but its clover slot (the last) only while it's lucky or holds
-# a skill.
+# Hotbar slots shown for u: all of them, but its clover slot (the last) only while it's lucky - unlucky,
+# it's gone, though it remembers what was in it for when the luck comes back.
 func _bar_slots(u: Unit) -> int:
 	if not u:
 		return Unit.SLOTS
 	var c := u.clover()
-	if c >= 0 and u.luck <= 0 and (c >= u.hotbar.size() or u.hotbar[c] == null):
+	if c >= 0 and u.luck <= 0:
 		return c
 	return u.bar_size()
 
@@ -1272,9 +1390,11 @@ func _refresh_bar() -> void:
 		var locked := u != null and hand(u) and u != command.leader and not command.slot_open(u, i)
 		var works := u == null or u.slot_works(i)
 		var sense := skill_sense(u, s, r)
-		var usable := orders and s != null and sense > 0 and not locked and works and (s.passive or u.can_afford(s))
+		var off: int = u.disabled.get(s, 0) if u and s else 0
+		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
 		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit, locked, sense)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
+		slot.set_off(off)
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked()
 
@@ -1290,7 +1410,9 @@ func skill_sense(u: Unit, s: Skill, r: Read) -> int:
 func _on_dropped(i: int, s: Skill, _from: int) -> void:
 	var u := selected
 	if u and _editable(u):
-		if not u.bar_place(s, i):
+		if i == u.clover() and battle.phase == Battle.Phase.TURNS and battle.turn != u.faction:
+			_say("A clover slot is filled on its unit's own turn")
+		elif not u.bar_place(s, i):
 			var kind: String = Skill.CATEGORIES.get(u.slot_kind(i), "")
 			if u.rank(s) == 0:
 				_say("%s doesn't know %s" % [_name(u), s.name])
@@ -1440,11 +1562,12 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
 		if u.asleep():
 			chips.append(["Asleep", SLEEP])
+		_heart_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
 		var main := u.main_reserve()
 		if main:
-			rows.append([main.name.left(2).to_upper(), u.store(main), u.reserves[main], main.color])
-		rows.append(["EN", u.energy, u.max_energy, Unit.ENERGY_COLOR])
+			rows.append([main.name.left(2).to_upper(), u.store(main), u.pools()[main], main.color])
+		rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
@@ -1492,6 +1615,8 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["Out of range", MUTED])
 	if r.vibe:
 		chips.append([r.vibe, MUTED])
+	if r.hp != null:
+		_heart_chips(u, chips)
 	var rows := []
 	if r.hp != null:
 		rows.append(["HP", r.hp, r.max_hp, Unit.HP_COLOR])
@@ -1500,7 +1625,7 @@ func _info(u: Unit) -> Dictionary:
 	else:
 		rows.append(["HP", "?", null, MUTED])
 	if r.energy != null:
-		rows.append(["EN", r.energy, null, Unit.ENERGY_COLOR])
+		rows.append(["PW" if u.powered() else "EN", r.energy, null, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 	if known(u) and command.can_order(u):  # what it has left to follow orders with
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
@@ -1514,8 +1639,19 @@ func _info(u: Unit) -> Dictionary:
 		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
 			info.effects = [["?", MUTED, "Something's affecting %s; your side can't make out what" % _name(u), ""]]
 	info.note = "" if known(u) and r.insight.ends_with("appear otherwise.") else r.insight  # an honest ally goes without saying
+	if r.intention or not r.strategy.is_empty():
+		info.note = (info.note + "\n" if info.note else "") + "Intends to %s%s." % [r.intention.to_lower() if r.intention else "fight",
+				"; goes for the %s" % " and ".join(r.strategy) if not r.strategy.is_empty() else ""]
 	info.chips = chips
 	return info
+
+
+# Its hearts, if it has any: how many lives it has left, and whether it's down.
+func _heart_chips(u: Unit, chips: Array) -> void:
+	if u.reviving:
+		chips.append(["Down", FOE])
+	if u.lives() > 0:
+		chips.append(["%d heart%s left" % [u.lives_left(), "" if u.lives_left() == 1 else "s"], FOE if u.lives_left() == 0 else GOLD])
 
 
 # [mark, colour, tooltip, roll] for what's timed on u, an icon per skill that put it on (its mark:

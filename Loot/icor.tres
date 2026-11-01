@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Loot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Loot.gd" id="1_loot"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="2_item"]
+[ext_resource type="Resource" path="res://Items/burning_blade.tres" id="3_blade"]
+
+[resource]
+script = ExtResource("1_loot")
+items = Array[ExtResource("2_item")]([ExtResource("3_blade")])

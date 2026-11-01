@@ -1,0 +1,73 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/AstralPrincess.png" id="2_look"]
+[ext_resource type="Resource" path="res://Skills/powerful.tres" id="3_powerful"]
+[ext_resource type="Resource" path="res://Skills/physical_intelligence.tres" id="4_pi"]
+[ext_resource type="Resource" path="res://Skills/metea.tres" id="5_metea"]
+[ext_resource type="Resource" path="res://Skills/smite.tres" id="6_smite"]
+[ext_resource type="Resource" path="res://Skills/persona.tres" id="7_persona"]
+[ext_resource type="Resource" path="res://Items/starblade.tres" id="8_starblade"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+[ext_resource type="Resource" path="res://Items/heart_up_link.tres" id="10_link"]
+[ext_resource type="Resource" path="res://Items/heart_up.tres" id="11_heart_up"]
+[ext_resource type="Resource" path="res://Loot/astral_princess.tres" id="12_loot"]
+[ext_resource type="PackedScene" path="res://Scenes/probe.tscn" id="13_probe"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="14_human"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="15_strike"]
+
+[sub_resource type="Resource" id="Slot_powerful"]
+script = ExtResource("9_slot")
+skill = ExtResource("3_powerful")
+
+[sub_resource type="Resource" id="Slot_pi"]
+script = ExtResource("9_slot")
+skill = ExtResource("4_pi")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_metea"]
+script = ExtResource("9_slot")
+skill = ExtResource("5_metea")
+rank = 2
+
+[sub_resource type="Resource" id="Slot_smite"]
+script = ExtResource("9_slot")
+skill = ExtResource("6_smite")
+rank = 5
+
+[sub_resource type="Resource" id="Slot_persona"]
+script = ExtResource("9_slot")
+skill = ExtResource("7_persona")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("9_slot")
+skill = ExtResource("15_strike")
+
+[node name="AstralPrincess" instance=ExtResource("1_unit")]
+nick = "Astral Princess"
+look = ExtResource("2_look")
+race = ExtResource("14_human")
+tags = Array[StringName]([&"astral", &"boss"])
+vibe = "Glittering"
+aura = 1
+loot = ExtResource("12_loot")
+summons = ExtResource("13_probe")
+shows_adjectives = Array[String](["Glittering", "Shining", "Gleaming", "Glimmering"])
+shows_nouns = Dictionary[String, String]({"Princess": "", "Heroine": "", "Vindicator": ""})
+intention = "Purge evil: evil resides in the living"
+strategy = Array[StringName]([&"closest", &"strongest"])
+level = 18
+innate = Array[ExtResource("9_slot")]([SubResource("Slot_strike")])
+learned = Array[ExtResource("9_slot")]([SubResource("Slot_powerful"), SubResource("Slot_pi"), SubResource("Slot_metea"), SubResource("Slot_smite"), SubResource("Slot_persona")])
+max_hp = 60
+max_energy = 20
+weapon = ExtResource("8_starblade")
+armor = ExtResource("10_link")
+trinket = ExtResource("11_heart_up")
+strength = 18
+dexterity = 18
+constitution = 12
+intelligence = 14
+wisdom = 8
+charisma = 14

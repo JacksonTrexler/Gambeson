@@ -40,6 +40,8 @@ var traits: Array[String] = []  # words for it in place of details, from a low-w
 var looks := ""  # what it looks like to an ally of wis mod -4 or less ("Caster")
 var stance := &""  # the side it presents as to this observer (Unit.stance, lowercase): friendly, enemy, aggressive, passive, traitor
 var insight := ""  # how true its presentation is, read by an insightful observer (Perception.insight())
+var intention := ""  # what it means to do, and how it picks its targets: read by an insightful observer at 2 (the Astral Princess)
+var strategy: Array[StringName] = []
 var affected: Variant = null  # under timed effects (buffs and debuffs aren't told apart yet)
 var worth: Variant = null  # tile: +1 beneficial, -1 detrimental (Terrain.worth())
 

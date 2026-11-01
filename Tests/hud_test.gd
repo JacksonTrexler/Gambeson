@@ -486,11 +486,17 @@ func test_clover_bar() -> void:
 	ok(v(1).bar_place(strike, 4), "Strike moved into it")
 	v(1).afflict(effect("luck", -1), 3)
 	h._refresh()
-	c = h.bar.get_child(4) as SkillSlot
-	ok(h.bar.get_child_count() == 5 and c.clover and not c.works and not c.usable and c.skill == strike,
-			"luck gone with a skill in it: shown, greyed out")
+	ok(h.bar.get_child_count() == 4 and v(1).hotbar[4] == strike, "luck gone with a skill in it: the slot's gone too, but remembers it")
 	h.use_slot(4)
 	ok(h.armed == null and h._note == SkillSlot.NO_LUCK, "and it can't be used: %s" % h._note)
+	v(1).timed.clear()
+	h._refresh()
+	c = h.bar.get_child(4) as SkillSlot
+	ok(h.bar.get_child_count() == 5 and c.clover and c.works and c.skill == strike, "lucky again: back, with Strike in it")
+	v(1).bar_clear(4)
+	b.end_turn()
+	h._on_dropped(4, strike, -1)
+	ok(v(1).hotbar[4] == null and "own turn" in h._note, "filled only on its own turn: %s" % h._note)
 	h.free()
 
 

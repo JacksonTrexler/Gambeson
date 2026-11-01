@@ -11,6 +11,7 @@
 [ext_resource type="Resource" path="res://Roles/paladin.tres" id="9_paladin"]
 [ext_resource type="Resource" path="res://Roles/rogue.tres" id="10_rogue"]
 [ext_resource type="Resource" path="res://Roles/bard.tres" id="11_bard"]
+[ext_resource type="Resource" path="res://Roles/warlock.tres" id="12_warlock"]
 
 [sub_resource type="Theme" id="Theme_small"]
 default_font_size = 10
@@ -25,7 +26,7 @@ grow_vertical = 2
 theme = SubResource("Theme_small")
 script = ExtResource("1_entry")
 sides = Array[ExtResource("3_faction")]([ExtResource("4_lancin"), ExtResource("5_nemes")])
-roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin"), ExtResource("10_rogue"), ExtResource("11_bard")])
+roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin"), ExtResource("10_rogue"), ExtResource("11_bard"), ExtResource("12_warlock")])
 default_side = ExtResource("4_lancin")
 default_role = ExtResource("7_adventurer")
 
@@ -65,6 +66,11 @@ prompt = "Which side will you take?"
 unique_name_in_owner = true
 layout_mode = 2
 prompt = "What is your starter's class?"
+
+[node name="Scenario" parent="Center/Form" instance=ExtResource("2_choice")]
+unique_name_in_owner = true
+layout_mode = 2
+prompt = "Where will you fight?"
 
 [node name="Name" type="LineEdit" parent="Center/Form"]
 unique_name_in_owner = true

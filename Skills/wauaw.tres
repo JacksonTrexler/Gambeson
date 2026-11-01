@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_exposed"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = -0.1
+name = "wauaw"
+arc = true
+
+[sub_resource type="Resource" id="Effect_fury"]
+script = ExtResource("2_effect")
+stat = "damage"
+amount = 0.1
+name = "wauaw"
+arc = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "wauaw"
+tags = Array[StringName]([&"warlock", &"magical", &"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_exposed"), SubResource("Effect_fury")])
+ap = 3.0
+cost = 2
+hostile = false
+either = true
+rolls = false
+radius_per_rank = 1.0
+turns = 3
+turns_per_rank = 2

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_vigour"]
+script = ExtResource("2_effect")
+stat = "max_hp"
+per_mod = &"strength"
+
+[resource]
+script = ExtResource("1_item")
+name = "Burning Blade"
+slot = "weapon"
+tags = Array[StringName]([&"enchanted", &"fire"])
+attack_stats = Array[StringName]([&"charisma", &"wisdom", &"intelligence"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_vigour")])

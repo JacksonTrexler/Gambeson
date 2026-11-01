@@ -17,21 +17,26 @@ extends Resource
 @export var cost := 0  # paid in Energy, or a reserve that can pay for this skill's tags
 @export var cost_per_rank := false  # cost x rank (starter spells)
 @export var ap_with: Dictionary[Reserve, float] = {}  # AP factor when fully paid with a reserve (Hex: mana 0.5)
+@export var needs: Reserve  # it can only be paid with this reserve (a Warlock's higher-tier skills: a Sweet Nothing)
 @export var cost_with: Dictionary[Reserve, float] = {}  # cost factor paid with a reserve, once the caster has opened it up to this skill's tier (starter spells: mana 0.5, opened by Mana)
 @export var radius := 0.0  # range before reach and size
 @export var radius_mod := &""  # plus the caster's mod in this stat, reaching an adjacent unit at least (starter spells: intelligence)
 @export var hostile := true  # targets enemies (false: allies)
 @export var dual := false  # usable on allies and foes alike: allies get its effects, foes its damage (starter spells)
+@export var either := false  # usable on allies and foes alike, its effects on both (wauaw)
 @export var rolls := true  # used on a foe: rolls d20 + attack mod against its Defense first (Battle.cast())
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
 @export var grip := Vector2i.ZERO  # its effects hold the foe (grappled) until it breaks free by moving away: each turn it ends held, these dice + the caster's mod in its stat (Drown: 1d12; Battle._break_free(), Battle._grip())
+@export var links := false  # on itself: links it with its teammates within its cha mod in tiles (at least 1) and its leader, to pool what they make out (Coordinate; Battle._link())
 @export var prays := false  # prays to the caster's god, an effect by god (Pray; Battle.pray())
 @export var observes := false  # cast on a tile: the caster inspects every tile around it as if it had rested rank turns (Observe; Battle.observe())
 @export var auto := false  # used at once, landing on the nearest units in range - allies and foes alike - no more than its rank (Sing; Battle.auto_targets())
 @export var save := &""  # used on a foe: in place of the attack roll, it saves - d20 + its mod in this beating d20 + the caster's mod in the skill's stat + rank; failing, it takes the effects, and that roll is what seeing through them must beat (Haluca: wisdom)
+@export var disables := false  # a curse: with its save, the caster's luck-rounded sqrt(rank) of the foe's skill slots are switched off, right to left, for its turns; the foe adds the ranks of the skills in them to its save (Brainfog; Unit.disable_order())
 @export var resisted := &""  # it pulls only foes enraptured by the caster (fooled, with no suspicion of it); on a suspicious one, d20 + the caster's mod in the skill's stat against d20 + its mod in this takes a stack of suspicion off (Sing: wisdom; Battle._lured())
-@export var tiers: Array[Tier] = []  # damage by rank; none: no damage
+@export var tiers: Array[Tier] = []  # damage by rank; none: no damage (tagged energy: it drains Energy first - Unit.drain())
+@export var carry := 0.0  # energy damage: this x (rank - 1) of what's left once the target's Energy is gone goes on to HP (Smite: 0.2)
 @export var hits_per_rank := false  # Strike III hits three times
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
 @export var turns := 0  # how many of the target's turns put-on effects last (zones: the caster's)
@@ -41,6 +46,13 @@ extends Resource
 @export var until_move := false  # they last until the target moves rather than standing still - with no turns set, with no limit (Hide)
 @export var self_only := false  # used on its user alone (Hide)
 @export var investigated := false  # the target rolls once (d20 + stat mod + rank), and enemies that can see it investigate against that; those who meet it aren't fooled by it (Battle.investigate())
+
+@export_group("Channel")  # cast on a tile, it channels; cast again for strike_ap and strike_cost to strike (Metea; Battle._detonate())
+@export var channel := false
+@export var strike_ap := 0.0
+@export var strike_cost := 0
+@export var blast := 0.0  # the explosion's radius, per rank
+@export var dice_per_rank := false  # its tier's dice rolled once per rank (Metea II: 2d12)
 
 @export_group("Heal")  # used on an ally (Battle.mend())
 @export var heal_mods: Array[StringName] = []  # heals the caster's mods in these, added up (First Aid: dexterity, wisdom; Renew: wisdom)...
@@ -63,6 +75,8 @@ extends Resource
 
 @export_group("Energy")  # passive: what its holder's Energy counts as
 @export var energy_as: Array[StringName] = []  # Energy paid for skills with these tags gets the bonuses their own resources give (Working Knowledge: magical - Hex at half AP, as with Mana)
+@export var reserve: Reserve  # passive: gives its holder this reserve, its max the holder's mod in reserve_mod (at least 0) x rank (Sweet Nothings)
+@export var reserve_mod := &""
 @export var opens: Reserve  # skills up to its rank in tier get their cost_with savings for this reserve (Mana: mana)
 
 @export_group("Look")  # a persona it puts forward on whoever has it (Alluring; Unit._take_looks()), cutting their dissonance penalty by its rank
@@ -93,19 +107,25 @@ func fits_bar() -> bool:
 	return not passive or toggle
 
 
+# Its holder's build stands on it (Powerful): it's the easiest to disable, and one going takes every
+# pillar skill with it (Unit.disable()).
+func pillar() -> bool:
+	return &"pillar" in tags
+
+
 # Aimed at a tile rather than a unit: area skills and trap skills.
 func on_tile() -> bool:
-	return zone != &"" or lays != null or observes
+	return zone != &"" or lays != null or observes or channel
 
 
 # Can be used on foes: hostile skills, and dual ones.
 func for_foes() -> bool:
-	return hostile or dual
+	return hostile or dual or either
 
 
 # Can be used on allies: support skills, and dual ones.
 func for_allies() -> bool:
-	return not hostile or dual
+	return not hostile or dual or either
 
 
 # Rolls to hit a foe before it does anything to it.
@@ -239,7 +259,7 @@ func describe(rank := 1) -> String:
 	if passive:
 		lines.append("Passive" + (", switched on and off" if toggle else ", always on"))
 	else:
-		var kind := "Area" if zone else ("Self" if self_only else ("Ally or foe" if dual else ("Attack" if hostile else ("Heal" if heals() else "Support"))))
+		var kind := "Channel" if channel else "Area" if zone else ("Self" if self_only else ("Ally or foe" if dual or either else ("Attack" if hostile else ("Heal" if heals() else "Support"))))
 		lines.append("%s · %s" % [kind, summary()])
 		for r: Reserve in ap_with:
 			lines.append("%s AP paid with %s" % [share(ap_with[r]), r.name])
@@ -264,7 +284,13 @@ func describe(rank := 1) -> String:
 			lines.append("Drael: takes %d rank%s of debuffs off an ally within %d tile%s, the highest first" % [n, s, n, s])
 			lines.append("Vetruvis: the ground within %d tile%s becomes disturbed earth for %d turn%s, costing its enemies 50%% more to enter" % [n, s, n, s])
 		if save:
-			lines.append("The foe saves: d20 + %s mod against d20 + %s mod + %d" % [String(save).left(3), String(stat()).left(3), rank])
+			lines.append("The foe saves: d20 + %s mod%s against d20 + %s mod + %d" % [String(save).left(3),
+					" + the ranks of the skills it would lose" if disables else "", String(stat()).left(3), rank])
+		if disables:
+			var n := floori(sqrt(rank))
+			var up := ceili(sqrt(rank))
+			lines.append("Failing, %s of its skill slots are disabled, from the right%s; its pillar skills go first, all as one slot"
+					% [str(n) if n == up else "%d (%d while lucky)" % [n, up], _lasting(rank)])
 		if lays:
 			var bonus := " + %s" % String(lays.bonus_stat).left(3) if lays.bonus_stat else ""
 			lines.append("Sets a %s: concealment %d, %dd%d x %d%s %s" % [lays.name.to_lower(), lays.concealment * rank,
@@ -272,11 +298,18 @@ func describe(rank := 1) -> String:
 			if &"trap" in tags:
 				lines.append("Allies within its charisma mod in tiles learn where it is")
 		var t := tier(rank)
+		if channel:
+			lines.append("Channels on a tile. Cast again for %s AP and %d cost to strike: a tile within (its side's turns since) tiles of it explodes, hitting everyone within %s tiles but the caster"
+					% [num(strike_ap), strike_cost, num(blast * rank)])
 		if t:
 			var dmg := _damage(t)
+			if dice_per_rank and rank > 1:
+				dmg = dmg.replace("%dd%d" % [t.dice.x, t.dice.y], "%dd%d" % [t.dice.x * rank, t.dice.y])
 			if hits_per_rank and rank > 1:
 				dmg = "%d hits of %s" % [rank, dmg]
 			lines.append(foe + ("deals " if dual else "Deals ") + dmg)
+			if &"energy" in tags:
+				lines.append("Energy damage: it drains Energy (or Power) first" + (", then %d%% of the rest goes on to HP" % roundi(carry * (rank - 1) * 100) if carry * (rank - 1) > 0 else ""))
 		if grants:
 			lines.append("Gives %s for %d turns" % [grants.name, lasts(rank)])
 		if heals():

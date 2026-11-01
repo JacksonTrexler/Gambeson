@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="2_reserve"]
+[ext_resource type="Resource" path="res://Reserves/sweet_nothings.tres" id="3_sn"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Sweet Nothings"
+passive = true
+tags = Array[StringName]([&"warlock", &"magical"])
+glyph = "SN"
+reserve = ExtResource("3_sn")
+reserve_mod = &"charisma"

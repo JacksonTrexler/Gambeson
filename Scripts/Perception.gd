@@ -31,10 +31,11 @@ const STAT_WORDS := {&"strength": "strong", &"dexterity": "nimble", &"constituti
 # factions whatever it doesn't cover gets twisted (more of it, more consistently, the higher the
 # trickery). Without trickery it still fools allies that aren't insightful (fronts_to()), and allies
 # near its Conspire let it fool them; with Conspire switched off, none of its allies are fooled.
-# Allies of low wisdom make out less of each other than recon would show (_dim()).
-static func unit(b: Battle, o: Unit, t: Unit) -> Read:
+# Allies of low wisdom make out less of each other than recon would show (_dim()). extra: recon
+# others share with it (Coordinate: Battle.read()).
+static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	var r := Read.new()
-	var recon := o.stat(&"recon", t.tags)
+	var recon := o.stat(&"recon", t.tags) + extra
 	var left := _left(o, _levels(b, t.cell, t, true, o))
 	_sense(r, left, recon, o.luck - t.luck)
 	_place(r, o, t, _main(left))
@@ -83,9 +84,9 @@ static func unit(b: Battle, o: Unit, t: Unit) -> Read:
 	if shown.call(2, 2):
 		r.level = t.level
 	if shown.call(3, 2):
-		r.skills = t.actives + t.passives
+		r.skills = t.kit
 	if o != t and o.faction == t.faction and r.net >= 0:
-		r.kit = t.actives + t.passives
+		r.kit = t.kit
 	if shown.call(3, 99):
 		r.effects.assign(t.timed.keys())
 		r.suspects = t.suspicion.duplicate()
@@ -96,6 +97,9 @@ static func unit(b: Battle, o: Unit, t: Unit) -> Read:
 		_dim(o, t, r, p, f)
 	if r.net >= 0 and o != t and o.insightful():
 		r.insight = insight(t, r)
+	if r.net >= 2 and o != t and o.insightful():
+		r.intention = t.intention
+		r.strategy = t.strategy.duplicate()
 	if o.scrambles(t) and not r.tags.is_empty():
 		r.tags = scramble(o, t, r.tags.size())
 	return r
@@ -284,13 +288,13 @@ static func embellish(t: Unit) -> Dictionary:
 # What `o` knows about the tile at `c`. A trap looks like what it imitates until recon reaches it -
 # or o was told of it (a laid trap's setter, and the allies it told) - unless a zone (darkness) hides
 # the ground altogether. Allies of a setter with trap_word who weren't told get a vibe of it.
-static func tile(b: Battle, o: Unit, c: Vector2i) -> Read:
+static func tile(b: Battle, o: Unit, c: Vector2i, extra := 0.0) -> Read:
 	var r := Read.new()
 	var ter := b.terrain(c)
 	var snare: Battle.Snare = b.snares.get(c)
 	var hidden := b.hidden(c) and not (snare and o in snare.known)
 	var left := _left(o, _levels(b, c, null, hidden, o))
-	_sense(r, left, o.stat(&"recon", ter.tags), o.luck)
+	_sense(r, left, o.stat(&"recon", ter.tags) + extra, o.luck)
 	r.cell = c
 	if r.net > -4:
 		r.aura = ter.worth()

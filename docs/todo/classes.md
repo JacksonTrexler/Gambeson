@@ -14,7 +14,7 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 - [ ] **Grind** (passive): str mod can count toward martial limits; max HP drops by the % overage. *Now:* a stub on the core ring. (?2 ?11)
   - Rank 2+: bonus slots, each −10 × (rank − 1)% max HP while in use.
   - Rank 11+: bonus slots also cut max energy the same way.
-- [ ] If a skill that grants slots is removed, its slots are lost as the Losing a slot rule says. (?7) *Now:* skills can't be removed.
+- [ ] If a skill that grants slots is removed, its slots are lost as the Losing a slot rule says. (?24) *Now:* skills can't be removed.
 - [ ] **Igna** (fire, Magic root): ally gains int mod + rank skill AP. *Now:* a stub. (?10)
 - [ ] **Aetha** (wind, Magic root): ally gains int mod + rank movement AP. *Now:* a stub. (?10)
 - [ ] **Martial root**: not designed yet. *Now:* Wary, then the capstone. (?15)
@@ -47,30 +47,28 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 
 ## Warlock
 
-Devoted to a patron: **Elmon** or **Hogel**. Main stat: cha. The tree has a tab per patron. Every tab shares a static tier 1 row, already unlocked, with Hex and Sweet Nothings. From tier 2 on, each tab is its patron's path. (?17)
+*Now:* `Roles/warlock.tres` (cha 15, the Gaunt sprite; on the entry screen): a tab per patron, **Elmon** and **Hogel**, sharing a static tier 1 row (Hex, Sweet Nothings, Chant), with Hex and Sweet Nothings learned from the start. Elmon's tab: Analysis Dialysis, wauaw, Brainfog and Haluca, from tier 2. Built entries are in `docs/done/classes.md`.
 
-- [ ] **Haluca** (earth spell; `Skills/haluca.tres`): built but on no tree, until the Warlock has one. A foe within cha mod + rank tiles saves (d20 + wis mod beating d20 + the caster's cha mod + rank) or sees everyone's tags scrambled for cha mod + rank turns (the `scrambled` stat; `Perception.scramble()`: as many tags, drawn from the persona tag list, the same each look). Allies whose tags it sees scrambled count as suspicious to it, so its looks take them in; investigating one, against the caster's roll, sets that one straight (`Battle.untangled`, logged "X sees through Haluca --> Y (a - b)"). (?17)
+- [ ] **Chant** (tier 1 passive, on the shared row): a stub. Its text stops at "Waiting with". (?26)
+- [ ] **Hogel's path**: a stub tab. (?26)
+- [ ] Higher-tier Warlock skills that need a Sweet Nothing (`Skill.needs`): none designed yet.
 
-Starting skills
-- [ ] **Hex I.**
-- [ ] **Chant** (tier 1 passive): not designed yet. (?17)
-- [ ] **Sweet Nothings** (tier 1 passive): an interesting resource that's hard to recover. The two main ways back are slaying an enemy unit, and using patron skills and passives to satisfy a patron. (?17)
-
-**Elmon**
-- [ ] **Analysis Dialysis** (tier 2 passive): unmasking an enemy unit that was pretending to be friendly or neutral gives 2 Sweet Nothings × rank. Removing a level of concealment from a hidden foe gives 1 × rank. (?17)
-- [ ] **wauaw** (tier 2 active): puts an effect on a unit within rank tiles for 3 + 2 × rank turns. The unit gets a mitigation penalty and a general damage buff, both in 10% steps by how much of the effect is left. They're weakest at the start and end (10%) and strongest in the middle: at rank I (5 turns), 10, 20, 30, 20, 10%. (?17)
-
-**Hogel.** Stubbed: not designed yet.
-
-17. Warlock:
-    - Chant's text stops at "Waiting with". How does it end?
-    - Sweet Nothings: a reserve like Mana, paying for Warlock skills? How big, does it start full, and does anything else bring it back (resting, a new battle)?
-    - What satisfies each patron, beyond Analysis Dialysis for Elmon?
-    - Can a Warlock learn from both patrons' tabs, or does its first tier 2 skill devote it to one? Is Chant on the shared tier 1 row too?
-    - Analysis Dialysis: does "unmasks" mean seeing through a unit's ally disguise (perception rank 2), by any means, or only by this unit's own actions? Units can only pretend to be allies now: does pretending to be neutral need adding?
-    - wauaw: allies, foes or both? Does it roll on a foe? Can the mitigation penalty take a unit below 0 (taking extra damage)? Is the lowercase name on purpose?
+23. Brainfog, as built (each can change):
+    - It lasts rank + 1 turns. sqrt(rank) rounds down, or up while the caster is lucky (rank 1–3: 1 slot, rank 4–8: 2).
+    - "From the right": pillar skills first (as one slot), then the passives that are always on (they'd fill the bar from the bottom), then the hotbar from its last slot back, typed and clover slots included where they sit, then any active not on the bar. Right order?
+    - 4 AP, cost 3 (so one Sweet Nothing). A foe that saves grows a stack of suspicion of the caster, as with Haluca.
+25. Sweet Nothings, as built (each can change):
+    - Max cha mod × rank (rank I: cha mod), full as each battle starts.
+    - It pays a Warlock skill's whole cost whenever that saves Energy (a cost of 2 or more), automatically; Energy pays the rest. Should the player pick which pays instead?
+    - +1 for each foe its skills slay (not traps or bleeds).
+    - Analysis Dialysis: "unmasks" counts any of its own checks that take away a front it took for friendly or neutral (neutral: the Passive stance), and each concealment level its suspicion takes off a hiding foe (by suspicion of the foe or of its tile).
+26. Warlock, still open from 17:
+    - Chant: how does "Waiting with" end?
+    - Hogel's path: what's on it, and what satisfies Hogel?
+    - Can a Warlock learn from both patrons' tabs, or does its first tier 2 skill devote it to one?
+    - Brainfog and Haluca are on Elmon's tab. The right patron?
+    - wauaw, as built: on anyone, ally or foe, with no roll; its damage-taken step can take mitigation below 0 (extra damage taken). 3 AP, cost 2.
     - Does Hex use cha for a Warlock (it's a wis skill)?
-    - Haluca: which patron's tab is it on? Should a target that passes its save grow suspicious of the caster?
 
 ## Rogue and Bard
 
@@ -94,13 +92,15 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
   - [ ] **Impassioned Fighter** (passive): +rank to a skill's primary mod when targeting an adjacent unit.
 
 **Idealism: Chivalry**
-- [ ] **Coordinate** (root · active · 1 AP · 3 Energy): teammates within cha mod tiles share recon on the area's tiles and units, up to rank levels. (?4)
+- [x] **Coordinate**: built (`docs/done/classes.md`). *Now:* a Paladin option. (?27)
   - [ ] **Final Act** (passive): once per battle, on reaching 0 HP, interrupt the current turn to take 1 free action; the interrupted turn then resumes. (?12)
   - [ ] **Gallantry** (passive): cha check against a unit attacking an adjacent ally. On a pass you become its target, and that ally can't be retargeted.
 
 **Prowess: Protector.** See Fighter.
 
-4. Coordinate shares recon between teammates. With vision through the leader only, does it also let you see what those teammates see, or only improve what they know?
+27. Coordinate, as built (each can change):
+    - It links the caster, its teammates within its cha mod in tiles (at least 1) and its leader wherever it is, until the end of its side's next turn. Each linked unit makes out what the best of them does, up to rank levels better: recon only, so a lie one of them sees through still fools the others unless the extra recon breaks it.
+    - With your answer (the unit and the leader use the sum of what they make out), should the HUD switch to the leader's view now - your units' sight reaching you only through Coordinate - or wait for Synergy?
 12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
 
 ## Fighter

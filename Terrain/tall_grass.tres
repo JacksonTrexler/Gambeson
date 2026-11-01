@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Terrain" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Terrain.gd" id="1_terrain"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_cover"]
+script = ExtResource("2_effect")
+stat = "concealment"
+
+[resource]
+script = ExtResource("1_terrain")
+name = "Tall grass"
+tags = Array[StringName]([&"grass", &"shrubbery", &"tall"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_cover")])

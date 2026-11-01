@@ -47,6 +47,16 @@ Core: **Hex** (built).
 - [x] **Mage Armor** (passive, `magical`, switched on and off; early in the tree): + int mod to Defense while on. *Now:* a Wizard option, unlocked with a skill point. (?10)
 - [x] The Adventurer's starter spells (Sola, Nadira, Astera, Terestera, Hydera) are Wizard options too. (?10)
 
+## Warlock
+
+`Roles/warlock.tres`: cha 15, "Caster", the Gaunt sprite; on the entry screen. A tab per patron, **Patron: Elmon** and **Patron: Hogel** (a stub), each opening with the shared tier 1 row (`Role.shared`): Hex, Sweet Nothings and Chant (a stub). Hex and Sweet Nothings are learned from the start. (?26)
+
+- [x] **Sweet Nothings** (tier 1 passive, `warlock`; `Reserves/sweet_nothings.tres`, pink): a reserve of cha mod × rank (none at +0), full as each battle starts. One Sweet Nothing pays a Warlock skill's whole cost, whatever it is; it's spent when that saves Energy. Higher-tier skills can need one (`Skill.needs`). One back for each foe the Warlock's skills slay, and more as its patron is satisfied. (?25)
+- [x] **Analysis Dialysis** (Elmon, tier 2 passive, after Sweet Nothings): unmasking a foe it took for friendly or neutral gives 2 Sweet Nothings × rank; each level of concealment its suspicion takes off a hiding foe, 1 × rank (`unmask_gain`, `uncover_gain`; `Battle._dialysis()`). (?25)
+- [x] **wauaw** (Elmon, tier 2 active, after Sweet Nothings; 3 AP, cost 2, range rank): on any unit, ally or foe, with no roll, for 3 + 2 × rank turns: more damage taken and more damage dealt, both 10% steps climbing to the middle of its turns and back down (rank I: 10, 20, 30, 20, 10%). (?26)
+- [x] **Brainfog** (Elmon, tier 2 curse, after Hex; 4 AP, cost 3, range cha mod + rank): the foe saves, d20 + wis mod + the ranks of the skills it would lose, against d20 + cha mod + rank (the caster wins ties). Failing, the caster's sqrt(rank) - rounded down, up while lucky - of its skill slots are disabled from the right (see Pillar skills) for rank + 1 turns. Passing, it grows suspicious of the caster. (?23)
+- [x] **Haluca** (Elmon, tier 2, after Hex): as before; a foe that saves now grows a stack of suspicion of the caster. (?26)
+
 ## Rogue and Bard
 
 Stub trees from skills that exist, each with its own tab and **Calling: Freedom** beside it. (?19)
@@ -64,4 +74,5 @@ Stub trees from skills that exist, each with its own tab and **Calling: Freedom*
   - Drael: `Battle.cleanse()`: debuffs (effects that hurt their holder) lose ranks, highest first, rank ranks in all; one at 0 is gone. Ramut's Ire isn't lifted.
   - Vetruvis: every tile within rank tiles becomes its side's disturbed earth (`Battle.earthworks`) for rank of its side's turns: entering costs enemies ×1.5 (`Battle.wading()`). Drawn as a furrowed brown wash.
   - *Now:* a Paladin option, until Divinity has trees.
+- [x] **Coordinate** (Idealism root · active · 1 AP · 3 Energy · on itself; `Skills/coordinate.tres`): links the caster with its teammates within its cha mod in tiles (at least 1) and its leader, wherever it is, until the end of its side's next turn. Linked, each makes out units and tiles as well as the best of them does, up to rank levels better (`Battle.read()`). *Now:* a Paladin option. (?27)
 - [x] **Renew** (tier 1 active, `divine`, `wis`; Divinity): restores wis mod HP (at least 1), and the recipient gets rank AP back. Against wounds it counts rank × rank: Renew II clears wounds up to rank 4. *Now:* a Paladin option (3 AP, 2 Energy, range 2), until Divinity has a tree; also on the Adventurer's Magic root.

@@ -9,6 +9,7 @@
 [ext_resource type="Resource" path="res://Skills/relay.tres" id="7_relay"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
 
+[ext_resource type="Resource" path="res://Loot/alabaster.tres" id="90_loot"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("9_slot")
 skill = ExtResource("4_strike")
@@ -30,6 +31,7 @@ skill = ExtResource("7_relay")
 rank = 1
 
 [node name="Alabaster" instance=ExtResource("1_unit")]
+loot = ExtResource("90_loot")
 vibe = "Unyielding"
 aura = 1
 race = ExtResource("3_golem")

@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Gaunt.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
+[ext_resource type="Resource" path="res://Skills/hex.tres" id="s_hex"]
+[ext_resource type="Resource" path="res://Skills/sweet_nothings.tres" id="s_sweet_nothings"]
+[ext_resource type="Resource" path="res://Skills/chant.tres" id="s_chant"]
+[ext_resource type="Resource" path="res://Skills/analysis_dialysis.tres" id="s_analysis_dialysis"]
+[ext_resource type="Resource" path="res://Skills/wauaw.tres" id="s_wauaw"]
+[ext_resource type="Resource" path="res://Skills/brainfog.tres" id="s_brainfog"]
+[ext_resource type="Resource" path="res://Skills/haluca.tres" id="s_haluca"]
+[ext_resource type="Resource" path="res://Skills/hogel_path.tres" id="s_hogel_path"]
+
+[sub_resource type="Resource" id="Slot_hex"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_hex")
+
+[sub_resource type="Resource" id="Slot_sweet_nothings"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_sweet_nothings")
+
+[sub_resource type="Resource" id="Branch_analysis_dialysis"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_analysis_dialysis")
+after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
+
+[sub_resource type="Resource" id="Branch_wauaw"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_wauaw")
+after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
+
+[sub_resource type="Resource" id="Branch_brainfog"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_brainfog")
+after = Array[ExtResource("5_skill")]([ExtResource("s_hex")])
+
+[sub_resource type="Resource" id="Branch_haluca"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_haluca")
+after = Array[ExtResource("5_skill")]([ExtResource("s_hex")])
+
+[sub_resource type="Resource" id="Root_Elmon"]
+script = ExtResource("6_root")
+name = "Elmon"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_analysis_dialysis"), SubResource("Branch_wauaw"), SubResource("Branch_brainfog"), SubResource("Branch_haluca")])
+
+[sub_resource type="Resource" id="Tab_Elmon"]
+script = ExtResource("8_tab")
+name = "Elmon"
+kind = "Patron"
+roots = Array[ExtResource("6_root")]([SubResource("Root_Elmon")])
+
+[sub_resource type="Resource" id="Branch_hogel_path"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_hogel_path")
+after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
+
+[sub_resource type="Resource" id="Root_Hogel"]
+script = ExtResource("6_root")
+name = "Hogel"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_hogel_path")])
+
+[sub_resource type="Resource" id="Tab_Hogel"]
+script = ExtResource("8_tab")
+name = "Hogel"
+kind = "Patron"
+roots = Array[ExtResource("6_root")]([SubResource("Root_Hogel")])
+
+[resource]
+script = ExtResource("1_script")
+noun = "Caster"
+name = "Warlock"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_hex"), SubResource("Slot_sweet_nothings")])
+stats = Dictionary[StringName, int]({&"strength": 8, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Elmon"), SubResource("Tab_Hogel")])
+shared = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_sweet_nothings"), ExtResource("s_chant")])
