@@ -63,7 +63,7 @@ func attitude(o: Unit) -> StringName:
 		return &""
 	if stance == &"passive":
 		return &"ignore"
-	if faction == o.faction:
+	if Faction.friends(faction, o.faction):
 		return &"ally"
 	return &"avoid" if stance == &"aggressive" else &"foe"
 

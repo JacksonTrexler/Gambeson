@@ -4,8 +4,8 @@ extends Node2D
 # What the HUD marks on the battlefield, drawn between the map and the units: the hovered tile, the
 # selected unit, the leader and its party, allies taking orders and how far orders reach, where the
 # selected unit can walk and the move being planned, the foe a click would attack, an armed skill's
-# reach and targets, tiles where something is only suspected, debris hiding units left, and disturbed
-# earth.
+# reach and targets, tiles where something is only suspected, debris hiding units left, disturbed
+# earth and the star lattice.
 # Floating numbers and sleepers' "zZ" go on `top`, above the units; walking is animated here too.
 
 const TILE := 32.0
@@ -18,6 +18,8 @@ const ZONE := Color("#5b3f9e")
 const DUBIOUS := Color("#b39ddb")
 const DEBRIS := Color("#c9a66b")
 const EARTH := Color("#8a6a45")
+const STAR := Color("#bfe3ff")  # the star lattice: panes and their links
+const STARPOWER := Color("#ffe48a")
 const SHADE := {&"safe": 0.16, &"unsure": 0.26, &"bad": 0.45}  # reach shading strength by ground
 
 var hud: HUD
@@ -45,6 +47,7 @@ func _draw() -> void:
 		draw_rect(_rect(c, 2), Color(DUBIOUS, 0.12))
 		draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6, 10,
 				Color(DUBIOUS, 0.25 + 0.2 * pulse))
+	_lattice(b, pulse)
 	for c in b.earthworks:
 		_earth(c)
 	for c in b.debris:
@@ -199,6 +202,26 @@ func _debris(c: Vector2i) -> void:
 
 
 # Disturbed earth (Battle.earthworks): a brown wash, furrowed.
+# The star lattice (Battle.panes, Battle.starpower): a faint pane on each tile, a line to each lattice
+# neighbour side-on, and on each source a star that brightens as it fills.
+func _lattice(b: Battle, pulse: float) -> void:
+	for c in b.panes:
+		draw_rect(_rect(c, 5), Color(STAR, 0.08))
+		draw_rect(_rect(c, 5), Color(STAR, 0.3), false, 1.0)
+	for c in b.panes.keys() + b.starpower.keys():
+		for d in [Vector2i.RIGHT, Vector2i.DOWN]:
+			if b.on_lattice(c + d):
+				draw_line(_center(c), _center(c + d), Color(STAR, 0.35), 1.0)
+	for c in b.starpower:
+		var full := b.charge[c] / float(Battle.STAR_CAPACITY)
+		var at := _center(c)
+		var pts := PackedVector2Array()
+		for i in 10:
+			var rad := (7.0 if i % 2 == 0 else 3.0) * (0.8 + 0.2 * pulse)
+			pts.append(at + Vector2.from_angle(-PI / 2 + i * PI / 5) * rad)
+		draw_colored_polygon(pts, Color(STARPOWER, 0.35 + 0.55 * full))
+
+
 func _earth(c: Vector2i) -> void:
 	var r := _rect(c, 1)
 	draw_rect(r, Color(EARTH, 0.22))

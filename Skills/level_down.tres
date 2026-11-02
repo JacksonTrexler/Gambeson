@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Resource" path="res://Reserves/sweet_nothings.tres" id="3_sn"]
+
+[sub_resource type="Resource" id="Effect_level"]
+script = ExtResource("2_effect")
+stat = "level"
+amount = -1.0
+per_rank = true
+name = "Level Down"
+ease = 2
+
+[resource]
+script = ExtResource("1_skill")
+name = "Level Down"
+tags = Array[StringName]([&"warlock", &"magical", &"cha", &"curse"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_level")])
+glyph = "LD"
+ap = 5.0
+cost = 4
+needs = ExtResource("3_sn")
+radius_per_rank = 1.0
+radius_mod = &"charisma"
+levels_down = true

@@ -11,6 +11,7 @@ signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up ag
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
+const GENERAL: Array[Skill] = [preload("res://Skills/synergy.tres")]  # on offer to every class (sources())
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
 const ENERGY_COLOR := Color("#e8c547")
 const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full
@@ -21,6 +22,9 @@ const GLOW := 0.55  # how strongly a unit glows in its side's colour
 # The gods units pray to (god; Pray: Battle.pray()), by domain.
 const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
 		&"drael": "water, air", &"vetruvis": "earth, music"}
+# The damage tag of each god's domain, carried by skills of their worshippers that take it (Smite: Skill.god_tag).
+const GOD_TAGS := {&"ramut": &"physical", &"eros": &"love", &"sol": &"fire", &"urlo": &"energy", &"luun": &"dark",
+		&"drael": &"water", &"vetruvis": &"earth"}
 const TRIM_DARKEN := 0.45  # bar trim: the side's primary, this much darker
 const BAR_WIDTH := 24.0
 
@@ -89,6 +93,9 @@ class Applied:
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())
 @export var loot: Loot  # what it may drop as it falls (Battle._on_died())
 @export var summons: PackedScene  # comes with each heart it spends, as it gets up (the Astral Princess: a Regeneration Probe)
+@export_file("*.tscn") var reverts_to := ""  # what it falls back into as it dies, on its tile (a Starman: a Starspirit; Battle._on_died()) - a path: the two scenes name each other
+@export_file("*.tscn") var reforms_into := ""  # what it becomes once its Reforming stacks reach its level (a Starspirit: a Starman; Battle._starkind())
+@export var hunts: Array[Faction] = []  # sides its AI goes after first (Starmen: the Stellar Order; AI.HUNT)
 
 @export_group("Persona")  # what it advertises; the Persona skill's rank says how much
 # The side it presents as, to those it fools (Read.stance): Friendly (rank 2) passes for their ally;
@@ -111,6 +118,7 @@ class Applied:
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
+var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
 @export var max_hp := 10:
@@ -148,11 +156,13 @@ class Applied:
 # Starts at 0 and fills in _ready, so bars get an initial hp_changed(0, max_hp).
 var hp := 0:
 	set(v):
-		v = clampi(v, 0, max_hp)
+		v = clampi(v, 0, max_hp + over_max)
 		if v == hp:
 			return
 		var was := hp
 		hp = v
+		if v <= max_hp:
+			over_max = 0
 		hp_changed.emit(was, v)
 		if v == 0 and not reviving and lives_left() > 0:  # local v, not hp: a listener may have changed hp re-entrantly
 			hearts_used += 1
@@ -200,7 +210,11 @@ var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn
 var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
 var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
 var _hp_bonus := 0  # what its items and passives add to its max HP now (refit())
+var over_max := 0  # HP it may hold past its max for now (a Red Spinel Ring past rank 10), gone once it drops to its max
+var slain_from := 0  # the HP it had as Death took it: what revival and die-hard effects go by (Battle._death())
 var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> its turns left: they can't be used, and passives stop working
+var cursed: Dictionary[Skill, bool] = {}  # of those, the ones a curse switched off (Brainfog): their slots quiver
+var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
 var slots: Array[Slot]:
@@ -216,14 +230,16 @@ var slots: Array[Slot]:
 var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
-		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and x.skill not in disabled).map(func(x: Slot): return x.skill))
+		var lost := unranked()
+		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and x.skill not in disabled and lost.get(x.skill, 0) < x.rank).map(func(x: Slot): return x.skill))
 		return s
 
 # Passive entries that are on (and not disabled).
 var on_passives: Array[Slot]:
 	get:
 		var s: Array[Slot] = []
-		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and x.skill not in disabled))
+		var lost := unranked()
+		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and x.skill not in disabled and lost.get(x.skill, 0) < x.rank))
 		return s
 
 var passives: Array[Skill]:
@@ -288,11 +304,49 @@ func _process(_delta: float) -> void:
 	energy_bar.self_modulate = Color.WHITE.lerp(to, beat) if full > 0.75 else Color.WHITE
 
 
+# Its rank in s as it uses it: what it has learned, plus what rank effects add (a Broadsword: Strike);
+# 0 if it doesn't have s.
 func rank(s: Skill) -> int:
+	var r: int = base_rank(s) - unranked().get(s, 0)
+	return r + maxi(roundi(skill_stat(&"rank", s)), 0) if r > 0 else 0
+
+
+# Levels a curse has taken off it (Level Down), from its timed level effects alone (its passives can't
+# be read here: they depend on this).
+func _cursed_levels() -> int:
+	var n := 0.0
+	for e in timed:
+		if e.stat == "level":
+			n += e.amount * (timed[e].rank if e.per_rank else 1) * timed[e].strength(e)
+	return maxi(-roundi(n), 0)
+
+
+# Ranks a level curse has taken back, by skill: each level lost costs a skill point, from its unspent
+# ones first; past those, its last purchases are undone, newest first, until the total isn't negative.
+# An unlock undone switches the skill off; a raise, a rank off. Back as the curse ends.
+func unranked() -> Dictionary:
+	var out := {}
+	var owed := _cursed_levels() - skill_points
+	var i := purchases.size() - 1
+	while owed > 0 and i >= 0:
+		out[purchases[i][0]] = out.get(purchases[i][0], 0) + 1
+		owed -= purchases[i][1]
+		i -= 1
+	return out
+
+
+# Its rank in s as learned: what skill points raise (raise_cost()).
+func base_rank(s: Skill) -> int:
 	for x in slots:
 		if x.skill == s:
 			return x.rank
 	return 0
+
+
+# An attribute of s for it (range, rank): what its effects add, asked with s's tags (Skill.query()),
+# and only effects that list s when they list skills.
+func skill_stat(attr: StringName, s: Skill) -> float:
+	return stat(attr, s.query(), null, s)
 
 
 func is_on(s: Skill) -> bool:
@@ -311,9 +365,26 @@ func toggle(s: Skill) -> bool:
 	return false
 
 
-# Its sure skill slots: 4 + level / 4, rounded down, + any extra (NPCs and monsters).
+# Its sure skill slots: 4 + level / 4, rounded down, + any extra (NPCs and monsters) - by the higher of
+# its level and its level now (lv()): a level buff adds slots, and slots a curse takes stay on the bar,
+# sealed (sealed()).
 func slot_count() -> int:
-	return SLOTS + floori(level / 4.0) + extra_slots
+	return _slots_at(maxi(level, lv()))
+
+
+func _slots_at(l: int) -> int:
+	return SLOTS + floori(l / 4.0) + extra_slots
+
+
+# Its level now: its own, plus level effects (a buff or a curse), at least 1.
+func lv() -> int:
+	return maxi(level + roundi(stat(&"level")), 1)
+
+
+# Whether sure slot i is one a level curse took (lv() below its level): it stays, sealed and quivering,
+# until the curse ends.
+func sealed(i: int) -> bool:
+	return i >= _slots_at(lv()) and i < slot_count()
 
 
 # Slots its passives grant (Basic Magic Skill Slot +1), in the order it learned them: each one's type
@@ -335,7 +406,7 @@ func slot_kinds() -> Array[StringName]:
 	for i in slot_count():
 		out.append(&"")
 	out.append_array(granted_slots())
-	if level % 4:
+	if lv() % 4:
 		out.append(&"clover")
 	return out
 
@@ -349,7 +420,7 @@ func slot_kind(i: int) -> StringName:
 # while level isn't a multiple of 4 (-1 when it is: there's nothing to round). It only works while the
 # unit is lucky; a level that makes the rounding exact turns it into a plain slot.
 func clover() -> int:
-	return slot_count() + granted_slots().size() if level % 4 else -1
+	return slot_count() + granted_slots().size() if lv() % 4 else -1
 
 
 # Hotbar slots, the clover slot included (whether it works now or not).
@@ -357,9 +428,10 @@ func bar_size() -> int:
 	return slot_kinds().size()
 
 
-# Whether hotbar slot i works now: every slot does but the clover slot, which needs the unit lucky.
+# Whether hotbar slot i works now: every slot does but the clover slot, which needs the unit lucky,
+# and slots a level curse sealed.
 func slot_works(i: int) -> bool:
-	return i >= 0 and i < bar_size() and (i != clover() or luck > 0)
+	return i >= 0 and i < bar_size() and (i != clover() or luck > 0) and not sealed(i)
 
 
 # Whether s can go in hotbar slot i: a typed slot only holds skills carrying its type.
@@ -374,9 +446,12 @@ func rounded(x: float) -> int:
 
 
 # Puts one of the unit's skills in hotbar slot i (one that works and that it fits). A skill already on
-# the bar swaps places with whatever is in i - which comes off the bar if it doesn't fit there.
+# the bar swaps places with whatever is in i - which comes off the bar if it doesn't fit there. Pillar
+# skills keep the last sure slots: they can't be moved, and nothing takes their place.
 func bar_place(s: Skill, i: int) -> bool:
 	if i < 0 or i >= hotbar.size() or not slot_works(i) or not s or not s.fits_bar() or rank(s) == 0 or not fits(s, i):
+		return false
+	if s.pillar() or (hotbar[i] and hotbar[i].pillar()):
 		return false
 	var old := hotbar.find(s)
 	if old >= 0:
@@ -386,7 +461,7 @@ func bar_place(s: Skill, i: int) -> bool:
 
 
 func bar_clear(i: int) -> void:
-	if i >= 0 and i < hotbar.size():
+	if i >= 0 and i < hotbar.size() and not (hotbar[i] and hotbar[i].pillar()):
 		hotbar[i] = null
 
 
@@ -408,7 +483,7 @@ func free_slot(s: Skill = null) -> int:
 # tree), its species, and what it's come to know.
 func sources() -> Dictionary:
 	return {
-		&"class": role.offered() if role else ([] as Array[Skill]),
+		&"class": (role.offered() if role else ([] as Array[Skill])) + GENERAL.filter(func(s: Skill): return not role or s not in role.offered()),
 		&"species": race.options if race else ([] as Array[Skill]),
 		&"knowledge": lore,
 	}
@@ -432,9 +507,16 @@ func options() -> Dictionary:
 func missing(s: Skill) -> String:
 	if s.stub:
 		return s.waits()
+	var learnt := learned.filter(func(x: Slot): return x.skill != s and x.rank > 0).size()
+	if s.min_tier > 1 and learnt < s.min_tier - 1:
+		return "Tier %d: learn %d skill%s first (%d so far)" % [s.min_tier, s.min_tier - 1, "" if s.min_tier == 2 else "s", learnt]
 	var root := role.root_of(s) if role else null
 	if not root:
 		return ""
+	var devoted := devotion()
+	var tab := role.tab_of(s)
+	if devoted and tab and tab.devotes and tab != devoted:
+		return "Devoted to %s" % devoted.name
 	var b := root.branch(s)
 	var first := b.after.filter(func(x: Skill): return rank(x) == 0)
 	if not first.is_empty():
@@ -446,6 +528,17 @@ func missing(s: Skill) -> String:
 	return ""
 
 
+# The devoting tab (a Warlock's patron) it has learned a skill on beyond the shared row, or null:
+# the other devoting tabs are closed to it.
+func devotion() -> SkillTab:
+	if not role:
+		return null
+	for t in role.tabs:
+		if t and t.devotes and t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return base_rank(x) > 0)):
+			return t
+	return null
+
+
 # Spends a skill point on one of options(), learning it at rank I: onto the hotbar's first free slot
 # that fits it, if it goes there; slots it grants join the bar. False if it can't.
 func unlock(s: Skill) -> bool:
@@ -455,6 +548,7 @@ func unlock(s: Skill) -> bool:
 	x.skill = s
 	learned.append(x)
 	skill_points -= 1
+	purchases.append([s, 1])
 	_arrange()
 	var free := free_slot(s)
 	if s.fits_bar() and free >= 0:
@@ -466,7 +560,7 @@ func unlock(s: Skill) -> bool:
 # (r = 0) is the same rule: 1. A skill with its own rank_cost charges that for II, times its
 # rank_growth each rank after (Clever Disguise: 4, 8, 16).
 func raise_cost(s: Skill) -> int:
-	var r := rank(s)
+	var r := base_rank(s)
 	if s.rank_cost > 0 and r > 0:
 		return roundi(s.rank_cost * pow(s.rank_growth, r - 1))
 	return 1 + r * r
@@ -474,7 +568,7 @@ func raise_cost(s: Skill) -> int:
 
 # Whether s can go up a rank at all: it has it, and it's below the skill's cap.
 func can_raise(s: Skill) -> bool:
-	var r := rank(s)
+	var r := base_rank(s)
 	return r > 0 and not s.stub and (s.max_rank == 0 or r < s.max_rank)
 
 
@@ -482,6 +576,7 @@ func can_raise(s: Skill) -> bool:
 func raise(s: Skill) -> bool:
 	if not can_raise(s) or skill_points < raise_cost(s):
 		return false
+	purchases.append([s, raise_cost(s)])
 	skill_points -= raise_cost(s)
 	for x in slots:
 		if x.skill == s:
@@ -496,8 +591,13 @@ func _fill_bar() -> void:
 	_kinds = slot_kinds()
 	if not fresh:
 		return
-	var picks := slots.filter(func(x: Slot): return not x.skill.passive)
-	picks.append_array(slots.filter(func(x: Slot): return x.skill.passive and x.skill.fits_bar()))
+	var pinned := slot_count() - 1
+	for x in slots:
+		if x.skill.pillar() and x.skill.fits_bar() and pinned >= 0:  # pillar skills take the last sure slots
+			hotbar[pinned] = x.skill
+			pinned -= 1
+	var picks := slots.filter(func(x: Slot): return not x.skill.passive and not x.skill.pillar())
+	picks.append_array(slots.filter(func(x: Slot): return x.skill.passive and x.skill.fits_bar() and not x.skill.pillar()))
 	for x in picks:
 		var i := free_slot(x.skill)
 		if i >= 0:
@@ -537,7 +637,7 @@ func paused_on(ground_tags: Array[StringName]) -> Array[Skill]:
 # Base value (core stats only) plus every effect on that stat whose tags match the query;
 # "mul" effects then multiply the total (Stoneskin halves dexterity). As `viewer` sees it: timed
 # effects it saw through (Hide, against an investigator who passed) don't count.
-func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null) -> float:
+func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: Skill = null) -> float:
 	var t := Tags.expand(tags)
 	var sum: float = 0.0
 	if s == &"size" and race:
@@ -548,6 +648,8 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null) -> f
 	for pair in _effects(viewer):
 		var e: Effect = pair[0]
 		if e.stat != s or not (e.tags.is_empty() or e.tags.any(func(x): return x in t)):
+			continue
+		if not e.skills.is_empty() and of not in e.skills:
 			continue
 		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
 			continue
@@ -627,6 +729,8 @@ func mod(s: StringName, tags: Array[StringName] = []) -> int:
 # (100% - 20% x rank) of the stand-in used, so the stand-in caps at replaced / (1 - 0.2 x rank).
 # From rank 5 there's no cap, and each rank past 5 adds 20% of the replaced stat.
 func scaling(s: StringName, tags: Array[StringName]) -> float:
+	if role and s in role.swaps and &"magical" in tags:
+		s = role.swaps[s]  # a Warlock's Hex: charisma for wisdom
 	var base := stat(s)
 	var best := base
 	for x in on_passives:
@@ -683,16 +787,14 @@ func tagged_defense() -> Dictionary:
 	return out
 
 
-# Defense from armor alone. Unarmored: dex mod + con mod. Armored: the higher of the armor's floor
-# and level x its per_level (rounded down, or up while lucky), plus dex mod if the armor allows it;
-# Heart Up-Link: level + the higher of con mod and the hearts it has spent.
+# Defense from armor alone. Unarmored, or in armor that sets none (Heart Up-Link): dex mod + con mod.
+# Armored: the higher of the armor's floor and its level now x its per_level (rounded down, or up
+# while lucky), plus dex mod if the armor allows it.
 func armor_defense() -> int:
-	if not armor:
-		return mod(&"dexterity") + mod(&"constitution")
-	if armor.heart_defense:
-		return level + maxi(mod(&"constitution"), hearts_used) + armor.enchant
-	var floor_or_level := maxi(armor.defense, rounded(level * armor.per_level))
-	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + armor.enchant
+	if not armor or not armor.sets_defense():
+		return mod(&"dexterity") + mod(&"constitution") + (armor.enchant if armor else 0)
+	var floor_or_level := maxi(armor.defense, rounded(lv() * armor.per_level))
+	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + (rounded(stat(&"dexterity") * armor.dex_share) if armor.dex_share > 0.0 else 0) + armor.enchant
 
 
 # Damage its weapon adds to attacks scaling on s: an enchanted weapon's +1 a rank, on strength attacks.
@@ -758,12 +860,32 @@ func wielded(s: StringName, tags: Array[StringName] = []) -> StringName:
 	return best
 
 
-# Its lives beyond the one it has: its own hearts, and its items' (Heart Up; Heart Up-Link: con mod).
+# Its lives beyond the one it has: its own hearts, and its items' (Heart Up; Heart Up-Link: con mod;
+# a Red Spinel Ring's once a battle, spent last: ring_lives()).
 func lives() -> int:
-	var n := hearts
+	var n := hearts + ring_lives()
 	for it in items():
 		n += it.hearts + (maxi(mod(it.hearts_mod), 0) if it.hearts_mod else 0)
 	return n
+
+
+# The life its trinket gives once a battle (a Red Spinel Ring): 1, or 0.
+func ring_lives() -> int:
+	return 1 if trinket and trinket.revives > 0.0 else 0
+
+
+# The average of its six core stats, as a mod: what a general check of the whole unit rolls with (its
+# last stand: Battle.last_stand(); Level Down).
+func average_mod() -> int:
+	var sum := 0.0
+	for s in CORE:
+		sum += stat(s)
+	return floori((sum / CORE.size() - 10) / 2.0)
+
+
+# Starkind: its max HP is its max Power, and it wastes away off the star lattice (Battle._starkind()).
+func starkind() -> int:
+	return roundi(stat(&"starkind"))
 
 
 func lives_left() -> int:
@@ -805,9 +927,10 @@ func unequip(slot: String) -> Item:
 
 
 # Max HP from its base and what its items and passives add (max_hp effects: Burning Blade), at least 1.
+# Starkind, its base is its max Power.
 func refit() -> void:
 	var bonus := roundi(stat(&"max_hp"))
-	max_hp = maxi(max_hp - _hp_bonus + bonus, 1)
+	max_hp = maxi((max_energy if starkind() > 0 else max_hp - _hp_bonus) + bonus, 1)
 	_hp_bonus = bonus
 
 
@@ -841,18 +964,28 @@ func heal(h: int) -> void:
 
 
 # Every reserve it has, by max: its own (reserves), and those its passives give - each the holder's
-# mod in the passive's reserve_mod x its rank, no less than 0 (Sweet Nothings: cha mod x rank).
+# mod in the passive's reserve_mod x its rank, no less than 0 (Sweet Nothings: cha mod x rank). A
+# passive switched off or disabled keeps its reserve, but nothing is spent from it (spends()).
 func pools() -> Dictionary[Reserve, int]:
 	var out: Dictionary[Reserve, int] = reserves.duplicate()
-	for x in on_passives:
+	for x in slots:
 		var r := x.skill.reserve
-		if r:
+		if r and x.skill.passive:
 			out[r] = out.get(r, 0) + maxi(mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1, 0) * x.rank
 	return out
 
 
 func store(r: Reserve) -> int:
 	return stores.get(r, 0)
+
+
+# Whether it spends from r now: unless the passive that gives it is switched off (Sweet Nothings'
+# toggle) or disabled.
+func spends(r: Reserve) -> bool:
+	for x in slots:
+		if x.skill.reserve == r and x.skill.passive and (not x.on or x.skill in disabled):
+			return false
+	return true
 
 
 # Points back into its reserves that come back a certain way (Reserve.on_kill: a foe it slew;
@@ -900,9 +1033,10 @@ func opened(r: Reserve) -> int:
 	return best
 
 
-# s's tier for it: from its class's tree, else 1 (species and lore skills).
+# s's tier for it: from its class's tree, else 1 (species and lore skills) - at least the skill's own
+# floor (Synergy: 2).
 func tier(s: Skill) -> int:
-	return maxi(role.tier(s) if role else 0, 1)
+	return maxi(maxi(role.tier(s) if role else 0, 1), s.min_tier)
 
 
 # What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else a
@@ -911,7 +1045,7 @@ func tier(s: Skill) -> int:
 # is kept for generic skills), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
 # nothing can.
 func funding(s: Skill) -> Variant:
-	var allowed := pools().keys().filter(func(r: Reserve): return r.only.is_empty() or r.only.any(func(t): return t in s.tags))
+	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return t in s.tags)))
 	if s.needs:
 		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
 	for r: Reserve in allowed:
@@ -1007,6 +1141,7 @@ func pay_strike(s: Skill) -> bool:
 
 # Start of this unit's faction turn: fresh AP and movement, and it can slip back into hiding.
 func refresh() -> void:
+	turns_taken += 1
 	ap = _pools()
 	_ap_start.assign(ap.map(func(p: AP): return p.amount))
 	_walk_ap.assign(ap.map(func(_p: AP): return 0.0))
@@ -1105,7 +1240,8 @@ func _pools() -> Array[AP]:
 	var dex := mod(&"dexterity")
 	var wis := mod(&"wisdom")
 	var more := 1.0 + stat(&"ap")
-	var out: Array[AP] = [AP.new((BASE_AP + mini(dex, 0) + mini(wis, 0)) * more),
+	var opening := stat(&"opening_ap") if turns_taken <= 1 else 0.0  # a Dagger, on its first turn
+	var out: Array[AP] = [AP.new((BASE_AP + mini(dex, 0) + mini(wis, 0)) * (more + opening)),
 			AP.new(maxi(dex, 0) * (1.0 + stat(&"dex_ap")), &"move"), AP.new(maxi(wis, 0) * more, &"skill")]
 	return out
 
@@ -1154,13 +1290,20 @@ func pay(n: float, use: StringName) -> bool:
 func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 	var r := maxi(at_rank, timed[e].rank) if e in timed else at_rank
 	timed[e] = Applied.new(turns, r)
+	if e.stat == "level":
+		_arrange()  # its slots follow
 	return timed[e]
 
 
 # Switches s off for some of its turns (Brainfog); a pillar skill takes every pillar skill with it.
-func disable(s: Skill, turns: int) -> void:
+# A curse's (Brainfog) slots quiver; others only dim.
+func disable(s: Skill, turns: int, curse := false) -> void:
+	if s.inherent:
+		return  # what it is can't be switched off (Starkind)
 	for x in (pillars() if s.pillar() else [s] as Array[Skill]):
 		disabled[x] = maxi(disabled.get(x, 0), turns)
+		if curse:
+			cursed[x] = true
 
 
 # Its pillar skills: those its build stands on (Powerful), easiest to disable - one goes, all go.
@@ -1182,7 +1325,7 @@ func disable_order() -> Array[Array]:
 	var group := func(list: Array[Skill]) -> void:
 		var fresh: Array[Skill] = []
 		for s in list:
-			if s and s not in seen and s not in disabled and rank(s) > 0:
+			if s and not s.inherent and s not in seen and s not in disabled and rank(s) > 0:
 				seen[s] = true
 				fresh.append(s)
 		if not fresh.is_empty():
@@ -1222,6 +1365,7 @@ func tick() -> void:
 		disabled[s] -= 1
 		if disabled[s] <= 0:
 			disabled.erase(s)
+			cursed.erase(s)
 	for e in timed.keys():
 		var a := timed[e]
 		if a.lasting or (a.until_move and a.turns == 0):
@@ -1234,6 +1378,7 @@ func tick() -> void:
 			a.turns = 1
 		else:
 			timed.erase(e)
+	_arrange()  # a level effect may have ended
 
 
 func is_alive() -> bool:
@@ -1268,7 +1413,7 @@ func _effects(viewer: Unit = null) -> Array:
 			out.append([e, 1, 1.0])
 	for it in items():
 		for e in it.effects:
-			out.append([e, 1, 1.0])
+			out.append([e, it.rank, 1.0])
 	return out
 
 

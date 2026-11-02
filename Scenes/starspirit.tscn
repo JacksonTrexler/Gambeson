@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/Starspirit.png" id="2_look"]
+[ext_resource type="Resource" path="res://Skills/energy_missile.tres" id="3_missile"]
+[ext_resource type="Resource" path="res://Skills/powerful.tres" id="4_powerful"]
+[ext_resource type="Resource" path="res://Skills/starkind.tres" id="5_starkind"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+
+[sub_resource type="Resource" id="Slot_missile"]
+script = ExtResource("9_slot")
+skill = ExtResource("3_missile")
+
+[sub_resource type="Resource" id="Slot_powerful"]
+script = ExtResource("9_slot")
+skill = ExtResource("4_powerful")
+
+[sub_resource type="Resource" id="Slot_starkind"]
+script = ExtResource("9_slot")
+skill = ExtResource("5_starkind")
+rank = 3
+
+[node name="Starspirit" instance=ExtResource("1_unit")]
+nick = "Starspirit"
+look = ExtResource("2_look")
+tags = Array[StringName]([&"astral", &"beast"])
+vibe = "Flickering"
+behaviour = &"recovering"
+reforms_into = "res://Scenes/starman.tscn"
+level = 3
+innate = Array[ExtResource("9_slot")]([SubResource("Slot_missile"), SubResource("Slot_powerful"), SubResource("Slot_starkind")])
+max_hp = 12
+max_energy = 12
+strength = 6
+dexterity = 14
+constitution = 8
+intelligence = 8
+wisdom = 10
+charisma = 10

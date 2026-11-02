@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_reach"]
+script = ExtResource("2_effect")
+stat = "range"
+tags = Array[StringName]([&"magical"])
+per_rank = true
+
+[resource]
+script = ExtResource("1_item")
+name = "Staff"
+slot = "weapon"
+damage_tag = &"blunt"
+tags = Array[StringName]([&"wood", &"magical"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_reach")])

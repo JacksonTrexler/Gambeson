@@ -19,6 +19,7 @@ extends CanvasLayer
 # unit can walk, puts a '?' on move costs through unsure ground, and heads the tile pane, a corner
 # panel with what's known of the hovered tile.
 
+const STARPOWER_TINT := Color("#ffe48a")  # tile-pane lines about the star lattice
 const NOWHERE := Vector2i(-9999, -9999)
 const GOLD := Color("#e8c547")
 const MUTED := Color("#9aa0ae")
@@ -130,6 +131,20 @@ func _ready() -> void:
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
 	battle.exploded.connect(_on_exploded)
+	battle.shattered.connect(func(u: Unit, c: Vector2i):
+		_log("%s shatters a starpane at %s" % [_tag(u), c])
+		_mark())
+	battle.sapped.connect(_on_sapped)
+	battle.reverted.connect(func(was: Unit, now: Unit):
+		_watch_unit(now)
+		_falls.append("%s falls back into %s" % [_tag(was), _tag(now)])
+		_flush_falls.call_deferred())
+	battle.reformed.connect(func(was: Unit, now: Unit):
+		_watch_unit(now)
+		_log("%s reforms into %s" % [_tag(was), _tag(now)])
+		_mark())
+	battle.leveled.connect(func(caster: Unit, t: Unit, n: int):
+		_log("%s Level Down %s %s%s" % [_tag(caster), "-->" if n else "-x>", _tag(t), " (-%d level%s)" % [n, "" if n == 1 else "s"] if n else ""]))
 	for u: Unit in battle.get_node("Units").get_children():
 		_watch_unit(u)
 	book_button.pressed.connect(toggle_spellbook)
@@ -147,6 +162,7 @@ func _ready() -> void:
 	settings.get_parent().add_child(persona)
 	settings.get_parent().add_child(sheet)
 	sheet.hide()
+	sheet.ap_of = battle.item_ap
 	sheet.equipped.connect(_on_equipped)
 	sheet.unequipped.connect(_on_unequipped)
 	sheet.used_up.connect(_on_used_up)
@@ -460,7 +476,7 @@ func toggle_sheet() -> void:
 
 
 func _outfits(u: Unit) -> bool:
-	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and u.is_alive()))
+	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and battle.outfitting(u)))
 
 
 # The player's starter keeps what it has on, and its hearts, for the next battle.
@@ -476,8 +492,11 @@ func _keep_outfit(u: Unit) -> void:
 func _on_equipped(u: Unit, it: Item) -> void:
 	if not _outfits(u) or it not in Game.stash or not u.can_wear(it):
 		return
+	var old: Item = u.get(it.slot)
+	if not battle.equip(u, it):
+		_say("%s needs %s AP to put on %s" % [_name(u), Skill.num(battle.equip_ap(u, it)), it.name])
+		return
 	Game.stash.erase(it)
-	var old := u.equip(it)
 	if old:
 		Game.stash.append(old)
 	_log("%s puts on %s" % [_tag(u), it.name])
@@ -488,14 +507,18 @@ func _on_equipped(u: Unit, it: Item) -> void:
 
 func _on_unequipped(u: Unit, slot: String) -> void:
 	if _outfits(u) and u.get(slot):
-		Game.stash.append(u.unequip(slot))
+		var it := battle.unequip(u, slot)
+		if not it:
+			_say("%s needs %s AP to take that off" % [_name(u), Skill.num(battle.item_ap(u.get(slot)))])
+			return
+		Game.stash.append(it)
 		_keep_outfit(u)
 		sheet.open(u, true)
 		_mark()
 
 
 func _on_used_up(u: Unit, it: Item) -> void:
-	if _outfits(u) and it in Game.stash and battle.use_item(u, it):
+	if _outfits(u) and (it in Game.stash or it == u.trinket) and battle.use_item(u, it):
 		Game.stash.erase(it)
 		_log("%s uses %s" % [_tag(u), it.name])
 		_keep_outfit(u)
@@ -530,7 +553,7 @@ func end_turn() -> void:
 
 func my_turn() -> bool:
 	return not busy and battle.phase == Battle.Phase.TURNS and command.leader.is_alive() \
-			and battle.turn == command.faction()
+			and battle.turn == command.faction() and not autopilot()
 
 
 # Units on the player's side: everything about them is known.
@@ -544,6 +567,12 @@ func hand(u: Unit) -> bool:
 	return known(u) or command.ours(u)
 
 
+# The player's own unit is down (or gone): its side plays itself until the battle ends or the
+# player gets back up (a heart, a Red Spinel Ring).
+func autopilot() -> bool:
+	return battle.player != null and (not is_instance_valid(battle.player) or not battle.player.is_alive())
+
+
 # Someone on the player's side still standing: the leader if it can be.
 func observer() -> Unit:
 	if command.leader.is_alive():
@@ -552,37 +581,22 @@ func observer() -> Unit:
 	return allies[0] if allies else null
 
 
-# What the player's side makes out about a unit: the clearest read any of its other units has (they
-# share what they see) - the most detail, then not fooled. With no one left to look, nothing.
+# What the player's side makes out about a unit: what the player sees - its leader, else whoever of
+# its side is still standing (observer()). Others' sight reaches it only through skills that share
+# what they make out (Coordinate: Battle.read()). The observer itself, and with no one left to look,
+# nothing.
 func view(u: Unit) -> Read:
-	var best: Read = null
-	for o in battle.members(command.faction()):
-		if o == u:
-			continue
-		var r := battle.read(o, u)
-		if best == null or _clearer(r, best):
-			best = r
-	if best == null:
-		best = Read.new()
-		best.net = -4
-	return best
-
-
-func _clearer(a: Read, b: Read) -> bool:
-	if a.net != b.net:
-		return a.net > b.net
-	if (a.hp != null) != (b.hp != null):
-		return a.hp != null
-	return b.deceived and not a.deceived
+	var o := observer()
+	if o == null or o == u:
+		var none := Read.new()
+		none.net = -4
+		return none if o == null else battle.read(o, u)
+	return battle.read(o, u)
 
 
 func tile_view(c: Vector2i) -> Read:
-	var best: Read = null
-	for o in battle.members(command.faction()):
-		var r := battle.read(o, c)
-		if best == null or r.net > best.net:
-			best = r
-	return best if best else Read.new()
+	var o := observer()
+	return battle.read(o, c) if o else Read.new()
 
 
 # How the player's side judges a tile: &"bad" (a known trap, or known to be detrimental), &"unsure"
@@ -685,6 +699,8 @@ func _strike_at(u: Unit, s: Skill, c: Vector2i) -> void:
 		&"miss":
 			_done(u)
 			_say("Nothing there")
+		&"shattered":
+			_done(u)
 		_:
 			var why := why_not(u, s, c)
 			_say(why if why else "Can't strike there")
@@ -867,13 +883,15 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 	if i <= _last_turn:
 		round_no += 1
 	_last_turn = i
-	var mine := now == command.faction() and command.leader.is_alive()
+	var mine := now == command.faction() and command.leader.is_alive() and not autopilot()
 	_log("[color=#6b7180]Round %d · %s[/color]" % [round_no, now.name])
 	_transition(now, mine)
 	if mine:
 		command.new_turn()
 		select(command.leader)
-	elif auto:
+	elif auto or now == command.faction():  # the player's down: its side fights on (autopilot())
+		if now == command.faction() and autopilot():
+			_log("[color=#6b7180]You're down: your side fights on without you[/color]")
 		_act_alone(now, battle.members(now), TRANSITION)
 	_mark()
 
@@ -881,11 +899,11 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if now != Battle.Phase.OVER:
 		return
-	var left := battle.units.values()
-	var winner: Faction = left[0].faction if left else null
-	%OverTitle.text = "Victory" if winner == command.faction() else "Defeat"
-	%OverText.text = "%s holds the field." % winner.name if winner else "No one is left standing."
-	var won: Array[Item] = battle.winnings(command.faction()) if winner == command.faction() else ([] as Array[Item])
+	var winner := battle.victor()
+	var ours := battle.won(command.faction())
+	%OverTitle.text = "Victory" if ours else "Defeat"
+	%OverText.text = ("%s holds the field." % (command.faction().name if ours else winner.name)) if winner else "No one is left standing."
+	var won: Array[Item] = battle.winnings(command.faction()) if ours else ([] as Array[Item])
 	if not won.is_empty():
 		Game.stash.append_array(won)
 		%OverText.text += "\nSpoils: %s" % ", ".join(won.map(func(it: Item): return it.name))
@@ -1048,6 +1066,14 @@ func _on_revived(u: Unit, came: Unit) -> void:
 func _on_dropped_item(u: Unit, it: Item) -> void:
 	_falls.append("%s drops %s" % [_tag(u), it.name])
 	_flush_falls.call_deferred()
+
+
+# Starsap the player's side can see: who lost what to whom.
+func _on_sapped(u: Unit, drained: Dictionary) -> void:
+	if unit_seen(u.cell) != u:
+		return
+	_log("%s saps %s" % [_tag(u), ", ".join(drained.keys().map(func(o: Unit): return "%s %d" % [_tag(o), drained[o]]))])
+	_mark()
 
 
 # A Regeneration Pulse the player's side can see: who it healed, and by how much.
@@ -1213,6 +1239,11 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 		var d: Battle.Debris = battle.debris[c]
 		out.append([d.kind + (": left by %s hiding" % _name(d.by) if d.faction == command.faction() else ": someone hid nearby?"),
 				MUTED if d.faction == command.faction() else GROUND[&"unsure"]])
+	if battle.on_lattice(c):
+		var what := "Starpower source, %d%% full" % roundi(100.0 * battle.charge[c] / Battle.STAR_CAPACITY) if c in battle.starpower \
+				else "Starpane (a bludgeoning blow breaks it)"
+		var rate := "Power back x%s" % Skill.num(snappedf(battle.star_rate(c), 0.1)) if battle.star_source(c) != null else "linked to no source"
+		out.append(["%s: %s" % [what, rate], STARPOWER_TINT])
 	if c in battle.earthworks:
 		var ours := battle.earthworks[c].faction == command.faction()
 		var who := " (yours): your enemies pay" if ours else ": you pay"
@@ -1392,9 +1423,10 @@ func _refresh_bar() -> void:
 		var sense := skill_sense(u, s, r)
 		var off: int = u.disabled.get(s, 0) if u and s else 0
 		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
-		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit, locked, sense)
+		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
-		slot.set_off(off)
+		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
+		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked()
 
@@ -1416,6 +1448,10 @@ func _on_dropped(i: int, s: Skill, _from: int) -> void:
 			var kind: String = Skill.CATEGORIES.get(u.slot_kind(i), "")
 			if u.rank(s) == 0:
 				_say("%s doesn't know %s" % [_name(u), s.name])
+			elif s.pillar() or (u.hotbar[i] and u.hotbar[i].pillar()):
+				_say("Pillar skills keep the last slots")
+			elif u.sealed(i):
+				_say("A curse has sealed this slot")
 			elif not u.slot_works(i):
 				_say(SkillSlot.NO_LUCK)
 			elif kind:
@@ -1556,7 +1592,7 @@ func _info(u: Unit) -> Dictionary:
 	if u == command.leader:  # it knows itself; everyone else, the side sees as it reads them
 		info.name = _name(u)
 		var kind := " ".join([u.race.name if u.race else "", u.role.name if u.role else ""]).strip_edges()
-		info.sub = "Lv %d %s" % [u.level, kind if kind else ", ".join(u.tags)]
+		info.sub = "Lv %d %s" % [u.lv(), kind if kind else ", ".join(u.tags)]
 		chips.append(["Leader", GOLD])
 		if u.skill_points > 0:
 			chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])

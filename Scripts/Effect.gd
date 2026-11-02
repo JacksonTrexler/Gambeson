@@ -49,15 +49,32 @@ extends Resource
 # damage: that fraction more damage dealt with skills (wauaw; Battle.cast()).
 # unmask_gain / uncover_gain: Sweet Nothings back for unmasking a foe it took for friendly or neutral /
 # for each level of concealment it takes off a hiding foe (Analysis Dialysis; Battle._dialysis()).
+# level: added to its level - a buff, or a curse (Unit.lv()): slots and armor follow; slots a curse
+# takes stay on the bar, sealed.
+# Skill attributes (Unit.skill_stat()): asked with a skill's tags (and damage, for one that deals any:
+# Skill.query()), and only for the skills in `skills` when it lists some.
+# range: added to the skill's range (Staff: magical, +rank; Broadsword: damage, +0.5 a rank).
+# rank: added to the skill's rank, where it has it (Broadsword: Strike, +rank).
+# opening_ap: that fraction more general AP on its first turn of a battle (Dagger: 20% a rank).
+# sap: as its side's turn ends, it drains this much Energy (Power) a rank from units of other sides
+# within its sap reach, HP once their Energy is gone, while some starpower source isn't full
+# (Starsap; Battle._sap()).
+# starkind: its max HP is its max Power; off the star lattice it loses (1 - 0.2 x rank) of its max HP
+# as its side's turn ends (Starkind; Battle._starkind()).
+# sickness: as its side's turn starts, it loses that fraction of its max HP - or is cleansed of it,
+# starting the turn at full HP (Resurrection Sickness; Battle._mend()).
+# reforming: stacks toward reforming as a Starman (Battle._starkind()).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
 		"command", "party", "regen", "poison", "sleep", "ap", "dex_ap", "relay", "trap_word",
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
-		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse") var stat := "luck"
+		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
+		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
+@export var skills: Array[Skill] = []  # a skill attribute (range, rank): only for these skills; empty: any the tags allow
 @export var per_stat := &""  # optional scaling: amount x floor(stat / per), e.g. charisma / 10
 @export var per := 10
 @export var per_mod := &""  # optional scaling: amount x the holder's mod in this stat (Mage Armor: intelligence)
@@ -70,6 +87,7 @@ extends Resource
 @export var wound := false  # tagged wound: a heal of at least its rank clears it (Battle.mend())
 @export var dice := Vector2i.ZERO  # bleed: rolled each turn...
 @export var dice_mod := &""  # ...plus the mod in this of whoever put it on (Snare: dexterity)
+@export var ease := 1  # how easy it is to remove: cleansing or dispelling takes this many of its ranks for each spent (Level Down 2, Level Up 4; Battle._strip())
 @export var arc := false  # put on a unit: its amount is a step, climbing a step a turn to the middle of its turns, then back down (wauaw: 10%, 20%, 30%, 20%, 10%)
 
 
@@ -77,8 +95,10 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP", "trap_word": "Trap word",
 		"slots": "Skill slots", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
 		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt",
-		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse"}
-const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled"]  # more of these is worse for whoever has them
+		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
+		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "sap": "Starsap",
+		"sickness": "Resurrection Sickness"}
+const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -145,6 +165,14 @@ func value(rank := 1) -> String:
 		return "ending its turn on a move, inspects every tile %s + wis mod tiles ahead and %s to either side" % [Skill.num(x), Skill.num(x)]
 	elif stat == "scrambled":
 		return "sees everyone's tags scrambled, until it investigates an ally"
+	elif stat == "sap":
+		return "drains %s Energy (or Power) a turn from other sides' units beside it, HP once theirs is gone, while starpower isn't full" % Skill.num(x)
+	elif stat == "starkind":
+		return "its max HP is its max Power; off the star lattice it loses %d%% of its max HP each turn" % roundi(maxf(1.0 - 0.2 * x, 0.0) * 100.0)
+	elif stat == "sickness":
+		return "loses %d%% of max HP as each of its turns starts; gone if one starts at full HP" % roundi(x * 100.0)
+	elif stat == "reforming":
+		return "%s stack%s toward reforming" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat == "powered":
 		return "its Energy is Power: it never comes back on its own"
 	elif stat == "pulse":
@@ -167,8 +195,8 @@ func value(rank := 1) -> String:
 		text += " per %d %s" % [per, per_stat]
 	if per_mod:
 		text += " per %s mod" % String(per_mod).left(3)
-	if not tags.is_empty():
-		text += " (%s)" % ", ".join(tags)
+	if not tags.is_empty() or not skills.is_empty():
+		text += " (%s)" % ", ".join(skills.map(func(x: Skill): return x.name) + tags.map(func(t): return String(t)))
 	if above_hp > 0.0:
 		text += ", above %d%% HP" % roundi(above_hp * 100.0)
 	if min_rank > 0:
@@ -177,6 +205,8 @@ func value(rank := 1) -> String:
 		text += ", except on %s" % " or ".join(unless_on)
 	if wound:
 		text += "; a wound, healed away"
+	if ease > 1:
+		text += "; easily removed (x%d)" % ease
 	if arc:
 		text += " a step, climbing a step a turn to the middle of its turns, then back down"
 	return text

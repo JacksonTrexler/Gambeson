@@ -5,8 +5,8 @@
 Build roughly in this order; the content below depends on them.
 
 - [ ] **Checks and contests.** Skill-defined checks with `offensive` / `defensive` tags, advantage/disadvantage, per-skill range penalties. Needed by Jugular, Interject, Interdict, Gallantry, Turtle Tactics, Snapping Turtle, the Siren's Charm. *Now:* each contest is its own field (Drown's `drags_to`, Sing's `resisted`, Haluca's and Brainfog's `save`).
-- [ ] **Equipping skills.** Learned vs equipped; slots shared by actives and passives, passives filling from the bottom of the hotbar; auto-equip (on by default); losing slots. *Now:* the hotbar has 4 + level / 4 slots (+ `extra_slots`), then slots skills grant, then the clover slot (filled on its unit's turn; hidden while it's unlucky, remembering its skill). Only actives and switched passives go on it, and every learned passive works. Disabling (Brainfog) treats always-on passives as filling the bar from the bottom. (?24)
-- [ ] **Vision through the leader, plus Synergy.** *Now:* you see the clearest view any of your units has. Coordinate pools what linked units make out. (?27)
+- [ ] **Equipping skills.** Learned vs equipped; slots shared by actives and passives, passives filling from the bottom of the hotbar; auto-equip (on by default); losing slots. *Now:* the hotbar has 4 + level / 4 slots (+ `extra_slots`), then slots skills grant, then the clover slot (filled on its unit's turn; hidden while it's unlucky, remembering its skill). Only actives and switched passives go on it, and every learned passive works. Disabling (Brainfog) treats always-on passives as filling the bar from the bottom. Unequipping a slot-granting skill should make its slots disappear.
+- [ ] **Synergy, more**: sharing beyond the party (command range, allies in sight)? *Now:* built for leader and party (`docs/done/systems.md`). (?38)
 - [ ] **More resources**: Stamina, Rage, Focus, Hype, Clout, Gold. *Now:* Mana, Sweet Nothings and Power exist, so Field Experience and Everyman still have nothing to work with.
 - [ ] **Reactions and interrupts.** Units acting outside their turn: Interject, Gallantry, Final Act. *Now:* only the side whose turn it is acts (and traitors posing in its party).
 - [ ] **Facing and direction**, for Shields Up!.
@@ -23,7 +23,8 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Divinity trees**: one per god, each with Pray at tier 1: Ramut (war, power), Eros (love, healing), Sol (light, fire), Urlo (magic, energy), Luun (dark, jovial), Drael (water, air), Vetruvis (earth, music). *Now:* Pray, Renew and Coordinate are Paladin options; the Paladin worships Eros. The shared tier 1 row (`Role.shared`) is built, for a tab per god.
 - [ ] **Urlo's enchantments, the rest**: trinkets, skills on items (their own enchantment effect, else +1 rank), and skipping items that can't be scaled (Heart +1). *Now:* weapon and armor, +1 or the item's own enchanted form; the trinket slot exists but Urlo skips it.
 - [ ] **Skills on items**: an item carrying a skill its wearer can use while it's equipped. *Now:* items carry effects, hearts and their own fields (Starblade's refill), not skills.
-- [ ] **Starting items by class.** Each class gets a starting item. *Now:* none; only the starter keeps what it wears between battles (`Game.outfit`). (?28)
+- [ ] **Last stands elsewhere**: the general defensive check (`Battle.last_stand()`) is meant to come up again; only Level Down and Death use it now.
+- [ ] **Execute, more**: other skills tagged `execute` should cut a foe's defensive checks by how hurt it is, as Death does. *Now:* only Death.
 - [ ] **Shops** (later): another way to get items.
 - [ ] **Saving**: the stash, the starter's outfit and hearts last only until the game closes.
 - [ ] **More contextual clues for searching**. *Now:* the AI weighs what it finds suspicious and enemies' debris.
@@ -31,4 +32,5 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Dissonance by how far the lie is**: harder to pretend to be something you very much aren't (a wolf in sheep's clothing, not a scary dog). *Now:* a tally of what the persona puts forward.
 - [ ] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. *Now:* units can be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
 
-21. Evidence: "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
+21. Evidence:  "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
+38. Synergy, as built: a party member and its leader share what they make out when either has Synergy, at any distance; each sees the clearer of the two reads. Rank I only. Should it need command range, and should ranks do anything?

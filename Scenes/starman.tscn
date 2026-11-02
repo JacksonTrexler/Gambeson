@@ -1,0 +1,41 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/Starman.png" id="2_look"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="3_strike"]
+[ext_resource type="Resource" path="res://Skills/powerful.tres" id="4_powerful"]
+[ext_resource type="Resource" path="res://Skills/starsap.tres" id="5_sap"]
+[ext_resource type="Resource" path="res://Factions/astral.tres" id="6_stellar"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="10_faction"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("9_slot")
+skill = ExtResource("3_strike")
+
+[sub_resource type="Resource" id="Slot_powerful"]
+script = ExtResource("9_slot")
+skill = ExtResource("4_powerful")
+
+[sub_resource type="Resource" id="Slot_sap"]
+script = ExtResource("9_slot")
+skill = ExtResource("5_sap")
+
+[node name="Starman" instance=ExtResource("1_unit")]
+nick = "Starman"
+look = ExtResource("2_look")
+tags = Array[StringName]([&"dangerous", &"astral", &"beast"])
+vibe = "Crackling"
+behaviour = &"aggressive"
+hunts = Array[ExtResource("10_faction")]([ExtResource("6_stellar")])
+reverts_to = "res://Scenes/starspirit.tscn"
+level = 6
+innate = Array[ExtResource("9_slot")]([SubResource("Slot_strike"), SubResource("Slot_powerful"), SubResource("Slot_sap")])
+max_hp = 24
+max_energy = 20
+strength = 14
+dexterity = 12
+constitution = 12
+intelligence = 8
+wisdom = 10
+charisma = 8

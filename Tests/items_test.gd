@@ -30,9 +30,10 @@ func test_hearts_from_items() -> void:
 	v(1).equip(link)
 	v(1).equip(heart_up)
 	ok(v(1).trinket == heart_up and v(1).lives() == 3 and v(1).lives_left() == 3, "con mod (2) lives, and Heart Up's one")
-	ok(v(1).armor_defense() == v(1).level + 2, "Defense: level + the higher of con mod and hearts spent")
+	var bare := v(1).mod(&"dexterity") + v(1).mod(&"constitution")
+	ok(v(1).armor_defense() == bare, "Heart Up-Link sets no Defense: as if unarmored, dex mod + con mod (%d)" % v(1).armor_defense())
 	v(1).hearts_used = 3
-	ok(v(1).armor_defense() == v(1).level + 3 and v(1).defense() == v(1).level + 3 + 3, "3 spent: +3, and Heart Up's +3 on top")
+	ok(v(1).armor_defense() == bare and v(1).defense() == bare + 3, "3 spent: Heart Up's +3, and nothing more")
 	ok("con mod extra lives while worn" in link.describe() and "Gives 1 extra life for good" in heart.describe(), link.describe() + " / " + heart.describe())
 
 
@@ -89,7 +90,7 @@ func test_sheet() -> void:
 	h.toggle_sheet()
 	ok(h.sheet.visible and h.sheet.unit == v(1), "the character icon opens the selected unit's sheet")
 	var buttons := h.sheet.find_children("*", "Button", true, false).map(func(x: Button): return x.text)
-	ok(buttons.count("Equip") == 2 and buttons.count("Use") == 1, "Burning Blade and Heart Up-Link (con +1) to equip, a Heart to use: %s" % [buttons])
+	ok(buttons.filter(func(x: String): return x.begins_with("Equip")).size() == 2 and buttons.filter(func(x: String): return x.begins_with("Use")).size() == 1, "Burning Blade and Heart Up-Link (con +1) to equip, a Heart to use: %s" % [buttons])
 	h._on_equipped(v(1), blade)
 	ok(v(1).weapon == blade and blade not in Game.stash and Game.outfit == {"weapon": blade}, "equipped from the stash, and kept for next battle")
 	Game.stash.append(starblade)

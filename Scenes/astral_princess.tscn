@@ -55,6 +55,7 @@ loot = ExtResource("12_loot")
 summons = ExtResource("13_probe")
 shows_adjectives = Array[String](["Glittering", "Shining", "Gleaming", "Glimmering"])
 shows_nouns = Dictionary[String, String]({"Princess": "", "Heroine": "", "Vindicator": ""})
+god = &"urlo"
 intention = "Purge evil: evil resides in the living"
 strategy = Array[StringName]([&"closest", &"strongest"])
 level = 18

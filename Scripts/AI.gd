@@ -14,7 +14,9 @@ class_name AI
 # With no foe to go after, a unit with Observe searches where the clues point. A skittish unit (a
 # Regeneration Probe) only keeps away from its foes. A channeling unit (the Astral Princess's Metea)
 # strikes where the blast takes in the most foes, and begins channeling where they gather. A unit
-# with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it.
+# with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it, and one that
+# hunts a side (Unit.hunts: Starmen, the Stellar Order) goes after that side's units first. A
+# recovering unit (a Starspirit) heads for the star lattice and holds there, fighting only when cornered.
 # Kept small on purpose: score() and the move choice are the places to grow it.
 
 const KILL := 5.0  # bonus for a hit that should finish the target
@@ -25,6 +27,7 @@ const COMMANDER := 0.25  # how much most healers favour a commander
 const PARTY := 1.0  # how much a loyal healer favours its party
 const WOUND := 0.25  # how much a healer wants to clear a wound it can see
 const WARY := 10.0  # cost of ending a walk beside a unit it takes for aggressive
+const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts)
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -48,6 +51,9 @@ static func act(b: Battle, u: Unit) -> Array[String]:
 	_support(b, u, reads, log)
 	if u.behaviour == &"skittish":
 		_keep_away(b, u, reads, log)
+		return log
+	if u.behaviour == &"recovering":
+		_recover(b, u, reads, log)
 		return log
 	_channel(b, u, reads, log)
 	var rooted := _rooted(b, u)
@@ -85,6 +91,11 @@ static func score(u: Unit, s: Skill, r: Read) -> float:
 	return value - _hate(r)
 
 
+# HUNT for a target it reads as one of a side it hunts.
+static func _hunted(u: Unit, r: Read) -> float:
+	return HUNT if r.faction != null and r.faction in u.hunts else 0.0
+
+
 static func _hate(r: Read) -> float:
 	return HATE * (r.aura if r.aura != null else 0)
 
@@ -100,7 +111,7 @@ static func _emboldened(u: Unit, reads: Dictionary) -> bool:
 		return true
 	for o: Unit in reads:
 		var r: Read = reads[o]
-		if o.is_alive() and r.attitude(u) == &"ally" and r.level != null and r.level > u.level and Command.tiles(o.cell, u.cell) <= CRAVEN_REACH:
+		if o.is_alive() and r.attitude(u) == &"ally" and r.level != null and r.level > u.lv() and Command.tiles(o.cell, u.cell) <= CRAVEN_REACH:
 			return true
 	return false
 
@@ -136,7 +147,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 				continue
 			if s.drags_to and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
-			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0)
+			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
 			if v > best_score:
 				best = [s, t]
 				best_score = v
@@ -335,6 +346,27 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i]) -> bool:
 	return best != u.cell and not b.travel(u, best).is_empty()
 
 
+# A recovering unit (a Starspirit): off the star lattice, it heads for the nearest free lattice tile;
+# on it, it holds. Only cornered - a foe beside it, and nowhere further from its foes to go - does it
+# fight (its energy missiles).
+static func _recover(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+	if not b.on_lattice(u.cell):
+		var best: Variant = null
+		for c: Vector2i in b.panes.keys() + b.starpower.keys():
+			if not b.unit_at(c) and (best == null or Command.tiles(u.cell, c) < Command.tiles(u.cell, best)):
+				best = c
+		if best != null and not b.travel(u, best).is_empty():
+			log.append("%s heads for the stars" % u.name)
+	var foes: Array[Vector2i] = []
+	for o: Unit in reads:
+		if o.is_alive() and _foe(u, reads[o]):
+			foes.append(reads[o].cell)
+	var near := foes.any(func(c: Vector2i): return Command.tiles(c, u.cell) <= 1)
+	if near and (b.on_lattice(u.cell) or not _away(b, u, foes)):
+		while _strike(b, u, reads, log):
+			pass
+
+
 # A channeled skill (Metea): holding one, it strikes the tile it can that takes in the most foes it can
 # place (less its allies); not yet, it begins where foes gather within its reach - where a blast
 # would take in the most of them, a tile further out to allow for their moving.
@@ -381,7 +413,7 @@ static func _best_target(u: Unit, reads: Dictionary) -> Unit:
 		if not _foe(u, reads[t]) or not t.is_alive():
 			continue
 		var lv: float = reads[t].level if reads[t].level != null else 0.0
-		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) \
+		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, reads[t]) \
 				+ STRONG * lv * (int(&"strongest" in u.strategy) - int(&"weakest" in u.strategy))
 		if v > best_score:
 			best = t

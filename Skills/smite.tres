@@ -23,9 +23,11 @@ stat = &"charisma"
 [resource]
 script = ExtResource("1_skill")
 name = "Smite"
-tags = Array[StringName]([&"divine", &"astella", &"energy", &"cha"])
+tags = Array[StringName]([&"divine", &"cha"])
 ap = 5.0
 cost = 4
 radius = 1.0
 tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1"), SubResource("Tier_3"), SubResource("Tier_5")])
+god_tag = true
+min_tier = 3
 carry = 0.2

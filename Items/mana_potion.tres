@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="2_mana"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Mana Potion"
+slot = "trinket"
+tags = Array[StringName]([&"potion"])
+restores = &"reserve"
+reserve = ExtResource("2_mana")
+restore_share = 0.15
+restore_mod = &"constitution"

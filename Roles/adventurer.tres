@@ -45,6 +45,10 @@
 [ext_resource type="Resource" path="res://Skills/observe.tres" id="s_observe"]
 [ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="s_eyes_forward"]
 [ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
+[ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
+[ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -217,3 +221,4 @@ stats = Dictionary[StringName, int]({&"strength": 11, &"dexterity": 13, &"consti
 center = ExtResource("s_skill_slot")
 core = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_rejuvinate"), ExtResource("s_trade_skills"), ExtResource("s_grind")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Magic"), SubResource("Root_Martial"), SubResource("Root_Specialist")])
+items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])

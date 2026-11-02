@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Faction" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="1_faction"]
+[ext_resource type="Texture2D" path="res://Units/Starman.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_faction")
+name = "Starmen"
+primary = Color(0.55, 0.85, 1, 1)
+secondary = Color(0.05, 0.08, 0.2, 1)
+icon = ExtResource("2_icon")
+neutral = true

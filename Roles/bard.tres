@@ -26,6 +26,10 @@
 [ext_resource type="Resource" path="res://Skills/first_aid.tres" id="s_first_aid"]
 [ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="s_eyes_forward"]
 [ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
+[ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
+[ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -105,3 +109,4 @@ innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("
 stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
 roots = Array[ExtResource("6_root")]([SubResource("Root_Song")])
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom")])
+items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])

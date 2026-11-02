@@ -5,6 +5,7 @@ extends Control
 # default name muted (its placeholder) and uses it until something else is typed.
 
 const HUMAN := preload("res://Races/human.tres")
+const RING := preload("res://Items/red_spinel_ring.tres")  # every player starts with one in the stash
 
 @export var sides: Array[Faction] = []
 @export var roles: Array[Role] = []
@@ -65,5 +66,9 @@ func chosen_name() -> String:
 
 func _play() -> void:
 	Game.starter = {faction = side.value, role = role.value, name = chosen_name()}
+	Game.outfit = role.value.outfit()  # a new starter, in its class's starting items
+	Game.hearts = 0
+	if not Game.stash.any(func(it: Item): return it == RING):
+		Game.stash.append(RING)  # the player's own trinket: a life once a battle
 	if next_scene:  # empty: stay (tests)
 		get_tree().change_scene_to_file(scenario.value if scenario.value else next_scene)

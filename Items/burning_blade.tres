@@ -12,6 +12,7 @@ per_mod = &"strength"
 script = ExtResource("1_item")
 name = "Burning Blade"
 slot = "weapon"
+damage_tag = &"slash"
 tags = Array[StringName]([&"enchanted", &"fire"])
 attack_stats = Array[StringName]([&"charisma", &"wisdom", &"intelligence"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_vigour")])

@@ -254,7 +254,7 @@ func _node(s: Skill, at: Vector2, tone: Color, font: Font) -> void:
 	var text := s.mark()
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
 	draw_string(font, at + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, ink)
-	var r := unit.rank(s)
+	var r := unit.base_rank(s)
 	if r > 0:
 		draw_string(font, at + Vector2(R - 1.0, R + 2.5), Skill.roman(r), HORIZONTAL_ALIGNMENT_LEFT, -1, 4, GOLD)
 
@@ -285,6 +285,6 @@ func _get_tooltip(at: Vector2) -> String:
 	var s := skill_at(at) if unit else null
 	if not s:
 		return ""
-	var r := unit.rank(s)
+	var r := unit.base_rank(s)
 	var why := unit.missing(s) if r == 0 and not s.stub else ""
 	return "%s%s · tier %d\n%s%s" % [s.name, " " + Skill.roman(r) if r else "", unit.tier(s), s.describe(maxi(r, 1)), "\n" + why if why else ""]

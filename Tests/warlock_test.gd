@@ -102,3 +102,62 @@ func test_wauaw() -> void:
 	v(3).refresh()
 	ok(b.cast(v(3), wauaw, v(4)) and v(4).stat(&"damage") > 0.0, "on an ally too")
 	ok("Ally or foe" in wauaw.describe(1) and "climbing a step a turn" in wauaw.describe(1), wauaw.describe(1))
+
+
+func test_toggle() -> void:
+	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
+	sweeten(v(3))
+	v(3).learned.append(slot(wauaw))
+	ok(sweet.toggle and v(3).is_on(sweet), "Sweet Nothings: a toggle, on to start")
+	ok(v(3).funding(wauaw) == sn, "on: a Sweet Nothing pays")
+	v(3).toggle(sweet)
+	ok(v(3).funding(wauaw) == &"energy" and v(3).pools()[sn] == 2 and v(3).store(sn) == 2, "off: nothing spent from it, but it's kept")
+	var dear := Skill.new()
+	dear.ap = 1.0
+	dear.cost = 1
+	dear.tags = [&"warlock"]
+	dear.needs = sn
+	v(3).learned.append(slot(dear))
+	ok(v(3).funding(dear) == null, "a skill that needs one can't be paid for")
+	v(3).toggle(sweet)
+	ok(v(3).funding(dear) == sn, "on again: it can")
+	ok(sn.color.r > 0.9 and sn.color.b > 0.6, "pink")
+
+
+func test_hex_on_cha() -> void:
+	var u := b.starter({faction = lancin, role = warlock, name = "Vex"})
+	u.wisdom = 8
+	u.charisma = 16
+	ok(u.mod(&"wisdom", hex.tags) == 3 and u.attack_mod(hex) == 3, "a Warlock's Hex: cha mod (+3) where it'd use wis")
+	ok(u.mod(&"wisdom") == -1, "its wisdom is still its own")
+	u.free()
+
+
+func test_one_patron() -> void:
+	var role := Role.new()
+	role.name = "Pact"
+	var tabs: Array[SkillTab] = []
+	var learnt: Array[Skill] = []
+	for n in ["Elmon", "Hogel"]:
+		var s := Skill.new()
+		s.name = n + "'s gift"
+		s.passive = true
+		var br := Branch.new()
+		br.skill = s
+		var r := SkillRoot.new()
+		r.name = n
+		r.branches = [br]
+		var t := SkillTab.new()
+		t.name = n
+		t.devotes = true
+		t.roots = [r]
+		tabs.append(t)
+		learnt.append(s)
+	role.tabs = tabs
+	var u := b.starter({faction = lancin, role = role, name = "Vex"})
+	u.skill_points = 2
+	ok(u.devotion() == null and learnt.all(func(s: Skill): return u.missing(s) == ""), "undevoted: both patrons open")
+	ok(u.unlock(learnt[0]) and u.devotion() == tabs[0], "a skill from Elmon: devoted to Elmon")
+	ok(u.missing(learnt[1]) == "Devoted to Elmon" and not u.unlock(learnt[1]), "Hogel's tab closes")
+	ok(warlock.tabs.all(func(t: SkillTab): return t.devotes), "the Warlock's patrons devote")
+	u.free()

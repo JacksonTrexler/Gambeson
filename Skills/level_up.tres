@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_level"]
+script = ExtResource("2_effect")
+stat = "level"
+per_rank = true
+name = "Level Up"
+ease = 4
+
+[resource]
+script = ExtResource("1_skill")
+name = "Level Up"
+tags = Array[StringName]([&"divine", &"sol", &"wis"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_level")])
+glyph = "LU"
+ap = 5.0
+cost = 5
+radius_per_rank = 1.0
+radius_mod = &"wisdom"
+hostile = false
+turns_per_rank = 1

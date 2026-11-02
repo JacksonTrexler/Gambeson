@@ -33,7 +33,9 @@ var locked := false  # out of reach of the leader's orders (Command.slots())
 var kind := &""  # its unit's slot kind (Unit.slot_kinds()): &"" plain, &"clover", or a type (magical...)
 var clover := false  # the unit's clover slot
 var works := true  # false: a clover slot whose unit isn't lucky now - greyed out until it is
-var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it isn't
+var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it isn't - dimmed while it is
+var cursed := false  # a curse disabled it (Brainfog), or sealed the slot (a level curse: Unit.sealed()): it quivers gently
+var sealed := false  # a level curse took the slot: it stays, unusable, till the curse ends
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
@@ -98,12 +100,22 @@ func set_kind(k: StringName, does_work: bool) -> void:
 	queue_redraw()
 
 
-# Its skill is disabled for n more turns (0: it isn't): greyed out and struck through.
-func set_off(n: int) -> void:
+# Its skill is disabled for n more turns (0: it isn't): dimmed. Cursed (Brainfog), or a slot a level
+# curse sealed, it also quivers gently.
+func set_off(n: int, by_curse := false, is_sealed := false) -> void:
 	off = n
+	sealed = is_sealed
+	cursed = (by_curse and n > 0) or is_sealed
 	if n > 0:
-		tooltip_text = "Disabled for %d more turn%s\n%s" % [n, "" if n == 1 else "s", tooltip_text]
+		tooltip_text = "%s for %d more turn%s\n%s" % ["Cursed" if by_curse else "Disabled", n, "" if n == 1 else "s", tooltip_text]
+	if sealed:
+		tooltip_text = "Sealed by a curse on its level: it comes back as the curse ends\n" + tooltip_text
+	set_process(cursed)
 	queue_redraw()
+
+
+func _process(_delta: float) -> void:
+	queue_redraw()  # quivering
 
 
 # The colour that marks its kind, or null for a plain slot.
@@ -117,7 +129,10 @@ func _draw() -> void:
 	var font := get_theme_font(&"font")
 	var fs := 6
 	var mid := (size.y - font.get_height(fs)) / 2.0 + font.get_ascent(fs)
-	var fade := 1.0 if works else 0.4
+	if cursed:  # a gentle quiver
+		var t := Time.get_ticks_msec() / 1000.0
+		draw_set_transform(Vector2(sin(t * 23.0) * 0.6, sin(t * 17.0 + 1.3) * 0.35))
+	var fade := 1.0 if works and not sealed else 0.4
 	var tone: Variant = _mark()
 	if tone != null:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(tone, 0.12 * fade))
@@ -129,10 +144,12 @@ func _draw() -> void:
 		var key_col := Color(tone.lightened(0.35), fade) if tone != null else Color(1, 1, 1, 0.55)
 		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, key_col)
 	if not skill:
-		var blank := "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "empty")
+		var blank := "sealed" if sealed else "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "empty")
 		draw_string(font, Vector2(15, mid), blank, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
 		return
 	var dim := 1.0 if usable and works and (on or not skill.passive) else 0.45
+	if off > 0 or sealed:
+		dim = 0.25
 	if sense == 0:
 		draw_string(font, Vector2(16, mid + 0.5), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1, 0.35))
 		return
@@ -147,8 +164,6 @@ func _draw() -> void:
 		right -= 6
 	draw_string(font, Vector2(16, mid + 0.5), skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - 16, 7,
 			Color(0.92, 0.93, 0.96, dim))
-	if off > 0:
-		draw_line(Vector2(15, size.y / 2.0), Vector2(right, size.y / 2.0), Color(1, 0.45, 0.4, 0.8), 1.0)
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
 

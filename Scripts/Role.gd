@@ -12,6 +12,8 @@ extends Resource
 @export var options: Array[Skill] = []  # the class's skills a unit can unlock with skill points, as a plain list
 @export var stats: Dictionary[StringName, int] = {}  # starting stats for new units
 @export var reserves: Dictionary[Reserve, int] = {}  # reserves new units start with, by max (Wizard: mana 10)
+@export var swaps: Dictionary[StringName, StringName] = {}  # its units' magical skills use the second stat where they'd use the first (Warlock: wisdom -> charisma, for Hex)
+@export var items: Array[Item] = []  # what a starter of this class first wears (Entry: Game.outfit): its armor, weapon and trinket
 
 @export_group("Tree")  # a class with a skill tree (the Adventurer's, drawn as a wheel on the skills screen)
 @export var center: Skill  # the one skill at the very centre (Adventurer: Skill Slot +1)
@@ -93,6 +95,23 @@ func _before(s: Skill, out: Array[Skill]) -> Array[Skill]:
 			if x not in out:
 				out.append(x)
 				_before(x, out)
+	return out
+
+
+# The tab beside its own that offers s, or null (Unit.devotion(): a Warlock's patrons).
+func tab_of(s: Skill) -> SkillTab:
+	for t in tabs:
+		if t and t.offers(s) and s not in shared:
+			return t
+	return null
+
+
+# Its starting items by slot (weapon, armor, trinket): a starter's first outfit.
+func outfit() -> Dictionary:
+	var out := {}
+	for it in items:
+		if it:
+			out[it.slot] = it
 	return out
 
 

@@ -45,7 +45,8 @@ func test_smite() -> void:
 			ok(v(1).energy == 0 and v(1).hp < was, "rank V: Energy first, then on to HP (%d -> %d)" % [was, v(1).hp])
 			break
 	ok(hit, "it landed")
-	ok("Energy damage: it drains Energy (or Power) first, then 80% of the rest goes on to HP" in smite.describe(5), smite.describe(5))
+	ok(Battle.hit_tags(p, smite).has(&"energy"), "her god is Urlo: Smite's damage is energy")
+	ok("Urlo (energy): drains Energy (or Power) first, then 80% of the rest goes on to HP" in smite.describe(5), smite.describe(5))
 	ok(smite.describe(1).contains("first") and not smite.describe(1).contains("of the rest"), "rank I: no carry")
 
 
@@ -95,7 +96,7 @@ func test_envoy() -> void:
 	var e: Battle = scene.get_node("Battle")
 	var shade: Unit = e.get_node("Units/Shade1")
 	ok(e.player.faction == nemes and shade.faction == nemes and e.get_node("Units/Villager1").faction == nemes, "the villagers and shades join the player's side")
-	ok(shade.uncontrolled and e.get_node("Units/AstralPrincess").faction.name == "Astral", "the shades act on their own; the Princess is Astral")
+	ok(shade.uncontrolled and e.get_node("Units/AstralPrincess").faction.name == "Stellar Order", "the shades act on their own; the Princess is of the Stellar Order")
 	ok(e.terrain(Vector2i(4, 4)).name == "Tall grass" and e.terrain(Vector2i(5, 2)).name == "Rough", "a meadow with tall grass and rocks")
 	var turns := 0
 	var revivals := 0
@@ -112,3 +113,22 @@ func test_envoy() -> void:
 	ok(e.phase == Battle.Phase.OVER, "the battle ends (%d turns, %d revivals)" % [turns, revivals])
 	print("  envoy: %d turns, %d revivals, %s left" % [turns, revivals, ", ".join(e.units.values().map(func(u: Unit): return u.name))])
 	scene.free()
+
+
+func test_smite_eros() -> void:
+	var pip := b.starter({faction = lancin, role = load("res://Roles/paladin.tres"), name = "Pip"})
+	b.get_node("Units").add_child(pip)
+	stage(lancin, {pip: Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	pip.learned.append(slot(smite))
+	pip.refresh()
+	var tags := Battle.hit_tags(pip, smite)
+	ok(&"love" in tags and &"energy" not in tags, "a Paladin of Eros: Smite's damage is love (%s)" % [tags])
+	v(3).max_hp = 200
+	v(3).hp = 200
+	v(3).energy = 5
+	for i in 20:
+		pip.refresh()
+		b.cast(pip, smite, v(3))
+		if v(3).hp < 200:
+			break
+	ok(v(3).hp < 200 and v(3).energy == 5, "it hurts HP straight away: no Energy drained")

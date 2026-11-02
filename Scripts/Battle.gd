@@ -25,6 +25,11 @@ signal dropped(u: Unit, item: Item)  # u fell, leaving an item (its loot)
 signal pulsed(u: Unit, healed: Dictionary)  # a Regeneration Pulse: unit -> HP it got back
 signal channeled(u: Unit, skill: Skill, at: Vector2i)  # u began channeling a skill on a tile (Metea)
 signal exploded(u: Unit, skill: Skill, at: Vector2i, hit: Dictionary)  # a channeled skill struck: unit -> damage taken
+signal shattered(u: Unit, at: Vector2i)  # u broke a starpane, bludgeoning it
+signal sapped(u: Unit, drained: Dictionary)  # Starsap: unit -> Energy (or HP) u drained from it
+signal reverted(was: Unit, now: Unit)  # a Starman fell back into a Starspirit
+signal reformed(was: Unit, now: Unit)  # a Starspirit reformed into a Starman
+signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
@@ -33,6 +38,12 @@ const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
+const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to an empty source...
+const STAR_FAST := 5.0  # ...to a full one
+const STAR_ENERGY := 0.2  # regular Energy gets this share of that boost
+const STAR_CAPACITY := 20  # Power a starpower source holds full
+const SICKNESS: Effect = preload("res://Effects/resurrection_sickness.tres")
+const REFORMING: Effect = preload("res://Effects/reforming.tres")
 
 @export var spawns: Dictionary[Faction, Vector2i] = {}  # where a player's starter joins each side
 @export var rewards: Array[Item] = []  # what the player's side gets for winning (the victory screen; Game.stash)
@@ -40,6 +51,13 @@ const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
 var player: Unit  # the starter made on the entry screen; null when there's none
 var spoils: Array = []  # [item, the side of whoever dropped it], as units fall (_on_died())
 var fallen: Array[Unit] = []  # down with a heart spent, getting up as the turn ends (_on_downed())
+@export var companions: Array[Role] = []  # starters of these classes join the fight beside the player, as their own side, but the player's class's (the Astral Envoy)
+@export var companion_side: Faction  # theirs: allied with the player's (Faction.sides_with_player)
+@export var companion_cells: Array[Vector2i] = []  # where they stand, in order
+@export var starpanes: Array[Vector2i] = []  # tiles the star lattice crosses: starpanes, joined side-on to their neighbours (the Astral Envoy)
+@export var starpower: Dictionary[Vector2i, float] = {}  # starpower sources on the lattice -> how full each starts (0 to 1)
+var panes: Dictionary[Vector2i, bool] = {}  # starpanes still whole: a bludgeoning skill used on one with no target breaks it (attempt())
+var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up to STAR_CAPACITY (Starsap fills them)
 
 var phase := Phase.INITIATIVE:
 	set(v):
@@ -64,6 +82,7 @@ var turn: Faction:
 				u.channel.turns += 1
 		for u in members(v):
 			_look_harder(u)
+			_starkind(u, false)
 		turn_changed.emit(was, v)
 		for u in members(v):  # after the signal: poison can end a side, and with it this turn
 			_mend(u)
@@ -166,9 +185,14 @@ class Zone:
 
 
 func _ready() -> void:
+	for c in starpanes:
+		panes[c] = true
+	for c in starpower:
+		charge[c] = roundi(clampf(starpower[c], 0.0, 1.0) * STAR_CAPACITY)
 	if Game.starter:
 		player = starter(Game.starter)
 		$Units.add_child(player, true)
+		_join_companions(Game.starter.role)
 		Game.starter = {}  # used up
 	for u: Unit in $Units.get_children():
 		if u.with_player and player:
@@ -205,21 +229,47 @@ func move(u: Unit, c: Vector2i) -> bool:
 # The player's starter unit from the entry screen: {faction, role, name}, wearing what it had on
 # (Game.outfit), with the hearts it's been given (Game.hearts).
 func starter(s: Dictionary) -> Unit:
-	var u: Unit = UNIT.instantiate()
-	u.name = s.name.validate_node_name()
-	u.nick = s.name
-	u.faction = s.faction
-	u.role = s.role
-	for k in s.role.stats:
-		assert(k in Unit.CORE, "role stat %s isn't a unit stat" % k)
-		u.set(k, s.role.stats[k])
-	u.reserves.merge(s.role.reserves)
+	var u := from_role(s.faction, s.role, s.name)
 	for slot in Game.outfit:  # what it had on last battle
 		u.set(slot, Game.outfit[slot])
+	refill(u)
 	u.hearts += Game.hearts
 	assert(s.faction in spawns, "no spawn for %s" % s.faction.name)
 	u.cell = spawns[s.faction]
 	return u
+
+
+# A level 1 unit of a class: its stats and reserves, on side f.
+func from_role(f: Faction, role: Role, nick: String) -> Unit:
+	var u: Unit = UNIT.instantiate()
+	u.name = nick.validate_node_name()
+	u.nick = nick
+	u.faction = f
+	u.role = role
+	for k in role.stats:
+		assert(k in Unit.CORE, "role stat %s isn't a unit stat" % k)
+		u.set(k, role.stats[k])
+	u.reserves.merge(role.reserves)
+	return u
+
+
+# The other starters join (companions): one of each class but the player's, in its starting items, on
+# companion_side - allied with the player's side for this battle.
+func _join_companions(mine: Role) -> void:
+	if not companion_side or companions.is_empty():
+		return
+	if companion_side.sides_with_player:
+		companion_side.allies.assign([player.faction])
+	var i := 0
+	for role in companions:
+		if role == mine or i >= companion_cells.size():
+			continue
+		var u := from_role(companion_side, role, role.name)
+		for slot in role.outfit():
+			u.set(slot, role.outfit()[slot])
+		u.cell = companion_cells[i]
+		$Units.add_child(u, true)
+		i += 1
 
 
 # --- Initiative and tie-breaks
@@ -232,7 +282,7 @@ func roll_initiative() -> Array[Faction]:
 		if u.faction and u.is_alive():
 			if u.faction not in rolls:
 				rolls[u.faction] = []
-			unit_rolls[u] = rng.randi_range(1, 20)
+			unit_rolls[u] = roundi(rng.randi_range(1, 20) * (1.0 + u.stat(&"opening_ap")))  # a Dagger's edge counts here too
 			rolls[u.faction].append(unit_rolls[u])
 	var o: Array[Faction] = []
 	o.assign(contest(rolls.keys(), [total]))
@@ -360,10 +410,11 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		used.emit(caster, skill, target, 0)
 		doubt(caster.follows, caster, -1)  # a whiff: hardly suspicious
 		return true
-	var foe := target.faction != caster.faction
+	var foe := not Faction.friends(target.faction, caster.faction)
 	if foe and not skill.for_foes() and read(caster, target).attitude(caster) == &"ally":
 		foe = false  # support for a foe it takes for an ally (a Friendly stance)
-	if not (skill.for_foes() if foe else skill.for_allies()) or not in_reach(caster, skill, target):
+	var mends := not foe and skill.god_tag and caster.deity() == &"eros"  # Eros's Smite heals allies
+	if not (skill.for_foes() if foe else (skill.for_allies() or mends)) or not in_reach(caster, skill, target):
 		return false
 	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags_to else null
 	if foe and skill.drags_to and spot == null:
@@ -372,7 +423,12 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return false
 	var r := caster.rank(skill)
 	var before := target.hp
+	if mends:
+		_smite_heal(caster, skill, target, r)
+		used.emit(caster, skill, target, before - target.hp)
+		return true
 	var crit := false
+	var tags := hit_tags(caster, skill)
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
 		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) - drag_penalty(skill, r, Command.tiles(target.cell, spot))
@@ -396,13 +452,21 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			used.emit(caster, skill, target, 0)
 			return true
 		saved_against = mine
+	if foe and skill.levels_down:
+		_level_down(caster, skill, target, r)
+		used.emit(caster, skill, target, 0)
+		return true
+	if foe and skill.kills:
+		_death(caster, skill, target, r)
+		used.emit(caster, skill, target, before - target.hp)
+		return true
 	for g in fog:
 		for s: Skill in g:
-			target.disable(s, skill.lasts(r, caster) + (1 if target.faction == turn else 0))
+			target.disable(s, skill.lasts(r, caster) + (1 if target.faction == turn else 0), true)
 	if foe and skill.attacks():
 		var d20 := rng.randi_range(1, 20)
 		var total := d20 + caster.attack_mod(skill)
-		var defense := target.defense(skill.tags)
+		var defense := target.defense(tags)
 		crit = d20 == 20
 		attacked.emit(caster, target, d20, total, defense)
 		_evaluate(caster, skill, d20, total)
@@ -453,16 +517,18 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			if not target.is_alive():
 				break
 			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) if t.stat else 0
-			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", skill.tags))), 1) * (2 if crit else 1)
+			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags))), 1) * (2 if crit else 1)
 			gross += power
-			if &"energy" in skill.tags:
-				target.drain(power, skill.tags, caster, skill.carry * (r - 1))
+			if &"energy" in tags:
+				target.drain(power, tags, caster, skill.carry * (r - 1))
 			elif t.direct:
 				target.damage(power)
 			else:
-				target.hit(power, skill.tags, caster)
+				target.hit(power, tags, caster)
 		if foe and gross > 0 and next_to(caster.cell, target.cell):
 			_refill(caster, target, gross)
+		if foe and skill.god_tag and gross > 0:
+			_smite(caster, target, r, gross)
 	if foe:
 		_expose(target)
 		_expose(caster)
@@ -474,6 +540,83 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if foe and skill.hostile and target.hp < before and target.is_alive() and read(target, caster).deceived:
 		doubt(target, caster)
 	return true
+
+
+# The tags a skill's damage carries for its caster: its own, plus its weapon's blows (Skill.weapon_tag:
+# Strike - blunt bare-handed) and its god's (Skill.god_tag: Smite - Eros's love, Urlo's energy).
+static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
+	var out: Array[StringName] = skill.tags.duplicate()
+	if skill.weapon_tag:
+		var blow: StringName = (caster.weapon.damage_tag if caster.weapon else &"blunt")
+		if blow and blow not in out:
+			out.append(blow)
+	var god: StringName = Unit.GOD_TAGS.get(caster.deity(), &"")
+	if skill.god_tag and god and god not in out:
+		out.append(god)
+	return out
+
+
+# What each god adds to a Smite that hits (Skill.god_tag), at rank r, gross its damage before the
+# target's mitigation:
+# Luun: a target left at r x 10% of its max HP or less dies (an execute). Sol: it burns for 20% x r of
+# the damage as pure fire as its side's turn ends. Urlo: r of its enchantments come off (disenchant()),
+# and the caster's own items get those r didn't find (Unit.enchant()). Drael: r ranks of its buffs
+# come off (dispel()). Vetruvis: earth damage radiates from it to everyone within r tiles but the
+# caster, the damage / (tiles away + 1).
+func _smite(caster: Unit, t: Unit, r: int, gross: int) -> void:
+	match caster.deity():
+		&"luun":
+			if t.is_alive() and t.hp <= t.max_hp * 0.1 * r:
+				t.slain_from = t.hp
+				t.hp = 0
+		&"sol":
+			if t.is_alive():
+				var burn := Effect.new()
+				burn.stat = "bleed"
+				burn.name = "Sunburn"
+				burn.tags = [&"fire"]
+				burn.amount = maxf(roundf(gross * 0.2 * r), 1.0)
+				var a := t.afflict(burn, 1 + (1 if t.faction == turn else 0))
+				a.by = caster
+				a.since = turns_begun
+		&"urlo":
+			caster.enchant(r - disenchant(t, r))
+		&"drael":
+			dispel(t, r)
+		&"vetruvis":
+			for o: Unit in units.values():
+				var d := Command.tiles(o.cell, t.cell)
+				if o != caster and o != t and o.is_alive() and d <= r:
+					o.hit(gross / (d + 1.0), [&"earth"] as Array[StringName], caster)
+
+
+# Eros's Smite on an ally: it heals what it would have dealt; past full, it overheals at r x 20% of
+# what's left over (Unit.over_max).
+func _smite_heal(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+	var tier := skill.tier(r)
+	if not tier:
+		return
+	var n := tier.power + roll(Vector2i(tier.dice.x * (r if skill.dice_per_rank else 1), tier.dice.y)) + (caster.mod(tier.stat, skill.tags) if tier.stat else 0)
+	var room := t.max_hp + t.over_max - t.hp
+	var over := maxi(n - room, 0)
+	var extra := roundi(over * 0.2 * r)
+	t.over_max = maxi(t.hp + mini(n, room) + extra - t.max_hp, t.over_max)
+	t.heal(mini(n, room) + extra)
+
+
+# Takes up to n enchantments off t's items, weapon first, then armor and trinket: each becomes its plain
+# self (Item.enchant 0). How many came off.
+func disenchant(t: Unit, n: int) -> int:
+	var done := 0
+	for slot in [&"weapon", &"armor", &"trinket"]:
+		var it: Item = t.get(slot)
+		if done < n and it and it.enchant > 0:
+			it = it.duplicate()
+			it.enchant = 0
+			t.set(slot, it)
+			done += 1
+	t.refit()
+	return done
 
 
 # Starblade: a melee hit gives its wielder back Power - (gross damage / the target's base stat total)
@@ -778,18 +921,30 @@ func pray(u: Unit, r: int, target: Unit = null) -> void:
 # Takes r ranks of debuffs (effects that hurt it) off t, the highest-ranked first: each loses ranks
 # until it has none left, or r runs out. Ramut's Ire isn't Drael's to lift. How many ranks came off.
 func cleanse(t: Unit, r: int) -> int:
-	var bad := t.timed.keys().filter(func(e: Effect): return e.helps() < 0 and e.stat != "ire")
-	bad.sort_custom(func(x: Effect, y: Effect): return t.timed[x].rank > t.timed[y].rank)
+	return _strip(t, r, -1)
+
+
+# The same for buffs (effects that help it): Drael's Smite.
+func dispel(t: Unit, r: int) -> int:
+	return _strip(t, r, 1)
+
+
+# Takes r ranks of t's effects that help it (way 1) or hurt it (-1), the highest-ranked first. An
+# effect easy to remove (Effect.ease: Level Down 2, Level Up 4) loses that many ranks for each spent.
+func _strip(t: Unit, r: int, way: int) -> int:
+	var those := t.timed.keys().filter(func(e: Effect): return e.helps() == way and e.stat != "ire")
+	those.sort_custom(func(x: Effect, y: Effect): return t.timed[x].rank > t.timed[y].rank)
 	var left := r
-	for e: Effect in bad:
+	for e: Effect in those:
 		if left <= 0:
 			break
 		var a: Unit.Applied = t.timed[e]
-		var off := mini(left, a.rank)
+		var off := mini(left * e.ease, a.rank)
 		a.rank -= off
-		left -= off
+		left -= ceili(off / float(e.ease))
 		if a.rank <= 0:
 			t.timed.erase(e)
+	t._arrange()  # a level effect may have gone
 	return r - left
 
 
@@ -867,7 +1022,7 @@ func evidence(o: Unit) -> Array[Vector2i]:
 func watchers(u: Unit) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for o: Unit in units.values():
-		if o.faction != u.faction and o.is_alive() and not o.asleep():
+		if not Faction.friends(o.faction, u.faction) and o.is_alive() and not o.asleep():
 			var r := read(o, u)
 			if r.net >= -1 and r.seen:
 				out.append(o)
@@ -930,6 +1085,10 @@ func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
 	if Vector2(caster.cell).distance_to(Vector2(c)) > skill_range(caster, skill) + 0.0001 or not caster.pay_for(skill):
 		return &""
 	used.emit(caster, skill, c, 0)
+	if not t and c in panes and &"blunt" in hit_tags(caster, skill):
+		panes.erase(c)
+		shattered.emit(caster, c)
+		return &"shattered"
 	return &"miss"
 
 
@@ -1046,12 +1205,85 @@ func strike_tiles(u: Unit) -> Array[Vector2i]:
 	return out
 
 
-# Uses up a consumable from the stash on u, on its side's turn (a Heart: an extra life for good).
-func use_item(u: Unit, it: Item) -> bool:
-	if it == null or it.slot != "consumable" or not _acting(u):
+# --- Items in battle
+
+# Whether u's items can change now: on its side's turn, or once the battle is over.
+func outfitting(u: Unit) -> bool:
+	return phase == Phase.OVER or _acting(u)
+
+
+# AP an item takes to put on, take off or use now (Item.ap_cost(): rank, x2 medium, x3 heavy): none
+# once the battle's over.
+func item_ap(it: Item) -> float:
+	return it.ap_cost() if it and phase == Phase.TURNS else 0.0
+
+
+# AP putting it on takes u now (taking things off is free).
+func equip_ap(_u: Unit, it: Item) -> float:
+	return item_ap(it)
+
+
+# Puts it on u, paying equip_ap() from its general AP. False (nothing changes) if it can't.
+func equip(u: Unit, it: Item) -> bool:
+	if not outfitting(u) or not u.can_wear(it) or u.ap_for(&"equip") < equip_ap(u, it) - 0.0001:
 		return false
-	u.hearts += it.hearts
+	u.pay(equip_ap(u, it), &"equip")
+	u.equip(it)
 	return true
+
+
+# Takes what's in u's slot off, free. What came off, or null if it couldn't.
+func unequip(u: Unit, slot: String) -> Item:
+	var it: Item = u.get(slot)
+	if not it or not outfitting(u):
+		return null
+	return u.unequip(slot)
+
+
+# Uses an item, paying its AP: a consumable from the stash, used up (a Heart: an extra life for good),
+# or the one in u's trinket slot that restores something (a potion: Item.restores; restore()), which
+# empties it until the battle ends (Item.empty; refill()). False if it can't.
+func use_item(u: Unit, it: Item) -> bool:
+	if it == null or not outfitting(u) or not (it.slot == "consumable" or (it == u.trinket and it.restores and not it.empty)):
+		return false
+	if not u.pay(item_ap(it), &"equip"):
+		return false
+	u.hearts += it.hearts if it.slot == "consumable" else 0
+	if it.restores:
+		restore(u, it)
+	if it == u.trinket:
+		u.trinket = it.emptied()
+	return true
+
+
+# Emptied trinkets (potions) fill up again: as each battle ends, for everyone (and a starter's, as it's
+# put on: starter()).
+static func refill(u: Unit) -> void:
+	if u.trinket and u.trinket.empty:
+		u.trinket = u.trinket.filled()
+
+
+# A potion's restoring: (its share x rank) of the max of what it restores, rounded by luck, + the
+# user's mod in restore_mod + restore_flat (Health Potion: 15% of max HP + con mod; Sweet Something:
+# 1 Sweet Nothing). What it gave back.
+func restore(u: Unit, it: Item) -> int:
+	var r: Reserve = it.reserve if it.restores == &"reserve" else null
+	var most: int = u.max_hp if it.restores == &"hp" else (u.max_energy if it.restores == &"energy" else u.pools().get(r, 0))
+	var n := maxi(u.rounded(most * it.restore_share * it.rank) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0)
+	match it.restores:
+		&"hp":
+			var was := u.hp
+			u.heal(n)
+			return u.hp - was
+		&"energy":
+			var was := u.energy
+			u.energy = mini(u.energy + n, u.max_energy)
+			return u.energy - was
+	if r:
+		var was := u.store(r)
+		u.set_store(r, was + n)
+		return u.store(r) - was
+	return 0
 
 
 # What side f takes home from the battle: the items units of other sides dropped, and the scenario's
@@ -1061,7 +1293,7 @@ func winnings(f: Faction) -> Array[Item]:
 	for pair in spoils:
 		if pair[1] != f:
 			out.append(pair[0])
-	if phase == Phase.OVER and members(f).size() > 0 and order.size() <= 1:
+	if won(f):
 		out.append_array(rewards)
 	return out
 
@@ -1090,7 +1322,7 @@ func hidden(c: Vector2i) -> bool:
 
 # What o makes out of a unit or a tile. Linked by Coordinate, it makes out as much as the best of the
 # others in its link do, up to the link's rank in levels better than it would alone (linked()).
-func read(o: Unit, target: Variant) -> Read:
+func _linked_read(o: Unit, target: Variant) -> Read:
 	var r := _read(o, target)
 	var link := o.linked()
 	if link == null or (target is Unit and target == o):
@@ -1101,6 +1333,19 @@ func read(o: Unit, target: Variant) -> Read:
 			best = maxi(best, _read(p, target).net)
 	var lift := mini(best - r.net, link.rank)
 	return r if lift <= 0 else _read(o, target, lift)
+
+
+# What o makes out, with what its synergized partners make out filling the gaps: the clearest of them.
+func read(o: Unit, target: Variant) -> Read:
+	var r := _linked_read(o, target)
+	if target is Unit and target == o:
+		return r
+	for p in synergized(o):
+		if not (target is Unit and p == target):
+			var pr := _linked_read(p, target)
+			if clearer(pr, r):
+				r = pr
+	return r
 
 
 func _read(o: Unit, target: Variant, extra := 0.0) -> Read:
@@ -1395,10 +1640,16 @@ func terrain(c: Vector2i) -> Terrain:
 
 # --- Turns
 
-# As a unit's side starts its turn: regen heals that fraction of its max HP (clearing wounds up to the
+# As a unit's side starts its turn: Resurrection Sickness takes 10% of its max HP (none if it's at full
+# HP: it's cured), regen heals that fraction of its max HP (clearing wounds up to the
 # rank of the strongest regen on it), then poison takes that fraction (each rounded by its luck).
 func _mend(u: Unit) -> void:
 	_pulse(u)
+	if SICKNESS in u.timed:  # gone if it starts the turn whole; else it takes its toll, never the last HP
+		if u.hp >= u.max_hp:
+			u.timed.erase(SICKNESS)
+		else:
+			u.hp = maxi(u.hp - maxi(roundi(SICKNESS.amount * u.max_hp), 1), 1)
 	var regen := u.stat(&"regen")
 	if regen > 0.0:
 		var power := 0
@@ -1417,7 +1668,8 @@ func _bleed(u: Unit) -> void:
 	for e in u.timed.keys():
 		if e.stat == "bleed" and u.is_alive() and u.timed[e].since != turns_begun:
 			var by := u.timed[e].by
-			u.damage(maxi(roll(e.dice) + (by.mod(e.dice_mod) if by and e.dice_mod else 0), 1))
+			var n := roll(e.dice) + (by.mod(e.dice_mod) if by and e.dice_mod else 0) if e.dice != Vector2i.ZERO else roundi(e.amount)
+			u.damage(maxi(n, 1))
 
 
 # Regeneration Pulse, as u's side starts its turn: once every (its side's lives left, at least 1) of
@@ -1469,14 +1721,22 @@ func _on_downed(u: Unit) -> void:
 
 
 # The fallen get up at full HP as the turn ends, each bringing what it summons (a Regeneration Probe)
-# onto the nearest free tile.
+# onto the nearest free tile. One getting up on its Red Spinel Ring (its last life) gets up at the ring's
+# share of its max HP instead, with Resurrection Sickness.
 func _revive() -> void:
 	for u in fallen.duplicate():
 		fallen.erase(u)
 		if not is_instance_valid(u):
 			continue
 		u.reviving = false
-		u.hp = u.max_hp
+		var ring: Item = u.trinket if u.ring_lives() > 0 and u.hearts_used > u.lives() - u.ring_lives() else null
+		if ring:  # a Red Spinel Ring, spent last: rank x 10% of max HP, more than full past rank 10, and sick for rank turns
+			var n := maxi(roundi(u.max_hp * ring.revives * ring.rank), 1)
+			u.over_max = maxi(n - u.max_hp, 0)
+			u.hp = n
+			u.afflict(SICKNESS, ring.rank + (1 if u.faction == turn else 0), ring.rank)
+		else:
+			u.hp = u.max_hp
 		var came: Unit = summon(u.summons, u.faction, u.cell) if u.summons else null
 		revived.emit(u, came)
 
@@ -1519,6 +1779,7 @@ func end_turn() -> void:
 	for u in side:
 		var rested := u.activity() == &"rest"
 		u.recover()
+		_starlight(u)
 		u.rested_turns = u.rested_turns + 1 if rested else 0
 		if not u.asleep():
 			_watch(u)
@@ -1536,6 +1797,11 @@ func end_turn() -> void:
 			u.wake()
 	for u in side:
 		u.tick()
+	for u in members(turn):
+		_sap(u)
+		_synergize(u)
+	for u in members(turn):
+		_starkind(u, true)
 	for z in zones.filter(func(x: Zone): return x.faction == turn):
 		z.turns -= 1
 	zones.assign(zones.filter(func(x: Zone): return x.turns > 0))
@@ -1559,7 +1825,7 @@ func end_turn() -> void:
 # a stalled turn.
 func _check_stall() -> void:
 	var side := members(turn)
-	var foes: Array = units.values().filter(func(t: Unit): return t.faction != turn and t.is_alive())
+	var foes: Array = units.values().filter(func(t: Unit): return not Faction.friends(t.faction, turn) and t.is_alive())
 	stalling.clear()
 	if side.is_empty() or foes.is_empty() or foes.any(func(t: Unit): return side.any(_sees_foe.bind(t))):
 		stalled_turns[turn] = 0
@@ -1766,6 +2032,238 @@ static func next_to(a: Vector2i, b: Vector2i) -> bool:
 	return a != b and absi(a.x - b.x) <= 1 and absi(a.y - b.y) <= 1
 
 
+# The sides in turn order that count toward the battle's end: all but neutral ones (Starmen).
+func fighting() -> Array[Faction]:
+	var out: Array[Faction] = []
+	out.assign(order.filter(func(f: Faction): return not f.neutral))
+	return out
+
+
+# How many sides are still fighting, allies counting as one.
+func sides_left() -> int:
+	var heads: Array[Faction] = []
+	for f in fighting():
+		if not heads.any(func(h: Faction): return Faction.friends(h, f)):
+			heads.append(f)
+	return heads.size()
+
+
+# A side holding the field once the battle's over (allies hold it together), or null.
+func victor() -> Faction:
+	var left := fighting()
+	return left[0] if phase == Phase.OVER and sides_left() == 1 and not left.is_empty() else null
+
+
+# Whether side f won: the battle's over, it's still standing, and it or an ally holds the field.
+func won(f: Faction) -> bool:
+	return victor() != null and Faction.friends(victor(), f) and members(f).size() > 0
+
+
+# --- The star lattice (the Astral Envoy)
+
+func on_lattice(c: Vector2i) -> bool:
+	return c in panes or c in starpower
+
+
+# The starpower source c draws on: itself, or the fullest source joined to it through whole starpanes,
+# side-on. Null if it's off the lattice or linked to none.
+func star_source(c: Vector2i) -> Variant:
+	if not on_lattice(c):
+		return null
+	var seen := {c: true}
+	var queue: Array[Vector2i] = [c]
+	var best: Variant = null
+	while not queue.is_empty():
+		var at: Vector2i = queue.pop_front()
+		if at in starpower and (best == null or charge[at] > charge[best]):
+			best = at
+		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var n: Vector2i = at + d
+			if n not in seen and on_lattice(n):
+				seen[n] = true
+				queue.append(n)
+	return best
+
+
+# How much faster Power comes back on c: x2 linked to an empty source, up to x5 to a full one; 1 off it.
+func star_rate(c: Vector2i) -> float:
+	var s: Variant = star_source(c)
+	return lerpf(STAR_SLOW, STAR_FAST, charge[s] / float(STAR_CAPACITY)) if s != null else 1.0
+
+
+# As its side's turn ends, on the lattice: Power back at star_rate() x its resting rate ((con mod +
+# wis mod) / 2, at least 1), whatever it did; Energy that isn't Power gets STAR_ENERGY of the boost.
+func _starlight(u: Unit) -> void:
+	var m := star_rate(u.cell)
+	if m <= 1.0:
+		return
+	var k := maxi(u.rounded((u.mod(&"constitution") + u.mod(&"wisdom")) / 2.0), 1)
+	u.energy += u.rounded(k * m) if u.powered() else u.rounded(k * (m - 1.0) * STAR_ENERGY)
+
+
+# How far a unit's sap reaches another: a tile side-on, +0.25 a size step past Medium of each, so
+# larger units reach (and are reached on) diagonals.
+func sap_reach(u: Unit, o: Unit) -> float:
+	return 1.0 + 0.25 * (maxi(_size(u) - MEDIUM, 0) + maxi(_size(o) - MEDIUM, 0))
+
+
+func _size(u: Unit) -> int:
+	return roundi(u.stat(&"size")) if u.race else u.size
+
+
+# Starsap, as its side's turn ends: it drains its sap in Energy (Power) from each unit of another side
+# in sap_reach(), HP once their Energy runs out, into its own Power; what it can't hold fills the
+# starpower sources, emptiest first. Once every source is full, it saps no more.
+func _sap(u: Unit) -> void:
+	var n := roundi(u.stat(&"sap"))
+	if n <= 0 or (not charge.is_empty() and charge.values().all(func(x: int): return x >= STAR_CAPACITY)):
+		return
+	var drained := {}
+	var got := 0
+	for o: Unit in units.values():
+		if Faction.friends(o.faction, u.faction) or not o.is_alive() or Vector2(o.cell).distance_to(Vector2(u.cell)) > sap_reach(u, o) + 0.0001:
+			continue
+		var off := mini(o.energy, n)
+		o.energy -= off
+		o.damage(n - off)
+		drained[o] = n
+		got += n
+	if drained.is_empty():
+		return
+	var room := u.max_energy - u.energy
+	u.energy += got
+	got -= mini(got, room)
+	var sources := charge.keys()
+	sources.sort_custom(func(a: Vector2i, b: Vector2i): return charge[a] < charge[b])
+	for c: Vector2i in sources:
+		var put := mini(got, STAR_CAPACITY - charge[c])
+		charge[c] += put
+		got -= put
+	sapped.emit(u, drained)
+
+
+# Starkind, as its side's turn starts or ends: ending it off the lattice, it loses (1 - 0.2 x rank) of
+# its max HP. On the lattice at full Power, it grows a Reforming stack each time; otherwise it loses
+# one. Once its stacks reach its level, it reforms (Unit.reforms_into: a Starman) at full strength.
+func _starkind(u: Unit, ending: bool) -> void:
+	var k := u.starkind()
+	if k <= 0 or not u.is_alive():
+		return
+	var on := on_lattice(u.cell)
+	if ending and not on:
+		u.damage(maxi(ceili(maxf(1.0 - 0.2 * k, 0.0) * u.max_hp), 1))
+		if not u.is_alive():
+			return
+	var stacks: int = u.timed[REFORMING].rank if REFORMING in u.timed else 0
+	stacks = stacks + 1 if on and u.energy >= u.max_energy else maxi(stacks - 1, 0)
+	if stacks <= 0:
+		u.timed.erase(REFORMING)
+		return
+	var a := u.afflict(REFORMING, 1, stacks)
+	a.rank = stacks
+	a.lasting = true
+	if stacks >= u.lv() and u.reforms_into:
+		var c := u.cell
+		units.erase(c)
+		u.get_parent().remove_child(u)
+		var now := summon(load(u.reforms_into), u.faction, c)
+		reformed.emit(u, now)
+		u.queue_free()
+
+
+# --- Last stands, Level Down and Death
+
+# A general defensive check of the whole unit: d20 + its average stat mod (Unit.average_mod()). Against
+# an execute (Death, at its rank), cut by how hurt it is: x (HP left / max HP) / rank.
+func last_stand(u: Unit, execute := 0) -> int:
+	var roll := rng.randi_range(1, 20) + u.average_mod()
+	if execute > 0:
+		roll = floori(roll * (float(u.hp) / maxi(u.max_hp, 1)) / execute)
+	return roll
+
+
+# Level Down: rank rolls of d20 + the caster's mod, each beating the higher of the foe's average stat
+# mod + level and its last stand. Each that does takes a level off it, for as many turns (rank - misses):
+# the skill's level effect at that rank, brittle (easily cleansed).
+func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+	var bar := maxi(t.average_mod() + t.lv(), last_stand(t))
+	var hits := 0
+	for i in r:
+		var roll := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags)
+		contested.emit(caster, t, roll, bar)
+		if roll > bar:
+			hits += 1
+	_expose(caster)
+	_expose(t)
+	if hits > 0:
+		for e in skill.effects:
+			var a := t.afflict(e, hits + (1 if t.faction == turn else 0), hits)
+			a.total = hits
+			a.skill = skill
+			a.by = caster
+			a.since = turns_begun
+	leveled.emit(caster, t, hits)
+
+
+# Death: the foe's last stand against an execute at the skill's rank, against d20 + the caster's mod
+# (the caster wins ties). Failing, it takes 1 true damage and dies at once - keeping the HP it had for
+# revival and die-hard effects (Unit.slain_from). A heart left, it goes down as usual.
+func _death(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+	var stand := last_stand(t, r)
+	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags)
+	contested.emit(caster, t, mine, stand)
+	_expose(caster)
+	_expose(t)
+	if stand > mine:
+		return
+	t.slain_from = t.hp
+	t.damage(1)
+	t.hp = 0
+	caster.gain(&"kill", 1)
+
+
+# --- Synergy
+
+# The others o shares what it makes out with: its leader, or its party, where either of the two has
+# Synergy (leaders share with their whole party, members with their leader).
+func synergized(o: Unit) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for p: Unit in units.values():
+		if p != o and p.is_alive() and p.faction == o.faction and (p.follows == o or o.follows == p) \
+				and (o.stat(&"synergy") > 0.0 or p.stat(&"synergy") > 0.0):
+			out.append(p)
+	return out
+
+
+# The clearer of two reads: more detail, then HP made out, then not fooled.
+static func clearer(a: Read, b: Read) -> bool:
+	if a.net != b.net:
+		return a.net > b.net
+	if (a.hp != null) != (b.hp != null):
+		return a.hp != null
+	return b.deceived and not a.deceived
+
+
+# As its side's turn ends, o gets its own first look at what its synergized partners make out that it
+# needs a check for: suspicious tiles (inspect()), and units under a deceiving skill they saw through
+# (investigate(), against that skill's roll). Once each.
+func _synergize(o: Unit) -> void:
+	for p in synergized(o):
+		for c in suspicious(p):
+			if c not in o.noticed:
+				o.noticed[c] = true
+				inspect(o, c)
+		for t: Unit in units.values():
+			if t == o or o.noticed.has(t):
+				continue
+			for e in t.timed:
+				var a: Unit.Applied = t.timed[e]
+				if a.skill and a.skill.investigated and p in a.known_to and o not in a.known_to:
+					o.noticed[t] = true
+					investigate(t, a.skill, [o] as Array[Unit], a.roll)
+					break
+
+
 func _on_died(u: Unit) -> void:
 	units.erase(u.cell)
 	u.timed.clear()  # nothing ticks for the dead
@@ -1774,13 +2272,18 @@ func _on_died(u: Unit) -> void:
 	if it:
 		spoils.append([it, u.faction])
 		dropped.emit(u, it)
+	if u.reverts_to:  # a Starman falls back into a Starspirit, keeping what Power it had
+		var spirit := summon(load(u.reverts_to), u.faction, u.cell)
+		if spirit:
+			spirit.energy = u.energy
+			reverted.emit(u, spirit)
 	for o in units.values():
 		if o.faction == u.faction:
 			return  # faction still standing
 	var i := order.find(u.faction)
 	order.erase(u.faction)
 	zones.assign(zones.filter(func(z: Zone): return z.faction != u.faction))  # nothing left to tick them
-	if order.size() < 2:
+	if sides_left() < 2:
 		phase = Phase.OVER
 	elif turn == u.faction:
 		turn = order[i % order.size()]
@@ -1790,6 +2293,9 @@ func _enter(p: Phase) -> void:
 	match p:
 		Phase.INITIATIVE:
 			order = roll_initiative()
-			phase = Phase.TURNS if order.size() > 1 else Phase.OVER
+			phase = Phase.TURNS if sides_left() > 1 else Phase.OVER
 		Phase.TURNS:
 			turn = order[0]
+		Phase.OVER:
+			for u: Unit in $Units.get_children():
+				refill(u)

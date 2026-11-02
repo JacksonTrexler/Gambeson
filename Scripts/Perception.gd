@@ -82,7 +82,7 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	if shown.call(2, 2):
 		r.role = t.role
 	if shown.call(2, 2):
-		r.level = t.level
+		r.level = t.lv()
 	if shown.call(3, 2):
 		r.skills = t.kit
 	if o != t and o.faction == t.faction and r.net >= 0:

@@ -4,6 +4,8 @@ extends Resource
 @export var name := ""
 @export var passive := false  # works while its slot is on; costs nothing, can't be cast
 @export var toggle := false  # passive: its holder switches it on and off (from the hotbar)
+@export var inherent := false  # part of what its holder is (Starkind): it can't be disabled or removed, and takes no slot
+@export var min_tier := 0  # its tier is at least this (Synergy: 2), wherever it's offered (Unit.tier())
 @export var hybrid := false  # passive with an active part: using it costs its AP (Personify: adjusting its persona; Battle.personify())
 @export var tags: Array[StringName] = []  # e.g. physical, dark, magical, str, wis; martial, magical, specialist: its category
 @export var effects: Array[Effect] = []  # passives: on the holder; actives: put on the target
@@ -36,6 +38,10 @@ extends Resource
 @export var disables := false  # a curse: with its save, the caster's luck-rounded sqrt(rank) of the foe's skill slots are switched off, right to left, for its turns; the foe adds the ranks of the skills in them to its save (Brainfog; Unit.disable_order())
 @export var resisted := &""  # it pulls only foes enraptured by the caster (fooled, with no suspicion of it); on a suspicious one, d20 + the caster's mod in the skill's stat against d20 + its mod in this takes a stack of suspicion off (Sing: wisdom; Battle._lured())
 @export var tiers: Array[Tier] = []  # damage by rank; none: no damage (tagged energy: it drains Energy first - Unit.drain())
+@export var weapon_tag := false  # its damage takes its wielder's weapon's damage tag, or blunt bare-handed (Strike; Item.damage_tag, Battle.hit_tags())
+@export var levels_down := false  # rank rolls of d20 + the caster's mod in its stat, each beating the higher of the foe's average stat mod + level and its last stand; each that does takes a level off it for rank - misses turns (Level Down; Battle._level_down())
+@export var kills := false  # the foe's last stand, cut by how hurt it is (execute), against d20 + the caster's mod in its stat: failing, it takes 1 true damage and dies (Death; Battle._death())
+@export var god_tag := false  # its damage takes the tag of its caster's god as well (Smite; Unit.GOD_TAGS): Urlo's energy drains Energy first
 @export var carry := 0.0  # energy damage: this x (rank - 1) of what's left once the target's Energy is gone goes on to HP (Smite: 0.2)
 @export var hits_per_rank := false  # Strike III hits three times
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
@@ -130,7 +136,7 @@ func for_allies() -> bool:
 
 # Rolls to hit a foe before it does anything to it.
 func attacks() -> bool:
-	return for_foes() and rolls and not on_tile() and not drags_to and not save
+	return for_foes() and rolls and not on_tile() and not contests()
 
 
 # Heals (or restores AP): mends allies it's used on.
@@ -166,18 +172,33 @@ func lasts(rank: int, u: Unit = null) -> int:
 	return turns + turns_per_rank * rank + (maxi(u.mod(turns_mod), 0) if u and turns_mod else 0)
 
 
+# Contests a foe in place of an attack roll: a save, a drag, Level Down, Death.
+func contests() -> bool:
+	return save != &"" or drags_to != &"" or levels_down or kills
+
+
 # Used on its user alone: self_only, except a prayer to Drael (Pray), which is on a unit within rank tiles.
 func on_self(u: Unit) -> bool:
 	return self_only and not (prays and u and u.deity() == &"drael")
 
 
 # Its range for a caster, before reach and size: radius (+ radius_per_rank x rank: Embellish), plus
-# its mod in radius_mod - at least 1, so it reaches an adjacent unit.
+# its mod in radius_mod - at least 1, so it reaches an adjacent unit - plus what its range effects add
+# (a Staff, a Broadsword: Unit.skill_stat()).
 func span(u: Unit) -> float:
 	var r := radius + radius_per_rank * u.rank(self)
-	if not radius_mod:
-		return r
-	return maxf(r + u.mod(radius_mod, tags), 1.0)
+	if radius_mod:
+		r = maxf(r + u.mod(radius_mod, tags), 1.0)
+	return r + (u.skill_stat(&"range", self) if not self_only else 0.0)
+
+
+# The tags it's asked about by for its attributes (Unit.skill_stat()): its own, plus damage for a skill
+# that deals any.
+func query() -> Array[StringName]:
+	var out: Array[StringName] = tags.duplicate()
+	if not tiers.is_empty():
+		out.append(&"damage")
+	return out
 
 
 # Up to 2 characters for it on skill trees: a stub's question ("?3"), its glyph, or its initials.
@@ -257,7 +278,7 @@ func describe(rank := 1) -> String:
 	var foe := "On a foe: " if dual else ""
 	var ally := "On an ally: " if dual else ""
 	if passive:
-		lines.append("Passive" + (", switched on and off" if toggle else ", always on"))
+		lines.append("Inherent: can't be removed or disabled, and takes no slot" if inherent else "Passive" + (", switched on and off" if toggle else ", always on"))
 	else:
 		var kind := "Channel" if channel else "Area" if zone else ("Self" if self_only else ("Ally or foe" if dual or either else ("Attack" if hostile else ("Heal" if heals() else "Support"))))
 		lines.append("%s · %s" % [kind, summary()])
@@ -286,6 +307,11 @@ func describe(rank := 1) -> String:
 		if save:
 			lines.append("The foe saves: d20 + %s mod%s against d20 + %s mod + %d" % [String(save).left(3),
 					" + the ranks of the skills it would lose" if disables else "", String(stat()).left(3), rank])
+		if levels_down:
+			lines.append("Rolls %d time%s: d20 + %s mod, each beating the higher of the foe's average stat mod + level and its last stand (d20 + average stat mod). Each that does takes a level off it, for %d turns less one a miss"
+					% [rank, "" if rank == 1 else "s", String(stat()).left(3), rank])
+		if kills:
+			lines.append("The foe's last stand (d20 + average stat mod) x (its HP left / %d) against d20 + %s mod: failing, it takes 1 true damage and dies" % [rank, String(stat()).left(3)])
 		if disables:
 			var n := floori(sqrt(rank))
 			var up := ceili(sqrt(rank))
@@ -301,6 +327,17 @@ func describe(rank := 1) -> String:
 		if channel:
 			lines.append("Channels on a tile. Cast again for %s AP and %d cost to strike: a tile within (its side's turns since) tiles of it explodes, hitting everyone within %s tiles but the caster"
 					% [num(strike_ap), strike_cost, num(blast * rank)])
+		if god_tag:
+			var n := rank
+			lines.append("Its damage takes its caster's god's tag, and on a hit its god adds:")
+			lines.append("Eros (love): used on an ally, it heals what it would deal, overhealing at %d%%" % (20 * n))
+			lines.append("Luun (dark): a foe left at %d%% of its max HP or less dies" % (10 * n))
+			lines.append("Sol (fire): it burns again for %d%% of the damage, pure fire, as its turn ends" % (20 * n))
+			lines.append("Urlo (energy): drains Energy (or Power) first%s; takes %d enchantment%s off, enchanting the caster's items with the rest"
+					% [", then %d%% of the rest goes on to HP" % roundi(carry * (n - 1) * 100) if carry * (n - 1) > 0 else "", n, "" if n == 1 else "s"])
+			lines.append("Drael (water): takes %d rank%s of its buffs off" % [n, "" if n == 1 else "s"])
+			lines.append("Vetruvis (earth): radiates to everyone within %d tile%s, the damage / (tiles away + 1)" % [n, "" if n == 1 else "s"])
+			lines.append("Ramut (physical): nothing more")
 		if t:
 			var dmg := _damage(t)
 			if dice_per_rank and rank > 1:

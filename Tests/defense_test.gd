@@ -35,8 +35,9 @@ func test_armor() -> void:
 	v(3).armor = robe
 	v(3).level = 41
 	ok(v(1).defense() == 11 and v(3).defense() == 10, "level 41: 10.25 is 11 for the lucky, 10 for the rest")
-	ok(gambeson.describe() == "Defense: the higher of 10 and level / 2, + dex mod", "describes itself (%s)" % gambeson.describe())
-	ok(plate.describe() == "Defense: the higher of 20 and level" and robe.describe() == "Defense: the higher of 8 and level / 4", "Plate, Robe")
+	ok(gambeson.describe().split("\n")[0] == "Defense: the higher of 10 and level / 2, + dex mod", "describes itself (%s)" % gambeson.describe())
+	ok(plate.describe().split("\n")[0] == "Defense: the higher of 20 and level" and robe.describe().split("\n")[0] == "Defense: the higher of 8 and level / 4", "Plate, Robe")
+	ok(plate.describe().ends_with("3 AP to put on or use in battle (heavy: rank x 3)"), "Plate is heavy: 3 AP to put on")
 
 
 func test_tagged_defense() -> void:
@@ -143,7 +144,7 @@ func test_weapon() -> void:
 	b.rng.seed = 3
 	b.cast(v(1), strike, v(3))
 	ok(50 - v(3).hp in [5, 10], "damage uses it too: 1 + 4 (%d)" % (50 - v(3).hp))
-	ok(rapier.describe() == "Weapon: strength attacks may use dexterity", "described")
+	ok(rapier.describe().split("\n")[0] == "Weapon: strength attacks may use dexterity", "described")
 
 
 # Ends Lancin's turn and Nemes' after it, so Lancin's next turn starts.

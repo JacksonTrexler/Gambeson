@@ -145,7 +145,7 @@ func _show_pick() -> void:
 	%DetailCol.visible = s != null
 	if not s:
 		return
-	var r := unit.rank(s)
+	var r := unit.base_rank(s)
 	%DetailName.text = s.name + (" " + Skill.roman(r) if r else "")
 	%DetailState.text = state(s)
 	%DetailText.text = s.plan if s.stub else s.describe(maxi(r, 1))
@@ -169,7 +169,7 @@ func state(s: Skill) -> String:
 	var tier := "Tier %d · " % unit.tier(s)
 	if s.stub:
 		return tier + "Not built yet. " + s.waits()
-	var r := unit.rank(s)
+	var r := unit.base_rank(s)
 	if r > 0:
 		return tier + "Learned, rank %s%s" % [Skill.roman(r), "" if unit.can_raise(s) else " (its highest)"]
 	var why := unit.missing(s)
@@ -204,7 +204,7 @@ func _resize(to: Vector2) -> void:
 
 
 func _entry(s: Skill) -> Control:
-	var r := unit.rank(s)
+	var r := unit.base_rank(s)
 	var card := PanelContainer.new()
 	card.theme_type_variation = &"Card"
 	card.tooltip_text = "%s · tier %d\n%s" % [s.name, unit.tier(s), s.describe(maxi(r, 1))]

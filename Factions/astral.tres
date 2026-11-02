@@ -5,7 +5,7 @@
 
 [resource]
 script = ExtResource("1_faction")
-name = "Astral"
+name = "Stellar Order"
 primary = Color(0.95, 0.82, 0.35, 1)
 secondary = Color(0.12, 0.1, 0.25, 1)
 icon = ExtResource("2_icon")

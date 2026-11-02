@@ -8,6 +8,7 @@
 script = ExtResource("1_skill")
 name = "Sweet Nothings"
 passive = true
+toggle = true
 tags = Array[StringName]([&"warlock", &"magical"])
 glyph = "SN"
 reserve = ExtResource("3_sn")
