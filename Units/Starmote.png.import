@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cu6bgj1hrt4wj"
-path="res://.godot/imported/Starspirit.png-6ea4219dfa49e8a15ae7734628e0edf1.ctex"
+uid="uid://dxdf7rdd6t35r"
+path="res://.godot/imported/Starmote.png-0642e1fcd0b07f2471dfc7d785500250.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Units/Starspirit.png"
-dest_files=["res://.godot/imported/Starspirit.png-6ea4219dfa49e8a15ae7734628e0edf1.ctex"]
+source_file="res://Units/Starmote.png"
+dest_files=["res://.godot/imported/Starmote.png-0642e1fcd0b07f2471dfc7d785500250.ctex"]
 
 [params]
 

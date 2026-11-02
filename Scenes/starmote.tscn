@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
-[ext_resource type="Texture2D" path="res://Units/Starspirit.png" id="2_look"]
+[ext_resource type="Texture2D" path="res://Units/Starmote.png" id="2_look"]
 [ext_resource type="Resource" path="res://Skills/energy_missile.tres" id="3_missile"]
 [ext_resource type="Resource" path="res://Skills/powerful.tres" id="4_powerful"]
 [ext_resource type="Resource" path="res://Skills/starkind.tres" id="5_starkind"]
@@ -20,8 +20,8 @@ script = ExtResource("9_slot")
 skill = ExtResource("5_starkind")
 rank = 3
 
-[node name="Starspirit" instance=ExtResource("1_unit")]
-nick = "Starspirit"
+[node name="Starmote" instance=ExtResource("1_unit")]
+nick = "Starmote"
 look = ExtResource("2_look")
 tags = Array[StringName]([&"astral", &"beast"])
 vibe = "Flickering"

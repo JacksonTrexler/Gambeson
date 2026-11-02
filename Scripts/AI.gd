@@ -16,7 +16,7 @@ class_name AI
 # strikes where the blast takes in the most foes, and begins channeling where they gather. A unit
 # with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it, and one that
 # hunts a side (Unit.hunts: Starmen, the Stellar Order) goes after that side's units first. A
-# recovering unit (a Starspirit) heads for the star lattice and holds there, fighting only when cornered.
+# recovering unit (a Starmote) heads for the star lattice and holds there, fighting only when cornered.
 # Kept small on purpose: score() and the move choice are the places to grow it.
 
 const KILL := 5.0  # bonus for a hit that should finish the target
@@ -346,7 +346,7 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i]) -> bool:
 	return best != u.cell and not b.travel(u, best).is_empty()
 
 
-# A recovering unit (a Starspirit): off the star lattice, it heads for the nearest free lattice tile;
+# A recovering unit (a Starmote): off the star lattice, it heads for the nearest free lattice tile;
 # on it, it holds. Only cornered - a foe beside it, and nowhere further from its foes to go - does it
 # fight (its energy missiles).
 static func _recover(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:

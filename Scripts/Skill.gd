@@ -22,11 +22,14 @@ extends Resource
 @export var needs: Reserve  # it can only be paid with this reserve (a Warlock's higher-tier skills: a Sweet Nothing)
 @export var cost_with: Dictionary[Reserve, float] = {}  # cost factor paid with a reserve, once the caster has opened it up to this skill's tier (starter spells: mana 0.5, opened by Mana)
 @export var radius := 0.0  # range before reach and size
+@export var radius_stat := &""  # plus the caster's score in this stat itself, not its mod (Gasp: charisma)
 @export var radius_mod := &""  # plus the caster's mod in this stat, reaching an adjacent unit at least (starter spells: intelligence)
 @export var hostile := true  # targets enemies (false: allies)
 @export var dual := false  # usable on allies and foes alike: allies get its effects, foes its damage (starter spells)
 @export var either := false  # usable on allies and foes alike, its effects on both (wauaw)
 @export var rolls := true  # used on a foe: rolls d20 + attack mod against its Defense first (Battle.cast())
+@export var advantage := false  # that roll is the better of two d20s (Gasp)
+@export var roll_per_rank := 0  # ...plus this x rank (Gasp: rank)
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
 @export var grip := Vector2i.ZERO  # its effects hold the foe (grappled) until it breaks free by moving away: each turn it ends held, these dice + the caster's mod in its stat (Drown: 1d12; Battle._break_free(), Battle._grip())
@@ -186,7 +189,7 @@ func on_self(u: Unit) -> bool:
 # its mod in radius_mod - at least 1, so it reaches an adjacent unit - plus what its range effects add
 # (a Staff, a Broadsword: Unit.skill_stat()).
 func span(u: Unit) -> float:
-	var r := radius + radius_per_rank * u.rank(self)
+	var r := radius + radius_per_rank * u.rank(self) + (u.stat(radius_stat) if radius_stat else 0.0)
 	if radius_mod:
 		r = maxf(r + u.mod(radius_mod, tags), 1.0)
 	return r + (u.skill_stat(&"range", self) if not self_only else 0.0)
@@ -287,7 +290,8 @@ func describe(rank := 1) -> String:
 		for r: Reserve in cost_with:  # the skill opening a reserve goes by its name (Mana)
 			lines.append("%s cost paid with %s, once the caster's %s rank reaches its tier" % [share(cost_with[r]), r.name, r.name])
 		if attacks():
-			lines.append("%s%s d20 + %s mod against Defense; a natural 20 doubles damage" % [foe, "rolls" if dual else "Rolls", String(stat()).left(3)])
+			lines.append("%s%s %s + %s mod%s against Defense; a natural 20 doubles damage" % [foe, "rolls" if dual else "Rolls", "the better of 2d20" if advantage else "d20",
+					String(stat()).left(3), " + %d" % (roll_per_rank * rank) if roll_per_rank else ""])
 		if zone:
 			lines.append("Lays %s concealment around a tile for %d turns" % [zone, turns])
 		if observes:
@@ -331,7 +335,7 @@ func describe(rank := 1) -> String:
 			var n := rank
 			lines.append("Its damage takes its caster's god's tag, and on a hit its god adds:")
 			lines.append("Eros (love): used on an ally, it heals what it would deal, overhealing at %d%%" % (20 * n))
-			lines.append("Luun (dark): a foe left at %d%% of its max HP or less dies" % (10 * n))
+			lines.append("Luun (dark): a foe left at %d%% of its max HP or less dies" % (5 * n))
 			lines.append("Sol (fire): it burns again for %d%% of the damage, pure fire, as its turn ends" % (20 * n))
 			lines.append("Urlo (energy): drains Energy (or Power) first%s; takes %d enchantment%s off, enchanting the caster's items with the rest"
 					% [", then %d%% of the rest goes on to HP" % roundi(carry * (n - 1) * 100) if carry * (n - 1) > 0 else "", n, "" if n == 1 else "s"])

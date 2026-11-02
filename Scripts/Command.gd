@@ -32,11 +32,21 @@ func faction() -> Faction:
 
 
 func reach() -> int:
-	return maxi(leader.mod(&"charisma") + roundi(leader.stat(&"command")), 1)
+	return reach_of(leader)
 
 
 func party_reach() -> float:
-	return reach() * PARTY_REACH
+	return party_reach_of(leader)
+
+
+# How far a leader's orders carry: its cha mod + its command stat (a Quartz Ring: no limit), at least 1.
+static func reach_of(l: Unit) -> int:
+	return maxi(l.mod(&"charisma") + roundi(l.stat(&"command")), 1)
+
+
+# ...and to its party: PARTY_REACH times as far (Synergy's reach too: Battle.synergized()).
+static func party_reach_of(l: Unit) -> float:
+	return reach_of(l) * PARTY_REACH
 
 
 func party_size() -> int:

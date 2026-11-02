@@ -49,15 +49,19 @@ Core: **Hex** (built).
 
 ## Warlock
 
-`Roles/warlock.tres`: cha 15, "Caster", the Gaunt sprite; on the entry screen. A tab per patron, **Patron: Elmon** and **Patron: Hogel** (a stub), each opening with the shared tier 1 row (`Role.shared`): Hex, Sweet Nothings and Chant (a stub). Hex and Sweet Nothings are learned from the start. A Warlock serves one patron: its first skill on a patron's roots devotes it, and the other patron's tab closes ("Devoted to Elmon"; `SkillTab.devotes`, `Unit.devotion()`). Its magical skills use cha where they'd use wis (`Role.swaps`): Hex rolls and hits with cha mod. (?26)
+`Roles/warlock.tres`: cha 15, "Caster", the Gaunt sprite; on the entry screen. A tab per patron, **Patron: Elmon** and **Patron: Hogel** (light and death magic), each opening with the shared tier 1 row (`Role.shared`): Hex, Sweet Nothings and Chant. Hex and Sweet Nothings are learned from the start. A Warlock serves one patron: its first skill on a patron's roots devotes it, and the other patron's tab closes ("Devoted to Elmon"; `SkillTab.devotes`, `Unit.devotion()`). Its magical skills use cha where they'd use wis (`Role.swaps`): Hex rolls and hits with cha mod.
 
 - [x] **Sweet Nothings** (tier 1 passive, `warlock`, switched on and off from the hotbar; `Reserves/sweet_nothings.tres`, pink): a reserve of cha mod × rank (none at +0), full as each battle starts. Switched on, one Sweet Nothing pays a Warlock skill's whole cost, whatever it is, when that saves Energy; switched off, nothing is spent from it (it's kept), and skills that need one can't be used (`Unit.spends()`). Higher-tier skills can need one (`Skill.needs`). One back for each foe the Warlock's skills slay, and more as its patron is satisfied.
+- [x] **Chant** (tier 1 passive, shared row): waiting a turn out (resting: no move, no AP spent) primes it: its next rank Sweet Nothing gains each bring one more, and its next Warlock skill is used a rank higher (`Battle._chant()`, `Unit.chant_gains`, `Unit.chant_up`). (?42)
 - [x] **Analysis Dialysis** (Elmon, tier 2 passive, after Sweet Nothings): unmasking a foe it took for friendly or neutral gives 2 Sweet Nothings × rank; each level of concealment its suspicion takes off a hiding foe, 1 × rank (`unmask_gain`, `uncover_gain`; `Battle._dialysis()`).
-- [x] **wauaw** (Elmon, tier 2 active, after Sweet Nothings; 3 AP, cost 2, range rank): on any unit, ally or foe, with no roll, for 3 + 2 × rank turns: more damage taken and more damage dealt, both 10% steps climbing to the middle of its turns and back down (rank I: 10, 20, 30, 20, 10%). (?26)
+- [x] **wauaw** (Elmon, tier 2 active, after Sweet Nothings; 3 AP, cost 2, range rank): on any unit, ally or foe, with no roll, for 3 + 2 × rank turns: more damage taken and more damage dealt, both 10% steps climbing to the middle of its turns and back down (rank I: 10, 20, 30, 20, 10%).
 - [x] **Brainfog** (Elmon, tier 2 curse, after Hex; 4 AP, cost 3, range cha mod + rank): the foe saves, d20 + wis mod + the ranks of the skills it would lose, against d20 + cha mod + rank (the caster wins ties). Failing, the caster's sqrt(rank) - rounded down, up while lucky - of its skill slots are disabled from the right (see Pillar skills) for rank + 1 turns. Passing, it grows suspicious of the caster.
-- [x] **Level Down** (Elmon, tier 5: 4 of Elmon's skills first; 5 AP, cost 4 and a Sweet Nothing, range cha mod + rank; `warlock`, `curse`): rank rolls of d20 + cha mod, each against the higher of the foe's average stat mod + level and its last stand. Each that beats it takes a level off the foe, for as many turns (rank − misses). The curse is brittle. Clerics of Luun are to have it too. (?37)
-- [x] **Death** (Elmon capstone: 5 of Elmon's skills first; 6 AP, cost 6 and a Sweet Nothing, range cha mod + rank; `dark`, `execute`): the foe's last stand × (HP left / max HP) / rank, against d20 + cha mod (the caster wins ties). Failing, it takes 1 true damage and dies; a heart left, it goes down as usual. Luun Clerics and Paladins are to have it too. (?37)
-- [x] **Haluca** (Elmon, tier 2, after Hex): as before; a foe that saves now grows a stack of suspicion of the caster. (?26)
+- [x] **Level Down** (Elmon, tier 5: 4 of Elmon's skills first; 5 AP, cost 4 and a Sweet Nothing, range cha mod + rank; `warlock`, `curse`): rank rolls of d20 + cha mod, each against the higher of the foe's average stat mod + level and its last stand. Each that beats it takes a level off the foe, for as many turns (rank − misses). The curse is easy to cleanse (×2). Clerics of Luun have it too, without the Sweet Nothing (a skill needs one only from a unit that has them).
+- [x] **Death** (Elmon capstone: 5 of Elmon's skills first; 6 AP, cost 6 and a Sweet Nothing, range cha mod + rank; `dark`, `execute`): the foe's last stand × (HP left / max HP) / rank, against d20 + cha mod (the caster wins ties). Failing, it takes 1 true damage and dies; a heart left, it goes down as usual. Luun Clerics have it too; Luun Paladins will.
+- [x] **Haluca** (Elmon, tier 2, after Hex): as before; a foe that saves now grows a stack of suspicion of the caster.
+- [x] **Gasp** (Hogel, tier 1 active, `light`, `curse`; 2 AP, cost 1; range cha itself + rank: `Skill.radius_stat`): 1 light curse damage. Easy to hit: the better of two d20s (`Skill.advantage`), + rank (`Skill.roll_per_rank`). (?43)
+- [x] **Breathtaking** (Hogel, tier 2 passive, after Gasp): its curses that land (effects put on, or damage) give the target a stack of **Asphyxia**: 1% × rank of its max HP gone a stack (`Unit.refit()`), holding for 1 + rank of its turns after the last, then falling a stack a turn (`Battle._choke()`). (?43)
+- [x] **Irradiate** (Hogel, tier 3 passive, after Breathtaking): an offensive light-damage skill whose roll beats Defense deals the overage as more light damage, up to rank + cha mod. (?43)
 
 ## Rogue and Bard
 
@@ -65,13 +69,16 @@ Stub trees from skills that exist, each with its own tab and **Calling: Freedom*
 - [x] **Rogue** (`Roles/rogue.tres`; dex 15; "Tradefolk"). Starts with Strike and Move +1. Its own tab: Strike; **Blade** (martial): Wary. Calling: Freedom: centre **Hide** (tier 1 here); core **Move +1**, **Darkvision**, **Self-evaluation**, **First Aid**; **Shadow** (specialist): Meander, then Clever Disguise and Brood; **Traps** (specialist): Snare, then Hazard Expert; **Eyes** (specialist): Observe, then Eyes Forward and Special Eyes.
 - [x] **Bard** (`Roles/bard.tres`; cha 15; "Tradefolk"). Starts with Strike and Meander. Its own tab: Strike; **Song** (magical): Sola, then Astera. Calling: Freedom: centre **Clever Disguise** (tier 1 here); core **Meander**, **Move +1**, **Self-evaluation**, **First Aid**; **Performance** (specialist): Tonefoolery; Glamour, then Manifest; Personify, then Embellish and Brood, then Conspire. Eyes Forward and Special Eyes are on its Freedom core.
 
-## Cleric (no class yet)
+## Cleric
 
-- [x] **Level Up** (`Skills/level_up.tres`; Sol's capstone, to come; 5 AP, 5 cost, range wis mod + rank, on an ally): it gains rank levels for rank turns. Exceptionally easy to remove: dispelling takes 4 of its ranks for each spent. Not on any tree until the Cleric exists. (?37)
+`Roles/cleric.tres`: wis 15, "Caster", `Units/Cleric.png` (a placeholder: u.u over <> over / \); on the entry screen and among the Wayfarers. A **Divinity** tab per god, one god per Cleric (`SkillTab.god`, `devotes`: its first skill on a god's roots devotes it, and it prays to that god: `Unit.deity()`), each opening with Pray and Renew (learned from the start). Its magical skills use wis where they'd use cha (`Role.swaps`). Robe, Staff, Energy Potion. (?44)
+- **Luun**: Level Down (after Pray), then Death.
+- **Sol**: Level Up (after Renew).
+- [x] **Level Up** (`Skills/level_up.tres`; Sol's capstone; 5 AP, 5 cost, range wis mod + rank, on an ally): it gains rank levels for rank turns. Exceptionally easy to remove: dispelling takes 4 of its ranks for each spent.
 
 ## Anyone
 
-- [x] **Synergy** (tier 2 passive, `specialist`; on offer to every class, and on the Human tree): see Vision. (?38)
+- [x] **Synergy** (tier 2 passive, `specialist`; on offer to every class, and on the Human tree): see Vision. It reaches as far as the leader's command range over its party (2 × (cha mod + command)); a Quartz Ring makes that endless.
 
 ## Paladin
 
@@ -87,7 +94,7 @@ Stub trees from skills that exist, each with its own tab and **Calling: Freedom*
 - [x] **Coordinate** (Idealism root · active · 1 AP · 3 Energy · on itself; `Skills/coordinate.tres`): links the caster with its teammates within its cha mod in tiles (at least 1) and its leader, wherever it is, until the end of its side's next turn. Linked, each makes out units and tiles as well as the best of them does, up to rank levels better (`Battle.read()`): with the player's view being the leader's, it's how the rest of a side's sight reaches the player. *Now:* a Paladin option.
 - [x] **Smite** (tier 3: two skills learned first; active · 5 AP · 4 cost · adjacent, `divine`, `cha`; `Skills/smite.tres`): 2d12 / 3d12 / 4d12 + cha mod at ranks I / III / V, with an attack roll. Its damage carries the tag of the caster's god (`Skill.god_tag`, `Unit.GOD_TAGS`), and on a hit its god adds (`Battle._smite()`):
   - **Eros** (love): used on an ally, it heals what it would deal, overhealing what's left over at rank × 20%.
-  - **Luun** (dark): a foe left at rank × 10% of its max HP or less dies (an execute). (?41)
+  - **Luun** (dark): a foe left at rank × 5% of its max HP or less dies (an execute).
   - **Sol** (fire): it burns again as its side's turn ends, for 20% × rank of the damage, pure fire.
   - **Urlo** (energy): drains Energy (or Power) first, from rank II (rank − 1) × 20% of what's left going on to HP; takes rank enchantments off its items, and enchants the caster's with what it didn't find.
   - **Drael** (water): takes rank ranks of its buffs off (`Battle.dispel()`).

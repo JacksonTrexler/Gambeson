@@ -49,25 +49,18 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 
 *Now:* `Roles/warlock.tres` (cha 15, the Gaunt sprite; on the entry screen): a tab per patron, **Elmon** and **Hogel**, sharing a static tier 1 row (Hex, Sweet Nothings, Chant), with Hex and Sweet Nothings learned from the start. Elmon's tab: Analysis Dialysis, wauaw, Brainfog and Haluca, from tier 2. One patron per Warlock. Built entries are in `docs/done/classes.md`.
 
-- [ ] **Chant** (tier 1 passive, on the shared row): a stub. Its text stops at "Waiting with". (?26)
-- [ ] **Hogel's path**: a stub tab. (?26)
+- [x] **Chant** and **Hogel's path** (Gasp, Breathtaking, Irradiate): built (`docs/done/classes.md`). (?42 ?43)
+- [ ] What satisfies Hogel. (?43)
 - [x] Level Down (tier 5) and Death (capstone) need a Sweet Nothing (`docs/done/classes.md`).
 
-26. Warlock, still open:
-    - **Chant**: your note reads `Starts with t1 passive "Chant". Waiting with` and stops there. What does it do?
-    - **Hogel's path**: what's on it, and what satisfies Hogel?
-    - wauaw, as built: on anyone, ally or foe, with no roll; its damage-taken step can take mitigation below 0 (extra damage taken). 3 AP, cost 2. Right?
-    - One patron, as built: a Warlock's first skill on a patron's roots devotes it (the shared row doesn't count). Should devotion ever be undone (a new pact)?
-    - Hex on cha: as built, every magical skill a Warlock has uses cha where it would use wis, not just Hex. Right?
-
-37. Level Down and Death, as built:
-    - Level Down: 5 AP, cost 4 and a Sweet Nothing, range cha mod + rank. Rolls d20 + cha mod, rank times; each must beat the higher of the foe's average stat mod + level and its last stand (one roll for the cast). Each that does takes a level off it for that many turns (rank - misses).
-    - Death: 6 AP, cost 6 and a Sweet Nothing, range cha mod + rank. The caster wins ties.
-    - For Luun and Sol: there's no Cleric class or Divinity trees yet; Level Up (Sol's capstone) is built but on no tree. Should the Cleric be the next class, a tab per god (one god per Cleric, as with patrons)?
+42. Chant, as built: "waiting" is resting the whole turn (no move, no AP spent). It primes the next rank Sweet Nothing gains to bring one more each ("from the next rank gains"), and the next Warlock skill to be used a rank higher. Right reading?
+43. Hogel, as built: Gasp 2 AP and 1 cost; Breathtaking's stacks hold 1 + rank turns after the last, then fall a stack a turn; Irradiate only works with light skills (just Gasp so far). What satisfies Hogel (Sweet Nothings back, as unmasking does for Elmon)?
+44. Cleric, as built (placeholders until Luun and Sol have more skills): wis 15, the Cleric sprite; Pray and Renew on a shared row; Luun: Level Down (after Pray), then Death; Sol: Level Up (after Renew). Robe, Staff, Energy Potion. Its magical skills use wis where they'd use cha. Paladins don't get Death yet (they have no Divinity tabs).
 
 ## Cleric
 
-- [ ] **Cleric** (a new class) with Divinity trees: **Luun** (Level Down as a Cleric skill; Death as the Luun capstone for Clerics and Paladins) and **Sol** (Level Up, its capstone). (?37)
+- [x] **Cleric**: built (`docs/done/classes.md`). (?44)
+- [ ] More Luun and Sol skills, so Death and Level Up sit as capstones; Death for Luun Paladins once Paladins have Divinity tabs.
 
 ## Rogue and Bard
 
@@ -97,7 +90,6 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
 
 **Prowess: Protector.** See Fighter.
 
-41. Luun's Smite: "an execute at rank * % health" - the number before % is missing. Built as rank × 10% (rank V: a foe at half HP or less dies). Right number?
 12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
 
 ## Fighter

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="2_tier"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("2_tier")
+power = 1
+
+[resource]
+script = ExtResource("1_skill")
+name = "Gasp"
+tags = Array[StringName]([&"light", &"curse", &"warlock", &"magical", &"cha"])
+ap = 2.0
+cost = 1
+radius_per_rank = 1.0
+radius_stat = &"charisma"
+advantage = true
+roll_per_rank = 1
+tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])

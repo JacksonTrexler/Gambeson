@@ -44,9 +44,10 @@ func test_luun() -> void:
 	v(3).max_hp = 100
 	v(3).hp = 40
 	b._smite(u, v(3), 1, 10)
-	ok(v(3).is_alive(), "rank I: 40% left is above 10%")
+	ok(v(3).is_alive(), "rank I: 40% left is above 5%")
+	v(3).hp = 20
 	b._smite(u, v(3), 5, 10)
-	ok(not v(3).is_alive() and v(3).slain_from == 40, "rank V: at 50% or less, it dies")
+	ok(not v(3).is_alive() and v(3).slain_from == 20, "rank V: at 25% or less, it dies")
 
 
 func test_sol() -> void:

@@ -26,7 +26,7 @@ func test_envoy_companions() -> void:
 	tree.root.add_child(scene)
 	var e: Battle = scene.get_node("Battle")
 	var them := e.members(wayfarers)
-	ok(them.size() == 5 and them.all(func(u: Unit): return u.role.name != "Rogue"), "the other five starters: %s" % [them.map(func(u: Unit): return u.role.name)])
+	ok(them.size() == 6 and them.all(func(u: Unit): return u.role.name != "Rogue"), "the other six starters: %s" % [them.map(func(u: Unit): return u.role.name)])
 	ok(Faction.friends(wayfarers, lancin) and wayfarers in e.order, "their own side, allied with the player's")
 	ok(them.all(func(u: Unit): return u.armor != null and u.weapon != null), "in their starting items")
 	var cmd := Command.new(e, e.player)

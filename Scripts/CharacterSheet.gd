@@ -5,7 +5,7 @@ extends PanelContainer
 # stash (Game.stash) - items won as drops and scenario rewards. On its side's turn, or once the battle
 # is over, a unit of the player's own puts items on from the stash (what they replace goes back
 # into it), takes them off, or uses up a consumable (a Heart) or a potion in its trinket slot. In
-# battle each costs the item's AP (Item.ap_cost()).
+# battle, putting on or using costs the item's AP (Item.ap_cost()); taking off is free.
 
 signal equipped(u: Unit, it: Item)
 signal unequipped(u: Unit, slot: String)
@@ -14,7 +14,7 @@ signal used_up(u: Unit, it: Item)
 const SLOTS := ["weapon", "armor", "trinket"]
 
 var unit: Unit
-var ap_of := func(_it: Item) -> float: return 0.0  # AP an item takes to change or use now (HUD: Battle.item_ap())
+var ap_of := func(_it: Item, _u: Unit) -> float: return 0.0  # AP an item takes its unit to put on or use now (HUD: Battle.item_ap())
 var _column: VBoxContainer
 
 
@@ -79,7 +79,7 @@ func open(u: Unit, editable: bool) -> void:
 
 # " · 3 AP" in battle; "" once it's free.
 func _ap(it: Item) -> String:
-	var n: float = ap_of.call(it)
+	var n: float = ap_of.call(it, unit)
 	return " · %s AP" % Skill.num(n) if n > 0.0 else ""
 
 

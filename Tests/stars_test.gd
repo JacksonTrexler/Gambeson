@@ -2,11 +2,11 @@ extends Test
 
 # The star lattice (Battle.panes, Battle.starpower: Power back faster on it, by how full its source is;
 # a bludgeoning blow with no target breaks a pane), Starmen (Starsap, hunting the Stellar Order,
-# falling back into Starspirits) and Starspirits (Starkind: wasting away off the lattice, reforming on
+# falling back into Starmotes) and Starmotes (Starkind: wasting away off the lattice, reforming on
 # it at full Power), and neutral sides (Faction.neutral).
 
 var starman: PackedScene = load("res://Scenes/starman.tscn")
-var starspirit: PackedScene = load("res://Scenes/starspirit.tscn")
+var starmote: PackedScene = load("res://Scenes/starmote.tscn")
 var starmen: Faction = load("res://Factions/starmen.tres")
 var stellar: Faction = load("res://Factions/astral.tres")
 var staff: Item = load("res://Items/staff.tres")
@@ -29,7 +29,9 @@ func lattice(full: float) -> void:
 
 func test_lattice() -> void:
 	lattice(0.0)
-	ok(b.star_source(Vector2i(5, 1)) == Vector2i(1, 1) and is_equal_approx(b.star_rate(Vector2i(5, 1)), 2.0), "a pane linked to an empty source: x2")
+	ok(b.star_source(Vector2i(5, 1)) == Vector2i(1, 1) and is_equal_approx(b.star_rate(Vector2i(5, 1)), 1.0), "a pane linked to an empty source: nothing")
+	b.charge[Vector2i(1, 1)] = 1
+	ok(b.star_rate(Vector2i(5, 1)) > 2.0 and b.star_rate(Vector2i(5, 1)) < 2.2, "a little Power in it: about x2")
 	b.charge[Vector2i(1, 1)] = Battle.STAR_CAPACITY
 	ok(is_equal_approx(b.star_rate(Vector2i(4, 1)), 5.0) and is_equal_approx(b.star_rate(Vector2i(7, 7)), 1.0), "full: x5; off the lattice: x1")
 	b.panes.erase(Vector2i(3, 1))
@@ -101,11 +103,11 @@ func test_revert_and_reform() -> void:
 	stage(lancin, {v(1): Vector2i(7, 7)})
 	var s := spawn(starman, starmen, Vector2i(3, 1))
 	s.energy = 7
-	var spirits: Array[Unit] = []
-	b.reverted.connect(func(_was: Unit, now: Unit): spirits.append(now))
+	var motes: Array[Unit] = []
+	b.reverted.connect(func(_was: Unit, now: Unit): motes.append(now))
 	s.hp = 0
-	ok(spirits.size() == 1 and b.unit_at(Vector2i(3, 1)) == spirits[0], "a Starman falls back into a Starspirit, where it fell")
-	var sp := spirits[0]
+	ok(motes.size() == 1 and b.unit_at(Vector2i(3, 1)) == motes[0], "a Starman falls back into a Starmote, where it fell")
+	var sp := motes[0]
 	ok(sp.starkind() == 3 and sp.max_hp == sp.max_energy and sp.energy == 7, "Starkind III: max HP its max Power (%d); the Power it had" % sp.max_hp)
 	ok(sp.behaviour == &"recovering", "it recovers")
 	b.move(sp, Vector2i(8, 8))
@@ -134,7 +136,7 @@ func test_revert_and_reform() -> void:
 func test_recovering_ai() -> void:
 	lattice(0.0)
 	stage(starmen, {v(1): Vector2i(8, 8)})
-	var sp := spawn(starspirit, starmen, Vector2i(4, 4))
+	var sp := spawn(starmote, starmen, Vector2i(4, 4))
 	sp.refresh()
 	AI.act(b, sp)
 	ok(b.on_lattice(sp.cell) or Command.tiles(sp.cell, Vector2i(4, 1)) < 3, "it heads for the lattice (%s)" % sp.cell)

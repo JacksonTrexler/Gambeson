@@ -64,13 +64,22 @@ extends Resource
 # sickness: as its side's turn starts, it loses that fraction of its max HP - or is cleansed of it,
 # starting the turn at full HP (Resurrection Sickness; Battle._mend()).
 # reforming: stacks toward reforming as a Starman (Battle._starkind()).
+# chant: waiting a turn out primes its next (this) Sweet Nothing gains to bring one more each, and its
+# next Warlock skill to be used a rank higher (Chant; Battle._chant()).
+# breathless: its curses (skills tagged curse that land, or deal damage) give their target a stack of
+# Asphyxia, each 1% x this of its max HP gone (Breathtaking; Battle._choke()).
+# asphyxia: that share of max HP gone a stack (Unit.refit()); stacks start falling after (1 + the
+# Breathtaking rank) of its turns.
+# irradiate: an offensive light-damage skill's roll beating Defense deals the overage as more light
+# damage, up to this + cha mod (Irradiate; Battle.cast()).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
 		"command", "party", "regen", "poison", "sleep", "ap", "dex_ap", "relay", "trap_word",
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
 		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
-		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy") var stat := "luck"
+		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
+		"chant", "breathless", "asphyxia", "irradiate") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -98,7 +107,8 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "sap": "Starsap",
 		"sickness": "Resurrection Sickness"}
-const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness"]  # more of these is worse for whoever has them
+const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
+const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -165,6 +175,16 @@ func value(rank := 1) -> String:
 		return "ending its turn on a move, inspects every tile %s + wis mod tiles ahead and %s to either side" % [Skill.num(x), Skill.num(x)]
 	elif stat == "scrambled":
 		return "sees everyone's tags scrambled, until it investigates an ally"
+	elif stat == "command" and x >= ENDLESS:
+		return "no limit"
+	elif stat == "chant":
+		return "waiting a turn out: its next %s Sweet Nothing gain%s bring one more, and its next Warlock skill is used a rank higher" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
+	elif stat == "breathless":
+		return "its curses that land give a stack of Asphyxia: %s%% of max HP gone a stack, falling a stack a turn after %s turns" % [Skill.num(x), Skill.num(1.0 + x)]
+	elif stat == "asphyxia":
+		return "%s%% of max HP gone" % Skill.num(x * 100.0)
+	elif stat == "irradiate":
+		return "an offensive light roll beating Defense deals the overage as light damage too, up to %s + cha mod" % Skill.num(x)
 	elif stat == "sap":
 		return "drains %s Energy (or Power) a turn from other sides' units beside it, HP once theirs is gone, while starpower isn't full" % Skill.num(x)
 	elif stat == "starkind":

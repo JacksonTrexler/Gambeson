@@ -1,0 +1,83 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Cleric.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
+[ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
+[ext_resource type="Resource" path="res://Skills/renew.tres" id="s_renew"]
+[ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
+[ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
+[ext_resource type="Resource" path="res://Skills/level_up.tres" id="s_level_up"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
+[ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
+[ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
+
+[sub_resource type="Resource" id="Slot_pray"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_pray")
+
+[sub_resource type="Resource" id="Slot_renew"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_renew")
+
+[sub_resource type="Resource" id="Branch_level_down"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_level_down")
+after = Array[ExtResource("5_skill")]([ExtResource("s_pray")])
+
+[sub_resource type="Resource" id="Branch_death"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_death")
+after = Array[ExtResource("5_skill")]([ExtResource("s_level_down")])
+
+[sub_resource type="Resource" id="Root_Luun"]
+script = ExtResource("6_root")
+name = "Luun"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_down"), SubResource("Branch_death")])
+
+[sub_resource type="Resource" id="Tab_Luun"]
+script = ExtResource("8_tab")
+name = "Luun"
+kind = "Divinity"
+roots = Array[ExtResource("6_root")]([SubResource("Root_Luun")])
+god = &"luun"
+devotes = true
+
+[sub_resource type="Resource" id="Branch_level_up"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_level_up")
+after = Array[ExtResource("5_skill")]([ExtResource("s_renew")])
+
+[sub_resource type="Resource" id="Root_Sol"]
+script = ExtResource("6_root")
+name = "Sol"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_up")])
+
+[sub_resource type="Resource" id="Tab_Sol"]
+script = ExtResource("8_tab")
+name = "Sol"
+kind = "Divinity"
+roots = Array[ExtResource("6_root")]([SubResource("Root_Sol")])
+god = &"sol"
+devotes = true
+
+[resource]
+script = ExtResource("1_script")
+noun = "Caster"
+name = "Cleric"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_pray"), SubResource("Slot_renew")])
+stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 10, &"constitution": 12, &"intelligence": 10, &"wisdom": 15, &"charisma": 12})
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol")])
+shared = Array[ExtResource("5_skill")]([ExtResource("s_pray"), ExtResource("s_renew")])
+swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom"})
+items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_energy_potion")])

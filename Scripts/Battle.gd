@@ -27,8 +27,9 @@ signal channeled(u: Unit, skill: Skill, at: Vector2i)  # u began channeling a sk
 signal exploded(u: Unit, skill: Skill, at: Vector2i, hit: Dictionary)  # a channeled skill struck: unit -> damage taken
 signal shattered(u: Unit, at: Vector2i)  # u broke a starpane, bludgeoning it
 signal sapped(u: Unit, drained: Dictionary)  # Starsap: unit -> Energy (or HP) u drained from it
-signal reverted(was: Unit, now: Unit)  # a Starman fell back into a Starspirit
-signal reformed(was: Unit, now: Unit)  # a Starspirit reformed into a Starman
+signal reverted(was: Unit, now: Unit)  # a Starman fell back into a Starmote
+signal reformed(was: Unit, now: Unit)  # a Starmote reformed into a Starman
+signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
 
 enum Phase { INITIATIVE, TURNS, OVER }
@@ -38,12 +39,13 @@ const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
-const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to an empty source...
-const STAR_FAST := 5.0  # ...to a full one
-const STAR_ENERGY := 0.2  # regular Energy gets this share of that boost
+const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to a source with any Power in it...
+const STAR_FAST := 5.0  # ...up to a full one (an empty source gives nothing)
+const STAR_ENERGY := 0.3  # regular Energy gets this share of what the boost adds (+10 for Power: +3)
 const STAR_CAPACITY := 20  # Power a starpower source holds full
 const SICKNESS: Effect = preload("res://Effects/resurrection_sickness.tres")
 const REFORMING: Effect = preload("res://Effects/reforming.tres")
+const ASPHYXIA: Effect = preload("res://Effects/asphyxia.tres")
 
 @export var spawns: Dictionary[Faction, Vector2i] = {}  # where a player's starter joins each side
 @export var rewards: Array[Item] = []  # what the player's side gets for winning (the victory screen; Game.stash)
@@ -422,6 +424,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if not spreading and not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
+	if &"warlock" in skill.tags:
+		caster.chant_up = false  # a primed Chant goes into this one
 	var before := target.hp
 	if mends:
 		_smite_heal(caster, skill, target, r)
@@ -463,10 +467,14 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	for g in fog:
 		for s: Skill in g:
 			target.disable(s, skill.lasts(r, caster) + (1 if target.faction == turn else 0), true)
+	var overage := 0  # what a roll beat Defense by (Irradiate)
 	if foe and skill.attacks():
 		var d20 := rng.randi_range(1, 20)
-		var total := d20 + caster.attack_mod(skill)
+		if skill.advantage:
+			d20 = maxi(d20, rng.randi_range(1, 20))
+		var total := d20 + caster.attack_mod(skill) + skill.roll_per_rank * r
 		var defense := target.defense(tags)
+		overage = maxi(total - defense, 0)
 		crit = d20 == 20
 		attacked.emit(caster, target, d20, total, defense)
 		_evaluate(caster, skill, d20, total)
@@ -529,6 +537,11 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			_refill(caster, target, gross)
 		if foe and skill.god_tag and gross > 0:
 			_smite(caster, target, r, gross)
+		var glow := roundi(caster.stat(&"irradiate"))
+		if foe and glow > 0 and &"light" in tags and overage > 0 and target.is_alive():  # Irradiate
+			target.hit(mini(overage, glow + caster.mod(&"charisma")), [&"light"] as Array[StringName], caster)
+	if foe and &"curse" in skill.tags and caster.stat(&"breathless") > 0.0 and target.is_alive() and (not put.is_empty() or target.hp < before):
+		_choke(caster, target)
 	if foe:
 		_expose(target)
 		_expose(caster)
@@ -558,7 +571,7 @@ static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
 
 # What each god adds to a Smite that hits (Skill.god_tag), at rank r, gross its damage before the
 # target's mitigation:
-# Luun: a target left at r x 10% of its max HP or less dies (an execute). Sol: it burns for 20% x r of
+# Luun: a target left at r x 5% of its max HP or less dies (an execute). Sol: it burns for 20% x r of
 # the damage as pure fire as its side's turn ends. Urlo: r of its enchantments come off (disenchant()),
 # and the caster's own items get those r didn't find (Unit.enchant()). Drael: r ranks of its buffs
 # come off (dispel()). Vetruvis: earth damage radiates from it to everyone within r tiles but the
@@ -566,7 +579,7 @@ static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
 func _smite(caster: Unit, t: Unit, r: int, gross: int) -> void:
 	match caster.deity():
 		&"luun":
-			if t.is_alive() and t.hp <= t.max_hp * 0.1 * r:
+			if t.is_alive() and t.hp <= t.max_hp * 0.05 * r:
 				t.slain_from = t.hp
 				t.hp = 0
 		&"sol":
@@ -945,6 +958,7 @@ func _strip(t: Unit, r: int, way: int) -> int:
 		if a.rank <= 0:
 			t.timed.erase(e)
 	t._arrange()  # a level effect may have gone
+	t.refit()  # or Asphyxia
 	return r - left
 
 
@@ -1069,7 +1083,8 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 static func hit_chance(u: Unit, s: Skill, t: Unit) -> float:
 	if not s.attacks():
 		return 1.0
-	return clampi(21 - (t.defense(s.tags) - u.attack_mod(s)), 1, 20) / 20.0
+	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s)), 1, 20) / 20.0
+	return 1.0 - (1.0 - p) * (1.0 - p) if s.advantage else p
 
 
 # A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
@@ -1212,15 +1227,15 @@ func outfitting(u: Unit) -> bool:
 	return phase == Phase.OVER or _acting(u)
 
 
-# AP an item takes to put on, take off or use now (Item.ap_cost(): rank, x2 medium, x3 heavy): none
-# once the battle's over.
-func item_ap(it: Item) -> float:
-	return it.ap_cost() if it and phase == Phase.TURNS else 0.0
+# AP an item takes u to put on or use now (Item.ap_cost(): trinkets 1, weapons 2, armor 10 - dex mod):
+# none once the battle's over.
+func item_ap(it: Item, u: Unit = null) -> float:
+	return it.ap_cost(u) if it and phase == Phase.TURNS else 0.0
 
 
 # AP putting it on takes u now (taking things off is free).
-func equip_ap(_u: Unit, it: Item) -> float:
-	return item_ap(it)
+func equip_ap(u: Unit, it: Item) -> float:
+	return item_ap(it, u)
 
 
 # Puts it on u, paying equip_ap() from its general AP. False (nothing changes) if it can't.
@@ -1246,7 +1261,7 @@ func unequip(u: Unit, slot: String) -> Item:
 func use_item(u: Unit, it: Item) -> bool:
 	if it == null or not outfitting(u) or not (it.slot == "consumable" or (it == u.trinket and it.restores and not it.empty)):
 		return false
-	if not u.pay(item_ap(it), &"equip"):
+	if not u.pay(item_ap(it, u), &"equip"):
 		return false
 	u.hearts += it.hearts if it.slot == "consumable" else 0
 	if it.restores:
@@ -1729,6 +1744,7 @@ func _revive() -> void:
 		if not is_instance_valid(u):
 			continue
 		u.reviving = false
+		u.refit()  # what was on it (Asphyxia) went as it fell
 		var ring: Item = u.trinket if u.ring_lives() > 0 and u.hearts_used > u.lives() - u.ring_lives() else null
 		if ring:  # a Red Spinel Ring, spent last: rank x 10% of max HP, more than full past rank 10, and sick for rank turns
 			var n := maxi(roundi(u.max_hp * ring.revives * ring.rank), 1)
@@ -1778,6 +1794,8 @@ func end_turn() -> void:
 	var side := members(turn)
 	for u in side:
 		var rested := u.activity() == &"rest"
+		if rested:
+			_chant(u)
 		u.recover()
 		_starlight(u)
 		u.rested_turns = u.rested_turns + 1 if rested else 0
@@ -2085,10 +2103,13 @@ func star_source(c: Vector2i) -> Variant:
 	return best
 
 
-# How much faster Power comes back on c: x2 linked to an empty source, up to x5 to a full one; 1 off it.
+# How much faster Power comes back on c: x2 linked to a source with a little Power in it, up to x5 to a
+# full one; x1 off the lattice, or linked only to empty sources.
 func star_rate(c: Vector2i) -> float:
 	var s: Variant = star_source(c)
-	return lerpf(STAR_SLOW, STAR_FAST, charge[s] / float(STAR_CAPACITY)) if s != null else 1.0
+	if s == null or charge[s] <= 0:
+		return 1.0
+	return lerpf(STAR_SLOW, STAR_FAST, charge[s] / float(STAR_CAPACITY))
 
 
 # As its side's turn ends, on the lattice: Power back at star_rate() x its resting rate ((con mod +
@@ -2171,6 +2192,35 @@ func _starkind(u: Unit, ending: bool) -> void:
 		u.queue_free()
 
 
+# Breathtaking: a curse that lands gives its target a stack of Asphyxia - each 1% x the caster's
+# Breathtaking rank of its max HP gone (Applied.scale) - holding for (1 + that rank) of its turns since
+# the last, then falling a stack a turn.
+func _choke(caster: Unit, t: Unit) -> void:
+	var k := roundi(caster.stat(&"breathless"))
+	var a: Unit.Applied
+	if ASPHYXIA in t.timed:
+		a = t.timed[ASPHYXIA]
+		a.rank += 1
+	else:
+		a = t.afflict(ASPHYXIA, 1, 1)
+	a.turns = 1 + k + (1 if t.faction == turn else 0)
+	a.fades = true
+	a.scale = maxf(a.scale, k)
+	a.by = caster
+	a.since = turns_begun
+	t.refit()
+
+
+# Chant, as its side's turn ends with it having waited (rested) through it: its next rank Sweet
+# Nothing gains each bring one more, and its next Warlock skill is used a rank higher.
+func _chant(u: Unit) -> void:
+	var r := roundi(u.stat(&"chant"))
+	if r > 0:
+		u.chant_gains = maxi(u.chant_gains, r)
+		u.chant_up = true
+		chanted.emit(u, r)
+
+
 # --- Last stands, Level Down and Death
 
 # A general defensive check of the whole unit: d20 + its average stat mod (Unit.average_mod()). Against
@@ -2225,12 +2275,15 @@ func _death(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 # --- Synergy
 
 # The others o shares what it makes out with: its leader, or its party, where either of the two has
-# Synergy (leaders share with their whole party, members with their leader).
+# Synergy (leaders share with their whole party, members with their leader) - within the leader's
+# command range of its party (Command.party_reach_of(): a Quartz Ring makes it endless).
 func synergized(o: Unit) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for p: Unit in units.values():
-		if p != o and p.is_alive() and p.faction == o.faction and (p.follows == o or o.follows == p) \
-				and (o.stat(&"synergy") > 0.0 or p.stat(&"synergy") > 0.0):
+		if p == o or not p.is_alive() or p.faction != o.faction or not (p.follows == o or o.follows == p):
+			continue
+		var lead := p if o.follows == p else o
+		if (o.stat(&"synergy") > 0.0 or p.stat(&"synergy") > 0.0) and Command.tiles(o.cell, p.cell) <= Command.party_reach_of(lead):
 			out.append(p)
 	return out
 
@@ -2272,11 +2325,11 @@ func _on_died(u: Unit) -> void:
 	if it:
 		spoils.append([it, u.faction])
 		dropped.emit(u, it)
-	if u.reverts_to:  # a Starman falls back into a Starspirit, keeping what Power it had
-		var spirit := summon(load(u.reverts_to), u.faction, u.cell)
-		if spirit:
-			spirit.energy = u.energy
-			reverted.emit(u, spirit)
+	if u.reverts_to:  # a Starman falls back into a Starmote, keeping what Power it had
+		var mote := summon(load(u.reverts_to), u.faction, u.cell)
+		if mote:
+			mote.energy = u.energy
+			reverted.emit(u, mote)
 	for o in units.values():
 		if o.faction == u.faction:
 			return  # faction still standing

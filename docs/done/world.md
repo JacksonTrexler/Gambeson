@@ -4,12 +4,12 @@
 
 ## Scenes
 
-- [x] **Astral Envoy** (`Scenes/astral_envoy.tscn`, played from `Scenes/envoy_play.tscn`; on the entry screen): a 14 × 10 open meadow, sparse rocks (Rough) and tall grass (`Terrain/tall_grass.tres`: concealment 1 to whoever stands in it). Your side: four villagers and two shades (uncontrolled), joining whichever side you pick, and your starter. The **Stellar Order** (`Factions/astral.tres`): the Astral Princess, and the Regeneration Probes her revives bring. Two **Starmen** (`Factions/starmen.tres`, neutral) at the far edge. The **Wayfarers** (`Factions/wayfarers.tres`): a starter of each other class on the entry screen, at level 1 in its starting items, a side of their own allied with yours; your leader can't order them (`Battle.companions`). Reward: the Starblade. (?29 ?36)
-  - **The star lattice** (`Battle.starpanes`, `Battle.starpower`): a broken grid of starpanes, with starpower sources at two intersections, (8, 2) half full and (11, 7) empty. Standing on a source or a pane joined to one side-on, Power comes back each turn at x2 (empty) to x5 (full) its resting rate, whatever the unit did; plain Energy gets a fifth of that boost. A bludgeoning blow (a `blunt` skill: Strike bare-handed, or with a Staff) on a pane with no one there breaks it, cutting the panes beyond off. Drawn as faint panes and links, sources as stars that brighten as they fill; the tile pane says what each tile gives.
+- [x] **Astral Envoy** (`Scenes/astral_envoy.tscn`, played from `Scenes/envoy_play.tscn`; on the entry screen): a 14 × 10 open meadow, sparse rocks (Rough) and tall grass (`Terrain/tall_grass.tres`: concealment 1 to whoever stands in it). Your side: four villagers and two shades (uncontrolled), joining whichever side you pick, and your starter. The **Stellar Order** (`Factions/astral.tres`): the Astral Princess, and the Regeneration Probes her revives bring. Two **Starmen** (`Factions/starmen.tres`, neutral) at the far edge. The **Wayfarers** (`Factions/wayfarers.tres`): a starter of each other class on the entry screen (the Cleric among them), at level 1 in its starting items, a side of their own allied with yours; your leader can't order them (`Battle.companions`). Reward: the Starblade. (?29)
+  - **The star lattice** (`Battle.starpanes`, `Battle.starpower`): a broken grid of starpanes, with starpower sources at two intersections, (8, 2) half full and (11, 7) empty. Standing on a source or a pane joined to one side-on, Power comes back each turn at x2 (a source with any Power in it) to x5 (full) its resting rate, whatever the unit did; an empty source gives nothing. Plain Energy gets 30% of what the boost adds (where Power would get +10, Energy gets +3). A bludgeoning blow (a `blunt` skill: Strike bare-handed, or with a Staff) on a pane with no one there breaks it, cutting the panes beyond off. Drawn as faint panes and links, sources as stars that brighten as they fill; the tile pane says what each tile gives.
 
 ## Items
 
-Every item has a **rank** (1 for all so far): its effects scale by it, and putting it on or using it in battle costs rank AP, ×2 tagged `medium`, ×3 `heavy` (`Item.ap_cost()`; free once the battle is over). Taking things off is free.
+Every item has a **rank** (1 for all so far): its effects scale by it. In battle, putting on or using a trinket (or a consumable) costs 1 AP, a weapon 2 (3 if heavy), armor 10 − dex mod: hardly worth it mid-fight (`Item.ap_cost()`; free once the battle is over). Taking things off is free.
 
 **Starting items** (`Role.items`; a new starter from the entry screen wears them: `Game.outfit`):
 
@@ -35,7 +35,8 @@ Weapons
 Weapons carry a damage tag for skills that take their wielder's (Strike): Broadsword, Burning Blade and Starblade slash; Dagger and Rapier pierce; Staff blunt; bare hands blunt.
 
 Trinkets and consumables
-- [x] **Red Spinel Ring** (trinket; every new starter finds one in the stash): once a battle, falling with no heart left, its wearer gets up as the turn ends at rank × 10% of its max HP (past rank 10, more than full), with **Resurrection Sickness** for rank turns: −10% of max HP as each of its turns starts, never the last HP; a turn starting at full HP cures it. (?39)
+- [x] **Quartz Ring** (trinket; the Museum's reward): the wearer's command range has no limit (and with it, Synergy's).
+- [x] **Red Spinel Ring** (trinket; every new starter finds one in the stash, to swap in mid-battle for 1 AP): once a battle, falling with no heart left, its wearer gets up as the turn ends at rank × 10% of its max HP (past rank 10, more than full), with **Resurrection Sickness** for rank turns: −10% of max HP as each of its turns starts, never the last HP; a turn starting at full HP cures it.
 - [x] **Health / Energy / Mana Potion** (trinkets): used from the trinket slot, they give back 15% × rank of max HP / Energy / Mana + con mod, and are emptied: still worn, and full again as the battle ends.
 - [x] **Sweet Something** (trinket; a dubious treat): used, a Sweet Nothing; emptied the same way.
 - [x] **Heart Up** (trinket): an extra life while worn; +1 Defense for each heart its wearer has spent. (?29)
@@ -79,12 +80,12 @@ Acts serene and stands still until unmasked. It tries to get units close by enra
 
 ### Starman
 
-`Scenes/starman.tscn`, `Units/Starman.png` (a stick figure, placeholder). Neutral (the Starmen), `dangerous`, `astral`, `beast`; aggressive AI, hunting the Stellar Order first (`Unit.hunts`). Level 6, 24 HP, 20 Power; str 14, dex 12, con 12. Strike, Powerful. (?36)
+`Scenes/starman.tscn`, `Units/Starman.png` (a stick figure, placeholder). Neutral (the Starmen), `dangerous`, `astral`, `beast`; aggressive AI, hunting the Stellar Order first (`Unit.hunts`). Level 6, 24 HP, 20 Power; str 14, dex 12, con 12. Strike, Powerful.
 - [x] **Starsap** (passive): as its side's turn ends, it drains 2 Energy (Power) from each unit of another side a tile away side-on (larger units reach and are reached on diagonals: `Battle.sap_reach()`), HP once theirs is gone, into its own Power; what it can't hold fills the starpower sources, emptiest first. With every source full, it stops.
-- [x] Falling, it reverts to a **Starspirit** on its tile, keeping its Power (`Unit.reverts_to`).
+- [x] Falling, it reverts to a **Starmote** on its tile, keeping its Power (`Unit.reverts_to`).
 
-### Starspirit
+### Starmote
 
-`Scenes/starspirit.tscn`, `Units/Starspirit.png` (placeholder). Level 3, 12 Power. Recovering AI: it heads for the nearest free lattice tile and holds there, firing only when a foe is beside it and it has nowhere further to go (or it's holding the lattice).
+`Scenes/starmote.tscn`, `Units/Starmote.png` (placeholder). Level 3, 12 Power. Recovering AI: it heads for the nearest free lattice tile and holds there, firing only when a foe is beside it and it has nowhere further to go (or it's holding the lattice).
 - [x] **Starkind III** (inherent: it can't be disabled or removed, and takes no slot): its max HP is its max Power. Ending its turn off the lattice, it loses (100% − rank × 20%) of its max HP. On the lattice at full Power, it grows a **Reforming** stack as each of its turns starts and ends; otherwise it loses one. At its level in stacks, it reforms into a Starman (`Unit.reforms_into`).
 - [x] **Energy Missile**: 1d4 energy damage, range 4, 3 AP, 1 Power.

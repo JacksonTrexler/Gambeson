@@ -6,7 +6,6 @@ Build roughly in this order; the content below depends on them.
 
 - [ ] **Checks and contests.** Skill-defined checks with `offensive` / `defensive` tags, advantage/disadvantage, per-skill range penalties. Needed by Jugular, Interject, Interdict, Gallantry, Turtle Tactics, Snapping Turtle, the Siren's Charm. *Now:* each contest is its own field (Drown's `drags_to`, Sing's `resisted`, Haluca's and Brainfog's `save`).
 - [ ] **Equipping skills.** Learned vs equipped; slots shared by actives and passives, passives filling from the bottom of the hotbar; auto-equip (on by default); losing slots. *Now:* the hotbar has 4 + level / 4 slots (+ `extra_slots`), then slots skills grant, then the clover slot (filled on its unit's turn; hidden while it's unlucky, remembering its skill). Only actives and switched passives go on it, and every learned passive works. Disabling (Brainfog) treats always-on passives as filling the bar from the bottom. Unequipping a slot-granting skill should make its slots disappear.
-- [ ] **Synergy, more**: sharing beyond the party (command range, allies in sight)? *Now:* built for leader and party (`docs/done/systems.md`). (?38)
 - [ ] **More resources**: Stamina, Rage, Focus, Hype, Clout, Gold. *Now:* Mana, Sweet Nothings and Power exist, so Field Experience and Everyman still have nothing to work with.
 - [ ] **Reactions and interrupts.** Units acting outside their turn: Interject, Gallantry, Final Act. *Now:* only the side whose turn it is acts (and traitors posing in its party).
 - [ ] **Facing and direction**, for Shields Up!.
@@ -33,4 +32,3 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. *Now:* units can be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
 
 21. Evidence:  "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
-38. Synergy, as built: a party member and its leader share what they make out when either has Synergy, at any distance; each sees the clearer of the two reads. Rank I only. Should it need command range, and should ranks do anything?

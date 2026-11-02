@@ -12,7 +12,7 @@ Every system gets a test file in `Tests/` like the existing ones, and its entrie
 
 ## Built since the plan was written
 
-Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?35 unblocked these. They're in `docs/done/`, each with its test file.
+Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?41 unblocked these. They're in `docs/done/`, each with its test file.
 
 | Was | System | Tests |
 | --- | --- | --- |
@@ -37,11 +37,13 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?35 unblocked these. They're in `do
 | 20 | Vision through the player's unit (Synergy still to come) | `hud_test.gd` and the rest, unchanged |
 | — | Skill attributes (range, rank, opening AP), level effects, sealed and cursed slots, pinned pillars | `kit_test.gd`, `slots_test.gd` |
 | — | Sweet Nothings toggle, one patron, cha for wis | `warlock_test.gd` |
-| — | Star lattice, Starmen and Starspirits, neutral sides | `stars_test.gd` |
+| — | Star lattice, Starmen and Starmotes, neutral sides | `stars_test.gd` |
 | — | Last stands, Level Down, Death | `last_stand_test.gd` |
 | — | Red Spinel Ring, the player down, Synergy | `revive_test.gd` |
 | — | Smite by god, Level Up, levels taken back, tier gates | `smite_test.gd` |
 | — | Allies and companions, Dagger initiative | `allies_test.gd` |
+| 22 | Warlock, the rest: Chant, Hogel's path (Gasp, Breathtaking, Irradiate) | `hogel_test.gd` |
+| — | Cleric (Luun, Sol), Synergy's range, Quartz Ring | `hogel_test.gd` |
 
 ## Questions to answer first
 
@@ -49,7 +51,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?35 unblocked these. They're in `do
 | --- | --- |
 | ?13 Fighter (Interject trigger, Sundering threshold, Silent Strike scope) | Reactions, Silent Strike, Sunder |
 | ?12 Paladin (Final Act, Send Off, Rejuvinate's decay) | Effect strength, Teleport, Reactions |
-| ?37 The Cleric | Cleric class, Luun and Sol trees |
+| ?43 What satisfies Hogel | Hogel's Sweet Nothing gains |
 | ?2, ?11 Stat caps, Trade Skills and Grind | Adventurer core passives |
 
 ## Phase 1: Foundations
@@ -108,12 +110,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?35 unblocked these. They're in `do
 17. **Dissonance by how far the lie is** (M): a distance between the persona's claimed words and tags and the unit's own, from a small similarity table.
 18. **Hard to read, by debuffs** (S): more effects like Haluca's `scrambled`, through `Perception._dim()`.
 19. **Commitment to the bit** (S): a passive that lets a posing traitor really attack its own allies; `cast()`'s whiff branch checks for it.
-20. **Synergy, more** (S): built for leader and party; range and ranks wait on ?38.
+20. **Synergy**: built, within command range.
 
 ## Phase 6: Trees and classes
 
 21. **Divinity trees** (M): one tab per god, with Pray on a shared row (`Role.shared`). Eros gets Renew and Rejuvinate. Other skills are to be designed.
-22. **Warlock, the rest** (S): Chant, Hogel's path, devotion to one patron. Blocked by ?26.
+22. **Warlock, the rest** (S): what satisfies Hogel (?43); more Elmon and Hogel skills.
 23. **Fighter roots** (L): Protector needs Checks, Facing and Reactions; Vanguard needs Tile marks; Slayer needs Checks and Silent Strike (Disabled skills are built; ?13).
 24. **Paladin roots** (M): Send Off needs Teleport; Final Act needs Reactions; Smite could join its list (?29).
 25. **Rangers** (M): a new class with Observe and Eyes Forward on its tree. To be designed.

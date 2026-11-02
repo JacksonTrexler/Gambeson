@@ -24,6 +24,7 @@
 [ext_resource type="Resource" path="res://Roles/rogue.tres" id="r_rogue"]
 [ext_resource type="Resource" path="res://Roles/bard.tres" id="r_bard"]
 [ext_resource type="Resource" path="res://Roles/warlock.tres" id="r_warlock"]
+[ext_resource type="Resource" path="res://Roles/cleric.tres" id="r_cleric"]
 
 [sub_resource type="TileSetAtlasSource" id="Atlas_placeholder"]
 texture = ExtResource("2_tiles")
@@ -52,9 +53,9 @@ script = ExtResource("1_battle")
 spawns = Dictionary[ExtResource("9_faction"), Vector2i]({ExtResource("4_lancin"): Vector2i(1, 4), ExtResource("8_nemes"): Vector2i(1, 5)})
 rewards = Array[ExtResource("13_item")]([ExtResource("14_starblade")])
 area_tags = Array[StringName]([&"outdoors", &"grass"])
-companions = Array[ExtResource("18_role")]([ExtResource("r_adventurer"), ExtResource("r_fighter"), ExtResource("r_paladin"), ExtResource("r_rogue"), ExtResource("r_bard"), ExtResource("r_warlock")])
+companions = Array[ExtResource("18_role")]([ExtResource("r_adventurer"), ExtResource("r_fighter"), ExtResource("r_paladin"), ExtResource("r_rogue"), ExtResource("r_bard"), ExtResource("r_warlock"), ExtResource("r_cleric")])
 companion_side = ExtResource("17_wayfarers")
-companion_cells = Array[Vector2i]([Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 5), Vector2i(0, 7), Vector2i(2, 2), Vector2i(2, 7)])
+companion_cells = Array[Vector2i]([Vector2i(0, 2), Vector2i(0, 4), Vector2i(0, 5), Vector2i(0, 7), Vector2i(2, 2), Vector2i(2, 7), Vector2i(0, 9)])
 starpanes = Array[Vector2i]([Vector2i(6, 2), Vector2i(7, 2), Vector2i(10, 2), Vector2i(11, 2), Vector2i(12, 2), Vector2i(4, 7), Vector2i(5, 7), Vector2i(6, 7), Vector2i(8, 7), Vector2i(9, 7), Vector2i(10, 7), Vector2i(8, 0), Vector2i(8, 1), Vector2i(8, 3), Vector2i(8, 4), Vector2i(8, 6), Vector2i(8, 8), Vector2i(11, 1), Vector2i(11, 3), Vector2i(11, 5), Vector2i(11, 6), Vector2i(11, 8)])
 starpower = Dictionary[Vector2i, float]({Vector2i(8, 2): 0.5, Vector2i(11, 7): 0.0})
 

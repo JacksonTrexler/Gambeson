@@ -13,7 +13,7 @@ extends Resource
 @export var requires := &""  # it can only be worn with a positive mod in this (Heart Up-Link: constitution)
 @export var hearts := 0  # extra lives: while it's worn (Heart Up), or given for good as it's used (a Heart)
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
-@export var rank := 1  # how good it is: what its effects scale by (per_rank), and AP to put on, take off or use in battle (ap_cost())
+@export var rank := 1  # how good it is: what its effects scale by (per_rank)
 
 @export_group("Armor")  # sets its wearer's Defense (Unit.armor_defense())
 @export var defense := 0  # the least it gives (Gambeson: 10)
@@ -36,7 +36,7 @@ extends Resource
 @export var restore_flat := 0  # ...plus this (Sweet Something: 1)
 @export var empty := false  # used: a potion is emptied rather than used up, and fills again as the battle ends (Battle.refill())
 
-const WEIGHTS := {&"medium": 2, &"heavy": 3}  # AP to change it in battle: rank x this (light: x1)
+const ARMOR_AP := 10  # armor takes this - its wearer's dex mod in AP to put on in battle: hardly worth it mid-fight
 
 
 # "Defense: the higher of 10 and level / 2, + dex mod".
@@ -70,27 +70,20 @@ func describe() -> String:
 		lines.append("Needs a positive %s mod" % String(requires).left(3))
 	for e in effects:
 		lines.append(e.describe(rank))
-	lines.append("%s AP to put on or use in battle%s" % [Skill.num(ap_cost()), "" if weight() == 1 else " (%s: rank x %d)" % [weight_name(), weight()]])
+	lines.append(("%d - dex mod AP to put on in battle" % ARMOR_AP) if slot == "armor" else "%s AP to put on or use in battle" % Skill.num(ap_cost()))
 	return "\n".join(lines)
 
 
-# AP it takes in battle to put it on, take it off or use it: its rank, x2 tagged medium, x3 heavy.
-func ap_cost() -> float:
-	return float(rank * weight())
-
-
-func weight() -> int:
-	for t in tags:
-		if t in WEIGHTS:
-			return WEIGHTS[t]
-	return 1
-
-
-func weight_name() -> String:
-	for t in tags:
-		if t in WEIGHTS:
-			return String(t)
-	return "light"
+# AP it takes in battle to put on (or use, for a trinket or a consumable): a trinket or a consumable 1;
+# a weapon 2, 3 if heavy; armor ARMOR_AP - its wearer's dex mod, at least 1. Taking anything off is
+# free.
+func ap_cost(u: Unit = null) -> float:
+	match slot:
+		"armor":
+			return float(maxi(ARMOR_AP - (u.mod(&"dexterity") if u else 0), 1))
+		"weapon":
+			return 3.0 if &"heavy" in tags else 2.0
+	return 1.0
 
 
 # "15% x rank of max HP + con mod", "1 Sweet Nothing".

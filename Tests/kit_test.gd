@@ -45,19 +45,17 @@ func test_equip_ap() -> void:
 	ok(b.phase == Battle.Phase.TURNS, "in battle")
 	v(1).unequip("armor")  # villagers wear gambesons
 	v(1).refresh()
-	ok(dagger.ap_cost() == 1.0 and gambeson.ap_cost() == 1.0 and plate.ap_cost() == 3.0, "rank 1: light 1 AP, heavy (Plate) 3")
-	var medium := gambeson.duplicate()
-	medium.tags = gambeson.tags + ([&"medium"] as Array[StringName])  # its own array: duplicate() shares it
-	medium.rank = 2
-	ok(medium.ap_cost() == 4.0, "medium rank 2: 4 AP")
+	ok(load("res://Items/health_potion.tres").ap_cost() == 1.0 and dagger.ap_cost() == 2.0, "a trinket 1 AP, a weapon 2")
+	v(1).dexterity = 14  # mod 2
+	ok(plate.ap_cost(v(1)) == 8.0 and half_plate.ap_cost(v(1)) == 8.0, "armor: 10 - dex mod, whatever its weight")
 	var ap := v(1).ap_for(&"equip")
-	ok(b.equip(v(1), gambeson) and is_equal_approx(ap - v(1).ap_for(&"equip"), 1.0), "a gambeson on: 1 AP")
+	ok(b.equip(v(1), dagger) and is_equal_approx(ap - v(1).ap_for(&"equip"), 2.0), "a dagger in hand: 2 AP")
 	ap = v(1).ap_for(&"equip")
-	ok(is_equal_approx(b.equip_ap(v(1), plate), 3.0) and b.equip(v(1), plate) and is_equal_approx(ap - v(1).ap_for(&"equip"), 3.0),
-			"plate over it: 3 - taking the gambeson off is free")
+	ok(b.equip(v(1), plate) and is_equal_approx(ap - v(1).ap_for(&"equip"), 8.0), "plate: 8 AP (%s left before)" % ap)
 	ap = v(1).ap_for(&"equip")
-	ok(b.unequip(v(1), "armor") == plate and is_equal_approx(ap, v(1).ap_for(&"equip")), "plate off: free")
-	ok(half_plate.ap_cost() == 2.0 and half_plate.describe().begins_with("Defense: the higher of 10 and level / 2, + dex / 4"), "Half Plate: medium, 2 AP; %s" % half_plate.describe())
+	ok(b.unequip(v(1), "weapon") == dagger and is_equal_approx(ap, v(1).ap_for(&"equip")), "taking off: free")
+	ok(half_plate.describe().begins_with("Defense: the higher of 10 and level / 2, + dex / 4"), half_plate.describe())
+	v(1).armor = null
 	v(1).dexterity = 13
 	v(1).armor = half_plate
 	ok(v(1).armor_defense() == 10 + v(1).rounded(13 * 0.25), "Half Plate at level 1: 10 + dex / 4 (%d)" % v(1).armor_defense())

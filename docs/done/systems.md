@@ -88,3 +88,9 @@
 - [x] **The player down** (`HUD.autopilot()`): while the player's unit is down or gone, its side plays itself, until the battle ends or it gets back up.
 - [x] **Synergy** (`synergy` stat; `Battle.synergized()`, `Battle.read()`, `Battle._synergize()`): a party member and its leader, either with Synergy, share what they make out: each read is the clearer of the two (`Battle.clearer()`). As its side's turn ends, a unit gets its own first look at what a partner flagged: suspicious tiles (`inspect()`), and deceiving skills a partner saw through (`investigate()`), once each.
 - [x] **General skills** (`Unit.GENERAL`, `Skill.min_tier`): on offer to every class (Synergy, tier 2).
+- [x] **Chant** (`chant` stat; `Battle._chant()`, `chanted`; `Unit.chant_gains`, `Unit.chant_up`).
+- [x] **Easier rolls** (`Skill.advantage`, `Skill.roll_per_rank`; `Battle.cast()`, `Battle.hit_chance()`) and ranges from a stat's score (`Skill.radius_stat`).
+- [x] **Asphyxia** (`breathless` and `asphyxia` stats; `Battle._choke()`; `Unit.refit()` takes its share of max HP, refitting as effects tick, are stripped, or a unit gets up) and **Irradiate** (`irradiate`; the roll's overage, `Battle.cast()`).
+- [x] **Gods by tab** (`SkillTab.god`; `Unit.deity()` goes by the unit's own god, then its devotion's, then its class's). A skill that needs a reserve needs it only from units that have it (`Unit.funding()`).
+- [x] **Item AP by slot** (`Item.ap_cost(u)`, `Item.ARMOR_AP`; `Battle.item_ap()`).
+- [x] **Command range for Synergy** (`Command.reach_of()`, `Command.party_reach_of()`; `Battle.synergized()`); `command` effects at `Effect.ENDLESS` or more read "no limit" (Quartz Ring).

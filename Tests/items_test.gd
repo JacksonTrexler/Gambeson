@@ -71,7 +71,7 @@ func test_loot() -> void:
 	b.dropped.connect(func(u: Unit, it: Item): dropped.append([u, it]))
 	icor.hp = 0
 	ok(dropped == [[icor, blade]] and b.spoils == [[blade, nemes]], "a commander drops its loot as it falls")
-	ok(b.phase == Battle.Phase.OVER and b.winnings(lancin) == [blade] and b.winnings(nemes).is_empty(), "the victor takes it home")
+	ok(b.phase == Battle.Phase.OVER and b.winnings(lancin) == [blade, load("res://Items/quartz_ring.tres")] and b.winnings(nemes).is_empty(), "the victor takes it home, and the Museum's reward (a Quartz Ring)")
 	b.rewards = [heart]
 	ok(b.winnings(lancin) == [blade, heart], "with the scenario's rewards")
 

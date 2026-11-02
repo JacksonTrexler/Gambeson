@@ -185,8 +185,8 @@ func test_entry() -> void:
 	var roles := role.get_node("Options").get_children()
 	ok(sides.map(func(x): return x.text) == ["Lancin", "Nemes"], "sides")
 	ok(sides[0].icon.resource_path.ends_with("GolemClay.png") and sides[1].icon.resource_path.ends_with("RedMage.png"), "Alabaster stands for Lancin, Icor for Nemes")
-	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling", "Rogue", "Bard", "Warlock"], "classes")
-	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png", "Elman.png", "Doebour.png", "Gaunt.png"], "class sprites")
+	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling", "Rogue", "Bard", "Warlock", "Cleric"], "classes")
+	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png", "Elman.png", "Doebour.png", "Gaunt.png", "Cleric.png"], "class sprites")
 	ok(side.value == lancin and role.value.name == "Adventurer" and nm.text == "" and nm.placeholder_text == "Shrike" and not play.disabled,
 			"it starts on the demo's defaults: Shrike (muted, in the empty box), a Lancin Adventurer, ready to play")
 	var enter := InputEventKey.new()

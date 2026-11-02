@@ -93,8 +93,8 @@ class Applied:
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())
 @export var loot: Loot  # what it may drop as it falls (Battle._on_died())
 @export var summons: PackedScene  # comes with each heart it spends, as it gets up (the Astral Princess: a Regeneration Probe)
-@export_file("*.tscn") var reverts_to := ""  # what it falls back into as it dies, on its tile (a Starman: a Starspirit; Battle._on_died()) - a path: the two scenes name each other
-@export_file("*.tscn") var reforms_into := ""  # what it becomes once its Reforming stacks reach its level (a Starspirit: a Starman; Battle._starkind())
+@export_file("*.tscn") var reverts_to := ""  # what it falls back into as it dies, on its tile (a Starman: a Starmote; Battle._on_died()) - a path: the two scenes name each other
+@export_file("*.tscn") var reforms_into := ""  # what it becomes once its Reforming stacks reach its level (a Starmote: a Starman; Battle._starkind())
 @export var hunts: Array[Faction] = []  # sides its AI goes after first (Starmen: the Stellar Order; AI.HUNT)
 
 @export_group("Persona")  # what it advertises; the Persona skill's rank says how much
@@ -214,6 +214,8 @@ var over_max := 0  # HP it may hold past its max for now (a Red Spinel Ring past
 var slain_from := 0  # the HP it had as Death took it: what revival and die-hard effects go by (Battle._death())
 var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> its turns left: they can't be used, and passives stop working
 var cursed: Dictionary[Skill, bool] = {}  # of those, the ones a curse switched off (Brainfog): their slots quiver
+var chant_gains := 0  # Sweet Nothing gains a Chant will add one to (Battle._chant())
+var chant_up := false  # a Chant primed: its next Warlock skill is used a rank higher (rank())
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
@@ -304,11 +306,11 @@ func _process(_delta: float) -> void:
 	energy_bar.self_modulate = Color.WHITE.lerp(to, beat) if full > 0.75 else Color.WHITE
 
 
-# Its rank in s as it uses it: what it has learned, plus what rank effects add (a Broadsword: Strike);
-# 0 if it doesn't have s.
+# Its rank in s as it uses it: what it has learned, plus what rank effects add (a Broadsword: Strike)
+# and a primed Chant (a Warlock skill, once); 0 if it doesn't have s.
 func rank(s: Skill) -> int:
 	var r: int = base_rank(s) - unranked().get(s, 0)
-	return r + maxi(roundi(skill_stat(&"rank", s)), 0) if r > 0 else 0
+	return r + maxi(roundi(skill_stat(&"rank", s)), 0) + int(chant_up and &"warlock" in s.tags) if r > 0 else 0
 
 
 # Levels a curse has taken off it (Level Down), from its timed level effects alone (its passives can't
@@ -665,9 +667,14 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 	return sum * factor
 
 
-# The god it prays to: its own, else its class's.
+# The god it prays to: its own, else the one its devotion names (a Cleric's tab), else its class's.
 func deity() -> StringName:
-	return god if god else (role.god if role else &"")
+	if god:
+		return god
+	var d := devotion()
+	if d and d.god:
+		return d.god
+	return role.god if role else &""
 
 
 # Stacks of suspicion it has of t, a unit or a tile (Battle.suspect()).
@@ -926,12 +933,15 @@ func unequip(slot: String) -> Item:
 	return old
 
 
-# Max HP from its base and what its items and passives add (max_hp effects: Burning Blade), at least 1.
-# Starkind, its base is its max Power.
+# Max HP from its base and what its items and passives add (max_hp effects: Burning Blade), less what
+# Asphyxia takes (a share of the base a stack), at least 1. Starkind, its base is its max Power.
 func refit() -> void:
-	var bonus := roundi(stat(&"max_hp"))
-	max_hp = maxi((max_energy if starkind() > 0 else max_hp - _hp_bonus) + bonus, 1)
-	_hp_bonus = bonus
+	var base := max_energy if starkind() > 0 else max_hp - _hp_bonus
+	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * base)
+	max_hp = maxi(base + bonus, 1)
+	_hp_bonus = max_hp - base
+	if hp > max_hp + over_max:
+		hp = max_hp + over_max
 
 
 # Its six core stats as they are, unchanged by effects, added up: Starblade's measure of a target.
@@ -990,10 +1000,15 @@ func spends(r: Reserve) -> bool:
 
 # Points back into its reserves that come back a certain way (Reserve.on_kill: a foe it slew;
 # Reserve.patron: its patron satisfied), up to their max.
+# A Chant primed (chant_gains) adds one to each of that many gains of a patron's reserve.
 func gain(how: StringName, n: int) -> void:
 	for r in pools():
 		if n > 0 and ((how == &"kill" and r.on_kill > 0) or (how == &"patron" and r.patron)):
-			set_store(r, store(r) + (r.on_kill if how == &"kill" else n))
+			var more := r.on_kill if how == &"kill" else n
+			if r.patron and chant_gains > 0:
+				more += 1
+				chant_gains -= 1
+			set_store(r, store(r) + more)
 
 
 func set_store(r: Reserve, v: int) -> void:
@@ -1046,7 +1061,7 @@ func tier(s: Skill) -> int:
 # nothing can.
 func funding(s: Skill) -> Variant:
 	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return t in s.tags)))
-	if s.needs:
+	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
 		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
 	for r: Reserve in allowed:
 		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and store(r) >= cost_from(s, r):
@@ -1379,6 +1394,7 @@ func tick() -> void:
 		else:
 			timed.erase(e)
 	_arrange()  # a level effect may have ended
+	refit()  # or Asphyxia fallen a stack
 
 
 func is_alive() -> bool:

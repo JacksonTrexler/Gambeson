@@ -509,7 +509,6 @@ func _on_unequipped(u: Unit, slot: String) -> void:
 	if _outfits(u) and u.get(slot):
 		var it := battle.unequip(u, slot)
 		if not it:
-			_say("%s needs %s AP to take that off" % [_name(u), Skill.num(battle.item_ap(u.get(slot)))])
 			return
 		Game.stash.append(it)
 		_keep_outfit(u)

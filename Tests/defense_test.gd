@@ -37,7 +37,7 @@ func test_armor() -> void:
 	ok(v(1).defense() == 11 and v(3).defense() == 10, "level 41: 10.25 is 11 for the lucky, 10 for the rest")
 	ok(gambeson.describe().split("\n")[0] == "Defense: the higher of 10 and level / 2, + dex mod", "describes itself (%s)" % gambeson.describe())
 	ok(plate.describe().split("\n")[0] == "Defense: the higher of 20 and level" and robe.describe().split("\n")[0] == "Defense: the higher of 8 and level / 4", "Plate, Robe")
-	ok(plate.describe().ends_with("3 AP to put on or use in battle (heavy: rank x 3)"), "Plate is heavy: 3 AP to put on")
+	ok(plate.describe().ends_with("10 - dex mod AP to put on in battle"), "armor: 10 - dex mod AP to put on mid-fight")
 
 
 func test_tagged_defense() -> void:
