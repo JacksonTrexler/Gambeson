@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/museum.tscn" id="1_map"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/hud.tscn" id="2_hud"]
+
+[node name="Play" type="Node"]
+
+[node name="Museum" parent="." instance=ExtResource("1_map")]
+
+[node name="HUD" parent="." node_paths=PackedStringArray("battle") instance=ExtResource("2_hud")]
+battle = NodePath("../Museum/Battle")

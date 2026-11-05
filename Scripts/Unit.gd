@@ -11,8 +11,10 @@ const OUTLINE := preload("res://Shaders/outline.gdshader")
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
+const HOTBAR := 4  # hotbar slots every unit has for now; higher levels will add more
 const ENERGY_COLOR := Color("#e8c547")
 const HP_COLOR := Color("#3fbf4f")
+const SHAPE_EDGE := Color("#8a8f9c")  # outline of a shape whose side can't be told
 
 
 # Suspicion earned for an area by a passed check (or a warning from an ally); lasts the battle.
@@ -60,6 +62,9 @@ class Applied:
 @export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
+# Skills on the hotbar by slot, null where empty (see Skill.fits_bar()). Left empty, it fills with
+# the unit's actives, then its toggled passives.
+@export var hotbar: Array[Skill] = []
 
 @export var max_hp := 10:
 	set(m):
@@ -115,13 +120,15 @@ var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
 var ground: Array[StringName] = []  # tags of the tile it stands on (Battle keeps this current)
+var footing: Terrain  # the tile it stands on, whose effects it has while there (Battle keeps this current)
 var acted := false  # moved or used a skill this turn (idle units look around harder)
 var provoked := false  # hit by a hostile skill: ambushers stop waiting
-var exposed := 0  # concealment levels it has lost (bumped into, attacked from hiding)
 var suspicion: Array[Suspicion] = []  # earned by passed checks, each for an area: counts against concealment and trickery
 var marks := {}  # Detective: recon on particular units (by Unit) or tiles (by cell)
 var grappler: Unit  # holding it (Drown); moving away takes a strength check
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
+var exposed := 0  # concealment levels lost to attacking, being hit or bumped into (Battle); back as its side's turn starts
+var shown: Read  # how the player's side sees it (see appear()); null: as it is
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
@@ -173,6 +180,7 @@ func _ready() -> void:
 		race = role.race
 	if role and not look:
 		look = role.look
+	_fill_bar()
 	_show_look()
 	_layout_bars()
 	_show_faction()
@@ -191,6 +199,63 @@ func rank(s: Skill) -> int:
 		if x.skill == s:
 			return x.rank
 	return 0
+
+
+func is_on(s: Skill) -> bool:
+	for x in slots:
+		if x.skill == s:
+			return x.on
+	return false
+
+
+# Switches a passive that has a toggle on or off. False if the unit has no such skill.
+func toggle(s: Skill) -> bool:
+	for x in slots:
+		if x.skill == s and s.passive and s.toggle:
+			x.on = not x.on
+			return true
+	return false
+
+
+func bar_size() -> int:
+	return HOTBAR
+
+
+# Puts one of the unit's skills in hotbar slot i. A skill already on the bar swaps places with
+# whatever is in i.
+func bar_place(s: Skill, i: int) -> bool:
+	if i < 0 or i >= hotbar.size() or not s or not s.fits_bar() or rank(s) == 0:
+		return false
+	var old := hotbar.find(s)
+	if old >= 0:
+		hotbar[old] = hotbar[i]
+	hotbar[i] = s
+	return true
+
+
+func bar_clear(i: int) -> void:
+	if i >= 0 and i < hotbar.size():
+		hotbar[i] = null
+
+
+func _fill_bar() -> void:
+	var fresh := hotbar.is_empty()
+	hotbar.resize(bar_size())
+	if not fresh:
+		return
+	var picks := slots.filter(func(x: Slot): return not x.skill.passive)
+	picks.append_array(slots.filter(func(x: Slot): return x.skill.passive and x.skill.fits_bar()))
+	for i in mini(picks.size(), hotbar.size()):
+		hotbar[i] = picks[i].skill
+
+
+# Passives (on) that stop working on ground with these tags (Oceanic on water).
+func paused_on(ground_tags: Array[StringName]) -> Array[Skill]:
+	var out: Array[Skill] = []
+	for s in passives:
+		if s.effects.any(func(e: Effect): return e.unless_on.any(func(t): return t in ground_tags)):
+			out.append(s)
+	return out
 
 
 # Base value (core stats only) plus every effect on that stat whose tags match the query;
@@ -309,8 +374,24 @@ func ap_cost(s: Skill, fund: Variant) -> float:
 
 
 func can_afford(s: Skill) -> bool:
+	return can_afford_after(s, 0.0)
+
+
+# Whether it could still pay for s after walking `steps` movement first (which takes move-only AP,
+# then general AP the skill might have needed).
+func can_afford_after(s: Skill, steps: float) -> bool:
 	var fund: Variant = funding(s)
-	return fund != null and ap_for(&"skill") >= ap_cost(s, fund) - 0.0001
+	if fund == null:
+		return false
+	var general := 0.0
+	var move_only := 0.0
+	for p in ap:
+		if p.only == &"":
+			general += p.amount
+		elif p.only == &"move":
+			move_only += p.amount
+	var left := ap_for(&"skill") - maxf(steps - move_only, 0.0)
+	return general >= maxf(steps - move_only, 0.0) - 0.0001 and left >= ap_cost(s, fund) - 0.0001
 
 
 # Pays a skill's AP and cost from its funding. False (and nothing spent) if it can't.
@@ -325,14 +406,37 @@ func pay_for(s: Skill) -> bool:
 	return true
 
 
-# Start of this unit's faction turn: fresh AP and movement.
+# Start of this unit's faction turn: fresh AP and movement, and it can slip back into hiding.
 func refresh() -> void:
+	ap = _pools()
+	moved = 0.0
+	exposed = 0
+	acted = false
+
+
+# What refresh() hands out: every pool together.
+func full_ap() -> float:
+	return _pools().reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
+
+
+# General, then dex (moving only), then wis (skills only); negative mods cut the general pool.
+# Haste: ap adds that fraction to the general and wis pools, dex_ap to the dex pool.
+func _pools() -> Array[AP]:
 	var dex := mod(&"dexterity")
 	var wis := mod(&"wisdom")
-	# general, then dex (moving only), then wis (skills only); negative mods cut the general pool
-	ap = [AP.new(BASE_AP + mini(dex, 0) + mini(wis, 0)), AP.new(maxi(dex, 0), &"move"), AP.new(maxi(wis, 0), &"skill")]
-	moved = 0.0
-	acted = false
+	var more := 1.0 + stat(&"ap")
+	var out: Array[AP] = [AP.new((BASE_AP + mini(dex, 0) + mini(wis, 0)) * more),
+			AP.new(maxi(dex, 0) * (1.0 + stat(&"dex_ap")), &"move"), AP.new(maxi(wis, 0) * more, &"skill")]
+	return out
+
+
+func ap_left() -> float:
+	return ap.reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
+
+
+# Movement it can still make this turn: what's left of its movement, as far as its AP allows.
+func move_left() -> float:
+	return minf(stat(&"movement") - moved, ap_for(&"move"))
 
 
 # Suspicion it has earned about things at `c`.
@@ -408,8 +512,19 @@ func aquatic() -> bool:
 	return &"aquatic" in tags or stat(&"aquatic") > 0
 
 
-# [effect, rank] for every passive (that's on) and timed effect. A timed effect the unit's own
-# passives already give doesn't count twice (Stonegift on a Stoneskin golem).
+func asleep() -> bool:
+	return stat(&"sleep") > 0.0
+
+
+func wake() -> void:
+	for e in timed.keys():
+		if e.stat == "sleep":
+			timed.erase(e)
+
+
+# [effect, rank] for every passive (that's on), timed effect, and effect of the ground it stands
+# on. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
+# Stoneskin golem).
 func _effects() -> Array:
 	var out := []
 	var own := {}
@@ -420,6 +535,9 @@ func _effects() -> Array:
 	for e in timed:
 		if e not in own:
 			out.append([e, timed[e].rank])
+	if footing:
+		for e in footing.effects:
+			out.append([e, 1])
 	return out
 
 
@@ -462,32 +580,56 @@ func _layout_bars() -> void:
 		y -= pair[1] + 1.0
 
 
+# How the player's side sees it (the HUD calls this; until then it's drawn as it is). Not located:
+# not drawn at all. Located with its side unknown: a black shape with no side colours and no bars.
+# Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
+# whatever of HP, energy and reserves can be made out. null: as it is.
+func appear(r: Read) -> void:
+	shown = r
+	visible = r == null or r.located()
+	_show_side(faction if r == null else r.faction, r != null and r.faction == null)
+	_show_bars()
+
+
 func _show_bars() -> void:
-	hp_bar.max_value = max_hp
-	hp_bar.value = hp
-	energy_bar.max_value = maxi(max_energy, 1)
-	energy_bar.value = energy
+	var r := shown
 	var main := main_reserve()
+	hp_bar.visible = r == null or r.hp != null
+	energy_bar.visible = r == null or r.energy != null
+	reserve_bar.visible = main != null and energy_bar.visible
+	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
+	hp_bar.value = r.hp if r and r.hp != null else hp
+	energy_bar.max_value = maxi(max_energy, 1)
+	energy_bar.value = r.energy if r and r.energy != null else energy
 	if main:
 		reserve_bar.max_value = reserves[main]
-		reserve_bar.value = store(main)
+		reserve_bar.value = r.stores.get(main, 0) if r else store(main)
 
 
-# Stand-in art: faction primary outlines the sprite and trims the HP bar; secondary backs it.
 func _show_faction() -> void:
-	if not faction:
-		return
-	var mat := ShaderMaterial.new()
-	mat.shader = OUTLINE
-	mat.set_shader_parameter("color", faction.primary)
-	sprite.material = mat
-	hp_bar.add_theme_stylebox_override("background", _trimmed(faction.secondary))
-	hp_bar.add_theme_stylebox_override("fill", _trimmed(HP_COLOR))
+	_show_side(faction, false)
 
 
-func _trimmed(c: Color) -> StyleBoxFlat:
+# Stand-in art: the side's primary outlines the sprite and trims the HP bar; secondary backs it.
+# A shape is painted black inside a neutral outline.
+func _show_side(f: Faction, shape: bool) -> void:
+	var mat := sprite.material as ShaderMaterial
+	if not mat:
+		if not f and not shape:
+			return
+		mat = ShaderMaterial.new()
+		mat.shader = OUTLINE
+		sprite.material = mat
+	mat.set_shader_parameter("color", SHAPE_EDGE if shape else (f.primary if f else Color.TRANSPARENT))
+	mat.set_shader_parameter("shadow", shape)
+	if f:
+		hp_bar.add_theme_stylebox_override("background", _trimmed(f.secondary, f.primary))
+		hp_bar.add_theme_stylebox_override("fill", _trimmed(HP_COLOR, f.primary))
+
+
+func _trimmed(c: Color, trim: Color) -> StyleBoxFlat:
 	var box := _flat(c)
-	box.border_color = faction.primary
+	box.border_color = trim
 	box.set_border_width_all(1)
 	return box
 

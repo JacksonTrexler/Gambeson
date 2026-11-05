@@ -172,7 +172,7 @@ func test_coordinate() -> void:
 func test_sing() -> void:
 	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(5, 6)})
 	v(1).suspect(siren().cell, 4)  # seen through (4 > trickery 2)
-	ok(is_equal_approx(b.skill_range(siren(), sing, v(1).stat(&"size")), 4.21), "range: cha mod 4 + 0.15 + 0.06")
+	ok(is_equal_approx(b.skill_range(siren(), sing, v(1)), 4.21), "range: cha mod 4 + 0.15 + 0.06")
 	dull(v(1))
 	ok(b.cast(siren(), sing, v(1)) and v(1).suspicion_at(siren().cell) == 3, "fails its wis check: loses a level of what it knew")
 	ok(not b.cast(siren(), sing, v(1)), "her movement's spent: no second song this turn")

@@ -98,7 +98,7 @@ func test_strike_iii() -> void:
 	v(3).max_hp = 50
 	v(3).heal(50)
 	ok(b.cast(alabaster(), strike, v(3)) and v(3).hp == 35, "3 hits of 1 + str mod 4 = 15")
-	ok(is_equal_approx(b.skill_range(alabaster(), strike, v(3).stat(&"size")), 1.26), "size 4: reach 1 + 0.2 + 0.06")
+	ok(is_equal_approx(b.skill_range(alabaster(), strike, v(3)), 1.26), "size 4: reach 1 + 0.2 + 0.06")
 	v(3).max_hp = 10
 	stage(lancin, {alabaster(): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 5)})
 	alabaster().refresh()

@@ -6,7 +6,7 @@ const HUMAN := preload("res://Races/human.tres")
 
 @export var sides: Array[Faction] = []
 @export var roles: Array[Role] = []
-@export_file("*.tscn") var next_scene := "res://Scenes/museum.tscn"
+@export_file("*.tscn") var next_scene := "res://Scenes/play.tscn"
 
 @onready var side: Choice = %Side
 @onready var role: Choice = %Role

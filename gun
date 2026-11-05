@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Convenience entry point for running/debugging Gambeson from macOS.
+# Use ./gun [run|debug|editor|import] [Godot arguments].
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Prefer an explicit override or a Godot executable already on PATH.
+if [[ -z "${GODOT_BIN:-}" ]]; then
+    GODOT_BIN="$(command -v godot || command -v godot4 || true)"
+fi
+
+# Godot's macOS app bundle is not usually added to PATH.
+if [[ -z "${GODOT_BIN:-}" ]]; then
+    for app in /Applications/Godot*.app "$HOME"/Applications/Godot*.app; do
+        candidate="$app/Contents/MacOS/Godot"
+        if [[ -x "$candidate" ]]; then
+            GODOT_BIN="$candidate"
+            break
+        fi
+    done
+fi
+
+if [[ -n "${GODOT_BIN:-}" ]]; then
+    export GODOT_BIN
+fi
+
+exec "$root/Util/god" "$@"

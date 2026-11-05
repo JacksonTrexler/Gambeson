@@ -13,4 +13,5 @@ per_rank = true
 script = ExtResource("1_script")
 name = "Persona"
 passive = true
+toggle = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_persona")])

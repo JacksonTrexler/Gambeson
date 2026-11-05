@@ -23,7 +23,7 @@ func test_strike_strength() -> void:
 
 
 func test_strike_reach() -> void:
-	ok(is_equal_approx(b.skill_range(v(1), strike, v(3).stat(&"size")), 1.21), "range 1 + size 3 x 0.05 + target size 3 x 0.02")
+	ok(is_equal_approx(b.skill_range(v(1), strike, v(3)), 1.21), "range 1 + size 3 x 0.05 + target size 3 x 0.02")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 4)})
 	ok(b.in_reach(v(1), strike, v(3)), "diagonal (1.41, 0.2 over): luckier Lancin rounds it in")
 	b.end_turn()
