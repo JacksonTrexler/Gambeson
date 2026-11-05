@@ -94,3 +94,12 @@
 - [x] **Gods by tab** (`SkillTab.god`; `Unit.deity()` goes by the unit's own god, then its devotion's, then its class's). A skill that needs a reserve needs it only from units that have it (`Unit.funding()`).
 - [x] **Item AP by slot** (`Item.ap_cost(u)`, `Item.ARMOR_AP`; `Battle.item_ap()`).
 - [x] **Command range for Synergy** (`Command.reach_of()`, `Command.party_reach_of()`; `Battle.synergized()`); `command` effects at `Effect.ENDLESS` or more read "no limit" (Quartz Ring).
+- [x] **Burning tiles** (`Battle.flames`, `Battle.Flame`; `_flamewall()`, `_flame()`; hooked in `travel()` and `end_turn()`; `burned`).
+- [x] **Burning slots** (`Item.burning`, the `cinders` stat; `Unit.burning_slots()`, `Battle._burn()`). Items can grant slots (`Unit.granted_slots()`).
+- [x] **Auras and openers** (`Skill.aura`, `Skill.splits`, `Skill.opening`; `Battle._aura()`), **unique items fetched** (`Skill.retrieves`; `Battle._retrieve()`), **cones** (`Skill.cone`; `Battle._solar()`), **AP given at once** (`Skill.boost_pool`, `Skill.boost_mod`), and **Humble** (`Skill.humbles`, the `humble` stat; `Battle._humble()`, `Unit.refit()`).
+- [x] **A patron satisfied by rest** (`SkillTab.satisfied_by`: rest_whole; `Battle.end_turn()`).
+- [x] **Flamecharmed** (the `flamecharmed` stat; `Unit.hit()`): allied fire that heals.
+- [x] **Armor weight** (`Item.WEIGHTS`, `Item.weight()`, `Item.full_dex`, `Item.eases`, `Item.heat`; `Unit.armor_defense()`, `Unit.armor_drag()`; the `move_ap` and `skill_ap` stats).
+- [x] **Bracing** (the `brace` stat with `Effect.checks` and `Effect.kind`; `Unit.check_bonus()`, `Unit.armored()`, `Effect.armored`): wired into the rolls listed under the general tree.
+- [x] **Lore on skills** (`Skill.lore`, shown after what it does).
+- [x] **Test tiers** (`Tests/run.gd`): no arguments, the full suite (about 25 s); `quick`, all but `Tests/slow.txt` (about 13 s); any other words, only the tests whose file.method holds one; `times`, each test's time, slowest first.

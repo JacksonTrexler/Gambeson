@@ -66,3 +66,12 @@ func stage(f: Faction, placed: Dictionary) -> void:
 func calm() -> void:
 	for u: Unit in b.get_node("Units").get_children():
 		u.suspicion.clear()
+
+
+# Armor of no weight with a flat Defense of 20 (its floor, with nothing to scale): a target only 19
+# and 20 hit with +1.
+func bulwark() -> Item:
+	var it := Item.new()
+	it.name = "Bulwark"
+	it.defense = 20
+	return it

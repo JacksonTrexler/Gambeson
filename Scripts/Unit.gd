@@ -11,7 +11,11 @@ signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up ag
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
-const GENERAL: Array[Skill] = [preload("res://Skills/synergy.tres")]  # on offer to every class (sources())
+const GENERAL: Array[Skill] = [preload("res://Skills/synergy.tres"), preload("res://Skills/agility_bracing.tres"),
+		preload("res://Skills/balanced_bracing.tres"), preload("res://Skills/vanguard_bracing.tres"), preload("res://Skills/combat_bracing.tres"),
+		preload("res://Skills/meditative_bracing.tres"), preload("res://Skills/invigorating_bracing.tres")]  # the general tree, on offer to every class (sources())
+const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
+const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
 const ENERGY_COLOR := Color("#e8c547")
 const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full
@@ -389,15 +393,41 @@ func sealed(i: int) -> bool:
 	return i >= _slots_at(lv()) and i < slot_count()
 
 
-# Slots its passives grant (Basic Magic Skill Slot +1), in the order it learned them: each one's type
+# Slots its passives grant (Basic Magic Skill Slot +1), in the order it learned them, then its items'
+# (the Burning Bag): each one's type
 # (magical, martial, specialist: it only holds skills carrying that tag), or &"" for an untyped one.
 func granted_slots() -> Array[StringName]:
 	var out: Array[StringName] = []
-	for x in on_passives:
-		for e in x.skill.effects:
+	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank]) + items().map(func(it: Item): return [it.effects, it.rank])
+	for pair in sources:
+		for e: Effect in pair[0]:
 			if e.stat == "slots":
-				for i in roundi(e.amount * (x.rank if e.per_rank else 1)):
+				for i in roundi(e.amount * (pair[1] if e.per_rank else 1)):
 					out.append(e.tags[0] if not e.tags.is_empty() else &"")
+	return out
+
+
+# Hotbar slots that burn, by index -> [damage, whoever set them alight (null: an item)]: the slots a
+# burning item grants (the Burning Bag: 10% x its rank of max HP), and its rightmost slots Cindering
+# set alight (10% x its rank of max HP + its caster's wis mod). Using a skill from one burns it
+# (Battle._burn()).
+func burning_slots() -> Dictionary:
+	var out := {}
+	var end := slot_count() + granted_slots().size()
+	for it in items():
+		if it.burning:
+			var n := 0
+			for e in it.effects:
+				if e.stat == "slots":
+					n += roundi(e.amount * (it.rank if e.per_rank else 1))
+			for i in range(end - n, end):
+				out[i] = [maxi(rounded(0.1 * it.rank * max_hp), 1), null]
+	for e in timed:
+		if e.stat == "cinders":
+			var a := timed[e]
+			var dmg := rounded(0.1 * a.rank * max_hp) + (a.by.mod(&"wisdom") if a.by else 0)
+			for i in range(maxi(bar_size() - a.rank, 0), bar_size()):
+				out[i] = [maxi(dmg, 1), a.by]
 	return out
 
 
@@ -653,6 +683,8 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 			continue
 		if not e.skills.is_empty() and of not in e.skills:
 			continue
+		if e.armored and not armored():
+			continue
 		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
 			continue
 		if pair[1] < e.min_rank or e.unless_on.any(func(x): return x in ground):
@@ -759,6 +791,9 @@ func damage(d: int) -> void:
 # A tagged attack. Mitigation applies, then net luck (mine minus the attacker's) rounds what's
 # left: up (against me) unless I'm luckier. Returns the damage taken.
 func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
+	var charmed := roundi(stat(&"flamecharmed"))
+	if by and by != self and charmed > 4 and &"fire" in tags and Faction.friends(by.faction, faction):
+		heal(roundi(raw * 0.25 * (charmed - 4)))  # Flamecharmed: an ally's fire feeds it
 	var net := luck - (by.luck if by else 0)
 	var cut := mitigation(tags)
 	if by and by.faction == faction:
@@ -795,11 +830,19 @@ func tagged_defense() -> Dictionary:
 
 
 # Defense from armor alone. Unarmored, or in armor that sets none (Heart Up-Link): dex mod + con mod.
+# Armor of a weight (light, medium, heavy) goes by its basic piece's scaling (Item.WEIGHTS).
 # Armored: the higher of the armor's floor and its level now x its per_level (rounded down, or up
 # while lucky), plus dex mod if the armor allows it.
 func armor_defense() -> int:
 	if not armor or not armor.sets_defense():
 		return mod(&"dexterity") + mod(&"constitution") + (armor.enchant if armor else 0)
+	var w := armor.weight()
+	if w:
+		var base: Array = Item.WEIGHTS[w]
+		var share: float = 1.0 if armor.full_dex else base[2]
+		var m := mod(&"dexterity")
+		var dex := floori(m * share) if m < 0 else rounded(m * share)  # a negative share rounds down: a penalty always bites
+		return maxi(base[0], rounded(lv() * base[1])) + dex + armor.enchant
 	var floor_or_level := maxi(armor.defense, rounded(lv() * armor.per_level))
 	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + (rounded(stat(&"dexterity") * armor.dex_share) if armor.dex_share > 0.0 else 0) + armor.enchant
 
@@ -934,14 +977,15 @@ func unequip(slot: String) -> Item:
 
 
 # Max HP from its base and what its items and passives add (max_hp effects: Burning Blade), less what
-# Asphyxia takes (a share of the base a stack), at least 1. Starkind, its base is its max Power.
+# Asphyxia takes (a share of the base a stack) and Humble cuts, at least 1. Starkind, its base is its max Power.
 func refit() -> void:
 	var base := max_energy if starkind() > 0 else max_hp - _hp_bonus
-	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * base)
+	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * base) - roundi(stat(&"humble"))
 	max_hp = maxi(base + bonus, 1)
 	_hp_bonus = max_hp - base
 	if hp > max_hp + over_max:
 		hp = max_hp + over_max
+	_arrange()  # items can grant slots (the Burning Bag)
 
 
 # Its six core stats as they are, unchanged by effects, added up: Starblade's measure of a target.
@@ -1249,16 +1293,56 @@ func full_ap() -> float:
 	return _pools().reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
 
 
-# General, then dex (moving only), then wis (skills only); negative mods cut the general pool.
+# General, then dex (moving only), then wis (skills only); negative mods cut the general pool. Heavy
+# armor drags the dex and wis pools (armor_drag()); move_ap and skill_ap add to them (Aethendine,
+# Ignauldron, Invigorating Bracing).
 # Haste: ap adds that fraction to the general and wis pools, dex_ap to the dex pool.
 func _pools() -> Array[AP]:
 	var dex := mod(&"dexterity")
 	var wis := mod(&"wisdom")
 	var more := 1.0 + stat(&"ap")
 	var opening := stat(&"opening_ap") if turns_taken <= 1 else 0.0  # a Dagger, on its first turn
+	var moving := maxf(maxi(dex, 0) * (1.0 + stat(&"dex_ap")) - armor_drag(&"move") + stat(&"move_ap"), 0.0)
+	var casting := maxf(maxi(wis, 0) * more - armor_drag(&"skill") + stat(&"skill_ap"), 0.0)
 	var out: Array[AP] = [AP.new((BASE_AP + mini(dex, 0) + mini(wis, 0)) * (more + opening)),
-			AP.new(maxi(dex, 0) * (1.0 + stat(&"dex_ap")), &"move"), AP.new(maxi(wis, 0) * more, &"skill")]
+			AP.new(moving, &"move"), AP.new(casting, &"skill")]
 	return out
+
+
+# What heavy armor takes off its dex (pool &"move") or wis (&"skill") AP each turn: 3 - its con mod
+# (dex) or str mod (wis), at least 1 - none from armor that eases that pool (Item.eases) on a wearer
+# with that mod at SUFFICIENT or more. Lighter armor takes nothing.
+func armor_drag(pool: StringName) -> int:
+	if not armor or armor.weight() != &"heavy":
+		return 0
+	var m := mod(&"constitution" if pool == &"move" else &"strength")
+	if armor.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
+		return 0
+	return maxi(3 - m, 1)
+
+
+# Wearing armor to some effect: armor that sets Defense, whose requirement it meets. Bracing passives
+# work only then (check_bonus(); Effect.armored).
+func armored() -> bool:
+	return armor != null and armor.sets_defense() and can_wear(armor)
+
+
+# What its bracing passives add to a check in stat s (offensive or defensive; mental: int, wis, cha):
+# each that matches its armor's weight, stat and kind adds its armor's rank (x the passive's share),
+# up to the passive's rank (Agility, Balanced, Vanguard, Combat, Meditative, Invigorating Bracing).
+func check_bonus(s: StringName, kind: StringName) -> int:
+	if not armored():
+		return 0
+	var w := armor.weight()
+	var total := 0
+	for pair in _effects():
+		var e: Effect = pair[0]
+		if e.stat != "brace" or not (e.tags.is_empty() or w in e.tags):
+			continue
+		if not (s in e.checks or (&"mental" in e.checks and s in MENTAL)) or (e.kind and e.kind != kind):
+			continue
+		total += mini(floori(armor.rank * e.amount), pair[1])
+	return total
 
 
 # Gets n AP back into its general pool, up to what that pool started the turn with (Renew).

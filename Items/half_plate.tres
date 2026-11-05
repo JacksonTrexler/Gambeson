@@ -6,6 +6,3 @@
 script = ExtResource("1_item")
 name = "Half Plate"
 tags = Array[StringName]([&"metal", &"medium"])
-defense = 10
-per_level = 0.5
-dex_share = 0.25

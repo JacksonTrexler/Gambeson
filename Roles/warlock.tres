@@ -16,6 +16,7 @@
 [ext_resource type="Resource" path="res://Skills/brainfog.tres" id="s_brainfog"]
 [ext_resource type="Resource" path="res://Skills/haluca.tres" id="s_haluca"]
 [ext_resource type="Resource" path="res://Skills/gasp.tres" id="s_gasp"]
+[ext_resource type="Resource" path="res://Skills/humble.tres" id="s_humble"]
 [ext_resource type="Resource" path="res://Skills/breathtaking.tres" id="s_breathtaking"]
 [ext_resource type="Resource" path="res://Skills/irradiate.tres" id="s_irradiate"]
 [ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
@@ -76,6 +77,10 @@ kind = "Patron"
 devotes = true
 roots = Array[ExtResource("6_root")]([SubResource("Root_Elmon")])
 
+[sub_resource type="Resource" id="Branch_humble"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_humble")
+
 [sub_resource type="Resource" id="Branch_gasp"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_gasp")
@@ -94,13 +99,14 @@ after = Array[ExtResource("5_skill")]([ExtResource("s_breathtaking")])
 script = ExtResource("6_root")
 name = "Hogel"
 tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_gasp"), SubResource("Branch_breathtaking"), SubResource("Branch_irradiate")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_humble"), SubResource("Branch_gasp"), SubResource("Branch_breathtaking"), SubResource("Branch_irradiate")])
 
 [sub_resource type="Resource" id="Tab_Hogel"]
 script = ExtResource("8_tab")
 name = "Hogel"
 kind = "Patron"
 devotes = true
+satisfied_by = &"rest_whole"
 roots = Array[ExtResource("6_root")]([SubResource("Root_Hogel")])
 
 [resource]

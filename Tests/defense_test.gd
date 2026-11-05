@@ -26,18 +26,45 @@ func test_armor() -> void:
 	v(3).level = 21
 	ok(v(3).defense() == 11 and v(1).defense() == 12, "level 21: 10.5 rounds down to 10 - up to 11 for the lucky")
 	v(1).armor = plate
-	ok(v(1).defense() == 21, "Plate: the higher of 20 and level, no dex")
+	ok(v(1).defense() == 22 and v(3).defense() != 22, "Plate (heavy): the higher of 14 and level (21), + dex mod / 4 - rounded up for the lucky")
 	v(1).level = 1
-	ok(v(1).defense() == 20, "...20 at level 1")
+	ok(v(1).defense() == 15, "...14 + 1 at level 1")
+	var haubergeon: Item = load("res://Items/habergeon.tres")
+	v(1).armor = haubergeon
+	ok(v(1).defense() == 13, "Habergeon (medium): the higher of 12 and level x 0.75, + dex mod / 2 (lucky: 1)")
 	v(1).armor = robe
-	ok(v(1).defense() == 8, "Robe: 8 at level 1, no dex")
-	v(1).level = 41
-	v(3).armor = robe
-	v(3).level = 41
-	ok(v(1).defense() == 11 and v(3).defense() == 10, "level 41: 10.25 is 11 for the lucky, 10 for the rest")
-	ok(gambeson.describe().split("\n")[0] == "Defense: the higher of 10 and level / 2, + dex mod", "describes itself (%s)" % gambeson.describe())
-	ok(plate.describe().split("\n")[0] == "Defense: the higher of 20 and level" and robe.describe().split("\n")[0] == "Defense: the higher of 8 and level / 4", "Plate, Robe")
+	ok(v(1).defense() == 11, "a Robe is light: as a Gambeson")
+	ok(gambeson.describe().split("\n")[0] == "Light armor: Defense the higher of 10 and level / 2, + dex mod", "describes itself (%s)" % gambeson.describe())
+	ok(plate.describe().split("\n")[0] == "Heavy armor: Defense the higher of 14 and level, + dex mod / 4"
+			and haubergeon.describe().split("\n")[0] == "Medium armor: Defense the higher of 12 and level x 0.75, + dex mod / 2", "Plate, Habergeon")
 	ok(plate.describe().ends_with("10 - dex mod AP to put on in battle"), "armor: 10 - dex mod AP to put on mid-fight")
+
+
+func test_heavy_drag() -> void:
+	v(1).refresh()
+	var dex := v(1).ap[1].amount
+	var wis := v(1).ap[2].amount
+	v(1).armor = load("res://Items/brigandine.tres")
+	v(1).refresh()
+	ok(v(1).ap[1].amount == maxf(dex - 2, 0) and v(1).ap[2].amount == maxf(wis - 2, 0), "heavy: con mod 1 and str mod 1 - 2 off dex AP and wis AP")
+	v(1).constitution = 16
+	v(1).refresh()
+	ok(v(1).ap[1].amount == maxf(dex - 1, 0), "con mod 3: still 1 off")
+	v(1).armor = load("res://Items/aethendine.tres")
+	v(1).refresh()
+	ok(v(1).ap[1].amount == dex + 1 and v(1).ap[2].amount == maxf(wis - 2, 0), "Aethendine: no dex drag with con mod 2+, and rank more dex AP")
+	ok(v(1).armor_defense() == 14 + v(1).mod(&"dexterity"), "...with its full dex mod")
+	v(1).strength = 14
+	v(1).armor = load("res://Items/ignauldron.tres")
+	v(1).refresh()
+	ok(v(1).ap[2].amount == wis + 1 and v(1).ap[1].amount == maxf(dex - 1, 0), "Ignauldron: no wis drag with str mod 2+, and rank more skill AP")
+	v(1).max_hp = 100
+	v(1).hp = 100
+	b._mend(v(1))
+	ok(v(1).hp == 99, "and it burns for its rank as each turn starts")
+	v(1).armor = load("res://Items/half_plate.tres")
+	v(1).refresh()
+	ok(v(1).ap[1].amount == dex, "medium: no drag")
 
 
 func test_tagged_defense() -> void:
@@ -68,8 +95,8 @@ func test_attack_roll() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	ok(strike.attacks() and strike.stat() == &"strength" and hex.stat() == &"wisdom", "Strike rolls str, Hex wis (their tags)")
 	ok(Battle.hit_chance(v(1), strike, v(3)) == 1.0, "d20 + 1 against Defense 2: always")
-	v(3).armor = plate
-	ok(is_equal_approx(Battle.hit_chance(v(1), strike, v(3)), 0.1), "against Plate (20): 19 and 20 only")
+	v(3).armor = bulwark()
+	ok(is_equal_approx(Battle.hit_chance(v(1), strike, v(3)), 0.1), "against Defense 20: 19 and 20 only")
 	v(3).max_hp = 500
 	v(3).heal(500)
 	var rolls := []
@@ -96,7 +123,7 @@ func test_nat_20_beats_any_defense() -> void:
 
 func test_miss() -> void:
 	stage(nemes, {v(3): Vector2i(4, 3), v(1): Vector2i(5, 3)})
-	v(1).armor = plate
+	v(1).armor = bulwark()
 	v(1).afflict(effect("concealment", 2), 3)
 	v(3).afflict(effect("concealment", 2), 3)
 	var d20 := [0]

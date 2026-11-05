@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "brace"
+per_rank = true
+tags = Array[StringName]([&"medium"])
+checks = Array[StringName]([&"strength", &"dexterity"])
+kind = &"offensive"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Vanguard Bracing"
+passive = true
+min_tier = 5
+tags = Array[StringName]([&"martial", &"bracing"])
+lore = "Jimhe Deyn is very insistent on bulking while fully equipped. They're known to tear up Center's night markets for protein and calories: they don't call them the Greasejons for nothing."
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

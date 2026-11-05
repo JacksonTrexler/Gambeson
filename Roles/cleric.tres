@@ -13,6 +13,15 @@
 [ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
 [ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
 [ext_resource type="Resource" path="res://Skills/level_up.tres" id="s_level_up"]
+[ext_resource type="Resource" path="res://Skills/igna.tres" id="s_igna"]
+[ext_resource type="Resource" path="res://Skills/flamewall.tres" id="s_flamewall"]
+[ext_resource type="Resource" path="res://Skills/inner_fire.tres" id="s_inner_fire"]
+[ext_resource type="Resource" path="res://Skills/burning_bag.tres" id="s_burning_bag"]
+[ext_resource type="Resource" path="res://Skills/flamecharm.tres" id="s_flamecharm"]
+[ext_resource type="Resource" path="res://Skills/cindering.tres" id="s_cindering"]
+[ext_resource type="Resource" path="res://Skills/flamedance.tres" id="s_flamedance"]
+[ext_resource type="Resource" path="res://Skills/solar.tres" id="s_solar"]
+[ext_resource type="Resource" path="res://Skills/flamecharmed.tres" id="s_flamecharmed"]
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
@@ -50,16 +59,60 @@ roots = Array[ExtResource("6_root")]([SubResource("Root_Luun")])
 god = &"luun"
 devotes = true
 
+[sub_resource type="Resource" id="Branch_igna"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_igna")
+
+[sub_resource type="Resource" id="Branch_flamewall"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamewall")
+after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
+
+[sub_resource type="Resource" id="Branch_inner_fire"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_inner_fire")
+after = Array[ExtResource("5_skill")]([ExtResource("s_flamewall")])
+
+[sub_resource type="Resource" id="Branch_burning_bag"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_burning_bag")
+after = Array[ExtResource("5_skill")]([ExtResource("s_inner_fire")])
+
+[sub_resource type="Resource" id="Branch_flamecharm"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamecharm")
+after = Array[ExtResource("5_skill")]([ExtResource("s_burning_bag")])
+
+[sub_resource type="Resource" id="Branch_cindering"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_cindering")
+after = Array[ExtResource("5_skill")]([ExtResource("s_flamecharm")])
+
 [sub_resource type="Resource" id="Branch_level_up"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_level_up")
-after = Array[ExtResource("5_skill")]([ExtResource("s_renew")])
+after = Array[ExtResource("5_skill")]([ExtResource("s_cindering")])
+
+[sub_resource type="Resource" id="Branch_flamedance"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamedance")
+after = Array[ExtResource("5_skill")]([ExtResource("s_level_up")])
+
+[sub_resource type="Resource" id="Branch_solar"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_solar")
+after = Array[ExtResource("5_skill")]([ExtResource("s_flamedance")])
+
+[sub_resource type="Resource" id="Branch_flamecharmed"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamecharmed")
+after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
 
 [sub_resource type="Resource" id="Root_Sol"]
 script = ExtResource("6_root")
 name = "Sol"
 tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_up")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_igna"), SubResource("Branch_flamewall"), SubResource("Branch_flamecharmed"), SubResource("Branch_inner_fire"), SubResource("Branch_burning_bag"), SubResource("Branch_flamecharm"), SubResource("Branch_cindering"), SubResource("Branch_level_up"), SubResource("Branch_flamedance"), SubResource("Branch_solar")])
 
 [sub_resource type="Resource" id="Tab_Sol"]
 script = ExtResource("8_tab")
@@ -79,5 +132,5 @@ innate = Array[ExtResource("4_slot")]([SubResource("Slot_pray"), SubResource("Sl
 stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 10, &"constitution": 12, &"intelligence": 10, &"wisdom": 15, &"charisma": 12})
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol")])
 shared = Array[ExtResource("5_skill")]([ExtResource("s_pray"), ExtResource("s_renew")])
-swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom"})
+swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom", &"intelligence": &"wisdom"})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_energy_potion")])

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Humble"
+tags = Array[StringName]([&"curse", &"warlock", &"magical", &"cha"])
+ap = 2.0
+cost = 1
+radius = -1.0
+radius_per_rank = 1.0
+either = true
+rolls = false
+humbles = true

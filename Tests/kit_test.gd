@@ -54,11 +54,11 @@ func test_equip_ap() -> void:
 	ok(b.equip(v(1), plate) and is_equal_approx(ap - v(1).ap_for(&"equip"), 8.0), "plate: 8 AP (%s left before)" % ap)
 	ap = v(1).ap_for(&"equip")
 	ok(b.unequip(v(1), "weapon") == dagger and is_equal_approx(ap, v(1).ap_for(&"equip")), "taking off: free")
-	ok(half_plate.describe().begins_with("Defense: the higher of 10 and level / 2, + dex / 4"), half_plate.describe())
+	ok(half_plate.describe().begins_with("Medium armor: Defense the higher of 12 and level x 0.75, + dex mod / 2"), half_plate.describe())
 	v(1).armor = null
-	v(1).dexterity = 13
+	v(1).dexterity = 14
 	v(1).armor = half_plate
-	ok(v(1).armor_defense() == 10 + v(1).rounded(13 * 0.25), "Half Plate at level 1: 10 + dex / 4 (%d)" % v(1).armor_defense())
+	ok(v(1).armor_defense() == 12 + v(1).rounded(2 * 0.5), "Half Plate at level 1: medium, 12 + dex mod / 2 (%d)" % v(1).armor_defense())
 	v(1).armor = null
 	v(1).pay(v(1).ap_for(&"equip"), &"equip")
 	ok(not b.equip(v(1), plate) and v(1).armor == null, "no AP left: it stays off")

@@ -70,6 +70,16 @@ extends Resource
 # Asphyxia, each 1% x this of its max HP gone (Breathtaking; Battle._choke()).
 # asphyxia: that share of max HP gone a stack (Unit.refit()); stacks start falling after (1 + the
 # Breathtaking rank) of its turns.
+# brace: armor ranks added to checks (Unit.check_bonus()): its tags are the armor weights it works with
+# (none: any), `checks` the stats (mental: int, wis, cha), `kind` offensive or defensive (none: both);
+# the armor's rank x this, up to the skill's rank (the Bracing passives).
+# move_ap / skill_ap: that much more dex (moving) / wis (skill) AP each turn (Aethendine, Ignauldron,
+# Invigorating Bracing).
+# humble: that much max HP cut (Humble; Unit.refit()).
+# flamecharmed: from rank V, allies' fire heals it for 25% x (this - 4) of what they deal (Flamecharmed;
+# Unit.hit()).
+# cinders: rank of its rightmost hotbar slots burn: using a skill in one burns it (Cindering;
+# Unit.burning_slots()).
 # irradiate: an offensive light-damage skill's roll beating Defense deals the overage as more light
 # damage, up to this + cha mod (Irradiate; Battle.cast()).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
@@ -79,11 +89,14 @@ extends Resource
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
 		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
 		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
-		"chant", "breathless", "asphyxia", "irradiate") var stat := "luck"
+		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
-@export var skills: Array[Skill] = []  # a skill attribute (range, rank): only for these skills; empty: any the tags allow
+@export var skills: Array[Skill] = []
+@export var checks: Array[StringName] = []  # brace: the stats of the checks it adds to (mental: int, wis, cha)
+@export var kind := &""  # brace: offensive or defensive checks only; empty: both
+@export var armored := false  # only while its holder wears armor to some effect (Unit.armored(): Invigorating Bracing's AP)  # a skill attribute (range, rank): only for these skills; empty: any the tags allow
 @export var per_stat := &""  # optional scaling: amount x floor(stat / per), e.g. charisma / 10
 @export var per := 10
 @export var per_mod := &""  # optional scaling: amount x the holder's mod in this stat (Mage Armor: intelligence)
@@ -105,10 +118,11 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"slots": "Skill slots", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
 		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt",
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
-		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "sap": "Starsap",
+		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
+		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
 		"sickness": "Resurrection Sickness"}
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -177,6 +191,16 @@ func value(rank := 1) -> String:
 		return "sees everyone's tags scrambled, until it investigates an ally"
 	elif stat == "command" and x >= ENDLESS:
 		return "no limit"
+	elif stat == "brace":
+		var on := " or ".join(checks.map(func(c): return "mental" if c == &"mental" else String(c).left(3)))
+		return "%s equipped %sarmor rank%s to %s%s rolls, up to rank" % ["half the" if amount < 1.0 else "+", "%s " % " or ".join(tags) if not tags.is_empty() else "",
+				"" if amount < 1.0 else "s", (String(kind) + " ") if kind else "", on]
+	elif stat == "humble":
+		return "%s max HP cut" % Skill.num(x)
+	elif stat == "flamecharmed":
+		return "allies' fire heals it for %d%% of what they deal" % maxi(roundi(25.0 * (x - 4.0)), 0) if x > 4.0 else "allies' fire heals it, from rank V"
+	elif stat == "cinders":
+		return "its %s rightmost skill slot%s burn: using a skill in one burns it" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat == "chant":
 		return "waiting a turn out: its next %s Sweet Nothing gain%s bring one more, and its next Warlock skill is used a rank higher" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat == "breathless":

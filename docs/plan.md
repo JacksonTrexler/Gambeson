@@ -12,7 +12,7 @@ Every system gets a test file in `Tests/` like the existing ones, and its entrie
 
 ## Built since the plan was written
 
-Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?41 unblocked these. They're in `docs/done/`, each with its test file.
+Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `docs/done/`, each with its test file.
 
 | Was | System | Tests |
 | --- | --- | --- |
@@ -44,6 +44,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?41 unblocked these. They're in `do
 | — | Allies and companions, Dagger initiative | `allies_test.gd` |
 | 22 | Warlock, the rest: Chant, Hogel's path (Gasp, Breathtaking, Irradiate) | `hogel_test.gd` |
 | — | Cleric (Luun, Sol), Synergy's range, Quartz Ring | `hogel_test.gd` |
+| — | Humble, Hogel's rest, Sol's path, Igna and Aetha | `sol_test.gd` |
 
 ## Questions to answer first
 
@@ -51,7 +52,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?41 unblocked these. They're in `do
 | --- | --- |
 | ?13 Fighter (Interject trigger, Sundering threshold, Silent Strike scope) | Reactions, Silent Strike, Sunder |
 | ?12 Paladin (Final Act, Send Off, Rejuvinate's decay) | Effect strength, Teleport, Reactions |
-| ?43 What satisfies Hogel | Hogel's Sweet Nothing gains |
+| ?45, ?46 Humble's duration, Sol's gaps | Small fixes to built skills |
 | ?2, ?11 Stat caps, Trade Skills and Grind | Adventurer core passives |
 
 ## Phase 1: Foundations
@@ -115,7 +116,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?41 unblocked these. They're in `do
 ## Phase 6: Trees and classes
 
 21. **Divinity trees** (M): one tab per god, with Pray on a shared row (`Role.shared`). Eros gets Renew and Rejuvinate. Other skills are to be designed.
-22. **Warlock, the rest** (S): what satisfies Hogel (?43); more Elmon and Hogel skills.
+22. **Warlock, the rest** (S): more Elmon and Hogel skills.
 23. **Fighter roots** (L): Protector needs Checks, Facing and Reactions; Vanguard needs Tile marks; Slayer needs Checks and Silent Strike (Disabled skills are built; ?13).
 24. **Paladin roots** (M): Send Off needs Teleport; Final Act needs Reactions; Smite could join its list (?29).
 25. **Rangers** (M): a new class with Observe and Eyes Forward on its tree. To be designed.

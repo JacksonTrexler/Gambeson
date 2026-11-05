@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.2
+per_rank = true
+tags = Array[StringName]([&"fire"])
+name = "Flamecharm"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Flamecharm"
+tags = Array[StringName]([&"fire", &"divine", &"wis"])
+ap = 3.0
+cost = 3
+hostile = false
+self_only = true
+aura = true
+splits = true
+turns_per_rank = 1
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

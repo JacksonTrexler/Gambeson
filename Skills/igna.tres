@@ -1,17 +1,25 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
 [ext_resource type="Script" path="res://Scripts/Reserve.gd" id="4_reserve"]
 [ext_resource type="Resource" path="res://Reserves/mana.tres" id="5_mana"]
+
+[sub_resource type="Resource" id="Tier_0"]
+script = ExtResource("3_tier")
+dice = Vector2i(1, 4)
+stat = &"intelligence"
 
 [resource]
 script = ExtResource("1_skill")
 name = "Igna"
-passive = false
 tags = Array[StringName]([&"fire", &"magical", &"int"])
 ap = 3.0
 cost = 2
 cost_per_rank = true
 cost_with = Dictionary[ExtResource("4_reserve"), float]({ExtResource("5_mana"): 0.5})
-stub = "?10"
-plan = "Starter spell (fire). On an ally: it gains int mod + rank skill AP - at once, or for rank turns? On a foe: 1d4 + int mod damage. Range: int mod; 2 Energy x rank, half paid with Mana (for a unit with Mana)."
+radius_mod = &"intelligence"
+dual = true
+boost_pool = &"skill"
+boost_mod = &"intelligence"
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_0")])

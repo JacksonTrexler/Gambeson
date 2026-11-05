@@ -19,7 +19,10 @@ extends Resource
 @export var defense := 0  # the least it gives (Gambeson: 10)
 @export var per_level := 0.0  # or the wearer's level times this, when that's higher (Gambeson: 0.5)
 @export var dex_share := 0.0  # then adds the wearer's dex x this, luck-rounded (Half Plate: dex / 4)
-@export var plus_dex := false  # then adds the wearer's dex mod (Gambeson); armor setting none of these leaves Defense unarmored (Heart Up-Link)
+@export var plus_dex := false  # then adds the wearer's dex mod; armor setting none of these, and of no weight, leaves Defense unarmored (Heart Up-Link)
+@export var full_dex := false  # heavy armor that takes its wearer's whole dex mod all the same (Aethendine)
+@export var eases := &""  # the heavy-armor AP drag it lifts from a wearer strong enough: dexterity (with con: Aethendine) or wisdom (with str: Ignauldron) (Unit.armor_drag())
+@export var heat := 0  # fire it deals its wearer as each of its turns starts, x rank (Ignauldron)
 
 @export_group("Weapon")
 @export var damage_tag := &""  # what its blows deal, for skills that take it (Strike): slash, pierce, blunt (Skill.weapon_tag)
@@ -34,8 +37,17 @@ extends Resource
 @export var restore_share := 0.0  # ...this x rank of its max (potions: 15%)...
 @export var restore_mod := &""  # ...plus the user's mod in this (potions: constitution)...
 @export var restore_flat := 0  # ...plus this (Sweet Something: 1)
+@export var burning := false  # its wearer burns for 10% x rank of its max HP (fire) as its turns start, and again each time it uses a skill in the slots it grants (Burning Bag; Unit.burning_slots())
 @export var empty := false  # used: a potion is emptied rather than used up, and fills again as the battle ends (Battle.refill())
 
+# Armor by weight (its tag: light, medium, heavy) shares its basic piece's scaling: Defense the higher of
+# a floor and level x a share, + dex mod x a share (Unit.armor_defense()). Heavy armor also drags at
+# its wearer's dex and wis AP (Unit.armor_drag()).
+const WEIGHTS := {
+	&"light": [10, 0.5, 1.0],  # Gambeson: low level scaling, high dex scaling
+	&"medium": [12, 0.75, 0.5],  # Habergeon: balanced
+	&"heavy": [14, 1.0, 0.25],  # Brigandine: high level scaling, low dex scaling
+}
 const ARMOR_AP := 10  # armor takes this - its wearer's dex mod in AP to put on in battle: hardly worth it mid-fight
 
 
@@ -66,6 +78,8 @@ func describe() -> String:
 				% [roundi(revives * rank * 100.0), rank, "" if rank == 1 else "s"])
 	if damage_tag:
 		lines.append("Deals %s blows" % damage_tag)
+	if burning:
+		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * rank))
 	if requires:
 		lines.append("Needs a positive %s mod" % String(requires).left(3))
 	for e in effects:
@@ -115,12 +129,33 @@ func filled() -> Item:
 # Sets its wearer's Defense (armor): it has a floor or a level rule. One that doesn't (Heart Up-Link)
 # leaves Defense as if unarmored.
 func sets_defense() -> bool:
-	return defense > 0 or per_level > 0.0
+	return weight() != &"" or defense > 0 or per_level > 0.0
+
+
+# Its weight, by tag: light, medium, heavy, or none (armor of its own sort: Heart Up-Link).
+func weight() -> StringName:
+	for w in [&"heavy", &"medium", &"light"]:
+		if w in tags:
+			return w
+	return &""
 
 
 func _armor() -> String:
 	if not sets_defense():
 		return "Armor: Defense as if unarmored (dex mod + con mod)"
+	var w := weight()
+	if w:
+		var base: Array = WEIGHTS[w]
+		var lv := "level" if base[1] == 1.0 else ("level / %s" % Skill.num(1.0 / base[1]) if base[1] <= 0.5 else "level x %s" % Skill.num(base[1]))
+		var dex := "dex mod" if full_dex or base[2] == 1.0 else "dex mod / %s" % Skill.num(1.0 / base[2])
+		var text := "%s armor: Defense the higher of %d and %s, + %s" % [String(w).capitalize(), base[0], lv, dex]
+		if w == &"heavy":
+			text += "\nHeavy: %s" % ("costs dex AP (less with con: none at con mod 2+ for this one) and wis AP (less with str)" if eases == &"dexterity"
+					else "costs dex AP (less with con) and wis AP (less with str: none at str mod 2+ for this one)" if eases == &"wisdom"
+					else "costs dex AP (less with con) and wis AP (less with str)")
+		if heat:
+			text += "\nBurns its wearer for %d as each of its turns starts" % (heat * rank)
+		return text
 	var text := "Defense: %d" % defense
 	if per_level > 0.0:
 		var by := "level"

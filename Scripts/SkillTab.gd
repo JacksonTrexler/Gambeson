@@ -10,7 +10,8 @@ extends Resource
 @export var core: Array[Skill] = []
 @export var roots: Array[SkillRoot] = []
 @export var god := &""  # the god its devotees worship (a Cleric's Luun, Sol: Unit.deity())
-@export var devotes := false  # learning a skill on its roots devotes its learner to it: other devoting tabs close (a Warlock's patron; Unit.devotion())
+@export var devotes := false
+@export var satisfied_by := &""  # what wins its devotees Sweet Nothings back (Hogel: rest_whole, resting a turn out at full HP; Battle.end_turn())  # learning a skill on its roots devotes its learner to it: other devoting tabs close (a Warlock's patron; Unit.devotion())
 
 
 # "Calling: Freedom".

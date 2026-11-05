@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "brace"
+per_rank = true
+checks = Array[StringName]([&"mental"])
+kind = &"offensive"
+amount = 0.5
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "skill_ap"
+per_rank = true
+armored = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Invigorating Bracing"
+passive = true
+min_tier = 5
+tags = Array[StringName]([&"magical", &"bracing"])
+lore = "Word on the Central streets is Jimhe Deyn always has his gang's casters cinch their robes two belt notches tight to stay lively. They don't look pretty, but they don't call 'em the Teufers for nothing."
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0"), SubResource("Effect_1")])

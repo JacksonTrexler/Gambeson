@@ -18,10 +18,7 @@ Every skill follows these, so skill descriptions don't repeat them.
   - Bonuses can be untagged, counting against everything, or tagged: `physical`, `magical`, `blunt`, `fire`, `dark`, `whimsical`…
   - Tagged Defense counts against attacks carrying that tag or a child of it: `physical` covers `slash`, `pierce` and `blunt`.
   - Unarmored: dex mod + con mod. Poor, often worse than nothing, for most low-level units.
-  - **Gambeson** (the game's namesake, and the most common armor): the higher of 10 and level / 2, + dex mod.
-  - **Plate**: the higher of 20 and level.
-  - **Robe** (`cloth`): the higher of 8 and level / 4.
-  - Plate and Robe don't add dex mod, unless passives or skills say so.
+  - Armor goes by its weight (see Items: Armor weight): **light** the higher of 10 and level / 2, + dex mod (the **Gambeson**, the game's namesake and the most common armor; the Robe); **medium** the higher of 12 and level × 0.75, + dex mod / 2 (Habergeon, Half Plate); **heavy** the higher of 14 and level, + dex mod / 4 (Brigandine, Plate). (?47)
 - **Mitigation** is separate from Defense: a % cut to damage taken, tagged the same way. It can add up past 100%, but blocks at most 100%; later mitigation-reducing effects can eat into the overage.
 - **Checks.** Each skill sets its own check: a contest of the same stat (a Siren dragging a unit into water: str against str) or one stat against another (a Siren's charm: its cha against the target's wis). `defensive` checks are the ones a unit makes to avoid or lessen harm, and they trigger its `defensive` passives. `offensive` checks are the ones it makes to act on others.
 - **Checks first.** If a skill's check passes, it almost always does *something*, even when its stat would otherwise give nothing or worse.
@@ -38,6 +35,7 @@ Every skill follows these, so skill descriptions don't repeat them.
 - **Allies.** Allied sides don't fight each other and win together, but a leader commands only its own side's units.
 - **Last stand.** A general defensive check of the whole unit: d20 + its average stat mod. Level Down rolls against it, and it may come up elsewhere.
 - **Execute.** An `execute` skill makes the defender's check harder the closer it is to death: its roll × (HP left / max HP) / the skill's rank (Death).
+- **Fire.** Fire damage is tagged `fire`; fire from burning ground is also `environmental`, which some wards cover alone (Flamedance). Burning slots hurt whoever uses a skill from them.
 - **Easy to remove.** Some effects come off faster: cleansing or dispelling takes several of their ranks for each spent (Level Down 2, Level Up 4).
 - **Disabling.** Some skills (curses: Brainfog) disable a number of a unit's skill slots, from the right: the skills in them can't be used, and passives stop working, for a while. **Pillar skills** are those a build stands on (Powerful), which a disable would otherwise ruin; so they're easier to disable and harder to work around. They always sit in the rightmost sure slots - the player can reorder anything on the hotbar but them - and count as one slot for disabling: reach one and all go, at their median rank against the check. A disable reaching two slots on a unit with three pillar skills takes four skills: the pillars, and the first skill left of them.
 - **Hotbar order.** The hotbar is a vertical list; a horizontal layout may come later as an option. Skills that work through another unit's skills in order read its hotbar top to bottom (Snapping Turtle) or bottom to top (Silent Strike).
@@ -113,6 +111,8 @@ Every skill follows these, so skill descriptions don't repeat them.
 - **Patrons.** A Warlock serves one patron (for now): learning a skill on one patron's path closes the other's. Its magical skills use cha where they'd use wis (Hex).
 - **Items.** Items come from bosses (the Astral Princess) and commanders as they fall, and from winning scenarios (the victory screen); each class starts with a set (robes and staves for casters, gambesons and daggers for specialists, plate and broadswords for fighters and paladins, a potion or a treat as a trinket). Shops come later; nothing is saved between sessions yet.
   - **Equipment rank** scales an item's effects.
+  - **Armor weight.** Armor is light, medium or heavy, and every armor of a weight shares its basic piece's scaling: light (Gambeson) low level scaling and high dex scaling, medium (Habergeon) balanced, heavy (Brigandine) high level scaling and low dex scaling. Heavy armor costs dex AP and wis AP each turn, more with low con (dex) and str (wis). (?47)
+  - **Bracing.** Passives on the general tree add equipped armor ranks to checks, by weight and by the check's stat and kind (offensive or defensive). Armor must be worn to effect (its requirements met) for them to work. (?48)
   - **Changing items in battle.** Trinkets take 1 AP to put on (or use), weapons about 2 (3 if heavy), armor 10 − dex mod: prohibitive mid-fight. Taking an item off is free.
   - **Potions** in the trinket slot are emptied as they're used, and fill again as the battle ends.
   - **Skill attributes.** Items and effects can change any of a skill's attributes - its range, its rank - for skills with given tags (damage skills, magical skills) or by name (Strike).

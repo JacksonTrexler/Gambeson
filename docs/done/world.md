@@ -20,11 +20,13 @@ Every item has a **rank** (1 for all so far): its effects scale by it. In battle
 | Wizard | Robe | Staff | Mana Potion |
 | Warlock | Robe | Staff | Sweet Something |
 
-Armor (see the Defense rule)
-- [x] **Gambeson**: Defense the higher of 10 and level / 2, + dex mod.
-- [x] **Plate** (`heavy`: 3 AP): Defense the higher of 20 and level.
-- [x] **Half Plate** (`medium`: 2 AP): Defense the higher of 10 and level / 2, + dex / 4 (luck-rounded).
-- [x] **Robe** (`cloth`): Defense the higher of 8 and level / 4.
+Armor, by weight (`Item.WEIGHTS`; the tag light, medium or heavy). Each weight shares its basic piece's scaling; dex shares round by luck, and a negative one rounds down. (?47)
+- **Light**: Defense the higher of 10 and level / 2, + dex mod. **Gambeson** (basic), **Robe**.
+- **Medium**: the higher of 12 and level × 0.75, + dex mod / 2. **Habergeon** (basic), **Half Plate**.
+- **Heavy**: the higher of 14 and level, + dex mod / 4. Each turn it takes 3 − con mod dex AP and 3 − str mod wis AP, at least 1 each (`Unit.armor_drag()`). **Brigandine** (basic), **Plate**, and:
+  - [x] **Aethendine**: its wearer's full dex mod; rank more dex AP a turn; no dex AP drag with con mod 2 or more.
+  - [x] **Ignauldron**: rank more skill AP a turn; burns its wearer for rank fire as each turn starts; no wis AP drag with str mod 2 or more.
+- Habergeon, Brigandine, Aethendine and Ignauldron have no source yet (no drops, rewards or shops).
 
 Weapons
 - [x] **Rapier**: strength attacks may use dex instead.
@@ -89,3 +91,14 @@ Acts serene and stands still until unmasked. It tries to get units close by enra
 `Scenes/starmote.tscn`, `Units/Starmote.png` (placeholder). Level 3, 12 Power. Recovering AI: it heads for the nearest free lattice tile and holds there, firing only when a foe is beside it and it has nowhere further to go (or it's holding the lattice).
 - [x] **Starkind III** (inherent: it can't be disabled or removed, and takes no slot): its max HP is its max Power. Ending its turn off the lattice, it loses (100% − rank × 20%) of its max HP. On the lattice at full Power, it grows a **Reforming** stack as each of its turns starts and ends; otherwise it loses one. At its level in stacks, it reforms into a Starman (`Unit.reforms_into`).
 - [x] **Energy Missile**: 1d4 energy damage, range 4, 3 AP, 1 Power.
+
+## Lore: Center and Jimhe Deyn's gangs
+
+Jimhe Deyn runs competing gangs out of Center, each a mix of species shoehorned into a single class and build. He puts each through its own cryptic exercise, which tangentially explains why its members invariably have particular armor skills (the Bracing passives).
+- **The Rollers** (Agility Bracing): timely courier runs for protected businesses, in full kit, vaulting, folding and rolling over fences, through crowded outdoor seating and the city's hodgepodge elevations. Turf: **the Joint**, certainly the classiest of Center's outer districts, though class can't mask a definitive and enigmatic odor that permeates its otherwise glamorous shops and restaurants.
+- **The Ratz** (Balanced Bracing): general calisthenics, fully equipped. They spend more time at **the Jym** than in their own territory: Center's premier combination training ground and derelict sewer system. Nobody but a few unpleasant kinds of monster and the Ratz hang out there, and the latter are usually pretty exhausted from training: an attractive place for fledgling adventurers to get stronger.
+- **The Greasejons** (Vanguard Bracing): bulking while fully equipped; known to tear up Center's night markets for protein and calories. **Central Night Markets**: the shopkeeps keep the lights on and their guards heavily armed when nightfall comes and conflict breaks out in Central streets. You never know who'll be selling what when you find yourself cornered, for better or worse.
+- **The Doozers** (Combat Bracing): deadlifting their peers in full plate; all a bit top-heavy for it. They run **the Central Lift**: a circular wooden platform from the depths of the Jym to the Center proper, started only at full capacity, its riders carefully curated for a high likelihood of friction with one another. Watching fights on the Lift is one of Center's premier entertainments, despite bloodsports not being permitted within city walls.
+- **The Heaflers** (Meditative Bracing): casters made to sprint the city's circular paths in full armor. They look damn haggard.
+- **The Teufers** (Invigorating Bracing): casters who cinch their robes two belt notches tight to stay lively. They don't look pretty.
+- [ ] The gangs as encounters, and these places as scenes.

@@ -44,11 +44,11 @@ func test_starting_skills() -> void:
 			"starts with Strike, Field Experience, Working Knowledge and Everyman")
 	ok(u.hotbar[0] == strike and u.hotbar.count(null) == u.hotbar.size() - 1, "only Strike goes on the bar")
 	var offered: Array = u.options()[&"class"]
-	ok([hex, sola, nadira, astera, terestera, hydera, wary, snare, darkvision].all(func(s): return s in offered),
+	ok([hex, sola, nadira, astera, igna, aetha, terestera, hydera, wary, snare, darkvision].all(func(s): return s in offered),
 			"on offer: Hex at the core, the starter spells, and the first skill of each path")
-	ok([hazard_expert, magic_slot, martial_slot, igna, aetha, rejuvinate, skill_slot, trade_skills, grind].all(func(s): return s not in offered),
+	ok([hazard_expert, magic_slot, martial_slot, rejuvinate, skill_slot, trade_skills, grind].all(func(s): return s not in offered),
 			"not yet: skills further along, capstones, and stubs")
-	ok(igna in u.sources()[&"class"] and skill_slot in adventurer.offered(), "stubs are still part of the tree")
+	ok(rejuvinate in u.sources()[&"class"] and skill_slot in adventurer.offered(), "stubs are still part of the tree")
 	ok(u.missing(hazard_expert) == "Learn Snare first", "Hazard Expert comes after Snare (%s)" % u.missing(hazard_expert))
 	ok(u.missing(magic_slot) == "Needs 3 Magic skills (0 so far)", "the Magic capstone needs 3 of its root (%s)" % u.missing(magic_slot))
 	ok(adventurer.root_of(sola).tag == &"magical" and adventurer.root_of(hex) == null, "Sola is on the Magic root; Hex at the core")
@@ -62,7 +62,7 @@ func test_tree_unlocks() -> void:
 	ok(not u.unlock(magic_slot) and u.unlock(sola) and u.unlock(nadira), "the capstone waits")
 	ok(u.missing(magic_slot) == "Needs 3 Magic skills (2 so far)", "...counting the root's skills learned")
 	ok(u.unlock(astera) and u.unlock(magic_slot), "a third: the capstone can be learned")
-	ok(not u.unlock(igna) and not u.unlock(skill_slot) and u.rank(igna) == 0, "a stub never can, points or not")
+	ok(not u.unlock(rejuvinate) and not u.unlock(skill_slot) and u.rank(rejuvinate) == 0, "a stub never can, points or not")
 	ok(u.skill_points == 5, "a point each (%d left)" % u.skill_points)
 	u.free()
 
@@ -198,12 +198,12 @@ func test_typed_slots() -> void:
 
 
 func test_stubs() -> void:
-	ok(igna.stub == "?10" and igna.mark() == "?10" and aetha.mark() == "?10", "Igna and Aetha wait on question 10")
-	ok(igna.describe().begins_with("Not built yet. Waits on open question 10 (todo.md)") and "skill AP" in igna.describe(), "it says so, and what it's meant to do")
+	ok(igna.stub == "" and aetha.stub == "" and "skill AP at once" in igna.describe() and "move AP at once" in aetha.describe(), "Igna and Aetha are built: %s" % igna.describe())
+	ok(rejuvinate.describe().begins_with("Not built yet. Waits on open question 12 (todo.md)") and "Regeneration" in rejuvinate.describe(), "a stub says so, and what it's meant to do")
 	ok(trade_skills.waits() == "Waits on open questions 2 and 11 (todo.md)" and grind.mark() == "?2", "two questions")
 	ok(skill_slot.mark() == "?3" and rejuvinate.mark() == "?12", "Skill Slot +1: 3; Rejuvinate: 12")
 	ok(sola.mark() == "So" and field_experience.mark() == "FE" and magic_slot.mark() == "+1", "the rest: initials, or a glyph")
-	ok(igna.summary() == "Not built yet", "listed as not built")
+	ok(rejuvinate.summary() == "Not built yet", "listed as not built")
 
 
 func test_tiers() -> void:

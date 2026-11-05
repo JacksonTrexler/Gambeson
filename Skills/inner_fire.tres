@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "ap"
+amount = 0.1
+per_rank = true
+name = "Inner Fire"
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "damage"
+amount = 0.1
+per_rank = true
+name = "Inner Fire"
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "poison"
+amount = 0.05
+per_rank = true
+name = "Inner Fire"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Inner Fire"
+tags = Array[StringName]([&"fire", &"divine", &"wis"])
+ap = 2.0
+cost = 2
+hostile = false
+self_only = true
+turns_per_rank = 1
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0"), SubResource("Effect_1"), SubResource("Effect_2")])

@@ -11,6 +11,9 @@
 
 - [ ] Item sprites and icons. *Now:* items are names and descriptions on the character sheet.
 - [ ] **Saving** the stash and outfit: later.
+- [ ] Sources for Habergeon, Brigandine, Aethendine and Ignauldron (drops, rewards, shops).
+
+47. Armor weights, as built (my numbers): light the higher of 10 and level / 2, + dex mod; medium the higher of 12 and level × 0.75, + dex mod / 2; heavy the higher of 14 and level, + dex mod / 4. Heavy drag: 3 − con mod dex AP and 3 − str mod wis AP a turn, at least 1 each; Aethendine and Ignauldron lift theirs at mod 2+. Robe counts as light (it used to be the higher of 8 and level / 4), and Plate now matches Brigandine exactly (it was a flat 20) - should Plate differ, or go? Half Plate is medium now, so your "10 or level / 2 + dex / 4" for it gave way to Habergeon's scaling.
 
 ## Monsters
 

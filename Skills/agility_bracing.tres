@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "brace"
+per_rank = true
+tags = Array[StringName]([&"light"])
+checks = Array[StringName]([&"dexterity"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Agility Bracing"
+passive = true
+min_tier = 5
+tags = Array[StringName]([&"martial", &"specialist", &"bracing"])
+lore = "Jimhe Deyn insists his gang members run timely courier missions for protected businesses in need of provisions, in their full sets of equipment. Vaulting, folding and rolling over fences, through crowded outdoor seating and the hodgepodge elevations of the city: they don't call them the Rollers for nothing. (Their turf: the Joint.)"
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

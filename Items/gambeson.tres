@@ -5,7 +5,4 @@
 [resource]
 script = ExtResource("1_item")
 name = "Gambeson"
-tags = Array[StringName]([&"cloth", &"padded"])
-defense = 10
-per_level = 0.5
-plus_dex = true
+tags = Array[StringName]([&"light", &"cloth", &"padded"])

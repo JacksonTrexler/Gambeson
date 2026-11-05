@@ -29,6 +29,7 @@ signal shattered(u: Unit, at: Vector2i)  # u broke a starpane, bludgeoning it
 signal sapped(u: Unit, drained: Dictionary)  # Starsap: unit -> Energy (or HP) u drained from it
 signal reverted(was: Unit, now: Unit)  # a Starman fell back into a Starmote
 signal reformed(was: Unit, now: Unit)  # a Starmote reformed into a Starman
+signal burned(u: Unit, hp: int, why: String)  # u took fire from a flame, a burning slot or a burning item
 signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
 
@@ -110,6 +111,7 @@ var turns_begun := 0  # sides' turns started so far this battle: when an effect 
 var stalling: Array[Unit] = []  # units stalling the fight as the last turn ended: Ramut's Ire builds on them (_check_stall())
 var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), over the ground
 var debris: Dictionary[Vector2i, Debris] = {}  # evidence hiding units leave behind (_scatter())
+var flames: Dictionary[Vector2i, Flame] = {}  # tiles on fire (Flamewall)
 var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
 @export var area_tags: Array[StringName] = []  # what the whole battlefield is (indoors, city, forest, desert...): debris where its tiles say nothing
 
@@ -151,6 +153,21 @@ class Earthwork:
 	func _init(f: Faction, t: int) -> void:
 		faction = f
 		turns = t
+
+
+# A tile on fire (Flamewall): whoever enters it, or ends its turn on it, takes 1d8 + its setter's wis
+# mod in fire. Burns out after its setter's side's turns.
+class Flame:
+	var by: Unit
+	var faction: Faction
+	var turns: int
+	var bonus: int
+
+	func _init(u: Unit, t: int) -> void:
+		by = u
+		faction = u.faction
+		turns = t
+		bonus = u.mod(&"wisdom")
 
 
 # A trap a unit laid on a tile. Who knows of it sees it plainly; with Hazard Expert (`word`), its
@@ -421,12 +438,26 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags_to else null
 	if foe and skill.drags_to and spot == null:
 		return false
+	if skill.opening and caster.activity() != &"rest":
+		return false  # only as its turn opens (Flamedance)
 	if not spreading and not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
 	if &"warlock" in skill.tags:
 		caster.chant_up = false  # a primed Chant goes into this one
+	_burn(caster, skill)
 	var before := target.hp
+	if skill.aura or skill.retrieves or skill.humbles or (skill.boost_pool and not foe):
+		if skill.aura:
+			_aura(caster, skill, r)
+		elif skill.retrieves:
+			_retrieve(caster, skill, r)
+		elif skill.humbles:
+			_humble(caster, skill, target, r)
+		else:
+			target.ap.append(AP.new(maxf(caster.mod(skill.boost_mod, skill.tags) + r, 0.0), skill.boost_pool))
+		used.emit(caster, skill, target, before - target.hp)
+		return true
 	if mends:
 		_smite_heal(caster, skill, target, r)
 		used.emit(caster, skill, target, before - target.hp)
@@ -435,8 +466,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var tags := hit_tags(caster, skill)
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
-		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) - drag_penalty(skill, r, Command.tiles(target.cell, spot))
-		var theirs := rng.randi_range(1, 20) + target.mod(skill.stat(), skill.tags)
+		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive") - drag_penalty(skill, r, Command.tiles(target.cell, spot))
+		var theirs := rng.randi_range(1, 20) + target.mod(skill.stat(), skill.tags) + target.check_bonus(skill.stat(), &"defensive")
 		contested.emit(caster, target, mine, theirs)
 		if mine < theirs:
 			_expose(target)
@@ -446,8 +477,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		drag(caster, target, spot, skill.drags_to)
 	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(r))) if foe and skill.disables else ([] as Array[Array])
 	if foe and skill.save:
-		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + r
-		var theirs: int = rng.randi_range(1, 20) + target.mod(skill.save) + fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
+		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + r + caster.check_bonus(skill.stat(), &"offensive")
+		var theirs: int = rng.randi_range(1, 20) + target.mod(skill.save) + target.check_bonus(skill.save, &"defensive") + fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
 		contested.emit(caster, target, mine, theirs)
 		if theirs > mine:  # the caster wins ties
 			_expose(caster)
@@ -472,7 +503,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		var d20 := rng.randi_range(1, 20)
 		if skill.advantage:
 			d20 = maxi(d20, rng.randi_range(1, 20))
-		var total := d20 + caster.attack_mod(skill) + skill.roll_per_rank * r
+		var total := d20 + caster.attack_mod(skill) + skill.roll_per_rank * r + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive")
 		var defense := target.defense(tags)
 		overage = maxi(total - defense, 0)
 		crit = d20 == 20
@@ -672,8 +703,8 @@ func _refuse(u: Unit) -> void:
 func _lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 	if t.suspects(caster) == 0:
 		return read(t, caster).attitude(t) == &"ally"
-	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags)
-	var theirs := rng.randi_range(1, 20) + t.mod(skill.resisted)
+	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive")
+	var theirs := rng.randi_range(1, 20) + t.mod(skill.resisted) + t.check_bonus(skill.resisted, &"defensive")
 	contested.emit(caster, t, mine, theirs)
 	if mine >= theirs:
 		suspect(t, caster, -1)
@@ -1083,7 +1114,7 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 static func hit_chance(u: Unit, s: Skill, t: Unit) -> float:
 	if not s.attacks():
 		return 1.0
-	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s)), 1, 20) / 20.0
+	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive")), 1, 20) / 20.0
 	return 1.0 - (1.0 - p) * (1.0 - p) if s.advantage else p
 
 
@@ -1128,7 +1159,12 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		return false
 	if not caster.pay_for(skill):
 		return false
-	if skill.channel:
+	_burn(caster, skill)
+	if skill.flamewall:
+		_flamewall(caster, skill, c)
+	elif skill.cone > 0.0:
+		_solar(caster, skill, c)
+	elif skill.channel:
 		caster.channel = Unit.Channel.new(skill, c)
 		channeled.emit(caster, skill, c)
 	elif skill.observes:
@@ -1459,6 +1495,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		u.heading = Vector2i(signi(passed[-1].x - from.x), signi(passed[-1].y - from.y))
 		for c in passed:  # trodden into the ground
 			debris.erase(c)
+		for c in passed:  # walking into fire
+			if c in flames and u.is_alive():
+				_flame(u, flames[c], "walks into fire")
 		if Perception.cover(self, u) > 0:
 			_scatter(u, _hide_roll(u), passed)
 		_tidy_debris()
@@ -1502,8 +1541,8 @@ func _break_free(u: Unit) -> bool:
 	if u.move_left() < cost - 0.0001:
 		return false
 	u.walked(0, cost)
-	var theirs := rng.randi_range(1, 20) + u.mod(s.stat(), s.tags)
-	var mine := rng.randi_range(1, 20) + by.mod(s.stat(), s.tags)
+	var theirs := rng.randi_range(1, 20) + u.mod(s.stat(), s.tags) + u.check_bonus(s.stat(), &"defensive")
+	var mine := rng.randi_range(1, 20) + by.mod(s.stat(), s.tags) + by.check_bonus(s.stat(), &"offensive")
 	struggled.emit(u, by, theirs, mine)
 	if theirs > mine:
 		_let_go(u, s)
@@ -1660,6 +1699,12 @@ func terrain(c: Vector2i) -> Terrain:
 # rank of the strongest regen on it), then poison takes that fraction (each rounded by its luck).
 func _mend(u: Unit) -> void:
 	_pulse(u)
+	for it in u.items():
+		if it.heat and u.is_alive():  # Ignauldron
+			burned.emit(u, u.hit(it.heat * it.rank, [&"fire"] as Array[StringName]), it.name)
+		if it.burning and u.is_alive():
+			var n := u.hit(maxi(u.rounded(0.1 * it.rank * u.max_hp), 1), [&"fire"] as Array[StringName])
+			burned.emit(u, n, it.name)
 	if SICKNESS in u.timed:  # gone if it starts the turn whole; else it takes its toll, never the last HP
 		if u.hp >= u.max_hp:
 			u.timed.erase(SICKNESS)
@@ -1796,6 +1841,9 @@ func end_turn() -> void:
 		var rested := u.activity() == &"rest"
 		if rested:
 			_chant(u)
+			var vow := u.devotion()
+			if vow and vow.satisfied_by == &"rest_whole" and u.hp >= u.max_hp:
+				u.gain(&"patron", 1)  # Hogel: resting whole
 		u.recover()
 		_starlight(u)
 		u.rested_turns = u.rested_turns + 1 if rested else 0
@@ -1806,6 +1854,8 @@ func end_turn() -> void:
 	for u in side:
 		_grip(u)
 		_bleed(u)
+		if u.is_alive() and u.cell in flames:
+			_flame(u, flames[u.cell], "ends its turn in fire")
 	side = members(turn)  # a grip can drown one, a wound bleed one out
 	for u in side:
 		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
@@ -1823,6 +1873,11 @@ func end_turn() -> void:
 	for z in zones.filter(func(x: Zone): return x.faction == turn):
 		z.turns -= 1
 	zones.assign(zones.filter(func(x: Zone): return x.turns > 0))
+	for c in flames.keys():
+		if flames[c].faction == turn:
+			flames[c].turns -= 1
+			if flames[c].turns <= 0:
+				flames.erase(c)
 	for c in earthworks.keys():
 		if earthworks[c].faction == turn:
 			earthworks[c].turns -= 1
@@ -2211,6 +2266,125 @@ func _choke(caster: Unit, t: Unit) -> void:
 	t.refit()
 
 
+# --- Sol's fire
+
+# Fire a unit takes from a burning tile: 1d8 + its setter's wis mod (at least 1), fire and
+# environmental (Flamedance wards it).
+func _flame(u: Unit, f: Flame, why: String) -> void:
+	var n := u.hit(maxi(roll(Vector2i(1, 8)) + f.bonus, 1), [&"fire", &"environmental"] as Array[StringName], f.by if is_instance_valid(f.by) else null)
+	burned.emit(u, n, why)
+
+
+# Flamewall, cast on c: c and rank tiles to either side of it, across the caster's line to it, catch
+# fire for rank of the caster's side's turns. A unit standing on one makes a dex check against the
+# caster's d20 + wis mod to get clear; failing, it burns at once.
+func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
+	var r := caster.rank(skill)
+	var d := Vector2i(signi(c.x - caster.cell.x), signi(c.y - caster.cell.y))
+	var across := Vector2i(-d.y, d.x) if d != Vector2i.ZERO else Vector2i(1, 0)
+	var tiles: Array[Vector2i] = [c]
+	for i in range(1, r + 1):
+		tiles.append(c + across * i)
+		tiles.append(c - across * i)
+	for t in tiles:
+		if not on_map(t):
+			continue
+		flames[t] = Flame.new(caster, r)
+		var u := unit_at(t)
+		if u and u.is_alive():
+			var mine := rng.randi_range(1, 20) + u.mod(&"dexterity") + u.check_bonus(&"dexterity", &"defensive")
+			var theirs := rng.randi_range(1, 20) + caster.mod(&"wisdom", skill.tags) + caster.check_bonus(&"wisdom", &"offensive")
+			contested.emit(u, caster, mine, theirs)
+			if mine <= theirs:
+				_flame(u, flames[t], "is caught in the wall")
+
+
+# Solar, cast toward c: a cone of the skill's degrees (+ 15 a rank past I), its range long, from the
+# caster; everyone in it - the caster too - takes d20 + the caster's wis score in fire.
+func _solar(caster: Unit, skill: Skill, c: Vector2i) -> void:
+	var r := caster.rank(skill)
+	var half := deg_to_rad(skill.cone + 15.0 * (r - 1)) / 2.0
+	var aim := Vector2(c - caster.cell).angle()
+	var long := area_reach(caster, skill)
+	var hit := {}
+	for u: Unit in units.values():
+		var to := Vector2(u.cell - caster.cell)
+		if u == caster or (u.is_alive() and to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001):
+			hit[u] = u.hit(roll(Vector2i(1, 20)) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
+	exploded.emit(caster, skill, c, hit)
+
+
+# Using a skill from a burning slot (Unit.burning_slots()) burns its user.
+func _burn(u: Unit, s: Skill) -> void:
+	var i := u.hotbar.find(s)
+	var hot := u.burning_slots()
+	if i >= 0 and i in hot:
+		var n := u.hit(hot[i][0], [&"fire"] as Array[StringName], hot[i][1])
+		burned.emit(u, n, "its slot burns")
+
+
+# A skill on its user that spreads its effects to every ally within rank tiles (Flamecharm,
+# Flamedance) - from rank V of a splitting one (Flamecharm), only the nearest rank of them, its
+# strength shared out (Applied.scale).
+func _aura(caster: Unit, skill: Skill, r: int) -> void:
+	var near: Array = units.values().filter(func(o: Unit): return o.is_alive() and Faction.friends(o.faction, caster.faction) and Command.tiles(o.cell, caster.cell) <= r)
+	near.sort_custom(func(a: Unit, b: Unit): return Command.tiles(a.cell, caster.cell) < Command.tiles(b.cell, caster.cell))
+	var share := 1.0
+	if skill.splits and r >= 5:
+		near = near.slice(0, r)
+		share = 1.0 / maxi(near.size(), 1)
+	for o: Unit in near:
+		for e in skill.effects:
+			var n := skill.lasts(r, caster)
+			var a := o.afflict(e, n + (1 if o.faction == turn else 0), r)
+			a.total = n
+			a.scale = share
+			a.skill = skill
+			a.by = caster
+			a.since = turns_begun
+
+
+# The Burning Bag: the one there is, taken from whoever has it (or the stash) and put on its caster at
+# the skill's rank; what the caster wore there goes to the stash, if it's the player's.
+func _retrieve(caster: Unit, skill: Skill, r: int) -> void:
+	var it := skill.retrieves
+	for o: Unit in $Units.get_children():
+		for slot in CharacterSheet.SLOTS:
+			var worn: Item = o.get(slot)
+			if worn and worn.name == it.name:
+				o.unequip(slot)
+	for x in Game.stash.duplicate():
+		if x.name == it.name:
+			Game.stash.erase(x)
+	var mine: Item = it.duplicate()
+	mine.rank = r
+	var old: Item = caster.get(mine.slot)
+	caster.equip(mine)
+	if old and player and caster.faction == player.faction:
+		Game.stash.append(old)
+
+
+# Humble: t's max HP is capped at its HP now less 1% of its max (Effect humble: the cut), for rank x 4
+# x (1 - the share cut) turns, at least 1: the less it loses, the longer it lasts.
+func _humble(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+	var cap := maxi(t.hp - maxi(ceili(0.01 * t.max_hp), 1), 1)
+	var cut := t.max_hp - cap
+	if cut <= 0:
+		return
+	var e := Effect.new()
+	e.stat = "humble"
+	e.name = "Humbled"
+	e.amount = cut
+	var n := maxi(ceili(r * 4.0 * (1.0 - float(cut) / t.max_hp)), 1)
+	var a := t.afflict(e, n + (1 if t.faction == turn else 0), r)
+	a.skill = skill
+	a.by = caster
+	a.since = turns_begun
+	t.refit()
+	if not Faction.friends(t.faction, caster.faction) and caster.stat(&"breathless") > 0.0:
+		_choke(caster, t)
+
+
 # Chant, as its side's turn ends with it having waited (rested) through it: its next rank Sweet
 # Nothing gains each bring one more, and its next Warlock skill is used a rank higher.
 func _chant(u: Unit) -> void:
@@ -2239,7 +2413,7 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	var bar := maxi(t.average_mod() + t.lv(), last_stand(t))
 	var hits := 0
 	for i in r:
-		var roll := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags)
+		var roll := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive")
 		contested.emit(caster, t, roll, bar)
 		if roll > bar:
 			hits += 1
@@ -2260,7 +2434,7 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 # revival and die-hard effects (Unit.slain_from). A heart left, it goes down as usual.
 func _death(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	var stand := last_stand(t, r)
-	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags)
+	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive")
 	contested.emit(caster, t, mine, stand)
 	_expose(caster)
 	_expose(t)

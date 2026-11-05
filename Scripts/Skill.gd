@@ -43,6 +43,14 @@ extends Resource
 @export var tiers: Array[Tier] = []  # damage by rank; none: no damage (tagged energy: it drains Energy first - Unit.drain())
 @export var weapon_tag := false  # its damage takes its wielder's weapon's damage tag, or blunt bare-handed (Strike; Item.damage_tag, Battle.hit_tags())
 @export var levels_down := false  # rank rolls of d20 + the caster's mod in its stat, each beating the higher of the foe's average stat mod + level and its last stand; each that does takes a level off it for rank - misses turns (Level Down; Battle._level_down())
+@export var humbles := false  # caps the unit's max HP at its HP now less 1% of its max, for longer the less that cuts (Humble; Battle._humble())
+@export var boost_pool := &""  # on an ally: AP it gains at once, for this use (skill, move)...
+@export var boost_mod := &""  # ...the caster's mod in this + rank (Igna: skill AP; Aetha: movement)
+@export var aura := false  # used on itself, its effects go on every ally within rank tiles too (Flamecharm, Flamedance; Battle._aura())
+@export var splits := false  # ...from rank V, on only the nearest rank of them, its strength split among them (Flamecharm)
+@export var opening := false  # only as its holder's turn opens: before it moves or spends AP (Flamedance)
+@export var retrieves: Item  # used on itself: takes this unique item from wherever it is and puts it on, at the skill's rank (Burning Bag; Battle._retrieve())
+@export var cinders := false  # used on a foe: rank of its rightmost hotbar slots burn for its turns (Cindering; Unit.burning_slots())
 @export var kills := false  # the foe's last stand, cut by how hurt it is (execute), against d20 + the caster's mod in its stat: failing, it takes 1 true damage and dies (Death; Battle._death())
 @export var god_tag := false  # its damage takes the tag of its caster's god as well (Smite; Unit.GOD_TAGS): Urlo's energy drains Energy first
 @export var carry := 0.0  # energy damage: this x (rank - 1) of what's left once the target's Energy is gone goes on to HP (Smite: 0.2)
@@ -72,6 +80,8 @@ extends Resource
 @export var per_wound := 0  # this x rank more HP for each wound it clears (First Aid: 1)
 
 @export_group("Area")  # cast on a cell rather than a unit (Darkstone)
+@export var flamewall := false  # sets the tile on fire, and rank tiles to either side of it across the caster's line to it (Flamewall; Battle._flamewall())
+@export var cone := 0.0  # a cone of this many degrees toward the tile, + 15 a rank past I, radius long, hitting everyone in it - its caster too (Solar; Battle._solar())
 @export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels
 @export var radius_per_rank := 0.0  # range grows with rank (Darkstone: 1 + rank; Embellish, cast on a unit: rank - 1)
 
@@ -94,6 +104,7 @@ extends Resource
 @export var shows_tags: Array[StringName] = []
 @export var shows_adjectives: Array[String] = []
 @export var shows_nouns: Dictionary[String, String] = {}
+@export_multiline var lore := ""  # a story behind it, shown after what it does (the Bracing passives: Jimhe Deyn's gangs)
 @export_group("Stub")  # a skill that isn't built yet: shown on skill trees, but it can't be learned
 @export var stub := ""  # the open question(s) in todo.md it waits on: "?3", "?2 ?11"
 @export_multiline var plan := ""  # what it's meant to do, until it's built
@@ -124,7 +135,7 @@ func pillar() -> bool:
 
 # Aimed at a tile rather than a unit: area skills and trap skills.
 func on_tile() -> bool:
-	return zone != &"" or lays != null or observes or channel
+	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0
 
 
 # Can be used on foes: hostile skills, and dual ones.
@@ -353,6 +364,20 @@ func describe(rank := 1) -> String:
 				lines.append("Energy damage: it drains Energy (or Power) first" + (", then %d%% of the rest goes on to HP" % roundi(carry * (rank - 1) * 100) if carry * (rank - 1) > 0 else ""))
 		if grants:
 			lines.append("Gives %s for %d turns" % [grants.name, lasts(rank)])
+		if boost_pool:
+			lines.append("%sit gains %s mod + %d %s AP at once" % [ally if ally else "On an ally: ", String(boost_mod).left(3), rank, boost_pool])
+		if humbles:
+			lines.append("Caps its max HP at its HP now less 1%, for rank x 4 x (1 - the share cut) turns: the less it cuts, the longer")
+		if aura:
+			lines.append("Used on itself, it goes on every ally within %d tile%s too%s" % [rank, "" if rank == 1 else "s", " - from rank V only the nearest %d, its strength split among them" % rank if splits else ""])
+		if opening:
+			lines.append("Only as its turn opens, before it moves or spends AP")
+		if retrieves:
+			lines.append("Takes the %s from wherever it is and puts it on, at rank %d" % [retrieves.name, rank])
+		if flamewall:
+			lines.append("Sets the tile and %d to either side of it, across the caster's line, on fire for %d turns: 1d8 + wis mod fire to whoever enters or ends a turn there. One standing there makes a dex check to get clear" % [rank, rank])
+		if cone > 0.0:
+			lines.append("A %d degree cone, its range long: d20 + the caster's wis score in fire to everyone in it, the caster too" % roundi(cone + 15.0 * (rank - 1)))
 		if heals():
 			var mods := " + ".join(heal_mods.map(func(x): return String(x).left(3) + " mod"))
 			if heal_split > 1:
@@ -397,6 +422,8 @@ func describe(rank := 1) -> String:
 		lines.append("Ranks cost more: II takes %d points, then x%s each rank" % [rank_cost, num(rank_growth)])
 	if not tags.is_empty() and not stand_in:
 		lines.append("Tags: " + ", ".join(tags))
+	if lore:
+		lines.append(lore)
 	return "\n".join(lines)
 
 

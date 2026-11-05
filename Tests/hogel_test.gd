@@ -43,7 +43,7 @@ func test_gasp() -> void:
 	v(3).charisma = 12
 	v(3).learned.append(slot(gasp, 2))
 	ok(is_equal_approx(gasp.span(v(3)), 12.0 + 2.0), "range: cha itself (12) + rank")
-	v(1).armor = load("res://Items/plate.tres")  # Defense 20: room to tell them apart
+	v(1).armor = bulwark()  # Defense 20: room to tell them apart
 	var g := Battle.hit_chance(v(3), gasp, v(1))
 	var h := Battle.hit_chance(v(3), load("res://Skills/hex.tres"), v(1))
 	ok(g > h, "easier to hit than Hex: advantage, + rank (%s vs %s)" % [g, h])

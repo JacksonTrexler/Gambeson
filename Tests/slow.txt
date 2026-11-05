@@ -1,0 +1,26 @@
+# Tests the quick tier (run.gd -- quick) leaves out: each took 100 ms or more (full battles, envoy runs,
+# the HUD on a live scene). The full run (no arguments) keeps them. Regenerate from the times argument.
+combat_test.test_battles
+astral_test.test_envoy
+combat_test.test_replay
+defense_test.test_energy_recovery
+hud_test.test_play_scene
+lure_test.test_ramuts_ire
+hud_test.test_command_slots
+hud_test.test_adventurer_skills_screen
+hud_test.test_skills_screen
+hud_test.test_dual_spell_ui
+suspicion_test.test_whiff_disadvantage
+allies_test.test_envoy_companions
+hud_test.test_clover_bar
+hud_test.test_click_attacks
+heal_test.test_snare_bleeds
+hud_test.test_end_turn
+hearts_test.test_pulse
+hud_test.test_stew_pane
+hud_test.test_attack_feedback
+hud_test.test_typed_slot_bar
+hud_test.test_tabbed_skills_screen
+slots_test.test_slot_looks
+hud_test.test_self_evaluation_ui
+champions_test.test_stonegift

@@ -502,15 +502,15 @@ func test_clover_bar() -> void:
 
 func test_attack_feedback() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(3).armor = load("res://Items/plate.tres")
+	v(3).armor = bulwark()
 	var h := await start(v(1))
 	h.select(v(1))
 	h._refresh()
 	ok(h._info(v(1)).rows.any(func(r): return r[0] == "DF" and r[1] == "2 · unarmored"), "the card shows Defense: 2, unarmored")
-	ok(h._info(v(3)).rows.any(func(r): return r[0] == "DF" and r[1] == "20 · Plate"), "...and a foe's it can make out: Plate, 20")
+	ok(h._info(v(3)).rows.any(func(r): return r[0] == "DF" and r[1] == "20 · Bulwark"), "...and a foe's it can make out: Bulwark, 20")
 	h.use_slot(0)
 	h.hover_cell(Vector2i(5, 3))
-	ok("10% to hit" in h.tip_label.text, "the forecast: 10%% against Plate (%s)" % h.tip_label.text)
+	ok("10% to hit" in h.tip_label.text, "the forecast: 10%% against Defense 20 (%s)" % h.tip_label.text)
 	var rolled := []
 	b.attacked.connect(func(_c, _t, d20: int, _total, _def): rolled.append(d20))
 	h.click(Vector2i(5, 3))
@@ -580,14 +580,15 @@ func test_adventurer_skills_screen() -> void:
 	ok("On an ally" in h.get_node("%DetailText").text, "with what it does")
 	h.skills.pick(hazard)
 	ok(h.get_node("%DetailState").text == "Tier 2 · Learn Snare first" and act.disabled, "Hazard Expert: tier 2, after Snare")
-	h.skills.pick(igna)
-	ok(h.get_node("%DetailState").text == "Tier 1 · Not built yet. Waits on open question 10 (todo.md)" and not act.visible
-			and h.get_node("%DetailText").text == igna.plan, "a stub: the question it waits on, and its plan")
-	ok(w._get_tooltip(w.spot(igna)).begins_with("Igna · tier 1\n") and "Waits on open question 10" in w._get_tooltip(w.spot(igna)) and w._get_tooltip(Vector2(-50, -50)) == "", "the wheel's tooltips")
-	ok(w.state_of(igna) == &"stub" and w.state_of(hex) == &"learned" and w.state_of(sola) == &"open" and w.state_of(hazard) == &"locked",
+	var stub: Skill = load("res://Skills/rejuvinate.tres")
+	h.skills.pick(stub)
+	ok(h.get_node("%DetailState").text == "Tier 1 · Not built yet. Waits on open question 12 (todo.md)" and not act.visible
+			and h.get_node("%DetailText").text == stub.plan, "a stub: the question it waits on, and its plan (%s)" % h.get_node("%DetailState").text)
+	ok(w._get_tooltip(w.spot(stub)).begins_with("Rejuvinate · tier 1\n") and "Waits on open question 12" in w._get_tooltip(w.spot(stub)) and w._get_tooltip(Vector2(-50, -50)) == "", "the wheel's tooltips")
+	ok(w.state_of(stub) == &"stub" and w.state_of(hex) == &"learned" and w.state_of(sola) == &"open" and w.state_of(hazard) == &"locked",
 			"how each is drawn")
 	h._refresh()
-	ok(h.skills.picked == igna, "the pick survives a refresh")
+	ok(h.skills.picked == stub, "the pick survives a refresh")
 	h.free()
 
 

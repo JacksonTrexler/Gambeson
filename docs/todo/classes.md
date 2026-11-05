@@ -15,8 +15,7 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
   - Rank 2+: bonus slots, each −10 × (rank − 1)% max HP while in use.
   - Rank 11+: bonus slots also cut max energy the same way.
 - [ ] If a skill that grants slots is unequipped, its slots disappear, skills and all (Losing a slot). *Now:* skills can't be unequipped; a level buff's slots already go that way.
-- [ ] **Igna** (fire, Magic root): ally gains int mod + rank skill AP. *Now:* a stub. (?10)
-- [ ] **Aetha** (wind, Magic root): ally gains int mod + rank movement AP. *Now:* a stub. (?10)
+- [x] **Igna** and **Aetha**: built as starter spells (`docs/done/classes.md`), the AP at once.
 - [ ] **Martial root**: not designed yet. *Now:* Wary, then the capstone. (?15)
 - [ ] **Specialist root**: more specialist skills to come.
 
@@ -49,18 +48,24 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 
 *Now:* `Roles/warlock.tres` (cha 15, the Gaunt sprite; on the entry screen): a tab per patron, **Elmon** and **Hogel**, sharing a static tier 1 row (Hex, Sweet Nothings, Chant), with Hex and Sweet Nothings learned from the start. Elmon's tab: Analysis Dialysis, wauaw, Brainfog and Haluca, from tier 2. One patron per Warlock. Built entries are in `docs/done/classes.md`.
 
-- [x] **Chant** and **Hogel's path** (Gasp, Breathtaking, Irradiate): built (`docs/done/classes.md`). (?42 ?43)
-- [ ] What satisfies Hogel. (?43)
+- [x] **Chant** and **Hogel's path** (Humble, Gasp, Breathtaking, Irradiate; resting whole satisfies him): built (`docs/done/classes.md`). (?42 ?45)
 - [x] Level Down (tier 5) and Death (capstone) need a Sweet Nothing (`docs/done/classes.md`).
 
 42. Chant, as built: "waiting" is resting the whole turn (no move, no AP spent). It primes the next rank Sweet Nothing gains to bring one more each ("from the next rank gains"), and the next Warlock skill to be used a rank higher. Right reading?
-43. Hogel, as built: Gasp 2 AP and 1 cost; Breathtaking's stacks hold 1 + rank turns after the last, then fall a stack a turn; Irradiate only works with light skills (just Gasp so far). What satisfies Hogel (Sweet Nothings back, as unmasking does for Elmon)?
-44. Cleric, as built (placeholders until Luun and Sol have more skills): wis 15, the Cleric sprite; Pray and Renew on a shared row; Luun: Level Down (after Pray), then Death; Sol: Level Up (after Renew). Robe, Staff, Energy Potion. Its magical skills use wis where they'd use cha. Paladins don't get Death yet (they have no Divinity tabs).
+45. Humble: "lasts longer the less max HP the unit loses (rank * (4 * % of max HP cut) turns)" - as written the formula grows with the cut. Built as rank x 4 x (1 - the share cut), at least 1 turn: rank I on a unit at full HP lasts 4 turns. Right?
+46. Sol, where your text left gaps (each built my way):
+    - Flamewall: "if a unit is standing on a targeted tile, they may attempt a dex check to we..." - cut off. Built: d20 + dex mod against the caster's d20 + wis mod; passing, it isn't burned as the wall goes up (it still stands in fire). The wall lasts rank of the caster's side's turns.
+    - Inner Fire: the 5% x rank a turn is plain HP loss (poison), not fire; Flamecharm doesn't ward it.
+    - Burning Bag: whatever trinket it replaces goes to the stash (for the player's side). Its slots are untyped.
+    - Flamecharm at rank V+: "pick up to rank units" - there's no multi-target picking yet, so it takes the nearest rank allies, itself first. Its effects last rank turns.
+    - Cindering: rolls to hit; burns the target's rightmost rank hotbar slots for rank turns.
+    - Flamedance: lasts until the end of its holders' next turn.
+    - Solar: "d20 + wis total" built as d20 + the wis score itself (not the mod); its length is wis mod tiles, at least 1.
 
 ## Cleric
 
-- [x] **Cleric**: built (`docs/done/classes.md`). (?44)
-- [ ] More Luun and Sol skills, so Death and Level Up sit as capstones; Death for Luun Paladins once Paladins have Divinity tabs.
+- [x] **Cleric**, with Sol's full path: built (`docs/done/classes.md`). (?46)
+- [ ] More Luun skills, so Death sits as a capstone; Death for Luun Paladins once Paladins have Divinity tabs.
 
 ## Rogue and Bard
 
@@ -91,6 +96,8 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
 **Prowess: Protector.** See Fighter.
 
 12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
+
+48. The general tree, as built: every Bracing passive caps its bonus at its rank (you wrote "up to rank" only for Agility). "Effectively equipped" is read as worn with its requirements met. The general skills are listed with each class's own, not on a tab of their own yet. Right?
 
 ## Fighter
 

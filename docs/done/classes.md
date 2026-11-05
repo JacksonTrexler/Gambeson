@@ -59,9 +59,11 @@ Core: **Hex** (built).
 - [x] **Level Down** (Elmon, tier 5: 4 of Elmon's skills first; 5 AP, cost 4 and a Sweet Nothing, range cha mod + rank; `warlock`, `curse`): rank rolls of d20 + cha mod, each against the higher of the foe's average stat mod + level and its last stand. Each that beats it takes a level off the foe, for as many turns (rank − misses). The curse is easy to cleanse (×2). Clerics of Luun have it too, without the Sweet Nothing (a skill needs one only from a unit that has them).
 - [x] **Death** (Elmon capstone: 5 of Elmon's skills first; 6 AP, cost 6 and a Sweet Nothing, range cha mod + rank; `dark`, `execute`): the foe's last stand × (HP left / max HP) / rank, against d20 + cha mod (the caster wins ties). Failing, it takes 1 true damage and dies; a heart left, it goes down as usual. Luun Clerics have it too; Luun Paladins will.
 - [x] **Haluca** (Elmon, tier 2, after Hex): as before; a foe that saves now grows a stack of suspicion of the caster.
-- [x] **Gasp** (Hogel, tier 1 active, `light`, `curse`; 2 AP, cost 1; range cha itself + rank: `Skill.radius_stat`): 1 light curse damage. Easy to hit: the better of two d20s (`Skill.advantage`), + rank (`Skill.roll_per_rank`). (?43)
-- [x] **Breathtaking** (Hogel, tier 2 passive, after Gasp): its curses that land (effects put on, or damage) give the target a stack of **Asphyxia**: 1% × rank of its max HP gone a stack (`Unit.refit()`), holding for 1 + rank of its turns after the last, then falling a stack a turn (`Battle._choke()`). (?43)
-- [x] **Irradiate** (Hogel, tier 3 passive, after Breathtaking): an offensive light-damage skill whose roll beats Defense deals the overage as more light damage, up to rank + cha mod. (?43)
+- [x] **Hogel is satisfied** by rest: a Hogel Warlock resting a turn out at full HP gets a Sweet Nothing (`SkillTab.satisfied_by`).
+- [x] **Humble** (Hogel, tier 1 active, `curse`; 2 AP, cost 1; range rank − 1, so rank I is on itself): caps a unit's max HP at its HP now less 1% of its max, for rank × 4 × (1 − the share cut) turns, at least 1 - the less it cuts, the longer it holds (`Battle._humble()`). On itself at full HP, with Hogel's rest: a Sweet Nothing a turn. (?45)
+- [x] **Gasp** (Hogel, tier 1 active, `light`, `curse`; 2 AP, cost 1; range cha itself + rank: `Skill.radius_stat`): 1 light curse damage. Easy to hit: the better of two d20s (`Skill.advantage`), + rank (`Skill.roll_per_rank`).
+- [x] **Breathtaking** (Hogel, tier 2 passive, after Gasp): its curses that land (effects put on, or damage) give the target a stack of **Asphyxia**: 1% × rank of its max HP gone a stack (`Unit.refit()`), holding for 1 + rank of its turns after the last, then falling a stack a turn (`Battle._choke()`).
+- [x] **Irradiate** (Hogel, tier 3 passive, after Breathtaking): an offensive light-damage skill whose roll beats Defense deals the overage as more light damage, up to rank + cha mod.
 
 ## Rogue and Bard
 
@@ -71,13 +73,30 @@ Stub trees from skills that exist, each with its own tab and **Calling: Freedom*
 
 ## Cleric
 
-`Roles/cleric.tres`: wis 15, "Caster", `Units/Cleric.png` (a placeholder: u.u over <> over / \); on the entry screen and among the Wayfarers. A **Divinity** tab per god, one god per Cleric (`SkillTab.god`, `devotes`: its first skill on a god's roots devotes it, and it prays to that god: `Unit.deity()`), each opening with Pray and Renew (learned from the start). Its magical skills use wis where they'd use cha (`Role.swaps`). Robe, Staff, Energy Potion. (?44)
+`Roles/cleric.tres`: wis 15, "Caster", `Units/Cleric.png` (a placeholder: u.u over <> over / \); on the entry screen and among the Wayfarers. A **Divinity** tab per god, one god per Cleric (`SkillTab.god`, `devotes`: its first skill on a god's roots devotes it, and it prays to that god: `Unit.deity()`), each opening with Pray and Renew (learned from the start). Its magical skills use wis where they'd use cha (`Role.swaps`). Robe, Staff, Energy Potion.
 - **Luun**: Level Down (after Pray), then Death.
-- **Sol**: Level Up (after Renew).
-- [x] **Level Up** (`Skills/level_up.tres`; Sol's capstone; 5 AP, 5 cost, range wis mod + rank, on an ally): it gains rank levels for rank turns. Exceptionally easy to remove: dispelling takes 4 of its ranks for each spent.
+- **Sol**, a path of fire, each after the one before (Flamecharmed after Igna). Fire damage is tagged `fire`; burning ground is also `environmental`. (?46)
+- [x] **Igna** (I; also the Adventurer's): on an ally, int mod (a Cleric: wis) + rank skill AP at once; on a foe, 1d4 + int mod.
+- [x] **Flamewall** (II; 4 AP, cost 3, range rank, on a tile): sets the tile, and rank tiles to either side of it across the caster's line to it, on fire for rank of the caster's side's turns. Entering a burning tile, or ending a turn on one, deals 1d8 + the caster's wis mod (`Battle.flames`, `Battle._flame()`). Someone standing there makes a dex check against the caster's d20 + wis mod to get clear as it goes up.
+- [x] **Flamecharmed** (II, passive): 25% × rank fire mitigation. From rank V, an ally's fire heals it for 25% × (rank − 4) of what it deals.
+- [x] **Inner Fire** (III; 2 AP, cost 2, on itself, rank turns): +10% × rank AP and damage dealt; loses 5% × rank of max HP as each turn starts.
+- [x] **Burning Bag** (IV; 2 AP, cost 2): takes the one Burning Bag from wherever it is (another unit, the stash) and puts it on at the skill's rank: rank more untyped skill slots, which burn; the wearer burns for 10% × rank of max HP as its turns start, and again for each skill used from them (`Unit.burning_slots()`, `Battle._burn()`).
+- [x] **Flamecharm** (V; 3 AP, cost 3, rank turns): 20% × rank fire mitigation on itself and its allies within rank tiles; from rank V, only the nearest rank of them, the mitigation split among them (`Battle._aura()`).
+- [x] **Cindering** (VI; 4 AP, cost 4, range wis mod + rank, rolls to hit): the foe's rightmost rank hotbar slots burn for rank turns: each skill used from one burns it for 10% × rank of max HP + the caster's wis mod.
+- [x] **Level Up** (VII; 5 AP, 5 cost, range wis mod + rank, on an ally): it gains rank levels for rank turns. Exceptionally easy to remove: dispelling takes 4 of its ranks for each spent.
+- [x] **Flamedance** (VIII; 2 AP, cost 3): only as its turn opens (before it moves or spends AP). It and its allies within rank tiles take no environmental fire, and deal 10% × rank more fire, until their next turn ends.
+- [x] **Solar** (IX, capstone; 8 AP, cost 8, on a tile): a 45° cone (+ 15° a rank past I), wis mod tiles long: d20 + the caster's wis score in fire to everyone in it, the caster too.
 
-## Anyone
+## Anyone: the general tree
 
+Skills every class can learn (`Unit.GENERAL`), shown among its class skills. The Bracing passives (tier 5: four skills learned first; `brace` effects, `Unit.check_bonus()`) add equipped armor ranks to checks, up to their rank, while armor is worn to effect; each carries its gang's lore (`Skill.lore`). (?48)
+- [x] **Agility Bracing** (martial, specialist): light armor ranks to dex rolls.
+- [x] **Balanced Bracing** (martial, specialist): medium armor ranks to defensive str and dex rolls.
+- [x] **Vanguard Bracing** (martial): medium armor ranks to offensive str and dex rolls.
+- [x] **Combat Bracing** (martial): heavy armor ranks to str rolls.
+- [x] **Meditative Bracing** (caster): armor ranks to defensive mental (int, wis, cha) checks.
+- [x] **Invigorating Bracing** (caster): half armor ranks to offensive mental checks; rank more skill AP a turn while armored.
+- Checks that take bracing: attack rolls (offensive, in the stat used), saves (the caster offensive, the foe defensive), drags, breaking free, Sing's resist, Flamewall's dodge (dex) and its caster (wis), Level Down's and Death's rolls (offensive). Not yet: investigations, hiding, last stands.
 - [x] **Synergy** (tier 2 passive, `specialist`; on offer to every class, and on the Human tree): see Vision. It reaches as far as the leader's command range over its party (2 × (cha mod + command)); a Quartz Ring makes that endless.
 
 ## Paladin

@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 1.0
+tags = Array[StringName]([&"environmental"])
+name = "Flamedance"
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "damage"
+amount = 0.1
+per_rank = true
+tags = Array[StringName]([&"fire"])
+name = "Flamedance"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Flamedance"
+tags = Array[StringName]([&"fire", &"divine", &"wis"])
+ap = 2.0
+cost = 3
+hostile = false
+self_only = true
+aura = true
+opening = true
+turns = 1
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0"), SubResource("Effect_1")])
