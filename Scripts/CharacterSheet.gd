@@ -35,7 +35,11 @@ func open(u: Unit, editable: bool) -> void:
 	var title := Label.new()
 	title.theme_type_variation = &"Title"
 	title.text = "Character"
-	_column.add_child(title)
+	title.size_flags_horizontal = SIZE_EXPAND_FILL
+	var head := HBoxContainer.new()
+	head.add_child(title)
+	head.add_child(GuideLink.new(&"character"))
+	_column.add_child(head)
 	var who := u.nick if u.nick else String(u.name)
 	var hearts := " · %d of %d hearts left" % [u.lives_left(), u.lives()] if u.lives() > 0 else ""
 	_column.add_child(_muted("%s · Lv %d%s" % [who, u.lv(), hearts]))
@@ -55,7 +59,7 @@ func open(u: Unit, editable: bool) -> void:
 		_column.add_child(row)
 	_column.add_child(_muted("Stash"))
 	if Game.stash.is_empty():
-		_column.add_child(_muted("Nothing yet: bosses, commanders and\nwon battles give items"))
+		_column.add_child(_muted("Nothing yet"))
 	for it in Game.stash:
 		var row := HBoxContainer.new()
 		var l := Label.new()

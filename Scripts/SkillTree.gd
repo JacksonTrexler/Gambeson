@@ -6,8 +6,12 @@ extends PanelContainer
 # without a tree, its list of options), its species', what it's come to know, then on the far right the
 # general trees it gets (Unit.general_trees()). Each shows growing from the bottom, tier 0, toward the
 # top (SkillGrid), scrolling where it's tall - but the Adventurer's own, drawn as a wheel (SkillWheel).
-# The skill picked there shows in the footer - what it does, what learning it takes - with its Unlock
-# or Rank up button. Unlocking spends a point; raising a skill from rank r costs 1 + r^2.
+# The skill picked there shows in the footer: its spec (target, range, AP, cost - the same order on
+# every skill), what it does in Glossary markup (terms, offense and defense mods, rank in colour), what
+# it needs, and its Unlock or Rank up button with the cost in a square, lit when it can be bought.
+# Unlocking spends a point; raising a skill from rank r costs 1 + r^2 (the Guide explains; the "i").
+# Each tab takes its tree's colour (SkillTab.tone()): its text in it, its background and the tree's
+# behind it darker.
 
 signal unlocked(skill: Skill)
 signal raised(skill: Skill)
@@ -19,14 +23,15 @@ var tab := 0  # the tab shown (tabs())
 var can_spend := false
 var _title := ""
 
+const DARK := 0.72  # how much darker than its tab's colour the shown tab and its tree are
+
 @onready var heading: Label = %SkillsTitle
 @onready var points: Label = %SkillPoints
-@onready var footer: Label = %SkillsHint
 @onready var level_button: Button = %LevelUp
 @onready var wheel: SkillWheel = %Wheel
 @onready var grid: SkillGrid = %Grid
 @onready var scroll: ScrollContainer = %TreeScroll
-@onready var act: Button = %DetailButton
+@onready var act: CostButton = %DetailButton
 
 
 func _ready() -> void:
@@ -35,6 +40,7 @@ func _ready() -> void:
 	wheel.picked.connect(pick)
 	grid.picked.connect(pick)
 	act.pressed.connect(_act)
+	%DetailText.meta_clicked.connect(_term)
 
 
 func open(u: Unit, title: String, spend: bool) -> void:
@@ -78,6 +84,7 @@ func fill(title: String, spend: bool) -> void:
 	tab = clampi(tab, 0, all.size() - 1)
 	_fill_tabs(all)
 	var t := all[tab]
+	_tint(t.tone())
 	wheel.visible = t.radial
 	scroll.visible = not t.radial
 	if t.radial:
@@ -90,8 +97,6 @@ func fill(title: String, spend: bool) -> void:
 		wheel.selected = picked
 		grid.selected = picked
 	_show_pick()
-	footer.text = "A skill point comes with each level; rank r to r + 1 costs 1 + r² points." if can_spend \
-			else "Only your party's skills can be chosen."
 	level_button.visible = can_spend and OS.is_debug_build()
 
 
@@ -124,10 +129,10 @@ func _fill_tabs(all: Array[SkillTab]) -> void:
 		for state in [&"normal", &"hover", &"pressed", &"hover_pressed"]:
 			var on: bool = state in [&"pressed", &"hover_pressed"]
 			var style := StyleBoxFlat.new()
-			style.bg_color = Color(tone.darkened(0.55), 0.95) if on else Color(tone.darkened(0.75), 0.6 if state == &"normal" else 0.8)
-			style.border_color = tone if on else Color(tone, 0.35)
+			style.bg_color = tone.darkened(DARK) if on else tone.darkened(0.82 if state == &"normal" else 0.74)
+			style.border_color = tone.darkened(0.35) if on else tone.darkened(0.65)
 			style.set_border_width_all(1)
-			style.border_width_bottom = 0 if on else 1
+			style.border_width_bottom = 0
 			style.corner_radius_top_left = 3
 			style.corner_radius_top_right = 3
 			style.content_margin_left = 5
@@ -140,11 +145,25 @@ func _fill_tabs(all: Array[SkillTab]) -> void:
 		b.button_pressed = i == tab
 		b.focus_mode = FOCUS_NONE
 		b.add_theme_font_size_override(&"font_size", 6)
-		b.add_theme_color_override(&"font_color", tone.lightened(0.2))
-		b.add_theme_color_override(&"font_pressed_color", tone.lightened(0.5))
+		b.add_theme_color_override(&"font_color", Color(tone, 0.6))
+		b.add_theme_color_override(&"font_hover_color", Color(tone, 0.85))
+		b.add_theme_color_override(&"font_pressed_color", tone)
+		b.add_theme_color_override(&"font_hover_pressed_color", tone)
 		b.tooltip_text = t.title()
 		b.pressed.connect(show_tab.bind(i))
 		box.add_child(b)
+
+
+# The tree's background: the tab's colour, darker, joined to the tab above it.
+func _tint(tone: Color) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = tone.darkened(DARK)
+	style.border_color = tone.darkened(0.35)
+	style.set_border_width_all(1)
+	style.corner_radius_bottom_left = 3
+	style.corner_radius_bottom_right = 3
+	style.set_content_margin_all(2)
+	(%Body as PanelContainer).add_theme_stylebox_override(&"panel", style)
 
 
 func show_tab(i: int) -> void:
@@ -171,7 +190,8 @@ func _show_pick() -> void:
 	var r := unit.base_rank(s)
 	%DetailName.text = s.name + (" " + Skill.roman(r) if r else "")
 	%DetailState.text = state(s)
-	%DetailText.text = s.plan if s.stub else s.describe(maxi(r, 1))
+	_fill_spec(s)
+	%DetailText.text = Glossary.rich(s.plan if s.stub else s.markup(maxi(r, 1), false))
 	act.visible = not s.stub and (r == 0 or unit.can_raise(s))
 	var cost := unit.raise_cost(s)
 	var why := ""
@@ -181,22 +201,55 @@ func _show_pick() -> void:
 		why = unit.missing(s)
 	elif unit.skill_points < cost:
 		why = "Needs %d skill point%s" % [cost, "" if cost == 1 else "s"]
-	act.text = ("Unlock" if r == 0 else "Rank %s" % Skill.roman(r + 1)) + " · %d pt%s" % [cost, "" if cost == 1 else "s"]
+	act.set_offer("Unlock" if r == 0 else "Rank %s" % Skill.roman(r + 1), cost)
 	act.disabled = why != ""
-	act.tooltip_text = why if why else ("Learn %s" % s.name if r == 0 else "Raise %s to rank %s" % [s.name, Skill.roman(r + 1)])
+	act.tooltip_text = why if why else ("Learn %s for %d point%s" % [s.name, cost, "" if cost == 1 else "s"] if r == 0
+			else "Raise %s to rank %s for %d points" % [s.name, Skill.roman(r + 1), cost])
 
 
-# Where s stands for this unit, in a line: its tier, then learned (and at what rank), learnable now,
-# or what it needs.
+# Its spec as chips, the same order on every skill: its target, range, AP and cost.
+func _fill_spec(s: Skill) -> void:
+	var box: HBoxContainer = %DetailSpec
+	for c in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
+	for part in s.spec():
+		var l := RichTextLabel.new()
+		l.bbcode_enabled = true
+		l.fit_content = true
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		l.scroll_active = false
+		l.add_theme_font_size_override(&"normal_font_size", 6)
+		l.text = Glossary.rich(Skill.spec_part(part))
+		l.meta_clicked.connect(_term)
+		var chip := PanelContainer.new()
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(1, 1, 1, 0.06)
+		style.set_corner_radius_all(2)
+		style.content_margin_left = 3
+		style.content_margin_right = 3
+		chip.add_theme_stylebox_override(&"panel", style)
+		chip.add_child(l)
+		box.add_child(chip)
+
+
+# A term clicked in the footer: the Guide's page for it.
+func _term(meta: Variant) -> void:
+	var id := StringName(String(meta).trim_prefix("term:"))
+	get_tree().call_group(&"guide", &"open_guide", Glossary.page(id), id)
+
+
+# Where s stands for this unit, in a line: its tier, then learned (or at its highest rank), or what it
+# needs. Nothing more when it can be learned now: the button says so.
 func state(s: Skill) -> String:
-	var tier := "Tier %d · " % unit.tier(s)
+	var tier := "T%d" % unit.tier(s)
 	if s.stub:
-		return tier + "Not built yet. " + s.waits()
+		return tier + " · Not built yet. " + s.waits()
 	var r := unit.base_rank(s)
 	if r > 0:
-		return tier + "Learned, rank %s%s" % [Skill.roman(r), "" if unit.can_raise(s) else " (its highest)"]
+		return tier + (" · Learned" if unit.can_raise(s) else " · Highest rank")
 	var why := unit.missing(s)
-	return tier + (why if why else "Can be learned now")
+	return tier + (" · " + why if why else "")
 
 
 func _act() -> void:

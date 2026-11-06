@@ -14,7 +14,7 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 	skill = s
 	draggable = can_drag and s.fits_bar()
 	theme_type_variation = &"Card"
-	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.describe(rank)]
+	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.markup(rank)]
 	if draggable:
 		tooltip_text += "\nDrag onto the hotbar."
 		mouse_default_cursor_shape = CURSOR_DRAG
@@ -62,3 +62,8 @@ func _get_drag_data(_at: Vector2) -> Variant:
 		return null
 	set_drag_preview(SkillSlot.chip(skill, SkillSlot.theme_of(self)))
 	return {skill = skill, from = -1}
+
+
+# Its tooltips are Glossary markup, shown rich.
+func _make_custom_tooltip(for_text: String) -> Object:
+	return Glossary.tooltip(for_text)

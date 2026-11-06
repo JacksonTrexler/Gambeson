@@ -120,8 +120,8 @@ func test_hide() -> void:
 	v(1).refresh()
 	b.travel(v(1), Vector2i(2, 1))
 	ok(hide.effects[0] not in v(1).timed and roundi(v(1).stat(&"concealment")) == 0, "it moves: out of hiding")
-	ok("Concealment: +2 until it moves" in hide.describe(2) and "Self · 2 AP · 1 cost · on itself" in hide.describe(2)
-			and "Enemies that can see it investigate" in hide.describe(2), "described (%s)" % hide.describe(2))
+	ok("Concealment: +2 until it moves" in hide.describe(2) and "Self · 2 AP · 1 cost" in hide.describe(2)
+			and "enemies that can see it investigate" in hide.describe(2), "described (%s)" % hide.describe(2))
 
 
 func test_hide_meandering() -> void:
@@ -167,7 +167,7 @@ func test_clever_disguise() -> void:
 	b.end_turn()
 	b.end_turn()
 	ok(clever.effects[0] not in v(1).timed, "and gone")
-	ok("Trickery: +2 for 2 turns, then a level less each turn" in clever.describe(2) and "Rolls once as it's used: d20 + cha mod + 2" in clever.describe(2),
+	ok("Trickery: +2 for 2 turns, then a level less each turn" in clever.describe(2) and "A check as it's used (cha mod + 2)" in clever.describe(2),
 			"described (%s)" % clever.describe(2))
 
 

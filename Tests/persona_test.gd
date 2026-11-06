@@ -79,7 +79,7 @@ func test_embellish() -> void:
 	stage(nemes, {s: Vector2i(8, 6), v(3): Vector2i(8, 5), v(4): Vector2i(7, 5), v(1): Vector2i(1, 1)})
 	s.learned.append(slot(embellish, 1))
 	s.refresh()
-	ok(embellish.summary() == "2 AP · 2 cost · range rank - 1" and not b.cast(s, embellish, v(3)), "Embellish I: on itself only (%s)" % embellish.summary())
+	ok(embellish.summary() == "Ally · range rank - 1 · 2 AP · 2 cost" and not b.cast(s, embellish, v(3)), "Embellish I: on itself only (%s)" % embellish.summary())
 	s.learned[-1].rank = 2
 	ok(b.cast(s, embellish, s) and b.cast(s, embellish, v(3)), "Embellish II: itself, or an adjacent ally")
 	ok(s.timed[embellish.effects[0]].turns == 4 and roundi(v(3).stat(&"embellish")) == 2, "3 turns (after this one), at rank 2")
@@ -168,7 +168,7 @@ func test_alluring_look() -> void:
 	var alluring: Skill = load("res://Skills/alluring.tres")
 	ok(alluring.has_look() and siren().stance == "Friendly" and "Serene" in siren().shows_vibe and siren().shows_tags == [&"holy"]
 			and siren().shows_nouns.has("Songstress"), "the Siren's serene, safe look is Alluring's")
-	ok("Puts forward a look: Friendly; Harmless, Beautiful, Serene, Safe; holy. Its holder's dissonance counts 4 less against its own rolls" in alluring.describe(4),
+	ok("Puts forward a look: Friendly; Harmless, Beautiful, Serene, Safe; holy. Its holder's dissonance counts 4 less against its own checks" in alluring.describe(4),
 			"described (%s)" % alluring.describe(4))
 	var u := v(2)
 	bare(u)

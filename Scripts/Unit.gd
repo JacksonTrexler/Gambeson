@@ -1175,7 +1175,7 @@ func _general_need(s: Skill, t: int) -> Array:
 			var have := slots.filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
 			if have >= 3:
 				return ["", null]
-			why = "Needs 3 skills of tier %d or more (%d so far)" % [t, have]
+			why = "Needs 3 T%d+ skills (%d so far)" % [t, have]
 		else:
 			var best := -1
 			for x in slots:
@@ -1183,7 +1183,7 @@ func _general_need(s: Skill, t: int) -> Array:
 					best = maxi(best, role.tier(x.skill))
 			if best >= t:
 				return ["", null]
-			why = "Needs a %s class skill of tier %d or more" % ["caster" if c == &"magical" else String(c), t]
+			why = "Needs a T%d+ %s class skill" % [t, "caster" if c == &"magical" else String(c)]
 		var by := _opener(c)
 		if by:
 			var native := c == &"" or (role and c in role.general)

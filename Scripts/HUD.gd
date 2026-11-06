@@ -96,6 +96,7 @@ var _falls: Array[String] = []  # "X falls" lines, held until the hit that did i
 @onready var pane: PanelContainer = %TilePane
 @onready var skills: SkillTree = %Skills
 @onready var settings: PanelContainer = %Settings
+var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
 var persona := PersonaPanel.new()  # Personify's active half
 var sheet := CharacterSheet.new()  # the character icon: equipment, hearts and the stash
 var _personifying: Array = []  # [unit, skill] the persona panel is open for
@@ -162,6 +163,8 @@ func _ready() -> void:
 	%BookIcon.pressed.connect(toggle_spellbook)
 	%CogIcon.pressed.connect(toggle_settings)
 	%SettingsClose.pressed.connect(_close_panels)
+	add_to_group(&"guide")
+	show_guide(guide_page)
 	settings.get_parent().add_child(persona)
 	settings.get_parent().add_child(sheet)
 	sheet.hide()
@@ -531,6 +534,39 @@ func _on_used_up(u: Unit, it: Item) -> void:
 		_keep_outfit(u)
 		sheet.open(u, true)
 		_mark()
+
+
+# The Guide (Settings) at a page - with a term, scrolled to it. Panels' "i"s (GuideLink) and terms
+# clicked in descriptions come here, through the "guide" group.
+func open_guide(page: StringName, term := &"") -> void:
+	_close_panels()
+	settings.show()
+	show_guide(page if page in Guide.PAGES else &"play")
+	_update_tip()
+	var at := Guide.terms(guide_page).find(term)
+	if at >= 0:
+		await get_tree().process_frame
+		%Guide.scroll_to_paragraph(at * 2)  # a blank line between terms
+
+
+func show_guide(page: StringName) -> void:
+	guide_page = page
+	%Guide.text = Guide.text(page)
+	%Guide.scroll_to_line(0)
+	var box: HBoxContainer = %GuidePages
+	if box.get_child_count() == 0:
+		var group := ButtonGroup.new()
+		for id in Guide.ids():
+			var b := Button.new()
+			b.text = Guide.title(id)
+			b.toggle_mode = true
+			b.button_group = group
+			b.focus_mode = Control.FOCUS_NONE
+			b.add_theme_font_size_override(&"font_size", 6)
+			b.pressed.connect(show_guide.bind(id))
+			box.add_child(b)
+	for i in box.get_child_count():
+		(box.get_child(i) as Button).set_pressed_no_signal(Guide.ids()[i] == page)
 
 
 # The cog: settings, and the Guide to how the game is played.
@@ -1219,9 +1255,10 @@ func _show_pane() -> void:
 	_place_pane()
 
 
-# [text, colour] for each thing the tile is known to do: beneficial or detrimental, a trap,
+# [Glossary markup, colour] for each thing the tile is known to do: beneficial or detrimental, a trap,
 # conditions on whoever stands there, steps in or ends a turn there (Effect.conditions: Haste's two
-# effects are one line), sticky ground, and what whoever stands there is (Moist, Wet).
+# effects are one line), sticky ground, and what whoever stands there is (Moist, Wet) - each kind
+# named by its term.
 func _tile_effects(c: Vector2i, r: Read) -> Array:
 	var out := []
 	if r.worth != null and r.worth != 0:
@@ -1229,17 +1266,17 @@ func _tile_effects(c: Vector2i, r: Read) -> Array:
 	if r.trap == true:
 		var t := battle.terrain(c)
 		var dmg := "%dd%d" % [t.dice.x, t.dice.y] + (" x%d" % t.times if t.times != 1 else "") + (" %+d" % t.bonus if t.bonus else "")
-		out.append(["Trap: %s %s" % [dmg, " ".join(t.damage_tags.filter(func(x): return x != &"trap"))], FOE])
+		out.append(["%s: %s %s" % [Glossary.term(&"trap"), dmg, " ".join(t.damage_tags.filter(func(x): return x != &"trap").map(func(x): return "{x:%s}" % x))], FOE])
 	for group in Effect.conditions(r.effects):
-		out.append([Effect.summarize(group), _tone(group)])
-	for when in [[r.afflicts, "on entering"], [r.at_end, "at turn end"]]:
+		out.append([Effect.summarize(group, true), _tone(group)])
+	for when in [[r.afflicts, &"on_enter", "on entering"], [r.at_end, &"turn_end", "at turn end"]]:
 		for group in Effect.conditions(when[0]):
 			var n: int = group[0].turns if group[0].turns else battle.terrain(c).turns
-			out.append(["%s · %d turn%s · %s" % [Effect.summarize(group), n, "" if n == 1 else "s", when[1]], _tone(group)])
+			out.append(["%s · {t:%d turn%s} · %s" % [Effect.summarize(group, true), n, "" if n == 1 else "s", Glossary.term(when[1], when[2])], _tone(group)])
 	if r.exit:
-		out.append(["Sticky: +%d to leave" % r.exit, MUTED])
+		out.append(["%s: +%d to leave" % [Glossary.term(&"sticky"), r.exit], MUTED])
 	for t in r.tags.filter(func(t): return t not in [&"trap", &"sticky"] and String(t) not in r.name.to_lower() and not Battle.material(t)):
-		out.append([String(t).capitalize(), MUTED])
+		out.append(["{x:%s|%s}" % [t, String(t).capitalize()], MUTED])
 	return out
 
 
@@ -1265,13 +1302,13 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 				MUTED if d.faction == command.faction() else GROUND[&"unsure"]])
 	if battle.on_lattice(c):
 		var what := "Starpower source, %d%% full" % roundi(100.0 * battle.charge[c] / Battle.STAR_CAPACITY) if c in battle.starpower \
-				else "Starpane (a bludgeoning blow breaks it)"
+				else Glossary.term(&"starpane")
 		var rate := "Power back x%s" % Skill.num(snappedf(battle.star_rate(c), 0.1)) if battle.star_source(c) != null else "linked to no source"
 		out.append(["%s: %s" % [what, rate], STARPOWER_TINT])
 	if c in battle.earthworks:
 		var ours := battle.earthworks[c].faction == command.faction()
 		var who := " (yours): your enemies pay" if ours else ": you pay"
-		out.append(["Disturbed earth%s 50%% more to enter, %d turns left" % [who, battle.earthworks[c].turns], FRIEND if ours else FOE])
+		out.append(["%s%s 50%% more to enter, {t:%d turns} left" % [Glossary.term(&"disturbed_earth"), who, battle.earthworks[c].turns], FRIEND if ours else FOE])
 	var u := selected if selected and known(selected) else null
 	var there := unit_seen(c)
 	if u and there and there != u:
@@ -1291,12 +1328,15 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 func _fill_lines(box: Container, lines: Array) -> void:
 	_clear(box)
 	for line in lines:
-		var l := Label.new()
-		l.theme_type_variation = &"Muted"
-		l.text = line[0]
+		var l := RichTextLabel.new()
+		l.bbcode_enabled = true
+		l.fit_content = true
+		l.scroll_active = false
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		l.text = Glossary.rich(line[0])
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size.x = pane.custom_minimum_size.x - 14  # wrap at the pane's width from the start
-		l.add_theme_color_override(&"font_color", line[1])
+		l.add_theme_color_override(&"default_color", line[1])
 		box.add_child(l)
 
 
@@ -1522,7 +1562,7 @@ func _hint() -> String:
 	if not u or not hand(u) or _orders(u):
 		return ""
 	if u.asleep():
-		return "Asleep. An ally ending the turn beside it wakes it for the next one."
+		return "Asleep."
 	return "Too far to hear you. Bring %s within %s." % [_name(command.leader),
 			_tiles(command.party_reach() if u in command.party else float(command.reach()))]
 

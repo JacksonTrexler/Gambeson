@@ -130,13 +130,34 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
 		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
 		"sickness": "Resurrection Sickness"}
+static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
+static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
 const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
 func describe(rank := 1) -> String:
-	return "%s: %s" % [title(), value(rank)]
+	return Glossary.plain(markup(rank))
+
+
+# describe() in Glossary markup.
+func markup(rank := 1) -> String:
+	return "%s: %s" % [title(), marked(rank)]
+
+
+# value() in Glossary markup: the mods it names are its holder's own (offense), a number growing with
+# rank is gold, and conditions with a term go by it (Held, Asleep).
+func marked(rank := 1) -> String:
+	var v := value(rank)
+	if stat == "grappled":
+		v = Glossary.term(&"held", "held")
+	elif stat == "sleep":
+		v = Glossary.term(&"asleep", "can't act")
+	v = _MOD.sub(v, "{o:$1 mod}", true)
+	if per_rank:
+		v = _NUM.sub(v, "{r:$0}")
+	return v
 
 
 func title() -> String:
@@ -148,9 +169,12 @@ func label() -> String:
 	return name if name else title()
 
 
-# "Poison: 5% each turn", "Haste: AP +10%, Dex AP +20%" - a condition's effects as one line.
-static func summarize(group: Array[Effect]) -> String:
-	var parts := group.map(func(e: Effect): return e.value() if e.title() == e.label() else "%s %s" % [e.title(), e.value()])
+# "Poison: 5% each turn", "Haste: AP +10%, Dex AP +20%" - a condition's effects as one line (in
+# Glossary markup, marked_up).
+static func summarize(group: Array[Effect], marked_up := false) -> String:
+	var parts := group.map(func(e: Effect):
+		var v := e.marked() if marked_up else e.value()
+		return v if e.title() == e.label() else "%s %s" % [e.title(), v])
 	return "%s: %s" % [group[0].label(), ", ".join(parts)]
 
 
@@ -202,7 +226,7 @@ func value(rank := 1) -> String:
 		return "no limit"
 	elif stat == "brace":
 		var on := " or ".join(checks.map(func(c): return "mental" if c == &"mental" else String(c).left(3)))
-		return "%s equipped %sarmor rank%s to %s%s rolls, up to rank" % ["half the" if amount < 1.0 else "+", "%s " % " or ".join(tags) if not tags.is_empty() else "",
+		return "%s equipped %sarmor rank%s to %s%s checks, up to rank" % ["half the" if amount < 1.0 else "+", "%s " % " or ".join(tags) if not tags.is_empty() else "",
 				"" if amount < 1.0 else "s", (String(kind) + " ") if kind else "", on]
 	elif stat in ["decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental"]:
 		return {"decisive": "after a critical, the rest of Strike's hits land; damage by the higher of dex and str mod",
@@ -226,7 +250,7 @@ func value(rank := 1) -> String:
 	elif stat == "asphyxia":
 		return "%s%% of max HP gone" % Skill.num(x * 100.0)
 	elif stat == "irradiate":
-		return "an offensive light roll beating Defense deals the overage as light damage too, up to %s + cha mod" % Skill.num(x)
+		return "an offensive light attack beating Defense deals the overage as light damage too, up to %s + cha mod" % Skill.num(x)
 	elif stat == "sap":
 		return "drains %s Energy (or Power) a turn from other sides' units beside it, HP once theirs is gone, while starpower isn't full" % Skill.num(x)
 	elif stat == "starkind":

@@ -43,5 +43,5 @@ func fill(title: String, can_edit: bool, can_switch: Callable) -> void:
 			none.theme_type_variation = &"Muted"
 			none.text = "None"
 			list.add_child(none)
-	footer.text = "Drag a skill onto a hotbar slot · right-click a slot to empty it" if can_edit \
-			else "Only your own units' hotbars can be changed."
+	footer.text = "" if can_edit else "Only your own units' hotbars can be changed."
+	footer.visible = not can_edit

@@ -47,7 +47,7 @@ func test_saved() -> void:
 	v(3).charisma = 1  # mod -5: range 1 at least
 	v(1).wisdom = 42  # mod 16: beats anything the caster rolls
 	ok(b.cast(v(3), haluca, v(1)) and v(1).scrambled() == null, "a passed save: nothing")
-	ok("The foe saves: d20 + wis mod against d20 + cha mod + 1" in haluca.describe(1) and "for cha mod + 1 turns" in haluca.describe(1), haluca.describe(1))
+	ok("Save (wis mod) vs cha mod + 1" in haluca.describe(1) and "for cha mod + 1 turns" in haluca.describe(1), haluca.describe(1))
 
 
 func test_hard_to_read() -> void:

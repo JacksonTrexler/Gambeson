@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://Scripts/SkillTree.gd" id="6_tree"]
 [ext_resource type="Script" path="res://Scripts/SkillWheel.gd" id="7_wheel"]
 [ext_resource type="Script" path="res://Scripts/SkillGrid.gd" id="7_grid"]
+[ext_resource type="Script" path="res://Scripts/CostButton.gd" id="7_cost"]
+[ext_resource type="Script" path="res://Scripts/GuideLink.gd" id="7_link"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -392,6 +394,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"Title"
 
+[node name="BookGuide" type="Button" parent="Root/Spellbook/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("7_link")
+page = &"hotbar"
+
 [node name="BookClose" type="Button" parent="Root/Spellbook/Column/Head"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -488,6 +496,12 @@ size_flags_vertical = 4
 theme_type_variation = &"Chip"
 theme_override_font_sizes/font_size = 6
 
+[node name="SkillsGuide" type="Button" parent="Root/Skills/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("7_link")
+page = &"skills"
+
 [node name="SkillsClose" type="Button" parent="Root/Skills/Column/Head"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -501,6 +515,7 @@ layout_mode = 2
 theme_override_constants/separation = 1
 
 [node name="Body" type="PanelContainer" parent="Root/Skills/Column"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -550,6 +565,12 @@ clip_text = true
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
+script = ExtResource("7_cost")
+
+[node name="DetailSpec" type="HBoxContainer" parent="Root/Skills/Column/DetailCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
 
 [node name="DetailScroll" type="ScrollContainer" parent="Root/Skills/Column/DetailCol"]
 custom_minimum_size = Vector2(0, 32)
@@ -557,27 +578,25 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="DetailText" type="Label" parent="Root/Skills/Column/DetailCol/DetailScroll"]
+[node name="DetailText" type="RichTextLabel" parent="Root/Skills/Column/DetailCol/DetailScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"Muted"
+theme_override_colors/default_color = Color(0.604, 0.627, 0.682, 1)
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
 autowrap_mode = 3
 
 [node name="Foot" type="HBoxContainer" parent="Root/Skills/Column"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="SkillsHint" type="Label" parent="Root/Skills/Column/Foot"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"Muted"
-autowrap_mode = 3
 
 [node name="LevelUp" type="Button" parent="Root/Skills/Column/Foot"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 10
 focus_mode = 0
 tooltip_text = "Debug builds only: gain a level, and a skill point"
 text = "Level up (debug)"
@@ -591,9 +610,9 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -150.0
+offset_left = -175.0
 offset_top = -110.0
-offset_right = 150.0
+offset_right = 175.0
 offset_bottom = 110.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -618,30 +637,16 @@ focus_mode = 0
 tooltip_text = "Close (Esc)"
 text = "Close"
 
-[node name="GuideTitle" type="Label" parent="Root/Settings/Column"]
+[node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"Muted"
-text = "GUIDE"
+theme_override_constants/separation = 1
 
 [node name="Guide" type="RichTextLabel" parent="Root/Settings/Column"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-text = "[color=#e8c547]Selecting[/color]
-Click a unit to select it; Tab steps through the units taking orders. Shift-click a foe to look it over without attacking.
-
-[color=#e8c547]Moving and acting[/color]
-With a unit that takes orders selected, hover a tile to plan a move and click to walk there. Click a foe to walk into reach and use slot 1 on it. A number key (or clicking a slot) arms that skill: click its target, or press it again to put it away. A switched passive turns on or off instead. Ctrl-click a tile to strike at whatever may be there. Esc or right-click backs out.
-
-[color=#e8c547]Your side[/color]
-Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own.
-
-[color=#e8c547]Panels[/color]
-B: spellbook - drag skills onto the hotbar. S: skills - spend skill points: 1 to learn a skill, 1 + rank² to raise it a rank. An Adventurer's class skills form a wheel: click a skill to see what it does and what it needs. Rogues and Bards have a second wheel, Calling: Freedom, in a tab above it. A skill's tier is 1 plus the skills learned before it; a Wizard's Mana rank is the highest tier of spell it casts cheaply with mana. A dashed circle with a number is a skill not built yet, waiting on that open question.
-
-[color=#e8c547]Reading the board[/color]
-While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A black shape is something you can't identify; a marked area is where something is only suspected. Attacks roll d20 + a mod against Defense; the forecast gives the chance to hit when you can make the target out. A green-trimmed slot is a lucky unit's clover slot: it greys out while that luck is gone. Red, purple and green slots hold only martial, magic and specialist skills."
 
 [node name="Over" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true

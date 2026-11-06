@@ -266,33 +266,80 @@ static func roman(n: int) -> String:
 	return out
 
 
-# One line for lists: what using it takes, or how a passive works.
-func summary() -> String:
+# What it's used on (a Glossary target term): self, nearest, area, tile, ally_or_foe, foe or ally.
+func target() -> StringName:
+	if self_only:
+		return &"self"
+	if auto:
+		return &"nearest"
+	if zone or cone > 0.0 or channel:
+		return &"area"
+	if on_tile():
+		return &"tile"
+	if dual or either:
+		return &"ally_or_foe"
+	return &"foe" if hostile else &"ally"
+
+
+# Its range as it scales, in Glossary markup: the set part first, then what grows with rank (gold),
+# then its user's stat (orange): "2 + {o:int mod}", "{r:rank} + {o:cha mod}", "{r:rank} - 1".
+func reach_markup() -> String:
+	var parts: PackedStringArray = []
+	if radius_per_rank:
+		parts.append("{r:rank}" if radius_per_rank == 1 else "{r:%s x rank}" % num(radius_per_rank))
+	if radius_stat:
+		parts.append("{o:%s score}" % String(radius_stat).left(3))
+	if radius_mod:
+		parts.append(Glossary.mod(radius_mod))
+	var grows := " + ".join(parts)
+	if not grows:
+		return num(radius)
+	if radius > 0.0:
+		return "%s + %s" % [num(radius), grows]
+	if radius < 0.0:
+		return "%s - %s" % [grows, num(-radius)]
+	return grows
+
+
+# What using it takes, in the same order on every skill: [label, Glossary markup] - its target, its
+# range (none on itself), AP, cost. A passive: just how it runs.
+func spec() -> Array:
 	if stub:
-		return "Not built yet"
+		return [["", "Not built yet"]]
 	if passive:
-		return "Toggle" if toggle else "Always on"
-	var parts := ["%s AP" % num(ap)]
+		return [["", "Passive"], ["", "Toggle" if toggle else ("Inherent" if inherent else "Always on")]]
+	var out := [["", Glossary.term(target())]]
+	if not self_only:
+		out.append(["range", reach_markup()])
+	out.append(["AP", num(ap)])
 	if cost:
-		parts.append("%d cost%s" % [cost, " x rank" if cost_per_rank else ""])
-	if zone:
-		parts.append("area %s" % num(radius))
-	elif self_only:
-		parts.append("on itself")
-	elif radius_mod and radius_per_rank:
-		parts.append("range rank + %s mod" % String(radius_mod).left(3))
-	elif radius_mod:
-		parts.append("range %s%s mod" % [num(radius) + " + " if radius else "", String(radius_mod).left(3)])
-	elif radius_per_rank:
-		parts.append("range %srank%s" % ["" if radius_per_rank == 1 else num(radius_per_rank) + " x ",
-				" %s %s" % ["+" if radius > 0 else "-", num(absf(radius))] if radius else ""])
-	else:
-		parts.append("range %s" % num(radius))
-	return " · ".join(parts)
+		out.append(["cost", "{r:%d x rank}" % cost if cost_per_rank else str(cost)])
+	return out
 
 
-# Everything it does at this rank, for tooltips and the spellbook.
+# Its spec as one line of markup: "{k:foe} · range 2 + {o:int mod} · 3 AP · 2 cost".
+func spec_line() -> String:
+	return " · ".join(spec().map(spec_part))
+
+
+# A part of its spec, read: "{k:foe}", "range 2 + {o:int mod}", "3 AP", "2 cost".
+static func spec_part(p: Array) -> String:
+	return p[1] if not p[0] else ("range " + p[1] if p[0] == "range" else "%s %s" % [p[1], p[0]])
+
+
+# One line for lists: its spec, plain.
+func summary() -> String:
+	return Glossary.plain(spec_line())
+
+
+# Everything it does at this rank, as plain text.
 func describe(rank := 1) -> String:
+	return Glossary.plain(markup(rank))
+
+
+# The same in Glossary markup, for the skills screen and rich tooltips; with_spec: leading with its
+# spec line (the skills screen shows that apart).
+func markup(rank := 1, with_spec := true) -> String:
 	var lines: PackedStringArray = []
 	if stub:
 		lines.append("Not built yet. " + waits())
@@ -301,150 +348,154 @@ func describe(rank := 1) -> String:
 		return "\n".join(lines)
 	var foe := "On a foe: " if dual else ""
 	var ally := "On an ally: " if dual else ""
-	if passive:
-		lines.append("Inherent: can't be removed or disabled, and takes no slot" if inherent else "Passive" + (", switched on and off" if toggle else ", always on"))
-	else:
-		var kind := "Channel" if channel else "Area" if zone else ("Self" if self_only else ("Ally or foe" if dual or either else ("Attack" if hostile else ("Heal" if heals() else "Support"))))
-		lines.append("%s · %s" % [kind, summary()])
+	var me := Glossary.mod(stat())
+	var me_short := String(stat()).left(3)
+	if with_spec:
+		lines.append(spec_line() if not passive or not inherent else "Inherent: can't be removed or disabled, and takes no slot")
+	if not passive:
 		for r: Reserve in ap_with:
 			lines.append("%s AP paid with %s" % [share(ap_with[r]), r.name])
 		for r: Reserve in cost_with:  # the skill opening a reserve goes by its name (Mana)
 			lines.append("%s cost paid with %s, once the caster's %s rank reaches its tier" % [share(cost_with[r]), r.name, r.name])
 		if attacks():
-			lines.append("%s%s %s + %s mod%s against Defense; a natural 20 doubles damage" % [foe, "rolls" if dual else "Rolls", "the better of 2d20" if advantage else "d20",
-					String(stat()).left(3), " + %d" % (roll_per_rank * rank) if roll_per_rank else ""])
+			lines.append("%s%s (%s%s)" % [foe, Glossary.term(&"attack") + (" with " + Glossary.term(&"advantage") if advantage else ""),
+					me, " + {r:%d}" % (roll_per_rank * rank) if roll_per_rank else ""])
 		if zone:
-			lines.append("Lays %s concealment around a tile for %d turns" % [zone, turns])
+			lines.append("Lays %s %s around a tile for {t:%d turn%s}" % [zone, Glossary.term(&"concealment", "concealment"), turns, "" if turns == 1 else "s"])
 		if observes:
-			lines.append("Inspects around a tile as if it had rested %d turn%s: every tile within wis mod (at least 1) + %d tiles of it, at +%d, -1 a tile from it"
-					% [rank, "" if rank == 1 else "s", rank, rank])
+			lines.append("Inspects around a tile as if it had rested {t:%d turn%s}: every tile within %s (at least 1) + {r:%d} tiles of it, at +{r:%d}, -1 a tile from it"
+					% [rank, "" if rank == 1 else "s", Glossary.mod(&"wis"), rank, rank])
 		if prays:
 			var n := rank
 			var s := "" if n == 1 else "s"
 			lines.append("Prays to the caster's god:")
-			lines.append("Ramut: its side waits %d turn%s less for Ramut's Ire" % [n, s])
-			lines.append("Eros: up to %d unit%s within %d tile%s that can see it lose a stack of suspicion of it" % [n, s, n, s])
-			lines.append("Sol: darkness within %d tile%s is gone" % [n, s])
-			lines.append("Urlo: enchants %d unenchanted item%s of allies within %d tile%s, weapons first (+1)" % [n, s, n, s])
-			lines.append("Luun: the ground within %d tile%s falls into darkness for %d turn%s, concealing its side a level" % [n, s, n, s])
-			lines.append("Drael: takes %d rank%s of debuffs off an ally within %d tile%s, the highest first" % [n, s, n, s])
-			lines.append("Vetruvis: the ground within %d tile%s becomes disturbed earth for %d turn%s, costing its enemies 50%% more to enter" % [n, s, n, s])
+			lines.append("Ramut: its side waits {r:%d} turn%s less for Ramut's Ire" % [n, s])
+			lines.append("Eros: up to {r:%d} unit%s within {r:%d} tile%s that can see it lose a stack of %s of it" % [n, s, n, s, Glossary.term(&"suspicion", "suspicion")])
+			lines.append("Sol: darkness within {r:%d} tile%s is gone" % [n, s])
+			lines.append("Urlo: enchants {r:%d} unenchanted item%s of allies within {r:%d} tile%s, weapons first (+1)" % [n, s, n, s])
+			lines.append("Luun: the ground within {r:%d} tile%s falls into %s for {t:%d turn%s}, concealing its side a level" % [n, s, Glossary.term(&"darkness", "darkness"), n, s])
+			lines.append("Drael: takes {r:%d} rank%s of debuffs off an ally within {r:%d} tile%s, the highest first" % [n, s, n, s])
+			lines.append("Vetruvis: the ground within {r:%d} tile%s becomes %s for {t:%d turn%s}, costing its enemies 50%% more to enter" % [n, s, Glossary.term(&"disturbed_earth", "disturbed earth"), n, s])
 		if save:
-			lines.append("The foe saves: d20 + %s mod%s against d20 + %s mod + %d" % [String(save).left(3),
-					" + the ranks of the skills it would lose" if disables else "", String(stat()).left(3), rank])
+			lines.append("%s (%s%s) vs %s + {r:%d}" % [Glossary.term(&"save"), Glossary.mod(save, true),
+					" + the ranks of the skills it would lose" if disables else "", me, rank])
 		if levels_down:
-			lines.append("Rolls %d time%s: d20 + %s mod, each beating the higher of the foe's average stat mod + level and its last stand (d20 + average stat mod). Each that does takes a level off it, for %d turns less one a miss"
-					% [rank, "" if rank == 1 else "s", String(stat()).left(3), rank])
+			lines.append("{r:%d} %s (%s), each against the higher of the foe's {d:average stat mod} + level and its %s. Each that wins takes a level off it, for {t:%d turn%s} less one a miss"
+					% [rank, Glossary.term(&"check", "check" if rank == 1 else "checks"), me, Glossary.term(&"last_stand"), rank, "" if rank == 1 else "s"])
 		if kills:
-			lines.append("The foe's last stand (d20 + average stat mod) x (its HP left / %d) against d20 + %s mod: failing, it takes 1 true damage and dies" % [rank, String(stat()).left(3)])
+			lines.append("Its %s x (its HP left / {r:%d}) vs a %s (%s): failing, it takes 1 %s damage and dies"
+					% [Glossary.term(&"last_stand"), rank, Glossary.term(&"check", "check"), me, Glossary.term(&"true", "true")])
 		if disables:
 			var n := floori(sqrt(rank))
 			var up := ceili(sqrt(rank))
-			lines.append("Failing, %s of its skill slots are disabled, from the right%s; its pillar skills go first, all as one slot"
-					% [str(n) if n == up else "%d (%d while lucky)" % [n, up], _lasting(rank)])
+			lines.append("Failing, {r:%s} of its skill slots are %s, from the right%s; its pillar skills go first, all as one slot"
+					% [str(n) if n == up else "%d (%d while lucky)" % [n, up], Glossary.term(&"disabled", "disabled"), _lasting(rank)])
 		if lays:
-			var bonus := " + %s" % String(lays.bonus_stat).left(3) if lays.bonus_stat else ""
-			lines.append("Sets a %s: concealment %d, %dd%d x %d%s %s" % [lays.name.to_lower(), lays.concealment * rank,
-					lays.dice.x, lays.dice.y, lays.times * rank, bonus, " ".join(lays.damage_tags.filter(func(t): return t != &"trap"))])
+			var bonus := " + %s" % Glossary.mod(lays.bonus_stat) if lays.bonus_stat else ""
+			lines.append("Sets a %s: %s {r:%d}, %dd%d x {r:%d}%s %s" % [Glossary.term(&"trap", lays.name.to_lower()), Glossary.term(&"concealment", "concealment"), lays.concealment * rank,
+					lays.dice.x, lays.dice.y, lays.times * rank, bonus, " ".join(lays.damage_tags.filter(func(t): return t != &"trap").map(func(t): return "{x:%s}" % t))])
 			if &"trap" in tags:
-				lines.append("Allies within its charisma mod in tiles learn where it is")
+				lines.append("Allies within its %s in tiles learn where it is" % Glossary.mod(&"cha"))
 		var t := tier(rank)
 		if channel:
-			lines.append("Channels on a tile. Cast again for %s AP and %d cost to strike: a tile within (its side's turns since) tiles of it explodes, hitting everyone within %s tiles but the caster"
+			lines.append("Channels on a tile. Cast again for %s AP and %d cost to strike: a tile within (its side's turns since) tiles of it explodes, hitting everyone within {r:%s} tiles but the caster"
 					% [num(strike_ap), strike_cost, num(blast * rank)])
 		if god_tag:
 			var n := rank
 			lines.append("Its damage takes its caster's god's tag, and on a hit its god adds:")
-			lines.append("Eros (love): used on an ally, it heals what it would deal, overhealing at %d%%" % (20 * n))
-			lines.append("Luun (dark): a foe left at %d%% of its max HP or less dies" % (5 * n))
-			lines.append("Sol (fire): it burns again for %d%% of the damage, pure fire, as its turn ends" % (20 * n))
-			lines.append("Urlo (energy): drains Energy (or Power) first%s; takes %d enchantment%s off, enchanting the caster's items with the rest"
-					% [", then %d%% of the rest goes on to HP" % roundi(carry * (n - 1) * 100) if carry * (n - 1) > 0 else "", n, "" if n == 1 else "s"])
-			lines.append("Drael (water): takes %d rank%s of its buffs off" % [n, "" if n == 1 else "s"])
-			lines.append("Vetruvis (earth): radiates to everyone within %d tile%s, the damage / (tiles away + 1)" % [n, "" if n == 1 else "s"])
-			lines.append("Ramut (physical): nothing more")
+			lines.append("Eros ({x:love}): used on an ally, it heals what it would deal, overhealing at {r:%d%%}" % (20 * n))
+			lines.append("Luun ({x:dark}): a foe left at {r:%d%%} of its max HP or less dies" % (5 * n))
+			lines.append("Sol ({x:fire}): it burns again for {r:%d%%} of the damage, pure fire, as its turn ends" % (20 * n))
+			lines.append("Urlo ({x:energy}): %s Energy (or Power) first%s; takes {r:%d} enchantment%s off, enchanting the caster's items with the rest"
+					% [Glossary.term(&"drain", "drains"), ", then {r:%d%%} of the rest goes on to HP" % roundi(carry * (n - 1) * 100) if carry * (n - 1) > 0 else "", n, "" if n == 1 else "s"])
+			lines.append("Drael ({x:water}): takes {r:%d} rank%s of its buffs off" % [n, "" if n == 1 else "s"])
+			lines.append("Vetruvis ({x:earth}): radiates to everyone within {r:%d} tile%s, the damage / (tiles away + 1)" % [n, "" if n == 1 else "s"])
+			lines.append("Ramut ({x:physical}): nothing more")
 		if t:
 			var dmg := _damage(t)
 			if dice_per_rank and rank > 1:
-				dmg = dmg.replace("%dd%d" % [t.dice.x, t.dice.y], "%dd%d" % [t.dice.x * rank, t.dice.y])
+				dmg = dmg.replace("%dd%d" % [t.dice.x, t.dice.y], "{r:%dd%d}" % [t.dice.x * rank, t.dice.y])
 			if hits_per_rank and rank > 1:
-				dmg = "%d hits of %s" % [rank, dmg]
+				dmg = "{r:%d} hits of %s" % [rank, dmg]
 			lines.append(foe + ("deals " if dual else "Deals ") + dmg)
 			if &"energy" in tags:
-				lines.append("Energy damage: it drains Energy (or Power) first" + (", then %d%% of the rest goes on to HP" % roundi(carry * (rank - 1) * 100) if carry * (rank - 1) > 0 else ""))
+				lines.append("%s: Energy (or Power) first%s" % [Glossary.term(&"drain"), ", then {r:%d%%} of the rest goes on to HP" % roundi(carry * (rank - 1) * 100) if carry * (rank - 1) > 0 else ""])
 		if grants:
-			lines.append("Gives %s for %d turns" % [grants.name, lasts(rank)])
+			lines.append("Gives %s for {t:%d turn%s}" % [grants.name, lasts(rank), "" if lasts(rank) == 1 else "s"])
 		if chain:
 			lines.append("Attacks cease on a miss. -1 to hit and damage for each hit in a row")
 		if not elements.is_empty():
-			lines.append("Pick an element (%s): %s deal%s it, the first hit + your highest mental mod" % [", ".join(elements), "your next Strike" if rank == 1 else "your next %d Strikes" % rank, "s" if rank == 1 else ""])
+			lines.append("Pick an element (%s): %s deal%s it, the first hit + your highest mental mod" % [", ".join(elements.map(func(e): return "{x:%s}" % e)),
+					"your next Strike" if rank == 1 else "your next {r:%d} Strikes" % rank, "s" if rank == 1 else ""])
 		if boost_pool:
-			lines.append("%sit gains %s mod + %d %s AP at once" % [ally if ally else "On an ally: ", String(boost_mod).left(3), rank, boost_pool])
+			lines.append("%sit gains %s + {r:%d} %s AP at once" % [ally if ally else "On an ally: ", Glossary.mod(boost_mod), rank, boost_pool])
 		if humbles:
 			lines.append("Caps its max HP at its HP now less 1%, for rank x 4 x (1 - the share cut) turns: the less it cuts, the longer")
 		if aura:
-			lines.append("Used on itself, it goes on every ally within %d tile%s too%s" % [rank, "" if rank == 1 else "s", " - from rank V only the nearest %d, its strength split among them" % rank if splits else ""])
+			lines.append("%s: also on every ally within {r:%d} tile%s%s" % [Glossary.term(&"aura"), rank, "" if rank == 1 else "s", " - from rank V only the nearest {r:%d}, its strength split among them" % rank if splits else ""])
 		if opening:
 			lines.append("Only as its turn opens, before it moves or spends AP")
 		if retrieves:
-			lines.append("Takes the %s from wherever it is and puts it on, at rank %d" % [retrieves.name, rank])
+			lines.append("Takes the %s from wherever it is and puts it on, at rank {r:%d}" % [retrieves.name, rank])
 		if flamewall:
-			lines.append("Sets the tile and %d to either side of it, across the caster's line, on fire for %d turns: 1d8 + wis mod fire to whoever enters or ends a turn there. One standing there makes a dex check to get clear" % [rank, rank])
+			lines.append("Sets the tile and {r:%d} to either side of it, across the caster's line, %s for {t:%d turns}: 1d8 + %s {x:fire} to whoever enters or ends a turn there. One standing there makes a %s (%s) to get clear"
+					% [rank, Glossary.term(&"burning", "burning"), rank, Glossary.mod(&"wis"), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true)])
 		if cone > 0.0:
-			lines.append("A %d degree cone, its range long: d20 + the caster's wis score in fire to everyone in it, the caster too" % roundi(cone + 15.0 * (rank - 1)))
+			lines.append("A {r:%d} degree cone, its range long: 1d20 + {o:wis score} {x:fire} to everyone in it, the caster too" % roundi(cone + 15.0 * (rank - 1)))
 		if heals():
-			var mods := " + ".join(heal_mods.map(func(x): return String(x).left(3) + " mod"))
+			var mods := " + ".join(heal_mods.map(func(x): return Glossary.mod(x)))
 			if heal_split > 1:
 				mods = "(%s) / %d" % [mods, heal_split]
 			lines.append("Heals %s%s HP, at least 1" % [mods, (" + %d" % heal_bonus if mods else str(heal_bonus)) if heal_bonus else ""])
-			lines.append("Clears wounds up to rank %d%s" % [clears(rank), " (rank x rank)" if squared else ""])
+			lines.append("Clears %s up to rank {r:%d}%s" % [Glossary.term(&"wound", "wounds"), clears(rank), " (rank x rank)" if squared else ""])
 			if per_wound:
-				lines.append("+%d HP for each wound it clears" % (per_wound * rank))
+				lines.append("+{r:%d} HP for each wound it clears" % (per_wound * rank))
 			if restores > 0.0:
-				lines.append("Gives back %s AP" % num(restores * rank))
+				lines.append("Gives back {r:%s} AP" % num(restores * rank))
 		if drags_to:
-			lines.append("%s contest in place of an attack roll, -1 a tile it must drag the foe%s. Won: drags it to the nearest %s the caster could walk to, and both go in"
-					% [String(stat()).left(3).capitalize(), " (less %d)" % (rank - 1) if rank > 1 else "", drags_to])
+			lines.append("%s (%s vs %s) in place of an attack, -1 a tile it must drag the foe%s. Won: drags it to the nearest %s the caster could walk to, and both go in"
+					% [Glossary.term(&"contest"), me, Glossary.mod(stat(), true), " (less {r:%d})" % (rank - 1) if rank > 1 else "", drags_to])
 		if grip != Vector2i.ZERO:
-			lines.append("Holds it: moving away first takes 1 + the caster's %s mod tiles of movement and a %s contest. Each turn it ends held, it takes %dd%d + %s mod"
-					% [String(stat()).left(3), String(stat()).left(3), grip.x, grip.y, String(stat()).left(3)])
+			lines.append("%s it: moving away first takes 1 + %s tiles of movement and a %s. Each turn it ends held, it takes %dd%d + %s"
+					% [Glossary.term(&"held", "Holds"), me, Glossary.term(&"contest", "contest"), grip.x, grip.y, me])
 		if pull:
-			lines.append("%s%s it up to %d tile%s toward the caster" % [foe, "draws" if dual else "Draws", pull * rank, "" if pull * rank == 1 else "s"])
+			lines.append("%s%s it up to {r:%d} tile%s toward the caster" % [foe, "draws" if dual else "Draws", pull * rank, "" if pull * rank == 1 else "s"])
 		if resisted:
-			lines.append("%s%s enraptured (fooled by the caster, with no suspicion of it) comes. On a suspicious one, %s mod against its %s mod takes a stack of suspicion off"
-					% [foe, "only one" if dual else "Only one", String(stat()).left(3), String(resisted).left(3)])
+			lines.append("%s%s comes. On a suspicious one, a %s (%s vs %s) takes a stack of %s off"
+					% [foe, ("only one " if dual else "Only one ") + Glossary.term(&"enraptured", "enraptured"), Glossary.term(&"contest", "contest"),
+					me, Glossary.mod(resisted, true), Glossary.term(&"suspicion", "suspicion")])
 		if auto:
-			lines.append("Used at once: lands on the nearest %d unit%s in range, allies and foes alike" % [rank, "" if rank == 1 else "s"])
+			lines.append("Used at once: lands on the nearest {r:%d} unit%s in range, allies and foes alike" % [rank, "" if rank == 1 else "s"])
 	for e in effects:
-		lines.append(ally + e.describe(rank) + ("" if passive else _lasting(rank)))
+		lines.append(ally + e.markup(rank) + ("" if passive else _lasting(rank)))
 	if has_look():
 		var look := ([stance] if stance else []) + [", ".join(shows_vibe)] + [", ".join(shows_tags)]
-		lines.append("Puts forward a look: %s. Its holder's dissonance counts %d less against its own rolls"
+		lines.append("Puts forward a look: %s. Its holder's dissonance counts {r:%d} less against its own checks"
 				% ["; ".join(look.filter(func(x: String): return x != "")), rank])
 	if investigated:
-		lines.append("Rolls once as it's used: d20 + %s mod + %d. Enemies that can see it investigate at once, d20 + wis mod (the better of two within wis mod - %d tiles) against that roll. Those who meet it aren't fooled by it"
-				% [String(stat()).left(3), rank, rank])
+		lines.append("A %s as it's used (%s + {r:%d}): enemies that can see it %s against that at once, with %s within their %s - {r:%d} tiles. Those who meet it aren't fooled by it"
+				% [Glossary.term(&"check", "check"), me, rank, Glossary.term(&"investigate", "investigate"), Glossary.term(&"advantage", "advantage"), Glossary.mod(&"wis", true), rank])
 	if not energy_as.is_empty():
 		lines.append("Energy paid for %s skills counts as their own resources, with the bonuses those give" %
 				" or ".join(energy_as.map(func(t): return CATEGORIES.get(t, String(t)).to_lower())))
 	if waives:
-		lines.append("Opens the %s tree's skills up to tier %d without their usual needs (one tier lower where your class doesn't have the tree, which it then shows). Skills learned that way stop working without it"
+		lines.append("Opens the %s tree's skills up to {r:T%d} without their usual needs (one tier lower where your class doesn't have the tree, which it then shows). Skills learned that way stop working without it"
 				% ["General" if waives == &"general" else ("Caster" if waives == &"magical" else String(waives).capitalize()), rank])
 	if exclusive:
 		lines.append("Only one %s can be learned" % ("Strike upgrade" if exclusive == &"strike_form" else String(exclusive)))
 	if renames:
 		lines.append("Strike becomes %s" % renames)
 	if opens:
-		lines.append("Cheaper casting with %s: skills up to tier %d get the savings they list for it" % [opens.name, rank])
+		lines.append("Cheaper casting with %s: skills up to {r:T%d} get the savings they list for it" % [opens.name, rank])
 	if stand_in:
 		lines.append("%s stands in for %s on %s skills" % [stand_in.capitalize(),
 				", ".join(replaces.map(func(x): return String(x).capitalize())), ", ".join(tags)])
 	if rank_cost:
 		lines.append("Ranks cost more: II takes %d points, then x%s each rank" % [rank_cost, num(rank_growth)])
 	if not tags.is_empty() and not stand_in:
-		lines.append("Tags: " + ", ".join(tags))
+		lines.append("Tags: " + ", ".join(tags.map(func(t): return "{x:%s}" % t)))
 	if lore:
-		lines.append(lore)
+		lines.append(lore.replace("{", "(").replace("}", ")"))
 	return "\n".join(lines)
 
 
@@ -452,9 +503,9 @@ func describe(rank := 1) -> String:
 # then a level less each turn".
 func _lasting(rank: int) -> String:
 	var n := lasts(rank)
-	var text := " for %d turn%s" % [n, "" if n == 1 else "s"] if n else ""
+	var text := " for {t:%d turn%s}" % [n, "" if n == 1 else "s"] if n else ""
 	if turns_mod:
-		text = " for %s mod + %d turns" % [String(turns_mod).left(3), n]
+		text = " for %s + {t:%d turns}" % [Glossary.mod(turns_mod), n]
 	if until_move:
 		text += (", or" if n else "") + " until it moves"
 	if fades and n:
@@ -469,8 +520,8 @@ func _damage(t: Tier) -> String:
 	if t.dice != Vector2i.ZERO:
 		parts.append("%dd%d" % [t.dice.x, t.dice.y])
 	if t.stat:
-		parts.append(String(t.stat).left(3))
-	return " + ".join(parts) + (", unblockable" if t.direct else "")
+		parts.append(Glossary.mod(t.stat))
+	return " + ".join(parts) + (", " + Glossary.term(&"unblockable", "unblockable") if t.direct else "")
 
 
 # "Half", "A quarter", "x0.75": a cost or AP factor.

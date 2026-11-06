@@ -8,12 +8,22 @@ extends Resource
 @export var kind := ""  # the kind of path it is, shown before its name ("Calling"); empty: the class's own
 @export var radial := false  # drawn as a wheel (the Adventurer's own: SkillWheel) rather than growing from the bottom (SkillGrid)
 @export var category := &""  # a general tree's (kind General): martial, specialist or magical (the Caster tree); empty: the base General tree (Unit.general_trees())
+@export var color := Color(0, 0, 0, 0)  # its colour, if set; else by what it is (tone())
 @export var center: Skill
 @export var core: Array[Skill] = []
 @export var roots: Array[SkillRoot] = []
 @export var god := &""  # the god its devotees worship (a Cleric's Luun, Sol: Unit.deity())
 @export var devotes := false
 @export var satisfied_by := &""  # what wins its devotees Sweet Nothings back (Hogel: rest_whole, resting a turn out at full HP; Battle.end_turn())  # learning a skill on its roots devotes its learner to it: other devoting tabs close (a Warlock's patron; Unit.devotion())
+
+
+const GENERAL := {&"": Color("#7a7d85"), &"martial": Color("#d27a70"), &"specialist": Color("#82b86e"), &"magical": Color("#a98bdb")}
+const GODS := {&"ramut": Color("#c08a5a"), &"eros": Color("#ee95c0"), &"sol": Color("#f08a55"), &"urlo": Color("#6fd8e4"),
+		&"luun": Color("#8f86d6"), &"drael": Color("#68aee8"), &"vetruvis": Color("#b8935e")}
+const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a")}
+const KINDS := {"Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
+const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
+		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0")}
 
 
 # "Calling: Freedom".
@@ -31,12 +41,23 @@ func general() -> bool:
 	return kind == "General"
 
 
-# Its colour on the skills screen: its category's (Caster light purple, Specialist green, Martial red),
-# dark gray for the base General tree.
+# Its colour (its primary) on the skills screen: its own text in it, its background and its tree's in
+# it darker. Set (color), or by what it is: a general tree by category (Martial a light, muted red,
+# Specialist green, Caster light purple, the base tree dark gray), a god's by domain, a patron's, a
+# calling's, species and knowledge, else its class's.
 func tone() -> Color:
-	if not general():
-		return Color(0.6, 0.63, 0.7)
-	return SkillSlot.TYPES[category].lightened(0.3) if category in SkillSlot.TYPES else Color(0.42, 0.43, 0.47)
+	if color.a > 0.0:
+		return color
+	if general():
+		return GENERAL.get(category, GENERAL[&""])
+	if god in GODS:
+		return GODS[god]
+	for table in [PATRONS, KINDS, CLASSES]:
+		if name in table:
+			return table[name]
+		if kind in table:
+			return table[kind]
+	return Color(0.6, 0.63, 0.7)
 
 
 # The tier of s on it: its branch's set tier, or 0 for what's on its core (Strike, learned from the start).

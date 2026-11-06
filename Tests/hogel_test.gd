@@ -48,7 +48,7 @@ func test_gasp() -> void:
 	var h := Battle.hit_chance(v(3), load("res://Skills/hex.tres"), v(1))
 	ok(g > h, "easier to hit than Hex: advantage, + rank (%s vs %s)" % [g, h])
 	v(1).armor = null
-	ok(gasp.describe(2).contains("the better of 2d20 + cha mod + 2"), gasp.describe(2))
+	ok(gasp.describe(2).contains("Attack with Advantage (cha mod + 2)"), gasp.describe(2))
 
 
 func test_asphyxia() -> void:

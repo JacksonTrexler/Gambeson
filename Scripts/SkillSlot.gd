@@ -84,7 +84,7 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	elif sense == 1:
 		tooltip_text = "[%s] %s\nYour side can't make out more of it" % [_key(), s.name]
 	else:
-		tooltip_text = "[%s] %s %s\n%s" % [_key(), s.name, Skill.roman(r), s.describe(r)]
+		tooltip_text = "[%s] %s %s\n%s" % [_key(), s.name, Skill.roman(r), s.markup(r)]
 	queue_redraw()
 
 
@@ -217,3 +217,8 @@ static func theme_of(n: Node) -> Theme:
 			return n.theme
 		n = n.get_parent()
 	return null
+
+
+# Its tooltips are Glossary markup, shown rich.
+func _make_custom_tooltip(for_text: String) -> Object:
+	return Glossary.tooltip(for_text)

@@ -127,9 +127,9 @@ func test_text() -> void:
 	ok(Skill.roman(1) == "I" and Skill.roman(4) == "IV" and Skill.roman(9) == "IX" and Skill.roman(14) == "XIV", "numerals")
 	ok("Deals 1d6 + wis" in hex.describe(3) and "Luck: -3 for 3 turns" in hex.describe(3), "Hex III: d6 + wis, luck -3")
 	ok("Deals 1, unblockable" in hex.describe(1), "Hex I: 1 direct")
-	ok("3 hits of 1 + str" in strike.describe(3) and "hits" not in strike.describe(1), "Strike III")
+	ok("3 hits of 1 + str mod" in strike.describe(3) and "hits" not in strike.describe(1), "Strike III")
 	ok("Damage taken: -40%, above 85% HP" in stoneskin.describe() and "Dexterity: x0.5" in stoneskin.describe(), "Stoneskin")
-	ok(hex.summary() == "4 AP · 2 cost · range 5" and arcanist.summary() == "Toggle" and favour.summary() == "Always on", "one-liners")
+	ok(hex.summary() == "Foe · range 5 · 4 AP · 2 cost" and arcanist.summary() == "Passive · Toggle" and favour.summary() == "Passive · Always on", "one-liners")
 
 
 func test_tile_reads() -> void:

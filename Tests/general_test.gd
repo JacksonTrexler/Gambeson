@@ -31,8 +31,8 @@ func test_trees_by_class() -> void:
 func test_base_gate() -> void:
 	var u := unit_of("adventurer")
 	u.skill_points = 30
-	ok(u.missing(sk("strike_bang")).begins_with("Needs 3 skills of tier 7 or more"), u.missing(sk("strike_bang")))
-	ok(u.missing(sk("generalist")) == "Needs 3 skills of tier 1 or more (0 so far)", "Generalist: tier 1, needing 3 of that tier or more (%s)" % u.missing(sk("generalist")))
+	ok(u.missing(sk("strike_bang")).begins_with("Needs 3 T7+ skills"), u.missing(sk("strike_bang")))
+	ok(u.missing(sk("generalist")) == "Needs 3 T1+ skills (0 so far)", "Generalist: tier 1, needing 3 of that tier or more (%s)" % u.missing(sk("generalist")))
 	for s in ["hex", "sola", "snare"]:
 		u.unlock(sk(s))
 	ok(u.missing(sk("generalist")) == "" and u.unlock(sk("generalist")), "three tier-1 skills: Generalist opens")
@@ -48,7 +48,7 @@ func test_base_gate() -> void:
 func test_category_gate() -> void:
 	var u := unit_of("rogue")
 	u.skill_points = 30
-	ok(u.missing(sk("striking_features")).begins_with("Needs a specialist class skill of tier 4"), u.missing(sk("striking_features")))
+	ok(u.missing(sk("striking_features")).begins_with("Needs a T4+ specialist class skill"), u.missing(sk("striking_features")))
 	ok(u.missing(sk("brutal_strike")) == "" or sk("brutal_strike") not in u.general_skills(), "the Martial tree isn't a Rogue's")
 	ok(sk("brutal_strike") not in u.general_skills(), "not shown")
 	for s in ["hide", "meander", "snare"]:

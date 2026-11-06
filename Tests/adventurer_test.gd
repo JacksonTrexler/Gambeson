@@ -265,7 +265,7 @@ func test_mana_casting() -> void:
 	ok(u.opened(mana) == 2 and u.cost_from(deep, mana) == 1, "Mana II: half cost up to tier 2")
 	ok("Half cost paid with Mana, once the caster's Mana rank reaches its tier" in sola.describe() and "Half AP paid with Mana" in hex.describe(),
 			"described (%s)" % sola.describe())
-	ok("skills up to tier 2 get the savings they list for it" in mana_skill.describe(2), "Mana described by rank (%s)" % mana_skill.describe(2))
+	ok("skills up to T2 get the savings they list for it" in mana_skill.describe(2), "Mana described by rank (%s)" % mana_skill.describe(2))
 	u.free()
 	var s := shrike()
 	s.reserves[mana] = 10

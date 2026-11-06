@@ -19,7 +19,7 @@ func siren() -> Unit:
 
 func test_sing() -> void:
 	stage(nemes, {siren(): Vector2i(8, 6), v(3): Vector2i(8, 4), v(1): Vector2i(3, 6)})
-	ok(sing.summary() == "3 AP · 2 cost · range rank + cha mod", "range rank + cha mod (%s)" % sing.summary())
+	ok(sing.summary() == "Nearest · range rank + cha mod · 3 AP · 2 cost", "range rank + cha mod (%s)" % sing.summary())
 	ok(b.auto_targets(siren(), sing) == [v(3)], "Sing I: the nearest unit in range, no more than its rank")
 	ok(not b.cast(siren(), sing, v(3)), "it isn't aimed: used at once")
 	var was := v(3).stat(&"movement")
@@ -77,7 +77,7 @@ func test_drown() -> void:
 			and b.terrain(siren().cell).tags.has(&"water"), "won: dragged into the water, the Siren beside it, both submerged")
 	var held := drown.effects[0]
 	ok(held in v(1).timed and v(1).timed[held].by == siren() and v(1).timed[held].lasting and v(1).hp == hp, "Submerged: held till it breaks free, no damage yet")
-	ok("Holds it: moving away first takes 1 + the caster's str mod tiles of movement and a str contest. Each turn it ends held, it takes 1d12 + str mod" in drown.describe(1),
+	ok("Holds it: moving away first takes 1 + str mod tiles of movement and a contest. Each turn it ends held, it takes 1d12 + str mod" in drown.describe(1),
 			"described (%s)" % drown.describe(1))
 	var struggles := []
 	var grips := []
@@ -113,7 +113,7 @@ func test_drown() -> void:
 	b.end_turn()
 	ok(held not in v(1).timed and grips.size() == n, "its holder gone from beside it: let go, nothing taken")
 	ok(Battle.drag_penalty(drown, 1, 3) == 3 and Battle.drag_penalty(drown, 2, 3) == 0, "-1 a tile it drags, less rank - 1")
-	ok("Str contest in place of an attack roll" in drown.describe(1), "described (%s)" % drown.describe(1))
+	ok("Contest (str mod vs str mod) in place of an attack" in drown.describe(1), "described (%s)" % drown.describe(1))
 	stage(nemes, {siren(): Vector2i(1, 1), v(1): Vector2i(2, 1)})
 	var ap := siren().ap_left()
 	ok(b.drag_spot(siren(), drown, v(1)) == null and not b.cast(siren(), drown, v(1)) and siren().ap_left() == ap, "no water it could walk to: it can't be used")
