@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="E_mit"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.1
+name = "Bulwark"
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Bulwark"
+tags = Array[StringName]([&"martial", &"con"])
+ap = 3.0
+cost = 2
+self_only = true
+hostile = false
+turns = 2
+effects = Array[ExtResource("2_effect")]([SubResource("E_mit")])

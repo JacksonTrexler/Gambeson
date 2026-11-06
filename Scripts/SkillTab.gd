@@ -21,9 +21,10 @@ const GENERAL := {&"": Color("#7a7d85"), &"martial": Color("#d27a70"), &"special
 const GODS := {&"ramut": Color("#c08a5a"), &"eros": Color("#ee95c0"), &"sol": Color("#f08a55"), &"urlo": Color("#6fd8e4"),
 		&"luun": Color("#8f86d6"), &"drael": Color("#68aee8"), &"vetruvis": Color("#b8935e")}
 const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a")}
-const KINDS := {"Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
+const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
 const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
-		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0")}
+		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
+		"Berserker": Color("#c25a3c")}
 
 
 # "Calling: Freedom".

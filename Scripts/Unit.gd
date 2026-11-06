@@ -13,6 +13,7 @@ const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"i
 const BASE_AP := 10.0
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
 		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
+const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
@@ -360,8 +361,56 @@ func unranked() -> Dictionary:
 func base_rank(s: Skill) -> int:
 	for x in slots:
 		if x.skill == s:
+			if x.rank > 0 and s.rank_cost == 0:
+				var a := affinity(s)
+				if a != 0:  # its points, read on its Affinity's curve: it may rank up or down at once
+					return maxi(Unit.rank_for(points_in(s), a, s.max_rank), 1)
 			return x.rank
 	return 0
+
+
+# Its Affinity for s: affinity effects tagged with the postures s serves (Skill.serves: Berserker's
+# Offender +1 offensive, Unsupportive and Indefensible -1), added up - a skill pulled both ways nets out.
+func affinity(s: Skill) -> int:
+	var ps: Array[StringName] = []
+	for p in POSTURES:
+		if s.serves(p):
+			ps.append(p)
+	return roundi(stat(&"affinity", ps)) if not ps.is_empty() else 0
+
+
+# Skill points put into s: what was spent on it, or what its rank is worth on the even curve.
+func points_in(s: Skill) -> int:
+	for x in slots:
+		if x.skill == s:
+			return x.points if x.points >= 0 else Unit.worth(x.rank, 0)
+	return 0
+
+
+# Skill points rank n is worth on an Affinity's curve, all told. Even (0): 1 to unlock, then 1 + r^2 a
+# rank (1, 3, 8, 18: about n^2); +1: n log2 n, no less than n (1, 2, 5, 8, 12); +2 and up: n; -1 and
+# down: n^(2 - affinity) (-1: 1, 8, 27).
+static func worth(n: int, a: int) -> int:
+	if n <= 0:
+		return 0
+	if a == 0:
+		var t := 1
+		for r in range(1, n):
+			t += 1 + r * r
+		return t
+	if a >= 2:
+		return n
+	if a == 1:
+		return maxi(n, ceili(n * log(n) / log(2.0)))
+	return roundi(pow(n, 2 - a))
+
+
+# The rank `points` buy on an Affinity's curve, up to `cap` (0: no cap).
+static func rank_for(points: int, a: int, cap := 0) -> int:
+	var n := 0
+	while worth(n + 1, a) <= points and (cap == 0 or n < cap):
+		n += 1
+	return n
 
 
 # An attribute of s for it (range, rank): what its effects add, asked with s's tags (Skill.query()),
@@ -585,7 +634,7 @@ func missing(s: Skill) -> String:
 	if devoted and tab and tab.devotes and tab != devoted:
 		return "Devoted to %s" % devoted.name
 	var b := root.branch(s)
-	var first := b.after.filter(func(x: Skill): return rank(x) == 0)
+	var first := b.after.filter(func(x: Skill): return rank(x) == 0 and not _skippable(x))
 	if not first.is_empty():
 		return "Learn %s first" % " and ".join(first.map(func(x: Skill): return x.name))
 	if b.needs > 0:
@@ -593,6 +642,12 @@ func missing(s: Skill) -> String:
 		if have < b.needs:
 			return "Needs %d %s skills (%d so far)" % [b.needs, root.name, have]
 	return ""
+
+
+# A step on its trees it may pass over (Reckless Abandon: defensive and supportive skills that don't
+# also attack).
+func _skippable(x: Skill) -> bool:
+	return stat(&"abandon") > 0 and (x.serves(&"supportive") or x.serves(&"defensive")) and not x.serves(&"offensive")
 
 
 # The devoting tab (a Warlock's patron) it has learned a skill on beyond the shared row, or null:
@@ -635,6 +690,9 @@ func raise_cost(s: Skill) -> int:
 	var r := base_rank(s)
 	if s.rank_cost > 0 and r > 0:
 		return roundi(s.rank_cost * pow(s.rank_growth, r - 1))
+	var a := affinity(s) if r > 0 else 0
+	if a != 0:  # the points to its next rank on its Affinity's curve
+		return Unit.worth(r + 1, a) - points_in(s)
 	return 1 + r * r
 
 
@@ -648,11 +706,15 @@ func can_raise(s: Skill) -> bool:
 func raise(s: Skill) -> bool:
 	if not can_raise(s) or skill_points < raise_cost(s):
 		return false
-	purchases.append([s, raise_cost(s)])
-	skill_points -= raise_cost(s)
+	var cost := raise_cost(s)
+	var into := points_in(s) + cost
+	var curved := affinity(s) != 0 and s.rank_cost == 0
+	purchases.append([s, cost])
+	skill_points -= cost
 	for x in slots:
 		if x.skill == s:
-			x.rank += 1
+			x.points = into
+			x.rank = maxi(Unit.rank_for(into, 0, s.max_rank), 1) if curved else x.rank + 1  # its even-curve rank, for when the Affinity's gone
 	_arrange()  # a slot-granting skill may grant more per rank
 	refit()  # and a passive more of what's derived (Hardy)
 	return true

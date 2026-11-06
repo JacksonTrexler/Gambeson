@@ -157,10 +157,12 @@ func on_tile() -> bool:
 # Whether it can serve a posture when a unit reaches for its default move (HUD default orders, and the
 # context tags in docs/plan-composability.md): &"offensive" an attack on a foe, &"supportive" help for
 # an ally, &"defensive" protecting oneself. A skill can serve more than one (a dual spell attacks and
-# supports); a passive serves none - it's not a move to order.
+# supports); a passive serves none - it's not a move to order. A posture tag on it decides outright.
 func serves(posture: StringName) -> bool:
 	if passive:
 		return false
+	if tags.any(func(t: StringName): return t in Unit.POSTURES):  # tagged with its posture outright (Frenzy: offensive)
+		return posture in tags
 	match posture:
 		&"offensive":
 			return for_foes() and (attacks() or contests() or not tiers.is_empty() or pull != 0 or disables)

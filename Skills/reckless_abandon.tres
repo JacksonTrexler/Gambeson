@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="E_off"]
+script = ExtResource("2_effect")
+stat = "affinity"
+amount = 1
+tags = Array[StringName]([&"offensive"])
+name = "Offender"
+
+[sub_resource type="Resource" id="E_sup"]
+script = ExtResource("2_effect")
+stat = "affinity"
+amount = -1
+tags = Array[StringName]([&"supportive"])
+name = "Unsupportive"
+
+[sub_resource type="Resource" id="E_def"]
+script = ExtResource("2_effect")
+stat = "affinity"
+amount = -1
+tags = Array[StringName]([&"defensive"])
+name = "Indefensible"
+
+[sub_resource type="Resource" id="E_ab"]
+script = ExtResource("2_effect")
+stat = "abandon"
+amount = 1
+
+[resource]
+script = ExtResource("1_skill")
+name = "Reckless Abandon"
+passive = true
+inherent = true
+tags = Array[StringName]([&"martial"])
+effects = Array[ExtResource("2_effect")]([SubResource("E_off"), SubResource("E_sup"), SubResource("E_def"), SubResource("E_ab")])
+lore = "A Berserker's trait: it gives itself to the fight and nothing else."
