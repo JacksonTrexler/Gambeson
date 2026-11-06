@@ -13,7 +13,7 @@
 - [ ] **Saving** the stash and outfit: later.
 - [ ] Sources for Habergeon, Brigandine, Aethendine and Ignauldron (drops, rewards, shops).
 
-47. Armor weights, as built (my numbers): light the higher of 10 and level / 2, + dex mod; medium the higher of 12 and level × 0.75, + dex mod / 2; heavy the higher of 14 and level, + dex mod / 4. Aethendine and Ignauldron lift their drag at mod 2+. Robe counts as light (it used to be the higher of 8 and level / 4), and Plate now matches Brigandine exactly (it was a flat 20) - should Plate differ, or go? Half Plate is medium now, so your "10 or level / 2 + dex / 4" for it gave way to Habergeon's scaling.
+47. **Confirmed (2026-11-06).** Robe is unique (`no_dex`, `mind_stat = wisdom`: no dex to Defense, wis mod as magical Defense). Plate kept matching Brigandine; weight numbers stand. Encounter-end drops: mundane armor common, armor with added effects rare (`Item.rarity`; `Loot` weights by it; Aethendine and Ignauldron marked rare). Boss commanders wear heavy armor where it fits - Alabaster is a stone golem whose Stoneskin already makes it the heavy unit, so it's left unarmored by design; the rule applies to humanoid commanders as they're authored. *Original, for the record:* Armor weights, as built (my numbers): light the higher of 10 and level / 2, + dex mod; medium the higher of 12 and level × 0.75, + dex mod / 2; heavy the higher of 14 and level, + dex mod / 4. Aethendine and Ignauldron lift their drag at mod 2+. Robe counts as light (it used to be the higher of 8 and level / 4), and Plate now matches Brigandine exactly (it was a flat 20) - should Plate differ, or go? Half Plate is medium now, so your "10 or level / 2 + dex / 4" for it gave way to Habergeon's scaling.
 
 ## Monsters
 

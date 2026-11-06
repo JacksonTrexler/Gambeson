@@ -23,7 +23,8 @@ func roll(rng: RandomNumberGenerator) -> Item:
 
 
 func weight(i: int) -> float:
-	return weights[i] if i < weights.size() else 1.0
+	var w: float = weights[i] if i < weights.size() else 1.0
+	return w * (items[i].rarity_pull() if i < items.size() and items[i] else 1.0)
 
 
 # "Heart Up (25%) or Heart (75%)".

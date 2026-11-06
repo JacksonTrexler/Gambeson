@@ -93,9 +93,9 @@ func test_starter_spells_on_allies() -> void:
 	u.refresh()
 	b.cast(u, sola, v(1))
 	ok(v(1).timed[sola.effects[0]].turns == 4 and u.energy == u.max_energy - 8, "rank III: 3 turns (after this one), for 6 energy")
-	ok(is_equal_approx(b.skill_range(u, sola), 1.21), "range int mod (0), but always the adjacent: 1 + reach and sizes")
-	u.intelligence = 16
-	ok(is_equal_approx(b.skill_range(u, sola), 3.21), "int 16: range 3")
+	ok(is_equal_approx(b.skill_range(u, sola), 3.21), "range 1 + int mod (16 -> 3) + reach and sizes")
+	u.intelligence = 4
+	ok(is_equal_approx(b.skill_range(u, sola), 1.21), "a negative int mod still reaches the adjacent: floored at 1 + 0.21 sizes")
 	ok("On an ally: Persona: +1 for 3 turns" in sola.describe(3) and "On a foe: deals 1d4 + int" in sola.describe(3),
 			"described both ways (%s)" % sola.describe(3))
 	u.free()

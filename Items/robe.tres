@@ -6,3 +6,5 @@
 script = ExtResource("1_item")
 name = "Robe"
 tags = Array[StringName]([&"light", &"cloth"])
+no_dex = true
+mind_stat = &"wisdom"

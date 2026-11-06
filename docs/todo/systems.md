@@ -34,3 +34,11 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. *Now:* units can be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
 
 21. Evidence:  "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
+
+## Composability seams (see `docs/plan-composability.md`)
+
+- [ ] **`Check` resolver**: one value type + `Battle.resolve()` for every d20 roll (Attack, Save, Contest, Check, Last Stand), so offence is always `d20 + the user's mod vs defence(tags)`. Migrate the inline rolls in `Battle.gd` one call site at a time. *First seam.*
+- [ ] **Tile stacks**: a cell becomes an ordered stack of terrain layers; a masking layer hides those below. Collapses the snare/zone/earthwork dicts over time. (?59)
+- [ ] **Behaviour spine for skills**: grow `Skill.behaviours` (compose verbs that read a shared `Cast` bag) beside the flags; lift flags into behaviours on touch, densest clusters first (Strike chain, damage+riders, heals). Describe-where-you-execute. Answers ?55.
+- [ ] **Context tags**: tag each cast offensive / defensive / supportive by use, feeding `Check` and the Affinity rank-cost. Enables Berserker and "invest under circumstances".
+- [ ] **Derived-stat pipeline** (`Unit.derive()`): base ± respec ± buffs -> HP formula -> refit bonuses. HP = `((con mod · (1 + hardy)) + class_base) · level`; hand-authored bosses keep flat `max_hp`. Enables Hardy, Meditate respec, Self-reflection.

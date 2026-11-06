@@ -33,7 +33,10 @@ func test_armor() -> void:
 	v(1).armor = haubergeon
 	ok(v(1).defense() == 13, "Habergeon (medium): the higher of 12 and level x 0.75, + dex mod / 2 (lucky: 1)")
 	v(1).armor = robe
-	ok(v(1).defense() == 11, "a Robe is light: as a Gambeson")
+	ok(v(1).defense() == 11 and v(1).defense([&"magical"]) == 11 and v(1).defense([&"physical"]) == 10,
+			"Robe: light floor, no dex, wis mod as magical Defense only (10 + wis against magic, 10 against a blow)")
+	ok(v(1).tagged_defense().get(&"magical", 0) == 1 and robe.describe().contains("no dex mod") and robe.describe().contains("wis mod as magical Defense"),
+			"its wis-as-magical shows as tagged Defense and in its text")
 	ok(gambeson.describe().split("\n")[0] == "Light armor: Defense the higher of 10 and level / 2, + dex mod", "describes itself (%s)" % gambeson.describe())
 	ok(plate.describe().split("\n")[0] == "Heavy armor: Defense the higher of 14 and level, + dex mod / 4"
 			and haubergeon.describe().split("\n")[0] == "Medium armor: Defense the higher of 12 and level x 0.75, + dex mod / 2", "Plate, Habergeon")

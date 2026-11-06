@@ -831,13 +831,23 @@ func mitigation(tags: Array[StringName]) -> float:
 # untagged ones always, tagged ones against attacks carrying that tag or a child of it (physical
 # Defense counts against a pierce).
 func defense(tags: Array[StringName] = []) -> int:
-	return armor_defense() + roundi(stat(&"defense", tags)) + (hearts_used if trinket and trinket.spent_defense else 0)
+	return armor_defense() + roundi(stat(&"defense", tags)) + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0)
+
+
+# Defence its armor's mind_stat adds against magical attacks alone (Robe: wis mod). Untagged queries
+# (Defense shown at rest) count it too, so the sheet reflects it; a physical blow doesn't.
+func armor_mind(tags: Array[StringName] = []) -> int:
+	if not armor or not armor.mind_stat:
+		return 0
+	return mod(armor.mind_stat) if tags.is_empty() or &"magical" in Tags.expand(tags) else 0
 
 
 # The Defense it has on top against attacks carrying a particular tag: tag -> how much more (Hydera:
 # magical +1). Tags it has none extra for are left out.
 func tagged_defense() -> Dictionary:
 	var out := {}
+	if armor and armor.mind_stat and mod(armor.mind_stat) != 0:
+		out[&"magical"] = mod(armor.mind_stat)
 	for pair in _effects():
 		var e: Effect = pair[0]
 		if e.stat == "defense":
@@ -858,7 +868,7 @@ func armor_defense() -> int:
 	var w := armor.weight()
 	if w:
 		var base: Array = Item.WEIGHTS[w]
-		var share: float = 1.0 if armor.full_dex else base[2]
+		var share: float = 0.0 if armor.no_dex else (1.0 if armor.full_dex else base[2])
 		var m := mod(&"dexterity")
 		var dex := floori(m * share) if m < 0 else rounded(m * share)  # a negative share rounds down: a penalty always bites
 		return maxi(base[0], rounded(lv() * base[1])) + dex + armor.enchant

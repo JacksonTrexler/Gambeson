@@ -11,6 +11,7 @@ per_rank = true
 [resource]
 script = ExtResource("1_item")
 name = "Aethendine"
+rarity = "rare"
 tags = Array[StringName]([&"metal", &"heavy", &"wind"])
 full_dex = true
 eases = &"dexterity"

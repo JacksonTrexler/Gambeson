@@ -625,7 +625,7 @@ func test_dual_spell_ui() -> void:
 	h.hover_cell(Vector2i(5, 3))
 	ok("3 AP, 2 energy · Persona: +1, 1 turn" in h.tip_label.text and "to hit" not in h.tip_label.text, "on the ally: its cost, and what it gets (%s)" % h.tip_label.text)
 	h.hover_cell(Vector2i(4, 4))
-	ok("to hit" in h.tip_label.text and "1-4 damage" in h.tip_label.text, "on the foe: the chance to hit, and damage (%s)" % h.tip_label.text)
+	ok("to hit" in h.tip_label.text and "4-7 damage" in h.tip_label.text, "on the foe: the chance to hit, and damage (1d4 + int mod 3) (%s)" % h.tip_label.text)
 	h.click(Vector2i(5, 3))
 	ok(v(1).stat(&"persona") == 1.0 and h.armed == null, "clicked on the ally: it gets the persona")
 	h.free()

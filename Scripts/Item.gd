@@ -14,6 +14,7 @@ extends Resource
 @export var hearts := 0  # extra lives: while it's worn (Heart Up), or given for good as it's used (a Heart)
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
 @export var rank := 1  # how good it is: what its effects scale by (per_rank)
+@export_enum("common", "uncommon", "rare") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare
 
 @export_group("Armor")  # sets its wearer's Defense (Unit.armor_defense())
 @export var defense := 0  # the least it gives (Gambeson: 10)
@@ -21,6 +22,8 @@ extends Resource
 @export var dex_share := 0.0  # then adds the wearer's dex x this, luck-rounded (Half Plate: dex / 4)
 @export var plus_dex := false  # then adds the wearer's dex mod; armor setting none of these, and of no weight, leaves Defense unarmored (Heart Up-Link)
 @export var full_dex := false  # heavy armor that takes its wearer's whole dex mod all the same (Aethendine)
+@export var no_dex := false  # weighted armor that adds no dex mod to Defense at all (Robe: cloth)
+@export var mind_stat := &""  # ...adds its wearer's mod in this as magical Defense instead (Robe: wisdom)
 @export var eases := &""  # the heavy-armor AP drag it lifts from a wearer strong enough: dexterity (with con: Aethendine) or wisdom (with str: Ignauldron) (Unit.armor_drag())
 @export var heat := 0  # fire it deals its wearer as each of its turns starts, x rank (Ignauldron)
 
@@ -49,6 +52,7 @@ const WEIGHTS := {
 	&"heavy": [14, 1.0, 0.25],  # Brigandine: high level scaling, low dex scaling
 }
 const ARMOR_AP := 10  # armor takes this - its wearer's dex mod in AP to put on in battle: hardly worth it mid-fight
+const RARITY_WEIGHT := {"common": 1.0, "uncommon": 0.4, "rare": 0.15}  # a drop table's relative pull, before its own weights
 
 
 # "Defense: the higher of 10 and level / 2, + dex mod".
@@ -128,6 +132,11 @@ func filled() -> Item:
 
 # Sets its wearer's Defense (armor): it has a floor or a level rule. One that doesn't (Heart Up-Link)
 # leaves Defense as if unarmored.
+# How much a drop table leans toward it, by rarity (Loot.weight()).
+func rarity_pull() -> float:
+	return RARITY_WEIGHT.get(rarity, 1.0)
+
+
 func sets_defense() -> bool:
 	return weight() != &"" or defense > 0 or per_level > 0.0
 
@@ -147,8 +156,10 @@ func _armor() -> String:
 	if w:
 		var base: Array = WEIGHTS[w]
 		var lv := "level" if base[1] == 1.0 else ("level / %s" % Skill.num(1.0 / base[1]) if base[1] <= 0.5 else "level x %s" % Skill.num(base[1]))
-		var dex := "dex mod" if full_dex or base[2] == 1.0 else "dex mod / %s" % Skill.num(1.0 / base[2])
+		var dex := "no dex mod" if no_dex else ("dex mod" if full_dex or base[2] == 1.0 else "dex mod / %s" % Skill.num(1.0 / base[2]))
 		var text := "%s armor: Defense the higher of %d and %s, + %s" % [String(w).capitalize(), base[0], lv, dex]
+		if mind_stat:
+			text += ", and %s mod as magical Defense" % String(mind_stat).left(3)
 		if w == &"heavy":
 			text += "\nHeavy: %s" % ("costs dex AP (less with con: none at con mod 2+ for this one) and wis AP (less with str)" if eases == &"dexterity"
 					else "costs dex AP (less with con) and wis AP (less with str: none at str mod 2+ for this one)" if eases == &"wisdom"

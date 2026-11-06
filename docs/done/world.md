@@ -102,3 +102,5 @@ Jimhe Deyn runs competing gangs out of Center, each a mix of species shoehorned 
 - **The Heaflers** (Meditative Bracing): casters made to sprint the city's circular paths in full armor. They look damn haggard.
 - **The Teufers** (Invigorating Bracing): casters who cinch their robes two belt notches tight to stay lively. They don't look pretty.
 - [ ] The gangs as encounters, and these places as scenes.
+- [x] **Robe** is a unique cloth armor (`Item.no_dex`, `Item.mind_stat`): light floor and level scaling, no dex to Defense, the wearer's wis mod as **magical** Defense (it shows in `tagged_defense()` and only against magical attacks). (?47 confirmed)
+- [x] **Drop rarity** (`Item.rarity`: common/uncommon/rare; `Item.rarity_pull()`, `Loot.weight()` multiplies by it): mundane armor is common, armor with added effects rare (Aethendine, Ignauldron marked rare). Boss commanders wear heavy armor where it fits (Alabaster, a stone golem, stays unarmored - its Stoneskin is its heavy defense).
