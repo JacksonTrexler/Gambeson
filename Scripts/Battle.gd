@@ -328,6 +328,24 @@ func initiative_bonus(f: Faction) -> int:
 # Orders sides best-first. Each key is tried in turn, then the side's best luck, then its total
 # dexterity; a coin decides only sides still tied after all of that.
 # A side is a Unit, a Faction, an Array of Units (e.g. "Company A"), or anything the keys rank.
+# Resolves a Check against this battle's rng: rolls a d20 (the better or worse of two with edge),
+# adds the bonus, and decides the hit - met the target, a natural 20 on an attack, or forced sure.
+# The one place a d20 roll is defined (docs/plan-composability.md, seam 1).
+func resolve(c: Check) -> Check.Roll:
+	var d := rng.randi_range(1, 20)
+	if c.advantage > 0:
+		d = maxi(d, rng.randi_range(1, 20))
+	elif c.advantage < 0:
+		d = mini(d, rng.randi_range(1, 20))
+	var r := Check.Roll.new()
+	r.d20 = d
+	r.total = d + c.bonus
+	r.target = c.target
+	r.crit = c.crits and d == 20
+	r.hit = c.floor_hit or r.crit or r.total >= c.target
+	return r
+
+
 func contest(sides: Array, keys: Array[Callable] = []) -> Array:
 	var chain: Array = keys.duplicate()
 	chain.append_array([best_luck, dexterity])
@@ -517,16 +535,13 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return true
 	var overage := 0  # what a roll beat Defense by (Irradiate)
 	if foe and skill.attacks():
-		var d20 := rng.randi_range(1, 20)
-		if skill.advantage:
-			d20 = maxi(d20, rng.randi_range(1, 20))
-		var total := d20 + caster.attack_mod(skill) + skill.roll_per_rank * r + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive")
-		var defense := target.defense(tags)
-		overage = maxi(total - defense, 0)
-		crit = d20 == 20
-		attacked.emit(caster, target, d20, total, defense)
-		_evaluate(caster, skill, d20, total)
-		if not crit and total < defense:
+		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive")
+		var hit := resolve(Check.attack(bonus, target.defense(tags), skill.advantage))
+		overage = maxi(hit.margin(), 0)
+		crit = hit.crit
+		attacked.emit(caster, target, hit.d20, hit.total, hit.target)
+		_evaluate(caster, skill, hit.d20, hit.total)
+		if not hit.hit:
 			_expose(target)
 			used.emit(caster, skill, target, 0)
 			return true
@@ -916,14 +931,14 @@ func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
 	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
 	if hiding <= 0 and trap <= 0 and not mixed:
 		return false
-	var total := rng.randi_range(1, 20) + o.mod(&"wisdom") + bonus - distance_penalty(o, center if center != null else o.cell, c)
+	var total := resolve(Check.check(o.mod(&"wisdom") + bonus - distance_penalty(o, center if center != null else o.cell, c), 0)).total
 	if mixed and hiding <= 0 and trap <= 0:
 		var a := o.scrambled()
 		if total >= a.roll:
 			a.through.append(t)
 		untangled.emit(o, t, total, a.roll)
 		return total >= a.roll
-	var against := rng.randi_range(1, 20) + maxi(hiding, trap)
+	var against := resolve(Check.check(maxi(hiding, trap), 0)).total
 	if total >= against:
 		suspect(o, c)
 		if hiding > 0:
@@ -2320,13 +2335,12 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var d20 := rng.randi_range(1, 20)
-		var total := d20 + caster.attack_mod(skill) + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty
-		var defense := t.defense(blow)
-		var crit := d20 == 20
-		attacked.emit(caster, t, d20, total, defense)
-		_evaluate(caster, skill, d20, total)
-		if not (sure or crit or total >= defense):
+		var bonus := caster.attack_mod(skill) + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty
+		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure))
+		var crit := hit.crit
+		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
+		_evaluate(caster, skill, hit.d20, hit.total)
+		if not hit.hit:
 			row = 0
 			if i < steady:
 				continue
