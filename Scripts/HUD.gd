@@ -56,6 +56,7 @@ var dubious: Dictionary[Vector2i, String] = {}  # tiles where something is only 
 var sleepers: Array[Unit] = []  # units the player can see are asleep, as of the last refresh
 var traps: Dictionary[Vector2i, bool] = {}  # traps the player's side knows of: true for ones it laid
 var grounds: Dictionary[Vector2i, StringName] = {}  # ground() for every tile, as of the last refresh
+var suspect: Dictionary[Vector2i, String] = {}  # concealed tiles the player has a hint about (a disguised trap) -> the hint
 var _icons := {}  # [source id, atlas coords] -> AtlasTexture, for the tile pane
 var _pane_list := ""  # what the pane's effect list last showed (a new one scrolls from the start)
 var _scroll_t := 0.0  # seconds into the effect list's auto-scroll
@@ -165,6 +166,13 @@ func _ready() -> void:
 	%BookIcon.pressed.connect(toggle_spellbook)
 	%CogIcon.pressed.connect(toggle_settings)
 	%SettingsClose.pressed.connect(_close_panels)
+	%HighContrast.toggled.connect(func(on: bool) -> void:
+		high_contrast = on
+		_apply_contrast()
+		_mark())
+	%SuspiciousMarks.toggled.connect(func(on: bool) -> void:
+		suspicious_marks = on
+		_mark())
 	add_to_group(&"guide")
 	show_guide(guide_page)
 	settings.get_parent().add_child(persona)
@@ -1184,10 +1192,14 @@ func _refresh() -> void:
 	_show_units()
 	grounds.clear()
 	traps.clear()
+	suspect.clear()
 	for c in battle.map.get_used_cells():
 		grounds[c] = ground(c)
-		if tile_view(c).trap == true:
+		var tv := tile_view(c)
+		if tv.trap == true:
 			traps[c] = c in battle.snares and battle.snares[c].faction == command.faction()
+		if tv.hint != "" and c not in dubious:  # concealed ground it suspects is more than it looks
+			suspect[c] = tv.hint
 	marked = targets()
 	sleepers.assign(battle.units.values().filter(func(u: Unit): return unit_seen(u.cell) == u and sleeping(u)))
 	card.set_info(_info(selected) if selected else {})
@@ -1228,6 +1240,21 @@ func _show_units() -> void:
 				dubious[c] = r.hint
 
 
+# The move cost line in the tile pane: nothing for plain ground (1) or free ground, "Mv -N" for a
+# real cost (a walker pictogram would read better; follow-up), a trailing "?" when the tile is
+# suspicious and the cost is known.
+func _move_label(cost: Variant, suspicious: bool) -> String:
+	if cost == null or cost <= 1:
+		return ""
+	return "Mv -%d%s" % [cost, " ?" if suspicious else ""]
+
+
+# The tile is known to be something more than it shows, its effects concealed: a hint read off it,
+# or a spot where something may lurk.
+func _suspicious(c: Vector2i, r: Read) -> bool:
+	return r.hint != "" or c in dubious
+
+
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
 # effects (auto-scrolling when long), and notes on what's uncertain about it.
 func _show_pane() -> void:
@@ -1242,10 +1269,14 @@ func _show_pane() -> void:
 	%TileIcon.texture = _tile_icon(c)
 	%TileIcon.self_modulate = battle.map.get_cell_tile_data(c).modulate
 	%TileName.text = r.name if r.name else "Unknown ground"
-	%TileCost.text = "Move ?" if r.cost == null else "Move %d" % r.cost
+	var suspicious := _suspicious(c, r)
+	%TileCost.text = _move_label(r.cost, suspicious)
+	%TileCost.visible = %TileCost.text != ""
 	var effects := _tile_effects(c, r)
 	var notes := _tile_notes(c, r)
-	if effects.is_empty() and notes.is_empty():
+	if suspicious:
+		effects.append(["?", GROUND[&"unsure"]])  # something more, its effects concealed
+	elif effects.is_empty() and notes.is_empty():
 		notes.append(["Nothing of note" if kind == &"safe" else "Hard to make out", MUTED])
 	var listed := "%s %s" % [c, effects]
 	if listed != _pane_list:
@@ -1253,7 +1284,6 @@ func _show_pane() -> void:
 		_scroll_t = 0.0
 	_fill_lines(%TileLines, effects)
 	_fill_lines(%TileNotes, notes)
-	%EffectsTitle.visible = not effects.is_empty()
 	%TileScroll.visible = not effects.is_empty()
 	_place_pane()
 
@@ -1378,8 +1408,6 @@ static func slow_middle(u: float) -> float:
 func _place_pane() -> void:
 	var want: float = %TileLines.get_combined_minimum_size().y
 	%TileScroll.custom_minimum_size.y = minf(want, PANE_LIST)
-	var n: int = %TileLines.get_child_count()
-	%EffectsTitle.text = "EFFECTS  %d" % n
 	pane.reset_size()
 	var view := pane.get_viewport_rect().size
 	var lo := Vector2(($Root/Left as Control).get_global_rect().end.x + 3, 3)
@@ -1947,6 +1975,15 @@ func _nag(why: String) -> void:
 # full colour), &"ordered" (told to act, colour half drained), &"tapped" (ordered and out of AP, or
 # can't act - greyed), &"idle" (not this turn / not commandable now - left as it is). Commanded units
 # desaturate along ready -> ordered -> tapped.
+# High contrast (accessibility): whiter body text and a heavier faction trim; the brighter allied
+# glow comes through command_look (passed high_contrast in _show_units), the bolder suspicious marks
+# through the Overlay. A plain, easy win on legibility.
+func _apply_contrast() -> void:
+	%Guide.add_theme_color_override(&"default_color", Color.WHITE if high_contrast else Color(0.78, 0.8, 0.85))
+	%TileLines.modulate = Color.WHITE
+	_mark()
+
+
 func command_state(u: Unit) -> StringName:
 	if not my_turn() or not known(u):
 		return &"idle"

@@ -637,6 +637,22 @@ focus_mode = 0
 tooltip_text = "Close (Esc)"
 text = "Close"
 
+[node name="Options" type="HBoxContainer" parent="Root/Settings/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HighContrast" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "High contrast"
+
+[node name="SuspiciousMarks" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Mark suspicious tiles"
+
 [node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -740,13 +756,6 @@ theme_type_variation = &"Title"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Muted"
-
-[node name="EffectsTitle" type="Label" parent="Root/TilePane/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Muted"
-theme_override_font_sizes/font_size = 5
-text = "EFFECTS"
 
 [node name="TileScroll" type="ScrollContainer" parent="Root/TilePane/Column"]
 unique_name_in_owner = true

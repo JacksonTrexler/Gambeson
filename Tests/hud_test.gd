@@ -276,18 +276,25 @@ func test_ground() -> void:
 	ok(not h.dubious.is_empty() and h.dubious.keys().all(func(c): return h.grounds[c] == &"unsure"), "so is anywhere something may lurk")
 	h.hover_cell(Vector2i(6, 4))
 	ok(h.tip_label.text.begins_with("Walk here: 4? of 5"), "a walk across unsure ground gets a '?' on its cost")
-	ok(h.pane.visible and h.get_node("%TileName").text == "Grass" and h.get_node("%TileCost").text == "Move 1", "the tile pane shows the hovered tile")
+	ok(h.pane.visible and h.get_node("%TileName").text == "Grass" and h.get_node("%TileCost").text == "" and not h.get_node("%TileCost").visible, "the tile pane shows the hovered tile; a Move 1 cost isn't shown")
 	h.hover_cell(Vector2i(5, 4))
-	ok(h.get_node("%TileCost").text == "Move ?" and h.get_node("%TileNotes").get_child(0).get_parsed_text() == "Disturbed earth?"
-			and not h.get_node("%TileScroll").visible, "the trap's tile: cost unknown, no known effects, a hint")
+	var susp: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
+	ok(h.get_node("%TileCost").text == "" and h.get_node("%TileNotes").get_child(0).get_parsed_text() == "Disturbed earth?"
+			and susp == ["?"], "the trap's tile: cost unknown, a hint, and a '?' marking it as something concealed")
+	h._refresh()
+	ok(Vector2i(5, 4) in h.suspect, "the map marks the suspected concealed tile with a ?")
+	h.get_node("%SuspiciousMarks").toggled.emit(true)
+	h.get_node("%HighContrast").toggled.emit(true)
+	ok(h.suspicious_marks and h.high_contrast and h.get_node("%Guide").get_theme_color(&"default_color") == Color.WHITE,
+			"accessibility: mark-suspicious and high-contrast toggles take, whitening body text")
 	b.revealed[Vector2i(5, 4)] = true
 	h._refresh()
-	ok(h.grounds[Vector2i(5, 4)] == &"bad", "sprung, it's known bad ground")
+	ok(h.grounds[Vector2i(5, 4)] == &"bad" and Vector2i(5, 4) not in h.suspect, "sprung, it's known bad ground - no longer suspect")
 	h.hover_cell(Vector2i(6, 4))
 	ok("Stops 1 short (3 move)" in h.tip_label.text and "Steps onto a known trap" in h.tip_label.text, "the plan stops on it, warns, and is sure of its cost")
 	h.hover_cell(Vector2i(2, 2))
 	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
-	ok(h.get_node("%TileName").text == "Bramble" and h.get_node("%TileCost").text == "Move 1" and lines == ["Sticky: +1 to leave"], "bramble: neutral, sticky")
+	ok(h.get_node("%TileName").text == "Bramble" and h.get_node("%TileCost").text == "" and lines == ["Sticky: +1 to leave"], "bramble: neutral, sticky (Move 1 hidden)")
 	h._unhandled_input(key(KEY_B))
 	ok(not h.pane.visible, "the spellbook hides the pane")
 	h.free()
@@ -358,7 +365,7 @@ func test_stew_pane() -> void:
 	var h := await start(v(1))
 	h.hover_cell(Vector2i(4, 0))
 	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
-	ok(h.get_node("%TileName").text == "Magic Stew" and h.get_node("%TileCost").text == "Move 4", "the magic stew: 4 to enter")
+	ok(h.get_node("%TileName").text == "Magic Stew" and h.get_node("%TileCost").text == "Mv -4", "the magic stew: Mv -4 to enter")
 	ok(lines == ["Heal: 15% each turn",
 			"Poison: 5% each turn · 3 turns · at turn end",
 			"Sleep: can't act · 1 turn · at turn end",

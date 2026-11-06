@@ -43,10 +43,11 @@ func _draw() -> void:
 	var sel := hud.selected
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
 	var mine := hud.my_turn()
+	var loud := hud.suspicious_marks or hud.high_contrast  # accessibility: a plain, bold ? on every suspicious tile
 	for c in hud.dubious:
-		draw_rect(_rect(c, 2), Color(DUBIOUS, 0.12))
-		draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6, 10,
-				Color(DUBIOUS, 0.25 + 0.2 * pulse))
+		_suspect_mark(c, DUBIOUS, pulse, loud)
+	for c in hud.suspect:  # concealed ground it suspects is more than it looks: a translucent ? placeholder
+		_suspect_mark(c, GOLD, pulse, loud)
 	_lattice(b, pulse)
 	for c in b.earthworks:
 		_earth(c)
@@ -85,6 +86,15 @@ func _draw() -> void:
 
 # Tiles the selected unit expects to reach, shaded by how the ground is judged (HUD.ground()),
 # with a line around the area.
+# A ? marking a suspicious tile: faint and tinted by default, bold and fuller in high-contrast /
+# "mark suspicious" mode (an overlay stands in for a real grit texture for now).
+func _suspect_mark(c: Vector2i, tint: Color, pulse: float, loud: bool) -> void:
+	draw_rect(_rect(c, 2), Color(tint, 0.2 if loud else 0.12))
+	var a := (0.85 if loud else 0.25) + 0.2 * pulse
+	draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6,
+			12 if loud else 10, Color(tint if not loud else Color(1, 1, 1), a))
+
+
 func _draw_reach(sel: Unit) -> void:
 	var inside := func(c: Vector2i) -> bool: return c in hud.reach or c == sel.cell
 	var sides := [[Vector2i.UP, 0, 1], [Vector2i.RIGHT, 1, 2], [Vector2i.DOWN, 2, 3], [Vector2i.LEFT, 3, 0]]
