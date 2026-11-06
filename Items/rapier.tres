@@ -7,5 +7,5 @@ script = ExtResource("1_item")
 name = "Rapier"
 slot = "weapon"
 damage_tag = &"pierce"
-tags = Array[StringName]([&"blade", &"finesse"])
+tags = Array[StringName]([&"blade", &"finesse", &"light"])
 attack_stats = Array[StringName]([&"dexterity"])

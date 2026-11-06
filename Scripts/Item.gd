@@ -14,6 +14,7 @@ extends Resource
 @export var hearts := 0  # extra lives: while it's worn (Heart Up), or given for good as it's used (a Heart)
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
 @export var rank := 1  # how good it is: what its effects scale by (per_rank)
+@export var weight := -1  # what it adds to its wearer's weight while equipped (heft()); -1: by its kind - armor by class (light 0, medium 1, heavy 2), a weapon medium (1) unless tagged light (0) or heavy (2), anything else 0
 @export_enum("common", "uncommon", "rare") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare
 
 @export_group("Armor")  # sets its wearer's Defense (Unit.armor_defense())
@@ -132,17 +133,33 @@ func filled() -> Item:
 
 # Sets its wearer's Defense (armor): it has a floor or a level rule. One that doesn't (Heart Up-Link)
 # leaves Defense as if unarmored.
+const HEFT := {&"light": 0, &"medium": 1, &"heavy": 2}  # weight by class (heft())
+
+
+# What it adds to its wearer's weight while equipped (Unit.weight()): its own weight if it has one,
+# else by its kind - armor and weapons by their class (a weapon is medium unless tagged otherwise).
+func heft() -> int:
+	if weight >= 0:
+		return weight
+	match slot:
+		"armor":
+			return HEFT.get(weight_class(), 0)
+		"weapon":
+			return HEFT.get(weight_class(), HEFT[&"medium"])
+	return 0
+
+
 # How much a drop table leans toward it, by rarity (Loot.weight()).
 func rarity_pull() -> float:
 	return RARITY_WEIGHT.get(rarity, 1.0)
 
 
 func sets_defense() -> bool:
-	return weight() != &"" or defense > 0 or per_level > 0.0
+	return weight_class() != &"" or defense > 0 or per_level > 0.0
 
 
 # Its weight, by tag: light, medium, heavy, or none (armor of its own sort: Heart Up-Link).
-func weight() -> StringName:
+func weight_class() -> StringName:
 	for w in [&"heavy", &"medium", &"light"]:
 		if w in tags:
 			return w
@@ -152,7 +169,7 @@ func weight() -> StringName:
 func _armor() -> String:
 	if not sets_defense():
 		return "Armor: Defense as if unarmored (dex mod + con mod)"
-	var w := weight()
+	var w := weight_class()
 	if w:
 		var base: Array = WEIGHTS[w]
 		var lv := "level" if base[1] == 1.0 else ("level / %s" % Skill.num(1.0 / base[1]) if base[1] <= 0.5 else "level x %s" % Skill.num(base[1]))

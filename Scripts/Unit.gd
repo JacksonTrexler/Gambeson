@@ -886,7 +886,7 @@ func tagged_defense() -> Dictionary:
 func armor_defense() -> int:
 	if not armor or not armor.sets_defense():
 		return mod(&"dexterity") + mod(&"constitution") + (armor.enchant if armor else 0)
-	var w := armor.weight()
+	var w := armor.weight_class()
 	if w:
 		var base: Array = Item.WEIGHTS[w]
 		var share: float = 0.0 if armor.no_dex else (1.0 if armor.full_dex else base[2])
@@ -1040,6 +1040,21 @@ func refit() -> void:
 	if hp > max_hp + over_max:
 		hp = max_hp + over_max
 	_arrange()  # items can grant slots (the Burning Bag)
+
+
+# How heavy it is to move: its size, rounded up, + what its equipped items weigh (Item.heft(): armor
+# by class, weapons medium unless light or heavy, anything with a weight of its own - Shackles).
+func weight() -> int:
+	var w := ceili(stat(&"size"))
+	for it in items():
+		w += it.heft()
+	return w
+
+
+# How hard it is to stop: how far it's moved this turn + its weight. Worked out when asked - glass's
+# check is against it (Battle._teeter()): the further and heavier it came, the worse it screwed up.
+func inertia() -> int:
+	return steps + weight()
 
 
 # Max HP its level brings on top of its base: (con mod x (1 + Hardy) + its class's vigor) a level. A
@@ -1490,12 +1505,12 @@ func _pools() -> Array[AP]:
 # below 0. None from armor that eases that pool (Item.eases) on a wearer with that mod at SUFFICIENT
 # or more. Light armor takes nothing.
 func armor_drag(pool: StringName) -> float:
-	if not armor or armor.weight() not in [&"heavy", &"medium"]:
+	if not armor or armor.weight_class() not in [&"heavy", &"medium"]:
 		return 0.0
 	var m := mod(&"constitution" if pool == &"move" else &"strength")
 	if armor.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
 		return 0.0
-	return maxf((armor.rank - m) / (2.0 if armor.weight() == &"medium" else 1.0), 0.0)
+	return maxf((armor.rank - m) / (2.0 if armor.weight_class() == &"medium" else 1.0), 0.0)
 
 
 # Wearing armor to some effect: armor that sets Defense, whose requirement it meets. Bracing passives
@@ -1516,7 +1531,7 @@ func check_mod(s: StringName, kind: StringName, tags: Array[StringName] = []) ->
 func check_bonus(s: StringName, kind: StringName) -> int:
 	if not armored():
 		return 0
-	var w := armor.weight()
+	var w := armor.weight_class()
 	var total := 0
 	for pair in _effects():
 		var e: Effect = pair[0]

@@ -41,8 +41,7 @@ extends Resource
 @export var cover := false  # advantage to concealment checks made on it (Leaves)
 @export var brittle := false  # blunt damage - aimed at it, over an area, or at whoever's on it - breaks it (glass, starpanes, startiles)
 @export var breaks_into: Terrain  # what's left when it breaks (a startile: a cracked startile); none - it's gone
-@export var unstable := false  # ending a turn on it without resting, having moved more than its dex mod in tiles, a unit breaks it, and makes a dex check against dc or drops through (glass)
-@export var dc := 12
+@export var unstable := false  # ending a turn on it without resting, having moved more than its dex mod in tiles, a unit breaks it, and makes a dex check against its inertia or drops through (glass)
 @export var flammable := false  # fire on it burns it away and sets the tile alight (Leaves)
 @export var windswept := false  # wind on it blows it away (Leaves)
 @export var source := false  # a star power source on the lattice (a startile: Battle.starpower)

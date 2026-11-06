@@ -1941,7 +1941,8 @@ func covered(c: Vector2i) -> bool:
 
 
 # Glass (unstable): ending its turn on it without resting, having moved more than its dex mod in tiles,
-# a unit breaks it and makes a dex check against the layer's dc - at disadvantage if it stepped in
+# a unit breaks it and makes a dex check against its own inertia (Unit.inertia(): tiles moved + weight) -
+# at disadvantage if it stepped in
 # blind (Leaves over it). Failing, it drops through onto what's beneath and ends its turn there.
 # Passing, it catches itself: what the ground beneath would do to it this turn's end and as its next
 # starts is spared, as it's taken to move off (Unit.steadied).
@@ -1953,7 +1954,7 @@ func _teeter(u: Unit, rested: bool) -> void:
 			break
 	if not glass or rested or u.steps <= maxi(u.mod(&"dexterity"), 0):
 		return
-	var dc := glass.terrain.dc
+	var dc := u.inertia()  # how badly it screwed up: how far and how heavy it came
 	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc).edge(-1 if u.blind_on == u.cell else 0))
 	break_layer(u.cell, glass)
 	teetered.emit(u, roll.total, dc, roll.hit)

@@ -12,11 +12,10 @@ const SHRINE := Vector2i(5, 2)  # heals whoever stands there
 const TRAP := Vector2i(5, 4)
 
 
-# Glass whose dex check always passes (dc -99) or always fails (dc 99).
-func glass(dc: int) -> Terrain:
-	var t: Terrain = GLASS.duplicate()
-	t.dc = dc
-	return t
+# Glass's check is against the unit's inertia (tiles moved + weight): a unit made tiny always clears
+# it, a huge one never does - its dex, and so how far it can move before glass breaks, untouched.
+func weigh(u: Unit, size: float) -> void:
+	u.afflict(effect("size", size), 9)
 
 
 func test_compose() -> void:
@@ -25,7 +24,7 @@ func test_compose() -> void:
 	var t := b.terrain(Vector2i(4, 3))
 	ok(t.name == "Leaves" and &"leaves" in t.tags and &"grass" in t.tags and b.reaches_ground(Vector2i(4, 3)), "leaves over grass: both count, the leaves on top")
 	ok(is_equal_approx(b.step(v(1), Vector2i(3, 3), Vector2i(4, 3)), 1.1), "entering costs the grass's 1 + the leaves' 0.1")
-	b.lay_layer(Vector2i(5, 3), glass(12))
+	b.lay_layer(Vector2i(5, 3), GLASS)
 	b.lay_layer(Vector2i(5, 3), LEAVES)
 	ok(b.reached(Vector2i(5, 3)).size() == 2 and not b.reaches_ground(Vector2i(5, 3)), "leaves over glass over grass: the leaves let through to the glass, the glass stops there")
 	ok(GLASS.effects.is_empty() and b.terrain(Vector2i(5, 3)).name == "Leaves", "the top lends its name")
@@ -55,12 +54,12 @@ func test_obscured() -> void:
 func test_brittle() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3)})
 	v(1).weapon = load("res://Items/broadsword.tres")
-	b.lay_layer(Vector2i(4, 3), glass(12))
+	b.lay_layer(Vector2i(4, 3), GLASS)
 	ok(b.attempt(v(1), strike, Vector2i(4, 3)) == &"miss" and b.top_layer(Vector2i(4, 3)) != null, "a slash doesn't break glass")
 	v(1).refresh()
 	v(1).weapon = null
 	ok(b.attempt(v(1), strike, Vector2i(4, 3)) == &"shattered" and b.top_layer(Vector2i(4, 3)) == null, "a bare-handed (blunt) blow does")
-	b.lay_layer(TRAP, glass(12))
+	b.lay_layer(TRAP, GLASS)
 	b.move(v(2), TRAP)
 	var hp := v(2).hp
 	ok(b.expose(TRAP, [&"blunt"] as Array[StringName], v(1)) and v(2).hp < hp, "a blunt blow over glass with someone on it: it gives way, onto the spikes beneath")
@@ -69,7 +68,7 @@ func test_brittle() -> void:
 func test_unstable() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3)})
 	var c := Vector2i(4, 3)
-	b.lay_layer(c, glass(99))
+	b.lay_layer(c, GLASS)
 	v(1).refresh()
 	b.travel(v(1), Vector2i(3, 3))
 	b.end_turn()
@@ -80,6 +79,7 @@ func test_unstable() -> void:
 	b.end_turn()
 	ok(b.top_layer(c) != null, "one tile onto it, within its dex mod: it holds")
 	stage(lancin, {v(1): Vector2i(2, 3)})
+	weigh(v(1), 40)
 	v(1).refresh()
 	var kept := []
 	b.teetered.connect(func(_u, _t, _dc, k): kept.append(k))
@@ -90,13 +90,15 @@ func test_unstable() -> void:
 
 func test_teeter_reprieve() -> void:
 	stage(lancin, {v(1): STEW + Vector2i(-2, 0)})
-	b.lay_layer(STEW, glass(-99))
+	b.lay_layer(STEW, GLASS)
+	weigh(v(1), -40)  # light as a feather: it can't fail
 	v(1).refresh()
 	b.travel(v(1), STEW)
 	b.end_turn()
 	ok(b.top_layer(STEW) == null and v(1).steadied == STEW and not v(1).asleep(), "glass over the stew breaks; catching itself, it's spared the stew's sleep")
 	stage(lancin, {v(2): STEW + Vector2i(-2, 0)})
-	b.lay_layer(STEW, glass(99))
+	b.lay_layer(STEW, GLASS)
+	weigh(v(2), 40)  # far too heavy: it can't pass
 	v(2).refresh()
 	b.travel(v(2), STEW)
 	b.end_turn()
@@ -105,7 +107,7 @@ func test_teeter_reprieve() -> void:
 
 func test_rested_holds() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3)})
-	b.lay_layer(Vector2i(4, 3), glass(99))
+	b.lay_layer(Vector2i(4, 3), GLASS)
 	v(1).refresh()
 	b.end_turn()
 	ok(b.top_layer(Vector2i(4, 3)) != null, "resting on glass: it holds")
@@ -154,3 +156,29 @@ func test_repair_out_of_reach() -> void:
 	b.expose(c, [&"blunt"] as Array[StringName], v(1))
 	b._repair_tiles()
 	ok(b.top_layer(c).repair_goal == 0 and b.charge[Vector2i(1, 1)] == 4, "too far from a source this empty: no mending, nothing drawn")
+
+
+func test_weight_and_inertia() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3)})
+	var u := v(1)
+	u.weapon = null
+	u.armor = null
+	u.trinket = null
+	var size := ceili(u.stat(&"size"))
+	ok(u.weight() == size, "bare: its size, rounded up (%d)" % size)
+	u.armor = load("res://Items/gambeson.tres")
+	u.weapon = load("res://Items/dagger.tres")
+	ok(u.weight() == size, "a gambeson (light) and a dagger (light): no heavier")
+	u.armor = load("res://Items/half_plate.tres")
+	u.weapon = load("res://Items/broadsword.tres")
+	ok(u.weight() == size + 2, "half plate (medium) and a broadsword (a weapon's medium by default): +2")
+	u.armor = load("res://Items/brigandine.tres")
+	ok(u.weight() == size + 3, "brigandine (heavy): +2")
+	var anchor := Item.new()
+	anchor.slot = "trinket"
+	anchor.weight = 5
+	u.trinket = anchor
+	ok(u.weight() == size + 8, "a trinket with a weight of its own adds it")
+	u.refresh()
+	b.travel(u, Vector2i(4, 3))
+	ok(u.inertia() == 2 + u.weight(), "inertia: tiles moved this turn + weight")
