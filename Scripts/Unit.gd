@@ -16,6 +16,7 @@ const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), pre
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
+const CLASS_HP := 5  # a class unit's max HP before what its levels bring (Battle.from_role(); level_hp()) - its level 1 total is 5 + con mod + vigor, a Fighter 10
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
 const ENERGY_COLOR := Color("#e8c547")
 const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full

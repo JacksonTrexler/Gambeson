@@ -300,6 +300,7 @@ func from_role(f: Faction, role: Role, nick: String) -> Unit:
 	u.nick = nick
 	u.faction = f
 	u.role = role
+	u.max_hp = Unit.CLASS_HP  # its levels bring the rest (Unit.level_hp())
 	for k in role.stats:
 		assert(k in Unit.CORE, "role stat %s isn't a unit stat" % k)
 		u.set(k, role.stats[k])

@@ -23,18 +23,18 @@ func test_vigor() -> void:
 
 func test_level_hp() -> void:
 	var f := starter("fighter")  # con 14 (+2), vigor 3, level 1
-	ok(f.level_hp() == 5 and f.max_hp == 10 + 5 and f.hp == f.max_hp, "a level 1 Fighter: its base 10 + (con mod 2 + vigor 3)")
+	ok(f.level_hp() == 5 and f.max_hp == 5 + 5 and f.hp == f.max_hp, "a level 1 Fighter: its base 5 + (con mod 2 + vigor 3)")
 	f.level = 3
 	f.refit()
-	ok(f.max_hp == 10 + 15, "level 3: three levels' worth")
+	ok(f.max_hp == 5 + 15, "level 3: three levels' worth")
 	var down := effect("level", -1)
 	f.afflict(down, 2)
-	ok(f.lv() == 2 and f.max_hp == 10 + 10, "a level taken (Level Down) takes a level's HP with it")
+	ok(f.lv() == 2 and f.max_hp == 5 + 10, "a level taken (Level Down) takes a level's HP with it")
 	var w := starter("wizard")
 	var con := w.mod(&"constitution")
 	ok(w.level_hp() == con + 1, "a Wizard: its con mod (%d) + its vigor (1)" % con)
 	w.afflict(effect("constitution", 4), 2)
-	ok(w.level_hp() == con + 2 + 1 and w.max_hp == 10 + con + 3, "con +4 for a while: +2 a level, and its max HP follows at once")
+	ok(w.level_hp() == con + 2 + 1 and w.max_hp == 5 + con + 3, "con +4 for a while: +2 a level, and its max HP follows at once")
 
 
 func test_hardy() -> void:
@@ -57,10 +57,10 @@ func test_respec() -> void:
 
 
 func test_asphyxia_takes_grown_hp() -> void:
-	var f := starter("fighter")  # 15
+	var f := starter("fighter")  # 10
 	f.afflict(effect("asphyxia", 0.2), 3)
 	f.refit()
-	ok(f.max_hp == 15 - 3, "Asphyxia's share comes off its whole grown max HP (20% of 15)")
+	ok(f.max_hp == 10 - 2, "Asphyxia's share comes off its whole grown max HP (20% of 10)")
 
 
 func test_learning_hardy_refits() -> void:
