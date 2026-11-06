@@ -10,6 +10,7 @@ extends PanelContainer
 signal equipped(u: Unit, it: Item)
 signal unequipped(u: Unit, slot: String)
 signal used_up(u: Unit, it: Item)
+signal unshackled(u: Unit, how: StringName)  # unlock, pick or pry its shackles (Battle.unshackle())
 
 const SLOTS := ["weapon", "armor", "trinket"]
 
@@ -54,7 +55,14 @@ func open(u: Unit, editable: bool) -> void:
 		row.add_child(l)
 		if it and editable and it.restores and not it.empty:
 			row.add_child(_button("Use" + _ap(it), func() -> void: used_up.emit(unit, it)))
-		if it and editable:
+		if it and editable and it.binding:  # shackles: locked, pick or pry them; unlocked, off for their rank in AP
+			var ap := " · %d AP" % it.rank
+			if u.shackled():
+				row.add_child(_button("Pick (%s %d)%s" % [Glossary.name_of(it.picks), Difficulty.dc(it.picks, it.rank), ap], func() -> void: unshackled.emit(unit, &"pick")))
+				row.add_child(_button("Pry (%s %d)%s" % [Glossary.name_of(it.prised), Difficulty.dc(it.prised, it.rank), ap], func() -> void: unshackled.emit(unit, &"pry")))
+			else:
+				row.add_child(_button("Take off" + ap, func() -> void: unshackled.emit(unit, &"unlock")))
+		elif it and editable:
 			row.add_child(_button("Take off", func() -> void: unequipped.emit(unit, slot)))
 		_column.add_child(row)
 	_column.add_child(_muted("Stash"))

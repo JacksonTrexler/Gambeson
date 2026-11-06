@@ -135,8 +135,18 @@ func _ready() -> void:
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
 	battle.exploded.connect(_on_exploded)
-	battle.shattered.connect(func(u: Unit, c: Vector2i):
-		_log("%s shatters a starpane at %s" % [_tag(u), c])
+	battle.shattered.connect(func(_u: Unit, _c: Vector2i): _mark())  # the layer that broke logs itself
+	battle.layer_broke.connect(func(c: Vector2i, what: Terrain, by: Unit):
+		_log("%s breaks the %s at %s" % [_tag(by), what.name.to_lower(), c] if by else "The %s at %s gives way" % [what.name.to_lower(), c])
+		_mark())
+	battle.teetered.connect(func(u: Unit, total: int, dc: int, kept: bool):
+		_log("%s %s (%d vs %d)" % [_tag(u), "catches itself" if kept else "falls through", total, dc]))
+	battle.bound.connect(func(_by: Unit, u: Unit, it: Item):
+		_log("%s is in %s (weight %d)" % [_tag(u), it.name.to_lower(), it.heft()])
+		_mark())
+	battle.freed.connect(func(u: Unit, how: StringName, total: int, dc: int, done: bool):
+		var verb: String = {&"unlock": "takes its shackles off", &"pick": "picks the lock", &"pry": "pries its shackles apart"}[how]
+		_log("%s %s%s" % [_tag(u), verb if done else "fails: " + verb.trim_prefix("takes ").trim_prefix("picks ").trim_prefix("pries "), " (%d vs %d)" % [total, dc] if how != &"unlock" else ""])
 		_mark())
 	battle.sapped.connect(_on_sapped)
 	battle.perfect.connect(func(u: Unit):
@@ -182,6 +192,11 @@ func _ready() -> void:
 	sheet.equipped.connect(_on_equipped)
 	sheet.unequipped.connect(_on_unequipped)
 	sheet.used_up.connect(_on_used_up)
+	sheet.unshackled.connect(func(u: Unit, how: StringName) -> void:
+		if _outfits(u) and not battle.unshackle(u, how):
+			_say("%s needs %d AP for that" % [_name(u), u.trinket.rank] if u.trinket else "Nothing to take off")
+		sheet.open(u, _outfits(u))
+		_mark())
 	persona.done.connect(_on_personified)
 	battle.stalled.connect(_on_stalled)
 	battle.struggled.connect(_on_struggled)

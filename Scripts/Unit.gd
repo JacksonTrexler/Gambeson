@@ -200,6 +200,7 @@ var footing: Terrain  # the tile it stands on, whose effects it has while there 
 var blind_on: Variant = null  # a cell it walked onto this turn without seeing under its leaves (Battle.obscured()): checks there come at disadvantage
 var steadied: Variant = null  # the cell where it caught itself as glass gave way: spared that ground's effects until it moves off or a turn passes (Battle._teeter())
 var steady_turn := -1  # turns_taken when it did
+var stowed: Item  # the trinket shackles bound on it took the place of: back on as they come off (Battle._bind())
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var exposed := 0  # concealment levels lost to attacking or being hit (Battle.cast); back as its side's turn starts
 var shown: Read  # how the player's side sees it (see appear()); null: as it is
@@ -1047,6 +1048,11 @@ func refit() -> void:
 func has_tag(t: StringName) -> bool:
 	return t in tags or items().any(func(it: Item): return t in it.tags) \
 			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags)
+
+
+# Its shackles (a binding trinket) are locked: a Shackled effect is on it.
+func shackled() -> bool:
+	return timed.keys().any(func(e: Effect): return e.stat == "shackled")
 
 
 # How heavy it is to move: its size, rounded up, + what its equipped items weigh (Item.heft(): armor

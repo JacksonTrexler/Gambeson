@@ -61,6 +61,7 @@ extends Resource
 @export var chain := false  # each hit rolls on its own: a miss ends it, and each hit in a row is -1 to hit and damage (Strike; Battle._chain())
 @export var elements: Array[StringName] = []  # used, its user picks one of these: its Strikes deal it for rank uses (Elemental Strike; Battle.imbue())
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
+@export var binds: Item  # on a hit, bound onto the target in place of its trinket at the skill's rank - its weight the rank - the trinket stowed till it comes off (Judgement: Shackles; Battle._bind())
 @export var turns := 0  # how many of the target's turns put-on effects last (zones: the caster's)
 @export var turns_per_rank := 0  # ...plus this many per rank (Sola: rank turns)
 @export var turns_mod := &""  # ...plus the caster's mod in this (Haluca: charisma)
@@ -451,6 +452,9 @@ func markup(rank := 1, with_spec := true) -> String:
 				lines.append("%s: Energy (or Power) first%s" % [Glossary.term(&"drain"), ", then {r:%d%%} of the rest goes on to HP" % roundi(carry * (rank - 1) * 100) if carry * (rank - 1) > 0 else ""])
 		if grants:
 			lines.append("Gives %s for {t:%d turn%s}" % [grants.name, lasts(rank), "" if lasts(rank) == 1 else "s"])
+		if binds:
+			lines.append("On a hit: %s, weight {r:%d}, take the place of its trinket. Taking them off once unlocked takes {r:%d} AP; locked, they're lockpicked (%s, DC {r:%d}) or pried apart (%s, DC {r:%d})"
+					% [binds.name, rank, rank, Glossary.term(binds.picks), Difficulty.dc(binds.picks, rank), Glossary.term(binds.prised), Difficulty.dc(binds.prised, rank)])
 		if chain:
 			lines.append("Attacks cease on a miss. -1 to hit and damage for each hit in a row")
 		if not elements.is_empty():

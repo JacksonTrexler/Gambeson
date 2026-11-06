@@ -50,6 +50,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		else:
 			_keep_up(b, u, log)
 		return log
+	_unshackle(b, u, log)
 	if posture == &"defensive":
 		_defend(b, u, log)
 		return log
@@ -87,6 +88,18 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	while _strike(b, u, reads, log):
 		pass
 	return log
+
+
+# Shackled (a binding trinket): off with them if they're unlocked; locked, one try at whichever of
+# picking (dex) and prying (str) its mods favour - its turn's AP are worth it to be rid of the weight.
+static func _unshackle(b: Battle, u: Unit, log: Array[String]) -> void:
+	var it := u.trinket
+	if not it or not it.binding:
+		return
+	var odds := func(stat: StringName, diff: StringName) -> int: return u.mod(stat) - Difficulty.dc(diff, it.rank) if diff else -999
+	var how := &"unlock" if not u.shackled() else (&"pick" if odds.call(&"dexterity", it.picks) >= odds.call(&"strength", it.prised) else &"pry")
+	if b.unshackle(u, how):
+		log.append("%s gets its %s off" % [u.name, it.name])
 
 
 # DEFEND: uses u's best self-protective skill on itself (Skill.serves defensive), if it has one it can

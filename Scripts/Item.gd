@@ -43,6 +43,9 @@ extends Resource
 @export var restore_flat := 0  # ...plus this (Sweet Something: 1)
 @export var burning := false  # its wearer burns for 10% x rank of its max HP (fire) as its turns start, and again each time it uses a skill in the slots it grants (Burning Bag; Unit.burning_slots())
 @export var empty := false  # used: a potion is emptied rather than used up, and fills again as the battle ends (Battle.refill())
+@export var binding := false  # put on a unit against its will (Shackles: Skill.binds): it can't be taken off for free or swapped out; while Shackled it's locked, after that taking it off costs its rank in AP (Battle.unshackle())
+@export var picks := &""  # it can be lockpicked off: a dex check at this difficulty, at its rank (Shackles: approachable)
+@export var prised := &""  # it can be pried apart: a str check at this difficulty, at its rank (Shackles: unfair - built not to break)
 
 # Armor by weight (its tag: light, medium, heavy) shares its basic piece's scaling: Defense the higher of
 # a floor and level x a share, + dex mod x a share (Unit.armor_defense()). Heavy armor also drags at
@@ -83,6 +86,13 @@ func describe() -> String:
 				% [roundi(revives * rank * 100.0), rank, "" if rank == 1 else "s"])
 	if damage_tag:
 		lines.append("Deals %s blows" % damage_tag)
+	if binding:
+		lines.append("Bound on: locked while Shackled; unlocked, taking it off takes %d AP" % rank)
+		if picks:
+			lines.append("Lockpicked off: a %s dex check (DC %d)" % [Glossary.name_of(picks).to_lower(), Difficulty.dc(picks, rank)])
+		if prised:
+			lines.append("Pried apart: a %s str check (DC %d)" % [Glossary.name_of(prised).to_lower(), Difficulty.dc(prised, rank)])
+		lines.append("Weight %d" % heft())
 	if burning:
 		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * rank))
 	if requires:

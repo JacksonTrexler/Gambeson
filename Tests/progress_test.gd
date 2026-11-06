@@ -21,8 +21,8 @@ func test_level_up() -> void:
 func test_unlock() -> void:
 	var u := pip()
 	var o := u.options()
-	ok(o[&"class"] == [favour, lightvision, load("res://Skills/renew.tres"), load("res://Skills/pray.tres"), load("res://Skills/coordinate.tres")] and o[&"species"] == [relay]
-			and o[&"knowledge"].is_empty(), "a halfling paladin: Favour, Lightvision, Renew, Pray and Coordinate from its class (Smite at tier 3 and Synergy at 2 wait for skills learned first), Relay from its species")
+	ok(o[&"class"] == [favour, lightvision, load("res://Skills/renew.tres"), load("res://Skills/pray.tres"), load("res://Skills/coordinate.tres"), load("res://Skills/judgement.tres")] and o[&"species"] == [relay]
+			and o[&"knowledge"].is_empty(), "a halfling paladin: Favour, Lightvision, Renew, Pray, Coordinate and Judgement from its class (Smite at tier 3 and Synergy at 2 wait for skills learned first), Relay from its species")
 	ok(not u.unlock(relay), "no points, no unlocking")
 	u.level_up()
 	ok(u.unlock(relay) and u.rank(relay) == 1 and u.skill_points == 0, "a point unlocks Relay, rank I")

@@ -22,6 +22,7 @@
 [ext_resource type="Resource" path="res://Skills/flamedance.tres" id="s_flamedance"]
 [ext_resource type="Resource" path="res://Skills/solar.tres" id="s_solar"]
 [ext_resource type="Resource" path="res://Skills/wildfire.tres" id="s_wildfire"]
+[ext_resource type="Resource" path="res://Skills/judgement.tres" id="s_judgement"]
 [ext_resource type="Resource" path="res://Skills/flamecharmed.tres" id="s_flamecharmed"]
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
@@ -109,6 +110,10 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_solar")
 after = Array[ExtResource("5_skill")]([ExtResource("s_flamedance")])
 
+[sub_resource type="Resource" id="Branch_judgement"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_judgement")
+
 [sub_resource type="Resource" id="Branch_wildfire"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_wildfire")
@@ -123,7 +128,7 @@ after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
 script = ExtResource("6_root")
 name = "Sol"
 tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_igna"), SubResource("Branch_flamewall"), SubResource("Branch_flamecharmed"), SubResource("Branch_inner_fire"), SubResource("Branch_burning_bag"), SubResource("Branch_flamecharm"), SubResource("Branch_cindering"), SubResource("Branch_level_up"), SubResource("Branch_flamedance"), SubResource("Branch_solar"), SubResource("Branch_wildfire")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_igna"), SubResource("Branch_flamewall"), SubResource("Branch_flamecharmed"), SubResource("Branch_inner_fire"), SubResource("Branch_burning_bag"), SubResource("Branch_flamecharm"), SubResource("Branch_cindering"), SubResource("Branch_level_up"), SubResource("Branch_flamedance"), SubResource("Branch_solar"), SubResource("Branch_wildfire"), SubResource("Branch_judgement")])
 
 [sub_resource type="Resource" id="Tab_Sol"]
 script = ExtResource("8_tab")

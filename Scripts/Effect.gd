@@ -84,6 +84,8 @@ extends Resource
 # restrike: landing 12 hits in one use, it strikes again at once, this - 1 hits more (Strike!).
 # elemental: its Strikes carry its element, the first hit + its highest mental mod (Elemental Mastery).
 # humble: that much max HP cut (Humble; Unit.refit()).
+# shackled: the shackles bound on it (Item.binding) are locked while this lasts - a debuff, so cleansing
+# unlocks them (Battle._bind(), Battle.unshackle()).
 # hardy: con mod counts (1 + this) times in the max HP each level brings (Hardy; Unit.level_hp()).
 # flamecharmed: from rank V, allies' fire heals it for 25% x (this - 4) of what they deal (Flamecharmed;
 # Unit.hit()).
@@ -99,7 +101,7 @@ extends Resource
 		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
 		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
-		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy") var stat := "luck"
+		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -130,11 +132,11 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
 		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
-		"sickness": "Resurrection Sickness", "hardy": "Hardy"}
+		"sickness": "Resurrection Sickness", "hardy": "Hardy", "shackled": "Shackled"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -240,6 +242,8 @@ func value(rank := 1) -> String:
 				"elemental": "Strike carries your element; its first hit adds your highest mental mod"}[stat]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
+	elif stat == "shackled":
+		return "its shackles are locked"
 	elif stat == "hardy":
 		return "con mod counts %s times over in the max HP each level brings" % Skill.num(1.0 + x)
 	elif stat == "flamecharmed":
