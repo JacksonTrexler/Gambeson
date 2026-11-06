@@ -19,6 +19,7 @@ var advantage := 0  # +1 the better of two d20s, -1 the worse, 0 a single roll
 var target := 0  # the number to meet or beat (Defense, a DC, the other side's total)
 var crits := false  # a natural 20 always hits and crits, a miss aside (attacks)
 var floor_hit := false  # a hit is forced regardless of the roll (decisive Strike after a crit)
+var share := 1.0  # only this share of the total counts, rounded down (an execute: HP left / max HP / rank)
 
 
 # The outcome of a resolved Check.
@@ -75,6 +76,12 @@ static func side(bonus: int, kind := Kind.CONTEST) -> Check:
 # The better (+1) or worse (-1) of two d20s.
 func edge(n: int) -> Check:
 	advantage = n
+	return self
+
+
+# Only a share of its total counts (an execute against a hurt foe's defence: Battle.executed()).
+func cut(f: float) -> Check:
+	share = f
 	return self
 
 

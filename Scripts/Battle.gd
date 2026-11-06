@@ -50,6 +50,8 @@ const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken 
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
+const RECAST_LIMIT := 20  # recasts on a natural 20 in a row (Jugular: "without limit for now"), a guard on a rigged rng
+var _recasts := 0
 const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to a source with any Power in it...
 const STAR_FAST := 5.0  # ...up to a full one (an empty source gives nothing)
 const STAR_ENERGY := 0.3  # regular Energy gets this share of what the boost adds (+10 for Power: +3)
@@ -373,7 +375,7 @@ func resolve(c: Check) -> Check.Roll:
 		d = mini(d, rng.randi_range(1, 20))
 	var r := Check.Roll.new()
 	r.d20 = d
-	r.total = d + c.bonus
+	r.total = d + c.bonus if is_equal_approx(c.share, 1.0) else floori((d + c.bonus) * c.share)
 	r.target = c.target
 	r.crit = c.crits and d == 20
 	r.hit = c.floor_hit or r.crit or r.total >= c.target
@@ -506,6 +508,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return false
 	if skill.opening and caster.activity() != &"rest":
 		return false  # only as its turn opens (Flamedance)
+	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
@@ -528,14 +531,16 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return true
 	if mends:
 		_smite_heal(caster, skill, target, r)
+		_lovely(caster, skill, target)
 		used.emit(caster, skill, target, before - target.hp)
 		return true
+	var zeal := passion(caster, target)  # Impassioned Fighter: + to the skill's primary mod, beside its target
 	var crit := false
 	var tags := hit_tags(caster, skill)
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) - drag_penalty(skill, r, Command.tiles(target.cell, spot))),
-				Check.side(target.check_mod(skill.stat(), &"defensive", skill.tags)))
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + zeal - drag_penalty(skill, r, Command.tiles(target.cell, spot))),
+				Check.side(target.check_mod(skill.stat(), &"defensive", skill.tags)).cut(executed(target, skill, r)))
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_expose(target)
@@ -546,8 +551,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(r))) if foe and skill.disables else ([] as Array[Array])
 	if foe and skill.save:
 		var fogged: int = fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + r, Check.Kind.SAVE),
-				Check.side(target.check_mod(skill.save, &"defensive") + fogged, Check.Kind.SAVE))
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + r + zeal, Check.Kind.SAVE),
+				Check.side(target.check_mod(skill.save, &"defensive") + fogged, Check.Kind.SAVE).cut(executed(target, skill, r)))
 		var mine := vs.mine.total
 		contested.emit(caster, target, mine, vs.theirs.total)
 		if not vs.won:  # the caster wins ties
@@ -583,11 +588,13 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			doubt(target, caster)
 		return true
 	var overage := 0  # what a roll beat Defense by (Irradiate)
+	var natural := false  # a natural 20 (Jugular recasts on one)
 	if foe and skill.attacks():
-		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive")
-		var hit := resolve(Check.attack(bonus, target.defense(tags), skill.advantage))
+		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive")
+		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)))
 		overage = maxi(hit.margin(), 0)
-		crit = hit.crit
+		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
+		natural = hit.crit
 		attacked.emit(caster, target, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
 		if not hit.hit:
@@ -608,10 +615,11 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			a.by = caster
 			a.since = turns_begun
 			a.roll = saved_against
+			a.scale = strength * (maxf(caster.mod(e.by_mod), 0.0) if e.by_mod else 1.0)  # set as it's put on (Rejuvinate's distance, Interdict's str mod)
 			put.append(a)
 	if skill.investigated:
 		var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
-		var g := resolve(Check.side(target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK)
+		var g := resolve(Check.side(target.check_mod(skill.stat(), &"defensive", skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK)
 				.edge(1 if hiding and covered(target.cell) else 0))  # cover (Leaves): advantage to hide
 		var guise := g.total
 		var seen := _evaluate(target, skill, g.d20, guise)
@@ -623,13 +631,19 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			_scatter(target, guise)
 	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * r)
+	if foe and skill.push:
+		push(target, caster, skill.push * r)
+	if skill.sends and target.is_alive():
+		send(target, caster, maxi(caster.mod(skill.sends, skill.tags), 0) + r + zeal)
 	if skill.prays:
 		pray(caster, r, target)
 	if skill.links:
 		_link(caster, skill, r)
 	if not foe and skill.heals():
-		mend(target, skill.healing(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(r), skill.per_wound * r)
+		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(r), skill.per_wound * r)
 		target.regain(skill.restores * r)
+	if not foe:
+		_lovely(caster, skill, target)
 	var t := skill.tier(r) if foe or not skill.dual else null
 	if t:
 		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
@@ -638,7 +652,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		for i in hits:
 			if not target.is_alive():
 				break
-			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) if t.stat else 0
+			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
 			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags))), 1) * (2 if crit else 1)
 			gross += power
 			if &"energy" in tags:
@@ -668,6 +682,10 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	used.emit(caster, skill, target, before - target.hp)
 	if foe and skill.hostile and target.hp < before and target.is_alive() and read(target, caster).deceived:
 		doubt(target, caster)
+	if foe and natural and skill.recast_on_crit and target.is_alive() and _recasts < RECAST_LIMIT:
+		_recasts += 1  # Jugular: a natural 20 goes again, free
+		cast(caster, skill, target, true)
+		_recasts -= 1
 	return true
 
 
@@ -1105,7 +1123,7 @@ func _hide_roll(u: Unit) -> int:
 	for e in u.timed:
 		if e.stat == "concealment":
 			best = maxi(best, u.timed[e].roll)
-	return best if best > 0 else resolve(Check.side(u.mod(&"dexterity"), Check.Kind.CHECK).edge(1 if covered(u.cell) else 0)).total
+	return best if best > 0 else resolve(Check.side(u.check_mod(&"dexterity", &"defensive"), Check.Kind.CHECK).edge(1 if covered(u.cell) else 0)).total
 
 
 # Debris goes once its hider is revealed (no concealment left, or fallen), or has gone further from
@@ -1153,6 +1171,30 @@ func watchers(u: Unit) -> Array[Unit]:
 	return out
 
 
+# Investigating on contact: a unit coming beside a hidden foe - from any tile of its walk - looks into
+# what hides it, against the roll the hider made (investigate()); and foes beside where a hiding unit
+# ends up look into it the same way.
+func _contact(u: Unit, passed: Array[Vector2i]) -> void:
+	for o: Unit in units.values():
+		if o == u or not o.is_alive() or Faction.friends(o.faction, u.faction):
+			continue
+		if passed.any(func(c: Vector2i): return next_to(c, o.cell)):
+			_feel(u, o)  # u brushes past o
+		if next_to(u.cell, o.cell):
+			_feel(o, u)  # o finds u beside it
+
+
+# o, in contact with h, looks into the hiding skill on h it hasn't already seen through, against its roll.
+func _feel(o: Unit, h: Unit) -> void:
+	if o.asleep() or not h.is_alive():
+		return
+	for e in h.timed:
+		var a := h.timed[e]
+		if e.stat == "concealment" and a.skill and a.skill.investigated and a.roll > 0 and o not in a.known_to:
+			investigate(h, a.skill, [o] as Array[Unit], a.roll)
+			return
+
+
 # Each of `eyes` looks into what skill just did to u (Hide, Clever Disguise): d20 + its wis mod -
 # the better of two d20s within (wis mod - rank) tiles of u - against the roll u made using it.
 # Meeting it, it sees through the skill's effects on u for as long as they last.
@@ -1160,7 +1202,7 @@ func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void
 	var r := u.rank(skill)
 	for o in eyes:
 		var close := Command.tiles(o.cell, u.cell) <= o.mod(&"wisdom") - r
-		var look := resolve(Check.check(o.mod(&"wisdom"), against).edge(1 if close else 0))
+		var look := resolve(Check.check(o.check_mod(&"wisdom", &"offensive"), against).edge(1 if close else 0))
 		var total := look.total
 		if look.hit:
 			for e in skill.effects:
@@ -1191,7 +1233,9 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 static func hit_chance(u: Unit, s: Skill, t: Unit) -> float:
 	if not s.attacks():
 		return 1.0
-	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive")), 1, 20) / 20.0
+	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - s.roll_bonus - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive")), 1, 20) / 20.0
+	if s.disadvantage:
+		return p * p
 	return 1.0 - (1.0 - p) * (1.0 - p) if s.advantage else p
 
 
@@ -1248,6 +1292,8 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		channeled.emit(caster, skill, c)
 	elif skill.observes:
 		observe(caster, c, caster.rank(skill))
+	elif skill.guards:
+		_guard(caster, skill, c)
 	elif skill.lays:
 		lay(caster, skill, c)
 	else:
@@ -1586,6 +1632,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		if Perception.cover(self, u) > 0:
 			_scatter(u, _hide_roll(u), passed)
 		_tidy_debris()
+		_contact(u, passed)
 		traveled.emit(u, from, passed)
 		if terrain(u.cell).is_trap() and passed.size() - 1 in touched:
 			spring(u.cell, u)
@@ -1662,7 +1709,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		if not on_map(c) or left <= 0.0001:
 			break
 		var t: Terrain = ground.call(c)
-		var cost := _cost(u, from, t) * wading(u, c)
+		var cost := _cost(u, from, t) * wading(u, c) + obstruction(u, c, expected)
 		var other: Unit = in_way.call(c)
 		if other:
 			cost += pass_cost(u, other)
@@ -1722,7 +1769,24 @@ func spring(c: Vector2i, by: Unit) -> void:
 # enter, plus the unit's move_cost effects for that ground (u may be null: terrain only), times
 # wading().
 func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
-	return _cost(u, terrain(from), terrain(to)) * wading(u, to)
+	return _cost(u, terrain(from), terrain(to)) * wading(u, to) + obstruction(u, to)
+
+
+# Obstruct: what entering c costs u on top, for each foe of u beside c with Obstruct: the larger of half
+# the size penalty of moving through that foe (pass_cost()) and half its con mod / 10, + 25% a rank.
+# Its allies pass freely. `expected`: only foes u can locate count (walk()).
+func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
+	if not u:
+		return 0.0
+	var extra := 0.0
+	for o: Unit in units.values():
+		if o == u or not next_to(o.cell, c) or not o.is_alive() or Faction.friends(o.faction, u.faction):
+			continue
+		var n := o.stat(&"obstruct")
+		if n <= 0.0 or (expected and not read(u, o).located()):
+			continue
+		extra += maxf(0.5 * maxf(pass_cost(u, o), 0.0), 0.5 * o.mod(&"constitution") / 10.0) * (1.0 + 0.25 * n)
+	return extra
 
 
 # Disturbed earth (Pray, to Vetruvis) costs its side's enemies EARTHWORK_COST times as much to enter,
@@ -2033,12 +2097,13 @@ func _mend(u: Unit) -> void:
 		else:
 			u.hp = maxi(u.hp - maxi(roundi(SICKNESS.amount * u.max_hp), 1), 1)
 	var regen := u.stat(&"regen")
-	if regen > 0.0:
+	var flat := u.stat(&"regen_hp")  # Rejuvinate's cha mod
+	if regen > 0.0 or flat > 0.0:
 		var power := 0
 		for pair in u._effects():
-			if pair[0].stat == "regen":
+			if pair[0].stat in ["regen", "regen_hp"]:
 				power = maxi(power, pair[1])
-		mend(u, Luck.settle(regen * u.max_hp, u.luck, true), power)
+		mend(u, Luck.settle(regen * u.max_hp + flat, u.luck, true), power)
 	var poison := u.stat(&"poison")
 	if poison > 0.0 and u.is_alive():
 		u.damage(Luck.settle(poison * u.max_hp, u.luck, false))
@@ -2315,6 +2380,46 @@ func pull(t: Unit, to: Unit, n: int) -> void:
 		var c := t.cell + Vector2i(signi(d.x), signi(d.y))
 		if not on_map(c) or not move(t, c):
 			return
+
+
+# Drives t up to n tiles straight away from `from` (pull()'s reverse), a tile at a time along the line
+# between them, stopping short of the map's edge, a hole or another unit. Returns the tiles it went.
+func push(t: Unit, from: Unit, n: int) -> int:
+	var dir := Vector2(t.cell - from.cell).normalized()
+	var start := Vector2(t.cell)
+	var went := 0
+	for k in range(1, n + 1):
+		var c := Vector2i((start + dir * k).round())
+		if c == t.cell:
+			continue
+		if not on_map(c) or not move(t, c):
+			break
+		went += 1
+	return went
+
+
+# Teleports t up to n tiles straight away from `from`: to the furthest free tile on that line, n tiles
+# out or nearer (Send Off). False if none is free.
+func send(t: Unit, from: Unit, n: int) -> bool:
+	var dir := Vector2(t.cell - from.cell).normalized()
+	for k in range(n, 0, -1):
+		var c := Vector2i((Vector2(t.cell) + dir * k).round())
+		if c != t.cell and on_map(c) and not unit_at(c):
+			place(t, c)
+			return true
+	return false
+
+
+# Puts u on c without walking there (a teleport): no movement paid, no trail of debris, nothing
+# brushed past on the way - but a trap there springs, and it takes its first look around.
+func place(u: Unit, c: Vector2i) -> bool:
+	if not move(u, c):
+		return false
+	if terrain(c).is_trap():
+		spring(c, u)
+	if u.is_alive():
+		_first_look(u)
+	return true
 
 
 # A heal: its wounds of rank `power` or less cleared (an effect's wound flag), then hp back, plus
@@ -2629,6 +2734,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	if (imbued or elemental) and element not in blow:
 		blow.append(element)
 	var mental := maxi(maxi(caster.mod(&"intelligence"), caster.mod(&"wisdom")), caster.mod(&"charisma"))
+	var zeal := passion(caster, t)  # Impassioned Fighter
 	var landed := 0
 	var gross := 0
 	var row := 0  # hits in a row so far
@@ -2637,7 +2743,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var bonus := caster.attack_mod(skill) + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty
+		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty
 		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure))
 		var crit := hit.crit
 		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
@@ -2654,7 +2760,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 			stat = &"dexterity"
 		var power := tier.power + roll(tier.dice) - penalty
 		if stat:
-			power += caster.mod(caster.wielded(stat, skill.tags), skill.tags) + caster.weapon_bonus(stat)
+			power += caster.mod(caster.wielded(stat, skill.tags), skill.tags) + caster.weapon_bonus(stat) + (zeal if stat == skill.stat() else 0)
 		if i < featured:
 			power += clampi(caster.mod(&"charisma"), 0, featured)
 		if i == 0:
@@ -2897,10 +3003,14 @@ func _chant(u: Unit) -> void:
 # A general defensive check of the whole unit: d20 + its average stat mod (Unit.average_mod()). Against
 # an execute (Death, at its rank), cut by how hurt it is: x (HP left / max HP) / rank.
 func last_stand(u: Unit, execute := 0) -> int:
-	var roll := resolve(Check.check(u.average_mod(), 0, Check.Kind.LAST_STAND)).total
-	if execute > 0:
-		roll = floori(roll * (float(u.hp) / maxi(u.max_hp, 1)) / execute)
-	return roll
+	var c := Check.check(u.average_mod() + u.best_defensive_bonus(), 0, Check.Kind.LAST_STAND)
+	return resolve(c.cut((float(u.hp) / maxi(u.max_hp, 1)) / execute if execute > 0 else 1.0)).total
+
+
+# The share of a foe's defensive check that counts against an execute (a skill tagged execute) at rank
+# r: its HP left / max HP / r, as Death cuts a last stand. 1 against anything else.
+static func executed(t: Unit, skill: Skill, r: int) -> float:
+	return (float(t.hp) / maxi(t.max_hp, 1)) / maxi(r, 1) if &"execute" in skill.tags else 1.0
 
 
 # Level Down: rank rolls of d20 + the caster's mod, each beating the higher of the foe's average stat
@@ -2924,6 +3034,44 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 			a.by = caster
 			a.since = turns_begun
 	leveled.emit(caster, t, hits)
+
+
+# Shields Up!, aimed at c: its user faces c behind its shield (Unit.guard) - damage from a source whose
+# tile lies within the 90 degree cone that way is cut by its effects - until its next turn.
+func _guard(caster: Unit, skill: Skill, c: Vector2i) -> void:
+	var r := caster.rank(skill)
+	caster.guard = Vector2(c - caster.cell)
+	for e in skill.effects:
+		var n := e.turns if e.turns else maxi(skill.lasts(r, caster), 1)
+		var a := caster.afflict(e, n + (1 if caster.faction == turn else 0), r)
+		a.skill = skill
+		a.by = caster
+		a.since = turns_begun
+
+
+# Impassioned Fighter: what its holder adds to a skill's primary mod used on a unit beside it.
+static func passion(caster: Unit, target: Unit) -> int:
+	return roundi(caster.stat(&"impassioned")) if target and target != caster and next_to(caster.cell, target.cell) else 0
+
+
+# Lovely Caster: a love skill (tagged love, or carrying it for its caster - an Eros Smite) used on an
+# adjacent ally also heals it that share of its max HP.
+func _lovely(caster: Unit, skill: Skill, t: Unit) -> void:
+	var share := caster.stat(&"lovely")
+	if share > 0.0 and t != caster and t.is_alive() and next_to(caster.cell, t.cell) and &"love" in hit_tags(caster, skill):
+		mend(t, maxi(roundi(share * t.max_hp), 1), 0)
+
+
+# How strong a skill that decays with distance (Rejuvinate: Skill.decays) lands from caster on target:
+# less its share a tile past the first between them, at least 0 - none off when the caster would pay
+# for it wholly with mana. 1 for other skills.
+func decay(caster: Unit, skill: Skill, target: Unit) -> float:
+	if skill.decays <= 0.0:
+		return 1.0
+	var fund: Variant = caster.funding(skill)
+	if fund is Reserve and (fund as Reserve).name == "Mana":
+		return 1.0
+	return maxf(1.0 - skill.decays * maxi(Command.tiles(caster.cell, target.cell) - 1, 0), 0.0)
 
 
 # Death: the foe's last stand against an execute at the skill's rank, against d20 + the caster's mod

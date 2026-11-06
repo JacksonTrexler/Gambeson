@@ -53,3 +53,32 @@ func test_beats() -> void:
 func test_no_inline_d20() -> void:
 	var src := FileAccess.get_file_as_string("res://Scripts/Battle.gd")
 	ok(src.count("randi_range(1, 20)") == 3, "every d20 in Battle goes through resolve() (its own three rolls: one die, the edge's two)")
+
+
+func test_cut() -> void:
+	for n in 100:
+		var r := b.resolve(Check.check(10, 0).cut(0.5))
+		ok(r.total == floori((r.d20 + 10) * 0.5), "only half its total counts, rounded down")
+
+
+# An execute (a skill tagged execute) cuts a foe's defensive check by how hurt it is: HP left / max HP
+# / rank, as Death does a last stand (Battle.executed()).
+func test_execute() -> void:
+	v(3).max_hp = 100
+	v(3).hp = 25
+	var death: Skill = load("res://Skills/death.tres")
+	ok(is_equal_approx(Battle.executed(v(3), death, 1), 0.25) and is_equal_approx(Battle.executed(v(3), death, 2), 0.125), "a quarter left: x0.25 at rank I, x0.125 at II")
+	ok(Battle.executed(v(3), strike, 1) == 1.0, "nothing to cut against what isn't an execute")
+	var grip: Skill = load("res://Skills/interdict.tres").duplicate()
+	grip.tags.append(&"execute")
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(1).learned.append(slot(grip))
+	v(3).strength = 40  # str mod 15: unhurt, it would nearly always win
+	v(3).hp = 1
+	var theirs := []
+	b.contested.connect(func(_c, _t, _mine, against): theirs.append(against))
+	for n in 20:
+		v(1).refresh()
+		v(1).energy = v(1).max_energy
+		b.cast(v(1), grip, v(3))
+	ok(theirs.size() == 20 and theirs.all(func(t): return t == 0), "1 HP of 100: its saves count for nothing (%s)" % [theirs])

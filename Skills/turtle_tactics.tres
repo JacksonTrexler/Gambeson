@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_defensive"]
+script = ExtResource("2_effect")
+stat = "check"
+amount = 2.0
+per_rank = true
+kind = &"defensive"
+
+[sub_resource type="Resource" id="Effect_offensive"]
+script = ExtResource("2_effect")
+stat = "check"
+amount = -1.0
+per_rank = true
+kind = &"offensive"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Turtle Tactics"
+passive = true
+tags = Array[StringName]([&"martial", &"defensive"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_defensive"), SubResource("Effect_offensive")])

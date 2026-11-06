@@ -91,6 +91,18 @@ extends Resource
 # Unit.burning_slots()).
 # irradiate: an offensive light-damage skill's roll beating Defense deals the overage as more light
 # damage, up to this + cha mod (Irradiate; Battle.cast()).
+# check: added to its checks of `kind` (offensive, defensive; none: both), in the stats in `checks`
+# (none: any) - armor or not (Turtle Tactics: +2 a rank defensive, -1 a rank offensive; Unit.check_bonus()).
+# base_ap: that much more general AP each turn, never below 0 (Interdict: less the caster's str mod).
+# guard: the share of damage it blocks from sources in the 90 degree cone it faces (Shields Up!;
+# Unit.guard, Unit.hit()).
+# obstruct: enemies entering a tile next to it pay the larger of half its size penalty and half its con
+# mod / 10 more movement, + 25% a point of this (Obstruct; Battle.obstruction()).
+# lovely: its love skills used on an adjacent ally also heal it this share of its max HP (Lovely Caster;
+# Battle._lovely()).
+# impassioned: added to a skill's primary mod used on an adjacent unit (Impassioned Fighter;
+# Battle.passion()).
+# regen_hp: HP healed as the unit's side starts a turn, on top of regen (Rejuvinate's cha mod).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -98,6 +110,7 @@ extends Resource
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
 		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
 		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
+		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
@@ -119,6 +132,7 @@ extends Resource
 @export var wound := false  # tagged wound: a heal of at least its rank clears it (Battle.mend())
 @export var dice := Vector2i.ZERO  # bleed: rolled each turn...
 @export var dice_mod := &""  # ...plus the mod in this of whoever put it on (Snare: dexterity)
+@export var by_mod := &""  # put on a unit: its amount x the mod (at least 0) in this of whoever put it on, fixed as it's put on (Interdict: str mod AP off; Rejuvinate: + cha mod HP; Battle.cast())
 @export var ease := 1  # how easy it is to remove: cleansing or dispelling takes this many of its ranks for each spent (Level Down 2, Level Up 4; Battle._strip())
 @export var arc := false  # put on a unit: its amount is a step, climbing a step a turn to the middle of its turns, then back down (wauaw: 10%, 20%, 30%, 20%, 10%)
 
@@ -130,7 +144,9 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
 		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
-		"sickness": "Resurrection Sickness", "hardy": "Hardy"}
+		"sickness": "Resurrection Sickness", "hardy": "Hardy",
+		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
+		"impassioned": "Impassioned", "regen_hp": "Heal"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -216,6 +232,20 @@ func value(rank := 1) -> String:
 		text = "%s rank%s of its concealment and trickery defeated, against everyone" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat in ["ap", "dex_ap", "damage"]:
 		text = _signed(x * 100.0) + "%"
+	elif stat == "check":
+		text = "%s to %s%schecks" % [_signed(x), (String(kind) + " ") if kind else "", (" or ".join(checks.map(func(c): return String(c).left(3))) + " ") if not checks.is_empty() else ""]
+	elif stat == "base_ap":
+		text = "%s each turn" % _signed(x)
+	elif stat == "guard":
+		return "blocks %d%% of damage from sources in the 90 degree cone it faces" % roundi(x * 100.0)
+	elif stat == "obstruct":
+		return "foes entering a tile next to it pay the larger of half its size penalty and half its con mod / 10 more movement, +%d%%" % roundi(25.0 * x)
+	elif stat == "lovely":
+		return "its {x:love} skills used on an adjacent ally also heal it %d%% of its max HP" % roundi(x * 100.0)
+	elif stat == "impassioned":
+		return "+%s to a skill's primary mod used on an adjacent unit" % Skill.num(x)
+	elif stat == "regen_hp":
+		text = "%s HP each turn" % Skill.num(x)
 	elif stat in ["unmask_gain", "uncover_gain"]:
 		return "%s Sweet Nothing%s for %s" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s",
 				"unmasking a foe it took for friendly or neutral" if stat == "unmask_gain" else "each level of concealment it takes off a hiding foe"]
@@ -284,6 +314,8 @@ func value(rank := 1) -> String:
 		text += " per %d %s" % [per, per_stat]
 	if per_mod:
 		text += " per %s mod" % String(per_mod).left(3)
+	if by_mod:
+		text += " x the caster's %s mod" % String(by_mod).left(3)
 	if not tags.is_empty() or not skills.is_empty():
 		text += " (%s)" % ", ".join(skills.map(func(x: Skill): return x.name) + tags.map(func(t): return String(t)))
 	if above_hp > 0.0:

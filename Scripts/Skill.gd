@@ -30,6 +30,14 @@ extends Resource
 @export var rolls := true  # used on a foe: rolls d20 + attack mod against its Defense first (Battle.cast())
 @export var advantage := false  # that roll is the better of two d20s (Gasp)
 @export var roll_per_rank := 0  # ...plus this x rank (Gasp: rank)
+@export var roll_bonus := 0  # ...plus this (Jugular: -1, with roll_per_rank 1: rank - 1)
+@export var disadvantage := false  # that roll is the worse of two d20s (Jugular)
+@export var sure_crit := false  # a hit is a critical (Jugular)
+@export var recast_on_crit := false  # a natural 20 on its roll recasts it at once on the same foe, free (Jugular; Battle.cast())
+@export var push := 0  # used on a foe: drives it this many tiles x rank straight away from the caster, stopping at what's in the way (Battle.push())
+@export var sends := &""  # teleports the unit (the caster's mod in this) + rank tiles straight away from the caster, to the furthest free tile on that line (Send Off: charisma; Battle.send())
+@export var guards := false  # cast on a tile: its user faces it behind its shield, its effects on itself (Shields Up!; Battle._guard())
+@export var decays := 0.0  # its effects' strength falls this share a tile past the first between caster and target, set as they're put on; none paid wholly with mana (Rejuvinate: 0.05)
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
 @export var grip := Vector2i.ZERO  # its effects hold the foe (grappled) until it breaks free by moving away: each turn it ends held, these dice + the caster's mod in its stat (Drown: 1d12; Battle._break_free(), Battle._grip())
@@ -150,7 +158,7 @@ func foundation() -> bool:
 
 # Aimed at a tile rather than a unit: area skills and trap skills.
 func on_tile() -> bool:
-	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0
+	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0 or guards
 
 
 # Whether it can serve a posture when a unit reaches for its default move (HUD default orders, and the
@@ -264,6 +272,8 @@ func mark() -> String:
 
 # "Waits on open question 3", "...questions 2 and 11".
 func waits() -> String:
+	if not stub.begins_with("?"):
+		return "Waits on " + stub  # a system, not a question: "Waits on Reactions (docs/todo/systems.md)"
 	var ids := Array(stub.replace("?", "").split(" ", false))
 	if ids.size() == 1:
 		return "Waits on open question %s (todo.md)" % ids[0]
@@ -385,8 +395,21 @@ func markup(rank := 1, with_spec := true) -> String:
 		for r: Reserve in cost_with:  # the skill opening a reserve goes by its name (Mana)
 			lines.append("%s cost paid with %s, once the caster's %s rank reaches its tier" % [share(cost_with[r]), r.name, r.name])
 		if attacks():
-			lines.append("%s%s (%s%s)" % [foe, Glossary.term(&"attack") + (" with " + Glossary.term(&"advantage") if advantage else ""),
-					me, " + {r:%d}" % (roll_per_rank * rank) if roll_per_rank else ""])
+			var extra := roll_per_rank * rank + roll_bonus
+			lines.append("%s%s (%s%s)" % [foe, Glossary.term(&"attack") + (" with " + Glossary.term(&"advantage") if advantage else "") + (" with " + Glossary.term(&"disadvantage") if disadvantage else ""),
+					me, (" + {r:%d}" % extra if extra > 0 else (" - {r:%d}" % -extra if extra < 0 else "")) if roll_per_rank or roll_bonus else ""])
+			if sure_crit:
+				lines.append("A hit is a %s" % Glossary.term(&"critical"))
+			if recast_on_crit:
+				lines.append("A natural 20 casts it again at once on the same foe, free")
+		if guards:
+			lines.append("Faces a tile (an unobstructed one, occupied or not), until its next turn: damage from a source whose tile lies within the 90 degree cone that way is cut")
+		if push:
+			lines.append("%sDrives it up to {r:%d} tile%s straight away from the caster, stopping at what's in the way" % [foe, push * rank, "" if push * rank == 1 else "s"])
+		if sends:
+			lines.append("Teleports it %s + {r:%d} tiles straight away from the caster, to the furthest free tile on that line" % [Glossary.mod(sends), rank])
+		if decays > 0.0:
+			lines.append("Its strength falls %s%% a tile past the first between caster and target, set as it's cast; none paid wholly with mana" % num(decays * 100.0))
 		if zone:
 			lines.append("Lays %s %s around a tile for {t:%d turn%s}" % [zone, Glossary.term(&"concealment", "concealment"), turns, "" if turns == 1 else "s"])
 		if observes:

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Final Act"
+passive = true
+tags = Array[StringName]([&"specialist", &"defensive"])
+stub = "?12"
+plan = "Once per battle, on reaching 0 HP, interrupt the current turn to take 1 free action; the interrupted turn then resumes. Needs Reactions. Does the unit die after its free action?"

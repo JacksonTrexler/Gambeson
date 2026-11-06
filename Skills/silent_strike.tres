@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Silent Strike"
+passive = false
+tags = Array[StringName]([&"martial", &"offensive"])
+stub = "?13"
+plan = "Disables rank of the target's magical skills, actives and passives, for rank turns, from the bottom of its hotbar. Disabled skills are greyed out. Do divine spells count as magical?"

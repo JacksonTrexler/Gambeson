@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Gallantry"
+passive = true
+tags = Array[StringName]([&"specialist", &"defensive"])
+stub = "Reactions (docs/todo/systems.md)"
+plan = "A cha check against a unit attacking an adjacent ally. On a pass, you become its target, and that ally can't be retargeted."

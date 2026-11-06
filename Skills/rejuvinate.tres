@@ -1,11 +1,37 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_base"]
+script = ExtResource("2_effect")
+stat = "regen"
+amount = 0.1
+name = "Rejuvinating"
+
+[sub_resource type="Resource" id="Effect_rank"]
+script = ExtResource("2_effect")
+stat = "regen"
+amount = 0.05
+per_rank = true
+name = "Rejuvinating"
+
+[sub_resource type="Resource" id="Effect_cha"]
+script = ExtResource("2_effect")
+stat = "regen_hp"
+amount = 1.0
+by_mod = &"charisma"
+name = "Rejuvinating"
 
 [resource]
 script = ExtResource("1_skill")
 name = "Rejuvinate"
-passive = false
-tags = Array[StringName]([&"divine", &"cha"])
-stub = "?12"
-plan = "Active, 3 AP, 5 Energy, range: rank. Regeneration for 3 turns of (10% + 5% x rank) of the recipient's max HP, + the caster's cha mod. Strength decays 5% per tile beyond 1 from the caster, with no decay when paid entirely with mana. Is the decay fixed when cast, and is the spelling on purpose?"
+tags = Array[StringName]([&"divine", &"cha", &"love", &"magical"])
+ap = 3.0
+cost = 5
+radius_per_rank = 1.0
+hostile = false
+turns = 3
+decays = 0.05
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_base"), SubResource("Effect_rank"), SubResource("Effect_cha")])
+lore = "Eros's mercy, spelled the old way: it keeps on mending after the words are said."

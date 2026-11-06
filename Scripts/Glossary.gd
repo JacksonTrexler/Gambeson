@@ -30,6 +30,7 @@ const TERMS := {
 	&"attack": ["Attack", &"check", "d20 + the attacker's mod, against the target's Defense: meeting it hits. A natural 20 is a Critical."],
 	&"critical": ["Critical", &"check", "A natural 20 on an attack: double damage."],
 	&"advantage": ["Advantage", &"check", "Two d20s rolled; the better counts."],
+	&"disadvantage": ["Disadvantage", &"check", "Two d20s rolled; the worse counts."],
 	&"save": ["Save", &"check", "The target rolls d20 + its own mod against d20 + the user's mod and the skill's rank. Failing, it takes the effects."],
 	&"contest": ["Contest", &"check", "Both roll d20 + their mods; the higher wins."],
 	&"check": ["Check", &"check", "d20 + the mod named, against what the skill says."],

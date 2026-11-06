@@ -609,11 +609,11 @@ func test_adventurer_skills_screen() -> void:
 	ok("[color=#eba25e]int mod[/color]" in h.get_node("%DetailText").text, "Sola's damage mod is the caster's: offense, orange")
 	h.skills.pick(hazard)
 	ok(h.get_node("%DetailState").text == "T2 · Learn Snare first" and act.disabled, "Hazard Expert: tier 2, after Snare")
-	var stub: Skill = load("res://Skills/rejuvinate.tres")
+	var stub: Skill = load("res://Skills/trade_skills.tres")
 	h.skills.pick(stub)
-	ok(h.get_node("%DetailState").text == "T1 · Not built yet. Waits on open question 12 (todo.md)" and not act.visible
+	ok(h.get_node("%DetailState").text == "T1 · Not built yet. Waits on open questions 2 and 11 (todo.md)" and not act.visible
 			and h.get_node("%DetailText").get_parsed_text() == stub.plan, "a stub: the question it waits on, and its plan (%s)" % h.get_node("%DetailState").text)
-	ok(w._get_tooltip(w.spot(stub)).begins_with("Rejuvinate · T1\n") and "Waits on open question 12" in w._get_tooltip(w.spot(stub)) and w._get_tooltip(Vector2(-50, -50)) == "", "the wheel's tooltips")
+	ok(w._get_tooltip(w.spot(stub)).begins_with("Trade Skills · T1\n") and "Waits on open questions 2 and 11" in w._get_tooltip(w.spot(stub)) and w._get_tooltip(Vector2(-50, -50)) == "", "the wheel's tooltips")
 	ok(w.state_of(stub) == &"stub" and w.state_of(hex) == &"learned" and w.state_of(sola) == &"open" and w.state_of(hazard) == &"locked",
 			"how each is drawn")
 	h._refresh()

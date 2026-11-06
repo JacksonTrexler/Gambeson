@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="2_tier"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("2_tier")
+dice = Vector2i(1, 6)
+stat = &"strength"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Jugular"
+tags = Array[StringName]([&"physical", &"str", &"martial", &"offensive"])
+ap = 4.0
+cost = 2
+radius = 1.0
+disadvantage = true
+roll_per_rank = 1
+roll_bonus = -1
+sure_crit = true
+recast_on_crit = true
+weapon_tag = true
+tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
+lore = "Slayers aim for one place. When the blade finds it, they don't stop to admire the work."

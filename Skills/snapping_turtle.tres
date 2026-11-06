@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Snapping Turtle"
+passive = true
+tags = Array[StringName]([&"martial", &"defensive"])
+stub = "Reactions (docs/todo/systems.md)"
+plan = "When the unit uses an offensive skill, it also triggers up to rank of its defensive passives, top to bottom of its hotbar. Its defensive passives that trigger (Interject) wait on Reactions."

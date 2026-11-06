@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Warcry"
+passive = false
+tags = Array[StringName]([&"martial", &"offensive"])
+stub = "Tile marks (docs/plan.md, phase 1)"
+plan = "Pick up to rank enemies the unit can see. Rank tiles on the line to each get a one-use effect, triggered on entry, lasting a few turns. Nearer half, Charge!: allies regain rank dex AP and deal +10% x rank damage until their turn ends. Farther half, Routed!: enemies pay +rank movement."

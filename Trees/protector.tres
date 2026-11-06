@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/shields_up.tres" id="s_shields_up"]
+[ext_resource type="Resource" path="res://Skills/obstruct.tres" id="s_obstruct"]
+[ext_resource type="Resource" path="res://Skills/interdict.tres" id="s_interdict"]
+[ext_resource type="Resource" path="res://Skills/turtle_tactics.tres" id="s_turtle_tactics"]
+[ext_resource type="Resource" path="res://Skills/interject.tres" id="s_interject"]
+[ext_resource type="Resource" path="res://Skills/snapping_turtle.tres" id="s_snapping_turtle"]
+[ext_resource type="Resource" path="res://Skills/martial_slot.tres" id="s_martial_slot"]
+
+[sub_resource type="Resource" id="Branch_shields_up"]
+script = ExtResource("branch")
+skill = ExtResource("s_shields_up")
+
+[sub_resource type="Resource" id="Branch_obstruct"]
+script = ExtResource("branch")
+skill = ExtResource("s_obstruct")
+after = Array[ExtResource("skill")]([ExtResource("s_shields_up")])
+
+[sub_resource type="Resource" id="Branch_interdict"]
+script = ExtResource("branch")
+skill = ExtResource("s_interdict")
+after = Array[ExtResource("skill")]([ExtResource("s_shields_up")])
+
+[sub_resource type="Resource" id="Branch_turtle_tactics"]
+script = ExtResource("branch")
+skill = ExtResource("s_turtle_tactics")
+after = Array[ExtResource("skill")]([ExtResource("s_shields_up")])
+
+[sub_resource type="Resource" id="Branch_interject"]
+script = ExtResource("branch")
+skill = ExtResource("s_interject")
+after = Array[ExtResource("skill")]([ExtResource("s_shields_up")])
+
+[sub_resource type="Resource" id="Branch_snapping_turtle"]
+script = ExtResource("branch")
+skill = ExtResource("s_snapping_turtle")
+after = Array[ExtResource("skill")]([ExtResource("s_turtle_tactics")])
+
+[sub_resource type="Resource" id="Branch_martial_slot"]
+script = ExtResource("branch")
+skill = ExtResource("s_martial_slot")
+needs = 3
+
+[resource]
+script = ExtResource("root")
+name = "Protector"
+tag = &"martial"
+branches = Array[ExtResource("branch")]([SubResource("Branch_shields_up"), SubResource("Branch_obstruct"), SubResource("Branch_interdict"), SubResource("Branch_turtle_tactics"), SubResource("Branch_interject"), SubResource("Branch_snapping_turtle"), SubResource("Branch_martial_slot")])

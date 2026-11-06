@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_lovely"]
+script = ExtResource("2_effect")
+stat = "lovely"
+amount = 0.1
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Lovely Caster"
+passive = true
+tags = Array[StringName]([&"divine", &"love", &"magical"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_lovely")])

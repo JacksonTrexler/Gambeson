@@ -73,3 +73,23 @@ func test_mental() -> void:
 	v(1).armor = null
 	v(1).refresh()
 	ok(skill_ap == v(1).ap[2].amount + 2, "and rank more skill AP, while armored")
+
+
+# Bracing and other check effects reach investigations (offensive), hiding (defensive) and last stands
+# (the best defensive bonus over its stats).
+func test_more_checks() -> void:
+	v(1).learned.append(slot(load("res://Skills/turtle_tactics.tres"), 2))
+	ok(v(1).best_defensive_bonus() == 4, "Turtle Tactics II: +4 to defensive checks")
+	var lowest := 99
+	for n in 200:
+		lowest = mini(lowest, b.last_stand(v(1)))
+	ok(lowest >= 1 + v(1).average_mod() + 4, "a last stand takes it (lowest %d)" % lowest)
+	var keen := effect("check", 30.0)
+	keen.kind = &"offensive"
+	v(3).afflict(keen, 9)
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3)})
+	var looks := []
+	b.investigated.connect(func(_by, _of, _s, total, _against, _close): looks.append(total))
+	b.investigate(v(1), load("res://Skills/hide.tres"), [v(3)] as Array[Unit], 25)
+	ok(looks.size() == 1 and looks[0] >= 31 + v(3).mod(&"wisdom"), "an investigation is offensive: +30 (%s)" % [looks])
+	ok(b._hide_roll(v(1)) >= 1 + v(1).mod(&"dexterity") + 4, "hiding is defensive")

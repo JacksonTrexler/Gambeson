@@ -212,6 +212,7 @@ var suspicion := {}  # stacks against the units (and tiles: Vector2i) it's grown
 var noticed := {}  # tiles where it has inspected something suspicious (Battle._first_look())
 var rested_turns := 0  # its side's turns in a row it has rested through: it looks further and better (Battle.survey())
 var unwatched := 0  # its turns since it last looked around (Battle._watch(): wis mod 0 or less looks only every few)
+var guard := Vector2.ZERO  # the way it faces behind its shield while Shields Up! is on it (Battle._guard(); hit())
 var heading := Vector2i.ZERO  # the way its last move this turn went, if moving was the last thing it did (Eyes Forward)
 var _face: Label  # draws a persona's stand-in sprite in place of its own (_show_face())
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
@@ -836,11 +837,18 @@ func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 		heal(roundi(raw * 0.25 * (charmed - 4)))  # Flamecharmed: an ally's fire feeds it
 	var net := luck - (by.luck if by else 0)
 	var cut := mitigation(tags)
+	if by and by != self and guarding(by.cell):
+		cut = minf(cut + stat(&"guard"), 1.0)  # Shields Up!
 	if by and by.faction == faction:
 		cut = minf(cut + stat(&"ally_mitigate"), 1.0)  # friendly fire (Conspire)
 	var taken := Luck.settle(raw * (1.0 - cut), net, false)
 	damage(taken)
 	return taken
+
+
+# Shields Up! is on it and c's centre lies within the 90 degree cone it faces.
+func guarding(c: Vector2i) -> bool:
+	return guard != Vector2.ZERO and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -1502,7 +1510,7 @@ func _pools() -> Array[AP]:
 	var opening := stat(&"opening_ap") if turns_taken <= 1 else 0.0  # a Dagger, on its first turn
 	var moving := maxf(maxi(dex, 0) * (1.0 + stat(&"dex_ap")) - armor_drag(&"move") + stat(&"move_ap"), 0.0)
 	var casting := maxf(maxi(wis, 0) * more - armor_drag(&"skill") + stat(&"skill_ap"), 0.0)
-	var out: Array[AP] = [AP.new((BASE_AP + mini(dex, 0) + mini(wis, 0)) * (more + opening)),
+	var out: Array[AP] = [AP.new(maxf((BASE_AP + mini(dex, 0) + mini(wis, 0)) * (more + opening) + stat(&"base_ap"), 0.0)),
 			AP.new(moving, &"move"), AP.new(casting, &"skill")]
 	return out
 
@@ -1535,19 +1543,29 @@ func check_mod(s: StringName, kind: StringName, tags: Array[StringName] = []) ->
 # What its bracing passives add to a check in stat s (offensive or defensive; mental: int, wis, cha):
 # each that matches its armor's weight, stat and kind adds its armor's rank (x the passive's share),
 # up to the passive's rank (Agility, Balanced, Vanguard, Combat, Meditative, Invigorating Bracing).
+# Plain check effects (Turtle Tactics) add theirs, armor or not.
 func check_bonus(s: StringName, kind: StringName) -> int:
-	if not armored():
-		return 0
-	var w := armor.weight_class()
+	var w := armor.weight_class() if armored() else &""
 	var total := 0
 	for pair in _effects():
 		var e: Effect = pair[0]
-		if e.stat != "brace" or not (e.tags.is_empty() or w in e.tags):
+		if e.stat not in ["brace", "check"] or (e.kind and e.kind != kind):
 			continue
-		if not (s in e.checks or (&"mental" in e.checks and s in MENTAL)) or (e.kind and e.kind != kind):
+		if not (s in e.checks or (&"mental" in e.checks and s in MENTAL) or (e.stat == "check" and e.checks.is_empty())):
 			continue
-		total += mini(floori(armor.rank * e.amount), pair[1])
+		if e.stat == "check":
+			total += roundi(e.amount * (pair[1] if e.per_rank else 1) * pair[2])
+		elif armored() and (e.tags.is_empty() or w in e.tags):
+			total += mini(floori(armor.rank * e.amount), pair[1])
 	return total
+
+
+# Its best defensive bracing over its stats: what a last stand, which goes by every stat at once, takes.
+func best_defensive_bonus() -> int:
+	var best := 0
+	for s in [&"strength", &"dexterity", &"constitution", &"intelligence", &"wisdom", &"charisma"]:
+		best = maxi(best, check_bonus(s, &"defensive"))
+	return best
 
 
 # Gets n AP back into its general pool, up to what that pool started the turn with (Renew).
