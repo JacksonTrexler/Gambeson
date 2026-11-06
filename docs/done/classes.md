@@ -143,3 +143,4 @@ The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped arm
   - *Now:* a Paladin option.
 - [x] **Renew** (tier 1 active, `divine`, `wis`; Divinity): restores wis mod HP (at least 1), and the recipient gets rank AP back. Against wounds it counts rank × rank: Renew II clears wounds up to rank 4. *Now:* a Paladin option (3 AP, 2 Energy, range 2), until Divinity has a tree; also on the Adventurer's Magic root.
 - [x] The **Adventurer** starts at 16 in every stat - a sandbox for the attribute-driven Actualization abilities (respec, Hardy, Self-reflection) to come.
+- [x] **Hardy** (Actualization passive; `Skills/hardy.tres`): con mod counts (1 + rank) times in the HP each level brings. Alabaster borrows it at I: 30 + 25 = 55 max HP. Its home tree waits on the Actualization tree (?57).

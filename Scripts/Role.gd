@@ -15,6 +15,7 @@ extends Resource
 @export var swaps: Dictionary[StringName, StringName] = {}  # its units' magical skills use the second stat where they'd use the first (Warlock: wisdom -> charisma, for Hex)
 @export var general: Array[StringName] = []  # the general trees its units get besides the base one: martial, specialist, magical (the Adventurer: all three)
 @export var items: Array[Item] = []  # what a starter of this class first wears (Entry: Game.outfit): its armor, weapon and trinket
+@export var vigor := 0  # max HP a level beyond the con mod: 1 casters, 2 specialists and generalists, 3 martialists; 0 reads it off its general trees (vigor_per_level())
 
 @export_group("Tree")  # a class with a skill tree (the Adventurer's, drawn as a wheel on the skills screen)
 @export var center: Skill  # the one skill at the very centre (Adventurer: Skill Slot +1)
@@ -23,6 +24,18 @@ extends Resource
 @export var tabs: Array[SkillTab] = []  # more of its tree, beside its own, each a wheel of its own (Rogue: Calling: Freedom)
 @export var radial := false  # its own tab drawn as a wheel (the Adventurer)
 @export var shared: Array[Skill] = []  # a static tier 1 row on every tab's core ring, learned from the start as innate skills (Warlock: Hex, Sweet Nothings, Chant)
+
+
+# Max HP each level brings its units beyond their con mod: set (vigor), or by the general trees the
+# class gets - all three a generalist (2), martial a martialist (3), specialist 2, a caster 1.
+func vigor_per_level() -> int:
+	if vigor > 0:
+		return vigor
+	if general.size() >= 3:
+		return 2
+	if &"martial" in general:
+		return 3
+	return 2 if &"specialist" in general else 1
 
 
 func has_tree() -> bool:

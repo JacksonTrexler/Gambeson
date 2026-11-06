@@ -218,7 +218,8 @@ var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
 var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
-var _hp_bonus := 0  # what its items and passives add to its max HP now (refit())
+var _hp_bonus := 0  # what its level, items and passives add to its max HP now (refit())
+var respec: Dictionary[StringName, int] = {}  # how far each base stat has been shifted from what it was born with (respec_by())
 var over_max := 0  # HP it may hold past its max for now (a Red Spinel Ring past rank 10), gone once it drops to its max
 var slain_from := 0  # the HP it had as Death took it: what revival and die-hard effects go by (Battle._death())
 var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> its turns left: they can't be used, and passives stop working
@@ -615,6 +616,7 @@ func unlock(s: Skill) -> bool:
 	skill_points -= 1
 	purchases.append([s, 1])
 	_arrange()
+	refit()  # a passive may change what's derived (Hardy)
 	var free := free_slot(s)
 	if s.fits_bar() and free >= 0:
 		hotbar[free] = s
@@ -647,6 +649,7 @@ func raise(s: Skill) -> bool:
 		if x.skill == s:
 			x.rank += 1
 	_arrange()  # a slot-granting skill may grant more per rank
+	refit()  # and a passive more of what's derived (Hardy)
 	return true
 
 
@@ -1019,16 +1022,44 @@ func unequip(slot: String) -> Item:
 	return old
 
 
-# Max HP from its base and what its items and passives add (max_hp effects: Burning Blade), less what
-# Asphyxia takes (a share of the base a stack) and Humble cuts, at least 1. Starkind, its base is its max Power.
+# The derived-stat pipeline's last step (docs/plan-composability.md, seam 5). Its stats are its base
+# (respec_by() shifts it) under whatever effects are on it; from those, max HP: its authored base +
+# what its level brings (level_hp()) + what items and passives add (max_hp effects: Burning Blade),
+# less what Asphyxia takes (a share of base and level HP a stack) and Humble cuts, at least 1.
+# Starkind, its base is its max Power and levels add nothing. Run whenever any of those change.
 func refit() -> void:
-	var base := max_energy if starkind() > 0 else max_hp - _hp_bonus
-	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * base) - roundi(stat(&"humble"))
-	max_hp = maxi(base + bonus, 1)
-	_hp_bonus = max_hp - base
+	var authored := max_energy if starkind() > 0 else max_hp - _hp_bonus
+	var grown := authored + (0 if starkind() > 0 else level_hp())
+	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble"))
+	max_hp = maxi(grown + bonus, 1)
+	_hp_bonus = max_hp - authored
 	if hp > max_hp + over_max:
 		hp = max_hp + over_max
 	_arrange()  # items can grant slots (the Burning Bag)
+
+
+# Max HP its level brings on top of its base: (con mod x (1 + Hardy) + its class's vigor) a level. A
+# unit without a class (hand-authored: a golem, a villager) has its usual scaling in its base already;
+# only Hardy's extra con scaling adds to it.
+func level_hp() -> int:
+	var con := mod(&"constitution")
+	var per := con * roundi(stat(&"hardy")) + (con + role.vigor_per_level() if role else 0)
+	return per * lv()
+
+
+# Shifts its base stats (Meditate): `changes` stat -> amount, each stat's total shift kept within
+# `limit` either way of what it was born with. All or nothing: false (and no change) if any would go
+# past it. Everything derived follows (refit()).
+func respec_by(changes: Dictionary, limit: int) -> bool:
+	for s in changes:
+		assert(s in CORE, "%s isn't a core stat" % s)
+		if absi(respec.get(s, 0) + changes[s]) > limit:
+			return false
+	for s in changes:
+		respec[s] = respec.get(s, 0) + changes[s]
+		set(s, get(s) + changes[s])
+	refit()
+	return true
 
 
 # Its six core stats as they are, unchanged by effects, added up: Starblade's measure of a target.
@@ -1539,6 +1570,8 @@ func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 	timed[e] = Applied.new(turns, r)
 	if e.stat == "level":
 		_arrange()  # its slots follow
+	if e.stat in ["level", "constitution", "hardy"]:
+		refit()  # and its max HP
 	return timed[e]
 
 

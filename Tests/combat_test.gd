@@ -49,10 +49,17 @@ func fight(seed: int) -> Dictionary:
 	return result
 
 
+var peak := {}  # unit -> the most movement it has had since its moved count last reset (check())
+
+
 func check(seed: int) -> void:
 	for u: Unit in b.get_node("Units").get_children():
 		ok(u.hp >= 0 and u.hp <= u.max_hp and u.energy >= 0 and u.energy <= u.max_energy, "seed %d: %s hp/energy in range" % [seed, u.name])
-		ok(u.moved <= u.stat(&"movement") + 0.0001, "seed %d: %s moved within its movement" % [seed, u.name])
+		# Movement is live (a tile's bonus left behind, a slow, a fall), so what it spent is held to the
+		# most it had since its count last reset, not to what it has now.
+		var mv := u.stat(&"movement")
+		peak[u] = mv if u.moved == 0.0 else maxf(peak.get(u, mv), mv)
+		ok(u.moved <= peak[u] + 0.0001, "seed %d: %s moved within its movement" % [seed, u.name])
 		ok(u.ap.all(func(p: AP): return p.amount >= -0.0001), "seed %d: %s AP never negative" % [seed, u.name])
 		ok(u.is_alive() == (b.unit_at(u.cell) == u), "seed %d: %s on the board iff alive" % [seed, u.name])
 	for c in b.units:

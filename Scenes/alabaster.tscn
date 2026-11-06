@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://Skills/stoneskin.tres" id="5_stoneskin"]
 [ext_resource type="Resource" path="res://Skills/stonegift.tres" id="6_stonegift"]
 [ext_resource type="Resource" path="res://Skills/relay.tres" id="7_relay"]
+[ext_resource type="Resource" path="res://Skills/hardy.tres" id="8_hardy"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
 
 [ext_resource type="Resource" path="res://Loot/alabaster.tres" id="90_loot"]
@@ -25,6 +26,11 @@ script = ExtResource("9_slot")
 skill = ExtResource("6_stonegift")
 rank = 1
 
+[sub_resource type="Resource" id="Slot_hardy"]
+script = ExtResource("9_slot")
+skill = ExtResource("8_hardy")
+rank = 1
+
 [sub_resource type="Resource" id="Slot_relay"]
 script = ExtResource("9_slot")
 skill = ExtResource("7_relay")
@@ -37,7 +43,7 @@ aura = 1
 race = ExtResource("3_golem")
 look = ExtResource("2_look")
 level = 5
-learned = Array[ExtResource("9_slot")]([SubResource("Slot_strike"), SubResource("Slot_stoneskin"), SubResource("Slot_stonegift"), SubResource("Slot_relay")])
+learned = Array[ExtResource("9_slot")]([SubResource("Slot_strike"), SubResource("Slot_stoneskin"), SubResource("Slot_stonegift"), SubResource("Slot_relay"), SubResource("Slot_hardy")])
 max_hp = 30
 strength = 18
 dexterity = 8

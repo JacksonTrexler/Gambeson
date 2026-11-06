@@ -93,8 +93,9 @@ func test_alabaster() -> void:
 	var u := alabaster()
 	ok(u.race.name == "Stone Golem" and u.stat(&"size") == 4 and u.level == 5, "Stone Golem, Large, level 5")
 	ok(u.strength == 18 and u.constitution == 20 and u.intelligence == 8 and u.charisma == 8, "str high, con 20, rest 8")
-	ok(u.rank(strike) == 3 and u.passives == [stoneskin, load("res://Skills/relay.tres")] and stonegift in u.actives,
-			"Strike III, Stoneskin, Stonegift, Relay")
+	ok(u.rank(strike) == 3 and u.passives == [stoneskin, load("res://Skills/relay.tres"), load("res://Skills/hardy.tres")] and stonegift in u.actives,
+			"Strike III, Stoneskin, Stonegift, Relay, Hardy (borrowed from Actualization)")
+	ok(u.max_hp == 30 + 5 * 1 * 5, "Hardy I: each of its 5 levels brings its con mod (5) once more: 30 + 25")
 	ok(u.sprite.sprite_frames.get_frame_texture(&"default", 0).resource_path == "res://Units/GolemClay.png", "golem sprite")
 
 
@@ -118,11 +119,13 @@ func test_strike_iii() -> void:
 
 func test_stoneskin() -> void:
 	var u := alabaster()
+	var top := u.max_hp
 	ok(is_equal_approx(u.mitigation([]), 0.4) and u.stat(&"dexterity") == 4, "full HP: 40% off, dex halved")
-	ok(u.hit(10, [&"fire"]) == 6 and u.hp == 24, "10 -> 6")
-	ok(u.mitigation([]) == 0.0 and u.stat(&"dexterity") == 8, "at 24/30 (80%): off")
+	ok(u.hit(10, [&"fire"]) == 6 and u.hp == top - 6, "10 -> 6")
+	u.hp = int(top * 0.8)
+	ok(u.mitigation([]) == 0.0 and u.stat(&"dexterity") == 8, "at 80%: off")
 	ok(u.hit(10, [&"fire"]) == 10, "full damage below 85%")
-	u.hp = 30
+	u.hp = top
 	u.refresh()
 	ok(is_equal_approx(u.ap_for(&"skill"), 6.0), "AP from halved dex (mod -3) and wis 8 (-1): 6")
 

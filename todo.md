@@ -6,7 +6,7 @@ Open work and questions, split by scope so each can be read on its own. What's d
 
 ## Questions
 
-**Asking now (new systems, specs to confirm before building):** 57 (Actualization: the cut-off Self-reflection clause, and whether Meditate's respec is combat-only), 58 (Berserker Affinity: rounding of `n·log n`, and whether re-costing live can strand a skill below rank I), 59 (tile stacks: does Leaves mask a *beneficial* tile too, or only hazards?), 60 (default orders: "0 cha XOR low wis/info" - I read it as inclusive OR; confirm?). The composability plan these ride on: `docs/plan-composability.md`.
+**Asking now (new systems, specs to confirm before building):** 57 (Actualization: the cut-off Self-reflection clause, and whether Meditate's respec is combat-only), 58 (Berserker Affinity: rounding of `n·log n`, and whether re-costing live can strand a skill below rank I), 59 (tile stacks: does Leaves mask a *beneficial* tile too, or only hazards?), 60 (default orders: "0 cha XOR low wis/info" - I read it as inclusive OR; confirm?), 61 (HP: your formula built as level scaling on top of a base of 10, not the whole of max HP). The composability plan these ride on: `docs/plan-composability.md`.
 
 **Confirmed as built (2026-11-06), per "confirm where the mechanics make sense":** 45 (Humble: rank x 4 x (1 - share cut) turns), 46 (Sol's path), 48 (Bracing caps at rank), 50 (Strike's upgrades), 51 (Journeyman + two-tier specialist edge), 52 (Perfect does not overheal). 47 (armor): Robe is unique (no dex, wis as magical Defense); Plate kept matching Brigandine; the weight numbers stand. 53, 54 answered (T1 capitalised; tab colours fine).
 
@@ -15,7 +15,7 @@ Open work and questions, split by scope so each can be read on its own. What's d
 | File | What's in it | Open questions |
 | --- | --- | --- |
 | [docs/todo/rules.md](docs/todo/rules.md) | Rules still to settle: damage floor, stat caps, attack rolls, the clover slot | 1, 2, 5, 6 |
-| [docs/todo/systems.md](docs/todo/systems.md) | Systems to build: the composability seams (Check resolver, tile stacks, behaviour spine, context tags, derived-stat pipeline), then checks, trees for Fighter/Paladin/Wizard, equipping, resources, reactions, Divinity, last stands, items... | 21, 59 |
+| [docs/todo/systems.md](docs/todo/systems.md) | Systems to build: the composability seams (Check resolver, tile stacks, behaviour spine, context tags, derived-stat pipeline), then checks, trees for Fighter/Paladin/Wizard, equipping, resources, reactions, Divinity, last stands, items... | 21, 59, 61 |
 | [docs/todo/ui.md](docs/todo/ui.md) | The log, targeting, lore keeper, a stats block; UX: gray-out commanded units, raise commandable prominence, default orders, tile-panel walker icon, suspicious-tile overlay, accessibility | 8, 56 |
 | [docs/todo/classes.md](docs/todo/classes.md) | Adventurer (Actualization), Wizard, Warlock, Cleric, general trees and Strike, Rogue/Bard, Paladin, Fighter, Berserker (Affinity) | 3, 10, 11, 12, 13, 15, 16, 18, 19, 20, 42, 57, 58 |
 | [docs/todo/world.md](docs/todo/world.md) | Scenes (Infernal Meadows, Astral Envoy), items and armor, monsters (Siren, Sunder) | 14, 29, 47 |
