@@ -196,6 +196,9 @@ var moved := 0.0  # movement spent this turn
 var steps := 0  # tiles walked this turn (still())
 var ground: Array[StringName] = []  # tags of the tile it stands on (Battle keeps this current)
 var footing: Terrain  # the tile it stands on, whose effects it has while there (Battle keeps this current)
+var blind_on: Variant = null  # a cell it walked onto this turn without seeing under its leaves (Battle.obscured()): checks there come at disadvantage
+var steadied: Variant = null  # the cell where it caught itself as glass gave way: spared that ground's effects until it moves off or a turn passes (Battle._teeter())
+var steady_turn := -1  # turns_taken when it did
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var exposed := 0  # concealment levels lost to attacking or being hit (Battle.cast); back as its side's turn starts
 var shown: Read  # how the player's side sees it (see appear()); null: as it is
@@ -1700,7 +1703,7 @@ func _effects(viewer: Unit = null) -> Array:
 	for e in timed:
 		if e not in own and not (viewer and viewer in timed[e].known_to):
 			out.append([e, timed[e].rank, timed[e].strength(e)])
-	if footing:
+	if footing and not (steadied != null and steadied == cell):
 		for e in footing.effects:
 			out.append([e, 1, 1.0])
 	for it in items():

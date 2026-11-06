@@ -1248,13 +1248,13 @@ func _show_units() -> void:
 func _move_label(cost: Variant, suspicious: bool) -> String:
 	if cost == null or cost <= 1:
 		return ""
-	return "Mv -%d%s" % [cost, " ?" if suspicious else ""]
+	return "Mv -%s%s" % [Skill.num(cost), " ?" if suspicious else ""]
 
 
 # The tile is known to be something more than it shows, its effects concealed: a hint read off it,
 # or a spot where something may lurk.
 func _suspicious(c: Vector2i, r: Read) -> bool:
-	return r.hint != "" or c in dubious
+	return r.hint != "" or c in dubious or r.obscured
 
 
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
@@ -1295,7 +1295,7 @@ func _show_pane() -> void:
 # effects are one line), sticky ground, and what whoever stands there is (Moist, Wet) - each kind
 # named by its term.
 func _tile_effects(c: Vector2i, r: Read) -> Array:
-	var out := []
+	var out := _layer_lines(c, r)
 	if r.worth != null and r.worth != 0:
 		out.append(["Beneficial" if r.worth > 0 else "Detrimental", FRIEND if r.worth > 0 else FOE])
 	if r.trap == true:
@@ -1312,6 +1312,27 @@ func _tile_effects(c: Vector2i, r: Read) -> Array:
 		out.append(["%s: +%d to leave" % [Glossary.term(&"sticky"), r.exit], MUTED])
 	for t in r.tags.filter(func(t): return t not in [&"trap", &"sticky"] and String(t) not in r.name.to_lower() and not Battle.material(t)):
 		out.append(["{x:%s|%s}" % [t, String(t).capitalize()], MUTED])
+	return out
+
+
+# [markup, colour] for the layers the player can make out on c, top down: each one's name and traits
+# by term (Brittle, Unstable...), and a mending startile's progress. Under obscuring leaves, only the
+# leaves themselves.
+func _layer_lines(c: Vector2i, r: Read) -> Array:
+	var out := []
+	var shown: Array = [battle.top_layer(c)] if r.obscured else battle.reached(c)
+	for l: Battle.Layer in shown:
+		if l == null:
+			continue
+		var t := l.terrain
+		var traits: PackedStringArray = []
+		for pair in [[l.passes, &"lets_through"], [t.obscures, &"obscuring"], [t.cover, &"cover"], [t.brittle, &"brittle"],
+				[t.unstable, &"unstable"], [t.flammable, &"flammable"], [t.windswept, &"windswept"]]:
+			if pair[0]:
+				traits.append(Glossary.term(pair[1]))
+		out.append(["%s: %s" % [t.name, ", ".join(traits)] if not traits.is_empty() else t.name, MUTED])
+		if l.repair_goal > 0:
+			out.append(["%s: %d/%d" % [Glossary.term(&"repairing"), l.repairing, l.repair_goal], STARPOWER_TINT])
 	return out
 
 

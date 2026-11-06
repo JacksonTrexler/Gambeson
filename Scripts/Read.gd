@@ -30,6 +30,7 @@ var healthy: Variant = null  # unbloodied: above half HP
 var cost: Variant = null  # tile: movement to enter
 var exit: Variant = null  # tile: extra movement to leave
 var trap: Variant = null  # tile: springs when entered
+var obscured := false  # tile: under a layer that hides what's beneath (Leaves), nobody standing on it
 
 var tags: Array[StringName] = []  # identity: race, role, unit tags (Halfling Paladin, holy); tile: what the ground is (water, sticky)
 var stats := {}

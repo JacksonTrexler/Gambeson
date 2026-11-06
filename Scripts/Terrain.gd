@@ -34,6 +34,22 @@ extends Resource
 @export var wound_turns := 1  # ...for this many turns (laid by a skill: rank + the setter's mod in bonus_stat)
 
 
+@export_group("Layer")  # laid over a tile's ground, in a stack (Battle.lay_layer(): leaves, glass, starpanes, startiles)
+@export var passes := false  # whoever's on it deals with the layer beneath too (Leaves; an overlay starpane) - else only with it
+@export var drag := 0.0  # movement it adds on top of what's beneath (Leaves: 0.1)
+@export var obscures := false  # what's beneath can't be made out until a unit stands on it; stepping in blind, checks the ground beneath imposes are rolled at disadvantage (Leaves)
+@export var cover := false  # advantage to concealment checks made on it (Leaves)
+@export var brittle := false  # blunt damage - aimed at it, over an area, or at whoever's on it - breaks it (glass, starpanes, startiles)
+@export var breaks_into: Terrain  # what's left when it breaks (a startile: a cracked startile); none - it's gone
+@export var unstable := false  # ending a turn on it without resting, having moved more than its dex mod in tiles, a unit breaks it, and makes a dex check against dc or drops through (glass)
+@export var dc := 12
+@export var flammable := false  # fire on it burns it away and sets the tile alight (Leaves)
+@export var windswept := false  # wind on it blows it away (Leaves)
+@export var source := false  # a star power source on the lattice (a startile: Battle.starpower)
+@export var pane := false  # a starpane: links the lattice side-on (Battle.panes)
+@export_file("*.tres") var repairs_into := ""  # mends into this near a power source, a turn a tile of distance (a cracked startile: a startile; Battle._repair_tiles()) - a path: the two refer to each other
+
+
 func is_trap() -> bool:
 	return dice != Vector2i.ZERO
 

@@ -21,6 +21,8 @@ const EARTH := Color("#8a6a45")
 const STAR := Color("#bfe3ff")  # the star lattice: panes and their links
 const STARPOWER := Color("#ffe48a")
 const SHADE := {&"safe": 0.16, &"unsure": 0.26, &"bad": 0.45}  # reach shading strength by ground
+const LEAF := [Color("#7d9a3c"), Color("#a3842f"), Color("#5f7d33"), Color("#b0662e")]  # leaves' greens and browns
+const GLASS := Color("#cfeaff")
 
 var hud: HUD
 var top: Node2D
@@ -48,6 +50,7 @@ func _draw() -> void:
 		_suspect_mark(c, DUBIOUS, pulse, loud)
 	for c in hud.suspect:  # concealed ground it suspects is more than it looks: a translucent ? placeholder
 		_suspect_mark(c, GOLD, pulse, loud)
+	_layers(b)
 	_lattice(b, pulse)
 	for c in b.earthworks:
 		_earth(c)
@@ -230,6 +233,51 @@ func _lattice(b: Battle, pulse: float) -> void:
 			var rad := (7.0 if i % 2 == 0 else 3.0) * (0.8 + 0.2 * pulse)
 			pts.append(at + Vector2.from_angle(-PI / 2 + i * PI / 5) * rad)
 		draw_colored_polygon(pts, Color(STARPOWER, 0.35 + 0.55 * full))
+
+
+# The layers laid over tiles, bottom up (Battle.layers): leaves as scattered leaves (faint while someone
+# stands in them: they're see-through then), glass as a pale sheen, a cracked startile as cracked
+# glass with its repair's progress. Starpanes and startiles are drawn as the lattice (_lattice()).
+func _layers(b: Battle) -> void:
+	for c: Vector2i in b.layers:
+		var st: Array = b.layers[c]
+		for i in range(st.size() - 1, -1, -1):
+			var l: Battle.Layer = st[i]
+			var t := l.terrain
+			if t.pane or t.source:
+				continue
+			if t.unstable:
+				_glass(c, l)
+			elif t.obscures:
+				_leaves(c, b.unit_at(c) != null)
+
+
+func _leaves(c: Vector2i, trodden: bool) -> void:
+	var r := _rect(c, 2)
+	var seed := absi(c.x * 73856093 ^ c.y * 19349663)
+	for i in 9:
+		var k := (seed >> (i * 3)) & 0xFFFF
+		var at := r.position + Vector2(fmod(k * 0.61, r.size.x), fmod(k * 0.37 + i * 7.3, r.size.y))
+		var ang := float(k % 628) / 100.0
+		var col: Color = LEAF[(k + i) % LEAF.size()]
+		var pts := PackedVector2Array()
+		for j in 6:
+			var a := ang + j * TAU / 6.0
+			pts.append(at + Vector2(cos(a) * 3.2, sin(a) * 1.6).rotated(ang))
+		draw_colored_polygon(pts, Color(col, 0.28 if trodden else 0.85))
+
+
+func _glass(c: Vector2i, l: Battle.Layer) -> void:
+	var r := _rect(c, 1.5)
+	draw_rect(r, Color(GLASS, 0.16))
+	draw_rect(r, Color(GLASS, 0.5), false, 1.0)
+	draw_line(r.position + Vector2(4, r.size.y * 0.45), r.position + Vector2(r.size.x * 0.45, 4), Color(1, 1, 1, 0.35), 1.0)
+	if l.terrain.repairs_into != "":  # a cracked startile: cracks, and how far its mending's come
+		var m := r.get_center()
+		for d in [Vector2(-9, -6), Vector2(8, -8), Vector2(7, 9), Vector2(-8, 7)]:
+			draw_polyline(PackedVector2Array([m, m + d * 0.5 + Vector2(d.y, -d.x) * 0.15, m + d]), Color(1, 1, 1, 0.55), 1.0)
+		if l.repair_goal > 0:
+			draw_arc(m, 5.0, -PI / 2, -PI / 2 + TAU * float(l.repairing) / l.repair_goal, 24, Color(STARPOWER, 0.9), 1.5)
 
 
 func _earth(c: Vector2i) -> void:

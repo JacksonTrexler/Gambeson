@@ -34,7 +34,7 @@ None of these is on fire. All four are about to be asked to carry a lot more wei
 Ranked by **(ease of win) × (long-term value)**. Each is independently shippable and
 backward-compatible with the current tests.
 
-### 1. `Check` — one roll resolver *(high value, medium ease — do first)*
+### 1. `Check` — one roll resolver *(high value, medium ease — do first)* ✅ built: every d20 goes through it
 
 A single value type + resolver for every d20 contest, mirroring the Glossary terms players
 already read. One definition, one crit rule, one place to add advantage/bonuses/luck.
@@ -186,7 +186,7 @@ Each item maps to the seam it rides on. ✅ = shipped this pass.
 - ✅ Boss commanders in heavy armor where it fits (Alabaster → Brigandine).
 - ✅ Confirm Fighter/Paladin already start in medium (half plate); kept.
 
-**Seam 5 — derived stats:** Hardy, the HP formula, respec. Blocks Actualization t3 and Hardy.
+**Seam 5 — derived stats:** ✅ built (`Unit.refit()` pipeline, `level_hp()`, `respec_by()`, Hardy). Actualization t1/t3 wait on ?57.
 - Actualization tree (Martial-category): t1 **Self-reflection** (rank info levels on self),
   t3 **Meditate** (AP paid with movement *and* AP; info levels; respec ±rank per stat, modal).
 - **Hardy** passive (Alabaster borrows): multiply con HP-scaling by rank via the formula.
@@ -198,8 +198,7 @@ Each item maps to the seam it rides on. ✅ = shipped this pass.
 - **Affinity → rank-cost:** `−1↓: n^(2−eff)`, `0: n²`, `+1: n·log n`, `+2: n`. Re-costing
   live in combat may rank a skill up/down immediately.
 
-**Seam 2 — tile stacks:** layerable terrain + **Leaves** as the template (flammable, windswept,
-transparent-while-stepped, mask, disadvantage on hidden checks, advantage to concealment).
+**Seam 2 — tile stacks:** ✅ built - layers, Leaves, Glass, starpanes and startiles as layers, cracked startiles that mend.
 
 **UX (mostly independent of the seams):**
 - Remove the "too far to hear you" tip; instead **gray out** the hotbar/ineligible orders and

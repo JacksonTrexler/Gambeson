@@ -16,13 +16,18 @@ func spawn(scene: PackedScene, f: Faction, at: Vector2i) -> Unit:
 	return b.summon(scene, f, at)
 
 
-# A line of panes from (1, 1) to (5, 1), its source at (1, 1), `full` of the way.
+# A line of panes from (1, 1) to (5, 1), its source - a startile - at (1, 1), `full` of the way: laid as
+# layers (tile stacks).
 func lattice(full: float) -> void:
 	b.panes.clear()
 	b.starpower.clear()
 	b.charge.clear()
+	for c in b.layers.keys():
+		b.layers[c].clear()
+		b._restack(c)
 	for x in range(2, 6):
-		b.panes[Vector2i(x, 1)] = true
+		b.lay_layer(Vector2i(x, 1), Battle.STARPANE)
+	b.lay_layer(Vector2i(1, 1), Battle.STARTILE)
 	b.starpower[Vector2i(1, 1)] = full
 	b.charge[Vector2i(1, 1)] = roundi(full * Battle.STAR_CAPACITY)
 

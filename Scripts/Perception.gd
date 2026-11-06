@@ -290,6 +290,14 @@ static func embellish(t: Unit) -> Dictionary:
 # the ground altogether. Allies of a setter with trap_word who weren't told get a vibe of it.
 static func tile(b: Battle, o: Unit, c: Vector2i, extra := 0.0) -> Read:
 	var r := Read.new()
+	if b.obscured(c):  # under leaves: only the leaves can be made out, till someone stands there
+		var top: Terrain = b.top_layer(c).terrain
+		r.cell = c
+		r.net = -1
+		r.obscured = true
+		r.name = top.name
+		r.tags.assign(top.tags)
+		return r
 	var ter := b.terrain(c)
 	var snare: Battle.Snare = b.snares.get(c)
 	var hidden := b.hidden(c) and not (snare and o in snare.known)
@@ -300,7 +308,7 @@ static func tile(b: Battle, o: Unit, c: Vector2i, extra := 0.0) -> Read:
 		r.aura = ter.worth()
 	if r.net >= 0:
 		r.name = ter.name
-		r.cost = ter.enter
+		r.cost = ter.enter + ter.drag if ter.drag > 0.0 else ter.enter
 		r.exit = ter.exit
 		r.trap = ter.is_trap()
 		r.tags.assign(ter.tags.filter(func(t): return t not in [&"beneficial", &"detrimental"]))  # those: worth, at 1

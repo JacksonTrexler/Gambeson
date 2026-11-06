@@ -767,3 +767,21 @@ func test_default_orders() -> void:
 	ok(not h.issue_intent(ally, &"defend") and ally in h.command.locked and not h.command.can_order(ally),
 			"picking one it can't carry out wastes the order and locks commanding it this turn")
 	h.free()
+
+
+func test_layer_pane() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2)})
+	b.lay_layer(Vector2i(4, 3), load("res://Terrain/leaves.tres"))
+	var h := await start(v(1))
+	h.hover_cell(Vector2i(4, 3))
+	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
+	ok(h.get_node("%TileName").text == "Leaves" and lines[0] == "Leaves: Lets through, Obscuring, Cover, Flammable, Windswept" and lines[-1] == "?",
+			"leaves: their traits by term, and a '?' - what's under them can't be made out (%s)" % [lines])
+	b.lay_layer(Vector2i(6, 3), Battle.STARTILE)
+	b.expose(Vector2i(6, 3), [&"blunt"] as Array[StringName], v(1))
+	b.top_layer(Vector2i(6, 3)).repair_goal = 3
+	b.top_layer(Vector2i(6, 3)).repairing = 1
+	h.hover_cell(Vector2i(6, 3))
+	lines = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
+	ok(lines.has("Repairing: 1/3") and lines[0].begins_with("Cracked Startile: Lets through, Brittle, Unstable"), "a cracked startile mending (%s)" % [lines])
+	h.free()

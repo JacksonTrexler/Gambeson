@@ -8,6 +8,10 @@ signal traveled(u: Unit, from: Vector2i, path: Array[Vector2i])
 signal used(caster: Unit, skill: Skill, at: Variant, dealt: int)  # at: the target Unit, or a cell
 signal sprung(c: Vector2i, by: Unit)
 signal attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int)  # an attack roll (cast())
+signal layer_broke(c: Vector2i, what: Terrain, by: Unit)  # a brittle layer broke (expose(), _teeter())
+signal layer_lifted(c: Vector2i, what: Terrain, why: StringName)  # a layer burned (fire) or blew (wind) away
+signal teetered(u: Unit, total: int, dc: int, kept: bool)  # glass gave way under u; kept: it caught itself
+signal mended(c: Vector2i, into: Terrain)  # a cracked startile finished repairing
 signal contested(caster: Unit, target: Unit, total: int, against: int)  # a contest in place of one (Drown): won when total >= against
 signal investigated(by: Unit, of: Unit, skill: Skill, total: int, against: int, close: bool)  # investigate(): seen through when total >= against
 signal stalled(u: Unit, rank: int)  # u stalls the fight: Ramut's Ire builds on it, to this rank (_check_stall())
@@ -36,7 +40,9 @@ signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took level
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
-const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
+# Terrain loaded when the class first runs, not preloaded: a Terrain's effects reach back to Battle
+# (Effect's text), so a compile-time preload here can catch Terrain.gd mid-compile.
+static var PLAIN: Terrain = load("res://Terrain/grass.tres")  # tiles with no terrain set
 const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
@@ -47,6 +53,10 @@ const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting ra
 const STAR_FAST := 5.0  # ...up to a full one (an empty source gives nothing)
 const STAR_ENERGY := 0.3  # regular Energy gets this share of what the boost adds (+10 for Power: +3)
 const STAR_CAPACITY := 20  # Power a starpower source holds full
+static var STARPANE: Terrain = load("res://Terrain/starpane.tres")
+static var STARTILE: Terrain = load("res://Terrain/startile.tres")
+const REPAIR_COST := 0.05  # of a source's capacity, drawn to begin mending a cracked startile
+const REPAIR_SPAN := 20.0  # a source reaches (how full it is, in %) / this tiles to mend from: 5 when full
 const SICKNESS: Effect = preload("res://Effects/resurrection_sickness.tres")
 const REFORMING: Effect = preload("res://Effects/reforming.tres")
 const ASPHYXIA: Effect = preload("res://Effects/asphyxia.tres")
@@ -115,6 +125,9 @@ var stalling: Array[Unit] = []  # units stalling the fight as the last turn ende
 var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), over the ground
 var debris: Dictionary[Vector2i, Debris] = {}  # evidence hiding units leave behind (_scatter())
 var flames: Dictionary[Vector2i, Flame] = {}  # tiles on fire (Flamewall)
+var layers: Dictionary[Vector2i, Array] = {}  # cell -> the layers laid over its ground, top first (lay_layer())
+var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, until its stack changes
+@export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
 var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
 @export var area_tags: Array[StringName] = []  # what the whole battlefield is (indoors, city, forest, desert...): debris where its tiles say nothing
 
@@ -203,14 +216,31 @@ class Zone:
 		faction = f
 		allied = a
 
+# A layer laid over a tile's ground (tile stacks): what it is, whether the ground beneath acts too, and
+# how far a repair has come (a cracked startile).
+class Layer:
+	var terrain: Terrain
+	var passes: bool
+	var repairing := 0  # rounds of mending done
+	var repair_goal := 0  # rounds it takes - its distance from the source it draws on; 0: not begun
+	var source: Variant = null  # that source's cell
+
+	func _init(t: Terrain, through: bool) -> void:
+		terrain = t
+		passes = through
+
 @onready var map: TileMapLayer = $Map
 
 
 func _ready() -> void:
-	for c in starpanes:
-		panes[c] = true
 	for c in starpower:
 		charge[c] = roundi(clampf(starpower[c], 0.0, 1.0) * STAR_CAPACITY)
+		lay_layer(c, STARTILE, true)  # an overlay: the ground beneath still counts
+	for c in starpanes:
+		lay_layer(c, STARPANE, true)
+	for st in stacked:
+		for c in st.cells:
+			lay_layer(c, st.terrain, st.passes())
 	if Game.starter:
 		player = starter(Game.starter)
 		$Units.add_child(player, true)
@@ -243,6 +273,8 @@ func move(u: Unit, c: Vector2i) -> bool:
 	u.cell = c
 	units[c] = u
 	u.position = map.map_to_local(c)
+	if u.steadied != null and u.steadied != c:
+		u.steadied = null  # it moved off the ground it caught itself over
 	u.footing = terrain(c)
 	u.ground = u.footing.tags
 	return true
@@ -536,6 +568,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			target.disable(s, skill.lasts(r, caster) + (1 if target.faction == turn else 0), true)
 	if foe and skill.chain:  # Strike: a hit at a time (_chain())
 		_chain(caster, skill, target, r, tags)
+		if target.hp < before:
+			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_expose(target)
 		_expose(caster)
 		if before > 0 and not target.is_alive():
@@ -574,7 +608,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			a.roll = saved_against
 			put.append(a)
 	if skill.investigated:
-		var g := resolve(Check.side(target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK))
+		var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
+		var g := resolve(Check.side(target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK)
+				.edge(1 if hiding and covered(target.cell) else 0))  # cover (Leaves): advantage to hide
 		var guise := g.total
 		var seen := _evaluate(target, skill, g.d20, guise)
 		for a in put:
@@ -619,6 +655,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if foe and &"curse" in skill.tags and caster.stat(&"breathless") > 0.0 and target.is_alive() and (not put.is_empty() or target.hp < before):
 		_choke(caster, target)
 	if foe:
+		if target.hp < before:
+			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_expose(target)
 		_expose(caster)
 		if before > 0 and not target.is_alive():
@@ -1065,7 +1103,7 @@ func _hide_roll(u: Unit) -> int:
 	for e in u.timed:
 		if e.stat == "concealment":
 			best = maxi(best, u.timed[e].roll)
-	return best if best > 0 else resolve(Check.side(u.mod(&"dexterity"), Check.Kind.CHECK)).total
+	return best if best > 0 else resolve(Check.side(u.mod(&"dexterity"), Check.Kind.CHECK).edge(1 if covered(u.cell) else 0)).total
 
 
 # Debris goes once its hider is revealed (no concealment left, or fallen), or has gone further from
@@ -1168,8 +1206,7 @@ func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
 	if Vector2(caster.cell).distance_to(Vector2(c)) > skill_range(caster, skill) + 0.0001 or not caster.pay_for(skill):
 		return &""
 	used.emit(caster, skill, c, 0)
-	if not t and c in panes and &"blunt" in hit_tags(caster, skill):
-		panes.erase(c)
+	if not t and expose(c, hit_tags(caster, skill), caster):
 		shattered.emit(caster, c)
 		return &"shattered"
 	return &"miss"
@@ -1252,6 +1289,7 @@ func lay(u: Unit, skill: Skill, c: Vector2i) -> Snare:
 				snare.known[o] = true
 		snare.word = u.stat(&"trap_word") > 0.0
 	snares[c] = snare
+	_restack(c)
 	revealed.erase(c)
 	return snare
 
@@ -1278,6 +1316,9 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		if was > 0 and not o.is_alive() and o.faction != caster.faction:
 			caster.gain(&"kill", 1)
 	_expose(caster)
+	for at in map.get_used_cells():
+		if Vector2(at).distance_to(Vector2(c)) <= skill.blast * r + 0.0001:
+			expose(at, skill.tags, caster)
 	used.emit(caster, skill, c, hit.values().reduce(func(sum, x): return sum + x, 0))
 	exploded.emit(caster, skill, c, hit)
 	return true
@@ -1525,7 +1566,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		var from := u.cell
 		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
 		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
+		var blind := obscured(passed[-1])  # what's under the leaves it walks onto, it can't see
 		move(u, passed[-1])
+		u.blind_on = passed[-1] if blind else null
 		for i in touched:  # stepping in happens on the unit's own turn, which isn't one of those counted
 			for e in terrain(passed[i]).afflicts:
 				u.afflict(e, (e.turns if e.turns else terrain(passed[i]).turns) + 1)
@@ -1684,7 +1727,7 @@ func wading(u: Unit, c: Vector2i) -> float:
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
-	return maxf(from.exit + to.enter + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
+	return maxf(from.exit + to.enter + to.drag + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
 
 
 # The straight line from a to b as ceil(distance) distinct tiles, each the one nearest its point
@@ -1720,12 +1763,249 @@ func on_map(c: Vector2i) -> bool:
 	return map.get_cell_source_id(c) != -1
 
 
+# What whoever's on c deals with: its top layer, composed with each beneath while the one above passes
+# (Leaves over glass over grass) - or its ground alone, bare. Cached until the stack changes.
 func terrain(c: Vector2i) -> Terrain:
+	if layers.get(c, []).is_empty():
+		return ground_of(c)
+	if c not in _views:
+		_views[c] = _compose(c)
+	return _views[c]
+
+
+# The tile beneath every layer: a trap laid in it, else what the map paints.
+func ground_of(c: Vector2i) -> Terrain:
 	if c in snares:
 		return snares[c].terrain
 	var d := map.get_cell_tile_data(c)
 	var t: Terrain = d.get_custom_data("terrain") if d else null
 	return t if t else PLAIN
+
+
+# --- Tile stacks
+# A cell's ground (ground_of()) with layers laid on top: leaves, glass, starpanes, startiles. A unit
+# deals with the top layer; one that passes (Leaves; an overlay starpane) lets the one beneath act too,
+# and so on down to the ground. Damage reaching a tile makes its layers react (expose()).
+
+func lay_layer(c: Vector2i, t: Terrain, through := t.passes) -> Layer:
+	var l := Layer.new(t, through)
+	layers.get_or_add(c, []).push_front(l)
+	_register(c, t)
+	_restack(c)
+	return l
+
+
+func top_layer(c: Vector2i) -> Layer:
+	var st: Array = layers.get(c, [])
+	return st[0] if not st.is_empty() else null
+
+
+# The layers whoever's on c deals with: the top, and each beneath while the one above passes.
+func reached(c: Vector2i) -> Array[Layer]:
+	var out: Array[Layer] = []
+	for l: Layer in layers.get(c, []):
+		out.append(l)
+		if not l.passes:
+			break
+	return out
+
+
+# The ground beneath c's layers counts too: every layer down to it passes.
+func reaches_ground(c: Vector2i) -> bool:
+	var r := reached(c)
+	return r.size() == layers.get(c, []).size() and (r.is_empty() or r[-1].passes)
+
+
+# The deepest thing reached decides what's underfoot; the passing layers above add their drag, exits,
+# tags and effects, and the top lends its name.
+func _compose(c: Vector2i) -> Terrain:
+	var chain: Array[Terrain] = []
+	for l in reached(c):
+		chain.append(l.terrain)
+	if reaches_ground(c):
+		chain.append(ground_of(c))
+	if chain.size() == 1:
+		return chain[0]
+	var v: Terrain = chain[-1].duplicate()
+	v.tags = v.tags.duplicate()
+	v.effects = v.effects.duplicate()
+	v.afflicts = v.afflicts.duplicate()
+	v.at_end = v.at_end.duplicate()
+	v.name = chain[0].name
+	for k in range(chain.size() - 2, -1, -1):
+		var t: Terrain = chain[k]
+		v.drag += t.drag
+		v.exit += t.exit
+		for tag in t.tags:
+			if tag not in v.tags:
+				v.tags.append(tag)
+		v.effects.append_array(t.effects)
+		v.afflicts.append_array(t.afflicts)
+		v.at_end.append_array(t.at_end)
+	return v
+
+
+func _restack(c: Vector2i) -> void:
+	_views.erase(c)
+	var u := unit_at(c)
+	if u:
+		u.footing = terrain(c)
+		u.ground = u.footing.tags
+
+
+# Starpanes and startiles keep the lattice's books (panes, starpower) as they're laid and lost.
+func _register(c: Vector2i, t: Terrain) -> void:
+	if t.pane:
+		panes[c] = true
+	if t.source and c not in charge:
+		starpower[c] = 0.0
+		charge[c] = 0
+
+
+func _unregister(c: Vector2i, t: Terrain) -> void:
+	if t.pane:
+		panes.erase(c)
+	if t.source:
+		starpower.erase(c)
+		charge.erase(c)
+
+
+# A brittle layer breaks into what it leaves (a startile: a cracked startile), or is gone.
+func break_layer(c: Vector2i, l: Layer, by: Unit = null) -> void:
+	var was := l.terrain
+	_unregister(c, was)
+	if was.breaks_into:
+		l.terrain = was.breaks_into
+		l.repairing = 0
+		l.repair_goal = 0
+		l.source = null
+		_register(c, l.terrain)
+	else:
+		layers[c].erase(l)
+	_restack(c)
+	layer_broke.emit(c, was, by)
+
+
+func _lift(c: Vector2i, l: Layer, why: StringName) -> void:
+	_unregister(c, l.terrain)
+	layers[c].erase(l)
+	_restack(c)
+	layer_lifted.emit(c, l.terrain, why)
+
+
+# Damage reaching a tile - aimed at it, over an area, or at whoever's on it - reaches its layers through
+# those that pass: brittle ones break to blunt, flammable ones burn away to fire (setting the tile
+# alight), windswept ones blow away to wind. A unit on a layer that gave way drops onto what's left.
+# True if anything changed.
+func expose(c: Vector2i, tags: Array[StringName], by: Unit = null) -> bool:
+	var hit := Tags.expand(tags)
+	var changed := false
+	for l in reached(c):
+		var t := l.terrain
+		if t.brittle and &"blunt" in hit:
+			break_layer(c, l, by)
+		elif t.flammable and &"fire" in hit:
+			_lift(c, l, &"fire")
+			if by:
+				flames[c] = Flame.new(by, 2)
+		elif t.windswept and &"wind" in hit:
+			_lift(c, l, &"wind")
+		else:
+			continue
+		changed = true
+	var u := unit_at(c)
+	if changed and u and u.is_alive():
+		_drop(u)
+	return changed
+
+
+# u lands on what's now beneath it: that ground takes it as if it had stepped in.
+func _drop(u: Unit) -> void:
+	var t := terrain(u.cell)
+	for e in t.afflicts:
+		u.afflict(e, (e.turns if e.turns else t.turns) + 1)
+	if t.is_trap():
+		spring(u.cell, u)
+
+
+# What's beneath c can't be made out: its top layer obscures (Leaves), and nobody stands on it.
+func obscured(c: Vector2i) -> bool:
+	var top := top_layer(c)
+	return top != null and top.terrain.obscures and unit_at(c) == null
+
+
+# Concealment checks on c have advantage: a layer reached there gives cover (Leaves).
+func covered(c: Vector2i) -> bool:
+	return reached(c).any(func(l: Layer): return l.terrain.cover)
+
+
+# Glass (unstable): ending its turn on it without resting, having moved more than its dex mod in tiles,
+# a unit breaks it and makes a dex check against the layer's dc - at disadvantage if it stepped in
+# blind (Leaves over it). Failing, it drops through onto what's beneath and ends its turn there.
+# Passing, it catches itself: what the ground beneath would do to it this turn's end and as its next
+# starts is spared, as it's taken to move off (Unit.steadied).
+func _teeter(u: Unit, rested: bool) -> void:
+	var glass: Layer = null
+	for l in reached(u.cell):
+		if l.terrain.unstable:
+			glass = l
+			break
+	if not glass or rested or u.steps <= maxi(u.mod(&"dexterity"), 0):
+		return
+	var dc := glass.terrain.dc
+	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc).edge(-1 if u.blind_on == u.cell else 0))
+	break_layer(u.cell, glass)
+	teetered.emit(u, roll.total, dc, roll.hit)
+	if roll.hit:
+		u.steadied = u.cell
+		u.steady_turn = u.turns_taken
+	else:
+		_drop(u)
+
+
+# Cracked startiles mend, a round at a time. One not yet begun looks for the lattice: a pane or tile
+# linked to a source whose fullness (in %) / REPAIR_SPAN reaches it in tiles, and draws REPAIR_COST of
+# a source's capacity from that source to begin ("Repairing X/Y": a round a tile of distance). Done, it
+# upgrades into what it repairs into (a startile, a source again, empty).
+func _repair_tiles() -> void:
+	for c: Vector2i in layers.keys():
+		for l: Layer in layers[c]:
+			if l.terrain.repairs_into == "":
+				continue
+			if l.repair_goal == 0:
+				var found := _mender(c)
+				if found.is_empty():
+					continue
+				charge[found[1]] -= ceili(REPAIR_COST * STAR_CAPACITY)
+				l.source = found[1]
+				l.repair_goal = maxi(found[2], 1)
+				continue
+			l.repairing += 1
+			if l.repairing >= l.repair_goal:
+				var into: Terrain = load(l.terrain.repairs_into)
+				l.terrain = into
+				l.repairing = 0
+				l.repair_goal = 0
+				l.source = null
+				_register(c, into)
+				_restack(c)
+				mended.emit(c, into)
+
+
+# [the lattice tile c draws on, its source, the distance] for mending c; [] if none reaches.
+func _mender(c: Vector2i) -> Array:
+	var best: Array = []
+	var cost := ceili(REPAIR_COST * STAR_CAPACITY)
+	for at in panes.keys() + starpower.keys():
+		if at == c:
+			continue
+		var src: Variant = star_source(at)
+		if src == null or charge[src] < cost:
+			continue
+		var d := Command.tiles(c, at)
+		if d <= 100.0 * charge[src] / STAR_CAPACITY / REPAIR_SPAN and (best.is_empty() or d < best[2]):
+			best = [at, src, d]
+	return best
 
 
 # --- Turns
@@ -1873,8 +2153,10 @@ func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
 	var side := members(turn)
+	var rests := {}
 	for u in side:
 		var rested := u.activity() == &"rest"
+		rests[u] = rested
 		if rested:
 			_chant(u)
 			var vow := u.devotion()
@@ -1894,6 +2176,14 @@ func end_turn() -> void:
 			_flame(u, flames[u.cell], "ends its turn in fire")
 	side = members(turn)  # a grip can drown one, a wound bleed one out
 	for u in side:
+		_teeter(u, rests.get(u, false))
+		u.blind_on = null
+	side = members(turn)  # a drop can land one on something deadly
+	for u in side:
+		if u.steadied != null and u.steady_turn != u.turns_taken:
+			u.steadied = null  # it stayed a turn on what it caught itself over: no more reprieve
+		if u.steadied == u.cell:
+			continue  # caught itself this turn: spared what the ground beneath does at turn's end
 		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
 			u.afflict(e, (e.turns if e.turns else u.footing.turns) + 1)  # + 1: the tick below takes this turn
 	for u in side:
@@ -1914,6 +2204,8 @@ func end_turn() -> void:
 			flames[c].turns -= 1
 			if flames[c].turns <= 0:
 				flames.erase(c)
+	if not order.is_empty() and turn == order[-1]:
+		_repair_tiles()  # a round has passed
 	for c in earthworks.keys():
 		if earthworks[c].faction == turn:
 			earthworks[c].turns -= 1
@@ -2459,6 +2751,10 @@ func _solar(caster: Unit, skill: Skill, c: Vector2i) -> void:
 		var to := Vector2(u.cell - caster.cell)
 		if u == caster or (u.is_alive() and to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001):
 			hit[u] = u.hit(roll(Vector2i(1, 20)) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
+	for at in map.get_used_cells():
+		var to := Vector2(at - caster.cell)
+		if at != caster.cell and to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001:
+			expose(at, [&"fire"] as Array[StringName], caster)
 	exploded.emit(caster, skill, c, hit)
 
 
