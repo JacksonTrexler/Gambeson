@@ -15,6 +15,7 @@ var battle: Battle
 var leader: Unit
 var party: Array[Unit] = []
 var ordered: Dictionary[Unit, bool] = {}  # given an order this turn
+var locked: Dictionary[Unit, bool] = {}  # a wasted intent order barred it from more commands this faction turn (HUD.issue_intent)
 
 
 func _init(b: Battle, l: Unit) -> void:
@@ -92,7 +93,7 @@ func in_range(u: Unit) -> bool:
 # taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
 	return u != null and u.is_alive() and not u.asleep() and not u.uncontrolled and leader.is_alive() \
-			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u) \
+			and u not in locked and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u) \
 			and battle.teammates(leader, u)
 
 
@@ -122,6 +123,12 @@ func order(u: Unit) -> void:
 	ordered[u] = true
 
 
+# A wasted intent order: u takes no more commands this faction turn (HUD default orders).
+func lock(u: Unit) -> void:
+	ordered[u] = true
+	locked[u] = true
+
+
 # Allies on the leader's side with no order this turn, and traitors posing in its party: they act on
 # their own as it ends.
 func idle() -> Array[Unit]:
@@ -136,5 +143,6 @@ func idle() -> Array[Unit]:
 # no longer takes for teammates (a traitor seen through).
 func new_turn() -> void:
 	ordered.clear()
+	locked.clear()
 	for u in party.filter(func(x: Unit): return not x.is_alive() or not battle.teammates(leader, x)):
 		leave(u)

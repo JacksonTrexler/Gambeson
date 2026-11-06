@@ -148,6 +148,23 @@ func on_tile() -> bool:
 	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0
 
 
+# Whether it can serve a posture when a unit reaches for its default move (HUD default orders, and the
+# context tags in docs/plan-composability.md): &"offensive" an attack on a foe, &"supportive" help for
+# an ally, &"defensive" protecting oneself. A skill can serve more than one (a dual spell attacks and
+# supports); a passive serves none - it's not a move to order.
+func serves(posture: StringName) -> bool:
+	if passive:
+		return false
+	match posture:
+		&"offensive":
+			return for_foes() and (attacks() or contests() or not tiers.is_empty() or pull != 0 or disables)
+		&"supportive":
+			return for_allies() and not self_only and (heals() or grants != null or boost_pool != &"" or aura or not effects.is_empty())
+		&"defensive":
+			return self_only
+	return false
+
+
 # Can be used on foes: hostile skills, and dual ones.
 func for_foes() -> bool:
 	return hostile or dual or either

@@ -31,7 +31,10 @@ const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
-static func act(b: Battle, u: Unit) -> Array[String]:
+# Takes u's turn. `posture` restricts it to abilities that serve one aim, for a unit a commander could
+# only direct by intent (HUD default orders): &"offensive" strike only, &"supportive" heal and support
+# only, &"defensive" a self-protective skill only. The default (&"") is a full, self-directed turn.
+static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	var log: Array[String] = []
 	if not u.is_alive() or u.asleep():
 		return log
@@ -47,25 +50,32 @@ static func act(b: Battle, u: Unit) -> Array[String]:
 		else:
 			_keep_up(b, u, log)
 		return log
-	_heal(b, u, reads, log)
-	_support(b, u, reads, log)
-	if u.behaviour == &"skittish":
-		_keep_away(b, u, reads, log)
+	if posture == &"defensive":
+		_defend(b, u, log)
 		return log
-	if u.behaviour == &"recovering":
-		_recover(b, u, reads, log)
+	if posture != &"offensive":  # a full turn, or HELP: heal and support
+		_heal(b, u, reads, log)
+		_support(b, u, reads, log)
+	if posture == &"supportive":
 		return log
-	_channel(b, u, reads, log)
 	var rooted := _rooted(b, u)
-	if not rooted and _flee(b, u, reads, log):
-		reads = {}
-		for o in b.units.values():
-			if o != u:
-				reads[o] = b.read(u, o)
-	if _luring(b, u, reads):
-		if not _ambush(b, u, reads, log):
-			_sing(b, u, reads, log)
-		return log
+	if posture == &"":  # phases for a self-directed turn only - an ATTACK order presses on regardless
+		if u.behaviour == &"skittish":
+			_keep_away(b, u, reads, log)
+			return log
+		if u.behaviour == &"recovering":
+			_recover(b, u, reads, log)
+			return log
+		_channel(b, u, reads, log)
+		if not rooted and _flee(b, u, reads, log):
+			reads = {}
+			for o in b.units.values():
+				if o != u:
+					reads[o] = b.read(u, o)
+		if _luring(b, u, reads):
+			if not _ambush(b, u, reads, log):
+				_sing(b, u, reads, log)
+			return log
 	if not _strike(b, u, reads, log):
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
@@ -77,6 +87,14 @@ static func act(b: Battle, u: Unit) -> Array[String]:
 	while _strike(b, u, reads, log):
 		pass
 	return log
+
+
+# DEFEND: uses u's best self-protective skill on itself (Skill.serves defensive), if it has one it can
+# afford; otherwise it holds.
+static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
+	var s := u.intent_skill(&"defensive")
+	if s and b.cast(u, s, u):
+		log.append("%s %s" % [u.name, s.name])
 
 
 # Perceived worth of using a hostile skill on a unit read as `r`.

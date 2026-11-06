@@ -545,6 +545,15 @@ func options() -> Dictionary:
 # What stands between it and learning s, apart from skill points: "" if nothing. A stub waits on an
 # open question; on a class tree, the skills a branch comes after, and the count of its root's
 # skills a capstone needs.
+# Its own default skill for a posture (Skill.serves): the first active on its hotbar it can use that
+# way now. Null when it has none - the commander's intent order would be wasted (HUD.issue_intent).
+func intent_skill(posture: StringName) -> Skill:
+	for sk in hotbar:
+		if sk and sk.serves(posture) and can_afford(sk):
+			return sk
+	return null
+
+
 func missing(s: Skill) -> String:
 	if s.stub:
 		return s.waits()

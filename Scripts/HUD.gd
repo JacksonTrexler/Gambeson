@@ -332,6 +332,8 @@ func click(c: Vector2i, force := false, inspect := false) -> void:
 		_charge(me, c, force)
 	elif u:
 		select(u)
+		if not inspect and uses_intents(u) and not intent_options(u).is_empty():
+			_show_intents(u)  # a commander who can only direct it by intent: ATTACK / DEFEND / HELP
 	elif selected and hand(selected) and battle.turn == command.faction():
 		if _orders(selected):
 			_move(selected, c)
@@ -1969,6 +1971,69 @@ func _why_locked() -> String:
 func _nag(why: String) -> void:
 	if why:
 		_say(why)
+
+
+const INTENTS := {&"attack": &"offensive", &"defend": &"defensive", &"help": &"supportive"}
+
+
+# The commander can't give u a specific skill order - either it can't convey complex strategy (cha mod
+# <= 0: no hotbar slot is open to orders) or it can't read what u can do (low wisdom). It commands by
+# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (Unit.intent_skill()).
+func uses_intents(u: Unit) -> bool:
+	return _orders(u) and u != command.leader and (command.slots() <= 0 or command.leader.mod(&"wisdom") < 0)
+
+
+# How well an order lands: the commander's clarity (wis mod) + how well u takes direction (cha mod). At
+# -5 or lower the commander is guessing: every intent shows with a "?", even ones u can't carry out.
+func _command_read(u: Unit) -> int:
+	return command.leader.mod(&"wisdom") + u.mod(&"charisma")
+
+
+# The intents to offer for u: [intent, eligible (u has a skill for it), uncertain (shown with ?)].
+# Normally only intents u can carry out show; while guessing (read <= -5) all three show, with a "?".
+func intent_options(u: Unit) -> Array:
+	var guessing := _command_read(u) <= -5
+	var out := []
+	for intent in [&"attack", &"defend", &"help"]:
+		var has := u.intent_skill(INTENTS[intent]) != null
+		if has or guessing:
+			out.append([intent, has, guessing])
+	return out
+
+
+# Issues an intent to u: eligible, u uses its default skill for it; ineligible (only reachable while
+# guessing), the order is wasted and u takes no more commands this faction turn.
+func issue_intent(u: Unit, intent: StringName) -> bool:
+	if not uses_intents(u):
+		return false
+	if u.intent_skill(INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
+		_say("%s can't %s that way - a wasted order" % [_name(u), String(intent)])
+		command.lock(u)
+		_mark()
+		return false
+	# It takes the rest of its turn on its own, restricted to the ordered posture (AI.act).
+	select(u if unit_seen(u.cell) == u else null)
+	AI.act(battle, u, INTENTS[intent])
+	command.order(u)
+	_mark()
+	return true
+
+
+# A small ATTACK / DEFEND / HELP menu for an ally the commander can only direct by intent.
+func _show_intents(u: Unit) -> void:
+	var menu := PopupMenu.new()
+	for opt in intent_options(u):
+		var label: String = String(opt[0]).to_upper() + (" ?" if opt[2] else "")
+		menu.add_item(label)
+		menu.set_item_metadata(menu.item_count - 1, opt[0])
+		menu.set_item_disabled(menu.item_count - 1, false)
+	menu.index_pressed.connect(func(i: int) -> void: issue_intent(u, menu.get_item_metadata(i)))
+	menu.popup_hide.connect(menu.queue_free)
+	add_child(menu)
+	menu.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()), Vector2i.ZERO))
+
+
+# How a unit of the player's own stands this turn, for the map: &"ready"
 
 
 # How a unit of the player's own stands this turn, for the map: &"ready" (commandable now - lit and

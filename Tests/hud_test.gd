@@ -738,3 +738,32 @@ func test_tabbed_skills_screen() -> void:
 	h._refresh()
 	ok(h.skills.tab == 1, "the tab holds through a refresh")
 	h.free()
+
+
+func test_default_orders() -> void:
+	var icor := unit("Icor")
+	var u := v(1)  # leader
+	var ally := v(2)
+	u.charisma = 10  # cha mod 0: can't convey complex strategy -> intent orders
+	for i in ally.hotbar.size():
+		ally.hotbar[i] = null
+	if ally.rank(strike) == 0:
+		ally.learned.append(slot(strike))
+	ally.hotbar[0] = strike
+	stage(lancin, {u: Vector2i(2, 2), ally: Vector2i(2, 3), icor: Vector2i(3, 3)})
+	var h := await start(u)
+	ok(h.uses_intents(ally) and not h.uses_intents(u), "a cha-0 leader directs the ally only by intent; itself it commands fully")
+	ok(h.intent_options(ally).map(func(o: Array): return o[0]) == [&"attack"],
+			"only ATTACK shows: the ally has an offensive skill, no defensive or support")
+	var hp := icor.hp
+	ok(h.issue_intent(ally, &"attack") and icor.hp < hp and ally in h.command.ordered,
+			"ATTACK: the ally takes its turn striking the nearby foe, and is now commanded")
+	u.wisdom = 2  # wis mod -4
+	ally.charisma = 4  # cha mod -3: read -7, the commander is guessing
+	ally.refresh()  # a fresh turn's AP, so ATTACK is affordable again
+	var opts := h.intent_options(ally)
+	ok(opts.size() == 3 and opts.all(func(o: Array): return o[2]), "guessing (read <= -5): all three intents show, each with a '?'")
+	ok(opts[0][0] == &"attack" and opts[0][1] and not opts[1][1] and not opts[2][1], "...ATTACK eligible (it has Strike), DEFEND and HELP not")
+	ok(not h.issue_intent(ally, &"defend") and ally in h.command.locked and not h.command.can_order(ally),
+			"picking one it can't carry out wastes the order and locks commanding it this turn")
+	h.free()
