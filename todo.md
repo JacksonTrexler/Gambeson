@@ -6,7 +6,7 @@ Open work and questions, split by scope so each can be read on its own. What's d
 
 ## Questions
 
-**Asking now (new systems, specs to confirm before building):** 57 (Actualization: the cut-off Self-reflection clause, and whether Meditate's respec is combat-only), 58 (Berserker Affinity: rounding of `n·log n`, and whether re-costing live can strand a skill below rank I), 59 (tile stacks: does Leaves mask a *beneficial* tile too, or only hazards?). The composability plan these ride on: `docs/plan-composability.md`.
+**Asking now (new systems, specs to confirm before building):** 57 (Actualization: the cut-off Self-reflection clause, and whether Meditate's respec is combat-only), 58 (Berserker Affinity: rounding of `n·log n`, and whether re-costing live can strand a skill below rank I), 59 (tile stacks: does Leaves mask a *beneficial* tile too, or only hazards?), 60 (default orders: "0 cha XOR low wis/info" - I read it as inclusive OR; confirm?). The composability plan these ride on: `docs/plan-composability.md`.
 
 **Confirmed as built (2026-11-06), per "confirm where the mechanics make sense":** 45 (Humble: rank x 4 x (1 - share cut) turns), 46 (Sol's path), 48 (Bracing caps at rank), 50 (Strike's upgrades), 51 (Journeyman + two-tier specialist edge), 52 (Perfect does not overheal). 47 (armor): Robe is unique (no dex, wis as magical Defense); Plate kept matching Brigandine; the weight numbers stand. 53, 54 answered (T1 capitalised; tab colours fine).
 
