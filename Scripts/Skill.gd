@@ -86,7 +86,12 @@ extends Resource
 
 @export_group("Area")  # cast on a cell rather than a unit (Darkstone)
 @export var flamewall := false  # sets the tile on fire, and rank tiles to either side of it across the caster's line to it (Flamewall; Battle._flamewall())
-@export var cone := 0.0  # a cone of this many degrees toward the tile, + 15 a rank past I, radius long, hitting everyone in it - its caster too (Solar; Battle._solar())
+@export var cone := 0.0  # a cone of this many degrees toward the tile, + 15 a rank past I, radius long, hitting everyone in it - its caster too (Solar; Battle._solar()); evadable, it's Wildfire's kind instead (Battle._wildfire())
+@export var evadable := false  # whoever it lands on makes a dex check against its difficulty to dodge it: passing, none of it; failing by a quarter of the DC or less, half (Battle.evade())
+@export var difficulty := &""  # the difficulty (Difficulty.LADDER) of the check it imposes, at its rank: dodging it (Wildfire: difficult)
+@export var reach_scale := &""  # its reach runs this magnitude of its rank in tiles (Difficulty.MAGNITUDE; Wildfire's cone: intense, 2.5 x rank)
+@export var dice_scale := &""  # its damage dice come this magnitude of its rank, times its tier's count (Wildfire: extreme, 3 x rank)
+@export var bane := &""  # units carrying this tag - from what they are, wear or know (Unit.has_tag()) - dodge at impossible and are hit as a crit (Wildfire: earth)
 @export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels
 @export var radius_per_rank := 0.0  # range grows with rank (Darkstone: 1 + rank; Embellish, cast on a unit: rank - 1)
 
@@ -223,10 +228,13 @@ func on_self(u: Unit) -> bool:
 	return self_only and not (prays and u and u.deity() == &"drael")
 
 
-# Its range for a caster, before reach and size: radius (+ radius_per_rank x rank: Embellish), plus
+# Its range for a caster, before reach and size: a magnitude of its rank (reach_scale), or radius (+
+# radius_per_rank x rank: Embellish), plus
 # its mod in radius_mod - at least 1, so it reaches an adjacent unit - plus what its range effects add
 # (a Staff, a Broadsword: Unit.skill_stat()).
 func span(u: Unit) -> float:
+	if reach_scale:  # a magnitude of its rank (Wildfire's cone)
+		return Difficulty.scaled(reach_scale, maxi(u.rank(self), 1)) + (u.skill_stat(&"range", self) if not self_only else 0.0)
 	var r := radius + radius_per_rank * u.rank(self) + (u.stat(radius_stat) if radius_stat else 0.0)
 	if radius_mod:
 		r = maxf(r + u.mod(radius_mod, tags), 1.0)
@@ -301,6 +309,8 @@ func target() -> StringName:
 # Its range as it scales, in Glossary markup: the set part first, then what grows with rank (gold),
 # then its user's stat (orange): "2 + {o:int mod}", "{r:rank} + {o:cha mod}", "{r:rank} - 1".
 func reach_markup() -> String:
+	if reach_scale:
+		return "{r:%s x rank}" % num(Difficulty.MAGNITUDE[reach_scale])
 	var parts: PackedStringArray = []
 	if radius_per_rank:
 		parts.append("{r:rank}" if radius_per_rank == 1 else "{r:%s x rank}" % num(radius_per_rank))
@@ -432,6 +442,8 @@ func markup(rank := 1, with_spec := true) -> String:
 			var dmg := _damage(t)
 			if dice_per_rank and rank > 1:
 				dmg = dmg.replace("%dd%d" % [t.dice.x, t.dice.y], "{r:%dd%d}" % [t.dice.x * rank, t.dice.y])
+			if dice_scale:
+				dmg = dmg.replace("%dd%d" % [t.dice.x, t.dice.y], "{r:%dd%d}" % [t.dice.x * Difficulty.scaled(dice_scale, rank), t.dice.y])
 			if hits_per_rank and rank > 1:
 				dmg = "{r:%d} hits of %s" % [rank, dmg]
 			lines.append(foe + ("deals " if dual else "Deals ") + dmg)
@@ -457,8 +469,15 @@ func markup(rank := 1, with_spec := true) -> String:
 		if flamewall:
 			lines.append("Sets the tile and {r:%d} to either side of it, across the caster's line, %s for {t:%d turns}: 1d8 + %s {x:fire} to whoever enters or ends a turn there. One standing there makes a %s (%s) to get clear"
 					% [rank, Glossary.term(&"burning", "burning"), rank, Glossary.mod(&"wis"), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true)])
-		if cone > 0.0:
+		if cone > 0.0 and evadable:
+			lines.append("A {r:%d} degree cone, {r:%d} tiles long: it lands on every unit in it but the caster" % [roundi(cone), Difficulty.scaled(reach_scale, rank) if reach_scale else 0])
+		elif cone > 0.0:
 			lines.append("A {r:%d} degree cone, its range long: 1d20 + {o:wis score} {x:fire} to everyone in it, the caster too" % roundi(cone + 15.0 * (rank - 1)))
+		if evadable:
+			lines.append("%s: a %s %s (%s, DC {r:%d}) - passing, none of it lands; failing by a quarter of the DC or less, half"
+					% [Glossary.term(&"evadable"), Glossary.term(difficulty), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true), Difficulty.dc(difficulty, rank)])
+		if bane:
+			lines.append("Units carrying {x:%s} - from what they are, wear or know - dodge it at %s and are hit as a %s" % [bane, Glossary.term(&"impossible", "impossible"), Glossary.term(&"critical", "critical")])
 		if heals():
 			var mods := " + ".join(heal_mods.map(func(x): return Glossary.mod(x)))
 			if heal_split > 1:

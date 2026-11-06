@@ -11,6 +11,7 @@ signal attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int) 
 signal layer_broke(c: Vector2i, what: Terrain, by: Unit)  # a brittle layer broke (expose(), _teeter())
 signal layer_lifted(c: Vector2i, what: Terrain, why: StringName)  # a layer burned (fire) or blew (wind) away
 signal teetered(u: Unit, total: int, dc: int, kept: bool)  # glass gave way under u; kept: it caught itself
+signal evaded(u: Unit, total: int, dc: int, share: float)  # u tried to dodge: share is how much still landed (evade())
 signal mended(c: Vector2i, into: Terrain)  # a cracked startile finished repairing
 signal contested(caster: Unit, target: Unit, total: int, against: int)  # a contest in place of one (Drown): won when total >= against
 signal investigated(by: Unit, of: Unit, skill: Skill, total: int, against: int, close: bool)  # investigate(): seen through when total >= against
@@ -1238,7 +1239,10 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	if skill.flamewall:
 		_flamewall(caster, skill, c)
 	elif skill.cone > 0.0:
-		_solar(caster, skill, c)
+		if skill.evadable:
+			_wildfire(caster, skill, c)
+		else:
+			_solar(caster, skill, c)
 	elif skill.channel:
 		caster.channel = Unit.Channel.new(skill, c)
 		channeled.emit(caster, skill, c)
@@ -2743,6 +2747,53 @@ func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
 
 # Solar, cast toward c: a cone of the skill's degrees (+ 15 a rank past I), its range long, from the
 # caster; everyone in it - the caster too - takes d20 + the caster's wis score in fire.
+# Whether `at` lies in a cone from `from`, aimed at angle `aim`, `half` radians to either side, `long`
+# tiles out.
+func in_cone(from: Vector2i, at: Vector2i, aim: float, half: float, long: float) -> bool:
+	var to := Vector2(at - from)
+	return to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001
+
+
+# Evading (Glossary: Evadable): a dex check against dc. Passing, none of it lands (0); failing by a
+# quarter of the dc or less, half (0.5); otherwise all of it (1).
+func evade(u: Unit, dc: int) -> float:
+	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc))
+	var share := 0.0 if roll.hit else (0.5 if roll.total >= ceili(dc * 0.75) else 1.0)
+	evaded.emit(u, roll.total, dc, share)
+	return share
+
+
+# Wildfire, aimed at c: a cone of the skill's degrees, `reach_scale` of its rank in tiles, landing on
+# every unit in it but the caster. Each tries to dodge (evade(): the skill's difficulty at its rank);
+# what lands is its tier's dice x `dice_scale` of its rank + its stat's mod. A unit of its bane (earth)
+# dodges at impossible and, hit, is hit as a crit. Every tile in the cone burns (expose()).
+func _wildfire(caster: Unit, skill: Skill, c: Vector2i) -> void:
+	var r := caster.rank(skill)
+	var half := deg_to_rad(skill.cone) / 2.0
+	var long := area_reach(caster, skill)
+	var aim := Vector2(c - caster.cell).angle()
+	var t := skill.tier(r)
+	var tags := hit_tags(caster, skill)
+	var hit := {}
+	for u: Unit in units.values():
+		if u == caster or not u.is_alive() or not in_cone(caster.cell, u.cell, aim, half, long):
+			continue
+		var bane := skill.bane != &"" and u.has_tag(skill.bane)
+		var share := evade(u, Difficulty.dc(&"impossible" if bane else skill.difficulty, r))
+		if share <= 0.0 or not t:
+			hit[u] = 0
+			continue
+		var dice := Vector2i(t.dice.x * (Difficulty.scaled(skill.dice_scale, r) if skill.dice_scale else 1), t.dice.y)
+		var power := (t.power + roll(dice) + (caster.mod(t.stat, skill.tags) if t.stat else 0)) * (2 if bane else 1)
+		hit[u] = u.hit(power * share * (1.0 + caster.stat(&"damage", tags)), tags, caster)
+		_expose(u)
+	_expose(caster)
+	for at in map.get_used_cells():
+		if at != caster.cell and in_cone(caster.cell, at, aim, half, long):
+			expose(at, tags, caster)
+	exploded.emit(caster, skill, c, hit)
+
+
 func _solar(caster: Unit, skill: Skill, c: Vector2i) -> void:
 	var r := caster.rank(skill)
 	var half := deg_to_rad(skill.cone + 15.0 * (r - 1)) / 2.0

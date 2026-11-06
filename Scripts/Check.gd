@@ -62,6 +62,11 @@ static func check(bonus: int, dc: int, kind := Kind.CHECK) -> Check:
 	return c
 
 
+# A check against a difficulty tag at a rank (Difficulty: approachable, unfair...); rank 0: its flat DC.
+static func versus(bonus: int, difficulty: StringName, rank := 0, kind := Kind.CHECK) -> Check:
+	return check(bonus, Difficulty.dc(difficulty, rank), kind)
+
+
 # One side of a Contest: d20 + `bonus`, to be compared with the other side's (Battle.beats()).
 static func side(bonus: int, kind := Kind.CONTEST) -> Check:
 	return check(bonus, 0, kind)

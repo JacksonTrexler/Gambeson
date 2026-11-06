@@ -1042,6 +1042,13 @@ func refit() -> void:
 	_arrange()  # items can grant slots (the Burning Bag)
 
 
+# Whether it carries tag t, from what it is (its tags), what it wears, or what it knows (Wildfire's
+# bane: earth).
+func has_tag(t: StringName) -> bool:
+	return t in tags or items().any(func(it: Item): return t in it.tags) \
+			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags)
+
+
 # How heavy it is to move: its size, rounded up, + what its equipped items weigh (Item.heft(): armor
 # by class, weapons medium unless light or heavy, anything with a weight of its own - Shackles).
 func weight() -> int:
