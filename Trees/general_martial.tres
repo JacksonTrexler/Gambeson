@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="1_tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="2_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="3_branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
+[ext_resource type="Resource" path="res://Skills/brutal_strike.tres" id="s_brutal_strike"]
+[ext_resource type="Resource" path="res://Skills/strike_out.tres" id="s_strike_out"]
+[ext_resource type="Resource" path="res://Skills/agility_bracing.tres" id="s_agility_bracing"]
+[ext_resource type="Resource" path="res://Skills/balanced_bracing.tres" id="s_balanced_bracing"]
+[ext_resource type="Resource" path="res://Skills/vanguard_bracing.tres" id="s_vanguard_bracing"]
+[ext_resource type="Resource" path="res://Skills/combat_bracing.tres" id="s_combat_bracing"]
+[ext_resource type="Resource" path="res://Skills/brutal_mastery.tres" id="s_brutal_mastery"]
+
+[sub_resource type="Resource" id="Branch_brutal_strike"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_brutal_strike")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_strike_out"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_strike_out")
+tier = 4
+
+[sub_resource type="Resource" id="Branch_agility_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_agility_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_balanced_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_balanced_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_vanguard_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_vanguard_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_combat_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_combat_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_brutal_mastery"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_brutal_mastery")
+tier = 7
+
+[sub_resource type="Resource" id="Root_main"]
+script = ExtResource("2_root")
+name = "Martial"
+tag = &"martial"
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_brutal_strike"), SubResource("Branch_strike_out"), SubResource("Branch_agility_bracing"), SubResource("Branch_balanced_bracing"), SubResource("Branch_vanguard_bracing"), SubResource("Branch_combat_bracing"), SubResource("Branch_brutal_mastery")])
+
+[resource]
+script = ExtResource("1_tab")
+name = "Martial"
+kind = "General"
+category = &"martial"
+roots = Array[ExtResource("2_root")]([SubResource("Root_main")])

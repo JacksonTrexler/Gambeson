@@ -26,6 +26,11 @@
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/sweet_something.tres" id="i_sweet_something"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
 [sub_resource type="Resource" id="Slot_hex"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_hex")
@@ -115,9 +120,10 @@ noun = "Caster"
 name = "Warlock"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
-innate = Array[ExtResource("4_slot")]([SubResource("Slot_hex"), SubResource("Slot_sweet_nothings")])
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_hex"), SubResource("Slot_sweet_nothings")])
 stats = Dictionary[StringName, int]({&"strength": 8, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Elmon"), SubResource("Tab_Hogel")])
 shared = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_sweet_nothings"), ExtResource("s_chant")])
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_sweet_something")])
 swaps = Dictionary[StringName, StringName]({&"wisdom": &"charisma"})
+general = Array[StringName]([&"magical"])

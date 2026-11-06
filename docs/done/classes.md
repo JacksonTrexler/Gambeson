@@ -87,17 +87,38 @@ Stub trees from skills that exist, each with its own tab and **Calling: Freedom*
 - [x] **Flamedance** (VIII; 2 AP, cost 3): only as its turn opens (before it moves or spends AP). It and its allies within rank tiles take no environmental fire, and deal 10% × rank more fire, until their next turn ends.
 - [x] **Solar** (IX, capstone; 8 AP, cost 8, on a tile): a 45° cone (+ 15° a rank past I), wis mod tiles long: d20 + the caster's wis score in fire to everyone in it, the caster too.
 
-## Anyone: the general tree
+## The general trees
 
-Skills every class can learn (`Unit.GENERAL`), shown among its class skills. The Bracing passives (tier 5: four skills learned first; `brace` effects, `Unit.check_bonus()`) add equipped armor ranks to checks, up to their rank, while armor is worn to effect; each carries its gang's lore (`Skill.lore`). (?48)
-- [x] **Agility Bracing** (martial, specialist): light armor ranks to dex rolls.
-- [x] **Balanced Bracing** (martial, specialist): medium armor ranks to defensive str and dex rolls.
-- [x] **Vanguard Bracing** (martial): medium armor ranks to offensive str and dex rolls.
-- [x] **Combat Bracing** (martial): heavy armor ranks to str rolls.
-- [x] **Meditative Bracing** (caster): armor ranks to defensive mental (int, wis, cha) checks.
-- [x] **Invigorating Bracing** (caster): half armor ranks to offensive mental checks; rank more skill AP a turn while armored.
-- Checks that take bracing: attack rolls (offensive, in the stat used), saves (the caster offensive, the foe defensive), drags, breaking free, Sing's resist, Flamewall's dodge (dex) and its caster (wis), Level Down's and Death's rolls (offensive). Not yet: investigations, hiding, last stands.
-- [x] **Synergy** (tier 2 passive, `specialist`; on offer to every class, and on the Human tree): see Vision. It reaches as far as the leader's command range over its party (2 × (cha mod + command)); a Quartz Ring makes that endless.
+Four trees beside every class's own, on the far right of the skills screen (`Trees/general*.tres`; `Unit.general_trees()`), their tiers set on their branches (`Branch.tier`). Which a class gets: `Role.general` (Adventurer all; Fighter Martial; Paladin Martial, Caster; Rogue Specialist; Bard Specialist, Caster; Wizard, Warlock, Cleric Caster).
+
+**General** (dark gray): Strike (tier 0); Generalist, Martialist, Journeyman, Thaumaturgist (I); Strike! (VII).
+- [x] **Generalist** (Foundation): General-tree skills up to its rank in tier, without needing 3 of that tier. **Martialist**, **Journeyman**, **Thaumaturgist**: the same for the Martial, Specialist and Caster trees, opening them to a class that lacks them a tier lower (Journeyman III on a Fighter: up to tier 2) - but two tiers sooner for a class with the Specialist tree (`Unit.SPECIALIST_EDGE`: Martialist I on a Rogue reaches tier 2). (?51) Skills learned through one stop working while it's gone or disabled (`Unit.waived`, `Unit.lapsed()`).
+- [x] **Strike!** (VII): landing 12 Strike hits in one use strikes again at once (a strike, bowled); from rank II with rank − 1 more hits. A reuse can trigger again, up to three in a row; 36 hits in a row is a **Perfect**: 300 HP healed at once (`Battle.PERFECT_HITS`, `Battle.PERFECT_HEAL`, the `perfect` signal, logged). (?52)
+
+**Martial** (red): Brutal Strike (II), Strike Out (IV), the Bracing passives (V), Brutal Mastery (VII).
+- [x] **Brutal Strike** (low tier, exclusive): Strike becomes Brutal Strike, a single attack adding its weapon's rank + rank to the damage. (?50)
+- [x] **Strike Out** (mid): its first rank hits take no penalty, and a miss among them doesn't end the attacks.
+- [x] **Brutal Mastery** (high, stacks): Strike's first hit adds its weapon's rank + rank.
+
+**Specialist** (green): Synergy, Decisive Strike (II), Striking Features (IV), Agility and Balanced Bracing (V), Decisive Mastery (VII).
+- [x] **Decisive Strike** (low tier, exclusive): Strike becomes Decisive Strike. After a critical, the rest of its hits land; damage by the higher of dex and str mod.
+- [x] **Striking Features** (mid): its first rank hits add cha mod, up to rank.
+- [x] **Decisive Mastery** (high, stacks): the same as Decisive Strike, as a passive.
+
+**Caster** (light purple): Elemental Strike (II), Record Striker (IV), Meditative and Invigorating Bracing (V), Elemental Mastery (VII).
+- [x] **Elemental Strike** (low tier, exclusive; active, 2 AP, cost 2): pick an element (fire, water, earth, air, light, dark: a menu as it's used); the next rank Strikes become <Element>strike (Firestrike), dealing it, the first hit of each + the highest mental mod (`Battle.imbue()`).
+- [x] **Record Striker** (mid, `curse`): its first rank hits each try a curse - the foe's wis against the striker's highest mental mod; failing, the skill in its leftmost slot goes a rank down for its next turn. (?50)
+- [x] **Elemental Mastery** (high, stacks): Strike always carries the unit's element (its last pick, else its god's, else fire), the first hit + its highest mental mod.
+
+The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped armor ranks to checks, up to their rank, while armor is worn to effect; each carries its gang's lore (`Skill.lore`). (?48)
+- [x] **Agility Bracing** (Martial, Specialist): light armor ranks to dex rolls.
+- [x] **Balanced Bracing** (Martial, Specialist): medium armor ranks to defensive str and dex rolls.
+- [x] **Vanguard Bracing** (Martial): medium armor ranks to offensive str and dex rolls.
+- [x] **Combat Bracing** (Martial): heavy armor ranks to str rolls.
+- [x] **Meditative Bracing** (Caster): armor ranks to defensive mental (int, wis, cha) checks.
+- [x] **Invigorating Bracing** (Caster): half armor ranks to offensive mental checks; rank more skill AP a turn while armored.
+- Checks that take bracing: attack rolls (offensive, in the stat used), saves (the caster offensive, the foe defensive), drags, breaking free, Sing's resist, Flamewall's dodge (dex) and its caster (wis), Level Down's, Death's and Record Striker's rolls. Not yet: investigations, hiding, last stands.
+- [x] **Synergy** (Specialist, II; also on the Human tree): see Vision. It reaches as far as the leader's command range over its party (2 × (cha mod + command)); a Quartz Ring makes that endless.
 
 ## Paladin
 

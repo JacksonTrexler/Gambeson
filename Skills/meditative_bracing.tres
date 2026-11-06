@@ -14,7 +14,6 @@ kind = &"defensive"
 script = ExtResource("1_skill")
 name = "Meditative Bracing"
 passive = true
-min_tier = 5
 tags = Array[StringName]([&"magical", &"bracing"])
 lore = "Word on the Central streets is Jimhe Deyn always has his gang's casters sprint the circular paths of the city in full armor. They look damn haggard, but they don't call 'em the Heaflers for nothing."
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

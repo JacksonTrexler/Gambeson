@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="1_tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="2_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="3_branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
+[ext_resource type="Resource" path="res://Skills/elemental_strike.tres" id="s_elemental_strike"]
+[ext_resource type="Resource" path="res://Skills/record_striker.tres" id="s_record_striker"]
+[ext_resource type="Resource" path="res://Skills/meditative_bracing.tres" id="s_meditative_bracing"]
+[ext_resource type="Resource" path="res://Skills/invigorating_bracing.tres" id="s_invigorating_bracing"]
+[ext_resource type="Resource" path="res://Skills/elemental_mastery.tres" id="s_elemental_mastery"]
+
+[sub_resource type="Resource" id="Branch_elemental_strike"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_elemental_strike")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_record_striker"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_record_striker")
+tier = 4
+
+[sub_resource type="Resource" id="Branch_meditative_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_meditative_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_invigorating_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_invigorating_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_elemental_mastery"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_elemental_mastery")
+tier = 7
+
+[sub_resource type="Resource" id="Root_main"]
+script = ExtResource("2_root")
+name = "Caster"
+tag = &"magical"
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_elemental_strike"), SubResource("Branch_record_striker"), SubResource("Branch_meditative_bracing"), SubResource("Branch_invigorating_bracing"), SubResource("Branch_elemental_mastery")])
+
+[resource]
+script = ExtResource("1_tab")
+name = "Caster"
+kind = "General"
+category = &"magical"
+roots = Array[ExtResource("2_root")]([SubResource("Root_main")])

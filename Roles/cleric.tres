@@ -27,6 +27,11 @@
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
 [sub_resource type="Resource" id="Slot_pray"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_pray")
@@ -128,9 +133,10 @@ noun = "Caster"
 name = "Cleric"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
-innate = Array[ExtResource("4_slot")]([SubResource("Slot_pray"), SubResource("Slot_renew")])
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_pray"), SubResource("Slot_renew")])
 stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 10, &"constitution": 12, &"intelligence": 10, &"wisdom": 15, &"charisma": 12})
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol")])
 shared = Array[ExtResource("5_skill")]([ExtResource("s_pray"), ExtResource("s_renew")])
 swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom", &"intelligence": &"wisdom"})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_energy_potion")])
+general = Array[StringName]([&"magical"])

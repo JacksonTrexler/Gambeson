@@ -135,6 +135,9 @@ func _ready() -> void:
 		_log("%s shatters a starpane at %s" % [_tag(u), c])
 		_mark())
 	battle.sapped.connect(_on_sapped)
+	battle.perfect.connect(func(u: Unit):
+		_log("[color=#e8c547]Perfect![/color] %s heals %d" % [_tag(u), Battle.PERFECT_HEAL])
+		_mark())
 	battle.reverted.connect(func(was: Unit, now: Unit):
 		_watch_unit(now)
 		_falls.append("%s falls back into %s" % [_tag(was), _tag(now)])
@@ -360,6 +363,11 @@ func use_slot(i: int) -> void:
 			persona.open(u, s, Battle.persona_rank(u, s))
 	elif s.passive:
 		switch(u, s)
+	elif not s.elements.is_empty():
+		if not u.can_afford(s):
+			_say(_short(u, s))
+		else:
+			_pick_element(u, s)
 	elif s.on_self(u) or s.auto:
 		if not u.can_afford(s):
 			_say(_short(u, s))
@@ -564,6 +572,23 @@ func known(u: Unit) -> bool:
 # insides the player still only knows as it reads them).
 func hand(u: Unit) -> bool:
 	return known(u) or command.ours(u)
+
+
+# Elemental Strike: a menu of its elements at the mouse; the pick imbues u's Strikes (Battle.imbue()).
+func _pick_element(u: Unit, s: Skill) -> void:
+	var menu := PopupMenu.new()
+	for i in s.elements.size():
+		menu.add_item(String(s.elements[i]).capitalize(), i)
+	menu.id_pressed.connect(func(i: int) -> void:
+		u.element = s.elements[i]
+		if battle.cast(u, s, u):
+			_done(u)
+		else:
+			_say("%s doesn't take" % s.name)
+		_mark())
+	menu.popup_hide.connect(menu.queue_free)
+	add_child(menu)
+	menu.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()), Vector2i.ZERO))
 
 
 # The player's own unit is down (or gone): its side plays itself until the battle ends or the
@@ -938,7 +963,7 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 			_log("%s is setting something up" % _tag(caster))
 		return  # where, and what, is theirs to know
 	var hit: bool = roll.is_empty() or roll.hit
-	var text := "%s %s %s" % [_tag(caster), skill.name, Skill.roman(caster.rank(skill))]
+	var text := "%s %s %s" % [_tag(caster), caster.skill_name(skill), Skill.roman(caster.rank(skill))]
 	if at is Unit and at != caster:
 		text += _arrow(hit) + _tag(at)
 	elif at is Vector2i and skill.lays:
@@ -1424,6 +1449,7 @@ func _refresh_bar() -> void:
 		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
 		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
+		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
 		if locked:

@@ -44,27 +44,43 @@ func test_heavy_drag() -> void:
 	v(1).refresh()
 	var dex := v(1).ap[1].amount
 	var wis := v(1).ap[2].amount
-	v(1).armor = load("res://Items/brigandine.tres")
+	var heavy: Item = load("res://Items/brigandine.tres").duplicate()
+	heavy.rank = 3
+	v(1).armor = heavy
 	v(1).refresh()
-	ok(v(1).ap[1].amount == maxf(dex - 2, 0) and v(1).ap[2].amount == maxf(wis - 2, 0), "heavy: con mod 1 and str mod 1 - 2 off dex AP and wis AP")
-	v(1).constitution = 16
+	ok(v(1).ap[1].amount == maxf(dex - 2, 0) and v(1).ap[2].amount == maxf(wis - 2, 0), "heavy rank III: 3 less con mod 1 off dex AP, 3 less str mod 1 off wis AP")
+	v(1).constitution = 6  # mod -2
 	v(1).refresh()
-	ok(v(1).ap[1].amount == maxf(dex - 1, 0), "con mod 3: still 1 off")
-	v(1).armor = load("res://Items/aethendine.tres")
+	ok(v(1).ap[1].amount == maxf(dex - 5, 0), "a negative con mod makes it worse: 3 + 2")
+	v(1).constitution = 16  # mod 3
 	v(1).refresh()
-	ok(v(1).ap[1].amount == dex + 1 and v(1).ap[2].amount == maxf(wis - 2, 0), "Aethendine: no dex drag with con mod 2+, and rank more dex AP")
+	ok(v(1).ap[1].amount == dex, "con mod 3: none")
+	var medium: Item = load("res://Items/habergeon.tres").duplicate()
+	medium.rank = 3
+	v(1).armor = medium
+	v(1).constitution = 12
+	v(1).refresh()
+	ok(is_equal_approx(v(1).ap[1].amount, maxf(dex - 1.0, 0.0)), "medium: half, (3 - 1) / 2")
+	var aeth: Item = load("res://Items/aethendine.tres").duplicate()
+	aeth.rank = 3
+	v(1).armor = aeth
+	v(1).constitution = 14
+	v(1).refresh()
+	ok(v(1).ap[1].amount == dex + 3, "Aethendine: no dex drag with con mod 2+, and rank more dex AP")
 	ok(v(1).armor_defense() == 14 + v(1).mod(&"dexterity"), "...with its full dex mod")
+	var ign: Item = load("res://Items/ignauldron.tres").duplicate()
+	ign.rank = 3
 	v(1).strength = 14
-	v(1).armor = load("res://Items/ignauldron.tres")
+	v(1).armor = ign
 	v(1).refresh()
-	ok(v(1).ap[2].amount == wis + 1 and v(1).ap[1].amount == maxf(dex - 1, 0), "Ignauldron: no wis drag with str mod 2+, and rank more skill AP")
+	ok(v(1).ap[2].amount == wis + 3, "Ignauldron: no wis drag with str mod 2+, and rank more skill AP")
 	v(1).max_hp = 100
 	v(1).hp = 100
 	b._mend(v(1))
-	ok(v(1).hp == 99, "and it burns for its rank as each turn starts")
-	v(1).armor = load("res://Items/half_plate.tres")
+	ok(v(1).hp == 97, "and it burns for its rank as each turn starts")
+	v(1).armor = load("res://Items/gambeson.tres")
 	v(1).refresh()
-	ok(v(1).ap[1].amount == dex, "medium: no drag")
+	ok(v(1).ap[1].amount == dex, "light: no drag")
 
 
 func test_tagged_defense() -> void:

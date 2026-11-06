@@ -25,7 +25,7 @@ func smiter(god: StringName, r := 1) -> Unit:
 
 func test_tier() -> void:
 	var u := b.starter({faction = lancin, role = paladin, name = "Pip"})
-	ok(smite.min_tier == 3 and u.missing(smite).begins_with("Tier 3: learn 2 skills first"), u.missing(smite))
+	ok(smite.min_tier == 3 and u.missing(smite).begins_with("Learn 2 skills first"), u.missing(smite))
 	u.learned.append(slot(load("res://Skills/favour.tres")))
 	u.learned.append(slot(load("res://Skills/pray.tres")))
 	ok(u.missing(smite) == "", "two learned: open")

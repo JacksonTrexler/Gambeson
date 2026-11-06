@@ -11,10 +11,10 @@ signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up ag
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
-const GENERAL: Array[Skill] = [preload("res://Skills/synergy.tres"), preload("res://Skills/agility_bracing.tres"),
-		preload("res://Skills/balanced_bracing.tres"), preload("res://Skills/vanguard_bracing.tres"), preload("res://Skills/combat_bracing.tres"),
-		preload("res://Skills/meditative_bracing.tres"), preload("res://Skills/invigorating_bracing.tres")]  # the general tree, on offer to every class (sources())
+const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
+		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
+const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
 const ENERGY_COLOR := Color("#e8c547")
@@ -122,6 +122,9 @@ class Applied:
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
+var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
+var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
+var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
 var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
@@ -237,7 +240,7 @@ var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
 		var lost := unranked()
-		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and x.skill not in disabled and lost.get(x.skill, 0) < x.rank).map(func(x: Slot): return x.skill))
+		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill) and rank(x.skill) > 0).map(func(x: Slot): return x.skill))
 		return s
 
 # Passive entries that are on (and not disabled).
@@ -245,7 +248,7 @@ var on_passives: Array[Slot]:
 	get:
 		var s: Array[Slot] = []
 		var lost := unranked()
-		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and x.skill not in disabled and lost.get(x.skill, 0) < x.rank))
+		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
 		return s
 
 var passives: Array[Skill]:
@@ -310,11 +313,12 @@ func _process(_delta: float) -> void:
 	energy_bar.self_modulate = Color.WHITE.lerp(to, beat) if full > 0.75 else Color.WHITE
 
 
-# Its rank in s as it uses it: what it has learned, plus what rank effects add (a Broadsword: Strike)
-# and a primed Chant (a Warlock skill, once); 0 if it doesn't have s.
+# Its rank in s as it uses it: what it has learned, plus what rank effects add or take (a Broadsword:
+# Strike; Record Striker's curse) and a primed Chant (a Warlock skill, once); 0 if it doesn't have s,
+# or it's cursed down to nothing.
 func rank(s: Skill) -> int:
 	var r: int = base_rank(s) - unranked().get(s, 0)
-	return r + maxi(roundi(skill_stat(&"rank", s)), 0) + int(chant_up and &"warlock" in s.tags) if r > 0 else 0
+	return maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags), 0) if r > 0 else 0
 
 
 # Levels a curse has taken off it (Level Down), from its timed level effects alone (its passives can't
@@ -515,7 +519,7 @@ func free_slot(s: Skill = null) -> int:
 # tree), its species, and what it's come to know.
 func sources() -> Dictionary:
 	return {
-		&"class": (role.offered() if role else ([] as Array[Skill])) + GENERAL.filter(func(s: Skill): return not role or s not in role.offered()),
+		&"class": (role.offered() if role else ([] as Array[Skill])) + general_skills().filter(func(s: Skill): return not role or s not in role.offered()),
 		&"species": race.options if race else ([] as Array[Skill]),
 		&"knowledge": lore,
 	}
@@ -539,9 +543,20 @@ func options() -> Dictionary:
 func missing(s: Skill) -> String:
 	if s.stub:
 		return s.waits()
+	if s.exclusive:
+		for x in slots:
+			if x.skill != s and x.skill.exclusive == s.exclusive and x.rank > 0:
+				return "Not with %s" % x.skill.name
+	var gtier := -1
+	for g in GENERAL_TREES:
+		gtier = g.tier_of(s)
+		if gtier >= 0:
+			break
+	if gtier > 0 and (not role or role.tier(s) < 0):
+		return _general_need(s, gtier)[0]
 	var learnt := learned.filter(func(x: Slot): return x.skill != s and x.rank > 0).size()
 	if s.min_tier > 1 and learnt < s.min_tier - 1:
-		return "Tier %d: learn %d skill%s first (%d so far)" % [s.min_tier, s.min_tier - 1, "" if s.min_tier == 2 else "s", learnt]
+		return "Learn %d skill%s first (%d so far)" % [s.min_tier - 1, "" if s.min_tier == 2 else "s", learnt]
 	var root := role.root_of(s) if role else null
 	if not root:
 		return ""
@@ -576,6 +591,10 @@ func devotion() -> SkillTab:
 func unlock(s: Skill) -> bool:
 	if skill_points <= 0 or not options().values().any(func(list: Array): return s in list):
 		return false
+	var gtier := tier(s)
+	var via: Skill = _general_need(s, gtier)[1] if general_skills().has(s) and (not role or role.tier(s) < 0) else null
+	if via:
+		waived[s] = via
 	var x := Slot.new()
 	x.skill = s
 	learned.append(x)
@@ -1092,10 +1111,108 @@ func opened(r: Reserve) -> int:
 	return best
 
 
-# s's tier for it: from its class's tree, else 1 (species and lore skills) - at least the skill's own
-# floor (Synergy: 2).
+# s's tier for it: from its class's tree (what it started with: 0), else from a general tree, else 1
+# (species and lore skills) - at least the skill's own floor (Smite: 3).
 func tier(s: Skill) -> int:
-	return maxi(maxi(role.tier(s) if role else 0, 1), s.min_tier)
+	var t := role.tier(s) if role else -1
+	if t < 0:
+		for g in GENERAL_TREES:
+			t = g.tier_of(s)
+			if t >= 0:
+				break
+	return maxi(t if t >= 0 else 1, s.min_tier)
+
+
+# The general trees it can learn from, on the far right of its skills screen: the base General tree,
+# those its class gets (Role.general), and those a skill of its opens (Martialist, Thaumaturgist).
+func general_trees() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	for g in GENERAL_TREES:
+		if g.category == &"" or (role and g.category in role.general) or _opener(g.category) != null:
+			out.append(g)
+	return out
+
+
+func general_skills() -> Array[Skill]:
+	var out: Array[Skill] = []
+	for g in general_trees():
+		for s in g.core + g.roots.reduce(func(all: Array, r: SkillRoot): return all + r.skills(), []):
+			if s and s not in out:
+				out.append(s)
+	return out
+
+
+# Its class's tree tabs, then its general trees (the skills screen).
+func trees() -> Array[SkillTab]:
+	var out: Array[SkillTab] = role.trees() if role else ([] as Array[SkillTab])
+	out.append_array(general_trees())
+	return out
+
+
+# The skill it has learned that waives a general tree's needs (Skill.waives: general for the base
+# tree, else the category), or null.
+func _opener(category: StringName) -> Skill:
+	var key := category if category else &"general"
+	for x in slots:
+		if x.skill.waives == key and x.rank > 0:
+			return x.skill
+	return null
+
+
+# What stands between it and a general-tree skill s at tier t, "" if nothing, and the waiver that
+# would carry it (null if its own needs are met). On the base tree: 3 skills learned of tier t or more.
+# On a category tree (any it has that offers s): a class skill of that category (Role.category()) of
+# tier t or more. A waiver (Generalist, Martialist, Thaumaturgist) opens its tree up to its rank in
+# tier - one less where the class doesn't have the tree, but SPECIALIST_EDGE more for a class with the
+# Specialist tree.
+func _general_need(s: Skill, t: int) -> Array:
+	var why := ""
+	for g in general_trees():
+		if not g.offers(s):
+			continue
+		var c := g.category
+		if c == &"":
+			var have := slots.filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
+			if have >= 3:
+				return ["", null]
+			why = "Needs 3 skills of tier %d or more (%d so far)" % [t, have]
+		else:
+			var best := -1
+			for x in slots:
+				if x.rank > 0 and role and role.tier(x.skill) >= 0 and role.category(x.skill) == c:
+					best = maxi(best, role.tier(x.skill))
+			if best >= t:
+				return ["", null]
+			why = "Needs a %s class skill of tier %d or more" % ["caster" if c == &"magical" else String(c), t]
+		var by := _opener(c)
+		if by:
+			var native := c == &"" or (role and c in role.general)
+			var reach := base_rank(by) - (0 if native else 1)
+			if not native and role and &"specialist" in role.general:
+				reach += SPECIALIST_EDGE  # specialists branch out more easily
+			if t <= reach:
+				return ["", by]
+	return [why, null]
+
+
+# A general-tree skill learned through a waiver whose waiver isn't working now: removed, disabled, or
+# cursed down to nothing. It stops working too.
+func lapsed(s: Skill) -> bool:
+	var by: Skill = waived.get(s)
+	return by != null and (base_rank(by) == 0 or by in disabled or unranked().get(by, 0) >= base_rank(by))
+
+
+# The name a skill goes by for it: Strike takes the name of a low-tier upgrade it has learned
+# (Decisive Strike), or its element's while imbued (Firestrike).
+func skill_name(s: Skill) -> String:
+	if not s.chain:
+		return s.name
+	if imbued > 0 and element:
+		return String(element).capitalize() + "strike"
+	for x in slots:
+		if x.skill.renames and x.rank > 0:
+			return x.skill.renames
+	return s.name
 
 
 # What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else a
@@ -1309,16 +1426,17 @@ func _pools() -> Array[AP]:
 	return out
 
 
-# What heavy armor takes off its dex (pool &"move") or wis (&"skill") AP each turn: 3 - its con mod
-# (dex) or str mod (wis), at least 1 - none from armor that eases that pool (Item.eases) on a wearer
-# with that mod at SUFFICIENT or more. Lighter armor takes nothing.
-func armor_drag(pool: StringName) -> int:
-	if not armor or armor.weight() != &"heavy":
-		return 0
+# What armor takes off its dex (pool &"move") or wis (&"skill") AP each turn: heavy armor its rank less
+# its con mod (dex) or str mod (wis) - a negative mod makes it worse - medium armor half that; never
+# below 0. None from armor that eases that pool (Item.eases) on a wearer with that mod at SUFFICIENT
+# or more. Light armor takes nothing.
+func armor_drag(pool: StringName) -> float:
+	if not armor or armor.weight() not in [&"heavy", &"medium"]:
+		return 0.0
 	var m := mod(&"constitution" if pool == &"move" else &"strength")
 	if armor.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
-		return 0
-	return maxi(3 - m, 1)
+		return 0.0
+	return maxf((armor.rank - m) / (2.0 if armor.weight() == &"medium" else 1.0), 0.0)
 
 
 # Wearing armor to some effect: armor that sets Defense, whose requirement it meets. Bracing passives
@@ -1415,7 +1533,8 @@ func pillars() -> Array[Skill]:
 
 
 # Its skills in the slots a disabling skill reaches, right to left, a slot at a time (each an
-# Array[Skill]): its pillar skills first, as one - they sit in its last sure slots - then the passives
+# Array[Skill]): its pillar skills first, as one - they sit in its last sure slots; Foundations (a kind
+# of pillar: Generalist) sit rank / 2 slots further in, unless plain pillars go first and take them along - then the passives
 # that are always on (they fill the bar from the bottom), then what's on its hotbar from the last slot
 # back, then any other actives it has. Skills already disabled are skipped.
 func disable_order() -> Array[Array]:
@@ -1429,7 +1548,12 @@ func disable_order() -> Array[Array]:
 				fresh.append(s)
 		if not fresh.is_empty():
 			out.append(fresh)
-	group.call(pillars())
+	var foundations_only := pillars().all(func(x: Skill): return x.foundation())
+	if not foundations_only:
+		group.call(pillars())  # Foundations go with plain pillars
+	else:
+		for x in pillars():
+			seen[x] = true  # placed below, not among the passives
 	var rest: Array[Skill] = []
 	for x in slots:
 		if x.skill.passive and not x.skill.fits_bar():
@@ -1442,6 +1566,11 @@ func disable_order() -> Array[Array]:
 			rest.append(x.skill)
 	for s in rest:
 		group.call([s] as Array[Skill])
+	var deep: Array[Skill] = []
+	if foundations_only:
+		deep.assign(pillars().filter(func(x: Skill): return x not in disabled and rank(x) > 0))
+	if not deep.is_empty():  # rank / 2 slots in from the right: harder to reach
+		out.insert(mini(deep.map(func(x: Skill): return base_rank(x)).max() / 2, out.size()), deep)
 	return out
 
 

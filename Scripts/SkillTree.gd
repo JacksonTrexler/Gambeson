@@ -1,23 +1,21 @@
 class_name SkillTree
 extends PanelContainer
 
-# A unit's skill points and the skills on offer to it, by where they come from: its class, its
-# species, and what it's come to know (Unit.sources()). A class with a skill tree (the Adventurer)
-# shows it as a wheel (SkillWheel), a tab at a time where it has more than one (the Rogue's own and
-# its Calling: Freedom): the skill picked there shows beside it - what it does, what learning it
-# takes - with its Unlock or Rank up button. Other classes list their skills, as do species and
-# knowledge. Unlocking spends a point; raising a skill from rank r costs 1 + r^2.
+# A unit's skill points and the skills on offer to it, a tab at a time along the top, coloured like
+# browser tabs: its class's tree (Role.trees(): the Rogue's own and its Calling: Freedom; a class
+# without a tree, its list of options), its species', what it's come to know, then on the far right the
+# general trees it gets (Unit.general_trees()). Each shows growing from the bottom, tier 0, toward the
+# top (SkillGrid), scrolling where it's tall - but the Adventurer's own, drawn as a wheel (SkillWheel).
+# The skill picked there shows in the footer - what it does, what learning it takes - with its Unlock
+# or Rank up button. Unlocking spends a point; raising a skill from rank r costs 1 + r^2.
 
 signal unlocked(skill: Skill)
 signal raised(skill: Skill)
 signal leveled  # the debug level-up
 
-const LIST_SIZE := Vector2(300, 220)
-const TREE_SIZE := Vector2(440, 252)
-
 var unit: Unit
-var picked: Skill  # the wheel's pick, shown in the detail column
-var tab := 0  # the tab of its class's tree on the wheel (Role.trees())
+var picked: Skill  # the tree's pick, shown in the footer
+var tab := 0  # the tab shown (tabs())
 var can_spend := false
 var _title := ""
 
@@ -26,6 +24,8 @@ var _title := ""
 @onready var footer: Label = %SkillsHint
 @onready var level_button: Button = %LevelUp
 @onready var wheel: SkillWheel = %Wheel
+@onready var grid: SkillGrid = %Grid
+@onready var scroll: ScrollContainer = %TreeScroll
 @onready var act: Button = %DetailButton
 
 
@@ -33,6 +33,7 @@ func _ready() -> void:
 	%SkillsClose.pressed.connect(hide)
 	level_button.pressed.connect(leveled.emit)
 	wheel.picked.connect(pick)
+	grid.picked.connect(pick)
 	act.pressed.connect(_act)
 
 
@@ -45,6 +46,27 @@ func open(u: Unit, title: String, spend: bool) -> void:
 	show()
 
 
+# Its tabs, left to right: its class's (Role.trees()), its species' and what it knows (where it has
+# any), then its general trees.
+func tabs() -> Array[SkillTab]:
+	var out: Array[SkillTab] = unit.role.trees() if unit.role else ([] as Array[SkillTab])
+	var all := unit.sources()
+	for pair in [[&"species", "Species", unit.race.name if unit.race else "Species"], [&"knowledge", "Knowledge", "Knowledge"]]:
+		if not all[pair[0]].is_empty():
+			var t := SkillTab.new()
+			t.kind = pair[1]
+			t.name = pair[2]
+			t.core.assign(all[pair[0]])
+			out.append(t)
+	out.append_array(unit.general_trees())
+	return out
+
+
+# The tree view showing now: the wheel (the Adventurer's own tab) or the grid.
+func view() -> Control:
+	return wheel if wheel.visible else grid
+
+
 func fill(title: String, spend: bool) -> void:
 	_title = title
 	can_spend = spend
@@ -52,79 +74,79 @@ func fill(title: String, spend: bool) -> void:
 	var n := unit.skill_points
 	points.text = "%d skill point%s" % [n, "" if n == 1 else "s"]
 	points.add_theme_color_override(&"font_color", SkillSlot.GOLD if n > 0 else Color(1, 1, 1, 0.45))
-	var tree := unit.role != null and unit.role.has_tree()
-	_resize(TREE_SIZE if tree else LIST_SIZE)
-	%ClassCol.visible = not tree
-	%WheelCol.visible = tree
-	%DetailCol.visible = tree
-	var all := unit.sources()
-	var columns := [
-		[%SpeciesTitle, %SpeciesList, &"species", "SPECIES" + (" · " + unit.race.name.to_upper() if unit.race else "")],
-		[%KnowledgeTitle, %KnowledgeList, &"knowledge", "KNOWLEDGE"],
-	]
-	var role_name := " · " + unit.role.name.to_upper() if unit.role else ""
-	if tree:
-		%WheelTitle.text = "CLASS" + role_name
+	var all := tabs()
+	tab = clampi(tab, 0, all.size() - 1)
+	_fill_tabs(all)
+	var t := all[tab]
+	wheel.visible = t.radial
+	scroll.visible = not t.radial
+	if t.radial:
+		wheel.show_unit(unit, can_spend and n > 0, picked, t)
 	else:
-		columns.push_front([%ClassTitle, %ClassList, &"class", "CLASS" + role_name])
-	for col in columns:
-		col[0].text = col[3]
-		var list: VBoxContainer = col[1]
-		for c in list.get_children():
-			list.remove_child(c)
-			c.queue_free()
-		for s: Skill in all[col[2]]:
-			list.add_child(_entry(s))
-		if list.get_child_count() == 0:
-			var none := Label.new()
-			none.theme_type_variation = &"Muted"
-			none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			none.text = "Skills it learns of will show here." if col[2] == &"knowledge" else "Nothing on offer."
-			list.add_child(none)
-	if tree:
-		var trees := unit.role.trees()
-		tab = clampi(tab, 0, trees.size() - 1)
-		_fill_tabs(trees)
-		wheel.show_unit(unit, can_spend and n > 0, picked, trees[tab])
-		if not picked or picked not in wheel.skills():
-			picked = _first_pick()
-			wheel.selected = picked
-		_show_pick()
+		grid.show_unit(unit, can_spend and n > 0, picked, t)
+		_scroll_to_bottom()
+	if not picked or picked not in view().skills():
+		picked = _first_pick()
+		wheel.selected = picked
+		grid.selected = picked
+	_show_pick()
 	footer.text = "A skill point comes with each level; rank r to r + 1 costs 1 + r² points." if can_spend \
 			else "Only your party's skills can be chosen."
 	level_button.visible = can_spend and OS.is_debug_build()
 
 
-# A button per tab of the class's tree, in place of the wheel's title, where it has more than one.
-func _fill_tabs(trees: Array[SkillTab]) -> void:
+# Trees grow from the bottom: open on tier 0, once the scroll box has taken the tree's new height (its
+# bar's range settles a frame or two later).
+func _scroll_to_bottom() -> void:
+	for i in 2:
+		await get_tree().process_frame
+	scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+
+
+# A tab per part of its trees, like a browser's: each in its tree's colour (general trees by category),
+# the one shown bright and joined to the tree below.
+func _fill_tabs(all: Array[SkillTab]) -> void:
 	var box: HBoxContainer = %WheelTabs
 	for c in box.get_children():
 		box.remove_child(c)
 		c.queue_free()
-	box.visible = trees.size() > 1
-	%WheelTitle.visible = not box.visible
-	if not box.visible:
-		return
 	var group := ButtonGroup.new()
-	for i in trees.size():
-		var t := trees[i]
+	for i in all.size():
+		var t := all[i]
 		var b := Button.new()
-		b.text = "%s · %s" % [(t.kind if t.kind else "Class").to_upper(), t.name.to_upper()]
-		b.flat = true
-		for state in [&"normal", &"hover", &"pressed", &"hover_pressed"]:  # the same margins pressed or not
-			b.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		if not t.kind:
+			b.text = "CLASS · " + t.name.to_upper()
+		elif t.kind == t.name:
+			b.text = t.name.to_upper()
+		else:
+			b.text = "%s · %s" % [t.kind.to_upper(), t.name.to_upper()]
+		var tone := t.tone()
+		for state in [&"normal", &"hover", &"pressed", &"hover_pressed"]:
+			var on: bool = state in [&"pressed", &"hover_pressed"]
+			var style := StyleBoxFlat.new()
+			style.bg_color = Color(tone.darkened(0.55), 0.95) if on else Color(tone.darkened(0.75), 0.6 if state == &"normal" else 0.8)
+			style.border_color = tone if on else Color(tone, 0.35)
+			style.set_border_width_all(1)
+			style.border_width_bottom = 0 if on else 1
+			style.corner_radius_top_left = 3
+			style.corner_radius_top_right = 3
+			style.content_margin_left = 5
+			style.content_margin_right = 5
+			style.content_margin_top = 1
+			style.content_margin_bottom = 1
+			b.add_theme_stylebox_override(state, style)
 		b.toggle_mode = true
 		b.button_group = group
 		b.button_pressed = i == tab
 		b.focus_mode = FOCUS_NONE
 		b.add_theme_font_size_override(&"font_size", 6)
-		b.add_theme_color_override(&"font_color", Color(0.6, 0.63, 0.7))
+		b.add_theme_color_override(&"font_color", tone.lightened(0.2))
+		b.add_theme_color_override(&"font_pressed_color", tone.lightened(0.5))
 		b.tooltip_text = t.title()
 		b.pressed.connect(show_tab.bind(i))
 		box.add_child(b)
 
 
-# Puts the class tree's tab i on the wheel.
 func show_tab(i: int) -> void:
 	if i != tab:
 		tab = i
@@ -132,11 +154,12 @@ func show_tab(i: int) -> void:
 		fill(_title, can_spend)
 
 
-# Shows s in the detail column (a click on the wheel).
+# Shows s in the footer (a click on the tree).
 func pick(s: Skill) -> void:
 	picked = s
 	wheel.selected = s
-	wheel.queue_redraw()
+	grid.selected = s
+	view().queue_redraw()
 	_show_pick()
 
 
@@ -178,82 +201,19 @@ func state(s: Skill) -> String:
 
 func _act() -> void:
 	if picked:
-		if unit.rank(picked) == 0:
+		if unit.base_rank(picked) == 0:
 			unlocked.emit(picked)
 		else:
 			raised.emit(picked)
 
 
-# The skill to show first: the first on the wheel the unit could learn now, else the first it has.
+# The skill to show first: the first in the tree the unit could learn now, else the first it has.
 func _first_pick() -> Skill:
-	var all := wheel.skills()
+	var all: Array = view().skills()
 	for s: Skill in all:
-		if not s.stub and unit.rank(s) == 0 and unit.missing(s) == "":
+		if not s.stub and unit.base_rank(s) == 0 and unit.missing(s) == "":
 			return s
 	for s: Skill in all:
-		if unit.rank(s) > 0:
+		if unit.base_rank(s) > 0:
 			return s
 	return all[0] if not all.is_empty() else null
-
-
-func _resize(to: Vector2) -> void:
-	offset_left = -to.x / 2.0
-	offset_right = to.x / 2.0
-	offset_top = -to.y / 2.0
-	offset_bottom = to.y / 2.0
-
-
-func _entry(s: Skill) -> Control:
-	var r := unit.base_rank(s)
-	var card := PanelContainer.new()
-	card.theme_type_variation = &"Card"
-	card.tooltip_text = "%s · tier %d\n%s" % [s.name, unit.tier(s), s.describe(maxi(r, 1))]
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override(&"separation", 4)
-	card.add_child(row)
-	var stripe := ColorRect.new()
-	stripe.color = SkillSlot.tint(s)
-	stripe.custom_minimum_size = Vector2(1.5, 0)
-	stripe.mouse_filter = MOUSE_FILTER_IGNORE
-	row.add_child(stripe)
-	var text := VBoxContainer.new()
-	text.add_theme_constant_override(&"separation", 0)
-	text.size_flags_horizontal = SIZE_EXPAND_FILL
-	row.add_child(text)
-	var title := Label.new()
-	title.text = s.name
-	title.clip_text = true
-	text.add_child(title)
-	var line := Label.new()
-	line.theme_type_variation = &"Muted"
-	line.text = ("Passive" + (" · toggle" if s.toggle else "")) if s.passive else s.summary()
-	line.clip_text = true
-	text.add_child(line)
-	if r > 0:
-		var known := Label.new()
-		known.text = Skill.roman(r)
-		known.add_theme_color_override(&"font_color", SkillSlot.GOLD)
-		row.add_child(known)
-		if unit.can_raise(s):
-			var cost := unit.raise_cost(s)
-			var up := _button("+", can_spend and unit.skill_points >= cost)
-			up.tooltip_text = "Raise %s to rank %s: %d point%s" % [s.name, Skill.roman(r + 1), cost, "" if cost == 1 else "s"]
-			up.pressed.connect(func(): raised.emit(s))
-			row.add_child(up)
-	else:
-		var can := can_spend and unit.skill_points > 0 and unit.missing(s) == ""
-		var b := _button("Unlock", can)
-		b.tooltip_text = "Spend a skill point to learn %s" % s.name if can else (unit.missing(s) if unit.missing(s) else "Needs a skill point")
-		b.pressed.connect(func(): unlocked.emit(s))
-		row.add_child(b)
-		card.modulate.a = 1.0 if can else 0.7
-	return card
-
-
-func _button(text: String, enabled: bool) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.disabled = not enabled
-	b.focus_mode = FOCUS_NONE
-	b.size_flags_vertical = SIZE_SHRINK_CENTER
-	return b

@@ -17,4 +17,5 @@ ap = 3.0
 radius = 1.0
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
 hits_per_rank = true
+chain = true
 weapon_tag = true

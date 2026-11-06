@@ -11,7 +11,6 @@ stat = "synergy"
 script = ExtResource("1_skill")
 name = "Synergy"
 passive = true
-min_tier = 2
 tags = Array[StringName]([&"specialist"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_synergy")])
 max_rank = 1

@@ -36,6 +36,7 @@ var works := true  # false: a clover slot whose unit isn't lucky now - greyed ou
 var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it isn't - dimmed while it is
 var cursed := false  # a curse disabled it (Brainfog), or sealed the slot (a level curse: Unit.sealed()): it quivers gently
 var sealed := false  # a level curse took the slot: it stays, unusable, till the curse ends
+var label := ""  # the name it goes by for its unit (Unit.skill_name(): Decisive Strike, Firestrike); empty: its own
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
@@ -162,7 +163,7 @@ func _draw() -> void:
 	if skill.passive:
 		draw_circle(Vector2(right - 2, size.y / 2.0), 1.6, ON if on else Color(1, 1, 1, 0.25))
 		right -= 6
-	draw_string(font, Vector2(16, mid + 0.5), skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - 16, 7,
+	draw_string(font, Vector2(16, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - 16, 7,
 			Color(0.92, 0.93, 0.96, dim))
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)

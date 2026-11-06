@@ -102,7 +102,13 @@ func test_strike_iii() -> void:
 	stage(lancin, {alabaster(): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).max_hp = 50
 	v(3).heal(50)
-	ok(b.cast(alabaster(), strike, v(3)) and v(3).hp == 35, "3 hits of 1 + str mod 4 = 15")
+	var rolls := []
+	b.attacked.connect(func(_c, _t, d20: int, total: int, _def): rolls.append([d20, total]))
+	ok(b.cast(alabaster(), strike, v(3)), "Strike III")
+	ok(rolls.size() >= 1 and rolls.size() <= 3, "a roll a hit, up to 3 (%d)" % rolls.size())
+	var landed := rolls.size() - (0 if rolls[-1][1] >= v(3).defense() or rolls[-1][0] == 20 else 1)
+	var want: int = [0, 5, 9, 12][landed]  # 1 + str mod 4, then -1 each hit in a row
+	ok(50 - v(3).hp == want or rolls.any(func(x: Array): return x[0] == 20), "hits in a row lose a point each: %d landed, %d damage" % [landed, 50 - v(3).hp])
 	ok(is_equal_approx(b.skill_range(alabaster(), strike, v(3)), 1.26), "size 4: reach 1 + 0.2 + 0.06")
 	v(3).max_hp = 10
 	stage(lancin, {alabaster(): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 5)})

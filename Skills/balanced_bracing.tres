@@ -15,7 +15,6 @@ kind = &"defensive"
 script = ExtResource("1_skill")
 name = "Balanced Bracing"
 passive = true
-min_tier = 5
 tags = Array[StringName]([&"martial", &"specialist", &"bracing"])
 lore = "Jimhe Deyn is very insistent on general calisthenics, done fully equipped. They spend more time at the Jym than in their own territory: they don't call them the Ratz for nothing."
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://Scripts/IconButton.gd" id="5_icon"]
 [ext_resource type="Script" path="res://Scripts/SkillTree.gd" id="6_tree"]
 [ext_resource type="Script" path="res://Scripts/SkillWheel.gd" id="7_wheel"]
+[ext_resource type="Script" path="res://Scripts/SkillGrid.gd" id="7_grid"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -458,17 +459,17 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -110.0
-offset_right = 150.0
-offset_bottom = 110.0
+offset_left = -225.0
+offset_top = -128.0
+offset_right = 225.0
+offset_bottom = 128.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("6_tree")
 
 [node name="Column" type="VBoxContainer" parent="Root/Skills"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="Head" type="HBoxContainer" parent="Root/Skills/Column"]
 layout_mode = 2
@@ -494,143 +495,74 @@ focus_mode = 0
 tooltip_text = "Close (S or Esc)"
 text = "Close"
 
-[node name="Cols" type="HBoxContainer" parent="Root/Skills/Column"]
+[node name="WheelTabs" type="HBoxContainer" parent="Root/Skills/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="Body" type="PanelContainer" parent="Root/Skills/Column"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 5
 
-[node name="ClassCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+[node name="TreeScroll" type="ScrollContainer" parent="Root/Skills/Column/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Grid" type="Control" parent="Root/Skills/Column/Body/TreeScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="ClassTitle" type="Label" parent="Root/Skills/Column/Cols/ClassCol"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Muted"
-clip_text = true
-
-[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/ClassCol"]
-layout_mode = 2
 size_flags_vertical = 3
-horizontal_scroll_mode = 0
+script = ExtResource("7_grid")
 
-[node name="ClassList" type="VBoxContainer" parent="Root/Skills/Column/Cols/ClassCol/Scroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="WheelCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+[node name="Wheel" type="Control" parent="Root/Skills/Column/Body"]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="WheelTitle" type="Label" parent="Root/Skills/Column/Cols/WheelCol"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Muted"
-clip_text = true
-
-[node name="WheelTabs" type="HBoxContainer" parent="Root/Skills/Column/Cols/WheelCol"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Wheel" type="Control" parent="Root/Skills/Column/Cols/WheelCol"]
-unique_name_in_owner = true
 custom_minimum_size = Vector2(196, 176)
 layout_mode = 2
-size_flags_vertical = 3
 script = ExtResource("7_wheel")
 
-[node name="DetailCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
+[node name="DetailCol" type="VBoxContainer" parent="Root/Skills/Column"]
 unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(98, 0)
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 1
 
-[node name="DetailName" type="Label" parent="Root/Skills/Column/Cols/DetailCol"]
+[node name="DetailHead" type="HBoxContainer" parent="Root/Skills/Column/DetailCol"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DetailName" type="Label" parent="Root/Skills/Column/DetailCol/DetailHead"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Title"
-autowrap_mode = 3
 
-[node name="DetailState" type="Label" parent="Root/Skills/Column/Cols/DetailCol"]
+[node name="DetailState" type="Label" parent="Root/Skills/Column/DetailCol/DetailHead"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(98, 0)
-layout_mode = 2
-theme_type_variation = &"Muted"
-theme_override_colors/font_color = Color(0.91, 0.77, 0.28, 1)
-autowrap_mode = 3
-
-[node name="DetailScroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/DetailCol"]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="DetailText" type="Label" parent="Root/Skills/Column/Cols/DetailCol/DetailScroll"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 theme_type_variation = &"Muted"
-autowrap_mode = 3
+theme_override_colors/font_color = Color(0.91, 0.77, 0.28, 1)
+clip_text = true
 
-[node name="DetailButton" type="Button" parent="Root/Skills/Column/Cols/DetailCol"]
+[node name="DetailButton" type="Button" parent="Root/Skills/Column/DetailCol/DetailHead"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 
-[node name="SideCol" type="VBoxContainer" parent="Root/Skills/Column/Cols"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="SpeciesCol" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="SpeciesTitle" type="Label" parent="Root/Skills/Column/Cols/SideCol/SpeciesCol"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Muted"
-clip_text = true
-
-[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/SideCol/SpeciesCol"]
+[node name="DetailScroll" type="ScrollContainer" parent="Root/Skills/Column/DetailCol"]
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="SpeciesList" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol/SpeciesCol/Scroll"]
+[node name="DetailText" type="Label" parent="Root/Skills/Column/DetailCol/DetailScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="KnowledgeCol" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="KnowledgeTitle" type="Label" parent="Root/Skills/Column/Cols/SideCol/KnowledgeCol"]
-unique_name_in_owner = true
-layout_mode = 2
 theme_type_variation = &"Muted"
-clip_text = true
-
-[node name="Scroll" type="ScrollContainer" parent="Root/Skills/Column/Cols/SideCol/KnowledgeCol"]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="KnowledgeList" type="VBoxContainer" parent="Root/Skills/Column/Cols/SideCol/KnowledgeCol/Scroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
+autowrap_mode = 3
 
 [node name="Foot" type="HBoxContainer" parent="Root/Skills/Column"]
 layout_mode = 2

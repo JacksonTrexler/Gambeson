@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_0"]
+script = ExtResource("2_effect")
+stat = "single"
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "brutal"
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+passive = true
+name = "Brutal Strike"
+tags = Array[StringName]([&"martial"])
+renames = "Brutal Strike"
+exclusive = &"strike_form"
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_0"), SubResource("Effect_1")])

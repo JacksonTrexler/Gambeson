@@ -1,7 +1,7 @@
 class_name Tags
 
 # Child tags also count as their parent: a slash is a physical hit.
-const PARENT := {&"slash": &"physical", &"pierce": &"physical", &"blunt": &"physical"}
+const PARENT := {&"slash": &"physical", &"pierce": &"physical", &"blunt": &"physical", &"foundation": &"pillar"}
 
 
 static func expand(tags: Array[StringName]) -> Array[StringName]:

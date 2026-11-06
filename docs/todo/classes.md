@@ -16,7 +16,7 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
   - Rank 11+: bonus slots also cut max energy the same way.
 - [ ] If a skill that grants slots is unequipped, its slots disappear, skills and all (Losing a slot). *Now:* skills can't be unequipped; a level buff's slots already go that way.
 - [x] **Igna** and **Aetha**: built as starter spells (`docs/done/classes.md`), the AP at once.
-- [ ] **Martial root**: not designed yet. *Now:* Wary, then the capstone. (?15)
+- [ ] **Martial root**: not designed yet. *Now:* Wary, then the capstone; the general Martial tree helps. (?15)
 - [ ] **Specialist root**: more specialist skills to come.
 
 3. The Adventurer's extra slot "sits at the center, locked until current slots are filled". Center of the hotbar (its middle slot) or of the radial tree? Does it unlock once every slot holds a skill?
@@ -97,7 +97,14 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
 
 12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
 
-48. The general tree, as built: every Bracing passive caps its bonus at its rank (you wrote "up to rank" only for Agility). "Effectively equipped" is read as worn with its requirements met. The general skills are listed with each class's own, not on a tab of their own yet. Right?
+48. Bracing, as built: every Bracing passive caps its bonus at its rank (you wrote "up to rank" only for Agility). "Effectively equipped" is read as worn with its requirements met. Right?
+51. The Specialist opener is **Journeyman** (a skilled hand across trades; "Specialist" would clash with the tree's name). Specialist classes reach the other trees through Martialist and Thaumaturgist two tiers sooner (you said "a tier or two"). Both right?
+52. Perfect, as built: the 36 hits count across one Strike's restrikes; the 300 HP heals up to max HP (it doesn't overheal). Should it overheal?
+50. Strike's upgrades, where I filled gaps:
+    - Tiers: low II, mid IV, high VII (Strike! too); the high-tier passives are mine: Decisive, Brutal and Elemental Mastery. Martial is red (you wrote "green" twice).
+    - Brutal Strike: "add rank to your weapon ranks for this attack" built as + the weapon's rank + rank to damage.
+    - Record Striker: the curse is the foe's wis against the striker's highest mental mod, and the rank lost lasts its next turn.
+    - Elemental Strike's elements: fire, water, earth, air, light, dark.
 
 ## Fighter
 

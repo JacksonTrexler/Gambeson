@@ -222,3 +222,5 @@ center = ExtResource("s_skill_slot")
 core = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_rejuvinate"), ExtResource("s_trade_skills"), ExtResource("s_grind")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Magic"), SubResource("Root_Martial"), SubResource("Root_Specialist")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
+general = Array[StringName]([&"martial", &"specialist", &"magical"])
+radial = true

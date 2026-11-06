@@ -15,7 +15,6 @@ kind = &"offensive"
 script = ExtResource("1_skill")
 name = "Vanguard Bracing"
 passive = true
-min_tier = 5
 tags = Array[StringName]([&"martial", &"bracing"])
 lore = "Jimhe Deyn is very insistent on bulking while fully equipped. They're known to tear up Center's night markets for protein and calories: they don't call them the Greasejons for nothing."
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

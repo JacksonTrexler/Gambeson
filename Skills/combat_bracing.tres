@@ -14,7 +14,6 @@ checks = Array[StringName]([&"strength"])
 script = ExtResource("1_skill")
 name = "Combat Bracing"
 passive = true
-min_tier = 5
 tags = Array[StringName]([&"martial", &"bracing"])
 lore = "Jimhe Deyn makes his bruisers deadlift their peers in full plate. Frankly they're all a bit top-heavy because of it, but they don't call 'em the Doozers for nothing. (They run the Central Lift.)"
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

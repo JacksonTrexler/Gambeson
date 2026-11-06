@@ -22,8 +22,8 @@ Every item has a **rank** (1 for all so far): its effects scale by it. In battle
 
 Armor, by weight (`Item.WEIGHTS`; the tag light, medium or heavy). Each weight shares its basic piece's scaling; dex shares round by luck, and a negative one rounds down. (?47)
 - **Light**: Defense the higher of 10 and level / 2, + dex mod. **Gambeson** (basic), **Robe**.
-- **Medium**: the higher of 12 and level × 0.75, + dex mod / 2. **Habergeon** (basic), **Half Plate**.
-- **Heavy**: the higher of 14 and level, + dex mod / 4. Each turn it takes 3 − con mod dex AP and 3 − str mod wis AP, at least 1 each (`Unit.armor_drag()`). **Brigandine** (basic), **Plate**, and:
+- **Medium**: the higher of 12 and level × 0.75, + dex mod / 2. Each turn it takes (rank − con mod) / 2 dex AP and (rank − str mod) / 2 wis AP, never below 0. **Habergeon** (basic), **Half Plate**.
+- **Heavy**: the higher of 14 and level, + dex mod / 4. Each turn it takes rank − con mod dex AP and rank − str mod wis AP, never below 0: a negative mod makes it worse (`Unit.armor_drag()`). **Brigandine** (basic), **Plate**, and:
   - [x] **Aethendine**: its wearer's full dex mod; rank more dex AP a turn; no dex AP drag with con mod 2 or more.
   - [x] **Ignauldron**: rank more skill AP a turn; burns its wearer for rank fire as each turn starts; no wis AP drag with str mod 2 or more.
 - Habergeon, Brigandine, Aethendine and Ignauldron have no source yet (no drops, rewards or shops).

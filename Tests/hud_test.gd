@@ -75,9 +75,9 @@ func test_toggle_from_bar() -> void:
 	var icor := unit("Icor")
 	stage(nemes, {icor: Vector2i(7, 3), v(1): Vector2i(1, 2)})
 	var h := await start(icor)
-	h._unhandled_input(key(KEY_2))
-	ok(not icor.is_on(arcanist) and h.armed == null, "2 switches Arcanist Perspective off")
-	h.use_slot(1)
+	h._unhandled_input(key(KEY_3))
+	ok(not icor.is_on(arcanist) and h.armed == null, "3 switches Arcanist Perspective off (Strike, then Hex, before it)")
+	h.use_slot(2)
 	ok(icor.is_on(arcanist), "and on again")
 	h.free()
 
@@ -118,6 +118,7 @@ func test_spellbook_and_bar() -> void:
 	ok(h.spellbook.visible and h.spellbook.unit == icor, "B opens the selected unit's spellbook")
 	var actives := h.spellbook.actives.get_children()
 	var passives := h.spellbook.passives.get_children()
+	actives = actives.filter(func(x: SkillEntry): return x.skill != strike)
 	ok(actives.size() == 1 and actives[0].skill == hex and passives.size() == 2 and passives[0].skill == arcanist and passives[1].skill.name == "Mana",
 			"Hex under Active; Arcanist Perspective III, then the Wizard's Mana I, under Passive")
 	ok(actives[0].get_child(0).get_child(0).text == "III", "ranks in numerals")
@@ -126,7 +127,7 @@ func test_spellbook_and_bar() -> void:
 	var data := {skill = arcanist, from = -1}
 	ok(slot._can_drop_data(Vector2.ZERO, data), "a hotbar slot takes it")
 	slot._drop_data(Vector2.ZERO, data)
-	ok(icor.hotbar[3] == arcanist and icor.hotbar[1] == null, "dropped in slot 4, it leaves slot 2")
+	ok(icor.hotbar[3] == arcanist and icor.hotbar[2] == null, "dropped in slot 4, it leaves slot 3")
 	var right := InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
 	right.pressed = true
@@ -400,10 +401,15 @@ func test_skills_screen() -> void:
 	var relay: Skill = load("res://Skills/relay.tres")
 	h._unhandled_input(key(KEY_S))
 	ok(h.skills.visible and h.skills.unit == u and not h.spellbook.visible, "S opens the leader's skills")
-	var species: Array = h.get_node("%SpeciesList").get_children()
-	ok(h.get_node("%SpeciesTitle").text == "SPECIES · HALFLING" and species.size() == 1, "Relay on offer from its species")
-	var unlock: Button = species[0].get_child(0).get_child(2)
-	ok(unlock.text == "Unlock" and unlock.disabled, "but there's no point to spend")
+	var tabs: HBoxContainer = h.get_node("%WheelTabs")
+	var names: Array = tabs.get_children().map(func(x: Button): return x.text)
+	ok(names[0] == "CLASS · PALADIN" and h.skills.view() is SkillGrid and load("res://Skills/favour.tres") in h.skills.view().skills(),
+			"a class without a tree: its options as one, growing from the bottom")
+	ok(names.slice(1) == ["SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER"], "its species, then the general trees a Paladin gets: %s" % [names])
+	(tabs.get_child(1) as Button).pressed.emit()
+	ok(h.skills.view().skills() == [relay] and h.skills.picked == relay, "Relay on offer from its species")
+	var unlock: Button = h.get_node("%DetailButton")
+	ok(unlock.text == "Unlock · 1 pt" and unlock.disabled, "but there's no point to spend")
 	h.skills.leveled.emit()
 	h._refresh()
 	ok(u.skill_points == 1 and h.get_node("%SkillsIcon").badge, "a level up: a point, and the dock's branch lights up")
@@ -551,12 +557,12 @@ func test_adventurer_skills_screen() -> void:
 	h.toggle_skills()
 	await tree.process_frame
 	var w: SkillWheel = h.get_node("%Wheel")
-	ok(w.is_visible_in_tree() and not h.get_node("%ClassCol").visible and h.get_node("%DetailCol").visible,
-			"the Adventurer's class skills: a wheel, not a list")
-	ok(w.skills().size() == 37 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
-			"every skill on it (%d), Skill Slot +1 at the centre" % w.skills().size())
-	ok(h.get_node("%WheelTitle").visible and not h.get_node("%WheelTabs").visible, "one tab: a title, no tabs")
-	ok(h.skills.size.x >= SkillTree.TREE_SIZE.x - 0.5, "a wider panel for it (%s)" % h.skills.size)
+	ok(w.is_visible_in_tree() and not h.get_node("%TreeScroll").visible and h.get_node("%DetailCol").visible,
+			"the Adventurer's own tab: a wheel")
+	ok(w.skills().size() == 36 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
+			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
+	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER"],
+			"its own tab, its species', then all three general trees and the base one, on the far right")
 	ok(h.skills.picked == hex and h.get_node("%DetailName").text == "Hex" and h.get_node("%DetailState").text == "Tier 1 · Can be learned now",
 			"Hex shows first: the first it can learn")
 	var act: Button = h.get_node("%DetailButton")
@@ -687,15 +693,25 @@ func test_tabbed_skills_screen() -> void:
 	var h := await start(u)
 	h.toggle_skills()
 	await tree.process_frame
-	var w: SkillWheel = h.get_node("%Wheel")
+	var g: SkillGrid = h.get_node("%Grid")
 	var tabs: HBoxContainer = h.get_node("%WheelTabs")
-	ok(tabs.visible and not h.get_node("%WheelTitle").visible
-			and tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM"], "a tab per part of its tree, in place of the title")
-	ok(w.skills().size() == 2 and strike in w.skills() and load("res://Skills/wary.tres") in w.skills(), "its own: Strike, Wary")
+	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
+			"browser tabs: a tab per part of its tree, its species', then the general trees a Rogue gets")
+	ok(h.skills.view() == g and g.skills().size() == 1 and load("res://Skills/wary.tres") in g.skills(), "its own: Wary, growing from the bottom (Strike is on the General tab)")
 	(tabs.get_child(1) as Button).pressed.emit()
-	ok(h.skills.tab == 1 and w.spot(hide).is_equal_approx(w.size / 2.0) and load("res://Skills/snare.tres") in w.skills()
-			and load("res://Skills/move_plus_one.tres") in w.skills(), "Calling: Freedom: Hide at the centre, Snare, Move +1...")
-	ok(h.skills.picked in w.skills() and (tabs.get_child(1) as Button).button_pressed, "picking from the tab shown")
+	var snare: Skill = load("res://Skills/snare.tres")
+	var hazard: Skill = load("res://Skills/hazard_expert.tres")
+	var move: Skill = load("res://Skills/move_plus_one.tres")
+	ok(h.skills.tab == 1 and hide in g.skills() and snare in g.skills() and move in g.skills(), "Calling: Freedom: Hide, Snare, Move +1...")
+	ok(g.spot(move).y > g.spot(snare).y and g.spot(snare).y > g.spot(hazard).y, "tier 0 (Move +1, a starting skill) at the bottom, then up: Snare (I), Hazard Expert (II)")
+	ok(h.skills.picked in g.skills() and (tabs.get_child(1) as Button).button_pressed, "picking from the tab shown")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = g.spot(snare)
+	g._gui_input(click)
+	ok(h.skills.picked == snare and h.get_node("%DetailName").text == "Snare", "clicking a skill shows it in the footer")
+	ok(g._get_tooltip(g.spot(snare)).begins_with("Snare · tier 1"), "with a tooltip")
 	h._refresh()
 	ok(h.skills.tab == 1, "the tab holds through a refresh")
 	h.free()

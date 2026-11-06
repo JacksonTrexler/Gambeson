@@ -24,8 +24,8 @@ func test_tree() -> void:
 	var trees := warlock.trees()
 	ok(trees.map(func(t: SkillTab): return t.title()) == ["Patron: Elmon", "Patron: Hogel"], "a tab per patron, no empty class tab: %s" % [trees.map(func(t: SkillTab): return t.title())])
 	ok(trees.all(func(t: SkillTab): return t.core.slice(0, 3) == [hex, sweet, load("res://Skills/chant.tres")]), "each with the shared row first")
-	ok(warlock.tier(hex) == 1 and warlock.tier(sweet) == 1 and warlock.tier(brainfog) == 2 and warlock.tier(load("res://Skills/haluca.tres")) == 2,
-			"the shared row is tier 1; Elmon's path from tier 2 (Brainfog, Haluca)")
+	ok(warlock.tier(hex) == 0 and warlock.tier(sweet) == 0 and warlock.tier(brainfog) == 2 and warlock.tier(load("res://Skills/haluca.tres")) == 2,
+			"the shared row it starts with is tier 0; Elmon's path from tier 2 (Brainfog, Haluca)")
 	var u := b.starter({faction = lancin, role = warlock, name = "Vex"})
 	u.cell = Vector2i(9, 7)
 	b.get_node("Units").add_child(u)

@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="1_tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="2_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="3_branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/generalist.tres" id="s_generalist"]
+[ext_resource type="Resource" path="res://Skills/martialist.tres" id="s_martialist"]
+[ext_resource type="Resource" path="res://Skills/thaumaturgist.tres" id="s_thaumaturgist"]
+[ext_resource type="Resource" path="res://Skills/journeyman.tres" id="s_journeyman"]
+[ext_resource type="Resource" path="res://Skills/strike_bang.tres" id="s_strike_bang"]
+
+[sub_resource type="Resource" id="Branch_generalist"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_generalist")
+tier = 1
+
+[sub_resource type="Resource" id="Branch_martialist"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_martialist")
+tier = 1
+
+[sub_resource type="Resource" id="Branch_thaumaturgist"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_thaumaturgist")
+tier = 1
+
+[sub_resource type="Resource" id="Branch_journeyman"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_journeyman")
+tier = 1
+
+[sub_resource type="Resource" id="Branch_strike_bang"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_strike_bang")
+tier = 7
+
+[sub_resource type="Resource" id="Root_main"]
+script = ExtResource("2_root")
+name = "General"
+tag = &""
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_generalist"), SubResource("Branch_martialist"), SubResource("Branch_thaumaturgist"), SubResource("Branch_journeyman"), SubResource("Branch_strike_bang")])
+
+[resource]
+script = ExtResource("1_tab")
+name = "General"
+kind = "General"
+category = &""
+core = Array[ExtResource("4_skill")]([ExtResource("s_strike")])
+roots = Array[ExtResource("2_root")]([SubResource("Root_main")])

@@ -34,7 +34,7 @@ func test_trees() -> void:
 		ok(role.tier(personify) == 1 and role.tier(embellish) == 2 and role.tier(brood) == 2 and role.root_of(embellish).tag == &"specialist",
 				"%s: Personify (tier 1), then Embellish and Brood (tier 2)" % role.name)
 	var rogue: Role = load("res://Roles/rogue.tres")
-	ok(rogue.tier(brood) == 2 and rogue.tier(personify) == 0, "the Rogue: Brood after Meander (tier 2), no Personify")
+	ok(rogue.tier(brood) == 2 and rogue.tier(personify) == -1, "the Rogue: Brood after Meander (tier 2), no Personify")
 	ok(personify.name == "Personify" and "Persona: +2" in personify.describe(2), "Personify: +rank persona (%s)" % personify.describe(2))
 
 

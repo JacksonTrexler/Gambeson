@@ -5,3 +5,4 @@ extends Resource
 @export var skill: Skill
 @export var after: Array[Skill] = []  # every one of these first (Hazard Expert: Snare); none: open from the start
 @export var needs := 0  # and this many of the root's other skills (capstones: 3)
+@export var tier := 0  # on a general tree: its tier, set rather than counted, which also sets how far out it sits

@@ -20,6 +20,11 @@
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/mana_potion.tres" id="i_mana_potion"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
 [sub_resource type="Resource" id="Slot_mana"]
 script = ExtResource("4_slot")
 skill = ExtResource("23_opt_mana")
@@ -30,7 +35,8 @@ noun = "Caster"
 name = "Wizard"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
-innate = Array[ExtResource("4_slot")]([SubResource("Slot_mana")])
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_mana")])
 options = Array[ExtResource("20_skill")]([ExtResource("23_opt_mana"), ExtResource("22_opt_mage_armor"), ExtResource("21_opt_darkstone"), ExtResource("30_opt_sola"), ExtResource("31_opt_nadira"), ExtResource("32_opt_astera"), ExtResource("33_opt_terestera"), ExtResource("34_opt_hydera")])
 reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_mana_potion")])
+general = Array[StringName]([&"magical"])

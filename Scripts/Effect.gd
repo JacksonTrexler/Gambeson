@@ -75,6 +75,14 @@ extends Resource
 # the armor's rank x this, up to the skill's rank (the Bracing passives).
 # move_ap / skill_ap: that much more dex (moving) / wis (skill) AP each turn (Aethendine, Ignauldron,
 # Invigorating Bracing).
+# Strike (chain skills; Battle._chain()):
+# decisive: after a critical, its remaining hits always land; damage by the higher of dex and str mod.
+# single: one attack only (Brutal Strike). brutal: its first hit adds its weapon's rank + this.
+# steady: its first this hits take no penalty, and a miss among them doesn't end it (Strike Out).
+# featured: its first this hits add its cha mod, up to this (Striking Features).
+# recording: its first this hits try to curse the target's leftmost skill a rank down (Record Striker).
+# restrike: landing 12 hits in one use, it strikes again at once, this - 1 hits more (Strike!).
+# elemental: its Strikes carry its element, the first hit + its highest mental mod (Elemental Mastery).
 # humble: that much max HP cut (Humble; Unit.refit()).
 # flamecharmed: from rank V, allies' fire heals it for 25% x (this - 4) of what they deal (Flamecharmed;
 # Unit.hit()).
@@ -89,7 +97,8 @@ extends Resource
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
 		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
 		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
-		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap") var stat := "luck"
+		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
+		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -195,6 +204,15 @@ func value(rank := 1) -> String:
 		var on := " or ".join(checks.map(func(c): return "mental" if c == &"mental" else String(c).left(3)))
 		return "%s equipped %sarmor rank%s to %s%s rolls, up to rank" % ["half the" if amount < 1.0 else "+", "%s " % " or ".join(tags) if not tags.is_empty() else "",
 				"" if amount < 1.0 else "s", (String(kind) + " ") if kind else "", on]
+	elif stat in ["decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental"]:
+		return {"decisive": "after a critical, the rest of Strike's hits land; damage by the higher of dex and str mod",
+				"single": "Strike is a single attack",
+				"brutal": "Strike's first hit adds its weapon's rank + %s" % Skill.num(x),
+				"steady": "Strike's first %s hits take no penalty, and a miss among them doesn't end it" % Skill.num(x),
+				"featured": "Strike's first %s hits add cha mod, up to %s" % [Skill.num(x), Skill.num(x)],
+				"recording": "Strike's first %s hits try to curse the target's leftmost skill a rank down (its wis against your highest mental mod)" % Skill.num(x),
+				"restrike": "landing 12 Strike hits in one use strikes again at once%s, up to three times; 36 in a row is a Perfect: %d HP healed" % [", with %s more" % Skill.num(x - 1.0) if x > 1.0 else "", Battle.PERFECT_HEAL],
+				"elemental": "Strike carries your element; its first hit adds your highest mental mod"}[stat]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "flamecharmed":

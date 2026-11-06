@@ -7,6 +7,5 @@
 5. Attack rolls, as built (each can change):
     - A natural 20 hits even when the total is short of Defense. Right?
     - A natural 1 has no special effect. Should it always miss?
-    - Multi-hit skills (Strike III) roll once for all their hits. Or once per hit?
     - Hostile skills without damage roll too, and their effects land only on a hit (Hex's luck penalty). Is that right for Silent Strike-style skills too?
 6. Is the clover slot untyped, like a base slot? (Built that way.)

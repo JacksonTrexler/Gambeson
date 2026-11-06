@@ -208,13 +208,14 @@ func test_stubs() -> void:
 
 func test_tiers() -> void:
 	var u := shrike()
-	ok([skill_slot, hex, strike, working_knowledge, igna, sola, wary, snare, darkvision].all(func(s: Skill): return adventurer.tier(s) == 1),
+	ok([skill_slot, hex, igna, sola, wary, snare, darkvision].all(func(s: Skill): return adventurer.tier(s) == 1),
 			"tier 1: the centre, the core ring, and the start of each root")
+	ok(adventurer.tier(strike) == 0 and adventurer.tier(working_knowledge) == 0 and u.tier(strike) == 0, "tier 0: what it starts with")
 	ok(adventurer.tier(hazard_expert) == 2 and u.tier(hazard_expert) == 2, "Hazard Expert: tier 2, after Snare")
 	ok(adventurer.tier(magic_slot) == 4 and adventurer.tier(martial_slot) == 4, "the capstones: tier 4, after 3 of their root")
 	var stoneskin: Skill = load("res://Skills/stoneskin.tres")
-	ok(adventurer.tier(stoneskin) == 0 and u.tier(stoneskin) == 1, "a skill its class doesn't offer: tier 1 for a unit")
-	ok(wizard.tier(sola) == 1 and wizard.tier(mana_skill) == 1, "a Wizard's list: all tier 1")
+	ok(adventurer.tier(stoneskin) == -1 and u.tier(stoneskin) == 1, "a skill its class doesn't offer: tier 1 for a unit")
+	ok(wizard.tier(sola) == 1 and wizard.tier(mana_skill) == 0, "a Wizard's list: tier 1, but Mana, which it starts with: 0")
 	var x := Skill.new()
 	var y := Skill.new()
 	var z := Skill.new()

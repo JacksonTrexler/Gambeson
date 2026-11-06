@@ -224,8 +224,8 @@ func test_rogue_and_bard() -> void:
 			"each: its own tab, then Calling: Freedom")
 	var own := rogue.trees()[0]
 	var free := rogue.trees()[1]
-	ok(own.core == [strike] and own.offers(wary) and not own.offers(move_plus_one) and not own.offers(snare),
-			"the Rogue's own: Strike and Wary (Move +1, a starting skill too, shows under Freedom)")
+	ok(own.core.is_empty() and own.offers(wary) and not own.offers(move_plus_one) and not own.offers(snare),
+			"the Rogue's own: Wary (Strike is the General tree's; Move +1 shows under Freedom)")
 	ok(free.center == hide and [move_plus_one, darkvision, evaluation].all(func(s: Skill): return s in free.core)
 			and [snare, meander, clever].all(free.offers), "its specialist skills under Freedom: Hide at the centre, Snare, Move +1, Meander...")
 	ok(rogue.tier(hide) == 1 and rogue.tier(clever) == 2 and rogue.tier(load("res://Skills/hazard_expert.tres")) == 2, "tiers, across tabs")

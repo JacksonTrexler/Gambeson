@@ -14,7 +14,6 @@ checks = Array[StringName]([&"dexterity"])
 script = ExtResource("1_skill")
 name = "Agility Bracing"
 passive = true
-min_tier = 5
 tags = Array[StringName]([&"martial", &"specialist", &"bracing"])
 lore = "Jimhe Deyn insists his gang members run timely courier missions for protected businesses in need of provisions, in their full sets of equipment. Vaulting, folding and rolling over fences, through crowded outdoor seating and the hodgepodge elevations of the city: they don't call them the Rollers for nothing. (Their turf: the Joint.)"
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

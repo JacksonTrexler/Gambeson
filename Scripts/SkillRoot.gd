@@ -29,6 +29,8 @@ func depth(s: Skill) -> int:
 	var b := branch(s)
 	if not b:
 		return 0
+	if b.tier > 0:
+		return b.tier
 	if b.after.is_empty() and b.needs > 0:
 		return _deepest() + 1
 	var d := 1

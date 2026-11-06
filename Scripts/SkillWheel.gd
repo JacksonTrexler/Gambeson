@@ -44,7 +44,7 @@ func _init() -> void:
 # Draws u's class tree, its tab `on` (its own, given none).
 func show_unit(u: Unit, can_spend: bool, pick: Skill, on: SkillTab = null) -> void:
 	unit = u
-	tab = on if on else (u.role.trees()[0] if u.role else null)
+	tab = on if on else (u.trees()[0] if not u.trees().is_empty() else null)
 	spend = can_spend
 	selected = pick
 	_layout()

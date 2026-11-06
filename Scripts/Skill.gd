@@ -51,10 +51,15 @@ extends Resource
 @export var opening := false  # only as its holder's turn opens: before it moves or spends AP (Flamedance)
 @export var retrieves: Item  # used on itself: takes this unique item from wherever it is and puts it on, at the skill's rank (Burning Bag; Battle._retrieve())
 @export var cinders := false  # used on a foe: rank of its rightmost hotbar slots burn for its turns (Cindering; Unit.burning_slots())
+@export var renames := ""  # learned, Strike goes by this name (Decisive Strike; Unit.skill_name())
+@export var exclusive := &""  # only one skill of this group can be learned (the low-tier Strike upgrades: strike_form)
+@export var waives := &""  # opens a general tree's skills up to its rank in tier without their usual needs - general (Generalist), martial (Martialist), magical (Thaumaturgist); a tree its class doesn't have, it shows, one tier lower (Unit.missing())
 @export var kills := false  # the foe's last stand, cut by how hurt it is (execute), against d20 + the caster's mod in its stat: failing, it takes 1 true damage and dies (Death; Battle._death())
 @export var god_tag := false  # its damage takes the tag of its caster's god as well (Smite; Unit.GOD_TAGS): Urlo's energy drains Energy first
 @export var carry := 0.0  # energy damage: this x (rank - 1) of what's left once the target's Energy is gone goes on to HP (Smite: 0.2)
 @export var hits_per_rank := false  # Strike III hits three times
+@export var chain := false  # each hit rolls on its own: a miss ends it, and each hit in a row is -1 to hit and damage (Strike; Battle._chain())
+@export var elements: Array[StringName] = []  # used, its user picks one of these: its Strikes deal it for rank uses (Elemental Strike; Battle.imbue())
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
 @export var turns := 0  # how many of the target's turns put-on effects last (zones: the caster's)
 @export var turns_per_rank := 0  # ...plus this many per rank (Sola: rank turns)
@@ -130,7 +135,12 @@ func fits_bar() -> bool:
 # Its holder's build stands on it (Powerful): it's the easiest to disable, and one going takes every
 # pillar skill with it (Unit.disable()).
 func pillar() -> bool:
-	return &"pillar" in tags
+	return &"pillar" in Tags.expand(tags)
+
+
+# A Pillar that sits rank / 2 slots in from the right for disabling (Generalist): harder to reach.
+func foundation() -> bool:
+	return &"foundation" in tags
 
 
 # Aimed at a tile rather than a unit: area skills and trap skills.
@@ -364,6 +374,10 @@ func describe(rank := 1) -> String:
 				lines.append("Energy damage: it drains Energy (or Power) first" + (", then %d%% of the rest goes on to HP" % roundi(carry * (rank - 1) * 100) if carry * (rank - 1) > 0 else ""))
 		if grants:
 			lines.append("Gives %s for %d turns" % [grants.name, lasts(rank)])
+		if chain:
+			lines.append("Attacks cease on a miss. -1 to hit and damage for each hit in a row")
+		if not elements.is_empty():
+			lines.append("Pick an element (%s): %s deal%s it, the first hit + your highest mental mod" % [", ".join(elements), "your next Strike" if rank == 1 else "your next %d Strikes" % rank, "s" if rank == 1 else ""])
 		if boost_pool:
 			lines.append("%sit gains %s mod + %d %s AP at once" % [ally if ally else "On an ally: ", String(boost_mod).left(3), rank, boost_pool])
 		if humbles:
@@ -413,6 +427,13 @@ func describe(rank := 1) -> String:
 	if not energy_as.is_empty():
 		lines.append("Energy paid for %s skills counts as their own resources, with the bonuses those give" %
 				" or ".join(energy_as.map(func(t): return CATEGORIES.get(t, String(t)).to_lower())))
+	if waives:
+		lines.append("Opens the %s tree's skills up to tier %d without their usual needs (one tier lower where your class doesn't have the tree, which it then shows). Skills learned that way stop working without it"
+				% ["General" if waives == &"general" else ("Caster" if waives == &"magical" else String(waives).capitalize()), rank])
+	if exclusive:
+		lines.append("Only one %s can be learned" % ("Strike upgrade" if exclusive == &"strike_form" else String(exclusive)))
+	if renames:
+		lines.append("Strike becomes %s" % renames)
 	if opens:
 		lines.append("Cheaper casting with %s: skills up to tier %d get the savings they list for it" % [opens.name, rank])
 	if stand_in:

@@ -6,7 +6,7 @@ Build roughly in this order; the content below depends on them.
 
 - [ ] **Checks and contests.** Skill-defined checks with `offensive` / `defensive` tags, advantage/disadvantage, per-skill range penalties. Needed by Jugular, Interject, Interdict, Gallantry, Turtle Tactics, Snapping Turtle, the Siren's Charm. *Now:* each contest is its own field (Drown's `drags_to`, Sing's `resisted`, Haluca's and Brainfog's `save`).
 - [ ] **Equipping skills.** Learned vs equipped; slots shared by actives and passives, passives filling from the bottom of the hotbar; auto-equip (on by default); losing slots. *Now:* the hotbar has 4 + level / 4 slots (+ `extra_slots`), then slots skills grant, then the clover slot (filled on its unit's turn; hidden while it's unlucky, remembering its skill). Only actives and switched passives go on it, and every learned passive works. Disabling (Brainfog) treats always-on passives as filling the bar from the bottom. Unequipping a slot-granting skill should make its slots disappear.
-- [ ] **A General tab** on the skills screen for the general tree (Synergy, the Bracing passives), split Martial | Specialist | Caster. *Now:* they're listed among each class's skills. (?48)
+- [ ] **Real trees for Fighter, Paladin and Wizard**: their tab is their options by tier for now.
 - [ ] **Bracing in more checks**: investigations, hiding and last stands don't take it yet.
 - [ ] **More resources**: Stamina, Rage, Focus, Hype, Clout, Gold. *Now:* Mana, Sweet Nothings and Power exist, so Field Experience and Everyman still have nothing to work with.
 - [ ] **Reactions and interrupts.** Units acting outside their turn: Interject, Gallantry, Final Act. *Now:* only the side whose turn it is acts (and traitors posing in its party).

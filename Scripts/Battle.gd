@@ -30,6 +30,7 @@ signal sapped(u: Unit, drained: Dictionary)  # Starsap: unit -> Energy (or HP) u
 signal reverted(was: Unit, now: Unit)  # a Starman fell back into a Starmote
 signal reformed(was: Unit, now: Unit)  # a Starmote reformed into a Starman
 signal burned(u: Unit, hp: int, why: String)  # u took fire from a flame, a burning slot or a burning item
+signal perfect(u: Unit)  # 36 Strike hits in a row: u healed PERFECT_HEAL
 signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
 
@@ -39,6 +40,8 @@ const PLAIN := preload("res://Terrain/grass.tres")  # tiles with no terrain set
 const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
+const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
+const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
 const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to a source with any Power in it...
 const STAR_FAST := 5.0  # ...up to a full one (an empty source gives nothing)
@@ -447,8 +450,10 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		caster.chant_up = false  # a primed Chant goes into this one
 	_burn(caster, skill)
 	var before := target.hp
-	if skill.aura or skill.retrieves or skill.humbles or (skill.boost_pool and not foe):
-		if skill.aura:
+	if skill.aura or skill.retrieves or skill.humbles or (skill.boost_pool and not foe) or not skill.elements.is_empty():
+		if not skill.elements.is_empty():
+			imbue(caster, skill, r)
+		elif skill.aura:
 			_aura(caster, skill, r)
 		elif skill.retrieves:
 			_retrieve(caster, skill, r)
@@ -498,6 +503,18 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	for g in fog:
 		for s: Skill in g:
 			target.disable(s, skill.lasts(r, caster) + (1 if target.faction == turn else 0), true)
+	if foe and skill.chain:  # Strike: a hit at a time (_chain())
+		_chain(caster, skill, target, r, tags)
+		_expose(target)
+		_expose(caster)
+		if before > 0 and not target.is_alive():
+			caster.gain(&"kill", 1)
+		caster.heading = Vector2i.ZERO
+		_tidy_debris()
+		used.emit(caster, skill, target, before - target.hp)
+		if target.hp < before and target.is_alive() and read(target, caster).deceived:
+			doubt(target, caster)
+		return true
 	var overage := 0  # what a roll beat Defense by (Irradiate)
 	if foe and skill.attacks():
 		var d20 := rng.randi_range(1, 20)
@@ -2264,6 +2281,121 @@ func _choke(caster: Unit, t: Unit) -> void:
 	a.by = caster
 	a.since = turns_begun
 	t.refit()
+
+
+# --- Strike
+
+# A chain skill (Strike) on a foe: up to rank hits (one, with Brutal Strike's single), each rolling on
+# its own - d20 + its attack mod (and bracing) - a hit in a row, against Defense; a miss ends it. Each
+# hit landed in a row takes 1 off the rolls and damage after it. Its Strike passives (Effect stats)
+# shape it: decisive (after a critical the rest land; damage by the higher of dex and str mod), brutal
+# (the first hit + its weapon's rank + this), steady (the first this hits: no penalty, and a miss
+# doesn't end it), featured (the first this hits + cha mod, up to this), recording (the first this hits
+# try to curse the foe's leftmost skill: _record()), and its element (imbued, or Elemental Mastery:
+# the element's tag, the first hit + its highest mental mod). Landing 12 hits with Strike! (restrike),
+# it strikes again at once with restrike - 1 more (up to three times: a bowling game's strikes); 36 in
+# all (PERFECT_HITS) is a Perfect: PERFECT_HEAL healed at once. How many hits landed.
+func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0) -> int:
+	var tier := skill.tier(r)
+	if not tier:
+		return 0
+	var hits := (1 if caster.stat(&"single") > 0.0 else r) + extra
+	var steady := roundi(caster.stat(&"steady"))
+	var featured := roundi(caster.stat(&"featured"))
+	var recording := roundi(caster.stat(&"recording"))
+	var decisive := caster.stat(&"decisive") > 0.0
+	var brutal := roundi(caster.stat(&"brutal"))
+	var elemental := caster.stat(&"elemental") > 0.0
+	var element := caster.element if caster.element else (Unit.GOD_TAGS.get(caster.deity(), &"fire") as StringName)
+	var imbued := caster.imbued > 0
+	var blow := tags.duplicate()
+	if (imbued or elemental) and element not in blow:
+		blow.append(element)
+	var mental := maxi(maxi(caster.mod(&"intelligence"), caster.mod(&"wisdom")), caster.mod(&"charisma"))
+	var landed := 0
+	var gross := 0
+	var row := 0  # hits in a row so far
+	var sure := false
+	for i in hits:
+		if not t.is_alive():
+			break
+		var penalty := 0 if i < steady else row
+		var d20 := rng.randi_range(1, 20)
+		var total := d20 + caster.attack_mod(skill) + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty
+		var defense := t.defense(blow)
+		var crit := d20 == 20
+		attacked.emit(caster, t, d20, total, defense)
+		_evaluate(caster, skill, d20, total)
+		if not (sure or crit or total >= defense):
+			row = 0
+			if i < steady:
+				continue
+			break
+		if crit and decisive:
+			sure = true
+		var stat := tier.stat
+		if decisive and stat and caster.mod(&"dexterity", skill.tags) > caster.mod(caster.wielded(stat, skill.tags), skill.tags):
+			stat = &"dexterity"
+		var power := tier.power + roll(tier.dice) - penalty
+		if stat:
+			power += caster.mod(caster.wielded(stat, skill.tags), skill.tags) + caster.weapon_bonus(stat)
+		if i < featured:
+			power += clampi(caster.mod(&"charisma"), 0, featured)
+		if i == 0:
+			power += (brutal + (caster.weapon.rank if caster.weapon else 0)) if brutal > 0 else 0
+			power += mental * (int(imbued) + int(elemental))
+		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow))), 1) * (2 if crit else 1)
+		t.hit(dealt, blow, caster)
+		gross += dealt
+		landed += 1
+		row += 1
+		if i < recording and t.is_alive():
+			_record(caster, t)
+	if gross > 0 and next_to(caster.cell, t.cell):
+		_refill(caster, t, gross)  # Starblade
+	if imbued and depth == 0:
+		caster.imbued -= 1
+	var again := roundi(caster.stat(&"restrike"))
+	if landed >= 12 and again > 0 and depth < 3 and t.is_alive():  # Strike!: a strike, bowled
+		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1)
+	if depth == 0 and landed >= PERFECT_HITS:  # three strikes in a row: a perfect game
+		caster.heal(PERFECT_HEAL)
+		perfect.emit(caster)
+	return landed
+
+
+# Record Striker: the foe's wis (and bracing) against the striker's highest mental mod; failing, the
+# skill in its leftmost hotbar slot goes a rank down for its next turn (a curse).
+func _record(caster: Unit, t: Unit) -> void:
+	var first: Skill = null
+	for s in t.hotbar:
+		if s:
+			first = s
+			break
+	if not first:
+		return
+	var mind: StringName = [&"intelligence", &"wisdom", &"charisma"].reduce(func(best: StringName, x: StringName): return x if caster.mod(x) > caster.mod(best) else best, &"intelligence")
+	var mine: int = rng.randi_range(1, 20) + caster.mod(mind) + caster.check_bonus(mind, &"offensive")
+	var theirs := rng.randi_range(1, 20) + t.mod(&"wisdom") + t.check_bonus(&"wisdom", &"defensive")
+	contested.emit(caster, t, mine, theirs)
+	if theirs > mine:
+		return
+	var e := Effect.new()
+	e.stat = "rank"
+	e.amount = -1.0
+	e.name = "Recorded"
+	e.skills = [first] as Array[Skill]
+	var a := t.afflict(e, 1 + (1 if t.faction == turn else 0))
+	a.by = caster
+	a.since = turns_begun
+
+
+# Elemental Strike: its user's next rank Strikes carry its element (Unit.element: picked as it's used,
+# else the skill's first), the first hit of each + its highest mental mod.
+func imbue(u: Unit, skill: Skill, r: int) -> void:
+	if u.element not in skill.elements:
+		u.element = skill.elements[0]
+	u.imbued = r
 
 
 # --- Sol's fire

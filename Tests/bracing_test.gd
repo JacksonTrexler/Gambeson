@@ -21,8 +21,10 @@ func at(it: Item, r: int) -> Item:
 
 
 func test_tree() -> void:
+	var u := b.starter({faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Shrike"})
 	for n in ["agility", "balanced", "vanguard", "combat", "meditative", "invigorating"]:
-		ok(brace(n) in v(1).sources()[&"class"] and brace(n).min_tier == 5, "%s: on the general tree, tier 5" % n)
+		ok(brace(n) in u.sources()[&"class"] and u.tier(brace(n)) == 5, "%s: on the general trees an Adventurer gets, tier 5" % n)
+	u.free()
 	ok(&"martial" in brace("agility").tags and &"specialist" in brace("agility").tags and &"magical" in brace("meditative").tags, "martial, specialist and caster passives")
 	ok("Rollers" in brace("agility").describe() and "Doozers" in brace("combat").describe(), "each with its gang's lore")
 

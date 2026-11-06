@@ -59,8 +59,10 @@ func test_autopilot() -> void:
 
 
 func test_synergy() -> void:
-	ok(synergy in v(1).sources()[&"class"] and synergy in load("res://Races/human.tres").options, "any class can learn it; so can humans")
-	ok(v(1).tier(synergy) == 2 and &"specialist" in synergy.tags, "a tier 2 specialist skill")
+	var rogue := b.starter({faction = lancin, role = load("res://Roles/rogue.tres"), name = "Pip"})
+	ok(synergy in rogue.sources()[&"class"] and synergy in load("res://Races/human.tres").options, "on the Specialist tree (a Rogue's); humans have it too")
+	ok(rogue.tier(synergy) == 2 and &"specialist" in synergy.tags, "a tier 2 specialist skill")
+	rogue.free()
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(8, 2)})
 	v(2).follows = v(1)
 	ok(b.synergized(v(1)).is_empty(), "no Synergy: nothing shared")
