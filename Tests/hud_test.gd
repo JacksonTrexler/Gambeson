@@ -89,9 +89,13 @@ func test_orders_in_range() -> void:
 	h.click(Vector2i(2, 3))
 	h.click(Vector2i(3, 3))
 	ok(v(2).cell == Vector2i(3, 3), "an ally a step from the leader takes orders")
+	ok(v(2) in h.command.ordered and h.command_state(v(2)) in [&"ordered", &"tapped"],
+			"...and now reads as commanded, its colour draining")
+	ok(h.command_state(v(1)) == &"ready", "the leader, yet to act, reads as commandable (lit, full colour)")
 	h.click(Vector2i(5, 5))
 	h.click(Vector2i(5, 4))
-	ok(al.cell == Vector2i(5, 5) and h._note.begins_with("Too far"), "one further off doesn't, and the hint says why")
+	ok(al.cell == Vector2i(5, 5) and h.command_state(al) == &"idle" and not h._note.begins_with("Too far"),
+			"one further off can't be ordered: not lit as commandable, and no 'too far' nag")
 	h.free()
 
 

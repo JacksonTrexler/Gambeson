@@ -97,6 +97,8 @@ var _falls: Array[String] = []  # "X falls" lines, held until the hit that did i
 @onready var skills: SkillTree = %Skills
 @onready var settings: PanelContainer = %Settings
 var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
+var high_contrast := false  # accessibility: brighter allied glow, heavier borders, whiter text
+var suspicious_marks := false  # accessibility: every suspicious tile shows a plain ?
 var persona := PersonaPanel.new()  # Personify's active half
 var sheet := CharacterSheet.new()  # the character icon: equipment, hearts and the stash
 var _personifying: Array = []  # [unit, skill] the persona panel is open for
@@ -326,7 +328,7 @@ func click(c: Vector2i, force := false, inspect := false) -> void:
 		if _orders(selected):
 			_move(selected, c)
 		else:
-			_say(_why_no_orders(selected))
+			_nag(_why_no_orders(selected))
 	else:
 		select(null)
 
@@ -346,7 +348,7 @@ func use_slot(i: int) -> void:
 		return
 	var s: Skill = u.hotbar[i]
 	if not _orders(u):
-		_say(_why_no_orders(u))
+		_nag(_why_no_orders(u))
 	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
 		_say("Your side can't make out what %s could do there" % _name(u))
 	elif not command.slot_open(u, i):
@@ -1217,6 +1219,7 @@ func _show_units() -> void:
 			continue
 		if known(u):
 			u.appear(null)
+			u.command_look(_sat_of(command_state(u)), command_state(u) == &"ready", high_contrast)
 			continue
 		var r := view(u)
 		u.appear(r)
@@ -1563,8 +1566,7 @@ func _hint() -> String:
 		return ""
 	if u.asleep():
 		return "Asleep."
-	return "Too far to hear you. Bring %s within %s." % [_name(command.leader),
-			_tiles(command.party_reach() if u in command.party else float(command.reach()))]
+	return ""  # not commandable (too far): the grayed hotbar and the lit commandable units say so
 
 
 func _refresh_side() -> void:
@@ -1934,6 +1936,34 @@ func _why_locked() -> String:
 	return "Allies use only slot%s 1%s on %s's orders" % ["" if n == 1 else "s", "" if n == 1 else "-%d" % n, _name(command.leader)]
 
 
+# Says `why` only when there's something to say: a too-far unit no longer nags (its grayed hotbar
+# and the lit commandable units carry that), but asleep / fallen / wrong-turn still speak.
+func _nag(why: String) -> void:
+	if why:
+		_say(why)
+
+
+# How a unit of the player's own stands this turn, for the map: &"ready" (commandable now - lit and
+# full colour), &"ordered" (told to act, colour half drained), &"tapped" (ordered and out of AP, or
+# can't act - greyed), &"idle" (not this turn / not commandable now - left as it is). Commanded units
+# desaturate along ready -> ordered -> tapped.
+func command_state(u: Unit) -> StringName:
+	if not my_turn() or not known(u):
+		return &"idle"
+	if u == command.leader:
+		return &"ready" if u.ap_left() > 0.001 else &"tapped"
+	if u in command.ordered:  # commanded already - stays drained even if it moved out of range
+		return &"tapped" if u.ap_left() <= 0.001 else &"ordered"
+	if not command.can_order(u):
+		return &"idle"
+	return &"ready"
+
+
+# The saturation a command state draws at.
+func _sat_of(state: StringName) -> float:
+	return {&"ready": 1.0, &"ordered": 0.5, &"tapped": 0.0, &"idle": 1.0}[state]
+
+
 func _why_no_orders(u: Unit) -> String:
 	if battle.phase != Battle.Phase.TURNS:
 		return "The battle is over"
@@ -1947,8 +1977,7 @@ func _why_no_orders(u: Unit) -> String:
 		return "Fallen"
 	if u.asleep():
 		return "Asleep: an ally ending the turn beside it wakes it"
-	return "Too far: bring %s within %s" % [_name(command.leader),
-			_tiles(command.party_reach() if u in command.party else float(command.reach()))]
+	return ""  # too far: no nag - its hotbar is grayed, and the units you can command are lit
 
 
 func _why_no_join(u: Unit) -> String:

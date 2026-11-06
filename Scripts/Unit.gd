@@ -23,6 +23,8 @@ const HP_COLOR := Color("#3fbf4f")
 const SHAPE_EDGE := Color("#8a8f9c")  # glow of a shape whose side can't be told
 const SHAPE := Color(0.03, 0.03, 0.03)  # what a shape is painted
 const GLOW := 0.55  # how strongly a unit glows in its side's colour
+const DESATURATE := preload("res://Scenes/UI/desaturate.gdshader")
+const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in high contrast
 # The gods units pray to (god; Pray: Battle.pray()), by domain.
 const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
 		&"drael": "water, air", &"vetruvis": "earth, music"}
@@ -291,6 +293,9 @@ func _ready() -> void:
 	_pick_alias()
 	_fill_bar()
 	_show_look()
+	sprite.material = ShaderMaterial.new()
+	sprite.material.shader = DESATURATE
+	set_saturation(1.0)
 	_layout_bars()
 	_show_faction()
 	refit()
@@ -1749,6 +1754,28 @@ func _stack() -> void:
 # Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
 # whatever of HP, energy and reserves can be made out. A persona posing as someone shows that
 # name's stand-in sprite instead of its own. null: as it is.
+# How saturated its sprite is (1 full colour .. 0 greyscale): the HUD drains it on units it has
+# commanded this turn (HUD.command_state()).
+func set_saturation(v: float) -> void:
+	if sprite and sprite.material:
+		sprite.material.set_shader_parameter(&"saturation", v)
+
+
+# Its look while taking orders: `sat` saturation, and a brighter, larger glow when `prominent` (a
+# unit the player can command now), brighter still in high `contrast`. Allies keep a lifted glow in
+# high contrast even when not prominent.
+func command_look(sat: float, prominent: bool, contrast := false) -> void:
+	set_saturation(sat)
+	if glow.visible:
+		var mult := 1.0
+		if prominent:
+			mult = PROMINENCE * (2.0 if contrast else 1.0)
+		elif contrast:
+			mult = 1.6
+		glow.modulate.a = clampf(GLOW * mult, 0.0, 1.0)
+		glow.scale = Vector2.ONE * (1.3 if prominent else 1.0)
+
+
 func appear(r: Read) -> void:
 	shown = r
 	visible = r == null or r.located()

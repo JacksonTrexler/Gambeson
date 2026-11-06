@@ -157,8 +157,9 @@ func test_bars() -> void:
 	ok(vil.trim.position.y == vil.hp_bar.position.y - 1 and vil.trim.size.y == vil.hp_bar.size.y + vil.energy_bar.size.y + 2,
 			"the trim a pixel out around both")
 	ok(ic.trim.size.y == ic.hp_bar.size.y + ic.reserve_bar.size.y + ic.energy_bar.size.y + 2, "and around Mana too")
-	ok(vil.glow.visible and Color(vil.glow.modulate, 1.0) == lancin.primary and vil.glow.modulate.a < 1.0 and vil.sprite.material == null,
-			"a faint glow of its side's colour instead of an outline")
+	ok(vil.glow.visible and Color(vil.glow.modulate, 1.0) == lancin.primary and vil.glow.modulate.a < 1.0
+			and vil.sprite.material is ShaderMaterial and vil.sprite.material.get_shader_parameter(&"saturation") == 1.0,
+			"a faint glow of its side's colour instead of an outline; full colour by default (the HUD drains it when commanded)")
 	ic.set_store(mana, 7)
 	ok(ic.reserve_bar.value == 7, "Mana bar follows")
 	var top := -ic.sprite.sprite_frames.get_frame_texture(&"default", 0).get_height() / 2.0
