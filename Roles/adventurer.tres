@@ -7,6 +7,10 @@
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
+[ext_resource type="Resource" path="res://Skills/self_reflection.tres" id="a_selfref"]
+[ext_resource type="Resource" path="res://Skills/hardy.tres" id="a_hardy"]
+[ext_resource type="Resource" path="res://Skills/meditate.tres" id="a_meditate"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
 [ext_resource type="Resource" path="res://Skills/field_experience.tres" id="s_field_experience"]
 [ext_resource type="Resource" path="res://Skills/working_knowledge.tres" id="s_working_knowledge"]
@@ -209,6 +213,32 @@ name = "Specialist"
 tag = &"specialist"
 branches = Array[ExtResource("7_branch")]([SubResource("Branch_first_aid"), SubResource("Branch_snare"), SubResource("Branch_hazard_expert"), SubResource("Branch_move_plus_one"), SubResource("Branch_darkvision"), SubResource("Branch_observe"), SubResource("Branch_eyes_forward"), SubResource("Branch_special_eyes"), SubResource("Branch_meander"), SubResource("Branch_hide"), SubResource("Branch_clever_disguise"), SubResource("Branch_self_evaluation"), SubResource("Branch_personify"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_conspire"), SubResource("Branch_specialist_slot")])
 
+[sub_resource type="Resource" id="Branch_selfref"]
+script = ExtResource("7_branch")
+skill = ExtResource("a_selfref")
+
+[sub_resource type="Resource" id="Branch_hardy"]
+script = ExtResource("7_branch")
+skill = ExtResource("a_hardy")
+after = Array[ExtResource("5_skill")]([ExtResource("a_selfref")])
+
+[sub_resource type="Resource" id="Branch_meditate"]
+script = ExtResource("7_branch")
+skill = ExtResource("a_meditate")
+after = Array[ExtResource("5_skill")]([ExtResource("a_hardy")])
+
+[sub_resource type="Resource" id="Root_Actualization"]
+script = ExtResource("6_root")
+name = "Actualization"
+tag = &"martial"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_selfref"), SubResource("Branch_hardy"), SubResource("Branch_meditate")])
+
+[sub_resource type="Resource" id="Tab_Actualization"]
+script = ExtResource("8_tab")
+name = "Actualization"
+kind = "Path"
+roots = Array[ExtResource("6_root")]([SubResource("Root_Actualization")])
+
 [resource]
 script = ExtResource("1_script")
 tends = &"loyal"
@@ -224,3 +254,4 @@ roots = Array[ExtResource("6_root")]([SubResource("Root_Magic"), SubResource("Ro
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"martial", &"specialist", &"magical"])
 radial = true
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Actualization")])

@@ -57,6 +57,7 @@ const TERMS := {
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
 	&"asleep": ["Asleep", &"condition", "Can't act. An ally ending the turn beside it wakes it for the next one."],
+	&"self_knowledge": ["Self-knowledge", &"condition", "How well a unit knows itself, in levels: a Meditation shifts its stats no further than it knew itself before."],
 	&"aura": ["Aura", &"condition", "Used on itself, it goes on allies within range too."],
 	&"asphyxia": ["Asphyxia", &"condition", "Stacks of max HP gone; they start falling after a few turns."],
 	&"burning_slot": ["Burning slot", &"condition", "A hotbar slot on fire: using the skill in it burns its user."],

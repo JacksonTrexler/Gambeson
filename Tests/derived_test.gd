@@ -65,11 +65,8 @@ func test_asphyxia_takes_grown_hp() -> void:
 
 func test_learning_hardy_refits() -> void:
 	var a := starter("adventurer")
-	var adv: Role = a.role
-	if hardy not in adv.options:
-		adv.options.append(hardy)  # offered for the test; its tree home waits on question 57
+	a.skill_points = 5
+	ok(a.unlock(load("res://Skills/self_reflection.tres")), "Self-reflection first: Hardy follows it on Actualization")
 	var before := a.max_hp
-	a.skill_points = 3
 	ok(a.unlock(hardy) and a.max_hp == before + a.mod(&"constitution"), "learning Hardy I adds its con mod a level at once")
 	ok(a.raise(hardy) and a.max_hp == before + 2 * a.mod(&"constitution"), "raising it to II, twice")
-	adv.options.erase(hardy)

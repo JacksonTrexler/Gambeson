@@ -12,6 +12,8 @@ signal layer_broke(c: Vector2i, what: Terrain, by: Unit)  # a brittle layer brok
 signal layer_lifted(c: Vector2i, what: Terrain, why: StringName)  # a layer burned (fire) or blew (wind) away
 signal teetered(u: Unit, total: int, dc: int, kept: bool)  # glass gave way under u; kept: it caught itself
 signal evaded(u: Unit, total: int, dc: int, share: float)  # u tried to dodge: share is how much still landed (evade())
+signal meditated(u: Unit, room: int)  # a Meditation done: u may shift each stat up to room (respec())
+signal respecced(u: Unit, changes: Dictionary)
 signal bound(by: Unit, u: Unit, it: Item)  # a binding item (Shackles) put on u in place of its trinket (_bind())
 signal freed(u: Unit, how: StringName, total: int, dc: int, done: bool)  # u worked at its shackles: unlock, pick or pry (unshackle())
 signal mended(c: Vector2i, into: Terrain)  # a cracked startile finished repairing
@@ -598,6 +600,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			return true
 	if foe and skill.binds:  # landed (a miss returned above): Judgement's shackles
 		_bind(caster, skill, target, r)
+	var known := roundi(caster.stat(&"self_known"))  # what it knew of itself before this (Meditate)
 	var eyes := watchers(target) if skill.investigated else ([] as Array[Unit])
 	var put: Array[Unit.Applied] = []
 	if not (skill.dual and foe):
@@ -613,6 +616,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			a.since = turns_begun
 			a.roll = saved_against
 			put.append(a)
+	if skill.respecs:
+		caster.respec_room = mini(r, known)
+		meditated.emit(caster, caster.respec_room)
 	if skill.investigated:
 		var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
 		var g := resolve(Check.side(target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK)
@@ -1378,6 +1384,19 @@ func unequip(u: Unit, slot: String) -> Item:
 	if not it or not outfitting(u) or it.binding:  # shackles come off through unshackle()
 		return null
 	return u.unequip(slot)
+
+
+# After a Meditation (respec_room), u shifts its stats: each within that room of where it was born
+# (Unit.respec_by()), all or nothing. The room is spent either way. True if they shifted.
+func respec(u: Unit, changes: Dictionary) -> bool:
+	if u.respec_room <= 0:
+		return false
+	var room := u.respec_room
+	u.respec_room = 0
+	if changes.is_empty() or not u.respec_by(changes, room):
+		return false
+	respecced.emit(u, changes)
+	return true
 
 
 # Binds a skill's item (Judgement: Shackles) onto t at rank r, weight r, in place of its trinket - stowed

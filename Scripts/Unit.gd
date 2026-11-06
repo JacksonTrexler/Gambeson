@@ -201,6 +201,7 @@ var footing: Terrain  # the tile it stands on, whose effects it has while there 
 var blind_on: Variant = null  # a cell it walked onto this turn without seeing under its leaves (Battle.obscured()): checks there come at disadvantage
 var steadied: Variant = null  # the cell where it caught itself as glass gave way: spared that ground's effects until it moves off or a turn passes (Battle._teeter())
 var steady_turn := -1  # turns_taken when it did
+var respec_room := 0  # how far each stat may shift now, a Meditation just done (Battle.respec())
 var stowed: Item  # the trinket shackles bound on it took the place of: back on as they come off (Battle._bind())
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var exposed := 0  # concealment levels lost to attacking or being hit (Battle.cast); back as its side's turn starts
@@ -1433,14 +1434,15 @@ func can_afford_after(s: Skill, steps: float) -> bool:
 			general += p.amount
 		elif p.only == &"move":
 			move_only += p.amount
-	var left := ap_for(&"skill") - maxf(steps - move_only, 0.0)
+	var use := s.pays_with if s.pays_with else &"skill"  # Meditate: movement first
+	var left := ap_for(use) - (steps if use == &"move" else maxf(steps - move_only, 0.0))
 	return general >= maxf(steps - move_only, 0.0) - 0.0001 and left >= ap_cost(s, fund) - 0.0001
 
 
 # Pays a skill's AP and cost from its funding. False (and nothing spent) if it can't.
 func pay_for(s: Skill) -> bool:
 	var fund: Variant = funding(s)
-	if fund == null or not pay(ap_cost(s, fund), &"skill"):
+	if fund == null or not pay(ap_cost(s, fund), s.pays_with if s.pays_with else &"skill"):
 		return false
 	if fund is Reserve:
 		set_store(fund, store(fund) - cost_from(s, fund))
