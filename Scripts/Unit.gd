@@ -1469,6 +1469,12 @@ func armored() -> bool:
 	return armor != null and armor.sets_defense() and can_wear(armor)
 
 
+# What it adds to a check in stat s, as `kind` (offensive or defensive): its mod (stand-ins by `tags`)
+# plus what its bracing gives (check_bonus()). The usual bonus of one side of a Check.
+func check_mod(s: StringName, kind: StringName, tags: Array[StringName] = []) -> int:
+	return mod(s, tags) + check_bonus(s, kind)
+
+
 # What its bracing passives add to a check in stat s (offensive or defensive; mental: int, wis, cha):
 # each that matches its armor's weight, stat and kind adds its armor's rank (x the passive's share),
 # up to the passive's rank (Agility, Balanced, Vanguard, Combat, Meditative, Invigorating Bracing).

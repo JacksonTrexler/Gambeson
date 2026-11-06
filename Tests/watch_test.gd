@@ -38,6 +38,7 @@ func test_watch() -> void:
 	b.move(v(3), Vector2i(2, 5))
 	ok(b.read(v(1), v(3)).hint != "", "a vague shape beside it")
 	ok(b.survey(v(1), v(1).cell, 0) == 1 and looks[-1][0] == Vector2i(2, 5), "not rested: one thing, the nearest")
+	calm()  # what earlier looks happened to find aside: both are suspicious again, by their hints alone
 	ok(b.survey(v(1), v(1).cell, 1) == 2, "a turn rested: one more")
 	v(1).wisdom = 10  # mod 0
 	v(1).rested_turns = 0

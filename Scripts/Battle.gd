@@ -304,7 +304,7 @@ func roll_initiative() -> Array[Faction]:
 		if u.faction and u.is_alive():
 			if u.faction not in rolls:
 				rolls[u.faction] = []
-			unit_rolls[u] = roundi(rng.randi_range(1, 20) * (1.0 + u.stat(&"opening_ap")))  # a Dagger's edge counts here too
+			unit_rolls[u] = roundi(resolve(Check.check(0, 0)).d20 * (1.0 + u.stat(&"opening_ap")))  # a Dagger's edge counts here too
 			rolls[u.faction].append(unit_rolls[u])
 	var o: Array[Faction] = []
 	o.assign(contest(rolls.keys(), [total]))
@@ -344,6 +344,17 @@ func resolve(c: Check) -> Check.Roll:
 	r.crit = c.crits and d == 20
 	r.hit = c.floor_hit or r.crit or r.total >= c.target
 	return r
+
+
+# A Contest (Glossary): `a` rolls, then `b`, each d20 + its bonus. `a` - usually the one acting - wins
+# a tie, unless a_wins_ties is false (breaking free of a grip, getting clear of a wall of fire: the
+# one holding the line wins ties).
+func beats(a: Check, b: Check, a_wins_ties := true) -> Check.Contest:
+	var c := Check.Contest.new()
+	c.mine = resolve(a)
+	c.theirs = resolve(b)
+	c.won = c.mine.total > c.theirs.total or (a_wins_ties and c.mine.total == c.theirs.total)
+	return c
 
 
 func contest(sides: Array, keys: Array[Callable] = []) -> Array:
@@ -489,10 +500,10 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var tags := hit_tags(caster, skill)
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
-		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive") - drag_penalty(skill, r, Command.tiles(target.cell, spot))
-		var theirs := rng.randi_range(1, 20) + target.mod(skill.stat(), skill.tags) + target.check_bonus(skill.stat(), &"defensive")
-		contested.emit(caster, target, mine, theirs)
-		if mine < theirs:
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) - drag_penalty(skill, r, Command.tiles(target.cell, spot))),
+				Check.side(target.check_mod(skill.stat(), &"defensive", skill.tags)))
+		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
+		if not vs.won:
 			_expose(target)
 			_expose(caster)
 			used.emit(caster, skill, target, 0)
@@ -500,10 +511,12 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		drag(caster, target, spot, skill.drags_to)
 	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(r))) if foe and skill.disables else ([] as Array[Array])
 	if foe and skill.save:
-		var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + r + caster.check_bonus(skill.stat(), &"offensive")
-		var theirs: int = rng.randi_range(1, 20) + target.mod(skill.save) + target.check_bonus(skill.save, &"defensive") + fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
-		contested.emit(caster, target, mine, theirs)
-		if theirs > mine:  # the caster wins ties
+		var fogged: int = fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + r, Check.Kind.SAVE),
+				Check.side(target.check_mod(skill.save, &"defensive") + fogged, Check.Kind.SAVE))
+		var mine := vs.mine.total
+		contested.emit(caster, target, mine, vs.theirs.total)
+		if not vs.won:  # the caster wins ties
 			_expose(caster)
 			if read(target, caster).located():
 				suspect(target, caster)  # it felt something try
@@ -561,9 +574,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			a.roll = saved_against
 			put.append(a)
 	if skill.investigated:
-		var d20 := rng.randi_range(1, 20)
-		var guise := d20 + target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty()
-		var seen := _evaluate(target, skill, d20, guise)
+		var g := resolve(Check.side(target.mod(skill.stat(), skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK))
+		var guise := g.total
+		var seen := _evaluate(target, skill, g.d20, guise)
 		for a in put:
 			a.roll = guise
 			a.evaluated = seen
@@ -735,10 +748,9 @@ func _refuse(u: Unit) -> void:
 func _lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 	if t.suspects(caster) == 0:
 		return read(t, caster).attitude(t) == &"ally"
-	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive")
-	var theirs := rng.randi_range(1, 20) + t.mod(skill.resisted) + t.check_bonus(skill.resisted, &"defensive")
-	contested.emit(caster, t, mine, theirs)
-	if mine >= theirs:
+	var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags)), Check.side(t.check_mod(skill.resisted, &"defensive")))
+	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
+	if vs.won:
 		suspect(t, caster, -1)
 	return false
 
@@ -782,18 +794,13 @@ func _hidden_from(o: Unit, t: Unit) -> int:
 # allies, its trickery to its enemies. Meeting it, o grows a stack more suspicious of t.
 func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
-	var d20 := rng.randi_range(1, 20)
-	var other := rng.randi_range(1, 20)
-	if edge < 0:
-		d20 = mini(d20, other)
-	elif edge > 0 or Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie:
-		d20 = maxi(d20, other)
-	var total := d20 + o.mod(&"wisdom")
-	var against := rng.randi_range(1, 20) + t.mod(&"charisma") + lie - t.dissonance_penalty()
-	if total >= against:
+	var close := Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie
+	var vs := beats(Check.side(o.mod(&"wisdom")).edge(-1 if edge < 0 else (1 if edge > 0 or close else 0)),
+			Check.side(t.mod(&"charisma") + lie - t.dissonance_penalty()))
+	if vs.won:
 		suspect(o, t)
-	doubted.emit(o, t, total, against)
-	return total >= against
+	doubted.emit(o, t, vs.mine.total, vs.theirs.total)
+	return vs.won
 
 
 # As its side's turn starts, u looks harder (doubt()) at each enemy it can place that fools it: the
@@ -1058,7 +1065,7 @@ func _hide_roll(u: Unit) -> int:
 	for e in u.timed:
 		if e.stat == "concealment":
 			best = maxi(best, u.timed[e].roll)
-	return best if best > 0 else rng.randi_range(1, 20) + u.mod(&"dexterity")
+	return best if best > 0 else resolve(Check.side(u.mod(&"dexterity"), Check.Kind.CHECK)).total
 
 
 # Debris goes once its hider is revealed (no concealment left, or fallen), or has gone further from
@@ -1113,11 +1120,9 @@ func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void
 	var r := u.rank(skill)
 	for o in eyes:
 		var close := Command.tiles(o.cell, u.cell) <= o.mod(&"wisdom") - r
-		var d20 := rng.randi_range(1, 20)
-		if close:
-			d20 = maxi(d20, rng.randi_range(1, 20))
-		var total := d20 + o.mod(&"wisdom")
-		if total >= against:
+		var look := resolve(Check.check(o.mod(&"wisdom"), against).edge(1 if close else 0))
+		var total := look.total
+		if look.hit:
 			for e in skill.effects:
 				if e in u.timed:
 					u.timed[e].known_to.append(o)
@@ -1573,10 +1578,9 @@ func _break_free(u: Unit) -> bool:
 	if u.move_left() < cost - 0.0001:
 		return false
 	u.walked(0, cost)
-	var theirs := rng.randi_range(1, 20) + u.mod(s.stat(), s.tags) + u.check_bonus(s.stat(), &"defensive")
-	var mine := rng.randi_range(1, 20) + by.mod(s.stat(), s.tags) + by.check_bonus(s.stat(), &"offensive")
-	struggled.emit(u, by, theirs, mine)
-	if theirs > mine:
+	var vs := beats(Check.side(u.check_mod(s.stat(), &"defensive", s.tags)), Check.side(by.check_mod(s.stat(), &"offensive", s.tags)), false)  # the holder wins ties
+	struggled.emit(u, by, vs.mine.total, vs.theirs.total)
+	if vs.won:
 		_let_go(u, s)
 		return true
 	return false
@@ -2389,10 +2393,9 @@ func _record(caster: Unit, t: Unit) -> void:
 	if not first:
 		return
 	var mind: StringName = [&"intelligence", &"wisdom", &"charisma"].reduce(func(best: StringName, x: StringName): return x if caster.mod(x) > caster.mod(best) else best, &"intelligence")
-	var mine: int = rng.randi_range(1, 20) + caster.mod(mind) + caster.check_bonus(mind, &"offensive")
-	var theirs := rng.randi_range(1, 20) + t.mod(&"wisdom") + t.check_bonus(&"wisdom", &"defensive")
-	contested.emit(caster, t, mine, theirs)
-	if theirs > mine:
+	var vs := beats(Check.side(caster.check_mod(mind, &"offensive")), Check.side(t.check_mod(&"wisdom", &"defensive")))
+	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
+	if not vs.won:
 		return
 	var e := Effect.new()
 	e.stat = "rank"
@@ -2438,10 +2441,9 @@ func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
 		flames[t] = Flame.new(caster, r)
 		var u := unit_at(t)
 		if u and u.is_alive():
-			var mine := rng.randi_range(1, 20) + u.mod(&"dexterity") + u.check_bonus(&"dexterity", &"defensive")
-			var theirs := rng.randi_range(1, 20) + caster.mod(&"wisdom", skill.tags) + caster.check_bonus(&"wisdom", &"offensive")
-			contested.emit(u, caster, mine, theirs)
-			if mine <= theirs:
+			var vs := beats(Check.side(u.check_mod(&"dexterity", &"defensive")), Check.side(caster.check_mod(&"wisdom", &"offensive", skill.tags)), false)  # the wall wins ties
+			contested.emit(u, caster, vs.mine.total, vs.theirs.total)
+			if not vs.won:
 				_flame(u, flames[t], "is caught in the wall")
 
 
@@ -2546,7 +2548,7 @@ func _chant(u: Unit) -> void:
 # A general defensive check of the whole unit: d20 + its average stat mod (Unit.average_mod()). Against
 # an execute (Death, at its rank), cut by how hurt it is: x (HP left / max HP) / rank.
 func last_stand(u: Unit, execute := 0) -> int:
-	var roll := rng.randi_range(1, 20) + u.average_mod()
+	var roll := resolve(Check.check(u.average_mod(), 0, Check.Kind.LAST_STAND)).total
 	if execute > 0:
 		roll = floori(roll * (float(u.hp) / maxi(u.max_hp, 1)) / execute)
 	return roll
@@ -2559,9 +2561,9 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	var bar := maxi(t.average_mod() + t.lv(), last_stand(t))
 	var hits := 0
 	for i in r:
-		var roll := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive")
-		contested.emit(caster, t, roll, bar)
-		if roll > bar:
+		var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", skill.tags), bar))
+		contested.emit(caster, t, roll.total, bar)
+		if roll.margin() > 0:  # beating the bar, not meeting it
 			hits += 1
 	_expose(caster)
 	_expose(t)
@@ -2580,11 +2582,11 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 # revival and die-hard effects (Unit.slain_from). A heart left, it goes down as usual.
 func _death(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	var stand := last_stand(t, r)
-	var mine := rng.randi_range(1, 20) + caster.mod(skill.stat(), skill.tags) + caster.check_bonus(skill.stat(), &"offensive")
-	contested.emit(caster, t, mine, stand)
+	var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", skill.tags), stand))  # the caster wins ties
+	contested.emit(caster, t, roll.total, stand)
 	_expose(caster)
 	_expose(t)
-	if stand > mine:
+	if not roll.hit:
 		return
 	t.slain_from = t.hp
 	t.damage(1)

@@ -7,8 +7,9 @@ extends RefCounted
 # Battle.gd. The first seam of docs/plan-composability.md: offence is always d20 + the roller's mod
 # vs a number they can forecast; riders change the result, never the shape.
 #
-# Build one with the constructors (attack(), check(), versus()), optionally .edge()/.sure() it, then
-# Battle.resolve(it) -> Roll. A contest is two resolves compared (Battle.beats()).
+# Build one with the constructors (attack(), check(), side()), optionally .edge()/.sure() it, then
+# Battle.resolve(it) -> Roll. A contest is two sides rolled in turn and compared: Battle.beats(a, b)
+# -> Contest. Bonuses usually come from Unit.check_mod() (a mod plus bracing).
 
 enum Kind { ATTACK, SAVE, CONTEST, CHECK, LAST_STAND }
 
@@ -33,6 +34,14 @@ class Roll:
 		return total - target
 
 
+# The outcome of a Contest: each side's roll, and whether the first side (`mine`, the one acting) won.
+class Contest:
+	extends RefCounted
+	var mine: Roll
+	var theirs: Roll
+	var won := false
+
+
 # An Attack: d20 + `bonus` vs `defense`; a natural 20 always hits and crits.
 static func attack(bonus: int, defense: int, advantage := false) -> Check:
 	var c := Check.new()
@@ -51,6 +60,11 @@ static func check(bonus: int, dc: int, kind := Kind.CHECK) -> Check:
 	c.bonus = bonus
 	c.target = dc
 	return c
+
+
+# One side of a Contest: d20 + `bonus`, to be compared with the other side's (Battle.beats()).
+static func side(bonus: int, kind := Kind.CONTEST) -> Check:
+	return check(bonus, 0, kind)
 
 
 # The better (+1) or worse (-1) of two d20s.

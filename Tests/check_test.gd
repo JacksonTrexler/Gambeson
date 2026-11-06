@@ -34,3 +34,22 @@ func test_advantage() -> void:
 		single += b.resolve(Check.check(0, 0)).d20
 		better += b.resolve(Check.check(0, 0).edge(1)).d20
 	ok(better > single, "the better of two d20s averages higher (%.1f vs %.1f)" % [better / 400.0, single / 400.0])
+
+
+func test_beats() -> void:
+	var ties := 0
+	for n in 400:
+		var vs := b.beats(Check.side(3), Check.side(3))
+		ok(vs.mine.total == vs.mine.d20 + 3 and vs.theirs.total == vs.theirs.d20 + 3, "each side rolls d20 + its bonus")
+		ok(vs.won == (vs.mine.total >= vs.theirs.total), "the one acting wins ties")
+		var held := b.beats(Check.side(3), Check.side(3), false)
+		ok(held.won == (held.mine.total > held.theirs.total), "unless it must beat the other outright (breaking free)")
+		if vs.mine.total == vs.theirs.total:
+			ties += 1
+	ok(ties > 0, "ties happen, and go to the one acting (%d)" % ties)
+	ok(not b.beats(Check.side(-40), Check.side(40)).won and b.beats(Check.side(40), Check.side(-40)).won, "a lopsided contest goes the way of the bonus")
+
+
+func test_no_inline_d20() -> void:
+	var src := FileAccess.get_file_as_string("res://Scripts/Battle.gd")
+	ok(src.count("randi_range(1, 20)") == 3, "every d20 in Battle goes through resolve() (its own three rolls: one die, the edge's two)")

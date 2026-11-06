@@ -37,7 +37,7 @@ Build roughly in this order; the content below depends on them.
 
 ## Composability seams (see `docs/plan-composability.md`)
 
-- [~] **`Check` resolver** (`Check`, `Battle.resolve()`): built, and the attack path (`cast()`, `_chain()`) and `inspect()` migrated, rng unchanged. *Still inline, to migrate on touch:* saves (`cast()` save branch), the drag/grip contests, Level Down, Death, the suspicion contest (`_lured`), persona investigate (`_scatter`/`investigate`), the look-through check, initiative. A two-roll `beats()` helper will fold in the contests.
+- [x] **`Check` resolver** - done; see `docs/done/systems.md`. Next on it: Affinity and context tags hook in here.
 - [ ] **Tile stacks**: a cell becomes an ordered stack of terrain layers; a masking layer hides those below. Collapses the snare/zone/earthwork dicts over time. (?59)
 - [ ] **Behaviour spine for skills**: grow `Skill.behaviours` (compose verbs that read a shared `Cast` bag) beside the flags; lift flags into behaviours on touch, densest clusters first (Strike chain, damage+riders, heals). Describe-where-you-execute. Answers ?55.
 - [ ] **Context tags**: tag each cast offensive / defensive / supportive by use, feeding `Check` and the Affinity rank-cost. Enables Berserker and "invest under circumstances".
