@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="2_tier"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="3_effect"]
+[ext_resource type="Resource" path="res://Items/shackles.tres" id="4_shackles"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("2_tier")
+dice = Vector2i(1, 4)
+stat = &"wisdom"
+
+[sub_resource type="Resource" id="Effect_shackled"]
+script = ExtResource("3_effect")
+stat = "shackled"
+name = "Shackled"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Judgement"
+tags = Array[StringName]([&"divine", &"lawful", &"wis", &"magical"])
+ap = 4.0
+cost = 3
+radius_per_rank = 1.0
+tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
+effects = Array[ExtResource("3_effect")]([SubResource("Effect_shackled")])
+turns_per_rank = 1
+binds = ExtResource("4_shackles")
+lore = "The lawful gods' sentence, passed and carried out: the guilty go nowhere fast."

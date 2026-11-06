@@ -50,6 +50,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		else:
 			_keep_up(b, u, log)
 		return log
+	_unshackle(b, u, log)
 	if posture == &"defensive":
 		_defend(b, u, log)
 		return log
@@ -89,11 +90,31 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	return log
 
 
+# Shackled (a binding trinket): off with them if they're unlocked; locked, one try at whichever of
+# picking (dex) and prying (str) its mods favour - its turn's AP are worth it to be rid of the weight.
+static func _unshackle(b: Battle, u: Unit, log: Array[String]) -> void:
+	var it := u.trinket
+	if not it or not it.binding:
+		return
+	var odds := func(stat: StringName, diff: StringName) -> int: return u.mod(stat) - Difficulty.dc(diff, it.rank) if diff else -999
+	var how := &"unlock" if not u.shackled() else (&"pick" if odds.call(&"dexterity", it.picks) >= odds.call(&"strength", it.prised) else &"pry")
+	if b.unshackle(u, how):
+		log.append("%s gets its %s off" % [u.name, it.name])
+
+
 # DEFEND: uses u's best self-protective skill on itself (Skill.serves defensive), if it has one it can
-# afford; otherwise it holds.
+# afford; otherwise it holds. One aimed at a tile (Shields Up!) faces the nearest foe it makes out.
 static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
 	var s := u.intent_skill(&"defensive")
-	if s and b.cast(u, s, u):
+	if s and s.guards:
+		var near: Variant = null
+		for o: Unit in b.units.values():
+			var r := b.read(u, o)
+			if o != u and o.is_alive() and _foe(u, r) and (near == null or Command.tiles(u.cell, r.cell) < Command.tiles(u.cell, near)):
+				near = r.cell
+		if near != null and b.cast_at(u, s, near):
+			log.append("%s %s, facing %s" % [u.name, s.name, near])
+	elif s and b.cast(u, s, u):
 		log.append("%s %s" % [u.name, s.name])
 
 

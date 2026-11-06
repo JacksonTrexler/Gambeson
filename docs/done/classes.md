@@ -11,7 +11,7 @@ Starting skills, unlocked from the start:
 - [x] **Working Knowledge** (passive): resource bonuses (Mana, Sweet Nothings, Power…) apply when paying Energy for magic skills. *Now:* Hex costs half AP paid with Energy, as with Mana.
 - [x] **Everyman** (passive): resource bonuses (Hype, Clout, Gold…) apply when paying Energy for specialist skills. *Now:* no specialist resource exists yet.
 
-Core: **Hex** (built).
+Core: **Hex** and **Rejuvinate** (built; see Paladin).
 
 **Magic root.** Starter spells, also Wizard options (?10). On an ally: the listed effect. On an enemy: an attack roll (d20 + int mod), then 1d4 + int mod damage. Range: int mod, reaching an adjacent unit at least. Each is 3 AP and 2 Energy × rank; Mana pays half, for a unit with the Mana passive (Adventurers don't have it).
 - [x] **Sola** (light): ally +1 persona rank for rank turns. (?10)
@@ -130,8 +130,8 @@ The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped arm
   - Luun: the ground within rank tiles under dark concealment 1 for rank turns, hiding only its side's units from the rest (`Zone.allied`); the ground isn't shrouded.
   - Drael: `Battle.cleanse()`: debuffs (effects that hurt their holder) lose ranks, highest first, rank ranks in all; one at 0 is gone. Ramut's Ire isn't lifted.
   - Vetruvis: every tile within rank tiles becomes its side's disturbed earth (`Battle.earthworks`) for rank of its side's turns: entering costs enemies ×1.5 (`Battle.wading()`). Drawn as a furrowed brown wash.
-  - *Now:* a Paladin option, until Divinity has trees.
-- [x] **Coordinate** (Idealism root · active · 1 AP · 3 Energy · on itself; `Skills/coordinate.tres`): links the caster with its teammates within its cha mod in tiles (at least 1) and its leader, wherever it is, until the end of its side's next turn. Linked, each makes out units and tiles as well as the best of them does, up to rank levels better (`Battle.read()`): with the player's view being the leader's, it's how the rest of a side's sight reaches the player. *Now:* a Paladin option.
+  - *Now:* on the Paladin's Divinity root, open from the start.
+- [x] **Coordinate** (Idealism root · active · 1 AP · 3 Energy · on itself; `Skills/coordinate.tres`): links the caster with its teammates within its cha mod in tiles (at least 1) and its leader, wherever it is, until the end of its side's next turn. Linked, each makes out units and tiles as well as the best of them does, up to rank levels better (`Battle.read()`): with the player's view being the leader's, it's how the rest of a side's sight reaches the player. *Now:* opens the Paladin's Idealism root.
 - [x] **Smite** (tier 3: two skills learned first; active · 5 AP · 4 cost · adjacent, `divine`, `cha`; `Skills/smite.tres`): 2d12 / 3d12 / 4d12 + cha mod at ranks I / III / V, with an attack roll. Its damage carries the tag of the caster's god (`Skill.god_tag`, `Unit.GOD_TAGS`), and on a hit its god adds (`Battle._smite()`):
   - **Eros** (love): used on an ally, it heals what it would deal, overhealing what's left over at rank × 20%.
   - **Luun** (dark): a foe left at rank × 5% of its max HP or less dies (an execute).
@@ -140,7 +140,26 @@ The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped arm
   - **Drael** (water): takes rank ranks of its buffs off (`Battle.dispel()`).
   - **Vetruvis** (earth): radiates earth damage to everyone within rank tiles but the caster, the damage / (tiles away + 1).
   - **Ramut** (physical): nothing more.
-  - *Now:* a Paladin option.
-- [x] **Renew** (tier 1 active, `divine`, `wis`; Divinity): restores wis mod HP (at least 1), and the recipient gets rank AP back. Against wounds it counts rank × rank: Renew II clears wounds up to rank 4. *Now:* a Paladin option (3 AP, 2 Energy, range 2), until Divinity has a tree; also on the Adventurer's Magic root.
+  - *Now:* on the Paladin's Divinity root (still tier 3).
+- [x] **Renew** (tier 1 active, `divine`, `wis`; Divinity): restores wis mod HP (at least 1), and the recipient gets rank AP back. Against wounds it counts rank × rank: Renew II clears wounds up to rank 4. *Now:* on the Paladin's Divinity root (3 AP, 2 Energy, range 2); also on the Adventurer's Magic root.
 - [x] The **Adventurer** starts at 16 in every stat - a sandbox for the attribute-driven Actualization abilities (respec, Hardy, Self-reflection) to come.
 - [x] **Hardy** (Actualization passive; `Skills/hardy.tres`): con mod counts (1 + rank) times in the HP each level brings. Alabaster borrows it at I: 30 + 25 = 55 max HP. Its home tree waits on the Actualization tree (?57).
+- [x] **Judgement** (Paladin; Cleric, Sol): an attack within rank tiles, 1d4 + wis mod. On a hit, **Shackles** of the rank's weight replace the target's trinket (kept till they come off), locked for rank turns by a Shackled debuff (cleansing unlocks them). Locked: pick (approachable, dex) or pry (unfair, str), each try their rank in AP. Unlocked: off for their rank in AP. (?65 ?66)
+- [x] **Wildfire** (Cleric, Sol, after Solar): evadable at difficult; a 60 degree cone, intense (2.5 x rank) tiles long; extreme ((3 x rank)d6 + wis) fire to every unit in it but the caster; units carrying earth (`Unit.has_tag()`) dodge at impossible and are hit as a crit; it burns leaves in its path. (?64)
+- [x] **The Paladin's tree** (`Roles/paladin.tres`): **Divinity: Eros** (magical: Rejuvinate, Pray, Renew and Smite open, Send Off, Lovely Caster and Impassioned Fighter after Rejuvinate), **Idealism: Chivalry** (specialist: Coordinate, then Final Act and Gallantry, stubs waiting on Reactions) and **Prowess: Protector** (the Fighter's root, `Trees/protector.tres`). Favour, Lightvision and Judgement stay on its core ring. (?12 ?67)
+- [x] **Rejuvinate** (Divinity root; also the Adventurer's core ring · 3 AP · 5 Energy · range rank · `divine`, `cha`, `love`, `magical`; `Skills/rejuvinate.tres`): regeneration for 3 turns of 10% + 5% × rank of the recipient's max HP, + the caster's cha mod in HP (`regen`, `regen_hp`). Its strength falls 5% a tile past the first between caster and target, set as it's cast (`Skill.decays`, `Battle.decay()`, `Unit.Applied.scale`), none when paid wholly with mana; the cha mod is fixed then too (`Effect.by_mod`). (?12)
+- [x] **Send Off** (after Rejuvinate · 3 AP · 3 Energy · adjacent, ally or foe; `Skills/send_off.tres`): teleports the unit cha mod + rank tiles straight away from the caster, to the furthest free tile on that line (`Skill.sends`, `Battle.send()`, `Battle.place()`). A foe gets an attack roll first. (?12)
+- [x] **Lovely Caster** (after Rejuvinate, passive; the `lovely` stat; `Battle._lovely()`): a `love` skill used on an adjacent ally - one tagged love, or an Eros Paladin's Smite - also heals it 10% × rank of its max HP at once.
+- [x] **Impassioned Fighter** (after Rejuvinate, passive; the `impassioned` stat; `Battle.passion()`): + rank to a skill's primary mod used on an adjacent unit - its attack roll, its contest or save, and damage and heals that scale on that stat. Strike's chain takes it too.
+- [x] **The Berserker**: Reckless Abandon (Offender, Unsupportive, Indefensible; skipping defensive and supportive steps), Affinity's live rank curves, three Prowess tabs. (?58)
+- [x] **Actualization** (the Adventurer's Path tab): Self-reflection, Hardy, Meditate and its respec. (?57)
+
+## Fighter
+
+`Roles/fighter.tres`: three martial roots - **Protector** (`Trees/protector.tres`, also the Paladin's Prowess), **Vanguard** and **Slayer** - with Wary on the core ring. Each opens on its active; unbuilt skills are stubs (Interject, Snapping Turtle, Warcry, Inspire, Sundering, Silent Strike, Gank). Protector's capstone is a Basic Martial Skill Slot +1. (?67)
+
+- [x] **Shields Up!** (Protector root · active · 3 AP · aimed at a tile within 8; `Skills/shields_up.tres`; `Skill.guards`, `Battle._guard()`): the unit faces the tile (`Unit.guard`); until its next turn is through, damage from a source whose tile lies within the 90° cone that way is cut by 20% + 10% × rank (the `guard` stat; `Unit.guarding()`, `Unit.hit()`). A DEFEND order faces the nearest foe it makes out (`AI._defend()`).
+- [x] **Obstruct** (after Shields Up!, passive; the `obstruct` stat; `Battle.obstruction()`): a foe entering a tile beside it pays the larger of half the size penalty of moving through it and half its con mod / 10 more movement, × (1 + 25% × rank). Its allies pass freely. Walks, step costs and the AI's expected walks all count it.
+- [x] **Interdict** (after Shields Up! · 3 AP · 2 Energy · adjacent; `Skills/interdict.tres`): a str save (d20 + str mod + rank against the foe's d20 + str mod). Won: **Attack Down**, -20% × rank damage dealt, and the caster's str mod off the foe's general AP (`base_ap`, scaled by `Effect.by_mod`), for one of its turns.
+- [x] **Turtle Tactics** (after Shields Up!, passive; the `check` effect, `Unit.check_bonus()`): +2 × rank to its defensive checks and -rank to its offensive ones - attack rolls among them - armor or not.
+- [x] **Jugular** (Slayer root · 4 AP · 2 Energy · adjacent · 1d6 + str mod, its weapon's blow; `Skills/jugular.tres`): an attack at disadvantage (`Skill.disadvantage`), + (rank - 1) to the roll (`roll_per_rank`, `roll_bonus`); a hit is a critical (`sure_crit`). A natural 20 casts it again at once on the same foe, free (`recast_on_crit`), up to 20 in a row.

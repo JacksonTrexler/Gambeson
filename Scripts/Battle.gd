@@ -12,6 +12,10 @@ signal layer_broke(c: Vector2i, what: Terrain, by: Unit)  # a brittle layer brok
 signal layer_lifted(c: Vector2i, what: Terrain, why: StringName)  # a layer burned (fire) or blew (wind) away
 signal teetered(u: Unit, total: int, dc: int, kept: bool)  # glass gave way under u; kept: it caught itself
 signal evaded(u: Unit, total: int, dc: int, share: float)  # u tried to dodge: share is how much still landed (evade())
+signal meditated(u: Unit, room: int)  # a Meditation done: u may shift each stat up to room (respec())
+signal respecced(u: Unit, changes: Dictionary)
+signal bound(by: Unit, u: Unit, it: Item)  # a binding item (Shackles) put on u in place of its trinket (_bind())
+signal freed(u: Unit, how: StringName, total: int, dc: int, done: bool)  # u worked at its shackles: unlock, pick or pry (unshackle())
 signal mended(c: Vector2i, into: Terrain)  # a cracked startile finished repairing
 signal contested(caster: Unit, target: Unit, total: int, against: int)  # a contest in place of one (Drown): won when total >= against
 signal investigated(by: Unit, of: Unit, skill: Skill, total: int, against: int, close: bool)  # investigate(): seen through when total >= against
@@ -601,6 +605,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			_expose(target)
 			used.emit(caster, skill, target, 0)
 			return true
+	if foe and skill.binds:  # landed (a miss returned above): Judgement's shackles
+		_bind(caster, skill, target, r)
+	var known := roundi(caster.stat(&"self_known"))  # what it knew of itself before this (Meditate)
 	var eyes := watchers(target) if skill.investigated else ([] as Array[Unit])
 	var put: Array[Unit.Applied] = []
 	if not (skill.dual and foe):
@@ -617,6 +624,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			a.roll = saved_against
 			a.scale = strength * (maxf(caster.mod(e.by_mod), 0.0) if e.by_mod else 1.0)  # set as it's put on (Rejuvinate's distance, Interdict's str mod)
 			put.append(a)
+	if skill.respecs:
+		caster.respec_room = mini(r, known)
+		meditated.emit(caster, caster.respec_room)
 	if skill.investigated:
 		var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
 		var g := resolve(Check.side(target.check_mod(skill.stat(), &"defensive", skill.tags) + r - target.dissonance_penalty(), Check.Kind.CHECK)
@@ -853,7 +863,7 @@ func _hidden_from(o: Unit, t: Unit) -> int:
 func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
 	var close := Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie
-	var vs := beats(Check.side(o.mod(&"wisdom")).edge(-1 if edge < 0 else (1 if edge > 0 or close else 0)),
+	var vs := beats(Check.side(o.check_mod(&"wisdom", &"offensive")).edge(-1 if edge < 0 else (1 if edge > 0 or close else 0)),
 			Check.side(t.mod(&"charisma") + lie - t.dissonance_penalty()))
 	if vs.won:
 		suspect(o, t)
@@ -996,7 +1006,7 @@ func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
 	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
 	if hiding <= 0 and trap <= 0 and not mixed:
 		return false
-	var total := resolve(Check.check(o.mod(&"wisdom") + bonus - distance_penalty(o, center if center != null else o.cell, c), 0)).total
+	var total := resolve(Check.check(o.check_mod(&"wisdom", &"offensive") + bonus - distance_penalty(o, center if center != null else o.cell, c), 0)).total
 	if mixed and hiding <= 0 and trap <= 0:
 		var a := o.scrambled()
 		if total >= a.roll:
@@ -1403,9 +1413,11 @@ func equip_ap(u: Unit, it: Item) -> float:
 	return item_ap(it, u)
 
 
-# Puts it on u, paying equip_ap() from its general AP. False (nothing changes) if it can't.
+# Puts it on u, paying equip_ap() from its general AP. False (nothing changes) if it can't - or if
+# what's in that slot is bound on (Shackles: unshackle() first).
 func equip(u: Unit, it: Item) -> bool:
-	if not outfitting(u) or not u.can_wear(it) or u.ap_for(&"equip") < equip_ap(u, it) - 0.0001:
+	var there: Item = u.get(it.slot) if it else null
+	if not outfitting(u) or not u.can_wear(it) or (there and there.binding) or u.ap_for(&"equip") < equip_ap(u, it) - 0.0001:
 		return false
 	u.pay(equip_ap(u, it), &"equip")
 	u.equip(it)
@@ -1415,9 +1427,66 @@ func equip(u: Unit, it: Item) -> bool:
 # Takes what's in u's slot off, free. What came off, or null if it couldn't.
 func unequip(u: Unit, slot: String) -> Item:
 	var it: Item = u.get(slot)
-	if not it or not outfitting(u):
+	if not it or not outfitting(u) or it.binding:  # shackles come off through unshackle()
 		return null
 	return u.unequip(slot)
+
+
+# After a Meditation (respec_room), u shifts its stats: each within that room of where it was born
+# (Unit.respec_by()), all or nothing. The room is spent either way. True if they shifted.
+func respec(u: Unit, changes: Dictionary) -> bool:
+	if u.respec_room <= 0:
+		return false
+	var room := u.respec_room
+	u.respec_room = 0
+	if changes.is_empty() or not u.respec_by(changes, room):
+		return false
+	respecced.emit(u, changes)
+	return true
+
+
+# Binds a skill's item (Judgement: Shackles) onto t at rank r, weight r, in place of its trinket - stowed
+# till they come off. Its Shackled effect (the skill's effects, r turns) is the lock.
+func _bind(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+	var it: Item = skill.binds.duplicate()
+	it.rank = r
+	it.weight = r
+	if t.trinket and not t.trinket.binding:
+		t.stowed = t.trinket
+	t.trinket = it
+	t.refit()
+	bound.emit(caster, t, it)
+
+
+# u works at its shackles on its turn, for their rank in AP whatever comes of it: &"unlock" takes them
+# off once they're no longer locked (Shackled has run out, or been cleansed); &"pick" lockpicks them
+# (a dex check at their `picks` difficulty, their rank); &"pry" pries them apart (str, `prised`). Off,
+# its stowed trinket goes back on and the shackles fall away. True if they came off.
+func unshackle(u: Unit, how: StringName) -> bool:
+	var it := u.trinket
+	if not it or not it.binding or not _acting(u) or u.ap_for(&"equip") < it.rank - 0.0001:
+		return false
+	if how == &"unlock" and u.shackled():
+		return false
+	var diff: StringName = it.picks if how == &"pick" else (it.prised if how == &"pry" else &"")
+	if how != &"unlock" and diff == &"":
+		return false
+	u.pay(it.rank, &"equip")
+	var done := true
+	if how != &"unlock":
+		var stat := &"dexterity" if how == &"pick" else &"strength"
+		var roll := resolve(Check.versus(u.check_mod(stat, &"offensive"), diff, it.rank))
+		done = roll.hit
+		freed.emit(u, how, roll.total, roll.target, done)
+	else:
+		freed.emit(u, how, 0, 0, true)
+	if done:
+		for e in u.timed.keys().filter(func(x: Effect): return x.stat == "shackled"):
+			u.timed.erase(e)
+		u.trinket = u.stowed
+		u.stowed = null
+		u.refit()
+	return done
 
 
 # Uses an item, paying its AP: a consumable from the stash, used up (a Heart: an extra life for good),

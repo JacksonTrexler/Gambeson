@@ -26,4 +26,4 @@ The grammar (in `docs/done/rules.md`): `Actor Skill Rank --> Target (ours - thei
 All built this pass except two bits of polish:
 - [ ] **Walker pictogram** for the tile panel's move cost (needs art); "Mv -N" stands in.
 - [ ] **High contrast: thicken faction borders** (the brighter glow and whiter text are in; borders still to do).
-- [ ] Confirm the trigger I read as *either* low cha *or* low info (you wrote "0 cha XOR low wisdom/info" - I took it as inclusive OR; XOR would hide intents from a commander who is both). (?60)
+- [x] 60. **Built on judgement:** intents come with *either* low cha *or* low info (an inclusive or; an exclusive one would hide them from a commander who is both). Open for review.

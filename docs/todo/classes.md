@@ -8,7 +8,7 @@ Every tree's capstone, for now (later a mid-tree capstone), is a **Basic Martial
 
 Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees: most paths are a few nodes long, and each root branches into about 6 strong applications of the basics. Paths are shallow slices of other classes' trees, but Adventurers can learn core skills many classes share: **Hex** and **Rejuvinate** are a first choice at any time. The three starting passives are separate skills on purpose, since each takes a slot; once Adventurers have skills that use them, they can become mid-tier passives in the tree instead.
 
-- [ ] **Rejuvinate** on the core ring (see Paladin). *Now:* a stub. (?12)
+- [x] **Rejuvinate** on the core ring (see Paladin): built (`docs/done/classes.md`). (?12)
 - [ ] **Skill Slot +1** (unspecified type): acts like a base slot, slightly darker. Sits at the center, locked until current slots are filled. *Now:* a stub at the centre of the wheel. (?3)
 - [ ] **Trade Skills** (passive): skill limits scale partly with wis: (base stat + wis × rank) / rank. *Now:* a stub on the core ring. (?2 ?11)
 - [ ] **Grind** (passive): str mod can count toward martial limits; max HP drops by the % overage. *Now:* a stub on the core ring. (?2 ?11)
@@ -82,20 +82,18 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 Three roots in the class tab, each starting with an active skill: **Divinity** (one so far: Eros), **Idealism** (one so far: Chivalry) and **Prowess** (default: Protector; see Fighter).
 
 **Divinity: Eros.** Spells are tagged `divine`, `cha`, `<3`. Divinity is in the caster family. (?12)
-- [ ] **Divinity tree**, with Renew in it. *Now:* Renew is a Paladin option.
-- [ ] **Rejuvinate** (root · active · 3 AP · 5 Energy · range: rank): regeneration for 3 turns of (10% + 5% × rank) of the recipient's max HP, + the caster's cha mod. Strength decays 5% per tile beyond 1 from the caster, with no decay when paid entirely with mana. *Now:* a stub on the Adventurer's core ring. (?12)
-  - [ ] **Send Off** (active): teleport an adjacent unit cha mod + rank tiles away. (?12)
-  - [ ] **Lovely Caster** (passive): `<3` skills used on an adjacent ally also heal it 10% × rank of its max HP.
-  - [ ] **Impassioned Fighter** (passive): +rank to a skill's primary mod when targeting an adjacent unit.
+- [x] **The Paladin's tree** - Divinity: Eros, Idealism: Chivalry, and Protector as its Prowess - with Renew, Pray and Smite on Divinity and Coordinate on Idealism: built (`docs/done/classes.md`). Favour, Lightvision and Judgement stay on its core ring. (?12)
+- [x] **Rejuvinate**, then **Send Off**, **Lovely Caster** and **Impassioned Fighter**: built (`docs/done/classes.md`). (?12)
 
 **Idealism: Chivalry**
-- [x] **Coordinate**: built (`docs/done/classes.md`). *Now:* a Paladin option.
-  - [ ] **Final Act** (passive): once per battle, on reaching 0 HP, interrupt the current turn to take 1 free action; the interrupted turn then resumes. (?12)
-  - [ ] **Gallantry** (passive): cha check against a unit attacking an adjacent ally. On a pass you become its target, and that ally can't be retargeted.
+- [x] **Coordinate**: built (`docs/done/classes.md`). *Now:* opens the Idealism root.
+  - [ ] **Final Act** (passive): once per battle, on reaching 0 HP, interrupt the current turn to take 1 free action; the interrupted turn then resumes. *Now:* a stub after Coordinate; needs Reactions. (?12)
+  - [ ] **Gallantry** (passive): cha check against a unit attacking an adjacent ally. On a pass you become its target, and that ally can't be retargeted. *Now:* a stub after Coordinate; needs Reactions.
 
 **Prowess: Protector.** See Fighter.
 
 12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
+    *Built on judgement (2026-11-06), open for review:* spelled as you wrote it; the decay is fixed when cast (moving later changes nothing); Send Off works on allies and foes (a foe gets an attack roll first) and lands on the furthest free tile on the straight line away from the caster - nobody picks it, since targeting takes one pick; `<3` is the internal `love` tag (Eros's damage tag). Final Act is still open.
 
 48. Bracing, as built: every Bracing passive caps its bonus at its rank (you wrote "up to rank" only for Agility). "Effectively equipped" is read as worn with its requirements met. Right?
 51. The Specialist opener is **Journeyman** (a skilled hand across trades; "Specialist" would clash with the tree's name). Specialist classes reach the other trees through Martialist and Thaumaturgist two tiers sooner (you said "a tier or two"). Both right?
@@ -110,25 +108,24 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
 
 Three roots, each a flavour of Prowess of the player's choosing. Three exist so far.
 
+*Now:* the three roots are built (`Roles/fighter.tres`; Protector is `Trees/protector.tres`, shared as the Paladin's Prowess). Wary stays on the core ring. Unbuilt skills are stubs on their roots. (?67)
+
 **Protector:** defense of self and others.
-- [ ] **Shields Up!** (active · 3 AP): point the unit at the center of an unobstructed tile, occupied or not (default: the nearest enemy). Damage from a source whose tile center lies within the 90° cone around that direction is reduced by 20% + 10% × rank. Lasts until its next turn.
-- [ ] **Obstruct** (passive): enemies moving through tiles next to this unit pay the larger of half its size penalty and half its con mod / 10, +25% per rank. Allies pass freely.
-- [ ] **Interject** (passive, `defensive`): when an ally is hit, dex check; on a pass you become the target. −25% damage per rank when taking a hit that wasn't aimed at you, with no rank cap (past 100% it still blocks only 100%). Rank 5+: +25% × rank to Defense when taking hits for allies. (?13)
-- [ ] **Interdict** (active): str check against an adjacent unit. On success: Attack Down (20% × rank) and −str mod AP recovery for one turn.
-- [ ] **Turtle Tactics** (passive): +2 × rank to the unit's `defensive` checks, −rank to its `offensive` checks.
-- [ ] **Snapping Turtle** (passive): when the unit uses an `offensive` skill, it also triggers up to rank of its `defensive` passives, top to bottom.
+- [x] **Shields Up!**, **Obstruct**, **Interdict** and **Turtle Tactics**: built (`docs/done/classes.md`). (?67)
+- [ ] **Interject** (passive, `defensive`): when an ally is hit, dex check; on a pass you become the target. −25% damage per rank when taking a hit that wasn't aimed at you, with no rank cap (past 100% it still blocks only 100%). Rank 5+: +25% × rank to Defense when taking hits for allies. *Now:* a stub after Shields Up!; needs Reactions. (?13)
+- [ ] **Snapping Turtle** (passive): when the unit uses an `offensive` skill, it also triggers up to rank of its `defensive` passives, top to bottom. *Now:* a stub after Turtle Tactics; the defensive passives it would trigger (Interject) need Reactions.
 
 **Vanguard:** front-line offense and tactics.
-- [ ] **Warcry** (active): pick up to rank enemies the unit can see. Rank tiles on the line to each get a one-use effect, triggered on entry, lasting a few turns:
+- [ ] **Warcry** (active; *Now:* a stub opening Vanguard, waiting on tile marks): pick up to rank enemies the unit can see. Rank tiles on the line to each get a one-use effect, triggered on entry, lasting a few turns:
   - Nearer half, **Charge!** (expanding translucent hot-orange squares): allies regain rank dex AP and deal +10% × rank damage until their turn ends.
   - Farther half, **Routed!** (collapsing translucent dark-blue squares): enemies pay +rank movement.
 - [ ] **Inspire** (passive): hitting an adjacent enemy with a skill gives allies within rank tiles +rank damage. Allies whose luck is below 1 also get **+1 Luck ltd.** (?13)
 
 **Slayer:** eliminating chosen targets.
-- [ ] **Jugular** (active): an attack at disadvantage, +(rank − 1) to the roll; a hit is a critical. When an attack would crit anyway (a natural 20, 1 in 20, or other skills), recast it at once, free and without limit for now.
+- [x] **Jugular**: built (`docs/done/classes.md`). (?67)
 - [ ] **Sundering** (passive): an attack rolling higher than the target's dex mod applies stacking **Sundered**: −1 Defense for rank turns. (?13)
 - [ ] **Silent Strike** (active): disables rank of the target's `magical` skills, actives and passives, for rank turns, starting from the bottom of its hotbar. Disabled skills are greyed out. (?13)
-- [ ] **Gank** (hybrid): not designed yet.
+- [ ] **Gank** (hybrid): not designed yet. *Now:* Sundering, Silent Strike and Gank are stubs after Jugular.
 
 13. Fighter:
     - Interject: who can it trigger for (adjacent allies? any ally in sight?), and how often (once a round? every hit)?
@@ -136,6 +133,16 @@ Three roots, each a flavour of Prowess of the player's choosing. Three exist so 
     - Silent Strike: do `divine` spells count as `magical`?
     - Inspire: does "+1 Luck ltd." mean it can only raise luck as far as 1?
 
-57. **Actualization** (a Martial-category tree: abilities from self-knowledge and improvement). Adventurer gets an active from it (Monk/Paladin-flavoured). *t1* **Self-reflection**: gain rank information levels on oneself. *t3* **Meditate**: AP paid with movement *and* AP; gain info levels; respec, changing each stat by up to rank (a small stat modal). The brief's sentence "If a unit doesn't know themselves well enough to..." is cut off - what gates the respec (an info-level threshold on oneself)? And is respec combat-only, or also between battles? *Now:* unbuilt; needs the derived-stat pipeline first (`docs/plan-composability.md`).
-58. **Berserker** (new class: 3 martial-prowess tabs + a Berserker tab). Trait **Reckless Abandon**: may skip defensive/support skills; grants **Offender** (+1 Affinity for `offensive`), inflicts **Unsupportive** (-1 `supportive`) and **Indefensible** (-1 `defensive`). **Affinity** sets the rank-cost: -1 and below `n^(2 - efficiency)`, 0 `n²`, +1 `n·log n`, +2 `n`; applied live in combat, a skill may rank up or down at once. All skills are `offensive` used on a foe, `supportive` on an ally, `defensive` on oneself; points may be invested per context. Confirm: how is `n·log n` rounded to a whole point cost, and can live re-costing drop a skill below rank I? *Now:* unbuilt; needs context tags + the behaviour spine.
-- [x] **Hardy** (Actualization passive; Alabaster borrows it): multiplies con's HP scaling by rank in the new HP formula. *Now:* the formula isn't in yet (bosses use flat `max_hp`), so Hardy waits on the derived-stat pipeline. (?57)
+67. **Fighter and Protector - built on judgement, open for review (2026-11-06).**
+    - Tree: each root opens on its active (Shields Up!, Warcry, Jugular); the rest come after it, Snapping Turtle after Turtle Tactics. Protector's capstone is a Basic Martial Skill Slot +1 (3 of its skills); Vanguard and Slayer have none yet. One Protector root serves the Fighter and, as Prowess, the Paladin.
+    - Shields Up!: range 8 (there's no line of sight yet, so "unobstructed" isn't checked); rank VIII blocks everything; it lasts through its next turn; a DEFEND order faces the nearest foe the unit makes out.
+    - Obstruct: "its size penalty" is what moving through the obstructor would cost the mover (so the mover's dex eases it); "+25% per rank" multiplies that, x1.25 at rank I; two obstructors beside one tile both charge.
+    - Interdict: the str check is a save (d20 + str mod + rank against the foe's d20 + str mod); Attack Down is -20% x rank damage dealt; the AP is the caster's str mod off the foe's next turn's general AP, never below 0. 3 AP, 2 Energy, adjacent.
+    - Turtle Tactics: attack rolls count as offensive checks (-rank to hit); Defense isn't a check, so it stays as it is.
+    - Jugular: 1d6 + str mod (its weapon's blow), 4 AP, 2 Energy, adjacent; recasts stop after 20 in a row, a guard against a runaway loop.
+
+57. **Actualization - built on judgement, open for review.** The Adventurer's Path tab: Self-reflection (T1, rank levels of self-knowledge for the battle), Hardy (T2), Meditate (T3, paid with movement then AP; rank levels of self-knowledge; then a respec, each stat up to rank from birth). *Choice made for the cut-off "if a unit doesn't know themselves well enough to...":* the respec reaches no further than the unit knew itself before that Meditation, so a first Meditation without Self-reflection only teaches; respecs and self-knowledge last the battle, since class units are made fresh each one. Want them to persist between battles once progression saves?
+58. **Berserker - built on judgement, open for review.** Reckless Abandon (inherent): Offender +1, Unsupportive and Indefensible -1, and skipping defensive and supportive steps. Affinity picks a skill's cost curve and its points' rank, live. *Choices made:* the even curve stays today's 1 + r^2 steps (1, 3, 8, 18 - about n^2) rather than n^2 exactly, so no existing costs move; +1 is n log2 n rounded up, never below n (1, 2, 5, 8, 12); ranks never drop below I (unlocking always costs 1); a skill's Affinity is the sum over the postures it serves, so a dual skill pulled both ways nets out; a posture tag on a skill decides outright (Frenzy: offensive). The three Prowess tabs - Brawn (Bulwark -> Crushing Blow), Fury (Second Wind -> Frenzy), Havoc (Rally -> Savage Swing) - are my content. *Deferred:* investing in a skill per posture ("a certain rank under those circumstances"); a Berserker sprite (it borrows the Fighter's).
+- [x] **Hardy** (Actualization passive; Alabaster borrows it): con mod counts (1 + rank) times in the HP each level brings.
+64. **Wildfire - built on judgement.** Sol's tab, after Solar. *Choices:* a fixed 60 degree cone; extreme = (3 x rank)d6 + wis mod; it spares its caster (Solar doesn't); an earth unit's evasion uses the impossible rung's DC rather than failing outright (at rank I that's DC 10).
+65. **Judgement - built on judgement.** A Paladin option, and on the Cleric's Sol tab ("lawful domains": Sol among the Cleric's gods; Ramut's too, when a Cleric can follow him). *Choices:* an attack within rank tiles for 1d4 + wis mod, open from the start; the shackles are its payload.

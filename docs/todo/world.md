@@ -40,3 +40,6 @@
     - A Heart is a consumable: +1 life for good.
     - Her persona: Personify III (a name from her pools, "Gleaming Heroine"), no stance or trickery. Insight reads her intention and strategy at net 2. "Strongest" weighs each level it reads as half a tile of distance.
     - Physical Intelligence: kept as built (the Arcanist Perspective cap).
+
+63. **Magnitudes - built on judgement.** Your "extreme fire damage" and "intense rank cone range" read as tags that scale a number by rank: faint 0.5, mild 1, moderate 1.5, strong 2, intense 2.5, extreme 3, overwhelming 4 x rank, rounded up (`Difficulty.MAGNITUDE`). Open for review.
+66. **Shackles - built on judgement.** *Choices:* each pick (approachable, dex) or pry (unfair, str) try costs the shackles' rank in AP, the same as taking them off unlocked; once off they fall away rather than going to the stash, and the stowed trinket goes back on; an AI unit works at them before anything else. Open for review.

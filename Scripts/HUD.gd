@@ -135,10 +135,26 @@ func _ready() -> void:
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
 	battle.exploded.connect(_on_exploded)
-	battle.shattered.connect(func(u: Unit, c: Vector2i):
-		_log("%s shatters a starpane at %s" % [_tag(u), c])
+	battle.shattered.connect(func(_u: Unit, _c: Vector2i): _mark())  # the layer that broke logs itself
+	battle.layer_broke.connect(func(c: Vector2i, what: Terrain, by: Unit):
+		_log("%s breaks the %s at %s" % [_tag(by), what.name.to_lower(), c] if by else "The %s at %s gives way" % [what.name.to_lower(), c])
+		_mark())
+	battle.teetered.connect(func(u: Unit, total: int, dc: int, kept: bool):
+		_log("%s %s (%d vs %d)" % [_tag(u), "catches itself" if kept else "falls through", total, dc]))
+	battle.bound.connect(func(_by: Unit, u: Unit, it: Item):
+		_log("%s is in %s (weight %d)" % [_tag(u), it.name.to_lower(), it.heft()])
+		_mark())
+	battle.freed.connect(func(u: Unit, how: StringName, total: int, dc: int, done: bool):
+		var verb: String = {&"unlock": "takes its shackles off", &"pick": "picks the lock", &"pry": "pries its shackles apart"}[how]
+		_log("%s %s%s" % [_tag(u), verb if done else "fails: " + verb.trim_prefix("takes ").trim_prefix("picks ").trim_prefix("pries "), " (%d vs %d)" % [total, dc] if how != &"unlock" else ""])
 		_mark())
 	battle.sapped.connect(_on_sapped)
+	battle.meditated.connect(func(u: Unit, room: int):
+		if known(u) and room > 0 and not autopilot():
+			_respec_window(u, room))
+	battle.respecced.connect(func(u: Unit, changes: Dictionary):
+		_log("%s shifts: %s" % [_tag(u), ", ".join(changes.keys().map(func(s): return "%s %+d" % [String(s).left(3), changes[s]]))])
+		_mark())
 	battle.perfect.connect(func(u: Unit):
 		_log("[color=#e8c547]Perfect![/color] %s heals %d" % [_tag(u), Battle.PERFECT_HEAL])
 		_mark())
@@ -182,6 +198,11 @@ func _ready() -> void:
 	sheet.equipped.connect(_on_equipped)
 	sheet.unequipped.connect(_on_unequipped)
 	sheet.used_up.connect(_on_used_up)
+	sheet.unshackled.connect(func(u: Unit, how: StringName) -> void:
+		if _outfits(u) and not battle.unshackle(u, how):
+			_say("%s needs %d AP for that" % [_name(u), u.trinket.rank] if u.trinket else "Nothing to take off")
+		sheet.open(u, _outfits(u))
+		_mark())
 	persona.done.connect(_on_personified)
 	battle.stalled.connect(_on_stalled)
 	battle.struggled.connect(_on_struggled)
@@ -622,21 +643,50 @@ func hand(u: Unit) -> bool:
 	return known(u) or command.ours(u)
 
 
-# Elemental Strike: a menu of its elements at the mouse; the pick imbues u's Strikes (Battle.imbue()).
+# Elemental Strike: a choice of its elements; the pick imbues u's Strikes (Battle.imbue()).
 func _pick_element(u: Unit, s: Skill) -> void:
-	var menu := PopupMenu.new()
-	for i in s.elements.size():
-		menu.add_item(String(s.elements[i]).capitalize(), i)
-	menu.id_pressed.connect(func(i: int) -> void:
-		u.element = s.elements[i]
-		if battle.cast(u, s, u):
-			_done(u)
-		else:
-			_say("%s doesn't take" % s.name)
-		_mark())
-	menu.popup_hide.connect(menu.queue_free)
-	add_child(menu)
-	menu.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()), Vector2i.ZERO))
+	var picks := []
+	for el in s.elements:
+		picks.append([String(el).capitalize(), func() -> void:
+			u.element = el
+			if battle.cast(u, s, u):
+				_done(u)
+			else:
+				_say("%s doesn't take" % s.name)
+			_mark()])
+	_choose(s.name, picks)
+
+
+# A small themed choice panel in the HUD (a popup window would miss its theme and scale): a title, a
+# button per [label, callable] - picking runs it and closes the panel - and Cancel.
+func _choose(title: String, picks: Array) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "Choice"
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override(&"separation", 2)
+	var head := Label.new()
+	head.theme_type_variation = &"Title"
+	head.text = title
+	col.add_child(head)
+	for pick in picks:
+		var b := Button.new()
+		b.text = pick[0]
+		b.focus_mode = Control.FOCUS_NONE
+		var act: Callable = pick[1]
+		b.pressed.connect(func() -> void:
+			panel.queue_free()
+			act.call())
+		col.add_child(b)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.focus_mode = Control.FOCUS_NONE
+	cancel.pressed.connect(panel.queue_free)
+	col.add_child(cancel)
+	panel.add_child(col)
+	settings.get_parent().add_child(panel)
+	panel.reset_size()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	return panel
 
 
 # The player's own unit is down (or gone): its side plays itself until the battle ends or the
@@ -2040,18 +2090,86 @@ func issue_intent(u: Unit, intent: StringName) -> bool:
 	return true
 
 
-# A small ATTACK / DEFEND / HELP menu for an ally the commander can only direct by intent.
+# After a Meditation: a small panel to shift u's six ability scores, each within `room` of where it was
+# born. Shift commits them (Battle.respec()); Keep closes it - either way the room is spent.
+func _respec_window(u: Unit, room: int) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "Respec"
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override(&"separation", 2)
+	var title := Label.new()
+	title.theme_type_variation = &"Title"
+	title.text = "Meditate"
+	col.add_child(title)
+	var note := Label.new()
+	note.theme_type_variation = &"Muted"
+	note.text = "Shift each stat up to %d from birth" % room
+	col.add_child(note)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	var picked := {}
+	for s: StringName in Skill.STAT_TAGS.values():
+		var born: int = u.get(s) - u.respec.get(s, 0)
+		picked[s] = int(u.get(s))
+		var name := Label.new()
+		name.text = String(s).left(3).capitalize()
+		name.custom_minimum_size.x = 22
+		var value := Label.new()
+		value.text = str(picked[s])
+		value.custom_minimum_size.x = 14
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var less := Button.new()
+		less.text = "-"
+		var more := Button.new()
+		more.text = "+"
+		for pair in [[less, -1], [more, 1]]:
+			var btn: Button = pair[0]
+			var step: int = pair[1]
+			btn.focus_mode = Control.FOCUS_NONE
+			btn.custom_minimum_size = Vector2(11, 0)
+			btn.pressed.connect(func() -> void:
+				picked[s] = clampi(picked[s] + step, born - room, born + room)
+				value.text = str(picked[s])
+				value.add_theme_color_override(&"font_color", GOLD if picked[s] != int(u.get(s)) else Color.WHITE))
+		grid.add_child(name)
+		grid.add_child(less)
+		grid.add_child(value)
+		grid.add_child(more)
+	col.add_child(grid)
+	var row := HBoxContainer.new()
+	var keep := Button.new()
+	keep.text = "Keep"
+	var shift := Button.new()
+	shift.text = "Shift"
+	row.add_child(keep)
+	row.add_child(shift)
+	col.add_child(row)
+	panel.add_child(col)
+	var close := func() -> void:
+		u.respec_room = 0
+		panel.queue_free()
+		_mark()
+	keep.pressed.connect(close)
+	shift.pressed.connect(func() -> void:
+		var changes := {}
+		for s in picked:
+			if picked[s] != int(u.get(s)):
+				changes[s] = picked[s] - int(u.get(s))
+		battle.respec(u, changes)
+		close.call())
+	settings.get_parent().add_child(panel)
+	panel.reset_size()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+
+
+# A small ATTACK / DEFEND / HELP choice for an ally the commander can only direct by intent ("?" while
+# guessing: an impossible pick wastes the order).
 func _show_intents(u: Unit) -> void:
-	var menu := PopupMenu.new()
+	var picks := []
 	for opt in intent_options(u):
-		var label: String = String(opt[0]).to_upper() + (" ?" if opt[2] else "")
-		menu.add_item(label)
-		menu.set_item_metadata(menu.item_count - 1, opt[0])
-		menu.set_item_disabled(menu.item_count - 1, false)
-	menu.index_pressed.connect(func(i: int) -> void: issue_intent(u, menu.get_item_metadata(i)))
-	menu.popup_hide.connect(menu.queue_free)
-	add_child(menu)
-	menu.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()), Vector2i.ZERO))
+		var intent: StringName = opt[0]
+		picks.append([String(intent).to_upper() + (" ?" if opt[2] else ""), func() -> void: issue_intent(u, intent)])
+	_choose("Order %s" % _name(u), picks)
 
 
 # How a unit of the player's own stands this turn, for the map: &"ready"

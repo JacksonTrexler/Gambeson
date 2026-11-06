@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="E_known"]
+script = ExtResource("2_effect")
+stat = "self_known"
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Self-reflection"
+tags = Array[StringName]([&"martial", &"wis"])
+ap = 2.0
+cost = 1
+self_only = true
+hostile = false
+turns = 99
+effects = Array[ExtResource("2_effect")]([SubResource("E_known")])
+lore = "An Actualization: looking honestly at what you are, before deciding what to become."

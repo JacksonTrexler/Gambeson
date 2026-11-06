@@ -45,6 +45,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | 22 | Warlock, the rest: Chant, Hogel's path (Gasp, Breathtaking, Irradiate) | `hogel_test.gd` |
 | — | Cleric (Luun, Sol), Synergy's range, Quartz Ring | `hogel_test.gd` |
 | — | Humble, Hogel's rest, Sol's path, Igna and Aetha | `sol_test.gd` |
+| 1.2 | Effect strength set when cast (Rejuvinate's decay, `Effect.by_mod`) | `paladin_test.gd` |
+| 2.4, 2.5 | Pushes and teleports (Send Off) | `moves_test.gd`, `paladin_test.gd` |
+| 5.15 | Investigating on contact | `moves_test.gd` |
+| 6.23 | Fighter roots: Protector (Shields Up!, Obstruct, Interdict, Turtle Tactics), Slayer (Jugular); Interject, Snapping Turtle, Warcry, Inspire, Sundering, Silent Strike stubbed | `fighter_test.gd` |
+| 6.24 | Paladin roots: Divinity: Eros (Rejuvinate, Send Off, Lovely Caster, Impassioned Fighter), Idealism, Prowess; Final Act and Gallantry stubbed | `paladin_test.gd` |
+| — | Executes on any contest, bracing on investigations, hiding and last stands | `check_test.gd`, `bracing_test.gd` |
 
 ## Questions to answer first
 

@@ -134,3 +134,13 @@ func test_jugular_recasts() -> void:
 		b.cast(v(1), j, v(3))
 	var twenties := rolls.count(20)
 	ok(twenties > 0 and rolls.size() == 200 + twenties, "each natural 20 casts it again at once, free (%d rolls, %d twenties)" % [rolls.size(), twenties])
+
+
+func test_defend_order() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(7, 3), v(4): Vector2i(1, 6)})
+	v(1).learned.append(slot(shields_up, 1))
+	v(1).hotbar = [shields_up]
+	v(1).refresh()
+	ok(v(1).intent_skill(&"defensive") == shields_up, "Shields Up! is a defensive move")
+	AI.act(b, v(1), &"defensive")
+	ok(v(1).guard == Vector2(3, 0) and v(1).stat(&"guard") > 0.0, "told to defend, it faces the nearest foe it makes out (%s)" % v(1).guard)

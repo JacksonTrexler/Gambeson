@@ -191,7 +191,7 @@ Each item maps to the seam it rides on. ✅ = shipped this pass.
   t3 **Meditate** (AP paid with movement *and* AP; info levels; respec ±rank per stat, modal).
 - **Hardy** passive (Alabaster borrows): multiply con HP-scaling by rank via the formula.
 
-**Seam 4 + 3 — context tags + Affinity:** the Berserker.
+**Seam 4 + 3 — context tags + Affinity:** the Berserker. ✅ built (Affinity curves re-ranking live; posture tags; Reckless Abandon). Per-posture ranks deferred.
 - 3 martial-prowess tabs + a Berserker class tab.
 - **Reckless Abandon** trait: skip defensive/support skills; **Offender** (+1 offensive
   Affinity), **Unsupportive** (−1 supportive), **Indefensible** (−1 defensive).
@@ -216,6 +216,11 @@ Each item maps to the seam it rides on. ✅ = shipped this pass.
   thicker faction borders, full-white body text).
 
 ## Principles to hold the line
+
+- **Everything stays useful somewhere.** Most skills and items should beat their alternatives in some
+  situation or build at any level: a mundane Gambeson weighs nothing (low inertia: glass, future
+  weight checks) and is the natural target for mid-combat enchanting, while skills that prey on
+  fancier or magical gear make plain kit a choice, not a stopgap.
 
 - **New content is data + a behaviour, never a new `Battle` branch** once a seam exists.
 - **Describe where you execute** — one object owns both, so the tooltip can't lie.
