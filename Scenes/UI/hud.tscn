@@ -509,10 +509,11 @@ focus_mode = 0
 tooltip_text = "Close (S or Esc)"
 text = "Close"
 
-[node name="WheelTabs" type="HBoxContainer" parent="Root/Skills/Column"]
+[node name="WheelTabs" type="HFlowContainer" parent="Root/Skills/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 1
+theme_override_constants/h_separation = 1
+theme_override_constants/v_separation = 1
 
 [node name="Body" type="PanelContainer" parent="Root/Skills/Column"]
 unique_name_in_owner = true

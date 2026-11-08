@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Attunement"
+passive = true
+tags = Array[StringName]([&"magical"])
+stub = "?70"
+plan = "A spell of another element than the last one the Wizard cast this battle: +rank to its attack or check. Changing it up pays (a Mage's Resonance rewards the opposite)."

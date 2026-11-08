@@ -51,6 +51,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | 6.23 | Fighter roots: Protector (Shields Up!, Obstruct, Interdict, Turtle Tactics), Slayer (Jugular); Interject, Snapping Turtle, Warcry, Inspire, Sundering, Silent Strike stubbed | `fighter_test.gd` |
 | 6.24 | Paladin roots: Divinity: Eros (Rejuvinate, Send Off, Lovely Caster, Impassioned Fighter), Idealism, Prowess; Final Act and Gallantry stubbed | `paladin_test.gd` |
 | — | Executes on any contest, bracing on investigations, hiding and last stands | `check_test.gd`, `bracing_test.gd` |
+| — | Wizard and Mage trees laid out, their new skills stubs (?70); the tab row wraps | `casters_test.gd` |
 
 ## Questions to answer first
 

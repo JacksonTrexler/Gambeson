@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Focus"
+passive = true
+tags = Array[StringName]([&"magical", &"offensive"])
+stub = "?70"
+plan = "Spells of the Mage's element (its school's) deal +rank damage and their effects +10% x rank. Spells of other elements cost 1 more Mana."

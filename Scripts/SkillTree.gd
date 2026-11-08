@@ -109,9 +109,9 @@ func _scroll_to_bottom() -> void:
 
 
 # A tab per part of its trees, like a browser's: each in its tree's colour (general trees by category),
-# the one shown bright and joined to the tree below.
+# the one shown bright and joined to the tree below; more than fit across wrap to another row (a Mage's).
 func _fill_tabs(all: Array[SkillTab]) -> void:
-	var box: HBoxContainer = %WheelTabs
+	var box: HFlowContainer = %WheelTabs
 	for c in box.get_children():
 		box.remove_child(c)
 		c.queue_free()

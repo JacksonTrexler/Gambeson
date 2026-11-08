@@ -20,7 +20,7 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 - [ ] **Specialist root**: more specialist skills to come.
 
 3. The Adventurer's extra slot "sits at the center, locked until current slots are filled". Center of the hotbar (its middle slot) or of the radial tree? Does it unlock once every slot holds a skill?
-10. Adventurer: is Mage (Red Mage) a class separate from Wizard? The Wizard uses the Red Mage sprite, and has the Mana passive. Do Igna and Aetha grant AP immediately, or for rank turns? Sola's +1 persona does nothing on a unit with no disguise set up: intended? The Magic root now has 8 branches against "about 6": fine? Which slot type does each tree's capstone give (Divinity: Magic, Prowess: Martial, Idealism: Specialist)?
+10. Adventurer: is Mage (Red Mage) a class separate from Wizard? *(Answered 2026-11-07: yes - see Wizard / Mage, ?70.)* The Wizard uses the Red Mage sprite, and has the Mana passive. Do Igna and Aetha grant AP immediately, or for rank turns? Sola's +1 persona does nothing on a unit with no disguise set up: intended? The Magic root now has 8 branches against "about 6": fine? Which slot type does each tree's capstone give (Divinity: Magic, Prowess: Martial, Idealism: Specialist)?
 11. Trade Skills and Grind formulas, once 2 is settled. As written, (base + wis × rank) / rank works out to base / rank + wis.
 15. Adventurer, as built (each can change):
     - Capstones need 3 of their root's skills learned (tier 4). The Martial root has only Wary so far, so its capstone can't be reached yet. Is 3 right, or should a capstone come after particular skills?
@@ -38,11 +38,36 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 
 ## Wizard / Mage
 
+Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** are flexible casters, biased toward the arcane, with a tab for everything they dabble in: pacts with patrons, affiliations with gods, the world's natural and magical powers. They screw with powers they ought not to: great potential, a major liability. **Mages** are dedicated and limited, but their trees feed each other: a school of magic, the general Mage tree, and a magical college. They're conventional: their spells are more refined and safer, and commitment takes their element further (still a large overlap with Wizards and other arcane casters).
+
+*Now:* both trees are laid out with every new skill a stub carrying its plan (`Skills/*.tres`, `plan`), so the skills screen shows the shape. Nothing new is learnable but the starter spells and what was built before. (?70)
+
+- [ ] **Wizard** (`Roles/wizard.tres`): its own tab keeps Mana, Mage Armor, Darkstone and every starter spell (Igna and Aetha added) on the core ring.
+  - **Arcane** root (the bias): Arcana, Dispel, Blink; Spellweave after Arcana, Counterspell after Dispel (a reaction); the Magic Skill Slot +1 capstone.
+  - **Transgression** root (the liability): Overchannel, Blood Magic, Wild Magic; Forbidden Lore after Overchannel; Rift after Wild Magic (lets demons through: spawning mid-battle); Unbound, a capstone needing 4.
+  - **Pact: Elmon** and **Pact: Hogel** (one of them, `one_of = pact`): the Pact skill first, then two of the patron's own skills behind it (Brainfog and Haluca; Gasp and Humble).
+  - **Affiliation: Urlo** and **Affiliation: Sol** (one of them, `one_of = affiliation`): the god's Favour first, then Wellspring (Urlo) or Flamewall (Sol). Other gods can get a tab each.
+  - **World: Nature**: an **Elements** root (Attunement, Draw from the Land, Weathercraft) and a **Leylines** root (Ley Sense, Ley Tap).
+- [ ] **Mage** (`Roles/mage.tres`, new; "Caster", the Red Mage sprite, 10 Mana, robe, staff and a mana potion; not on the entry screen, like the Wizard): its own tab is the general Mage tree, with Mana, Mage Armor and every starter spell on the core ring.
+  - **Refinement** root (safer, refined): Precise Casting, Extend Spell, Reach Spell; Quicken after both; the Magic Skill Slot +1 capstone.
+  - **Commitment** root (the extra mile): Focus, then Resonance, then Piercing Focus.
+  - **Schools**, one of them (`one_of = school`), each opening after its starter spells: **Radiance** (fire and light: Searing, Radiant Lance, Sunburst), **Currents** (water and wind: Undertow, Gale, Maelstrom), **Stone** (Quake, Rampart, Bedrock), **Shadow** (Darkstone, built, then Umbral Step and Eclipse), **Stars** (Fortune, Constellation, Starfall).
+  - **Colleges**, one of them (`one_of = college`): **Battle** (Battle Casting, Volley, Spellstrike), **Wards** (Ward, Counterspell, Sanctum), **Concord** (Spell Share, Linked Casting, Harmony).
+
 16. Mana, as built (each can change):
-    - A Wizard's skills are still a list, so all tier 1: ranking Mana up does nothing for it until its tree exists. Fine?
+    - A Wizard's starter spells are all tier 1 on its core ring, so ranking Mana past I does nothing for them yet. Fine?
     - Only the starter spells are "basic spells". Hex stays 2 Energy flat (half AP paid with Mana), and Darkstone 3. Right?
     - Starting Wizards get 10 Mana (Icor, level 5, has 12). Right amount?
     - With Working Knowledge, Energy would get Mana's half cost too, but only for a unit that also has the Mana passive. Adventurers can't learn it, so this doesn't come up yet. Right?
+
+70. **Wizard and Mage trees - stubbed on judgement, open for review (2026-11-07).** The shape is what to look at; every new skill's plan is my sketch.
+    - Wizards' variety vs Mages' commitment is the spine: Spellweave and Attunement reward switching spells and elements; Focus and Resonance reward sticking to one.
+    - The Wizard's liability lives in its Transgression root: Backlash (Overchannel, Unbound), paying Mana in HP (Blood Magic), surges (Wild Magic), Taint (Forbidden Lore, a new liability resource, undesigned), demons through a Rift. Should the liability be in every Wizard tab instead (pacts and affiliations cost something too)?
+    - A pact and an affiliation are each a choice of one, but a Wizard can have both. Pacts borrow two of the patron's real skills, behind the stubbed Pact skill; a Wizard's pact uses int for Sweet Nothings. Only Urlo and Sol have affiliation tabs so far.
+    - Schools are elements, paired the way the gods pair them (Sol fire and light, Drael water and wind), each opening after its starter spells. Colleges are postures: Battle offensive, Wards defensive, Concord supportive. "Synergized" read as the three trees feeding each other, and Concord casting with other casters.
+    - Counterspell sits on both (the Wizard's Arcane root, the Mage's Wards college). Darkstone stays a Wizard option and is the Mage's first Shadow skill.
+    - Both use the Red Mage sprite, and neither is on the entry screen. Starting Mana 10 for both.
+    - The tab row now wraps to a second line: an undecided Mage has 11 tabs, 5 once it has a school and a college.
 
 ## Warlock
 

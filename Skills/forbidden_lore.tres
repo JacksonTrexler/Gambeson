@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Forbidden Lore"
+passive = true
+tags = Array[StringName]([&"magical"])
+stub = "?70"
+plan = "Learn up to rank skills off a patron's or god's tab without a pact or an affiliation. Each brings a stack of Taint: a new liability resource (what it does: ?70)."

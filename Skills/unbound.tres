@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Unbound"
+passive = true
+tags = Array[StringName]([&"magical", &"offensive"])
+stub = "?70"
+plan = "Capstone. Once a battle, for rank turns, every spell is cast rank ranks higher with no Backlash chance. When it ends, all the Backlash it skipped lands at once."

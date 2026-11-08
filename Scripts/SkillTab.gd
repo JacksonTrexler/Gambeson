@@ -2,7 +2,7 @@ class_name SkillTab
 extends Resource
 
 # A tab of a class's skill tree (Role.trees()): its own first, then any beside it (Role.tabs: the
-# Rogue's and Bard's Calling: Freedom, later a Warlock's patrons). Laid out the same way - a centre,
+# Rogue's and Bard's Calling: Freedom, a Warlock's patrons, a Wizard's pacts, a Mage's schools). Laid out the same way - a centre,
 # a core ring and roots - and drawn as a wheel of its own on the skills screen.
 @export var name := ""
 @export var kind := ""  # the kind of path it is, shown before its name ("Calling"); empty: the class's own
@@ -22,10 +22,10 @@ const GENERAL := {&"": Color("#7a7d85"), &"martial": Color("#d27a70"), &"special
 const GODS := {&"ramut": Color("#c08a5a"), &"eros": Color("#ee95c0"), &"sol": Color("#f08a55"), &"urlo": Color("#6fd8e4"),
 		&"luun": Color("#8f86d6"), &"drael": Color("#68aee8"), &"vetruvis": Color("#b8935e")}
 const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a")}
-const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
+const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": Color("#a6c46a"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
 const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
 		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
-		"Berserker": Color("#c25a3c")}
+		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f")}
 
 
 # "Calling: Freedom".

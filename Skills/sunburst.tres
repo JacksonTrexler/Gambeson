@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Sunburst"
+passive = true
+tags = Array[StringName]([&"fire", &"light", &"magical", &"offensive"])
+stub = "?70"
+plan = "Radiance. The Mage's fire and light spells also hit every foe beside their target, for half damage."

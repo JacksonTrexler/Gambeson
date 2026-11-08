@@ -45,7 +45,9 @@ Core: **Hex** and **Rejuvinate** (built; see Paladin).
 
 - [x] **Mana** (tier 1 passive; Mages and Wizards start with it at rank I): the starter spells cost half paid with Mana, up to its rank in tier. *Now:* a Wizard option and starting skill. Wizards start with 10 Mana. (?16)
 - [x] **Mage Armor** (passive, `magical`, switched on and off; early in the tree): + int mod to Defense while on. *Now:* a Wizard option, unlocked with a skill point. (?10)
-- [x] The Adventurer's starter spells (Sola, Nadira, Astera, Terestera, Hydera) are Wizard options too. (?10)
+- [x] The Adventurer's starter spells (Sola, Nadira, Astera, Terestera, Hydera, Igna, Aetha) are Wizard and Mage options too. (?10)
+- [x] **Two classes**: the Wizard (flexible, many tabs) and the Mage (`Roles/mage.tres`: a school, the Mage tree, a college). Their trees are laid out: the Wizard's own tab (Arcane, Transgression), Pact: Elmon / Hogel and Affiliation: Urlo / Sol (one of each, `SkillTab.one_of`), World: Nature; the Mage's own (Refinement, Commitment), five School tabs and three College tabs (one of each). New skills are stubs with their plans (`docs/todo/classes.md`, ?70). `casters_test.gd`.
+- [x] **The tab row wraps**: a class with more tabs than fit across takes a second row (`SkillTree._fill_tabs()`, an HFlowContainer).
 
 ## Warlock
 

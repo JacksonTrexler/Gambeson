@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Undertow"
+passive = true
+tags = Array[StringName]([&"water", &"magical"])
+stub = "?70"
+plan = "Currents. The Mage's water spells pull what they hit rank tiles toward it (Battle.pull())."

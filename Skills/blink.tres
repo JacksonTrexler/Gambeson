@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Blink"
+passive = false
+tags = Array[StringName]([&"magical", &"defensive"])
+stub = "?70"
+plan = "Teleports the Wizard to a free tile it can see up to rank + 1 tiles away (Battle.place()). 2 AP, 1 Mana."

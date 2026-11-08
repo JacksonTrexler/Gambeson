@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Arcana"
+passive = true
+tags = Array[StringName]([&"magical", &"offensive"])
+stub = "?70"
+plan = "+rank to the attacks and save DCs of magical skills with no element tag (Astera, Hex, Energy Missile): pure arcane, where the Wizard leans."

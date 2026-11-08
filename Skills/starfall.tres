@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Starfall"
+passive = false
+tags = Array[StringName]([&"astral", &"magical", &"offensive"])
+stub = "?70"
+plan = "Stars. Calls down rank falling stars on tiles in range over the next turn, each an attack of 1d8 + int mod on whatever stands there."

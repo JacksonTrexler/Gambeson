@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Fortune"
+passive = true
+tags = Array[StringName]([&"magical", &"supportive"])
+stub = "?70"
+plan = "Stars. Astera's target also has advantage on its next attack or check. From rank III, the next two."

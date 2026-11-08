@@ -412,7 +412,7 @@ func test_skills_screen() -> void:
 	var relay: Skill = load("res://Skills/relay.tres")
 	h._unhandled_input(key(KEY_S))
 	ok(h.skills.visible and h.skills.unit == u and not h.spellbook.visible, "S opens the leader's skills")
-	var tabs: HBoxContainer = h.get_node("%WheelTabs")
+	var tabs: HFlowContainer = h.get_node("%WheelTabs")
 	var names: Array = tabs.get_children().map(func(x: Button): return x.text)
 	ok(names[0] == "CLASS · PALADIN" and h.skills.view() is SkillGrid and load("res://Skills/favour.tres") in h.skills.view().skills(),
 			"a class without a tree: its options as one, growing from the bottom")
@@ -718,7 +718,7 @@ func test_tabbed_skills_screen() -> void:
 	h.toggle_skills()
 	await tree.process_frame
 	var g: SkillGrid = h.get_node("%Grid")
-	var tabs: HBoxContainer = h.get_node("%WheelTabs")
+	var tabs: HFlowContainer = h.get_node("%WheelTabs")
 	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
 			"browser tabs: a tab per part of its tree, its species', then the general trees a Rogue gets")
 	ok(h.skills.view() == g and g.skills().size() == 1 and load("res://Skills/wary.tres") in g.skills(), "its own: Wary, growing from the bottom (Strike is on the General tab)")

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Sol's Favour"
+passive = true
+tags = Array[StringName]([&"magical", &"divine"])
+stub = "?70"
+plan = "Affiliates the Wizard with Sol (light, fire): it counts as Sol's for Pray and Smite, and its fire spells burn a turn longer. Sol's skills open after it, cast on int."

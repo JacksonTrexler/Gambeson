@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Radiant Lance"
+passive = false
+tags = Array[StringName]([&"light", &"magical", &"int"])
+stub = "?70"
+plan = "Radiance. A line of light rank + 2 tiles long: an attack on each foe on it (1d6 + int mod); allies on it get Sola's effect instead."

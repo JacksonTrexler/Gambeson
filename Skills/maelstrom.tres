@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Maelstrom"
+passive = false
+tags = Array[StringName]([&"water", &"wind", &"magical", &"int"])
+stub = "?70"
+plan = "Currents. A whirlpool on a tile for rank turns: units within 2 tiles are pulled a tile toward it each turn and pay +1 movement."

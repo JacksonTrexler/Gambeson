@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Umbral Step"
+passive = false
+tags = Array[StringName]([&"dark", &"magical"])
+stub = "?70"
+plan = "Shadow. Steps from a dark tile to another within rank x 2 tiles, unseen."

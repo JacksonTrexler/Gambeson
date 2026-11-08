@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Precise Casting"
+passive = true
+tags = Array[StringName]([&"magical"])
+stub = "?70"
+plan = "The Mage's spells never hit its allies, and a natural 1 is only a miss (no Backlash, no fumble). From rank II: +rank - 1 to spells against a foe beside one of its allies."

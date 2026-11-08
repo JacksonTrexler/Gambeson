@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Ley Sense"
+passive = true
+tags = Array[StringName]([&"magical"])
+stub = "?70"
+plan = "Shows the map's leylines, lines of tiles where magic runs strong. On one, the Wizard's spells cost rank less Mana (at least 1). Needs leylines on maps."

@@ -15,6 +15,7 @@ Open work and questions, split by scope so each can be read on its own. What's d
 - 65 Judgement: lawful domains are Sol among the Cleric's gods (Ramut too, once a Cleric can follow him); 1d4 + wis; open from the start of the tab.
 - 67 Fighter and Protector: the trees' shape, Shields Up!'s range and DEFEND aim, Obstruct's size penalty and +25% a rank as a multiplier, Interdict's str check as a save, attack rolls as offensive checks for Turtle Tactics, Jugular's numbers. Also my calls on 12 (Rejuvinate's spelling, decay fixed when cast, Send Off on either side landing straight away, `<3` as the `love` tag), noted under 12.
 - 68 Moving units and checks: pushes do no damage on impact; teleports spring traps and leave no trail; contact investigates each time until seen through, hiding only; executes cut saves and drags, not Defense; bracing kinds for investigating, hiding and last stands.
+- 70 Wizard and Mage trees (stubs): Wizards reward switching spells and elements, Mages sticking to one; the Wizard's liability in a Transgression root; one pact and one affiliation (both allowed); schools are elements paired as the gods pair them, colleges are postures; both on the Red Mage sprite, neither on the entry screen.
 - 69 Paladin Prowess (2026-11-07): which gods each prowess tree suits (Eros: Protector, Vanguard; Ramut: all but Protector; every god at least two); one choice, permanent; unaligned tabs hidden.
 - 66 Shackles: every pick or pry try costs their rank in AP, like taking them off; off, they fall away (not to the stash) and the stowed trinket goes back on; AI units work at them first thing.
 
@@ -27,9 +28,9 @@ Open work and questions, split by scope so each can be read on its own. What's d
 | File | What's in it | Open questions |
 | --- | --- | --- |
 | [docs/todo/rules.md](docs/todo/rules.md) | Rules still to settle: damage floor, stat caps, attack rolls, the clover slot | 1, 2, 5, 6 |
-| [docs/todo/systems.md](docs/todo/systems.md) | Systems to build: the composability seams (Check resolver, tile stacks, behaviour spine, context tags, derived-stat pipeline), then checks, a tree for the Wizard, equipping, resources, reactions, Divinity, items... | 21, 68 |
+| [docs/todo/systems.md](docs/todo/systems.md) | Systems to build: the composability seams (Check resolver, tile stacks, behaviour spine, context tags, derived-stat pipeline), then checks, trees for the Wizard and Mage, equipping, resources, reactions, Divinity, items... | 21, 68 |
 | [docs/todo/ui.md](docs/todo/ui.md) | The log, targeting, lore keeper, a stats block; UX: gray-out commanded units, raise commandable prominence, default orders, tile-panel walker icon, suspicious-tile overlay, accessibility | 8, 56, 60 |
-| [docs/todo/classes.md](docs/todo/classes.md) | Adventurer (Actualization), Wizard, Warlock, Cleric, general trees and Strike, Rogue/Bard, Paladin, Fighter, Berserker (Affinity) | 3, 10, 11, 12, 13, 15, 16, 18, 19, 20, 42, 57, 58, 64, 65, 67, 69 |
+| [docs/todo/classes.md](docs/todo/classes.md) | Adventurer (Actualization), Wizard, Warlock, Cleric, general trees and Strike, Rogue/Bard, Paladin, Fighter, Berserker (Affinity), Mage | 3, 10, 11, 12, 13, 15, 16, 18, 19, 20, 42, 57, 58, 64, 65, 67, 69, 70 |
 | [docs/todo/world.md](docs/todo/world.md) | Scenes (Infernal Meadows, Astral Envoy), items and armor, monsters (Siren, Sunder) | 14, 29, 47, 63, 66 |
 
 The plan for building the unbuilt systems is [docs/plan.md](docs/plan.md). How to make skills, rolls, tiles and attributes composable as that content grows is [docs/plan-composability.md](docs/plan-composability.md).

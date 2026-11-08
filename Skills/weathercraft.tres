@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Weathercraft"
+passive = false
+tags = Array[StringName]([&"magical"])
+stub = "?70"
+plan = "Sets the weather for rank turns: rain (water and wind spells +1, fire -1), heat, gales, fog. Needs weather, which doesn't exist yet."
