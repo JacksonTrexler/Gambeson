@@ -14,5 +14,5 @@ script = ExtResource("1_skill")
 name = "Mage Armor"
 passive = true
 toggle = true
-tags = Array[StringName]([&"magical", &"int"])
+tags = Array[StringName]([&"magical", &"int", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_armor")])

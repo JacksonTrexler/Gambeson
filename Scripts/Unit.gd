@@ -635,6 +635,12 @@ func missing(s: Skill) -> String:
 	var tab := role.tab_of(s)
 	if devoted and tab and tab.devotes and tab != devoted:
 		return "Devoted to %s" % devoted.name
+	if tab and tab.one_of:
+		var took := taken(tab.one_of)
+		if took and took.name != tab.name:
+			return "Took up %s" % took.title()
+		if not suits(tab):
+			return "Not %s's way" % deity().capitalize() if deity() else "Needs a god"
 	var b := root.branch(s)
 	var first := b.after.filter(func(x: Skill): return rank(x) == 0 and not _skippable(x))
 	if not first.is_empty():
@@ -802,6 +808,37 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 		else:
 			sum += amount
 	return sum * factor
+
+
+# The tab of a choice (SkillTab.one_of: a Paladin's Prowess) it has taken up by learning a skill on
+# it, or null.
+func taken(choice: StringName) -> SkillTab:
+	if not role:
+		return null
+	for t in role.tabs:
+		if t and t.one_of == choice and t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return base_rank(x) > 0)):
+			return t
+	return null
+
+
+# Whether a tab of a choice suits its god: none of its roots names gods (SkillRoot.gods), or each
+# names its own.
+func suits(t: SkillTab) -> bool:
+	var g := deity()
+	return t.roots.all(func(r: SkillRoot): return not r or r.gods.is_empty() or g in r.gods)
+
+
+# Its class's tabs (Role.trees()), less the choices it can't make: of a choice of tabs, only those
+# that suit its god until it takes one up, then that one alone.
+func class_trees() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	if not role:
+		return out
+	for t in role.trees():
+		var took := taken(t.one_of) if t.one_of else null
+		if not t.one_of or (took.name == t.name if took else suits(t)):
+			out.append(t)
+	return out
 
 
 # The god it prays to: its own, else the one its devotion names (a Cleric's tab), else its class's.
@@ -1302,7 +1339,7 @@ func general_skills() -> Array[Skill]:
 
 # Its class's tree tabs, then its general trees (the skills screen).
 func trees() -> Array[SkillTab]:
-	var out: Array[SkillTab] = role.trees() if role else ([] as Array[SkillTab])
+	var out := class_trees()
 	out.append_array(general_trees())
 	return out
 

@@ -14,13 +14,9 @@
 [ext_resource type="Resource" path="res://Items/broadsword.tres" id="i_broadsword"]
 [ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
 [ext_resource type="Resource" path="res://Skills/reckless_abandon.tres" id="s_reckless_abandon"]
-[ext_resource type="Resource" path="res://Skills/bulwark.tres" id="s_bulwark"]
-[ext_resource type="Resource" path="res://Skills/crushing_blow.tres" id="s_crushing_blow"]
-[ext_resource type="Resource" path="res://Skills/second_wind.tres" id="s_second_wind"]
-[ext_resource type="Resource" path="res://Skills/frenzy.tres" id="s_frenzy"]
-[ext_resource type="Resource" path="res://Skills/rally.tres" id="s_rally"]
-[ext_resource type="Resource" path="res://Skills/savage_swing.tres" id="s_savage_swing"]
-
+[ext_resource type="Resource" path="res://Trees/havoc.tres" id="r_havoc"]
+[ext_resource type="Resource" path="res://Trees/fury.tres" id="r_fury"]
+[ext_resource type="Resource" path="res://Trees/brawn.tres" id="r_brawn"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
 skill = ExtResource("4_strike")
@@ -29,68 +25,23 @@ skill = ExtResource("4_strike")
 script = ExtResource("6_slot")
 skill = ExtResource("s_reckless_abandon")
 
-[sub_resource type="Resource" id="B_bulwark"]
-script = ExtResource("8_branch")
-skill = ExtResource("s_bulwark")
-
-[sub_resource type="Resource" id="B_crushing_blow"]
-script = ExtResource("8_branch")
-skill = ExtResource("s_crushing_blow")
-after = Array[ExtResource("5_skill")]([ExtResource("s_bulwark")])
-
-[sub_resource type="Resource" id="Root_Brawn"]
-script = ExtResource("7_root")
-name = "Brawn"
-tag = &"martial"
-branches = Array[ExtResource("8_branch")]([SubResource("B_bulwark"), SubResource("B_crushing_blow")])
-
 [sub_resource type="Resource" id="Tab_Brawn"]
 script = ExtResource("9_tab")
 name = "Brawn"
 kind = "Prowess"
-roots = Array[ExtResource("7_root")]([SubResource("Root_Brawn")])
-
-[sub_resource type="Resource" id="B_second_wind"]
-script = ExtResource("8_branch")
-skill = ExtResource("s_second_wind")
-
-[sub_resource type="Resource" id="B_frenzy"]
-script = ExtResource("8_branch")
-skill = ExtResource("s_frenzy")
-after = Array[ExtResource("5_skill")]([ExtResource("s_second_wind")])
-
-[sub_resource type="Resource" id="Root_Fury"]
-script = ExtResource("7_root")
-name = "Fury"
-tag = &"martial"
-branches = Array[ExtResource("8_branch")]([SubResource("B_second_wind"), SubResource("B_frenzy")])
+roots = Array[ExtResource("7_root")]([ExtResource("r_brawn")])
 
 [sub_resource type="Resource" id="Tab_Fury"]
 script = ExtResource("9_tab")
 name = "Fury"
 kind = "Prowess"
-roots = Array[ExtResource("7_root")]([SubResource("Root_Fury")])
-
-[sub_resource type="Resource" id="B_rally"]
-script = ExtResource("8_branch")
-skill = ExtResource("s_rally")
-
-[sub_resource type="Resource" id="B_savage_swing"]
-script = ExtResource("8_branch")
-skill = ExtResource("s_savage_swing")
-after = Array[ExtResource("5_skill")]([ExtResource("s_rally")])
-
-[sub_resource type="Resource" id="Root_Havoc"]
-script = ExtResource("7_root")
-name = "Havoc"
-tag = &"martial"
-branches = Array[ExtResource("8_branch")]([SubResource("B_rally"), SubResource("B_savage_swing")])
+roots = Array[ExtResource("7_root")]([ExtResource("r_fury")])
 
 [sub_resource type="Resource" id="Tab_Havoc"]
 script = ExtResource("9_tab")
 name = "Havoc"
 kind = "Prowess"
-roots = Array[ExtResource("7_root")]([SubResource("Root_Havoc")])
+roots = Array[ExtResource("7_root")]([ExtResource("r_havoc")])
 
 [resource]
 script = ExtResource("1_script")

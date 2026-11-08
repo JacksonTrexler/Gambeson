@@ -21,7 +21,7 @@ name = "Flamedance"
 [resource]
 script = ExtResource("1_skill")
 name = "Flamedance"
-tags = Array[StringName]([&"fire", &"divine", &"wis"])
+tags = Array[StringName]([&"fire", &"divine", &"wis", &"defensive"])
 ap = 2.0
 cost = 3
 hostile = false

@@ -20,5 +20,5 @@ script = ExtResource("1_script")
 name = "Conspire"
 passive = true
 toggle = true
-tags = Array[StringName]([&"specialist", &"cha"])
+tags = Array[StringName]([&"specialist", &"cha", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_conspire"), SubResource("Effect_ally_mitigate")])

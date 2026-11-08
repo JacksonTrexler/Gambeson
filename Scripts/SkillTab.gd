@@ -14,6 +14,7 @@ extends Resource
 @export var roots: Array[SkillRoot] = []
 @export var god := &""  # the god its devotees worship (a Cleric's Luun, Sol: Unit.deity())
 @export var devotes := false
+@export var one_of := &""  # one of a choice of tabs (a Paladin's Prowess): learning a skill on one closes the rest, and only those its roots suit its god are open (Unit.taken(), Unit.suits())
 @export var satisfied_by := &""  # what wins its devotees Sweet Nothings back (Hogel: rest_whole, resting a turn out at full HP; Battle.end_turn())  # learning a skill on its roots devotes its learner to it: other devoting tabs close (a Warlock's patron; Unit.devotion())
 
 

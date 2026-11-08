@@ -6,6 +6,7 @@ extends Resource
 @export var name := ""
 @export var tag := &""  # its category: magical, martial or specialist - its colour, and the typed slots its skills fit
 @export var branches: Array[Branch] = []
+@export var gods: Array[StringName] = []  # the gods whose ways it suits: a Paladin takes it up as Prowess only under one of them (Unit.suits()); empty: any
 
 
 func skills() -> Array[Skill]:

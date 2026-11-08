@@ -79,10 +79,10 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 
 ## Paladin
 
-Three roots in the class tab, each starting with an active skill: **Divinity** (one so far: Eros), **Idealism** (one so far: Chivalry) and **Prowess** (default: Protector; see Fighter).
+Three roots in the class tab, each starting with an active skill: **Divinity** (one so far: Eros), **Idealism** (one so far: Chivalry) and **Prowess**: any prowess somewhat aligned with its god, of the player's choosing.
 
 **Divinity: Eros.** Spells are tagged `divine`, `cha`, `<3`. Divinity is in the caster family. (?12)
-- [x] **The Paladin's tree** - Divinity: Eros, Idealism: Chivalry, and Protector as its Prowess - with Renew, Pray and Smite on Divinity and Coordinate on Idealism: built (`docs/done/classes.md`). Favour, Lightvision and Judgement stay on its core ring. (?12)
+- [x] **The Paladin's tree** - Divinity: Eros, Idealism: Chivalry, and a Prowess of its choosing (was Protector alone) - with Renew, Pray and Smite on Divinity and Coordinate on Idealism: built (`docs/done/classes.md`). Favour, Lightvision and Judgement stay on its core ring. (?12)
 - [x] **Rejuvinate**, then **Send Off**, **Lovely Caster** and **Impassioned Fighter**: built (`docs/done/classes.md`). (?12)
 
 **Idealism: Chivalry**
@@ -90,7 +90,9 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
   - [ ] **Final Act** (passive): once per battle, on reaching 0 HP, interrupt the current turn to take 1 free action; the interrupted turn then resumes. *Now:* a stub after Coordinate; needs Reactions. (?12)
   - [ ] **Gallantry** (passive): cha check against a unit attacking an adjacent ally. On a pass you become its target, and that ally can't be retargeted. *Now:* a stub after Coordinate; needs Reactions.
 
-**Prowess: Protector.** See Fighter.
+**Prowess** - any prowess somewhat aligned with its deity (2026-11-07).
+- [x] **Choice of Prowess**: a Prowess tab per tree (`SkillTab.one_of = prowess`), the same roots the Fighter and Berserker use (`Trees/*.tres`). Only those that suit its god (`SkillRoot.gods`) show and open; learning a skill on one takes it up and closes the rest ("Took up Prowess: Protector"). (`paladin_test.test_prowess`)
+69. **Prowess alignment - built on judgement, open for review.** Which gods each prowess suits. *Choices made:* Protector - Eros, Sol, Vetruvis; Vanguard - Ramut, Eros, Sol, Vetruvis; Slayer - Luun, Ramut, Drael; Brawn - Ramut, Vetruvis; Fury - Ramut, Sol, Urlo; Havoc - Ramut, Luun, Drael, Urlo. Each god has at least two; an Eros Paladin (the default) gets Protector or Vanguard. One Prowess per Paladin, the choice is permanent (no respec yet), and unaligned tabs are hidden rather than shown locked, to keep the tab row short.
 
 12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
     *Built on judgement (2026-11-06), open for review:* spelled as you wrote it; the decay is fixed when cast (moving later changes nothing); Send Off works on allies and foes (a foe gets an attack roll first) and lands on the furthest free tile on the straight line away from the caster - nobody picks it, since targeting takes one pick; `<3` is the internal `love` tag (Eros's damage tag). Final Act is still open.
@@ -108,7 +110,7 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
 
 Three roots, each a flavour of Prowess of the player's choosing. Three exist so far.
 
-*Now:* the three roots are built (`Roles/fighter.tres`; Protector is `Trees/protector.tres`, shared as the Paladin's Prowess). Wary stays on the core ring. Unbuilt skills are stubs on their roots. (?67)
+*Now:* the three roots are built (`Roles/fighter.tres`; Protector is `Trees/protector.tres`, shared with the Paladin, which picks one Prowess its god suits: ?69). Wary stays on the core ring. Unbuilt skills are stubs on their roots. (?67)
 
 **Protector:** defense of self and others.
 - [x] **Shields Up!**, **Obstruct**, **Interdict** and **Turtle Tactics**: built (`docs/done/classes.md`). (?67)
@@ -134,7 +136,7 @@ Three roots, each a flavour of Prowess of the player's choosing. Three exist so 
     - Inspire: does "+1 Luck ltd." mean it can only raise luck as far as 1?
 
 67. **Fighter and Protector - built on judgement, open for review (2026-11-06).**
-    - Tree: each root opens on its active (Shields Up!, Warcry, Jugular); the rest come after it, Snapping Turtle after Turtle Tactics. Protector's capstone is a Basic Martial Skill Slot +1 (3 of its skills); Vanguard and Slayer have none yet. One Protector root serves the Fighter and, as Prowess, the Paladin.
+    - Tree: each root opens on its active (Shields Up!, Warcry, Jugular); the rest come after it, Snapping Turtle after Turtle Tactics. Protector's capstone is a Basic Martial Skill Slot +1 (3 of its skills); Vanguard and Slayer have none yet. One Protector root serves the Fighter and, as one Prowess it may choose, the Paladin.
     - Shields Up!: range 8 (there's no line of sight yet, so "unobstructed" isn't checked); rank VIII blocks everything; it lasts through its next turn; a DEFEND order faces the nearest foe the unit makes out.
     - Obstruct: "its size penalty" is what moving through the obstructor would cost the mover (so the mover's dex eases it); "+25% per rank" multiplies that, x1.25 at rank I; two obstructors beside one tile both charge.
     - Interdict: the str check is a save (d20 + str mod + rank against the foe's d20 + str mod); Attack Down is -20% x rank damage dealt; the AP is the caster's str mod off the foe's next turn's general AP, never below 0. 3 AP, 2 Energy, adjacent.

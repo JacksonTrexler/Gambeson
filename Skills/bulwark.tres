@@ -13,7 +13,7 @@ per_rank = true
 [resource]
 script = ExtResource("1_skill")
 name = "Bulwark"
-tags = Array[StringName]([&"martial", &"con"])
+tags = Array[StringName]([&"martial", &"con", &"defensive"])
 ap = 3.0
 cost = 2
 self_only = true

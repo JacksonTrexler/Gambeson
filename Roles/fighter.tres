@@ -10,60 +10,15 @@
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
 [ext_resource type="Resource" path="res://Trees/protector.tres" id="r_protector"]
-[ext_resource type="Resource" path="res://Skills/warcry.tres" id="s_warcry"]
-[ext_resource type="Resource" path="res://Skills/inspire.tres" id="s_inspire"]
-[ext_resource type="Resource" path="res://Skills/jugular.tres" id="s_jugular"]
-[ext_resource type="Resource" path="res://Skills/sundering.tres" id="s_sundering"]
-[ext_resource type="Resource" path="res://Skills/silent_strike.tres" id="s_silent_strike"]
-[ext_resource type="Resource" path="res://Skills/gank.tres" id="s_gank"]
-
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/half_plate.tres" id="i_half_plate"]
 [ext_resource type="Resource" path="res://Items/broadsword.tres" id="i_broadsword"]
 [ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
+[ext_resource type="Resource" path="res://Trees/slayer.tres" id="r_slayer"]
+[ext_resource type="Resource" path="res://Trees/vanguard.tres" id="r_vanguard"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
 skill = ExtResource("4_strike")
-
-[sub_resource type="Resource" id="Branch_warcry"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_warcry")
-
-[sub_resource type="Resource" id="Branch_inspire"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_inspire")
-after = Array[ExtResource("20_skill")]([ExtResource("s_warcry")])
-
-[sub_resource type="Resource" id="Root_Vanguard"]
-script = ExtResource("6_root")
-name = "Vanguard"
-tag = &"martial"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_warcry"), SubResource("Branch_inspire")])
-
-[sub_resource type="Resource" id="Branch_jugular"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_jugular")
-
-[sub_resource type="Resource" id="Branch_sundering"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_sundering")
-after = Array[ExtResource("20_skill")]([ExtResource("s_jugular")])
-
-[sub_resource type="Resource" id="Branch_silent_strike"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_silent_strike")
-after = Array[ExtResource("20_skill")]([ExtResource("s_jugular")])
-
-[sub_resource type="Resource" id="Branch_gank"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_gank")
-after = Array[ExtResource("20_skill")]([ExtResource("s_jugular")])
-
-[sub_resource type="Resource" id="Root_Slayer"]
-script = ExtResource("6_root")
-name = "Slayer"
-tag = &"martial"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_jugular"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_gank")])
 
 [resource]
 script = ExtResource("1_script")
@@ -74,6 +29,6 @@ race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 14, &"dexterity": 11, &"constitution": 14, &"intelligence": 8, &"wisdom": 10, &"charisma": 9})
 options = Array[ExtResource("20_skill")]([ExtResource("21_opt_wary")])
-roots = Array[ExtResource("6_root")]([ExtResource("r_protector"), SubResource("Root_Vanguard"), SubResource("Root_Slayer")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_protector"), ExtResource("r_vanguard"), ExtResource("r_slayer")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"martial"])

@@ -50,3 +50,4 @@ script = ExtResource("root")
 name = "Protector"
 tag = &"martial"
 branches = Array[ExtResource("branch")]([SubResource("Branch_shields_up"), SubResource("Branch_obstruct"), SubResource("Branch_interdict"), SubResource("Branch_turtle_tactics"), SubResource("Branch_interject"), SubResource("Branch_snapping_turtle"), SubResource("Branch_martial_slot")])
+gods = Array[StringName]([&"eros", &"sol", &"vetruvis"])

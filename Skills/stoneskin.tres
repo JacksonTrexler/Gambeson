@@ -19,5 +19,6 @@ above_hp = 0.85
 [resource]
 script = ExtResource("1_script")
 name = "Stoneskin"
+tags = Array[StringName]([&"defensive"])
 passive = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_skin"), SubResource("Effect_slow")])

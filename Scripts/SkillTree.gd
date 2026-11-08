@@ -52,10 +52,10 @@ func open(u: Unit, title: String, spend: bool) -> void:
 	show()
 
 
-# Its tabs, left to right: its class's (Role.trees()), its species' and what it knows (where it has
+# Its tabs, left to right: its class's (Unit.class_trees()), its species' and what it knows (where it has
 # any), then its general trees.
 func tabs() -> Array[SkillTab]:
-	var out: Array[SkillTab] = unit.role.trees() if unit.role else ([] as Array[SkillTab])
+	var out := unit.class_trees()
 	var all := unit.sources()
 	for pair in [[&"species", "Species", unit.race.name if unit.race else "Species"], [&"knowledge", "Knowledge", "Knowledge"]]:
 		if not all[pair[0]].is_empty():

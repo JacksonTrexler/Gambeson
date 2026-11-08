@@ -21,7 +21,7 @@ stat = &"intelligence"
 [resource]
 script = ExtResource("1_skill")
 name = "Hydera"
-tags = Array[StringName]([&"water", &"magical", &"int"])
+tags = Array[StringName]([&"water", &"magical", &"int", &"offensive", &"supportive", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_ally")])
 ap = 3.0
 cost = 2

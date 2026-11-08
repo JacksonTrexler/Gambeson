@@ -191,7 +191,7 @@ Each item maps to the seam it rides on. ✅ = shipped this pass.
   t3 **Meditate** (AP paid with movement *and* AP; info levels; respec ±rank per stat, modal).
 - **Hardy** passive (Alabaster borrows): multiply con HP-scaling by rank via the formula.
 
-**Seam 4 + 3 — context tags + Affinity:** the Berserker. ✅ built (Affinity curves re-ranking live; posture tags; Reckless Abandon). Per-posture ranks deferred.
+**Seam 4 + 3 — context tags + Affinity:** the Berserker. ✅ built (Affinity curves re-ranking live; posture tags; Reckless Abandon). Per-posture ranks deferred. Any mitigation or damage-reduction skill is tagged `defensive` (2026-11-07); since a posture tag decides outright, a dual one lists every posture it serves (Hydera, Terestera: offensive, supportive, defensive).
 - 3 martial-prowess tabs + a Berserker class tab.
 - **Reckless Abandon** trait: skip defensive/support skills; **Offender** (+1 offensive
   Affinity), **Unsupportive** (−1 supportive), **Indefensible** (−1 defensive).

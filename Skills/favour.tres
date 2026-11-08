@@ -17,5 +17,6 @@ tags = Array[StringName]([&"physical", &"dark"])
 [resource]
 script = ExtResource("1_skill")
 name = "Favour"
+tags = Array[StringName]([&"defensive"])
 passive = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_luck"), SubResource("Effect_mitigate")])

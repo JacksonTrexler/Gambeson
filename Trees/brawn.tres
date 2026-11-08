@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/bulwark.tres" id="s_bulwark"]
+[ext_resource type="Resource" path="res://Skills/crushing_blow.tres" id="s_crushing_blow"]
+
+[sub_resource type="Resource" id="Branch_bulwark"]
+script = ExtResource("branch")
+skill = ExtResource("s_bulwark")
+
+[sub_resource type="Resource" id="Branch_crushing_blow"]
+script = ExtResource("branch")
+skill = ExtResource("s_crushing_blow")
+after = Array[ExtResource("skill")]([ExtResource("s_bulwark")])
+
+[resource]
+script = ExtResource("root")
+name = "Brawn"
+tag = &"martial"
+branches = Array[ExtResource("branch")]([SubResource("Branch_bulwark"), SubResource("Branch_crushing_blow")])
+gods = Array[StringName]([&"ramut", &"vetruvis"])

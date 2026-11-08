@@ -21,7 +21,7 @@ stat = &"intelligence"
 [resource]
 script = ExtResource("1_skill")
 name = "Terestera"
-tags = Array[StringName]([&"earth", &"magical", &"int"])
+tags = Array[StringName]([&"earth", &"magical", &"int", &"offensive", &"supportive", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_ally")])
 ap = 3.0
 cost = 2
