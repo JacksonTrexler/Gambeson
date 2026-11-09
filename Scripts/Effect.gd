@@ -118,7 +118,7 @@ extends Resource
 		"defense", "slots", "meander", "evaluates", "insight", "embellish", "brood", "conspire", "ally_mitigate", "ire",
 		"bleed", "grappled", "eyes_forward", "keen_eyes", "scrambled", "damage", "unmask_gain", "uncover_gain", "coordinate", "max_hp", "powered", "pulse",
 		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
-		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp",
+		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
@@ -154,7 +154,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
 		"sickness": "Resurrection Sickness", "hardy": "Hardy", "shackled": "Shackled", "affinity": "Affinity", "abandon": "Reckless", "self_known": "Self-knowledge",
 		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
-		"impassioned": "Impassioned", "regen_hp": "Heal"}
+		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -254,6 +254,8 @@ func value(rank := 1) -> String:
 		return "+%s to a skill's primary mod used on an adjacent unit" % Skill.num(x)
 	elif stat == "regen_hp":
 		text = "%s HP each turn" % Skill.num(x)
+	elif stat == "mist":
+		return "a mist: it can't attack, only Coalesce into another unit's tile"
 	elif stat in ["unmask_gain", "uncover_gain"]:
 		return "%s Sweet Nothing%s for %s" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s",
 				"unmasking a foe it took for friendly or neutral" if stat == "unmask_gain" else "each level of concealment it takes off a hiding foe"]

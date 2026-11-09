@@ -12,6 +12,7 @@ const KINDS := {
 	&"dark": {sense = &"sight", hints = ["a shape in the dark?", "a chill in the shadows"]},
 	&"light": {sense = &"sight", hints = ["optical disturbance?", "a glare that hurts to look at"]},
 	&"sound": {sense = &"hearing", hints = ["muffled steps?", "a silence that feels deliberate"]},
+	&"fog": {sense = &"sight", hints = ["a shape in the mist?", "damp, cloying air"]},
 }
 const BENEVOLENT := "Serene, warm"
 const TRAPS_SET := "traps were set here"

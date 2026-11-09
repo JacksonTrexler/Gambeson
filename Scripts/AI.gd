@@ -73,6 +73,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			for o in b.units.values():
 				if o != u:
 					reads[o] = b.read(u, o)
+		if u.behaviour == &"undine" and _undine(b, u, reads, log, rooted):
+			return log
 		if _luring(b, u, reads):
 			if not _ambush(b, u, reads, log):
 				if not rooted and _out_of_song(b, u, reads):  # too far away to lure anyone: it closes in
@@ -257,6 +259,41 @@ static func _luring(b: Battle, u: Unit, reads: Dictionary) -> bool:
 		if not r.deceived and r.net >= 0:
 			return false
 	return true
+
+
+# An Undine's turn: its fog kept up as the turn opens (Waltz of Vapors); inside a foe's tile, it holds
+# on; bloodied, it turns to mist (Vaporize); a mist closes in on its best target and Coalesces into it;
+# otherwise it floods the tile of a foe in reach that isn't under water yet (Well Up), and strikes and
+# closes in as any unit would (false: the usual turn goes on).
+static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], rooted: bool) -> bool:
+	for s in u.actives.filter(func(x: Skill): return x.fog and u.can_afford(x)):
+		if b.cast(u, s, u):
+			log.append("%s waltzes in a fog" % u.name)
+	if b.inside.has(u):
+		return true  # holding on inside its prey
+	var vapor: Slot = null
+	for x in u.slots:
+		if x.skill.toggle and x.skill.effects.any(func(e: Effect): return e.stat == "mist"):
+			vapor = x
+	if vapor and not vapor.on and u.hp * 2 < u.max_hp:
+		u.toggle(vapor.skill)
+		log.append("%s vaporizes" % u.name)
+	if u.stat(&"mist") > 0.0:
+		var target := _best_target(u, reads)
+		for s in u.actives.filter(func(x: Skill): return x.mist_only and x.engulfs):
+			if target and not b.in_reach(u, s, target) and not rooted:
+				log.append("%s drifts %s" % [u.name, b.travel(u, _approach(b, u, target, reads))])
+			if target and b.in_reach(u, s, target) and u.can_afford(s) and b.cast(u, s, target):
+				log.append("%s coalesces into %s" % [u.name, target.name])
+		return true
+	for s in u.actives.filter(func(x: Skill): return x.wells and u.can_afford(x)):
+		for t: Unit in reads:
+			var r: Read = reads[t]
+			if t.is_alive() and _foe(u, r) and not b.submerged(t) and Vector2(u.cell).distance_to(Vector2(r.cell)) <= b.area_reach(u, s) + 0.0001 \
+					and b.cast_at(u, s, r.cell):
+				log.append("%s wells up under %s" % [u.name, t.name])
+				break
+	return false
 
 
 # No foe within reach of any song it could lure with (Sing: Skill.auto, pulling): a Siren too far away

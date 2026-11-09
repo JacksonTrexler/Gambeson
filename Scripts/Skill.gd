@@ -42,6 +42,10 @@ extends Resource
 @export var decays := 0.0  # its effects' strength falls this share a tile past the first between caster and target, set as they're put on; none paid wholly with mana (Rejuvinate: 0.05)
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
+@export var engulfs := false  # used on a foe: a contest in its stat; won, the caster moves into the foe's tile, sharing it (Coalescing; Battle.engulf())
+@export var mist_only := false  # only while its caster is a mist (Vaporize), and the only kind of skill a mist can use (Coalescing)
+@export var wells := false  # aimed at a tile: floods it rank deep, the tiles beside it a rank less, for rank of its side's turns (Well Up; Battle.flood())
+@export var fog := false  # lays fog around its caster, radius rank + the better of its dex and cha mods, concealing at its rank (Waltz of Vapors)
 @export var grapples := false  # its effects hold the foe (grappled) until it breaks free by moving away (Drown; Battle._break_free())
 @export var drowns := Vector2i.ZERO  # each turn the foe it holds ends submerged (Battle.submerged()), these dice + the caster's mod in its stat (Drown: 1d12)
 @export var grip := Vector2i.ZERO  # its effects hold the foe (grappled) until it breaks free by moving away: each turn it ends held, these dice + the caster's mod in its stat (Drown: 1d12; Battle._break_free(), Battle._grip())
@@ -170,7 +174,7 @@ func foundation() -> bool:
 
 # Aimed at a tile rather than a unit: area skills and trap skills.
 func on_tile() -> bool:
-	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0 or guards
+	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0 or guards or wells
 
 
 # Whether it can serve a posture when a unit reaches for its default move (HUD default orders, and the
@@ -539,6 +543,8 @@ func markup(rank := 1, with_spec := true) -> String:
 		if drags_to:
 			lines.append("%s (%s vs %s) in place of an attack, -1 a tile it must drag the foe%s. Won: drags it to the nearest %s the caster could walk to, and both go in"
 					% [Glossary.term(&"contest"), me, Glossary.mod(stat(), true), " (less {r:%d})" % (rank - 1) if rank > 1 else "", drags_to])
+		if engulfs:
+			lines.append("%s (%s vs %s) in place of an attack. Won: moves into its tile, sharing it" % [Glossary.term(&"contest"), me, Glossary.mod(stat(), true)])
 		if holds():
 			lines.append("%s it: moving away first takes 1 + %s tiles of movement and a %s" % [Glossary.term(&"held", "Holds"), me, Glossary.term(&"contest", "contest")])
 		if grip != Vector2i.ZERO:
@@ -572,6 +578,12 @@ func markup(rank := 1, with_spec := true) -> String:
 		lines.append("Only one %s can be learned" % ("Strike upgrade" if exclusive == &"strike_form" else String(exclusive)))
 	if renames:
 		lines.append("Strike becomes %s" % renames)
+	if mist_only:
+		lines.append("Only as a mist (Vaporize)")
+	if wells:
+		lines.append("Floods the tile {r:%d} deep and the tiles beside it {r:%d}, for {t:%d turns}" % [rank, maxi(rank - 1, 0), rank])
+	if fog:
+		lines.append("Fog around the caster, radius {r:%d} + the better of its dex and cha mods, concealing at {r:%d}. Kept up only by using it again as each of its turns opens" % [rank, rank])
 	if studies:
 		lines.append("Dabblings: pick up to {r:%d} of the %s on your tree" % [rank, studies])
 	if opens:

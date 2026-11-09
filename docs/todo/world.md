@@ -37,11 +37,20 @@
 
 ### Undine
 
-- [ ] **Undine**: an elemental, here a demon variant. Meadows Undines' natures are Malevolent and Abyssal. Their appearance is Murky instead of Clear; all Undines are Aquatic.
+- [x] **Undine**: an elemental, here a demon variant. Built (`Scenes/undine.tscn`, `docs/done/world.md`). (?73) Meadows Undines' natures are Malevolent and Abyssal. Their appearance is Murky instead of Clear; all Undines are Aquatic.
   - **Waterstrike**.
   - **Waltz of Vapors**: a circle of fog within rank + dex or cha total. Channeled: it must be used every turn to keep it up, and only at the start of a turn.
   - **Vaporize**: the Undine turns into a mist cloud: major physical resistance, respectable magic resistance, weak to wind. It can share tiles with other units and can't attack, but by **Coalescing** (its only active) on an occupied tile it can try to grapple and drown a unit there as a Siren can, until it's physically moved off the shared tile or the unit moves off.
   - **Well Up**: floods a tile within rank range with rank Flood; adjacent tiles flood at rank - range.
+
+73. **The Undine - built on judgement, open for review (2026-11-08).**
+    - Natures and appearance have no system of their own, so they're tags and words: tags monster, elemental, demon, undine, aquatic, malevolent, abyssal; its vibe "Murky"; an ominous aura. It borrows the Siren's sprite, tinted blue.
+    - Numbers: 18 HP, dex and cha 14. Waterstrike 1d6 + dex mod at range 1 (rank II). Waltz of Vapors I, Well Up III, Coalescing I.
+    - Waltz of Vapors: fog conceals (a new concealment kind) at its rank, out to rank + the better of its dex and cha mods. It lasts through its next turn, so using it as each turn opens keeps it up. That's how "channeled, must be used every turn" reads here; the game's Channel (Metea) means something else.
+    - Vaporize is switched on and off like Mage Armor, at no cost: 75% off physical damage, 50% off magical, wind 50% harder (+100% against wind, so magical wind nets +50%). As a mist it can use Coalescing and nothing else.
+    - Coalescing: a str contest, as Drown's. Won, it moves into the foe's tile and shares it (the tile stays the foe's; the Undine still takes its turns but can't be picked out while inside), grappling it; the foe drowns there each turn (1d12 + str), engulfed. It ends when the foe breaks free and moves off, or either is moved; the Undine then has the tile.
+    - Well Up floods the tile rank deep and the 8 tiles around it rank - 1, for rank of its side's turns.
+    - Its AI keeps the fog up, turns to mist under half HP, Coalesces into its best target as a mist, and otherwise floods the tile of a foe not yet under, then strikes.
 
 ### Astral Princess
 

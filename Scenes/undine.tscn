@@ -1,0 +1,52 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/Elmit.png" id="2_look"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+[ext_resource type="Resource" path="res://Skills/waterstrike.tres" id="s_waterstrike"]
+[ext_resource type="Resource" path="res://Skills/waltz_of_vapors.tres" id="s_waltz_of_vapors"]
+[ext_resource type="Resource" path="res://Skills/vaporize.tres" id="s_vaporize"]
+[ext_resource type="Resource" path="res://Skills/coalescing.tres" id="s_coalescing"]
+[ext_resource type="Resource" path="res://Skills/well_up.tres" id="s_well_up"]
+
+[sub_resource type="Resource" id="Slot_waterstrike"]
+script = ExtResource("9_slot")
+skill = ExtResource("s_waterstrike")
+rank = 2
+
+[sub_resource type="Resource" id="Slot_waltz_of_vapors"]
+script = ExtResource("9_slot")
+skill = ExtResource("s_waltz_of_vapors")
+rank = 1
+
+[sub_resource type="Resource" id="Slot_vaporize"]
+script = ExtResource("9_slot")
+skill = ExtResource("s_vaporize")
+rank = 1
+on = false
+
+[sub_resource type="Resource" id="Slot_coalescing"]
+script = ExtResource("9_slot")
+skill = ExtResource("s_coalescing")
+rank = 1
+
+[sub_resource type="Resource" id="Slot_well_up"]
+script = ExtResource("9_slot")
+skill = ExtResource("s_well_up")
+rank = 3
+
+[node name="Undine" instance=ExtResource("1_unit")]
+modulate = Color(0.55, 0.75, 0.95, 1)
+look = ExtResource("2_look")
+tags = Array[StringName]([&"monster", &"elemental", &"demon", &"undine", &"aquatic", &"malevolent", &"abyssal"])
+vibe = "Murky"
+aura = -2
+behaviour = &"undine"
+learned = Array[ExtResource("9_slot")]([SubResource("Slot_waterstrike"), SubResource("Slot_waltz_of_vapors"), SubResource("Slot_vaporize"), SubResource("Slot_coalescing"), SubResource("Slot_well_up")])
+max_hp = 18
+strength = 12
+dexterity = 14
+constitution = 12
+intelligence = 10
+wisdom = 12
+charisma = 14

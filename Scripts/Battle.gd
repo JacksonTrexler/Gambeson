@@ -117,6 +117,7 @@ var unit_rolls: Dictionary[Unit, int] = {}  # the same d20s, by who rolled them
 
 # Which unit stands on which cell. TileSet custom data is per tile type, so it can't hold this.
 var units: Dictionary[Vector2i, Unit] = {}
+var inside: Dictionary[Unit, Unit] = {}  # a mist sharing another unit's tile -> that unit (Coalescing: engulf()); units[] keeps the other
 
 var rng := RandomNumberGenerator.new()
 var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
@@ -279,8 +280,11 @@ func move(u: Unit, c: Vector2i) -> bool:
 	var other := unit_at(c)
 	if other and other != u:
 		return false
-	if unit_at(u.cell) == u:
+	if inside.has(u):
+		inside.erase(u)  # out of the tile it shared
+	elif unit_at(u.cell) == u:
 		units.erase(u.cell)
+		_vacated(u.cell)
 	u.cell = c
 	units[c] = u
 	u.position = map.map_to_local(c)
@@ -446,7 +450,7 @@ func members(side) -> Array[Unit]:
 	if side is Unit:
 		pool = [side]
 	elif side is Faction:
-		pool = units.values().filter(func(u): return u.faction == side)
+		pool = (units.values() + inside.keys()).filter(func(u): return u.faction == side)
 	elif side is Array:
 		pool = side
 	var out: Array[Unit] = []
@@ -516,6 +520,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return false
 	if skill.opening and caster.activity() != &"rest":
 		return false  # only as its turn opens (Flamedance)
+	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
+		return false  # a mist only Coalesces (Vaporize)
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill):
 		return false
@@ -524,8 +530,10 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		caster.chant_up = false  # a primed Chant goes into this one
 	_burn(caster, skill)
 	var before := target.hp
-	if skill.aura or skill.retrieves or skill.humbles or (skill.boost_pool and not foe) or not skill.elements.is_empty():
-		if not skill.elements.is_empty():
+	if skill.aura or skill.retrieves or skill.humbles or skill.fog or (skill.boost_pool and not foe) or not skill.elements.is_empty():
+		if skill.fog:
+			waltz(caster, skill)
+		elif not skill.elements.is_empty():
 			imbue(caster, skill, r)
 		elif skill.aura:
 			_aura(caster, skill, r)
@@ -556,6 +564,15 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			used.emit(caster, skill, target, 0)
 			return true
 		drag(caster, target, spot, skill.drags_to)
+	if foe and skill.engulfs:
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + zeal),
+				Check.side(target.check_mod(skill.stat(), &"defensive", skill.tags)).cut(executed(target, skill, r)))
+		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
+		if not vs.won:
+			_expose(caster)
+			used.emit(caster, skill, target, 0)
+			return true
+		engulf(caster, target)
 	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(r))) if foe and skill.disables else ([] as Array[Array])
 	if foe and skill.save:
 		var fogged: int = fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
@@ -1285,6 +1302,8 @@ func _expose(u: Unit) -> void:
 func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	if not _acting(caster) or skill not in caster.actives or not skill.on_tile() or not on_map(c):
 		return false
+	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
+		return false  # a mist only Coalesces (Vaporize)
 	if skill.channel and caster.channel and caster.channel.skill == skill:
 		return _detonate(caster, skill, c)
 	if Vector2(caster.cell).distance_to(Vector2(c)) > area_reach(caster, skill) + 0.0001:
@@ -1308,6 +1327,8 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		observe(caster, c, caster.rank(skill))
 	elif skill.guards:
 		_guard(caster, skill, c)
+	elif skill.wells:
+		well_up(caster, skill, c)
 	elif skill.lays:
 		lay(caster, skill, c)
 	else:
@@ -2444,6 +2465,52 @@ func _grip(u: Unit) -> void:
 		doubt(u, by)
 
 
+# A unit left c (moved, fell): a mist that shared the tile has it to itself now.
+func _vacated(c: Vector2i) -> void:
+	for m: Unit in inside.keys():
+		if m.cell == c and not unit_at(c):
+			inside.erase(m)
+			units[c] = m
+			return
+
+
+# Mist u (Coalescing) moves into t's tile and shares it: inside it, units[] still t's. It leaves when
+# it moves or is moved, and has the tile once t is gone from it.
+func engulf(u: Unit, t: Unit) -> void:
+	if inside.has(u):
+		inside.erase(u)
+	elif unit_at(u.cell) == u:
+		units.erase(u.cell)
+		_vacated(u.cell)
+	u.cell = t.cell
+	u.position = map.map_to_local(t.cell)
+	inside[u] = t
+
+
+# Well Up at c: floods c rank deep and the tiles beside it a rank less, for rank of its side's turns.
+func well_up(u: Unit, s: Skill, c: Vector2i) -> void:
+	var r := u.rank(s)
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			var at := c + Vector2i(dx, dy)
+			flood(at, r if at == c else r - 1, r, u)
+
+
+# Waltz of Vapors: fog around u, radius rank + the better of its dex and cha mods, concealing at its
+# rank; it lasts through its next turn, so it's kept up by using it again as each turn opens.
+func waltz(u: Unit, s: Skill) -> void:
+	var r := u.rank(s)
+	var reach := r + maxi(u.mod(&"dexterity", s.tags), u.mod(&"charisma", s.tags))
+	var levels: Dictionary[Vector2i, int] = {}
+	for x in range(u.cell.x - reach, u.cell.x + reach + 1):
+		for y in range(u.cell.y - reach, u.cell.y + reach + 1):
+			var at := Vector2i(x, y)
+			if on_map(at) and Vector2(at).distance_to(Vector2(u.cell)) <= reach + 0.0001:
+				levels[at] = r
+	zones = zones.filter(func(z: Zone): return not (z.kind == &"fog" and z.faction == u.faction and z.levels.has(u.cell)))  # the last waltz lifts
+	zones.append(Zone.new(&"fog", levels, 2, u.faction))
+
+
 # Whether `by` can still hold u: beside it, or engulfing it on its own tile (a mist Undine).
 func _within_grip(by: Unit, u: Unit) -> bool:
 	return by.cell == u.cell or next_to(by.cell, u.cell)
@@ -3287,7 +3354,11 @@ func _synergize(o: Unit) -> void:
 
 
 func _on_died(u: Unit) -> void:
-	units.erase(u.cell)
+	if inside.has(u):
+		inside.erase(u)
+	elif unit_at(u.cell) == u:
+		units.erase(u.cell)
+		_vacated(u.cell)
 	u.timed.clear()  # nothing ticks for the dead
 	u.channel = null
 	var it := u.loot.roll(rng) if u.loot else null

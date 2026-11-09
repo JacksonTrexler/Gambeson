@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_mist"]
+script = ExtResource("2_effect")
+stat = "mist"
+amount = 1.0
+
+[sub_resource type="Resource" id="Effect_physical"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.75
+tags = Array[StringName]([&"physical"])
+
+[sub_resource type="Resource" id="Effect_magical"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.5
+tags = Array[StringName]([&"magical"])
+
+[sub_resource type="Resource" id="Effect_wind"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = -1.0
+tags = Array[StringName]([&"wind"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Vaporize"
+passive = true
+toggle = true
+tags = Array[StringName]([&"water", &"defensive"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_mist"), SubResource("Effect_physical"), SubResource("Effect_magical"), SubResource("Effect_wind")])
