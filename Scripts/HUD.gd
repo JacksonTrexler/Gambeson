@@ -170,6 +170,10 @@ func _ready() -> void:
 		_mark())
 	battle.leveled.connect(func(caster: Unit, t: Unit, n: int):
 		_log("%s Level Down %s %s%s" % [_tag(caster), "-->" if n else "-x>", _tag(t), " (-%d level%s)" % [n, "" if n == 1 else "s"] if n else ""]))
+	battle.gained_xp.connect(func(u: Unit, n: int, levels: int, _from: Unit):
+		if known(u):  # its own side's progress only
+			_log("%s +%d XP%s" % [_tag(u), n, " --> level %d" % u.level if levels else ""])
+			_mark())
 	for u: Unit in battle.get_node("Units").get_children():
 		_watch_unit(u)
 	book_button.pressed.connect(toggle_spellbook)

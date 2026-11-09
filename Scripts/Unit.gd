@@ -85,6 +85,7 @@ class Applied:
 @export var nick := ""  # the name the player gave it (node names get sanitised)
 @export var title := ""  # "of Red"
 @export var level := 1
+@export var xp := 0  # experience toward its next level (gain_xp(): xp_to_next())
 @export var look: Texture2D  # sprite; falls back to the role's, then the scene's
 @export var tags: Array[StringName] = []  # what it is, beyond race and role (monster, undead...)
 @export var vibe := ""  # the impression it gives off ("Smouldering", "Reeking")
@@ -126,6 +127,7 @@ class Applied:
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
+var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets its XP (Battle._award())
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
 var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
@@ -415,8 +417,14 @@ static func worth(n: int, a: int) -> int:
 	if a >= 2:
 		return n
 	if a == 1:
-		return maxi(n, ceili(n * log(n) / log(2.0)))
+		return nlogn(n)
 	return roundi(pow(n, 2 - a))
+
+
+# n log2 n, rounded up, no less than n (1, 2, 5, 8, 12): the +1 Affinity curve, and the XP each level
+# takes (xp_to_next()).
+static func nlogn(n: int) -> int:
+	return maxi(n, ceili(n * log(n) / log(2.0))) if n > 0 else 0
 
 
 # The rank `points` buy on an Affinity's curve, up to `cap` (0: no cap).
@@ -578,7 +586,50 @@ func bar_clear(i: int) -> void:
 func level_up() -> void:
 	level += 1
 	skill_points += 1
+	var was := max_hp
+	refit()
+	if is_alive():
+		hp += maxi(max_hp - was, 0)  # what the level brings, it gets at once
 	_arrange()
+
+
+# --- Experience
+# Levels are bought with XP, each one's cost growing n log n: from level n to the next takes
+# XP_PER_LEVEL x n log2 n (at least x n: 20, 40, 100, 160, 240... ). A unit is worth XP by its base
+# stat total and its level (xp_worth()), paid to whoever's blow fells it (Battle._award()).
+
+const XP_PER_LEVEL := 20
+const XP_DIVISOR := 10.0  # a fallen unit's worth: its BST x its level / this
+
+
+# XP it takes to go from level n to the next.
+static func xp_to_next(n: int) -> int:
+	return XP_PER_LEVEL * nlogn(maxi(n, 1))
+
+
+# Its base stat total: its six core stats as they stand without effects (what Meditate shifts counts).
+func bst() -> int:
+	var t := 0
+	for s in CORE.slice(0, 6):
+		t += roundi(get(s))
+	return t
+
+
+# What felling it is worth: its BST x its level / XP_DIVISOR, rounded (a level 1 villager 6; a level 4
+# Siren 31), at least 1.
+func xp_worth() -> int:
+	return maxi(roundi(bst() * maxi(level, 1) / XP_DIVISOR), 1)
+
+
+# Takes n XP, levelling up as often as it covers the next level's cost. The levels gained.
+func gain_xp(n: int) -> int:
+	xp += maxi(n, 0)
+	var gained := 0
+	while xp >= xp_to_next(level):
+		xp -= xp_to_next(level)
+		level_up()
+		gained += 1
+	return gained
 
 
 # The first empty hotbar slot that works (and that s fits, given one), or -1.
@@ -1013,6 +1064,8 @@ func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 	if by and by.faction == faction:
 		cut = minf(cut + stat(&"ally_mitigate"), 1.0)  # friendly fire (Conspire)
 	var taken := Luck.settle(raw * (1.0 - cut), net, false)
+	if by and by != self:
+		last_hit_by = by
 	damage(taken)
 	return taken
 

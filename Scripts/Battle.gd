@@ -42,6 +42,7 @@ signal burned(u: Unit, hp: int, why: String)  # u took fire from a flame, a burn
 signal perfect(u: Unit)  # 36 Strike hits in a row: u healed PERFECT_HEAL
 signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
+signal gained_xp(u: Unit, n: int, levels: int, from: Unit)  # u felled `from`, earning n XP (and levels: Unit.gain_xp())
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
@@ -327,6 +328,9 @@ func move(u: Unit, c: Vector2i) -> bool:
 # (Game.outfit), with the hearts it's been given (Game.hearts).
 func starter(s: Dictionary) -> Unit:
 	var u := from_role(s.faction, s.role, s.name)
+	u.level = maxi(Game.level, 1)  # its levels and XP from earlier battles; a point a level gained to learn its skills again
+	u.xp = Game.xp
+	u.skill_points = u.level - 1
 	for slot in Game.outfit:  # what it had on last battle
 		u.set(slot, Game.outfit[slot])
 	refill(u)
@@ -3649,6 +3653,20 @@ func _synergize(o: Unit) -> void:
 					break
 
 
+# u fell: whoever struck it last earns its worth (Unit.xp_worth()), if still standing and not on its
+# side. The player's starter keeps its levels for the next battle (Game.level, Game.xp).
+func _award(u: Unit) -> void:
+	var k := u.last_hit_by
+	if not k or not is_instance_valid(k) or not k.is_alive() or Faction.friends(k.faction, u.faction):
+		return
+	var n := u.xp_worth()
+	var levels := k.gain_xp(n)
+	if k == player:
+		Game.level = k.level
+		Game.xp = k.xp
+	gained_xp.emit(k, n, levels, u)
+
+
 func _on_died(u: Unit) -> void:
 	if inside.has(u):
 		inside.erase(u)
@@ -3657,6 +3675,7 @@ func _on_died(u: Unit) -> void:
 		_vacated(u.cell)
 	u.timed.clear()  # nothing ticks for the dead
 	end_channel(u)
+	_award(u)
 	var it := u.loot.roll(rng) if u.loot else null
 	if it:
 		spoils.append([it, u.faction])

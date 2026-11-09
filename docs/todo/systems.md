@@ -4,6 +4,16 @@
 
 Build roughly in this order; the content below depends on them.
 
+- [x] **Levels** (2026-11-09): a basic level system. XP comes from a unit's BST (base stat total) and the stats behind it, with its level in the reckoning; the XP each level requires scales n log n. Built (`docs/done/systems.md`). (?78)
+
+78. **Levels - built on judgement, open for review (2026-11-09).**
+    - BST: the sum of a unit's six core stats (str, dex, con, int, wis, cha) as they stand without effects; movement, reach and size left out. A villager's is 64, a Siren's 78.
+    - What a fallen unit is worth: its BST x its level / 10, rounded (a level 1 villager 6 XP; a level 4 Siren 31). Level enters linearly.
+    - The requirement: from level n to the next takes 20 x n log2 n XP, at least 20 x n (20, 40, 100, 160, 240, ... 680 at level 10), the same curve as +1 Affinity (`Unit.nlogn()`). With the worth linear in level, a unit needs about 3 equal-level villager kills a level early on and about 10 by level 10.
+    - Who earns it: whoever struck the fallen unit last, if still standing and not on its side; nobody for a death without a blow (poison, a fall). Not shared across the party. Hearts that save a unit from death pay nothing.
+    - A level brings a skill point and its added max HP at once (healed by the gain). Enemies and allies level too, mid-battle.
+    - The player's starter keeps its level and XP between battles (`Game.level`, `Game.xp`); since skills aren't kept, it starts each battle with a point for every level gained, to learn them again. A new starter on the entry screen starts over. The debug level-up on the skills screen still works.
+
 - [ ] **Checks and contests.** Skill-defined checks with `offensive` / `defensive` tags, advantage/disadvantage, per-skill range penalties. Needed by Interject, Gallantry, Snapping Turtle, the Siren's Charm. *Now:* the Check resolver carries advantage and disadvantage, offensive and defensive kinds (`Unit.check_mod()`, the `check` effect) and executes (`Check.cut()`); Jugular, Interdict and Turtle Tactics are built on it. Still separate fields: Drown's `drags_to`, Sing's `resisted`, Haluca's and Brainfog's `save`. Per-skill range penalties are still to do.
 - [ ] **Equipping skills.** Learned vs equipped; slots shared by actives and passives, passives filling from the bottom of the hotbar; auto-equip (on by default); losing slots. *Now:* the hotbar has 4 + level / 4 slots (+ `extra_slots`), then slots skills grant, then the clover slot (filled on its unit's turn; hidden while it's unlucky, remembering its skill). Only actives and switched passives go on it, and every learned passive works. Disabling (Brainfog) treats always-on passives as filling the bar from the bottom. Unequipping a slot-granting skill should make its slots disappear.
 - [x] **Real trees for Fighter and Paladin** (`docs/done/classes.md`). (?67)

@@ -68,6 +68,8 @@ func _play() -> void:
 	Game.starter = {faction = side.value, role = role.value, name = chosen_name()}
 	Game.outfit = role.value.outfit()  # a new starter, in its class's starting items
 	Game.hearts = 0
+	Game.level = 1  # a new starter starts over
+	Game.xp = 0
 	if not Game.stash.any(func(it: Item): return it == RING):
 		Game.stash.append(RING)  # the player's own trinket: a life once a battle
 	if next_scene:  # empty: stay (tests)
