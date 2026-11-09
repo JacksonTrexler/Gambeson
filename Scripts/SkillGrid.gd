@@ -21,6 +21,7 @@ const GAP := Vector2(5.0, 8.0)  # between boxes, across and up
 const LEFT := 16.0  # the tier labels' gutter
 const BASE := 12.0  # the root names under the bottom row
 const PAD := 4.0
+const HEAD := 10.0  # a choice's box reaches this far above its row, for its heading
 const CORE := SkillWheel.CORE
 const GOLD := SkillWheel.GOLD
 const STUB := SkillWheel.STUB
@@ -36,6 +37,7 @@ var _tones: Dictionary = {}  # Skill -> Color
 var _lines: Array = []  # [from Skill, to Skill, Color]
 var _labels: Array = []  # [at: Vector2, text, Color]: root names along the bottom
 var _top := 0  # the highest tier shown
+var _head := 0.0  # room above the top row for a choice's heading, when a box sits on it
 var selected_tree: SkillTab  # the tree root picked in a choice's box, if that's what the footer shows
 var _hover_tree: SkillTab
 var _entries: Dictionary = {}  # SkillTab -> [Rect2, its TreeChoice]: trees' roots in the choices' boxes
@@ -81,7 +83,7 @@ func skill_at(p: Vector2) -> Skill:
 
 # Where a tier's row sits: tier 0 at the bottom.
 func row_y(t: int) -> float:
-	return PAD + (_top - t) * (BOX.y + GAP.y)
+	return PAD + _head + (_top - t) * (BOX.y + GAP.y)
 
 
 func _tier(s: Skill) -> int:
@@ -111,6 +113,7 @@ func _layout() -> void:
 			_top = maxi(_top, _tier(s))
 	for c: TreeChoice in choices:
 		_top = maxi(_top, _choice_row(c))
+	_head = HEAD if choices.any(func(c: TreeChoice): return _choice_row(c) == _top) else 0.0
 	var x := LEFT + PAD
 	for g in groups:
 		var rows := {}  # tier -> its skills in this group
@@ -145,7 +148,7 @@ func _layout() -> void:
 		var inner := offered.size() * (BOX.x + GAP.x) - GAP.x
 		var heading_w := get_theme_font(&"font").get_string_size(heading, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
 		var tone: Color = offered[0].tone() if not offered.is_empty() else CORE
-		_choice_boxes.append([Rect2(Vector2(x, row_y(row) - 10.0), Vector2(maxf(inner, heading_w) + 6.0, BOX.y + 13.0)), heading, tone, c.by])
+		_choice_boxes.append([Rect2(Vector2(x, row_y(row) - HEAD), Vector2(maxf(inner, heading_w) + 6.0, BOX.y + 13.0)), heading, tone, c.by])
 		x += maxf(inner, heading_w) + 6.0 + GAP.x * 2.0
 	custom_minimum_size = Vector2(x + PAD, row_y(0) + BOX.y + BASE + PAD)
 
