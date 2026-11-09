@@ -76,8 +76,14 @@ Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** a
   - No Affinity penalty: **Mastery** gains a Mage school.
   - Guest skill trees default to -1 Affinity.
 - [x] **Picking trees**: every class picks its trees on its own (universal) tree by unlocking their tier 0 roots there. A box around the choice says "Pick up to x" (the cap), and darkens the tree's backdrop behind it. Built (`docs/done/classes.md`). (?71)
-- [ ] **Emergency Exit** (high tier): makes the forming escape portal open rank turns early where it's forming; otherwise warps the party to a bland pocket dimension of stone (still in the scenario, reachable only by a two-way portal). The pocket lasts rank rounds, then returns its units in a clump.
-- [ ] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it.
+- [x] **Emergency Exit** (high tier): makes the forming escape portal open rank turns early where it's forming; otherwise warps the party to a bland pocket dimension of stone (still in the scenario, reachable only by a two-way portal). The pocket lasts rank rounds, then returns its units in a clump. Built (`docs/done/classes.md`). (?75)
+- [x] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it. Built (`docs/done/classes.md`). (?75)
+
+75. **Rift and Emergency Exit - built on judgement, open for review (2026-11-08).**
+    - Rift: no longer a stub or an AI design (your design now). It opens on the Transgression root once one skill is learned; range rank tiles, in a clear line (no earthwork or hole between) below rank III, over walls from III.
+    - Its domain: a diamond 9 tiles across (41 tiles: "8x8" read as the diamond's span), far off on the same map, its door at the west tip, the escape portal at the centre. Its demons: the Undine-and-Sirens formation at 0.5 x rank difficulty (I: 2 of them), at the Wizard's level.
+    - "Optionally channeled": it's always channeled for now (shown as infinite), and using it again closes it; there's no choice to cast it unchanneled yet. Once closed, the escape portal counts down 3 x its difficulty turns, then brings the Wizard's side back in a clump beside where the rift was. Anything else in the domain (its demons, foes who followed) goes with it.
+    - Emergency Exit: on the Arcane root once three skills are learned, up to rank III. It hastens a forming escape portal by rank turns; otherwise it warps the Wizard and its allies within rank tiles to a 5x5 pocket of stone for rank turns. Its door goes both ways while it lasts, so foes can follow.
 
 71. **Picking trees and Dabblings - built on judgement, open for review (2026-11-08).**
     - A tree's tier 0 root is the tree itself, not a skill: picking it is free (no skill point), and it opens the tree's tab. The tabs of trees not picked are hidden.

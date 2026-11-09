@@ -52,6 +52,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | 6.24 | Paladin roots: Divinity: Eros (Rejuvinate, Send Off, Lovely Caster, Impassioned Fighter), Idealism, Prowess; Final Act and Gallantry stubbed | `paladin_test.gd` |
 | — | Executes on any contest, bracing on investigations, hiding and last stands | `check_test.gd`, `bracing_test.gd` |
 | — | Wizard and Mage trees laid out, their new skills stubs (?70); the tab row wraps | `casters_test.gd` |
+| — | Skill icon boxes, ?? for AI designs, trees picked on the class tab, Wizard Dabblings (?71) | `casters_test.gd`, `paladin_test.gd`, `hud_test.gd` |
+| 1.3, 2.7 | Water depth, Flood, grappling and drowning apart (?72) | `water_test.gd` |
+| — | The Undine (?73) | `undine_test.gd` |
+| 7.27 | Infernal Meadows: maps generated around the party, spawn formations, sight by wisdom, area difficulty, the battle camera; Gamut's Tower (?74) | `meadows_test.gd` |
+| — | Key rebinds; Rift's domains and Emergency Exit's pockets (?75) | `keybinds_test.gd`, `pockets_test.gd` |
 
 ## Questions to answer first
 

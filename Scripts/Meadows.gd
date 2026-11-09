@@ -232,6 +232,16 @@ func form_portal(c: Vector2i) -> void:
 	portal_formed.emit(c, portal_turns)
 
 
+# Emergency Exit: the portal forming opens `n` turns sooner.
+func hasten(n: int) -> void:
+	portal_turns -= n
+	if portal_turns <= 0:
+		_open()
+	else:
+		mark.turns = portal_turns
+	_show_tally()
+
+
 func _open() -> void:
 	opened = true
 	mark.turns = 0

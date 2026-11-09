@@ -5,8 +5,12 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Rift"
-ai = true
-passive = false
-tags = Array[StringName]([&"magical"])
-stub = "Spawning mid-battle (docs/todo/systems.md)"
-plan = "Tears a rift on a tile for rank turns: any unit can step in and out of another rift. Each turn it stays open, there's a rank x 10% chance a demon comes through (a Siren), hostile to everyone."
+tags = Array[StringName]([&"magical", &"int"])
+ap = 4.0
+cost = 3
+radius_per_rank = 1.0
+rolls = false
+hostile = false
+min_tier = 2
+max_rank = 5
+rifts = true

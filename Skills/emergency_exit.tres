@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Emergency Exit"
+glyph = "EE"
+tags = Array[StringName]([&"magical", &"int", &"defensive"])
+ap = 6.0
+cost = 5
+self_only = true
+hostile = false
+rolls = false
+min_tier = 4
+max_rank = 3
+exits = true

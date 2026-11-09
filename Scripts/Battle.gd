@@ -63,6 +63,11 @@ const STAR_CAPACITY := 20  # Power a starpower source holds full
 static var STARPANE: Terrain = load("res://Terrain/starpane.tres")
 static var STARTILE: Terrain = load("res://Terrain/startile.tres")
 static var FLOOD: Terrain = load("res://Terrain/flood.tres")  # laid by Battle.flood(), a copy per depth
+static var STONE: Terrain = load("res://Terrain/stone.tres")  # an Emergency Exit's pocket
+const POCKETS := Vector2i(1000, 0)  # where pockets lie: on the map, out of reach but through their doors
+const RIFT_FORMATION := "res://Formations/undine_and_sirens.tres"  # what comes out of a Rift's domain
+var pockets: Array[Pocket] = []
+var demons: Faction = load("res://Factions/demons.tres")
 const REPAIR_COST := 0.05  # of a source's capacity, drawn to begin mending a cracked startile
 const REPAIR_SPAN := 20.0  # a source reaches (how full it is, in %) / this tiles to mend from: 5 when full
 const SICKNESS: Effect = preload("res://Effects/resurrection_sickness.tres")
@@ -232,6 +237,19 @@ class Zone:
 
 # A layer laid over a tile's ground (tile stacks): what it is, whether the ground beneath acts too, and
 # how far a repair has come (a cracked startile).
+class Pocket:
+	var kind: StringName  # &"domain" (a Rift's) or &"refuge" (an Emergency Exit's)
+	var by: Unit
+	var skill: Skill
+	var origin: Vector2i  # its door on the field
+	var door: Vector2i  # its door inside
+	var centre: Vector2i
+	var cells: Array[Vector2i] = []
+	var turns := -1  # its maker's side's turns left before it ends; -1: while its Rift is channeled
+	var open := true  # the field door stands open
+	var marks: Array = []  # PortalMarks: [the field door's, the escape portal's]
+
+
 class Layer:
 	var terrain: Terrain
 	var passes: bool
@@ -538,8 +556,10 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		caster.chant_up = false  # a primed Chant goes into this one
 	_burn(caster, skill)
 	var before := target.hp
-	if skill.aura or skill.retrieves or skill.humbles or skill.fog or (skill.boost_pool and not foe) or not skill.elements.is_empty():
-		if skill.fog:
+	if skill.aura or skill.retrieves or skill.humbles or skill.fog or skill.exits or (skill.boost_pool and not foe) or not skill.elements.is_empty():
+		if skill.exits:
+			emergency_exit(caster, skill)
+		elif skill.fog:
 			waltz(caster, skill)
 		elif not skill.elements.is_empty():
 			imbue(caster, skill, r)
@@ -1314,9 +1334,13 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		return false  # a mist only Coalesces (Vaporize)
 	if skill.channel and caster.channel and caster.channel.skill == skill:
 		return _detonate(caster, skill, c)
+	if skill.rifts and caster.channel and caster.channel.skill == skill:
+		return close_rift(caster)  # used again: it stops channeling, and the rift closes
 	if Vector2(caster.cell).distance_to(Vector2(c)) > area_reach(caster, skill) + 0.0001:
 		return false
 	if skill.lays and (unit_at(c) or terrain(c).is_trap()):
+		return false
+	if skill.rifts and not can_rift(caster, skill, c):
 		return false
 	if not caster.pay_for(skill):
 		return false
@@ -1337,6 +1361,8 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		_guard(caster, skill, c)
 	elif skill.wells:
 		well_up(caster, skill, c)
+	elif skill.rifts:
+		open_rift(caster, skill, c)
 	elif skill.lays:
 		lay(caster, skill, c)
 	else:
@@ -1736,6 +1762,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		_tidy_debris()
 		_contact(u, passed)
 		traveled.emit(u, from, passed)
+		_through(u)
 		if terrain(u.cell).is_trap() and passed.size() - 1 in touched:
 			spring(u.cell, u)
 		if u.is_alive():
@@ -2379,6 +2406,7 @@ func end_turn() -> void:
 			if flames[c].turns <= 0:
 				flames.erase(c)
 	_drain(turn)
+	_tick_pockets(turn)
 	if not order.is_empty() and turn == order[-1]:
 		_repair_tiles()  # a round has passed
 	for c in earthworks.keys():
@@ -2532,6 +2560,188 @@ func perception_range(o: Unit) -> float:
 	if not sight:
 		return -1.0
 	return o.stat(&"wisdom") * (0.5 if &"fog" in conditions else 1.0)
+
+
+# --- Pockets: a Rift's domain, an Emergency Exit's refuge
+# A pocket is part of the map out of reach (POCKETS on), entered and left only by its doors, the field's
+# and its own. It ends when its turns run out: its maker's side come back in a clump beside the field
+# door, and whatever else is in it goes with it.
+
+# Whether nothing stands between a and b: every tile on the straight line between is on the map and
+# holds no earthwork.
+func clear_line(a: Vector2i, b: Vector2i) -> bool:
+	for c in line(a, b, 0):
+		if c != a and c != b and (not on_map(c) or c in earthworks):
+			return false
+	return true
+
+
+# A Rift's domain's difficulty: 0.5 a rank, up to 1.5.
+static func rift_difficulty(rank: int) -> float:
+	return clampf(0.5 * rank, 0.5, 1.5)
+
+
+# Paints terrain t onto c: a tile of the map's tile set that carries it, made at run time if there's none.
+func paint(c: Vector2i, t: Terrain, tint := Color.WHITE) -> void:
+	var src := map.tile_set.get_source(0) as TileSetAtlasSource
+	for i in src.get_tiles_count():
+		var at := src.get_tile_id(i)
+		for k in src.get_alternative_tiles_count(at):
+			var alt := src.get_alternative_tile_id(at, k)
+			if src.get_tile_data(at, alt).get_custom_data("terrain") == t:
+				map.set_cell(c, 0, at, alt)
+				return
+	var alt := src.create_alternative_tile(Vector2i.ZERO)
+	src.get_tile_data(Vector2i.ZERO, alt).set_custom_data("terrain", t)
+	src.get_tile_data(Vector2i.ZERO, alt).modulate = tint
+	map.set_cell(c, 0, Vector2i.ZERO, alt)
+
+
+func _new_pocket(kind: StringName, by: Unit, skill: Skill, origin: Vector2i) -> Pocket:
+	var p := Pocket.new()
+	p.kind = kind
+	p.by = by
+	p.skill = skill
+	p.origin = origin
+	p.centre = POCKETS + Vector2i(0, 40 * pockets.size())
+	var r := 4 if kind == &"domain" else 2
+	for x in range(-r, r + 1):
+		for y in range(-r, r + 1):
+			var off := Vector2i(x, y)
+			if kind == &"refuge" or absi(x) + absi(y) <= r:  # a domain: a diamond; a refuge: a square
+				p.cells.append(p.centre + off)
+				paint(p.centre + off, PLAIN if kind == &"domain" else STONE, Color(0.85, 1.15, 0.8) if kind == &"domain" else Color(0.6, 0.6, 0.65))
+	p.door = p.centre + Vector2i(-r, 0)
+	pockets.append(p)
+	for c in [origin, p.centre]:
+		var m := PortalMark.new()
+		m.turns = p.turns
+		add_child(m)
+		move_child(m, map.get_index() + 1)
+		m.position = map.map_to_local(c)
+		p.marks.append(m)
+	return p
+
+
+# Rift at c: a door to a domain, open while the caster channels it (its turns infinite). Demons wait
+# there - a formation at the rift's difficulty, at the caster's level.
+func open_rift(by: Unit, skill: Skill, c: Vector2i) -> bool:
+	var r := by.rank(skill)
+	if not can_rift(by, skill, c):
+		return false
+	var p := _new_pocket(&"domain", by, skill, c)
+	by.channel = Unit.Channel.new(skill, c)
+	if demons not in order:
+		order.append(demons)  # their turns come too
+	var f: Formation = load(RIFT_FORMATION)
+	var roster := f.roster(rift_difficulty(r))
+	for i in roster.size():
+		var u := summon(roster[i], demons, p.centre + Vector2i(2, 0) + (f.offsets[i] if i < f.offsets.size() else Vector2i(0, i)))
+		if u:
+			u.level = by.level
+			u.refresh()
+	channeled.emit(by, skill, c)
+	return true
+
+
+# Whether a Rift can open at c: free dry ground, in a clear line from its caster below rank III.
+func can_rift(by: Unit, skill: Skill, c: Vector2i) -> bool:
+	return not unit_at(c) and depth(c) == 0 and (by.rank(skill) >= 3 or clear_line(by.cell, c))
+
+
+# Its maker stops channeling its Rift: the field door closes, and the domain's escape portal counts
+# down 3 x its difficulty turns before everyone in it comes back.
+func close_rift(by: Unit) -> bool:
+	var s := by.channel.skill if by.channel else null
+	by.channel = null
+	for p in pockets:
+		if p.by == by and p.kind == &"domain" and p.turns < 0:
+			p.open = false
+			p.turns = ceili(3.0 * rift_difficulty(by.rank(s) if s else 1))
+			for m in p.marks:
+				m.turns = p.turns
+			p.marks[0].visible = false  # the field door's gone
+	return true
+
+
+# Emergency Exit: a forming escape portal (the Meadows) opens rank turns sooner; with none forming, the
+# caster and its allies within rank tiles warp to a pocket of stone for rank turns.
+func emergency_exit(by: Unit, skill: Skill) -> void:
+	var r := by.rank(skill)
+	var meadows := get_node_or_null("Meadows")
+	if meadows and meadows.portal != null and not meadows.opened:
+		meadows.hasten(r)
+		return
+	var p := _new_pocket(&"refuge", by, skill, by.cell)
+	p.turns = r
+	for m in p.marks:
+		m.turns = r
+	var from := by.cell
+	for u: Unit in members(by.faction):
+		if Vector2(u.cell).distance_to(Vector2(from)) <= r + 0.0001 and not _in_pocket(u.cell):
+			move(u, free_near_in(p, p.centre))
+
+
+func _in_pocket(c: Vector2i) -> Pocket:
+	for p in pockets:
+		if c in p.cells:
+			return p
+	return null
+
+
+# The free tile of pocket p nearest c, its door left clear.
+func free_near_in(p: Pocket, c: Vector2i) -> Vector2i:
+	var best := p.centre
+	var d := INF
+	for x in p.cells:
+		if x != p.door and not unit_at(x) and Vector2(x).distance_to(Vector2(c)) < d:
+			best = x
+			d = Vector2(x).distance_to(Vector2(c))
+	return best
+
+
+# A walk that ends on a door goes through it: the field door into its pocket, the pocket's own back out
+# beside the field door.
+func _through(u: Unit) -> void:
+	for p in pockets:
+		if p.open and u.cell == p.origin:
+			move(u, free_near_in(p, p.door + Vector2i(1, 0)))
+			return
+		if u.cell == p.door and p.open:
+			var out: Variant = free_near(p.origin + Vector2i(1, 0))
+			if out != null:
+				move(u, out)
+			return
+
+
+# Pockets count down as their maker's side ends its turns; one that runs out ends.
+func _tick_pockets(side: Faction) -> void:
+	for p in pockets.duplicate():
+		if p.turns > 0 and p.by and p.by.faction == side:
+			p.turns -= 1
+			for m in p.marks:
+				m.turns = p.turns
+			if p.turns <= 0:
+				end_pocket(p)
+
+
+# Its maker's side back in a clump beside the field door; whatever else is in it goes with it.
+func end_pocket(p: Pocket) -> void:
+	for u: Unit in units.values() + inside.keys():
+		if u.cell in p.cells and u.is_alive():
+			if p.by and Faction.friends(u.faction, p.by.faction):
+				var out: Variant = free_near(p.origin)
+				if out != null:
+					move(u, out)
+			else:
+				units.erase(u.cell)
+				inside.erase(u)
+				u.queue_free()
+	for c in p.cells:
+		map.erase_cell(c)
+	for m in p.marks:
+		m.queue_free()
+	pockets.erase(p)
 
 
 # Whether `by` can still hold u: beside it, or engulfing it on its own tile (a mist Undine).
@@ -3391,7 +3601,7 @@ func _on_died(u: Unit) -> void:
 		spoils.append([it, u.faction])
 		dropped.emit(u, it)
 	if u.reverts_to:  # a Starman falls back into a Starmote, keeping what Power it had
-		var mote := summon(load(u.reverts_to), u.faction, u.cell)
+		var mote := summon(load(u.reverts_to), u.faction, u.cell)  # (a Starman)
 		if mote:
 			mote.energy = u.energy
 			reverted.emit(u, mote)

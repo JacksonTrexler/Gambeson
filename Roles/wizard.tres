@@ -31,6 +31,7 @@
 [ext_resource type="Resource" path="res://Skills/blink.tres" id="s_blink"]
 [ext_resource type="Resource" path="res://Skills/spellweave.tres" id="s_spellweave"]
 [ext_resource type="Resource" path="res://Skills/counterspell.tres" id="s_counterspell"]
+[ext_resource type="Resource" path="res://Skills/emergency_exit.tres" id="s_emergency_exit"]
 [ext_resource type="Resource" path="res://Skills/magic_slot.tres" id="s_magic_slot"]
 [ext_resource type="Resource" path="res://Skills/overchannel.tres" id="s_overchannel"]
 [ext_resource type="Resource" path="res://Skills/blood_magic.tres" id="s_blood_magic"]
@@ -92,6 +93,10 @@ script = ExtResource("9_branch")
 skill = ExtResource("s_counterspell")
 after = Array[ExtResource("7_skill")]([ExtResource("s_dispel")])
 
+[sub_resource type="Resource" id="Branch_emergency_exit"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_emergency_exit")
+
 [sub_resource type="Resource" id="Branch_magic_slot"]
 script = ExtResource("9_branch")
 skill = ExtResource("s_magic_slot")
@@ -101,7 +106,7 @@ needs = 3
 script = ExtResource("8_root")
 name = "Arcane"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_arcana"), SubResource("Branch_dispel"), SubResource("Branch_blink"), SubResource("Branch_spellweave"), SubResource("Branch_counterspell"), SubResource("Branch_magic_slot")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_arcana"), SubResource("Branch_dispel"), SubResource("Branch_blink"), SubResource("Branch_spellweave"), SubResource("Branch_counterspell"), SubResource("Branch_emergency_exit"), SubResource("Branch_magic_slot")])
 
 [sub_resource type="Resource" id="Branch_overchannel"]
 script = ExtResource("9_branch")
@@ -123,7 +128,6 @@ after = Array[ExtResource("7_skill")]([ExtResource("s_overchannel")])
 [sub_resource type="Resource" id="Branch_rift"]
 script = ExtResource("9_branch")
 skill = ExtResource("s_rift")
-after = Array[ExtResource("7_skill")]([ExtResource("s_wild_magic")])
 
 [sub_resource type="Resource" id="Branch_unbound"]
 script = ExtResource("9_branch")

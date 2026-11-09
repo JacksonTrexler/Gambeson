@@ -87,9 +87,12 @@ func test_portal() -> void:
 		if i == md.kills_needed - 1:
 			ok(md.portal == at, "the portal forms where the 30th fell")
 	ok(md.kills == 30 and md.portal_turns == 3 and not md.opened and mb.phase != Battle.Phase.OVER, "it opens in 3 x difficulty turns; the fight goes on with no demons standing")
-	for i in 3:
-		md._on_turn(demons, mb.player.faction)
-	ok(md.opened, "open after 3 of the party's turns")
+	var exit: Skill = load("res://Skills/emergency_exit.tres")
+	mb.player.learned.append(slot(exit, 2))
+	mb.emergency_exit(mb.player, exit)
+	ok(md.portal_turns == 1 and mb.pockets.is_empty(), "Emergency Exit II: the forming portal 2 turns sooner, no pocket")
+	md._on_turn(demons, mb.player.faction)
+	ok(md.opened, "open a turn later")
 	mb.move(mb.player, md.portal + Vector2i(1, 0))
 	mb.traveled.emit(mb.player, mb.player.cell, [mb.player.cell, md.portal] as Array[Vector2i])
 	ok(mb.phase == Battle.Phase.OVER and mb.won(mb.player.faction), "stepping onto it: the party wins at once")
