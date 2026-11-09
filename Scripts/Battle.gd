@@ -2299,8 +2299,7 @@ func end_turn() -> void:
 		rests[u] = rested
 		if rested:
 			_chant(u)
-			var vow := u.devotion()
-			if vow and vow.satisfied_by == &"rest_whole" and u.hp >= u.max_hp:
+			if u.devotions().any(func(vow: SkillTab): return vow.satisfied_by == &"rest_whole") and u.hp >= u.max_hp:
 				u.gain(&"patron", 1)  # Hogel: resting whole
 		u.recover()
 		_starlight(u)

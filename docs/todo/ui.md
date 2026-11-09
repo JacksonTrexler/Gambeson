@@ -9,9 +9,9 @@ The grammar (in `docs/done/rules.md`): `Actor Skill Rank --> Target (ours - thei
 
 ## Elsewhere
 
-- [ ] **Skills as icon boxes** on the trees: letters (or Nerd Font glyphs) as placeholder icons.
-- [ ] **AI placeholder skills** end their names with ?? (designed by an AI, open for your design).
-- [ ] **"Pick up to x"** boxes around a class's choice of trees (see Picking trees, `docs/todo/classes.md`).
+- [x] **Skills as icon boxes** on the trees: letters (or Nerd Font glyphs) as placeholder icons. Built with letters: a skill's glyph or initials (`docs/done/ui.md`).
+- [x] **AI placeholder skills** end their names with ?? (`Skill.ai`): the Wizard and Mage stubs and the Berserker's Prowess skills. Others an AI designed can be marked as you find them.
+- [x] **"Pick up to x"** boxes around a class's choice of trees (see Picking trees, `docs/todo/classes.md`).
 
 - [ ] Settings › Gameplay toggles, starting with auto-equip, once Equipping exists.
 - [ ] The Adventurer's extra slot is a base slot, slightly darker. (?3)

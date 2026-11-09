@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Skills/gasp.tres" id="s_gasp"]
+[ext_resource type="Resource" path="res://Skills/humble.tres" id="s_humble"]
+[ext_resource type="Resource" path="res://Skills/breathtaking.tres" id="s_breathtaking"]
+[ext_resource type="Resource" path="res://Skills/irradiate.tres" id="s_irradiate"]
+
+[sub_resource type="Resource" id="Branch_humble"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_humble")
+
+[sub_resource type="Resource" id="Branch_gasp"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_gasp")
+
+[sub_resource type="Resource" id="Branch_breathtaking"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_breathtaking")
+after = Array[ExtResource("5_skill")]([ExtResource("s_gasp")])
+
+[sub_resource type="Resource" id="Branch_irradiate"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_irradiate")
+after = Array[ExtResource("5_skill")]([ExtResource("s_breathtaking")])
+
+[resource]
+script = ExtResource("6_root")
+name = "Hogel"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_humble"), SubResource("Branch_gasp"), SubResource("Branch_breathtaking"), SubResource("Branch_irradiate")])

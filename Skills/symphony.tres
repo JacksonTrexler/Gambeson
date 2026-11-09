@@ -4,9 +4,9 @@
 
 [resource]
 script = ExtResource("1_skill")
-name = "Pact of Elmon"
-ai = true
+name = "Symphony"
 passive = true
 tags = Array[StringName]([&"magical"])
-stub = "?70"
-plan = "Binds the Wizard to Elmon: Sweet Nothings (on int, not cha) and Hex. Elmon's skills open after it, a tier later than a Warlock's. One pact at a time."
+max_rank = 3
+glyph = "Sy"
+studies = "Bard genres (guest trees, -1 Affinity)"

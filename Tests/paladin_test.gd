@@ -1,7 +1,7 @@
 extends Test
 
-# The Paladin's tree - Divinity: Eros, Idealism: Chivalry, and a Prowess of its choosing that suits its
-# god (SkillTab.one_of, SkillRoot.gods: Unit.taken(), Unit.suits(), Unit.class_trees()) - and Eros's
+# The Paladin's tree - Divinity: Eros, Idealism: Chivalry, and a Prowess it picks that suits its god
+# (Role.choices, SkillRoot.gods: Unit.pick(), Unit.suits(), Unit.class_trees()) - and Eros's
 # skills on it: Rejuvinate (regeneration whose strength falls with distance, set as it's cast:
 # Battle.decay(), Unit.Applied.scale), Send Off (a teleport away: Battle.send()), Lovely Caster
 # (Battle._lovely()) and Impassioned Fighter (Battle.passion()).
@@ -16,9 +16,10 @@ var mana: Reserve = load("res://Reserves/mana.tres")
 
 func test_tree() -> void:
 	ok(paladin.roots.map(func(r: SkillRoot): return r.name) == ["Divinity: Eros", "Idealism: Chivalry"], "Divinity and Idealism on its own tab")
-	ok(paladin.tabs.map(func(t: SkillTab): return t.title()) == ["Prowess: Protector", "Prowess: Vanguard", "Prowess: Brawn", "Prowess: Fury",
-			"Prowess: Havoc", "Prowess: Slayer"] and paladin.tabs.all(func(t: SkillTab): return t.one_of == &"prowess"), "a Prowess tab for each, one to choose")
-	ok(paladin.tabs[0].roots[0] == load("res://Roles/fighter.tres").roots[0] and paladin.tabs[2].roots[0] == load("res://Roles/berserker.tres").tabs[0].roots[0],
+	var prowess: TreeChoice = paladin.choices[0]
+	ok(prowess.tabs.map(func(t: SkillTab): return t.title()) == ["Prowess: Protector", "Prowess: Vanguard", "Prowess: Brawn", "Prowess: Fury",
+			"Prowess: Havoc", "Prowess: Slayer"] and prowess.name == "Prowess" and prowess.picks == 1, "a Prowess tab for each, one to pick")
+	ok(prowess.tabs[0].roots[0] == load("res://Roles/fighter.tres").roots[0] and prowess.tabs[2].roots[0] == load("res://Roles/berserker.tres").tabs[0].roots[0],
 			"the same Protector root as the Fighter's, the same Brawn as the Berserker's")
 	ok(paladin.root_of(load("res://Skills/renew.tres")).tag == &"magical" and paladin.root_of(load("res://Skills/coordinate.tres")).tag == &"specialist",
 			"Renew on Divinity, Coordinate on Idealism")
@@ -33,7 +34,16 @@ func sk(n: String) -> Skill:
 
 
 func prowess_tabs(u: Unit) -> Array:
-	return u.class_trees().filter(func(t: SkillTab): return t.one_of).map(func(t: SkillTab): return t.name)
+	return u.class_trees().filter(func(t: SkillTab): return t.kind == "Prowess").map(func(t: SkillTab): return t.name)
+
+
+# The Prowess trees it's offered: those that suit its god.
+func offered(u: Unit) -> Array:
+	return paladin.choices[0].tabs.filter(func(t: SkillTab): return u.suits(t)).map(func(t: SkillTab): return t.name)
+
+
+func prowess(n: String) -> SkillTab:
+	return paladin.choices[0].tabs.filter(func(t: SkillTab): return t.name == n)[0]
 
 
 # Any prowess somewhat aligned with its god: Eros's are Protector and Vanguard; one taken up closes the rest.
@@ -41,17 +51,19 @@ func test_prowess() -> void:
 	var u := b.starter({faction = lancin, role = paladin, name = "Pip"})
 	b.get_node("Units").add_child(u)
 	u.skill_points = 5
-	ok(prowess_tabs(u) == ["Protector", "Vanguard"], "Eros's ways: Protector and Vanguard (%s)" % [prowess_tabs(u)])
-	ok(u.missing(sk("shields_up")) == "", "Protector is open")
-	ok(u.missing(sk("bulwark")) == "Not Eros's way" and u.missing(sk("jugular")) == "Not Eros's way", "Brawn and Slayer aren't (%s)" % u.missing(sk("bulwark")))
-	ok(u.unlock(sk("shields_up")) and prowess_tabs(u) == ["Protector"], "Shields Up! takes up Protector: the other tabs go")
+	var choice: TreeChoice = paladin.choices[0]
+	ok(offered(u) == ["Protector", "Vanguard"], "Eros's ways: Protector and Vanguard (%s)" % [offered(u)])
+	ok(prowess_tabs(u).is_empty() and u.missing(sk("shields_up")) == "Pick Prowess: Protector first", "no Prowess tab until it's picked")
+	ok(u.pick_missing(choice, prowess("Brawn")) == "Not Eros's way" and u.pick_missing(choice, prowess("Slayer")) == "Not Eros's way", "Brawn and Slayer aren't (%s)" % u.pick_missing(choice, prowess("Brawn")))
+	ok(u.pick(choice, prowess("Protector")) and prowess_tabs(u) == ["Protector"] and u.unlock(sk("shields_up")), "Protector picked: its tab opens, Shields Up!")
+	ok(u.pick_missing(choice, prowess("Vanguard")) == "Took up Prowess: Protector" and not u.pick(choice, prowess("Vanguard")), "one Prowess")
 	var war := b.starter({faction = lancin, role = paladin, name = "Ram"})
 	b.get_node("Units").add_child(war)
 	war.god = &"ramut"
 	war.skill_points = 5
-	ok(prowess_tabs(war) == ["Vanguard", "Brawn", "Fury", "Havoc", "Slayer"], "Ramut's: all but Protector (%s)" % [prowess_tabs(war)])
-	ok(war.unlock(sk("bulwark")) and war.missing(sk("second_wind")) == "Took up Prowess: Brawn" and war.missing(sk("crushing_blow")) == "",
-			"Bulwark takes up Brawn: Fury closes, Brawn goes on (%s)" % war.missing(sk("second_wind")))
+	ok(offered(war) == ["Vanguard", "Brawn", "Fury", "Havoc", "Slayer"], "Ramut's: all but Protector (%s)" % [offered(war)])
+	ok(war.pick(choice, prowess("Brawn")) and war.unlock(sk("bulwark")) and war.missing(sk("second_wind")) == "Pick Prowess: Fury first" and war.missing(sk("crushing_blow")) == "",
+			"Brawn picked: Fury stays shut, Brawn goes on (%s)" % war.missing(sk("second_wind")))
 	var fighter := b.starter({faction = lancin, role = load("res://Roles/fighter.tres"), name = "Fen"})
 	b.get_node("Units").add_child(fighter)
 	fighter.skill_points = 5

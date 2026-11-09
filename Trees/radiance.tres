@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Resource" path="res://Skills/searing.tres" id="s_searing"]
+[ext_resource type="Resource" path="res://Skills/igna.tres" id="s_igna"]
+[ext_resource type="Resource" path="res://Skills/radiant_lance.tres" id="s_radiant_lance"]
+[ext_resource type="Resource" path="res://Skills/sola.tres" id="s_sola"]
+[ext_resource type="Resource" path="res://Skills/sunburst.tres" id="s_sunburst"]
+
+[sub_resource type="Resource" id="Branch_searing"]
+script = ExtResource("branch")
+skill = ExtResource("s_searing")
+after = Array[ExtResource("skill")]([ExtResource("s_igna")])
+
+[sub_resource type="Resource" id="Branch_radiant_lance"]
+script = ExtResource("branch")
+skill = ExtResource("s_radiant_lance")
+after = Array[ExtResource("skill")]([ExtResource("s_sola")])
+
+[sub_resource type="Resource" id="Branch_sunburst"]
+script = ExtResource("branch")
+skill = ExtResource("s_sunburst")
+after = Array[ExtResource("skill")]([ExtResource("s_searing"), ExtResource("s_radiant_lance")])
+
+[resource]
+script = ExtResource("root")
+name = "Radiance"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_searing"), SubResource("Branch_radiant_lance"), SubResource("Branch_sunburst")])

@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="8_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="9_branch"]
 [ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="10_tab"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="11_choice"]
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
@@ -37,21 +38,29 @@
 [ext_resource type="Resource" path="res://Skills/forbidden_lore.tres" id="s_forbidden_lore"]
 [ext_resource type="Resource" path="res://Skills/rift.tres" id="s_rift"]
 [ext_resource type="Resource" path="res://Skills/unbound.tres" id="s_unbound"]
-[ext_resource type="Resource" path="res://Skills/pact_of_elmon.tres" id="s_pact_of_elmon"]
-[ext_resource type="Resource" path="res://Skills/brainfog.tres" id="s_brainfog"]
-[ext_resource type="Resource" path="res://Skills/haluca.tres" id="s_haluca"]
-[ext_resource type="Resource" path="res://Skills/pact_of_hogel.tres" id="s_pact_of_hogel"]
-[ext_resource type="Resource" path="res://Skills/gasp.tres" id="s_gasp"]
-[ext_resource type="Resource" path="res://Skills/humble.tres" id="s_humble"]
-[ext_resource type="Resource" path="res://Skills/urlos_favour.tres" id="s_urlos_favour"]
-[ext_resource type="Resource" path="res://Skills/wellspring.tres" id="s_wellspring"]
-[ext_resource type="Resource" path="res://Skills/sols_favour.tres" id="s_sols_favour"]
-[ext_resource type="Resource" path="res://Skills/flamewall.tres" id="s_flamewall"]
+[ext_resource type="Resource" path="res://Skills/divinity.tres" id="s_divinity"]
+[ext_resource type="Resource" path="res://Skills/symphony.tres" id="s_symphony"]
+[ext_resource type="Resource" path="res://Skills/witchery.tres" id="s_witchery"]
+[ext_resource type="Resource" path="res://Skills/mastery.tres" id="s_mastery"]
 [ext_resource type="Resource" path="res://Skills/attunement.tres" id="s_attunement"]
 [ext_resource type="Resource" path="res://Skills/draw_from_the_land.tres" id="s_draw_from_the_land"]
 [ext_resource type="Resource" path="res://Skills/weathercraft.tres" id="s_weathercraft"]
 [ext_resource type="Resource" path="res://Skills/ley_sense.tres" id="s_ley_sense"]
 [ext_resource type="Resource" path="res://Skills/ley_tap.tres" id="s_ley_tap"]
+[ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
+[ext_resource type="Resource" path="res://Skills/hex.tres" id="s_hex"]
+[ext_resource type="Resource" path="res://Skills/sweet_nothings.tres" id="s_sweet_nothings"]
+[ext_resource type="Resource" path="res://Trees/eros.tres" id="r_eros"]
+[ext_resource type="Resource" path="res://Trees/luun.tres" id="r_luun"]
+[ext_resource type="Resource" path="res://Trees/sol.tres" id="r_sol"]
+[ext_resource type="Resource" path="res://Trees/song.tres" id="r_song"]
+[ext_resource type="Resource" path="res://Trees/elmon.tres" id="r_elmon"]
+[ext_resource type="Resource" path="res://Trees/hogel.tres" id="r_hogel"]
+[ext_resource type="Resource" path="res://Trees/radiance.tres" id="r_radiance"]
+[ext_resource type="Resource" path="res://Trees/currents.tres" id="r_currents"]
+[ext_resource type="Resource" path="res://Trees/stone.tres" id="r_stone"]
+[ext_resource type="Resource" path="res://Trees/shadow.tres" id="r_shadow"]
+[ext_resource type="Resource" path="res://Trees/stars.tres" id="r_stars"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -127,105 +136,27 @@ name = "Transgression"
 tag = &"magical"
 branches = Array[ExtResource("9_branch")]([SubResource("Branch_overchannel"), SubResource("Branch_blood_magic"), SubResource("Branch_wild_magic"), SubResource("Branch_forbidden_lore"), SubResource("Branch_rift"), SubResource("Branch_unbound")])
 
-[sub_resource type="Resource" id="Branch_pact_of_elmon"]
+[sub_resource type="Resource" id="Branch_divinity"]
 script = ExtResource("9_branch")
-skill = ExtResource("s_pact_of_elmon")
+skill = ExtResource("s_divinity")
 
-[sub_resource type="Resource" id="Branch_brainfog"]
+[sub_resource type="Resource" id="Branch_symphony"]
 script = ExtResource("9_branch")
-skill = ExtResource("s_brainfog")
-after = Array[ExtResource("7_skill")]([ExtResource("s_pact_of_elmon")])
+skill = ExtResource("s_symphony")
 
-[sub_resource type="Resource" id="Branch_haluca"]
+[sub_resource type="Resource" id="Branch_witchery"]
 script = ExtResource("9_branch")
-skill = ExtResource("s_haluca")
-after = Array[ExtResource("7_skill")]([ExtResource("s_pact_of_elmon")])
+skill = ExtResource("s_witchery")
 
-[sub_resource type="Resource" id="Root_Elmon_Elmon"]
+[sub_resource type="Resource" id="Branch_mastery"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_mastery")
+
+[sub_resource type="Resource" id="Root_Dabblings"]
 script = ExtResource("8_root")
-name = "Elmon"
+name = "Dabblings"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_pact_of_elmon"), SubResource("Branch_brainfog"), SubResource("Branch_haluca")])
-
-[sub_resource type="Resource" id="Tab_Elmon"]
-script = ExtResource("10_tab")
-name = "Elmon"
-kind = "Pact"
-one_of = &"pact"
-roots = Array[ExtResource("8_root")]([SubResource("Root_Elmon_Elmon")])
-
-[sub_resource type="Resource" id="Branch_pact_of_hogel"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_pact_of_hogel")
-
-[sub_resource type="Resource" id="Branch_gasp"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_gasp")
-after = Array[ExtResource("7_skill")]([ExtResource("s_pact_of_hogel")])
-
-[sub_resource type="Resource" id="Branch_humble"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_humble")
-after = Array[ExtResource("7_skill")]([ExtResource("s_pact_of_hogel")])
-
-[sub_resource type="Resource" id="Root_Hogel_Hogel"]
-script = ExtResource("8_root")
-name = "Hogel"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_pact_of_hogel"), SubResource("Branch_gasp"), SubResource("Branch_humble")])
-
-[sub_resource type="Resource" id="Tab_Hogel"]
-script = ExtResource("10_tab")
-name = "Hogel"
-kind = "Pact"
-one_of = &"pact"
-roots = Array[ExtResource("8_root")]([SubResource("Root_Hogel_Hogel")])
-
-[sub_resource type="Resource" id="Branch_urlos_favour"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_urlos_favour")
-
-[sub_resource type="Resource" id="Branch_wellspring"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_wellspring")
-after = Array[ExtResource("7_skill")]([ExtResource("s_urlos_favour")])
-
-[sub_resource type="Resource" id="Root_Urlo_Urlo"]
-script = ExtResource("8_root")
-name = "Urlo"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_urlos_favour"), SubResource("Branch_wellspring")])
-
-[sub_resource type="Resource" id="Tab_Urlo"]
-script = ExtResource("10_tab")
-name = "Urlo"
-kind = "Affiliation"
-one_of = &"affiliation"
-god = &"urlo"
-roots = Array[ExtResource("8_root")]([SubResource("Root_Urlo_Urlo")])
-
-[sub_resource type="Resource" id="Branch_sols_favour"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_sols_favour")
-
-[sub_resource type="Resource" id="Branch_flamewall"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_flamewall")
-after = Array[ExtResource("7_skill")]([ExtResource("s_sols_favour")])
-
-[sub_resource type="Resource" id="Root_Sol_Sol"]
-script = ExtResource("8_root")
-name = "Sol"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_sols_favour"), SubResource("Branch_flamewall")])
-
-[sub_resource type="Resource" id="Tab_Sol"]
-script = ExtResource("10_tab")
-name = "Sol"
-kind = "Affiliation"
-one_of = &"affiliation"
-god = &"sol"
-roots = Array[ExtResource("8_root")]([SubResource("Root_Sol_Sol")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_divinity"), SubResource("Branch_symphony"), SubResource("Branch_witchery"), SubResource("Branch_mastery")])
 
 [sub_resource type="Resource" id="Branch_attunement"]
 script = ExtResource("9_branch")
@@ -267,6 +198,119 @@ name = "Nature"
 kind = "World"
 roots = Array[ExtResource("8_root")]([SubResource("Root_Nature_Elements"), SubResource("Root_Nature_Leylines")])
 
+[sub_resource type="Resource" id="Tab_Domain_Eros"]
+script = ExtResource("10_tab")
+name = "Eros"
+kind = "Divinity"
+god = &"eros"
+devotes = true
+core = Array[ExtResource("7_skill")]([ExtResource("s_pray")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_eros")])
+
+[sub_resource type="Resource" id="Tab_Domain_Luun"]
+script = ExtResource("10_tab")
+name = "Luun"
+kind = "Divinity"
+god = &"luun"
+devotes = true
+core = Array[ExtResource("7_skill")]([ExtResource("s_pray")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_luun")])
+
+[sub_resource type="Resource" id="Tab_Domain_Sol"]
+script = ExtResource("10_tab")
+name = "Sol"
+kind = "Divinity"
+god = &"sol"
+devotes = true
+core = Array[ExtResource("7_skill")]([ExtResource("s_pray")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_sol")])
+
+[sub_resource type="Resource" id="Choice_Domain"]
+script = ExtResource("11_choice")
+name = "Domain"
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Domain_Eros"), SubResource("Tab_Domain_Luun"), SubResource("Tab_Domain_Sol")])
+by = ExtResource("s_divinity")
+affinity = -1
+
+[sub_resource type="Resource" id="Tab_Genre_Song"]
+script = ExtResource("10_tab")
+name = "Song"
+kind = "Genre"
+color = Color(0.85, 0.55, 0.69, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("r_song")])
+
+[sub_resource type="Resource" id="Choice_Genre"]
+script = ExtResource("11_choice")
+name = "Genre"
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Genre_Song")])
+by = ExtResource("s_symphony")
+affinity = -1
+
+[sub_resource type="Resource" id="Tab_Pact_Elmon"]
+script = ExtResource("10_tab")
+name = "Elmon"
+kind = "Pact"
+devotes = true
+core = Array[ExtResource("7_skill")]([ExtResource("s_hex"), ExtResource("s_sweet_nothings")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_elmon")])
+
+[sub_resource type="Resource" id="Tab_Pact_Hogel"]
+script = ExtResource("10_tab")
+name = "Hogel"
+kind = "Pact"
+satisfied_by = &"rest_whole"
+devotes = true
+core = Array[ExtResource("7_skill")]([ExtResource("s_hex"), ExtResource("s_sweet_nothings")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_hogel")])
+
+[sub_resource type="Resource" id="Choice_Pact"]
+script = ExtResource("11_choice")
+name = "Pact"
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Pact_Elmon"), SubResource("Tab_Pact_Hogel")])
+by = ExtResource("s_witchery")
+affinity = -1
+
+[sub_resource type="Resource" id="Tab_School_Radiance"]
+script = ExtResource("10_tab")
+name = "Radiance"
+kind = "School"
+color = Color(0.95, 0.69, 0.33, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("r_radiance")])
+
+[sub_resource type="Resource" id="Tab_School_Currents"]
+script = ExtResource("10_tab")
+name = "Currents"
+kind = "School"
+color = Color(0.37, 0.7, 0.88, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("r_currents")])
+
+[sub_resource type="Resource" id="Tab_School_Stone"]
+script = ExtResource("10_tab")
+name = "Stone"
+kind = "School"
+color = Color(0.69, 0.57, 0.42, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("r_stone")])
+
+[sub_resource type="Resource" id="Tab_School_Shadow"]
+script = ExtResource("10_tab")
+name = "Shadow"
+kind = "School"
+color = Color(0.49, 0.44, 0.72, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("r_shadow")])
+
+[sub_resource type="Resource" id="Tab_School_Stars"]
+script = ExtResource("10_tab")
+name = "Stars"
+kind = "School"
+color = Color(0.78, 0.77, 0.94, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("r_stars")])
+
+[sub_resource type="Resource" id="Choice_School"]
+script = ExtResource("11_choice")
+name = "School"
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_School_Radiance"), SubResource("Tab_School_Currents"), SubResource("Tab_School_Stone"), SubResource("Tab_School_Shadow"), SubResource("Tab_School_Stars")])
+by = ExtResource("s_mastery")
+
 [resource]
 script = ExtResource("1_script")
 noun = "Caster"
@@ -278,5 +322,6 @@ options = Array[ExtResource("7_skill")]([ExtResource("s_mana"), ExtResource("s_m
 reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_mana_potion")])
 general = Array[StringName]([&"magical"])
-roots = Array[ExtResource("8_root")]([SubResource("Root_Arcane"), SubResource("Root_Transgression")])
-tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Elmon"), SubResource("Tab_Hogel"), SubResource("Tab_Urlo"), SubResource("Tab_Sol"), SubResource("Tab_Nature")])
+roots = Array[ExtResource("8_root")]([SubResource("Root_Arcane"), SubResource("Root_Transgression"), SubResource("Root_Dabblings")])
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Nature")])
+choices = Array[ExtResource("11_choice")]([SubResource("Choice_Domain"), SubResource("Choice_Genre"), SubResource("Choice_Pact"), SubResource("Choice_School")])

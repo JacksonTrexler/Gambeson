@@ -14,7 +14,7 @@ extends Resource
 @export var roots: Array[SkillRoot] = []
 @export var god := &""  # the god its devotees worship (a Cleric's Luun, Sol: Unit.deity())
 @export var devotes := false
-@export var one_of := &""  # one of a choice of tabs (a Paladin's Prowess): learning a skill on one closes the rest, and only those its roots suit its god are open (Unit.taken(), Unit.suits())
+@export var glyph := ""  # up to 2 characters for its tier 0 root in a choice's box (Role.choices); empty: its name's first two letters
 @export var satisfied_by := &""  # what wins its devotees Sweet Nothings back (Hogel: rest_whole, resting a turn out at full HP; Battle.end_turn())  # learning a skill on its roots devotes its learner to it: other devoting tabs close (a Warlock's patron; Unit.devotion())
 
 
@@ -26,6 +26,11 @@ const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": 
 const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
 		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
 		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f")}
+
+
+# Its tier 0 root's placeholder icon in a choice's box.
+func mark() -> String:
+	return glyph if glyph else name.left(2)
 
 
 # "Calling: Freedom".

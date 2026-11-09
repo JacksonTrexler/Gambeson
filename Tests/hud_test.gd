@@ -416,9 +416,17 @@ func test_skills_screen() -> void:
 	var names: Array = tabs.get_children().map(func(x: Button): return x.text)
 	ok(names[0] == "CLASS · PALADIN" and h.skills.view() is SkillGrid and load("res://Skills/favour.tres") in h.skills.view().skills(),
 			"a class without a tree: its options as one, growing from the bottom")
-	ok(names.slice(1) == ["PROWESS · PROTECTOR", "PROWESS · VANGUARD", "SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER"],
-			"the Prowess that suits Eros, its species, then the general trees a Paladin gets: %s" % [names])
-	(tabs.get_child(3) as Button).pressed.emit()
+	ok(names.slice(1) == ["SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER"],
+			"no Prowess tab until it's picked; its species, then the general trees a Paladin gets: %s" % [names])
+	var grid: SkillGrid = h.skills.view()
+	ok(grid._entries.keys().map(func(t: SkillTab): return t.name) == ["Protector", "Vanguard"] and grid._choice_boxes[0][1] == "PROWESS · PICK UP TO 1",
+			"its class tab: a box of the Prowess trees that suit Eros, pick up to 1 (%s)" % [grid._entries.keys().map(func(t: SkillTab): return t.name)])
+	h.skills.choose(u.role.choices[0], grid._entries.keys()[0])
+	ok(h.get_node("%DetailName").text == "Prowess: Protector" and not h.skills.act.disabled, "Protector in the footer, free to pick")
+	h.skills.act.pressed.emit()
+	names = tabs.get_children().map(func(x: Button): return x.text)
+	ok(names[1] == "PROWESS · PROTECTOR" and u.taken("Prowess").name == "Protector", "picked: its tab opens beside the class's (%s)" % [names])
+	(tabs.get_child(2) as Button).pressed.emit()
 	ok(h.skills.view().skills() == [relay] and h.skills.picked == relay, "Relay on offer from its species")
 	var unlock: CostButton = h.get_node("%DetailButton")
 	ok(unlock.text == "Unlock" and unlock.cost == 1 and unlock.disabled, "but there's no point to spend: Unlock, 1 in its square, not lit")

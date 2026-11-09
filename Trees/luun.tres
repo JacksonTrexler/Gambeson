@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
+[ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
+[ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
+
+[sub_resource type="Resource" id="Branch_level_down"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_level_down")
+after = Array[ExtResource("5_skill")]([ExtResource("s_pray")])
+
+[sub_resource type="Resource" id="Branch_death"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_death")
+after = Array[ExtResource("5_skill")]([ExtResource("s_level_down")])
+
+[resource]
+script = ExtResource("6_root")
+name = "Luun"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_down"), SubResource("Branch_death")])

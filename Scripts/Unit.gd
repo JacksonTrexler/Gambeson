@@ -130,6 +130,7 @@ var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through
 var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
 var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
+var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
 @export var max_hp := 10:
@@ -378,7 +379,18 @@ func affinity(s: Skill) -> int:
 	for p in POSTURES:
 		if s.serves(p):
 			ps.append(p)
-	return roundi(stat(&"affinity", ps)) if not ps.is_empty() else 0
+	return (roundi(stat(&"affinity", ps)) if not ps.is_empty() else 0) + guest_affinity(s)
+
+
+# The Affinity a picked tree brings its skills, as its choice says (a Wizard's guest trees: -1;
+# Mage schools by Mastery: 0).
+func guest_affinity(s: Skill) -> int:
+	if not role or not role.choices.any(func(c: TreeChoice): return c and c.affinity != 0):
+		return 0
+	for t in role.tabs_of(s):
+		if role.choice_of(t) and open_tab(t):
+			return role.choice_of(t).affinity
+	return 0
 
 
 # Skill points put into s: what was spent on it, or what its rank is worth on the even curve.
@@ -628,19 +640,12 @@ func missing(s: Skill) -> String:
 	var learnt := learned.filter(func(x: Slot): return x.skill != s and x.rank > 0).size()
 	if s.min_tier > 1 and learnt < s.min_tier - 1:
 		return "Learn %d skill%s first (%d so far)" % [s.min_tier - 1, "" if s.min_tier == 2 else "s", learnt]
+	var homes := role.tabs_of(s) if role else ([] as Array[SkillTab])
+	if not homes.is_empty() and not homes.any(func(t: SkillTab): return open_tab(t)):
+		return "Pick %s first" % homes[0].title()
 	var root := role.root_of(s) if role else null
 	if not root:
 		return ""
-	var devoted := devotion()
-	var tab := role.tab_of(s)
-	if devoted and tab and tab.devotes and tab != devoted:
-		return "Devoted to %s" % devoted.name
-	if tab and tab.one_of:
-		var took := taken(tab.one_of)
-		if took and took.name != tab.name:
-			return "Took up %s" % took.title()
-		if not suits(tab):
-			return "Not %s's way" % deity().capitalize() if deity() else "Needs a god"
 	var b := root.branch(s)
 	var first := b.after.filter(func(x: Skill): return rank(x) == 0 and not _skippable(x))
 	if not first.is_empty():
@@ -658,15 +663,81 @@ func _skippable(x: Skill) -> bool:
 	return stat(&"abandon") > 0 and (x.serves(&"supportive") or x.serves(&"defensive")) and not x.serves(&"offensive")
 
 
-# The devoting tab (a Warlock's patron) it has learned a skill on beyond the shared row, or null:
-# the other devoting tabs are closed to it.
+# The devoting tabs it has picked (a Warlock's patron, a Cleric's god; a Wizard may have a pact and a
+# god), or learned a skill on beyond the shared row: whom it serves (deity(); Hogel's rest).
+func devotions() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	if role:
+		for c in role.choices:
+			for t in picks(c):
+				if t.devotes:
+					out.append(t)
+		for t in role.tabs:
+			if t and t.devotes and _learned_on(t):
+				out.append(t)
+	return out
+
+
+# The first of devotions(), or null.
 func devotion() -> SkillTab:
-	if not role:
-		return null
-	for t in role.tabs:
-		if t and t.devotes and t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return base_rank(x) > 0)):
-			return t
-	return null
+	var all := devotions()
+	return all[0] if not all.is_empty() else null
+
+
+# Whether it has learned a skill on t's roots beyond the shared row (its slots' own ranks: base_rank()
+# reads Affinity, which reads this).
+func _learned_on(t: SkillTab) -> bool:
+	var held := slots.filter(func(x: Slot): return x.rank > 0 and role.tab_of(x.skill) == t).map(func(x: Slot): return x.skill)
+	return t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return x in held))
+
+
+# The trees of choice c it has picked (Unit.pick()); with none picked, those it has learned a skill on
+# (units authored with their skills, no picks).
+func picks(c: TreeChoice) -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	for t in c.tabs:
+		if t and c.key(t) in picked:
+			out.append(t)
+	if out.is_empty():
+		for t in c.tabs:
+			if t and _learned_on(t):
+				out.append(t)
+	return out
+
+
+# Whether tab t of its class is open to it: a tab beside its own, or a tree of a choice it has picked.
+func open_tab(t: SkillTab) -> bool:
+	var c := role.choice_of(t)
+	return not c or picks(c).any(func(x: SkillTab): return x.name == t.name)
+
+
+# How many trees of c it may pick: the choice's count, or the rank of the skill that opens it.
+func pick_cap(c: TreeChoice) -> int:
+	return base_rank(c.by) if c.by else c.picks
+
+
+# What stands between it and picking tree t of choice c: "" if nothing. Picking is free.
+func pick_missing(c: TreeChoice, t: SkillTab) -> String:
+	var mine := picks(c)
+	if mine.any(func(x: SkillTab): return x.name == t.name):
+		return "Picked"
+	if c.by and rank(c.by) == 0:
+		return "Learn %s first" % c.by.name
+	if not suits(t):
+		return "Not %s's way" % deity().capitalize() if deity() else "Needs a god"
+	var cap := pick_cap(c)
+	if mine.size() >= cap:
+		return "Took up %s" % mine[0].title() if cap == 1 else "Picked %d of %d" % [mine.size(), cap]
+	return ""
+
+
+# Picks tree t of choice c, opening its tab. False if it can't (pick_missing()).
+func pick(c: TreeChoice, t: SkillTab) -> bool:
+	if pick_missing(c, t) != "":
+		return false
+	picked.append(c.key(t))
+	refit()
+	return true
 
 
 # Spends a skill point on one of options(), learning it at rank I: onto the hotbar's first free slot
@@ -810,14 +881,12 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 	return sum * factor
 
 
-# The tab of a choice (SkillTab.one_of: a Paladin's Prowess) it has taken up by learning a skill on
-# it, or null.
-func taken(choice: StringName) -> SkillTab:
-	if not role:
-		return null
-	for t in role.tabs:
-		if t and t.one_of == choice and t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return base_rank(x) > 0)):
-			return t
+# The first tree it has picked of its class's choice named so (Prowess, School), or null.
+func taken(choice: String) -> SkillTab:
+	for c in role.choices if role else []:
+		if c.name == choice:
+			var mine := picks(c)
+			return mine[0] if not mine.is_empty() else null
 	return null
 
 
@@ -828,15 +897,14 @@ func suits(t: SkillTab) -> bool:
 	return t.roots.all(func(r: SkillRoot): return not r or r.gods.is_empty() or g in r.gods)
 
 
-# Its class's tabs (Role.trees()), less the choices it can't make: of a choice of tabs, only those
-# that suit its god until it takes one up, then that one alone.
+# Its class's tabs (Role.trees()), less the trees of its choices it hasn't picked.
 func class_trees() -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
 	if not role:
 		return out
 	for t in role.trees():
-		var took := taken(t.one_of) if t.one_of else null
-		if not t.one_of or (took.name == t.name if took else suits(t)):
+		var c := role.choice_of(t) if t.kind else null
+		if not c or picks(c).any(func(x: SkillTab): return x.name == t.name):
 			out.append(t)
 	return out
 
@@ -845,9 +913,9 @@ func class_trees() -> Array[SkillTab]:
 func deity() -> StringName:
 	if god:
 		return god
-	var d := devotion()
-	if d and d.god:
-		return d.god
+	for d in devotions():
+		if d.god:
+			return d.god
 	return role.god if role else &""
 
 

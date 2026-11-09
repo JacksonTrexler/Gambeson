@@ -19,6 +19,8 @@ signal leveled  # the debug level-up
 
 var unit: Unit
 var picked: Skill  # the tree's pick, shown in the footer
+var chosen: SkillTab  # or a tree's root clicked in a choice's box (SkillGrid.chose), offered to pick
+var chosen_in: TreeChoice
 var tab := 0  # the tab shown (tabs())
 var can_spend := false
 var _title := ""
@@ -39,6 +41,7 @@ func _ready() -> void:
 	level_button.pressed.connect(leveled.emit)
 	wheel.picked.connect(pick)
 	grid.picked.connect(pick)
+	grid.chose.connect(choose)
 	act.pressed.connect(_act)
 	%DetailText.meta_clicked.connect(_term)
 
@@ -92,7 +95,7 @@ func fill(title: String, spend: bool) -> void:
 	else:
 		grid.show_unit(unit, can_spend and n > 0, picked, t)
 		_scroll_to_bottom()
-	if not picked or picked not in view().skills():
+	if not chosen and (not picked or picked not in view().skills()):
 		picked = _first_pick()
 		wheel.selected = picked
 		grid.selected = picked
@@ -170,11 +173,13 @@ func show_tab(i: int) -> void:
 	if i != tab:
 		tab = i
 		picked = null
+		_unchoose()
 		fill(_title, can_spend)
 
 
 # Shows s in the footer (a click on the tree).
 func pick(s: Skill) -> void:
+	_unchoose()
 	picked = s
 	wheel.selected = s
 	grid.selected = s
@@ -182,7 +187,57 @@ func pick(s: Skill) -> void:
 	_show_pick()
 
 
+# Shows tree t of choice c in the footer, offering to pick it (a click on its root in the choice's box).
+func choose(c: TreeChoice, t: SkillTab) -> void:
+	picked = null
+	grid.selected = null
+	chosen = t
+	chosen_in = c
+	grid.selected_tree = t
+	grid.queue_redraw()
+	_show_pick()
+
+
+func _unchoose() -> void:
+	chosen = null
+	chosen_in = null
+	grid.selected_tree = null
+
+
+# "Opens its tab: Shields Up!, Obstruct...", and the Affinity its choice gives them.
+static func opens(t: SkillTab) -> String:
+	var names: Array = []
+	for r in t.roots:
+		if r:
+			names.append_array(r.skills().map(func(s: Skill): return s.title()))
+	return "Opens the %s tab: %s" % [t.title(), ", ".join(names)]
+
+
+func _show_tree() -> void:
+	var t := chosen
+	var c := chosen_in
+	%DetailCol.visible = true
+	%DetailName.text = t.title()
+	var why := unit.pick_missing(c, t)
+	%DetailState.text = "T0 · " + (why if why else "%s: pick up to %d" % [c.name, unit.pick_cap(c)])
+	for x in %DetailSpec.get_children():
+		x.queue_free()
+	var text := SkillTree.opens(t)
+	if c.affinity:
+		text += "\nA guest tree: its skills rank at %+d Affinity" % c.affinity
+	%DetailText.text = Glossary.rich(text)
+	act.visible = why != "Picked"
+	if not can_spend:
+		why = "Only your party's skills can be chosen"
+	act.set_offer("Pick", 0)
+	act.disabled = why != ""
+	act.tooltip_text = why if why else "Pick %s: its tab opens" % t.title()
+
+
 func _show_pick() -> void:
+	if chosen:
+		_show_tree()
+		return
 	var s := picked
 	%DetailCol.visible = s != null
 	if not s:
@@ -253,6 +308,9 @@ func state(s: Skill) -> String:
 
 
 func _act() -> void:
+	if chosen and unit.pick(chosen_in, chosen):
+		fill(_title, can_spend)
+		return
 	if picked:
 		if unit.base_rank(picked) == 0:
 			unlocked.emit(picked)

@@ -86,12 +86,14 @@ func test_cleric() -> void:
 	var u := b.starter({faction = lancin, role = cleric, name = "Abbot"})
 	b.get_node("Units").add_child(u)
 	ok(u.rank(load("res://Skills/pray.tres")) == 1 and u.rank(load("res://Skills/renew.tres")) == 1, "Pray and Renew from the start")
-	ok(cleric.trees().map(func(t: SkillTab): return t.title()) == ["Divinity: Luun", "Divinity: Sol"], "a tab per god")
-	ok(u.deity() == &"", "no god yet")
+	var god: TreeChoice = cleric.choices[0]
+	ok(cleric.trees().map(func(t: SkillTab): return t.title()) == ["Cleric", "Divinity: Luun", "Divinity: Sol"] and god.name == "God", "its own tab, then a tab per god to pick")
+	ok(u.deity() == &"" and u.class_trees().size() == 1, "no god yet: only its own tab")
 	u.skill_points = 2
 	var level_down: Skill = load("res://Skills/level_down.tres")
-	ok(u.unlock(level_down) and u.deity() == &"luun", "Level Down: devoted to Luun, whom it now prays to")
-	ok(u.missing(load("res://Skills/level_up.tres")) == "Devoted to Luun", "Sol's tab closes")
+	ok(u.missing(level_down) == "Pick Divinity: Luun first", "Luun's skills wait for Luun")
+	ok(u.pick(god, god.tabs[0]) and u.deity() == &"luun" and u.unlock(level_down), "Luun picked: whom it now prays to; Level Down")
+	ok(u.pick_missing(god, god.tabs[1]) == "Took up Divinity: Luun" and u.missing(load("res://Skills/level_up.tres")) == "Pick Divinity: Sol first", "Sol stays shut")
 	ok(u.funding(level_down) == &"energy", "no Sweet Nothings to need: Energy pays")
 	u.wisdom = 18
 	ok(u.mod(&"charisma", level_down.tags) == 4, "its magical skills use wis for cha")

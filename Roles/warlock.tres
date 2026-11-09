@@ -21,12 +21,15 @@
 [ext_resource type="Resource" path="res://Skills/irradiate.tres" id="s_irradiate"]
 [ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
 [ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
-
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/sweet_something.tres" id="i_sweet_something"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Trees/elmon.tres" id="r_elmon"]
+[ext_resource type="Resource" path="res://Trees/hogel.tres" id="r_hogel"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
+
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -39,72 +42,12 @@ skill = ExtResource("s_hex")
 script = ExtResource("4_slot")
 skill = ExtResource("s_sweet_nothings")
 
-[sub_resource type="Resource" id="Branch_analysis_dialysis"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_analysis_dialysis")
-after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
-
-[sub_resource type="Resource" id="Branch_wauaw"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_wauaw")
-after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
-
-[sub_resource type="Resource" id="Branch_brainfog"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_brainfog")
-after = Array[ExtResource("5_skill")]([ExtResource("s_hex")])
-
-[sub_resource type="Resource" id="Branch_haluca"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_haluca")
-after = Array[ExtResource("5_skill")]([ExtResource("s_hex")])
-
-[sub_resource type="Resource" id="Branch_level_down"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_level_down")
-needs = 4
-
-[sub_resource type="Resource" id="Branch_death"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_death")
-needs = 5
-
-[sub_resource type="Resource" id="Root_Elmon"]
-script = ExtResource("6_root")
-name = "Elmon"
-tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_analysis_dialysis"), SubResource("Branch_wauaw"), SubResource("Branch_brainfog"), SubResource("Branch_haluca"), SubResource("Branch_level_down"), SubResource("Branch_death")])
-
 [sub_resource type="Resource" id="Tab_Elmon"]
 script = ExtResource("8_tab")
 name = "Elmon"
 kind = "Patron"
 devotes = true
-roots = Array[ExtResource("6_root")]([SubResource("Root_Elmon")])
-
-[sub_resource type="Resource" id="Branch_humble"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_humble")
-
-[sub_resource type="Resource" id="Branch_gasp"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_gasp")
-
-[sub_resource type="Resource" id="Branch_breathtaking"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_breathtaking")
-after = Array[ExtResource("5_skill")]([ExtResource("s_gasp")])
-
-[sub_resource type="Resource" id="Branch_irradiate"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_irradiate")
-after = Array[ExtResource("5_skill")]([ExtResource("s_breathtaking")])
-
-[sub_resource type="Resource" id="Root_Hogel"]
-script = ExtResource("6_root")
-name = "Hogel"
-tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_humble"), SubResource("Branch_gasp"), SubResource("Branch_breathtaking"), SubResource("Branch_irradiate")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_elmon")])
 
 [sub_resource type="Resource" id="Tab_Hogel"]
 script = ExtResource("8_tab")
@@ -112,7 +55,13 @@ name = "Hogel"
 kind = "Patron"
 devotes = true
 satisfied_by = &"rest_whole"
-roots = Array[ExtResource("6_root")]([SubResource("Root_Hogel")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_hogel")])
+
+[sub_resource type="Resource" id="Choice_Patron"]
+script = ExtResource("c_choice")
+name = "Patron"
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Elmon"), SubResource("Tab_Hogel")])
+picks = 1
 
 [resource]
 script = ExtResource("1_script")
@@ -122,8 +71,8 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_hex"), SubResource("Slot_sweet_nothings")])
 stats = Dictionary[StringName, int]({&"strength": 8, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Elmon"), SubResource("Tab_Hogel")])
 shared = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_sweet_nothings"), ExtResource("s_chant")])
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_sweet_something")])
 swaps = Dictionary[StringName, StringName]({&"wisdom": &"charisma"})
 general = Array[StringName]([&"magical"])
+choices = Array[ExtResource("c_choice")]([SubResource("Choice_Patron")])

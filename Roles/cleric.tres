@@ -28,8 +28,11 @@
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
-
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Trees/luun.tres" id="r_luun"]
+[ext_resource type="Resource" path="res://Trees/sol.tres" id="r_sol"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
+
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -42,101 +45,27 @@ skill = ExtResource("s_pray")
 script = ExtResource("4_slot")
 skill = ExtResource("s_renew")
 
-[sub_resource type="Resource" id="Branch_level_down"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_level_down")
-after = Array[ExtResource("5_skill")]([ExtResource("s_pray")])
-
-[sub_resource type="Resource" id="Branch_death"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_death")
-after = Array[ExtResource("5_skill")]([ExtResource("s_level_down")])
-
-[sub_resource type="Resource" id="Root_Luun"]
-script = ExtResource("6_root")
-name = "Luun"
-tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_down"), SubResource("Branch_death")])
-
 [sub_resource type="Resource" id="Tab_Luun"]
 script = ExtResource("8_tab")
 name = "Luun"
 kind = "Divinity"
-roots = Array[ExtResource("6_root")]([SubResource("Root_Luun")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_luun")])
 god = &"luun"
 devotes = true
-
-[sub_resource type="Resource" id="Branch_igna"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_igna")
-
-[sub_resource type="Resource" id="Branch_flamewall"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_flamewall")
-after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
-
-[sub_resource type="Resource" id="Branch_inner_fire"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_inner_fire")
-after = Array[ExtResource("5_skill")]([ExtResource("s_flamewall")])
-
-[sub_resource type="Resource" id="Branch_burning_bag"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_burning_bag")
-after = Array[ExtResource("5_skill")]([ExtResource("s_inner_fire")])
-
-[sub_resource type="Resource" id="Branch_flamecharm"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_flamecharm")
-after = Array[ExtResource("5_skill")]([ExtResource("s_burning_bag")])
-
-[sub_resource type="Resource" id="Branch_cindering"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_cindering")
-after = Array[ExtResource("5_skill")]([ExtResource("s_flamecharm")])
-
-[sub_resource type="Resource" id="Branch_level_up"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_level_up")
-after = Array[ExtResource("5_skill")]([ExtResource("s_cindering")])
-
-[sub_resource type="Resource" id="Branch_flamedance"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_flamedance")
-after = Array[ExtResource("5_skill")]([ExtResource("s_level_up")])
-
-[sub_resource type="Resource" id="Branch_solar"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_solar")
-after = Array[ExtResource("5_skill")]([ExtResource("s_flamedance")])
-
-[sub_resource type="Resource" id="Branch_judgement"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_judgement")
-
-[sub_resource type="Resource" id="Branch_wildfire"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_wildfire")
-after = Array[ExtResource("5_skill")]([ExtResource("s_solar")])
-
-[sub_resource type="Resource" id="Branch_flamecharmed"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_flamecharmed")
-after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
-
-[sub_resource type="Resource" id="Root_Sol"]
-script = ExtResource("6_root")
-name = "Sol"
-tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_igna"), SubResource("Branch_flamewall"), SubResource("Branch_flamecharmed"), SubResource("Branch_inner_fire"), SubResource("Branch_burning_bag"), SubResource("Branch_flamecharm"), SubResource("Branch_cindering"), SubResource("Branch_level_up"), SubResource("Branch_flamedance"), SubResource("Branch_solar"), SubResource("Branch_wildfire"), SubResource("Branch_judgement")])
 
 [sub_resource type="Resource" id="Tab_Sol"]
 script = ExtResource("8_tab")
 name = "Sol"
 kind = "Divinity"
-roots = Array[ExtResource("6_root")]([SubResource("Root_Sol")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_sol")])
 god = &"sol"
 devotes = true
+
+[sub_resource type="Resource" id="Choice_God"]
+script = ExtResource("c_choice")
+name = "God"
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol")])
+picks = 1
 
 [resource]
 script = ExtResource("1_script")
@@ -146,8 +75,8 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_pray"), SubResource("Slot_renew")])
 stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 10, &"constitution": 12, &"intelligence": 10, &"wisdom": 15, &"charisma": 12})
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol")])
 shared = Array[ExtResource("5_skill")]([ExtResource("s_pray"), ExtResource("s_renew")])
 swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom", &"intelligence": &"wisdom"})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"magical"])
+choices = Array[ExtResource("c_choice")]([SubResource("Choice_God")])

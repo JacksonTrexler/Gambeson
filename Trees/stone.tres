@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Resource" path="res://Skills/quake.tres" id="s_quake"]
+[ext_resource type="Resource" path="res://Skills/terestera.tres" id="s_terestera"]
+[ext_resource type="Resource" path="res://Skills/rampart.tres" id="s_rampart"]
+[ext_resource type="Resource" path="res://Skills/bedrock.tres" id="s_bedrock"]
+
+[sub_resource type="Resource" id="Branch_quake"]
+script = ExtResource("branch")
+skill = ExtResource("s_quake")
+after = Array[ExtResource("skill")]([ExtResource("s_terestera")])
+
+[sub_resource type="Resource" id="Branch_rampart"]
+script = ExtResource("branch")
+skill = ExtResource("s_rampart")
+after = Array[ExtResource("skill")]([ExtResource("s_terestera")])
+
+[sub_resource type="Resource" id="Branch_bedrock"]
+script = ExtResource("branch")
+skill = ExtResource("s_bedrock")
+after = Array[ExtResource("skill")]([ExtResource("s_quake")])
+
+[resource]
+script = ExtResource("root")
+name = "Stone"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_quake"), SubResource("Branch_rampart"), SubResource("Branch_bedrock")])

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Resource" path="res://Skills/fortune.tres" id="s_fortune"]
+[ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
+[ext_resource type="Resource" path="res://Skills/constellation.tres" id="s_constellation"]
+[ext_resource type="Resource" path="res://Skills/starfall.tres" id="s_starfall"]
+
+[sub_resource type="Resource" id="Branch_fortune"]
+script = ExtResource("branch")
+skill = ExtResource("s_fortune")
+after = Array[ExtResource("skill")]([ExtResource("s_astera")])
+
+[sub_resource type="Resource" id="Branch_constellation"]
+script = ExtResource("branch")
+skill = ExtResource("s_constellation")
+after = Array[ExtResource("skill")]([ExtResource("s_astera")])
+
+[sub_resource type="Resource" id="Branch_starfall"]
+script = ExtResource("branch")
+skill = ExtResource("s_starfall")
+after = Array[ExtResource("skill")]([ExtResource("s_fortune"), ExtResource("s_constellation")])
+
+[resource]
+script = ExtResource("root")
+name = "Stars"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_fortune"), SubResource("Branch_constellation"), SubResource("Branch_starfall")])

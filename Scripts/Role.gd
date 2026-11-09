@@ -22,6 +22,7 @@ extends Resource
 @export var core: Array[Skill] = []  # around it, with its innate skills: a first choice at any time (Hex)
 @export var roots: Array[SkillRoot] = []  # reaching out from there (Magic, Martial, Specialist)
 @export var tabs: Array[SkillTab] = []  # more of its tree, beside its own, each a wheel of its own (Rogue: Calling: Freedom)
+@export var choices: Array[TreeChoice] = []  # trees picked on its own tab, their tabs opening once picked (Paladin: a Prowess; Mage: a school and a college)
 @export var radial := false  # its own tab drawn as a wheel (the Adventurer)
 @export var shared: Array[Skill] = []  # a static tier 1 row on every tab's core ring, learned from the start as innate skills (Warlock: Hex, Sweet Nothings, Chant)
 
@@ -39,18 +40,41 @@ func vigor_per_level() -> int:
 
 
 func has_tree() -> bool:
-	return not roots.is_empty() or center != null or not core.is_empty() or not tabs.is_empty()
+	return not roots.is_empty() or center != null or not core.is_empty() or not tabs.is_empty() or not choices.is_empty()
+
+
+# Its tabs beside its own, then every tab its choices offer.
+func all_tabs() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	for t in tabs:
+		if t:
+			out.append(t)
+	for c in choices:
+		if c:
+			for t in c.tabs:
+				if t and t not in out:
+					out.append(t)
+	return out
+
+
+# The choice offering tab t (or a copy of it), or null.
+func choice_of(t: SkillTab) -> TreeChoice:
+	for c in choices:
+		if c and c.has(t):
+			return c
+	return null
 
 
 # Its tree, a tab at a time: its own (named after it, with its innate skills on the core ring
-# where no other tab has them; left out when that leaves it empty beside other tabs), then its tabs,
-# each with the shared row first on its core ring (Warlock: a tab per patron).
+# where no other tab has them; left out when that leaves it empty beside other tabs, unless it holds
+# choices), then its tabs, then its choices' tabs, each with the shared row first on its core ring
+# (Warlock: a tab per patron). Unit.class_trees() leaves out the trees a unit hasn't picked.
 func trees() -> Array[SkillTab]:
 	var own := SkillTab.new()
 	own.name = name
 	own.center = center
 	for x in innate:
-		if x and x.skill and x.skill not in own.core and x.skill not in shared and not tabs.any(func(t: SkillTab): return t and t.offers(x.skill)) \
+		if x and x.skill and x.skill not in own.core and x.skill not in shared and not all_tabs().any(func(t: SkillTab): return t.offers(x.skill)) \
 				and not Unit.GENERAL_TREES.any(func(g: SkillTab): return g.offers(x.skill)):  # Strike is the General tree's
 			own.core.append(x.skill)
 	for s in core + options:  # a class without a tree: its options, by tier
@@ -58,10 +82,14 @@ func trees() -> Array[SkillTab]:
 			own.core.append(s)
 	own.roots = roots
 	own.radial = radial
+	if not choices.is_empty():  # its own tab holds the choices, with the shared row like every tab
+		var row: Array[Skill] = []
+		row.assign(shared.filter(func(s: Skill): return s != null and s not in own.core) + own.core)
+		own.core = row
 	var out: Array[SkillTab] = []
-	if own.center or not own.core.is_empty() or not own.roots.is_empty() or tabs.is_empty():
+	if own.center or not own.core.is_empty() or not own.roots.is_empty() or all_tabs().is_empty() or not choices.is_empty():
 		out.append(own)
-	for t in tabs:
+	for t in all_tabs():
 		if t and not shared.is_empty():
 			var copy: SkillTab = t.duplicate()
 			var row: Array[Skill] = []
@@ -77,7 +105,7 @@ func trees() -> Array[SkillTab]:
 func offered() -> Array[Skill]:
 	var out: Array[Skill] = []
 	var firsts: Array = options + ([center] if center else []) + core + shared
-	for t in tabs:
+	for t in all_tabs():
 		if t:
 			firsts.append_array(([t.center] if t.center else []) + t.core)
 	for s in firsts:
@@ -129,10 +157,23 @@ func _before(s: Skill, out: Array[Skill]) -> Array[Skill]:
 	return out
 
 
+# Every tab beside its own that offers s (a Wizard's Pray is on each of its domains' tabs); none for
+# its own tab's skills.
+func tabs_of(s: Skill) -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	if not lists(s) and not roots.any(func(r: SkillRoot): return r and r.branch(s)):
+		for t in all_tabs():
+			if t.offers(s) and s not in shared:
+				out.append(t)
+	return out
+
+
 # The tab beside its own that offers s, or null (Unit.devotion(): a Warlock's patrons).
 func tab_of(s: Skill) -> SkillTab:
-	for t in tabs:
-		if t and t.offers(s) and s not in shared:
+	if lists(s) or roots.any(func(r: SkillRoot): return r and r.branch(s)):
+		return null  # its own tab's
+	for t in all_tabs():
+		if t.offers(s) and s not in shared:
 			return t
 	return null
 
@@ -148,10 +189,20 @@ func outfit() -> Dictionary:
 
 # The root a skill is on, in any of its tabs, or null (a centre or core, or not in its tree).
 func root_of(s: Skill) -> SkillRoot:
+	for r in roots:
+		if r and r.branch(s):
+			return r
+	if lists(s):  # its own listed skill, whatever other trees it's on (a Wizard's Sola is on the Bard's Song too)
+		return null
 	for r in all_roots():
 		if r.branch(s):
 			return r
 	return null
+
+
+# Whether its own tab lists s outright: its centre, core ring and options.
+func lists(s: Skill) -> bool:
+	return s == center or s in core or s in options
 
 
 # Its roots, then its tabs'.
@@ -160,9 +211,8 @@ func all_roots() -> Array[SkillRoot]:
 	for r in roots:
 		if r:
 			out.append(r)
-	for t in tabs:
-		if t:
-			for r in t.roots:
-				if r:
-					out.append(r)
+	for t in all_tabs():
+		for r in t.roots:
+			if r and r not in out:
+				out.append(r)
 	return out

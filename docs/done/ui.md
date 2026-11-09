@@ -31,3 +31,9 @@
 - [x] **Accessibility toggles** (Settings): "High contrast" (brighter allied glow through `command_look`, whiter body text; heavier faction borders still to do) and "Mark suspicious tiles" (bold, opaque "?" on every suspicious tile).
 - [x] **Default orders** (`HUD.uses_intents` / `intent_options` / `issue_intent`): a commander that can't give specifics (cha mod <= 0) or read an ally's kit (low wisdom) directs it by **ATTACK / DEFEND / HELP**; the ally then takes its turn restricted to that posture. Only intents it can carry out show, unless the commander is guessing (wis mod + ally cha mod <= -5), when all three show with a "?" and an impossible pick wastes the order and locks the unit for the turn. A small popup presents them.
 - [x] **Layers in the tile pane and on the map**: the pane lists each layer the player can make out, top down, with its traits by term (Lets through, Obscuring, Cover, Brittle, Unstable, Flammable, Windswept) and a mending startile's "Repairing: X/Y"; under obscuring leaves, just the leaves and a "?". Move costs show fractions ("Mv -1.1"). The map draws leaves as scattered leaves (faint while trodden), glass as a pale sheen, a cracked startile as cracked glass with its repair's arc.
+
+## Skill trees, 2026-11-08
+
+- [x] **Icon boxes** (`SkillGrid`): each skill a small square with its glyph or initials (`Skill.mark()`) as a placeholder icon, its rank in the corner; its name in its tooltip and the footer. Stubs are dashed all round.
+- [x] **?? for an AI's designs** (`Skill.ai`, `Skill.title()`): on the skills screen and the hotbar's tooltips.
+- [x] **Choice boxes** on a class's own tab: a darkened box per choice of trees headed "SCHOOL · PICK UP TO 1" (or "LEARN DIVINITY" until its study is learned), holding each tree's tier 0 root; click one, and the footer offers to pick it, free. A gated choice sits just above the skill that opens it, a line running up to it.

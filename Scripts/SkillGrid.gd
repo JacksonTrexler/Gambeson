@@ -8,10 +8,13 @@ extends Control
 # icon box: its glyph or initials (Skill.mark()) as a placeholder icon, its name in its tooltip and the
 # footer. Learned skills are filled in, their rank in the corner; skills that could be learned now are
 # outlined brightly (ringed in gold while there's a point to spend on them), the rest dimly; stubs are
-# dashed. Hover a skill for its tooltip; click it to pick it (the skills screen's footer shows it). The
+# dashed. Hover a skill for its tooltip; click it to pick it (the skills screen's footer shows it). On
+# a class's own tab, each of its choices of trees (Role.choices) is a darkened box headed "Pick up to x",
+# holding each tree's tier 0 root: click one to choose it (chose), and the footer offers to pick it. The
 # same face as SkillWheel, which still draws the Adventurer's own tab.
 
 signal picked(s: Skill)
+signal chose(c: TreeChoice, t: SkillTab)  # a tree's root in a choice's box was clicked
 
 const BOX := Vector2(16.0, 16.0)  # a skill's icon box
 const GAP := Vector2(5.0, 8.0)  # between boxes, across and up
@@ -33,6 +36,10 @@ var _tones: Dictionary = {}  # Skill -> Color
 var _lines: Array = []  # [from Skill, to Skill, Color]
 var _labels: Array = []  # [at: Vector2, text, Color]: root names along the bottom
 var _top := 0  # the highest tier shown
+var selected_tree: SkillTab  # the tree root picked in a choice's box, if that's what the footer shows
+var _hover_tree: SkillTab
+var _entries: Dictionary = {}  # SkillTab -> [Rect2, its TreeChoice]: trees' roots in the choices' boxes
+var _choice_boxes: Array = []  # [Rect2, heading, Color, the skill opening it or null]
 
 
 func _init() -> void:
@@ -87,6 +94,8 @@ func _layout() -> void:
 	_tones.clear()
 	_lines.clear()
 	_labels.clear()
+	_entries.clear()
+	_choice_boxes.clear()
 	if not unit or not tab:
 		return
 	var groups := []  # [Color, its skills, its root (null for the core), its name]
@@ -95,10 +104,13 @@ func _layout() -> void:
 		groups.append([tab.tone() if tab.general() else CORE, core, null, "CORE" if not tab.general() else ""])
 	for r: SkillRoot in tab.roots.filter(func(x: SkillRoot): return x != null):
 		groups.append([SkillSlot.TYPES.get(r.tag, tab.tone() if tab.general() else CORE), r.skills(), r, r.name.to_upper()])
+	var choices: Array = unit.role.choices.filter(func(c: TreeChoice): return c != null) if unit.role and tab.kind == "" and not tab.radial else []
 	_top = 0
 	for g in groups:
 		for s: Skill in g[1]:
 			_top = maxi(_top, _tier(s))
+	for c: TreeChoice in choices:
+		_top = maxi(_top, _choice_row(c))
 	var x := LEFT + PAD
 	for g in groups:
 		var rows := {}  # tier -> its skills in this group
@@ -122,7 +134,39 @@ func _layout() -> void:
 				for a in root.branch(s).after:
 					_lines.append([a, s, g[0]])
 		x += maxf(wide * (BOX.x + GAP.x), name_w) + GAP.x  # wide enough for its name along the bottom
+	for c: TreeChoice in choices:  # a box per choice, its trees' roots in a row
+		var row := _choice_row(c)
+		var cap := unit.pick_cap(c)
+		var heading := "%s · %s" % [c.name.to_upper(), "LEARN " + c.by.name.to_upper() if c.by and unit.rank(c.by) == 0 else "PICK UP TO %d" % cap]
+		var start := x + 3.0
+		var offered: Array = c.tabs.filter(func(t: SkillTab): return t and unit.suits(t))  # a Paladin sees only the Prowess its god suits
+		for i in offered.size():
+			_entries[offered[i]] = [Rect2(Vector2(start + i * (BOX.x + GAP.x), row_y(row)), BOX), c]
+		var inner := offered.size() * (BOX.x + GAP.x) - GAP.x
+		var heading_w := get_theme_font(&"font").get_string_size(heading, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
+		var tone: Color = offered[0].tone() if not offered.is_empty() else CORE
+		_choice_boxes.append([Rect2(Vector2(x, row_y(row) - 10.0), Vector2(maxf(inner, heading_w) + 6.0, BOX.y + 13.0)), heading, tone, c.by])
+		x += maxf(inner, heading_w) + 6.0 + GAP.x * 2.0
 	custom_minimum_size = Vector2(x + PAD, row_y(0) + BOX.y + BASE + PAD)
+
+
+# The tier a choice's box sits on: 0, or just above the skill that opens it (a Wizard's Divinity).
+func _choice_row(c: TreeChoice) -> int:
+	return _tier(c.by) + 1 if c.by else 0
+
+
+# The tree whose root is at p in a choice's box, or null.
+func entry_at(p: Vector2) -> SkillTab:
+	for t in _entries:
+		if _entries[t][0].grow(1.0).has_point(p):
+			return t
+	return null
+
+
+# A tree root's state, as a skill's: &"learned" (picked), &"open" (it could be picked now) or &"locked".
+func entry_state(t: SkillTab) -> StringName:
+	var why := unit.pick_missing(_entries[t][1], t)
+	return &"learned" if why == "Picked" else (&"open" if why == "" else &"locked")
 
 
 func _draw() -> void:
@@ -133,6 +177,15 @@ func _draw() -> void:
 		var y := row_y(t)
 		draw_line(Vector2(LEFT, y + BOX.y / 2.0), Vector2(size.x - PAD, y + BOX.y / 2.0), Color(1, 1, 1, 0.04), 1.0)
 		draw_string(font, Vector2(2.0, y + BOX.y / 2.0 + 2.0), "T%d" % t, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(1, 1, 1, 0.3))
+	for cb in _choice_boxes:  # each choice's box darkens the tree behind it, its heading saying how many
+		var r: Rect2 = cb[0]
+		draw_rect(r, Color(0, 0, 0, 0.38))
+		draw_rect(r, Color(cb[2], 0.45), false, 1.0)
+		draw_string(font, r.position + Vector2(3.0, 7.0), cb[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(cb[2].lightened(0.3), 0.85))
+		if cb[3] and cb[3] in _boxes:  # up from the skill that opens it
+			var from: Rect2 = _boxes[cb[3]]
+			var lit := unit.rank(cb[3]) > 0
+			draw_line(Vector2(from.get_center().x, from.position.y), Vector2(r.position.x + 8.0, r.end.y), Color(cb[2], 0.6 if lit else 0.22), 1.0)
 	for l in _lines:
 		if l[0] in _boxes and l[1] in _boxes:
 			var lit := unit.base_rank(l[1]) > 0
@@ -143,6 +196,28 @@ func _draw() -> void:
 		draw_string(font, lab[0], lab[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 5, Color(lab[2].lightened(0.3), 0.8))
 	for s in _boxes:
 		_node(s, _boxes[s], _tones[s], font)
+	for t in _entries:
+		_entry(t, _entries[t][0], font)
+
+
+# A tree's tier 0 root in a choice's box: its glyph in its tree's colour, filled once picked.
+func _entry(t: SkillTab, box: Rect2, font: Font) -> void:
+	var tone := t.tone()
+	var state := entry_state(t)
+	var fill := tone.darkened(0.25) if state == &"learned" else FILL
+	var edge := tone.lightened(0.35) if state == &"learned" else (tone if state == &"open" else Color(tone, 0.35))
+	var ink := Color(0.95, 0.96, 0.98) if state == &"learned" else (tone.lightened(0.45) if state == &"open" else Color(tone.lightened(0.2), 0.5))
+	draw_rect(box, fill)
+	draw_rect(box, edge, false, 1.0)
+	if state == &"open" and spend:
+		draw_rect(box.grow(1.5), Color(GOLD, 0.75), false, 1.0)
+	if t == selected_tree:
+		draw_rect(box.grow(2.5), Color.WHITE, false, 1.0)
+	elif t == _hover_tree:
+		draw_rect(box.grow(2.5), Color(1, 1, 1, 0.45), false, 1.0)
+	var text := t.mark()
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x
+	draw_string(font, box.get_center() + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, ink)
 
 
 func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
@@ -192,24 +267,35 @@ func _gui_input(e: InputEvent) -> void:
 		return
 	if e is InputEventMouseMotion:
 		var s := skill_at(e.position)
-		if s != _hover:
+		var t := entry_at(e.position)
+		if s != _hover or t != _hover_tree:
 			_hover = s
-			mouse_default_cursor_shape = CURSOR_POINTING_HAND if s else CURSOR_ARROW
+			_hover_tree = t
+			mouse_default_cursor_shape = CURSOR_POINTING_HAND if s or t else CURSOR_ARROW
 			queue_redraw()
 	elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		var s := skill_at(e.position)
+		var t := entry_at(e.position)
 		if s:
 			picked.emit(s)
+			accept_event()
+		elif t:
+			chose.emit(_entries[t][1], t)
 			accept_event()
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_EXIT and _hover:
+	if what == NOTIFICATION_MOUSE_EXIT and (_hover or _hover_tree):
 		_hover = null
+		_hover_tree = null
 		queue_redraw()
 
 
 func _get_tooltip(at: Vector2) -> String:
+	var t := entry_at(at) if unit else null
+	if t:
+		var why := unit.pick_missing(_entries[t][1], t)
+		return "%s · T0\n%s%s" % [t.title(), SkillTree.opens(t), "\n" + why if why else ""]
 	var s := skill_at(at) if unit else null
 	if not s:
 		return ""

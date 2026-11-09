@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="8_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="9_branch"]
 [ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="10_tab"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="11_choice"]
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
@@ -32,21 +33,6 @@
 [ext_resource type="Resource" path="res://Skills/focus.tres" id="s_focus"]
 [ext_resource type="Resource" path="res://Skills/resonance.tres" id="s_resonance"]
 [ext_resource type="Resource" path="res://Skills/piercing_focus.tres" id="s_piercing_focus"]
-[ext_resource type="Resource" path="res://Skills/searing.tres" id="s_searing"]
-[ext_resource type="Resource" path="res://Skills/radiant_lance.tres" id="s_radiant_lance"]
-[ext_resource type="Resource" path="res://Skills/sunburst.tres" id="s_sunburst"]
-[ext_resource type="Resource" path="res://Skills/undertow.tres" id="s_undertow"]
-[ext_resource type="Resource" path="res://Skills/gale.tres" id="s_gale"]
-[ext_resource type="Resource" path="res://Skills/maelstrom.tres" id="s_maelstrom"]
-[ext_resource type="Resource" path="res://Skills/quake.tres" id="s_quake"]
-[ext_resource type="Resource" path="res://Skills/rampart.tres" id="s_rampart"]
-[ext_resource type="Resource" path="res://Skills/bedrock.tres" id="s_bedrock"]
-[ext_resource type="Resource" path="res://Skills/darkstone.tres" id="s_darkstone"]
-[ext_resource type="Resource" path="res://Skills/umbral_step.tres" id="s_umbral_step"]
-[ext_resource type="Resource" path="res://Skills/eclipse.tres" id="s_eclipse"]
-[ext_resource type="Resource" path="res://Skills/fortune.tres" id="s_fortune"]
-[ext_resource type="Resource" path="res://Skills/constellation.tres" id="s_constellation"]
-[ext_resource type="Resource" path="res://Skills/starfall.tres" id="s_starfall"]
 [ext_resource type="Resource" path="res://Skills/battle_casting.tres" id="s_battle_casting"]
 [ext_resource type="Resource" path="res://Skills/volley.tres" id="s_volley"]
 [ext_resource type="Resource" path="res://Skills/spellstrike.tres" id="s_spellstrike"]
@@ -56,6 +42,11 @@
 [ext_resource type="Resource" path="res://Skills/spell_share.tres" id="s_spell_share"]
 [ext_resource type="Resource" path="res://Skills/linked_casting.tres" id="s_linked_casting"]
 [ext_resource type="Resource" path="res://Skills/harmony.tres" id="s_harmony"]
+[ext_resource type="Resource" path="res://Trees/radiance.tres" id="r_radiance"]
+[ext_resource type="Resource" path="res://Trees/currents.tres" id="r_currents"]
+[ext_resource type="Resource" path="res://Trees/stone.tres" id="r_stone"]
+[ext_resource type="Resource" path="res://Trees/shadow.tres" id="r_shadow"]
+[ext_resource type="Resource" path="res://Trees/stars.tres" id="r_stars"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -113,150 +104,45 @@ name = "Commitment"
 tag = &"magical"
 branches = Array[ExtResource("9_branch")]([SubResource("Branch_focus"), SubResource("Branch_resonance"), SubResource("Branch_piercing_focus")])
 
-[sub_resource type="Resource" id="Branch_searing"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_searing")
-after = Array[ExtResource("7_skill")]([ExtResource("s_igna")])
-
-[sub_resource type="Resource" id="Branch_radiant_lance"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_radiant_lance")
-after = Array[ExtResource("7_skill")]([ExtResource("s_sola")])
-
-[sub_resource type="Resource" id="Branch_sunburst"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_sunburst")
-after = Array[ExtResource("7_skill")]([ExtResource("s_searing"), ExtResource("s_radiant_lance")])
-
-[sub_resource type="Resource" id="Root_Radiance_Radiance"]
-script = ExtResource("8_root")
-name = "Radiance"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_searing"), SubResource("Branch_radiant_lance"), SubResource("Branch_sunburst")])
-
-[sub_resource type="Resource" id="Tab_Radiance"]
+[sub_resource type="Resource" id="Tab_School_Radiance"]
 script = ExtResource("10_tab")
 name = "Radiance"
 kind = "School"
-one_of = &"school"
 color = Color(0.95, 0.69, 0.33, 1)
-roots = Array[ExtResource("8_root")]([SubResource("Root_Radiance_Radiance")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_radiance")])
 
-[sub_resource type="Resource" id="Branch_undertow"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_undertow")
-after = Array[ExtResource("7_skill")]([ExtResource("s_hydera")])
-
-[sub_resource type="Resource" id="Branch_gale"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_gale")
-after = Array[ExtResource("7_skill")]([ExtResource("s_aetha")])
-
-[sub_resource type="Resource" id="Branch_maelstrom"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_maelstrom")
-after = Array[ExtResource("7_skill")]([ExtResource("s_undertow"), ExtResource("s_gale")])
-
-[sub_resource type="Resource" id="Root_Currents_Currents"]
-script = ExtResource("8_root")
-name = "Currents"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_undertow"), SubResource("Branch_gale"), SubResource("Branch_maelstrom")])
-
-[sub_resource type="Resource" id="Tab_Currents"]
+[sub_resource type="Resource" id="Tab_School_Currents"]
 script = ExtResource("10_tab")
 name = "Currents"
 kind = "School"
-one_of = &"school"
 color = Color(0.37, 0.7, 0.88, 1)
-roots = Array[ExtResource("8_root")]([SubResource("Root_Currents_Currents")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_currents")])
 
-[sub_resource type="Resource" id="Branch_quake"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_quake")
-after = Array[ExtResource("7_skill")]([ExtResource("s_terestera")])
-
-[sub_resource type="Resource" id="Branch_rampart"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_rampart")
-after = Array[ExtResource("7_skill")]([ExtResource("s_terestera")])
-
-[sub_resource type="Resource" id="Branch_bedrock"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_bedrock")
-after = Array[ExtResource("7_skill")]([ExtResource("s_quake")])
-
-[sub_resource type="Resource" id="Root_Stone_Stone"]
-script = ExtResource("8_root")
-name = "Stone"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_quake"), SubResource("Branch_rampart"), SubResource("Branch_bedrock")])
-
-[sub_resource type="Resource" id="Tab_Stone"]
+[sub_resource type="Resource" id="Tab_School_Stone"]
 script = ExtResource("10_tab")
 name = "Stone"
 kind = "School"
-one_of = &"school"
 color = Color(0.69, 0.57, 0.42, 1)
-roots = Array[ExtResource("8_root")]([SubResource("Root_Stone_Stone")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_stone")])
 
-[sub_resource type="Resource" id="Branch_darkstone"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_darkstone")
-after = Array[ExtResource("7_skill")]([ExtResource("s_nadira")])
-
-[sub_resource type="Resource" id="Branch_umbral_step"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_umbral_step")
-after = Array[ExtResource("7_skill")]([ExtResource("s_nadira")])
-
-[sub_resource type="Resource" id="Branch_eclipse"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_eclipse")
-after = Array[ExtResource("7_skill")]([ExtResource("s_darkstone")])
-
-[sub_resource type="Resource" id="Root_Shadow_Shadow"]
-script = ExtResource("8_root")
-name = "Shadow"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_darkstone"), SubResource("Branch_umbral_step"), SubResource("Branch_eclipse")])
-
-[sub_resource type="Resource" id="Tab_Shadow"]
+[sub_resource type="Resource" id="Tab_School_Shadow"]
 script = ExtResource("10_tab")
 name = "Shadow"
 kind = "School"
-one_of = &"school"
 color = Color(0.49, 0.44, 0.72, 1)
-roots = Array[ExtResource("8_root")]([SubResource("Root_Shadow_Shadow")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_shadow")])
 
-[sub_resource type="Resource" id="Branch_fortune"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_fortune")
-after = Array[ExtResource("7_skill")]([ExtResource("s_astera")])
-
-[sub_resource type="Resource" id="Branch_constellation"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_constellation")
-after = Array[ExtResource("7_skill")]([ExtResource("s_astera")])
-
-[sub_resource type="Resource" id="Branch_starfall"]
-script = ExtResource("9_branch")
-skill = ExtResource("s_starfall")
-after = Array[ExtResource("7_skill")]([ExtResource("s_fortune"), ExtResource("s_constellation")])
-
-[sub_resource type="Resource" id="Root_Stars_Stars"]
-script = ExtResource("8_root")
-name = "Stars"
-tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_fortune"), SubResource("Branch_constellation"), SubResource("Branch_starfall")])
-
-[sub_resource type="Resource" id="Tab_Stars"]
+[sub_resource type="Resource" id="Tab_School_Stars"]
 script = ExtResource("10_tab")
 name = "Stars"
 kind = "School"
-one_of = &"school"
 color = Color(0.78, 0.77, 0.94, 1)
-roots = Array[ExtResource("8_root")]([SubResource("Root_Stars_Stars")])
+roots = Array[ExtResource("8_root")]([ExtResource("r_stars")])
+
+[sub_resource type="Resource" id="Choice_School"]
+script = ExtResource("11_choice")
+name = "School"
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_School_Radiance"), SubResource("Tab_School_Currents"), SubResource("Tab_School_Stone"), SubResource("Tab_School_Shadow"), SubResource("Tab_School_Stars")])
 
 [sub_resource type="Resource" id="Branch_battle_casting"]
 script = ExtResource("9_branch")
@@ -278,11 +164,10 @@ name = "Battle"
 tag = &"magical"
 branches = Array[ExtResource("9_branch")]([SubResource("Branch_battle_casting"), SubResource("Branch_volley"), SubResource("Branch_spellstrike")])
 
-[sub_resource type="Resource" id="Tab_Battle"]
+[sub_resource type="Resource" id="Tab_College_Battle"]
 script = ExtResource("10_tab")
 name = "Battle"
 kind = "College"
-one_of = &"college"
 color = Color(0.85, 0.44, 0.35, 1)
 roots = Array[ExtResource("8_root")]([SubResource("Root_Battle_Battle")])
 
@@ -306,11 +191,10 @@ name = "Wards"
 tag = &"magical"
 branches = Array[ExtResource("9_branch")]([SubResource("Branch_ward"), SubResource("Branch_counterspell"), SubResource("Branch_sanctum")])
 
-[sub_resource type="Resource" id="Tab_Wards"]
+[sub_resource type="Resource" id="Tab_College_Wards"]
 script = ExtResource("10_tab")
 name = "Wards"
 kind = "College"
-one_of = &"college"
 color = Color(0.56, 0.69, 0.79, 1)
 roots = Array[ExtResource("8_root")]([SubResource("Root_Wards_Wards")])
 
@@ -333,13 +217,17 @@ name = "Concord"
 tag = &"magical"
 branches = Array[ExtResource("9_branch")]([SubResource("Branch_spell_share"), SubResource("Branch_linked_casting"), SubResource("Branch_harmony")])
 
-[sub_resource type="Resource" id="Tab_Concord"]
+[sub_resource type="Resource" id="Tab_College_Concord"]
 script = ExtResource("10_tab")
 name = "Concord"
 kind = "College"
-one_of = &"college"
 color = Color(0.62, 0.82, 0.6, 1)
 roots = Array[ExtResource("8_root")]([SubResource("Root_Concord_Concord")])
+
+[sub_resource type="Resource" id="Choice_College"]
+script = ExtResource("11_choice")
+name = "College"
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_College_Battle"), SubResource("Tab_College_Wards"), SubResource("Tab_College_Concord")])
 
 [resource]
 script = ExtResource("1_script")
@@ -353,4 +241,4 @@ reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10}
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_mana_potion")])
 general = Array[StringName]([&"magical"])
 roots = Array[ExtResource("8_root")]([SubResource("Root_Refinement"), SubResource("Root_Commitment")])
-tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Radiance"), SubResource("Tab_Currents"), SubResource("Tab_Stone"), SubResource("Tab_Shadow"), SubResource("Tab_Stars"), SubResource("Tab_Battle"), SubResource("Tab_Wards"), SubResource("Tab_Concord")])
+choices = Array[ExtResource("11_choice")]([SubResource("Choice_School"), SubResource("Choice_College")])

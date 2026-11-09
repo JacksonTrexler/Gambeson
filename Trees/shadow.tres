@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Resource" path="res://Skills/darkstone.tres" id="s_darkstone"]
+[ext_resource type="Resource" path="res://Skills/nadira.tres" id="s_nadira"]
+[ext_resource type="Resource" path="res://Skills/umbral_step.tres" id="s_umbral_step"]
+[ext_resource type="Resource" path="res://Skills/eclipse.tres" id="s_eclipse"]
+
+[sub_resource type="Resource" id="Branch_darkstone"]
+script = ExtResource("branch")
+skill = ExtResource("s_darkstone")
+after = Array[ExtResource("skill")]([ExtResource("s_nadira")])
+
+[sub_resource type="Resource" id="Branch_umbral_step"]
+script = ExtResource("branch")
+skill = ExtResource("s_umbral_step")
+after = Array[ExtResource("skill")]([ExtResource("s_nadira")])
+
+[sub_resource type="Resource" id="Branch_eclipse"]
+script = ExtResource("branch")
+skill = ExtResource("s_eclipse")
+after = Array[ExtResource("skill")]([ExtResource("s_darkstone")])
+
+[resource]
+script = ExtResource("root")
+name = "Shadow"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_darkstone"), SubResource("Branch_umbral_step"), SubResource("Branch_eclipse")])

@@ -11,6 +11,7 @@ extends Resource
 @export var effects: Array[Effect] = []  # passives: on the holder; actives: put on the target
 @export var max_rank := 0  # the highest rank it can be raised to; 0: no cap
 @export var glyph := ""  # up to 2 characters standing for it on skill trees, its placeholder icon; empty: its initials
+@export var studies := ""  # a Wizard's expanded study (Dabblings): what it lets its holder pick, up to its rank (TreeChoice.by: "religious domains")
 @export var ai := false  # designed by an AI, a placeholder open for the user's design: its name shows with ?? after it (title())
 @export var rank_cost := 0  # skill points for rank II, times rank_growth for each rank after (Clever Disguise: 4, 8, 16...); 0: the usual 1 + r^2
 @export var rank_growth := 2.0
@@ -561,6 +562,8 @@ func markup(rank := 1, with_spec := true) -> String:
 		lines.append("Only one %s can be learned" % ("Strike upgrade" if exclusive == &"strike_form" else String(exclusive)))
 	if renames:
 		lines.append("Strike becomes %s" % renames)
+	if studies:
+		lines.append("Dabblings: pick up to {r:%d} of the %s on your tree" % [rank, studies])
 	if opens:
 		lines.append("Cheaper casting with %s: skills up to {r:T%d} get the savings they list for it" % [opens.name, rank])
 	if stand_in:

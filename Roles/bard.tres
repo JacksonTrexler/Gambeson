@@ -18,7 +18,6 @@
 [ext_resource type="Resource" path="res://Skills/manifest.tres" id="s_manifest"]
 [ext_resource type="Resource" path="res://Skills/sola.tres" id="s_sola"]
 [ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
-
 [ext_resource type="Resource" path="res://Skills/persona.tres" id="s_personify"]
 [ext_resource type="Resource" path="res://Skills/embellish.tres" id="s_embellish"]
 [ext_resource type="Resource" path="res://Skills/brood.tres" id="s_brood"]
@@ -30,6 +29,8 @@
 [ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
 [ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
+[ext_resource type="Resource" path="res://Trees/song.tres" id="r_song"]
+
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -37,21 +38,6 @@ skill = ExtResource("s_strike")
 [sub_resource type="Resource" id="Slot_meander"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_meander")
-
-[sub_resource type="Resource" id="Branch_sola"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_sola")
-
-[sub_resource type="Resource" id="Branch_astera"]
-script = ExtResource("7_branch")
-skill = ExtResource("s_astera")
-after = Array[ExtResource("5_skill")]([ExtResource("s_sola")])
-
-[sub_resource type="Resource" id="Root_Song"]
-script = ExtResource("6_root")
-name = "Song"
-tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_sola"), SubResource("Branch_astera")])
 
 [sub_resource type="Resource" id="Branch_tonefoolery"]
 script = ExtResource("7_branch")
@@ -107,7 +93,7 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_meander")])
 stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
-roots = Array[ExtResource("6_root")]([SubResource("Root_Song")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_song")])
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"specialist", &"magical"])

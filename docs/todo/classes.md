@@ -71,13 +71,21 @@ Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** a
 
 ### Wizards, revised (2026-11-08)
 
-- [ ] **Dabblings**: a branch of the Wizard's own tree, its way into other classes' trees: the Bard's magic trees, and really any tree tagged Caster.
+- [x] **Dabblings**: a branch of the Wizard's own tree, its way into other classes' trees: the Bard's magic trees, and really any tree tagged Caster. Built (`docs/done/classes.md`). (?71)
   - **Expanded studies** (guest trees at -1 Affinity): **Divinity** gains a religious domain, **Symphony** a Bard genre, **Witchery** a Warlock pact.
   - No Affinity penalty: **Mastery** gains a Mage school.
   - Guest skill trees default to -1 Affinity.
-- [ ] **Picking trees**: every class picks its trees on its own (universal) tree by unlocking their tier 0 roots there. A box around the choice says "Pick up to x" (the cap), and darkens the tree's backdrop behind it.
+- [x] **Picking trees**: every class picks its trees on its own (universal) tree by unlocking their tier 0 roots there. A box around the choice says "Pick up to x" (the cap), and darkens the tree's backdrop behind it. Built (`docs/done/classes.md`). (?71)
 - [ ] **Emergency Exit** (high tier): makes the forming escape portal open rank turns early where it's forming; otherwise warps the party to a bland pocket dimension of stone (still in the scenario, reachable only by a two-way portal). The pocket lasts rank rounds, then returns its units in a clump.
 - [ ] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it.
+
+71. **Picking trees and Dabblings - built on judgement, open for review (2026-11-08).**
+    - A tree's tier 0 root is the tree itself, not a skill: picking it is free (no skill point), and it opens the tree's tab. The tabs of trees not picked are hidden.
+    - The choices: Paladin Prowess (1, only those that suit its god shown), Warlock Patron (1), Cleric God (1), Mage School (1) and College (1). Rogue's and Bard's Calling: Freedom, the Berserker's three Prowess tabs and the Wizard's World stay open without a pick.
+    - Wizard: Divinity, Symphony, Witchery and Mastery each go to rank III, and each rank is one more pick. The trees on offer are listed, not found: domains Eros, Luun, Sol; genre Song (the Bard's own Song root, since Bards have no genres yet); pacts Elmon, Hogel; the five Mage schools. Should every Caster-tagged tree in the game be on offer automatically instead?
+    - A borrowed tree brings what its roots start after: Pray on each domain's tab, Hex and Sweet Nothings on each pact's.
+    - The stubbed Pact and Favour skills from round 70 are gone; the real trees replace them.
+    - Units authored with a tree's skills and no picks count those trees as picked (NPC Clerics keep their god).
 
 ## Warlock
 
