@@ -39,6 +39,7 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	var recon := o.stat(&"recon", t.tags) + extra
 	var left := _left(o, _levels(b, t.cell, t, true, o))
 	_sense(r, left, recon, o.luck - t.luck)
+	_range(b, o, t, r)
 	_place(r, o, t, _main(left))
 	var trick := trickery(t, r, o, b)
 	var tricked := trick > 0 and trick >= recon
@@ -348,6 +349,20 @@ static func _sense(r: Read, left: Dictionary, recon: float, net_luck: int) -> vo
 	r.seen = left.keys().all(func(k): return _kind(k).sense != &"sight" or left[k] == 0)
 	r.heard = left.keys().all(func(k): return _kind(k).sense != &"hearing" or left[k] == 0)
 	r.net = Luck.settle(recon - left.values().reduce(func(a, x): return a + x, 0), net_luck, true, false)
+
+
+# Where sight is limited (Battle.sight): beyond o's perception range it doesn't perceive t at all;
+# beyond half of it, it makes out where t is but not how it looks. Its own side it always knows.
+static func _range(b: Battle, o: Unit, t: Unit, r: Read) -> void:
+	var reach := b.perception_range(o)
+	if reach < 0.0 or o == t or Faction.friends(o.faction, t.faction):
+		return
+	var d := Vector2(o.cell).distance_to(Vector2(t.cell))
+	if d > reach + 0.0001:
+		r.net = mini(r.net, -4)
+		r.seen = false
+	elif d > reach / 2.0 + 0.0001:
+		r.net = mini(r.net, -2)
 
 
 static func _kind(k: StringName) -> Dictionary:

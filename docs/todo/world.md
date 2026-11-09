@@ -4,7 +4,7 @@
 
 ## Scenes
 
-- [ ] **Infernal Meadows**: a standalone challenge for now, reached later through a dungeon gate on the overworld. Ordinary grass with a "Paradise" feel. Your answers (2026-11-08):
+- [x] **Infernal Meadows**: a standalone challenge for now, reached later through a dungeon gate on the overworld. Ordinary grass with a "Paradise" feel. Your answers (2026-11-08):
   - The map is generated around the party as it moves: a procedural generation test map. Light brush, a few ponds and thin streams.
   - Demons spawn in small groups: 1-2 Sirens near water, or near an Undine. Spawn formations are prefabs that are easy to tweak, scale and reuse, and they spawn beside features such as ponds. Out of view means beyond the whole party's perception.
   - At most (ally faction count x difficulty) demons alive at once. Difficulty is an area attribute (0.5, 1, 1.5), built off the roll difficulties.
@@ -12,7 +12,8 @@
   - Kills are counted in total; in-fighting is assumed to come from outside influence in most scenarios.
   - Once 30 are slain, the escape portal forms where the last one died. It takes longer to open the higher the difficulty, and spawning ramps up hard meanwhile. The portal shows its turns remaining. A unit stepping onto it once it's open wins the battle at once.
   - No leaving early yet, except by the Wizard's Emergency Exit.
-- [ ] **Gamut's Tower**: a new scene with a selection of portals, just the Meadows for now.
+  - Built (`Scenes/meadows.tscn`, `Meadows.gd`; `docs/done/world.md`). (?74)
+- [x] **Gamut's Tower**: a new scene with a selection of portals, just the Meadows for now. Built (`Scenes/gamuts_tower.tscn`, on the class selection screen's scenarios). (?74)
 - [ ] **A Rift's domain**: the Wizard's Rift opens a portal to a pared-down Meadows, an 8x8 grass diamond with an escape portal at its centre, its difficulty scaled on the Rift's rank and its level shared with the Wizard's.
 - [ ] **Astral Envoy**: tuning. (?29) Balance waits: there's a lot of ground to cover first. *Now:* built, with the star lattice and two Starmen (`docs/done/world.md`).
 

@@ -138,6 +138,11 @@ var layers: Dictionary[Vector2i, Array] = {}  # cell -> the layers laid over its
 var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, until its stack changes
 @export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
 var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
+@export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
+@export var sight := false  # units perceive only within their wisdom total in tiles, and make out appearances within half that (Perception.unit(); the Meadows)
+@export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
+@export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
+var winner: Faction  # a side that won outright (escape()), whoever's still standing
 @export var area_tags: Array[StringName] = []  # what the whole battlefield is (indoors, city, forest, desert...): debris where its tiles say nothing
 
 # What a hiding unit leaves on the ground, by the tags of the tile (then the area): the first that
@@ -354,6 +359,9 @@ func roll_initiative() -> Array[Faction]:
 				rolls[u.faction] = []
 			unit_rolls[u] = roundi(resolve(Check.check(0, 0)).d20 * (1.0 + u.stat(&"opening_ap")))  # a Dagger's edge counts here too
 			rolls[u.faction].append(unit_rolls[u])
+	for f in lasting:
+		if f not in rolls:
+			rolls[f] = []  # in the order with nobody standing yet (the Meadows' demons)
 	var o: Array[Faction] = []
 	o.assign(contest(rolls.keys(), [total]))
 	print("Initiative: ", ", ".join(o.map(func(f): return "%s %d" % [f.name, total(f)])))
@@ -2511,6 +2519,21 @@ func waltz(u: Unit, s: Skill) -> void:
 	zones.append(Zone.new(&"fog", levels, 2, u.faction))
 
 
+# u steps out through an escape portal: its side wins the battle at once (the Meadows).
+func escape(u: Unit) -> void:
+	if phase == Phase.OVER:
+		return
+	winner = u.faction
+	phase = Phase.OVER
+
+
+# How far o perceives others in tiles: its wisdom total, halved in fog; -1 where sight isn't limited.
+func perception_range(o: Unit) -> float:
+	if not sight:
+		return -1.0
+	return o.stat(&"wisdom") * (0.5 if &"fog" in conditions else 1.0)
+
+
 # Whether `by` can still hold u: beside it, or engulfing it on its own tile (a mist Undine).
 func _within_grip(by: Unit, u: Unit) -> bool:
 	return by.cell == u.cell or next_to(by.cell, u.cell)
@@ -2779,6 +2802,8 @@ func sides_left() -> int:
 
 # A side holding the field once the battle's over (allies hold it together), or null.
 func victor() -> Faction:
+	if winner:
+		return winner if phase == Phase.OVER else null
 	var left := fighting()
 	return left[0] if phase == Phase.OVER and sides_left() == 1 and not left.is_empty() else null
 
@@ -3373,6 +3398,8 @@ func _on_died(u: Unit) -> void:
 	for o in units.values():
 		if o.faction == u.faction:
 			return  # faction still standing
+	if u.faction in lasting:
+		return  # more of them will come
 	var i := order.find(u.faction)
 	order.erase(u.faction)
 	zones.assign(zones.filter(func(z: Zone): return z.faction != u.faction))  # nothing left to tick them

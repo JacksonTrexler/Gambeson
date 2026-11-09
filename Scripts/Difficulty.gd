@@ -19,6 +19,17 @@ const LADDER := {
 	&"impossible": [6, 3, 30],
 }
 
+# An area's difficulty (Battle.difficulty: dungeons, scenarios) -> the rung its own checks sit on, and
+# how much of everything it throws at you (the Meadows: live spawns, how long its portal takes).
+const AREA := {0.5: &"approachable", 1.0: &"standard", 1.5: &"difficult"}
+const AREA_NAMES := {0.5: "Gentle", 1.0: "Standard", 1.5: "Harsh"}
+
+
+# The rung an area of difficulty x sits on (approachable, standard, difficult).
+static func area(x: float) -> StringName:
+	return AREA.get(snappedf(clampf(x, 0.5, 1.5), 0.5), &"standard")
+
+
 # tag -> share of rank (rounded up): how far, how many, how much.
 const MAGNITUDE := {
 	&"faint": 0.5,

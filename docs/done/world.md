@@ -111,3 +111,11 @@ Jimhe Deyn runs competing gangs out of Center, each a mix of species shoehorned 
 ### Undine (2026-11-08)
 
 - [x] **Undine** (`Scenes/undine.tscn`, behaviour `undine`: `AI._undine()`): an elemental demon - Malevolent, Abyssal, Aquatic, Murky. Waterstrike (1d6 + dex); Waltz of Vapors (`Skill.fog`, `Battle.waltz()`: fog around it, kept up by using it as each turn opens); Vaporize (a toggle: the `mist` stat, 75% off physical, 50% off magical, weak to wind; a mist uses only `Skill.mist_only` skills); Coalescing (`Skill.engulfs`: a str contest, then into the foe's tile, sharing it - `Battle.inside`, `Battle.engulf()` - grappling and drowning it there); Well Up (`Skill.wells`, `Battle.well_up()`: a Flood rank deep, rank - 1 around). `undine_test.gd`. (?73)
+
+## Infernal Meadows (2026-11-08)
+
+- [x] **Infernal Meadows** (`Scenes/meadows.tscn`, `meadows_play.tscn`; `Meadows.gd`): grass, light brush, ponds, shallows and thin streams from noise, generated in 12-tile chunks around the party as it goes. The party: the starter, both commanders and four villagers (`with_player`). Demons (`Factions/demons.tres`) stay in the fight with nobody standing (`Battle.lasting`) and spawn as their turn opens - a formation (`Formation`: a Siren by the water, two Sirens, an Undine and its Sirens) beyond every party member's perception, beside the ground it keeps to - up to the party's count x difficulty. The 30th kill forms the escape portal where it fell (`PortalMark`, its turns shown); it opens after 3 x difficulty turns, spawning doubled meanwhile; one of the party stepping on it wins (`Battle.escape()`, `Battle.winner`). `meadows_test.gd`. (?74)
+- [x] **Gamut's Tower** (`Scenes/gamuts_tower.tscn`): portals (the Meadows) at a difficulty (`Game.difficulty` -> `Battle.difficulty`). (?74)
+- [x] **Sight and conditions** (`Battle.sight`, `Battle.conditions`, `Perception._range()`): units perceive within their wisdom total in tiles and make out appearances within half; fog halves both. On in the Meadows. (?74)
+- [x] **Area difficulty** (`Battle.difficulty`, `Difficulty.AREA`, `Difficulty.area()`): 0.5, 1, 1.5, sitting on the approachable, standard and difficult rungs. (?74)
+- [x] **Battle camera** (`BattleCamera`): follows the player's unit, or the selected one once it's far off; Home toggles between them (the `camera_home` action). (?74)

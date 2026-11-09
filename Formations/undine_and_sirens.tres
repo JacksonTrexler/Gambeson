@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Formation" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Formation.gd" id="1_form"]
+[ext_resource type="PackedScene" path="res://Scenes/siren.tscn" id="u_siren"]
+[ext_resource type="PackedScene" path="res://Scenes/undine.tscn" id="u_undine"]
+
+[resource]
+script = ExtResource("1_form")
+name = "An Undine and its Sirens"
+units = Array[PackedScene]([ExtResource("u_undine"), ExtResource("u_siren"), ExtResource("u_siren")])
+offsets = Array[Vector2i]([Vector2i(0, 0), Vector2i(2, 0), Vector2i(-1, 2)])
+weight = 0.8

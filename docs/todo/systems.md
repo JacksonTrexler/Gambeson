@@ -32,16 +32,26 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Rangers**: Observe belongs on their tree too, once they exist.
 - [ ] **Dissonance by how far the lie is**: harder to pretend to be something you very much aren't (a wolf in sheep's clothing, not a scary dog). *Now:* a tally of what the persona puts forward.
 - [ ] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. *Now:* units can be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
-  - [ ] **Procedural maps** generated around the party: grass, light brush, ponds, thin streams.
-  - [ ] **Spawn formations**: prefab groups (units and offsets) that scale and are reused, placed beside features (ponds) beyond the party's perception.
-  - [ ] **Area difficulty**: an area attribute (0.5, 1, 1.5) for dungeons and scenarios, built off the roll difficulties; it caps live spawns at ally faction count x difficulty and slows the escape portal.
-  - [ ] **Perception range**: units perceive within their wisdom total, and make out appearances within half that.
-  - [ ] **Area conditions**: Fog halves perception distances.
-  - [ ] **Camera**: centred on the player's unit (its commander if it's down), or on the commanded unit while commanding, once it's far enough away. Home refocuses on the selected unit; Home again returns to the player's unit.
+  - [x] **Procedural maps** generated around the party: grass, light brush, ponds, thin streams (`Meadows.gd`).
+  - [x] **Spawn formations** (`Formation`, `Formations/`): prefab groups (units and offsets) that scale and are reused, placed beside features (ponds) beyond the party's perception.
+  - [x] **Area difficulty** (`Battle.difficulty`, `Difficulty.area()`): an area attribute (0.5, 1, 1.5) for dungeons and scenarios, built off the roll difficulties; it caps live spawns at ally faction count x difficulty and slows the escape portal.
+  - [x] **Perception range** (`Battle.sight`, `Perception._range()`; on in the Meadows): units perceive within their wisdom total, and make out appearances within half that.
+  - [x] **Area conditions** (`Battle.conditions`): Fog halves perception distances.
+  - [x] **Camera** (`BattleCamera`, the Meadows): centred on the player's unit (its commander if it's down), or on the commanded unit while commanding, once it's far enough away. Home refocuses on the selected unit; Home again returns to the player's unit.
   - [ ] **Key rebinds** in Settings: a dropdown of bindable actions and a press-a-key panel.
 - [x] **Water tiles**: flowing water, ponds, and shallows (their rank is their depth). Built (`docs/done/systems.md`). (?72)
 - [x] **Flood**: a tile layer that slows movement and douses, often laid by effects or tile reactions. Its rank is its depth; deeper than a unit's size and the unit is submerged, so Sirens drown smaller creatures more easily. Laid Flood holds its depth for rank rounds, then dissipates. Built (`docs/done/systems.md`). (?72)
 - [x] **Grappling and drowning as mechanics of their own**: drowning needs the Grappled effect on its target. Built (`docs/done/systems.md`). (?72)
+
+74. **Infernal Meadows - built on judgement, open for review (2026-11-08).**
+    - "Ally faction count" read as the party's living units: the cap is that x difficulty, rounded up (7 x 1 = 7 at the start), doubled while the portal forms. One formation joins as each demons' turn opens (two while the portal forms).
+    - Formations: a Siren by the water; two Sirens by the water; an Undine and two Sirens (anywhere, since the Undine brings its own water). Each scales with difficulty (x0.5, x1.5, rounded).
+    - The portal opens 3 x difficulty turns (rounded up) after the 30th kill: 2 gentle, 3 standard, 5 harsh, counted on the party's turns. It shows its turns left, then OPEN. Every kill counts, whoever made it.
+    - Perception range is only on where a battle asks for it (the Meadows); the Museum and Astral Envoy keep unlimited sight. Allies always see each other. Turn it on everywhere?
+    - The party: your starter, both commanders (Alabaster, Icor) and the four villagers, all on your side. Ramut's Ire is off here (demons stay out of sight by design).
+    - The plane: 12-tile chunks, kept one chunk around each of the party; nothing is forgotten behind it. Grass is tinted brighter for the Paradise look; brush is Tall grass (cover).
+    - Gamut's Tower is a menu for now (a portal list and a difficulty: Gentle 0.5, Standard 1, Harsh 1.5), reached from the class selection screen's scenarios.
+    - Camera: it glides to the player's unit (its side's commander once it's down), or to the selected unit once that's over 110 pixels off centre. Home keeps to the selected unit; Home again goes back to the player's.
 
 72. **Water, Flood, drowning - built on judgement, open for review (2026-11-08).**
     - Depth is in unit sizes (Medium 3): Water and Pond 5, Flowing Water 2, Shallows 1. A unit is submerged when the water is deeper than its size, so a Medium unit keeps its head up in 3. A Flood's rank adds to the depth beneath it (a Flood on a pond deepens it). Only one Shallows depth exists yet; deeper shallows can be more tiles.

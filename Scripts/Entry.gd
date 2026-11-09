@@ -11,7 +11,7 @@ const RING := preload("res://Items/red_spinel_ring.tres")  # every player starts
 @export var roles: Array[Role] = []
 @export_file("*.tscn") var next_scene := "res://Scenes/play.tscn"  # the first scenario's
 # Scenarios by name: the scene each opens (a battle with the HUD).
-@export var scenarios: Dictionary[String, String] = {"Museum": "res://Scenes/play.tscn", "Astral Envoy": "res://Scenes/envoy_play.tscn"}
+@export var scenarios: Dictionary[String, String] = {"Museum": "res://Scenes/play.tscn", "Astral Envoy": "res://Scenes/envoy_play.tscn", "Gamut's Tower": "res://Scenes/gamuts_tower.tscn"}
 @export var default_side: Faction  # Lancin
 @export var default_role: Role  # Adventurer
 @export var default_name := "Shrike"

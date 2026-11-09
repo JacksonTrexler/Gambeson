@@ -110,6 +110,7 @@ static func shade(c: Color) -> Color:
 
 
 func _ready() -> void:
+	add_to_group(&"hud")  # the battle camera finds it (BattleCamera)
 	command = Command.new(battle, battle.player if battle.player else _stand_in())
 	overlay = Overlay.new()
 	overlay.hud = self
