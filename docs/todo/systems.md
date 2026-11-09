@@ -35,7 +35,7 @@ Build roughly in this order; the content below depends on them.
   - [x] **Procedural maps** generated around the party: grass, light brush, ponds, thin streams (`Meadows.gd`).
   - [x] **Spawn formations** (`Formation`, `Formations/`): prefab groups (units and offsets) that scale and are reused, placed beside features (ponds) beyond the party's perception.
   - [x] **Area difficulty** (`Battle.difficulty`, `Difficulty.area()`): an area attribute (0.5, 1, 1.5) for dungeons and scenarios, built off the roll difficulties; it caps live spawns at ally faction count x difficulty and slows the escape portal.
-  - [x] **Perception range** (`Battle.sight`, `Perception._range()`; on in the Meadows): units perceive within their wisdom total, and make out appearances within half that.
+  - [x] **Perception range** (`Battle.sight`, `Battle.in_range()`, `Perception._range()`): in every battle, units perceive within their wisdom total, and make out appearances within half that, the range shared across their side. Your answer (2026-11-09). Sides remember where they last made out foes and go looking there (`Battle.sightings`, `AI._hunt()`). (?77)
   - [x] **Area conditions** (`Battle.conditions`): Fog halves perception distances.
   - [x] **Camera** (`BattleCamera`, the Meadows): centred on the player's unit (its commander if it's down), or on the commanded unit while commanding, once it's far enough away. Home refocuses on the selected unit; Home again returns to the player's unit.
   - [x] **Key rebinds** in Settings: a dropdown of bindable actions and a press-a-key panel (`KeyBinds`, saved to `user://keybinds.cfg`).
@@ -43,14 +43,14 @@ Build roughly in this order; the content below depends on them.
 - [x] **Flood**: a tile layer that slows movement and douses, often laid by effects or tile reactions. Its rank is its depth; deeper than a unit's size and the unit is submerged, so Sirens drown smaller creatures more easily. Laid Flood holds its depth for rank rounds, then dissipates. Built (`docs/done/systems.md`). (?72)
 - [x] **Grappling and drowning as mechanics of their own**: drowning needs the Grappled effect on its target. Built (`docs/done/systems.md`). (?72)
 
-74. **Infernal Meadows - built on judgement, open for review (2026-11-08).**
-    - "Ally faction count" read as the party's living units: the cap is that x difficulty, rounded up (7 x 1 = 7 at the start), doubled while the portal forms. One formation joins as each demons' turn opens (two while the portal forms).
+74. **Infernal Meadows - answered (2026-11-09):** sight in every battle, shared across the side; the cap counts living allies, and demons over it after deaths stay; Gamut's Tower a walkable hall (`docs/todo/world.md`, ?77). The rest stands as built:
+    - "Ally faction count" is the party's living units: the cap is that x difficulty, rounded up (7 x 1 = 7 at the start), doubled while the portal forms. Demons over the cap when the party loses units aren't despawned; none join until they're under it. One formation joins as each demons' turn opens (two while the portal forms).
     - Formations: a Siren by the water; two Sirens by the water; an Undine and two Sirens (anywhere, since the Undine brings its own water). Each scales with difficulty (x0.5, x1.5, rounded).
     - The portal opens 3 x difficulty turns (rounded up) after the 30th kill: 2 gentle, 3 standard, 5 harsh, counted on the party's turns. It shows its turns left, then OPEN. Every kill counts, whoever made it.
-    - Perception range is only on where a battle asks for it (the Meadows); the Museum and Astral Envoy keep unlimited sight. Allies always see each other. Turn it on everywhere?
+    - Perception range: on in every battle now (?77). Allies always see each other.
     - The party: your starter, both commanders (Alabaster, Icor) and the four villagers, all on your side. Ramut's Ire is off here (demons stay out of sight by design).
     - The plane: 12-tile chunks, kept one chunk around each of the party; nothing is forgotten behind it. Grass is tinted brighter for the Paradise look; brush is Tall grass (cover).
-    - Gamut's Tower is a menu for now (a portal list and a difficulty: Gentle 0.5, Standard 1, Harsh 1.5), reached from the class selection screen's scenarios.
+    - Gamut's Tower: a walkable hall now, a floor per difficulty (?77).
     - Camera: it glides to the player's unit (its side's commander once it's down), or to the selected unit once that's over 110 pixels off centre. Home keeps to the selected unit; Home again goes back to the player's.
 
 72. **Water, Flood, drowning - built on judgement, open for review (2026-11-08).**

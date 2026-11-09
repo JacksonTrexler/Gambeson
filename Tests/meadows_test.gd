@@ -121,10 +121,11 @@ func test_tower_difficulty() -> void:
 	var mb: Battle = m.get_node("Battle")
 	ok(mb.difficulty == 1.5 and Game.difficulty == 0.0 and mb.get_node("Meadows").cap() == 11, "Gamut's Tower's pick: harsh (1.5), the cap 7 x 1.5 rounded up")
 	ok(Difficulty.area(1.5) == &"difficult" and Difficulty.area(0.5) == &"approachable", "area difficulty on the check ladder")
-	var tower: Control = load("res://Scenes/gamuts_tower.tscn").instantiate()
-	tree.root.add_child(tower)
-	ok(tower.find_children("Enter", "", true, false).size() == 1, "a portal to enter")
-	tower.free()
+	m.free()
+	Game.dungeon = load("res://Dungeons/infernal_meadows.tres")
+	m = await meadows(1.0)
+	mb = m.get_node("Battle")
+	ok(mb.rewards.map(func(it: Item): return it.name) == ["Health Potion", "Mana Potion", "Heart"] and Game.dungeon == null, "entered from the tower: its rewards at that floor")
 	m.free()
 
 

@@ -13,9 +13,15 @@
   - Once 30 are slain, the escape portal forms where the last one died. It takes longer to open the higher the difficulty, and spawning ramps up hard meanwhile. The portal shows its turns remaining. A unit stepping onto it once it's open wins the battle at once.
   - No leaving early yet, except by the Wizard's Emergency Exit.
   - Built (`Scenes/meadows.tscn`, `Meadows.gd`; `docs/done/world.md`). (?74)
-- [x] **Gamut's Tower**: a new scene with a selection of portals, just the Meadows for now. Built (`Scenes/gamuts_tower.tscn`, on the class selection screen's scenarios). (?74)
-- [ ] **A Rift's domain**: the Wizard's Rift opens a portal to a pared-down Meadows, an 8x8 grass diamond with an escape portal at its centre, its difficulty scaled on the Rift's rank and its level shared with the Wizard's.
+- [x] **Gamut's Tower**: a new scene with a selection of portals, just the Meadows for now. Revised (2026-11-09): a walkable hall of dungeon instances on a stone floor, with a staircase up and one down and portals in a ring between them. Each level is a difficulty. The Meadows is the only portal open; stepping onto it opens a menu with the dungeon's enemies and potential rewards. Built (`Scenes/gamuts_tower.tscn`, `GamutsTower.gd`, `Dungeon`; on the class selection screen's scenarios). (?77)
+- [x] **A Rift's domain**: the Wizard's Rift opens a portal to a pared-down Meadows, an 8x8 grass diamond with an escape portal at its centre, its difficulty scaled on the Rift's rank and its level shared with the Wizard's. Built (`Battle.open_rift()`; `docs/done/classes.md`). (?75)
 - [ ] **Astral Envoy**: tuning. (?29) Balance waits: there's a lot of ground to cover first. *Now:* built, with the star lattice and two Starmen (`docs/done/world.md`).
+
+77. **Sight everywhere and Gamut's Tower - built on judgement, open for review (2026-11-09).**
+    - Sight: a foe within any one of a side's ranges is in sight for the whole side, but how well each unit reads it (recon, concealment, disguises) stays its own; pooling reads is still Coordinate's. Each side starts knowing where the others drew up in the open, remembers where it last made out a foe (or something it can't tell the side of), and its units head there when nothing's in sight; reaching the spot and finding no one, they forget it. Spawned demons arrive knowing where the party is. The museum's tests turn sight off unless they test it.
+    - The tower: three floors, Gentle at the bottom, Standard, then Harsh at the top; you arrive on the ground floor, in the middle. Down from the ground floor leads out (back to the class selection screen); up from the top says the way is shut. The ring holds six portals between the stairs, the Meadows east and five sealed. Arrow keys or WASD step a tile; a click walks there.
+    - The menu: the dungeon's blurb, how it's won (with the portal's turns at that floor), its enemies (name, look, HP, skills, read off their scenes) and what winning brings on that floor. Rewards are my picks: a Health Potion and a Mana Potion on every floor, a Heart from Standard, a Heart Up on Harsh (`Dungeon.rewards`, `reward_floors`; the battle's `rewards`).
+    - The battle's menu button still goes to the class selection screen, not back to the tower: the starter is used up by the battle.
 
 ## Items
 

@@ -44,6 +44,9 @@ func _ready() -> void:
 	if Game.difficulty > 0.0:
 		battle.difficulty = Game.difficulty
 		Game.difficulty = 0.0
+	if Game.dungeon:
+		battle.rewards = Game.dungeon.rewards_at(battle.difficulty)
+		Game.dungeon = null
 	rng.seed = seed if seed else randi()
 	_water.seed = rng.randi()
 	_water.frequency = 0.07

@@ -89,6 +89,7 @@ roots = Array[ExtResource("6_root")]([SubResource("Root_Performance")])
 script = ExtResource("8_tab")
 name = "Song"
 kind = "Genre"
+glyph = "Sg"
 color = Color(0.85, 0.55, 0.69, 1)
 roots = Array[ExtResource("6_root")]([ExtResource("r_song")])
 

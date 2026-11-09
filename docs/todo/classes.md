@@ -71,25 +71,32 @@ Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** a
 
 ### Wizards, revised (2026-11-08)
 
-- [x] **Dabblings**: a branch of the Wizard's own tree, its way into other classes' trees: the Bard's magic trees, and really any tree tagged Caster. Built (`docs/done/classes.md`). (?71)
+- [x] **Dabblings**: a branch of the Wizard's own tree, its way into other classes' trees: the Bard's magic trees, and really any tree tagged Caster. Your answer (2026-11-09): not a fixed list; Wizards get the other casters' actual trees, penalized for trees outside their own. Built (`docs/done/classes.md`). (?71 ?76)
   - **Expanded studies** (guest trees at -1 Affinity): **Divinity** gains a religious domain, **Symphony** a Bard genre, **Witchery** a Warlock pact.
   - No Affinity penalty: **Mastery** gains a Mage school.
   - Guest skill trees default to -1 Affinity.
 - [x] **Picking trees**: every class picks its trees on its own (universal) tree by unlocking their tier 0 roots there. A box around the choice says "Pick up to x" (the cap), and darkens the tree's backdrop behind it. Built (`docs/done/classes.md`). (?71)
 - [x] **Emergency Exit** (high tier): makes the forming escape portal open rank turns early where it's forming; otherwise warps the party to a bland pocket dimension of stone (still in the scenario, reachable only by a two-way portal). The pocket lasts rank rounds, then returns its units in a clump. Built (`docs/done/classes.md`). (?75)
-- [x] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it. Built (`docs/done/classes.md`). (?75)
+- [x] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it. Your answer (2026-11-09): it can be cast unchanneled, and its duration only starts when the caster stops channeling; doors both ways is right. Built (`docs/done/classes.md`). (?75 ?76)
 
-75. **Rift and Emergency Exit - built on judgement, open for review (2026-11-08).**
+76. **Borrowed trees and Rift's count - built on judgement, open for review (2026-11-09).**
+    - Each Dabbling borrows a kind of tree from every other class, found as the game runs (`TreeChoice.borrows`): Domain every Divinity tab (the Cleric's Luun and Sol), Genre every Genre tab, Pact every Patron tab (the Warlock's Elmon and Hogel), School every School tab (the Mage's five). A new class with a tab of one of those kinds is on offer with no change to the Wizard.
+    - "Penalized for trees not representing its own" read as before: -1 Affinity on domains, genres and pacts; none on Mage schools, which are arcane like its own.
+    - Eros is gone from the Wizard's domains: it's a root on the Paladin's own tab, not a Divinity tab, and the Paladin isn't a caster. Say if Paladin trees should be on offer too.
+    - The Bard's Song moved from a root on its own tab to a tab of its own, kind Genre, so it can be borrowed. The Bard now shows two tabs, Genre: Song and Calling: Freedom.
+    - A borrowed tree brings its class's shared row first on its core ring, as that class shows it: the Cleric's Pray and Renew on a domain, the Warlock's Hex, Sweet Nothings and Chant on a pact. The Pact box now shows the Warlock's trees by their own kind, "Patron: Elmon".
+    - Rift: Alt-click on the target casts it unchanneled. Its count is 3 x its difficulty turns (2, 3, 5, 5, 5 by rank), and the doors stay open both ways until it runs out; then the Wizard's side comes back in a clump and the domain goes with whatever else is in it. Using it again, channeling something else (Metea), or falling stops the channel and starts the count.
+
+75. **Rift and Emergency Exit - answered (2026-11-09):** Rift can be cast unchanneled, its duration starting only when the channel stops; two-way doors are right. The rest stands as built:
     - Rift: no longer a stub or an AI design (your design now). It opens on the Transgression root once one skill is learned; range rank tiles, in a clear line (no earthwork or hole between) below rank III, over walls from III.
     - Its domain: a diamond 9 tiles across (41 tiles: "8x8" read as the diamond's span), far off on the same map, its door at the west tip, the escape portal at the centre. Its demons: the Undine-and-Sirens formation at 0.5 x rank difficulty (I: 2 of them), at the Wizard's level.
-    - "Optionally channeled": it's always channeled for now (shown as infinite), and using it again closes it; there's no choice to cast it unchanneled yet. Once closed, the escape portal counts down 3 x its difficulty turns, then brings the Wizard's side back in a clump beside where the rift was. Anything else in the domain (its demons, foes who followed) goes with it.
+    - Channeled or not: see ?76.
     - Emergency Exit: on the Arcane root once three skills are learned, up to rank III. It hastens a forming escape portal by rank turns; otherwise it warps the Wizard and its allies within rank tiles to a 5x5 pocket of stone for rank turns. Its door goes both ways while it lasts, so foes can follow.
 
-71. **Picking trees and Dabblings - built on judgement, open for review (2026-11-08).**
+71. **Picking trees and Dabblings - answered (2026-11-09):** the Wizard's trees on offer are found, not listed (?76). The rest stands as built:
     - A tree's tier 0 root is the tree itself, not a skill: picking it is free (no skill point), and it opens the tree's tab. The tabs of trees not picked are hidden.
     - The choices: Paladin Prowess (1, only those that suit its god shown), Warlock Patron (1), Cleric God (1), Mage School (1) and College (1). Rogue's and Bard's Calling: Freedom, the Berserker's three Prowess tabs and the Wizard's World stay open without a pick.
-    - Wizard: Divinity, Symphony, Witchery and Mastery each go to rank III, and each rank is one more pick. The trees on offer are listed, not found: domains Eros, Luun, Sol; genre Song (the Bard's own Song root, since Bards have no genres yet); pacts Elmon, Hogel; the five Mage schools. Should every Caster-tagged tree in the game be on offer automatically instead?
-    - A borrowed tree brings what its roots start after: Pray on each domain's tab, Hex and Sweet Nothings on each pact's.
+    - Wizard: Divinity, Symphony, Witchery and Mastery each go to rank III, and each rank is one more pick.
     - The stubbed Pact and Favour skills from round 70 are gone; the real trees replace them.
     - Units authored with a tree's skills and no picks count those trees as picked (NPC Clerics keep their god).
 

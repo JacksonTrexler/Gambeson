@@ -57,6 +57,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | The Undine (?73) | `undine_test.gd` |
 | 7.27 | Infernal Meadows: maps generated around the party, spawn formations, sight by wisdom, area difficulty, the battle camera; Gamut's Tower (?74) | `meadows_test.gd` |
 | — | Key rebinds; Rift's domains and Emergency Exit's pockets (?75) | `keybinds_test.gd`, `pockets_test.gd` |
+| — | Sight in every battle and hunting; borrowed trees; Rift unchanneled (?76) | `sight_test.gd`, `casters_test.gd`, `pockets_test.gd` |
+| 7.27 | Gamut's Tower walkable, a floor per difficulty; dungeon menus (?77) | `tower_test.gd` |
 
 ## Questions to answer first
 
