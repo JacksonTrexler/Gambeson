@@ -144,7 +144,8 @@ var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, u
 @export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
 var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
 @export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
-@export var sight := false  # units perceive only within their wisdom total in tiles, and make out appearances within half that (Perception.unit(); the Meadows)
+@export var sight := true  # units perceive only within their wisdom total in tiles, and make out appearances within half that, the range shared across their side (in_range(); Perception.unit()). Off: no limit
+var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
 @export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
 var winner: Faction  # a side that won outright (escape()), whoever's still standing
@@ -245,7 +246,7 @@ class Pocket:
 	var door: Vector2i  # its door inside
 	var centre: Vector2i
 	var cells: Array[Vector2i] = []
-	var turns := -1  # its maker's side's turns left before it ends; -1: while its Rift is channeled
+	var turns := -1  # its maker's side's turns left before it ends; -1: while its Rift is channeled, the count waiting until it stops
 	var open := true  # the field door stands open
 	var marks: Array = []  # PortalMarks: [the field door's, the escape portal's]
 
@@ -291,6 +292,10 @@ func _ready() -> void:
 			continue
 		u.died.connect(_on_died)
 		u.downed.connect(_on_downed)
+	for u: Unit in units.values():
+		for t: Unit in units.values():
+			if u.faction and t.faction and not Faction.friends(u.faction, t.faction) and Perception.cover(self, t) == 0:
+				sighted(u.faction, t, t.cell)  # each side knows where the others drew up in the open
 	_enter(phase)
 
 
@@ -1327,7 +1332,8 @@ func _expose(u: Unit) -> void:
 # Skills cast on a cell, within area_reach(): area skills (Darkstone) lay their zone kind of
 # concealment on the tiles around it (see zone_levels()); trap skills (Snare) lay a trap there (lay());
 # channeled skills (Metea) begin channeling there, and once begun strike where they can (_detonate()).
-func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
+# A Rift is channeled unless `held` is false (Alt-click): then its count starts at once.
+func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	if not _acting(caster) or skill not in caster.actives or not skill.on_tile() or not on_map(c):
 		return false
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
@@ -1353,6 +1359,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		else:
 			_solar(caster, skill, c)
 	elif skill.channel:
+		end_channel(caster)
 		caster.channel = Unit.Channel.new(skill, c)
 		channeled.emit(caster, skill, c)
 	elif skill.observes:
@@ -1362,7 +1369,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	elif skill.wells:
 		well_up(caster, skill, c)
 	elif skill.rifts:
-		open_rift(caster, skill, c)
+		open_rift(caster, skill, c, held)
 	elif skill.lays:
 		lay(caster, skill, c)
 	else:
@@ -2292,7 +2299,7 @@ func lives_left(f: Faction) -> int:
 func _on_downed(u: Unit) -> void:
 	u.timed.clear()
 	u.disabled.clear()
-	u.channel = null
+	end_channel(u)
 	if u not in fallen:
 		fallen.append(u)
 	downed.emit(u)
@@ -2562,6 +2569,42 @@ func perception_range(o: Unit) -> float:
 	return o.stat(&"wisdom") * (0.5 if &"fog" in conditions else 1.0)
 
 
+# How far t is within o's side's sight, shared across the side: 2 within half some one of its range
+# (it makes out how t looks), 1 within some one's range (only where it is), 0 beyond them all. 2
+# where sight isn't limited.
+func in_range(o: Unit, t: Unit) -> int:
+	if not sight:
+		return 2
+	var best := 0
+	var side: Array[Unit] = members(o.faction) if o.faction else ([] as Array[Unit])
+	if o not in side:
+		side.append(o)
+	for a in side:
+		var reach := perception_range(a)
+		var d := Vector2(a.cell).distance_to(Vector2(t.cell))
+		if d <= reach / 2.0 + 0.0001:
+			return 2
+		if d <= reach + 0.0001:
+			best = 1
+	return best
+
+
+# Side f made out foe t at c: where its units will look for it once it's out of sight (AI._hunt()).
+func sighted(f: Faction, t: Unit, c: Vector2i) -> void:
+	if f not in sightings:
+		sightings[f] = {}
+	sightings[f][t] = c
+
+
+# Where side f last made out each foe still standing (forgetting the fallen).
+func last_seen(f: Faction) -> Dictionary:
+	var out: Dictionary = sightings.get(f, {})
+	for t in out.keys():
+		if not is_instance_valid(t) or not t.is_alive():
+			out.erase(t)
+	return out
+
+
 # --- Pockets: a Rift's domain, an Emergency Exit's refuge
 # A pocket is part of the map out of reach (POCKETS on), entered and left only by its doors, the field's
 # and its own. It ends when its turns run out: its maker's side come back in a clump beside the field
@@ -2623,14 +2666,21 @@ func _new_pocket(kind: StringName, by: Unit, skill: Skill, origin: Vector2i) -> 
 	return p
 
 
-# Rift at c: a door to a domain, open while the caster channels it (its turns infinite). Demons wait
-# there - a formation at the rift's difficulty, at the caster's level.
-func open_rift(by: Unit, skill: Skill, c: Vector2i) -> bool:
+# Rift at c: a door to a domain, open both ways. Channeled, it lasts while the caster channels it (its
+# turns infinite), its count (rift_turns()) starting once it stops; cast unchanneled, the count starts
+# at once. Demons wait there - a formation at the rift's difficulty, at the caster's level.
+func open_rift(by: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	var r := by.rank(skill)
 	if not can_rift(by, skill, c):
 		return false
 	var p := _new_pocket(&"domain", by, skill, c)
-	by.channel = Unit.Channel.new(skill, c)
+	if held:
+		end_channel(by)
+		by.channel = Unit.Channel.new(skill, c)
+	else:
+		p.turns = rift_turns(r)
+		for m in p.marks:
+			m.turns = p.turns
 	if demons not in order:
 		order.append(demons)  # their turns come too
 	var f: Formation = load(RIFT_FORMATION)
@@ -2640,8 +2690,21 @@ func open_rift(by: Unit, skill: Skill, c: Vector2i) -> bool:
 		if u:
 			u.level = by.level
 			u.refresh()
-	channeled.emit(by, skill, c)
+	if held:
+		channeled.emit(by, skill, c)
 	return true
+
+
+# How many of its maker's side's turns a Rift stays once its count starts: 3 x its difficulty.
+static func rift_turns(rank: int) -> int:
+	return ceili(3.0 * rift_difficulty(rank))
+
+
+# u stops channeling whatever it was: a Rift's count starts (close_rift()).
+func end_channel(u: Unit) -> void:
+	if u.channel and u.channel.skill.rifts:
+		close_rift(u)
+	u.channel = null
 
 
 # Whether a Rift can open at c: free dry ground, in a clear line from its caster below rank III.
@@ -2649,18 +2712,16 @@ func can_rift(by: Unit, skill: Skill, c: Vector2i) -> bool:
 	return not unit_at(c) and depth(c) == 0 and (by.rank(skill) >= 3 or clear_line(by.cell, c))
 
 
-# Its maker stops channeling its Rift: the field door closes, and the domain's escape portal counts
-# down 3 x its difficulty turns before everyone in it comes back.
+# Its maker stops channeling its Rift: its count starts (rift_turns()), the doors still open both ways;
+# when it runs out, its maker's side comes back and the domain goes, with whatever else is in it.
 func close_rift(by: Unit) -> bool:
 	var s := by.channel.skill if by.channel else null
 	by.channel = null
 	for p in pockets:
 		if p.by == by and p.kind == &"domain" and p.turns < 0:
-			p.open = false
-			p.turns = ceili(3.0 * rift_difficulty(by.rank(s) if s else 1))
+			p.turns = rift_turns(by.rank(s) if s else 1)
 			for m in p.marks:
 				m.turns = p.turns
-			p.marks[0].visible = false  # the field door's gone
 	return true
 
 
@@ -3595,7 +3656,7 @@ func _on_died(u: Unit) -> void:
 		units.erase(u.cell)
 		_vacated(u.cell)
 	u.timed.clear()  # nothing ticks for the dead
-	u.channel = null
+	end_channel(u)
 	var it := u.loot.roll(rng) if u.loot else null
 	if it:
 		spoils.append([it, u.faction])

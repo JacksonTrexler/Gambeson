@@ -5,7 +5,8 @@ extends CanvasLayer
 # hover a tile to plan a move and click to walk there; click a foe to walk into reach and use the
 # primary skill (slot 1) on it; or press a hotbar number (or click the slot) to arm a skill, then
 # click its target. A toggled passive switches instead. Ctrl-click strikes at a tile whatever seems
-# to be there - empty, or only suspected - and Shift-click selects a foe instead of attacking it.
+# to be there - empty, or only suspected - Shift-click selects a foe instead of attacking it, and
+# Alt-click casts a Rift unchanneled.
 # B opens the spellbook, S the skills (spending skill points), H holds an ally where it is, P invites
 # it to the party (or lets it go), Tab steps through units taking orders, Space ends the turn, Esc or
 # right-click backs out. The cog opens Settings, with a Guide to all this; nothing on screen
@@ -290,7 +291,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		if _panel_open():
 			_close_panels()
 		elif e.button_index == MOUSE_BUTTON_LEFT:
-			click(_cell_at(e.position), e.ctrl_pressed or e.meta_pressed, e.shift_pressed)
+			click(_cell_at(e.position), e.ctrl_pressed or e.meta_pressed, e.shift_pressed, e.alt_pressed)
 		else:
 			cancel()
 		get_viewport().set_input_as_handled()
@@ -347,11 +348,11 @@ func select(u: Unit) -> void:
 
 # A click on the map. force (Ctrl): strike at the tile, whatever seems to be there. inspect (Shift):
 # select a foe rather than attack it.
-func click(c: Vector2i, force := false, inspect := false) -> void:
+func click(c: Vector2i, force := false, inspect := false, alt := false) -> void:
 	if c == NOWHERE:
 		return
 	if armed:
-		_use_on(c, force)
+		_use_on(c, force, alt)
 		return
 	var u := unit_seen(c)
 	var me := selected if _orders(selected) else null
@@ -796,7 +797,8 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 
 # --- Acting
 
-func _use_on(c: Vector2i, force := false) -> void:
+# alt: a Rift cast unchanneled, its count starting at once.
+func _use_on(c: Vector2i, force := false, alt := false) -> void:
 	var u := selected
 	var s := armed
 	if not _orders(u):
@@ -813,7 +815,7 @@ func _use_on(c: Vector2i, force := false) -> void:
 	if why == "Out of reach" or why == "Already fallen":
 		_say(why)
 		return
-	if not (battle.cast_at(u, s, c) if s.on_tile() else battle.cast(u, s, target)):
+	if not (battle.cast_at(u, s, c, not alt) if s.on_tile() else battle.cast(u, s, target)):
 		_say(why if why else "%s doesn't take" % s.name)
 		return
 	_done(u)

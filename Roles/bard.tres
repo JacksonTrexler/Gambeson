@@ -85,6 +85,13 @@ center = ExtResource("s_clever_disguise")
 core = Array[ExtResource("5_skill")]([ExtResource("s_meander"), ExtResource("s_move_plus_one"), ExtResource("s_self_evaluation"), ExtResource("s_first_aid"), ExtResource("s_eyes_forward"), ExtResource("s_special_eyes")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Performance")])
 
+[sub_resource type="Resource" id="Tab_Song"]
+script = ExtResource("8_tab")
+name = "Song"
+kind = "Genre"
+color = Color(0.85, 0.55, 0.69, 1)
+roots = Array[ExtResource("6_root")]([ExtResource("r_song")])
+
 [resource]
 script = ExtResource("1_script")
 noun = "Tradefolk"
@@ -93,7 +100,6 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_meander")])
 stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
-roots = Array[ExtResource("6_root")]([ExtResource("r_song")])
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom")])
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Song"), SubResource("Tab_Freedom")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"specialist", &"magical"])

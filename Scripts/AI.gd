@@ -42,6 +42,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	for o in b.units.values():
 		if o != u:
 			reads[o] = b.read(u, o)
+	_remember(b, u, reads)
 	if b.held_by(u):
 		_escape(b, u, log)
 	if b.posing(u):
@@ -92,8 +93,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
-		elif not target:
-			_search(b, u, log)
+		elif not target and not _search(b, u, log) and not rooted and _emboldened(u, reads):
+			_hunt(b, u, reads, log)
 	while _strike(b, u, reads, log):
 		pass
 	return log
@@ -216,11 +217,11 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 # With no foe to go after, it searches (Observe) where the clues point: the tile in reach whose look
 # would take in the most of them - what it finds suspicious (Battle.suspicious()) and the debris enemies
 # left hiding (Battle.evidence()) - nearest itself on a tie. No clues, no search: it can't know where
-# to look.
-static func _search(b: Battle, u: Unit, log: Array[String]) -> void:
+# to look. True if it searched.
+static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 	var clues := b.suspicious(u) + b.evidence(u)
 	if clues.is_empty():
-		return
+		return false
 	for s in u.actives.filter(func(x: Skill): return x.observes and u.can_afford(x)):
 		var look := maxi(u.mod(&"wisdom"), 1) + mini(u.rank(s), roundi(u.stat(&"wisdom")))
 		var reach := b.area_reach(u, s)
@@ -235,7 +236,44 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> void:
 				most = n
 		if best != null and b.cast_at(u, s, best):
 			log.append("%s uses %s at %s" % [u.name, s.name, best])
-			return
+			return true
+	return false
+
+
+# Its side remembers where it makes out each foe, or something it can't tell the side of (Battle.sightings).
+static func _remember(b: Battle, u: Unit, reads: Dictionary) -> void:
+	if not u.faction:
+		return
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if o.is_alive() and (_foe(u, r) or (r.located() and r.faction == null)):
+			b.sighted(u.faction, o, r.cell)
+
+
+# No foe in sight: it heads for where its side last made one out, the nearest first. Reaching the spot
+# and finding no one there, its side forgets it and it tries the next. False with nowhere to go.
+static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	var seen := b.last_seen(u.faction) if u.faction else {}
+	while not seen.is_empty():
+		var best: Unit = null
+		for t: Unit in seen:
+			if best == null or Vector2(u.cell).distance_to(Vector2(seen[t])) < Vector2(u.cell).distance_to(Vector2(seen[best])):
+				best = t
+		var at: Vector2i = seen[best]
+		if Command.tiles(u.cell, at) <= 1:
+			seen.erase(best)
+			continue
+		var r := Read.new()
+		r.cell = at
+		var p := b.travel(u, _approach(b, u, best, {best: r}))
+		if p.is_empty():
+			return false
+		log.append("%s hunts %s" % [u.name, p])
+		for o in reads:
+			reads[o] = b.read(u, o)
+		_remember(b, u, reads)
+		return true
+	return false
 
 
 # Support skills (Stonegift) on allies it reads as allies and that don't have the effect yet.

@@ -43,15 +43,24 @@ func has_tree() -> bool:
 	return not roots.is_empty() or center != null or not core.is_empty() or not tabs.is_empty() or not choices.is_empty()
 
 
-# Its tabs beside its own, then every tab its choices offer.
+# Its tabs beside its own, then every tab its choices offer (what they borrow too).
 func all_tabs() -> Array[SkillTab]:
+	return _tabs(true)
+
+
+# Its tabs and its choices' own, nothing borrowed: what other classes may borrow (TreeChoice.all()).
+func own_tabs() -> Array[SkillTab]:
+	return _tabs(false)
+
+
+func _tabs(borrowed: bool) -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
 	for t in tabs:
 		if t:
 			out.append(t)
 	for c in choices:
 		if c:
-			for t in c.tabs:
+			for t in (c.all() if borrowed else c.tabs):
 				if t and t not in out:
 					out.append(t)
 	return out

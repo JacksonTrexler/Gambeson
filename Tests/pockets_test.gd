@@ -1,9 +1,10 @@
 extends Test
 
 # Pockets: parts of the map out of reach, entered and left by their doors (Battle.Pocket). A Wizard's
-# Rift opens a door to a domain - an 8x8 diamond of grass with demons at the rift's difficulty - kept
-# open while it's channeled; used again it closes, and the domain's escape portal brings everyone back
-# in 3 x its difficulty turns. Emergency Exit hastens a forming escape portal, or warps the Wizard and
+# Rift opens a door to a domain - an 8x8 diamond of grass with demons at the rift's difficulty - open
+# both ways while it's channeled; used again the channel stops and its count starts (3 x its
+# difficulty turns), or cast unchanneled it starts at once, and when it runs out the caster's side
+# comes back. Emergency Exit hastens a forming escape portal, or warps the Wizard and
 # allies near it to a pocket of stone for rank turns.
 
 var rift: Skill = load("res://Skills/rift.tres")
@@ -36,11 +37,34 @@ func test_rift() -> void:
 	ok(not (v(2).cell in p.cells) and Command.tiles(v(2).cell, c) <= 2, "its own door: back beside the rift")
 	b.travel(v(2), c)
 	ok(v(2).cell in p.cells, "and in again")
-	ok(b.cast_at(w, rift, c) and w.channel == null and not p.open and p.turns == 2, "used again: it closes, the escape portal 2 turns off (3 x 0.5)")
+	ok(b.cast_at(w, rift, c) and w.channel == null and p.open and p.turns == 2 and p.marks[0].turns == 2, "used again: the channel stops and its count starts, 2 turns (3 x 0.5), still open")
 	for i in 4:
 		b.end_turn()
 	ok(b.pockets.is_empty() and not (v(2).cell in p.cells) and Command.tiles(v(2).cell, c) <= 2 and not b.on_map(p.centre), "it ends: the Wizard's side back in a clump by the rift, the domain gone")
 	ok(b.members(demons).is_empty() or not b.members(demons)[0].is_inside_tree() or b.members(demons)[0].is_queued_for_deletion(), "its demons with it")
+
+
+func test_rift_unchanneled() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 6)})
+	var w := wizard(rift)
+	ok(b.cast_at(w, rift, Vector2i(3, 3), false) and w.channel == null, "cast unchanneled: nothing to keep up")
+	var p: Battle.Pocket = b.pockets[0]
+	ok(p.open and p.turns == 2 and p.marks[1].turns == 2, "its count starts at once")
+	b.end_turn()
+	b.end_turn()
+	ok(p.turns == 1, "a turn of its side's gone")
+	var metea: Skill = load("res://Skills/metea.tres")
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 6)})
+	ok(b.cast_at(w, rift, Vector2i(2, 4)) and b.pockets[1].turns == -1, "a second, channeled")
+	w.learned.append(slot(metea, 1))
+	w.refresh()
+	w.energy = 99
+	ok(b.cast_at(w, metea, Vector2i(2, 6)) and w.channel.skill == metea and b.pockets[1].turns == 2, "channeling something else stops it: its count starts")
+	b.pockets[0].turns = 1
+	w.channel = Unit.Channel.new(rift, Vector2i(2, 4))
+	b.pockets[1].turns = -1
+	w.damage(999)
+	ok(b.pockets.size() >= 1 and b.pockets[-1].turns == 2, "and so does falling")
 
 
 func test_rift_sight() -> void:

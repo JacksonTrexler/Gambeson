@@ -66,6 +66,7 @@ func stage(f: Faction, placed: Dictionary) -> void:
 func calm() -> void:
 	for u: Unit in b.get_node("Units").get_children():
 		u.suspicion.clear()
+	b.sight = false  # the museum's tests read across the map: sight limits only where a test turns them on (sight_test)
 
 
 # Armor of no weight with a flat Defense of 20 (its floor, with nothing to scale): a target only 19

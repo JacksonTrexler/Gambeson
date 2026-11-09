@@ -2,7 +2,8 @@ extends Test
 
 # The Wizard and the Mage. The Wizard: flexible, its own Arcane and Transgression roots (stubs, ?70), a
 # World tab, and its Dabblings - expanded studies (Divinity, Symphony, Witchery, Mastery) that let it
-# pick other classes' trees, up to their rank, as guest trees at -1 Affinity (a Mage's school at none).
+# pick other classes' trees, up to their rank, as guest trees at -1 Affinity (a Mage's school at none):
+# every other class's own tree of the kind each borrows, found as the game runs (TreeChoice.borrows).
 # The Mage: its own Refinement and Commitment roots, then one school and one college picked on its own
 # tab (Role.choices, TreeChoice: Unit.pick()).
 
@@ -30,20 +31,28 @@ func choice(role: Role, n: String) -> TreeChoice:
 
 
 func named(c: TreeChoice, n: String) -> SkillTab:
-	return c.tabs.filter(func(t: SkillTab): return t.name == n)[0]
+	return c.all().filter(func(t: SkillTab): return t.name == n)[0]
 
 
 func test_wizard_tree() -> void:
-	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Eros", "Divinity: Luun", "Divinity: Sol", "Genre: Song", "Pact: Elmon", "Pact: Hogel",
+	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Luun", "Divinity: Sol", "Genre: Song", "Patron: Elmon", "Patron: Hogel",
 			"School: Radiance", "School: Currents", "School: Stone", "School: Shadow", "School: Stars"], "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
+	ok(wizard.choices.all(func(c: TreeChoice): return c.tabs.is_empty()) and wizard.choices.map(func(c: TreeChoice): return c.borrows) == [["Divinity"], ["Genre"], ["Patron"], ["School"]],
+			"no list of its own: each borrows a kind of tree")
 	ok(wizard.roots.map(func(r: SkillRoot): return r.name) == ["Arcane", "Transgression", "Dabblings"], "Arcane, Transgression and Dabblings on its own tab")
 	ok(wizard.choices.map(func(c: TreeChoice): return c.name) == ["Domain", "Genre", "Pact", "School"]
 			and wizard.choices.map(func(c: TreeChoice): return c.by) == [sk("divinity"), sk("symphony"), sk("witchery"), sk("mastery")]
 			and wizard.choices.map(func(c: TreeChoice): return c.affinity) == [-1, -1, -1, 0], "each opened by its study; guest trees at -1, a Mage's school at none")
 	ok(named(choice(wizard, "Domain"), "Luun").roots[0] == load("res://Roles/cleric.tres").choices[0].tabs[0].roots[0]
 			and named(choice(wizard, "Pact"), "Elmon").roots[0] == load("res://Roles/warlock.tres").choices[0].tabs[0].roots[0]
-			and named(choice(wizard, "Genre"), "Song").roots[0] == load("res://Roles/bard.tres").roots[0]
+			and named(choice(wizard, "Genre"), "Song").roots[0] == load("res://Roles/bard.tres").tabs[0].roots[0]
 			and named(choice(wizard, "School"), "Shadow").roots[0] == named(choice(mage, "School"), "Shadow").roots[0], "the other classes' own trees, shared")
+	ok(named(choice(wizard, "Domain"), "Luun").core == [sk("pray"), sk("renew")] and named(choice(wizard, "Pact"), "Hogel").core == [sk("hex"), sk("sweet_nothings"), sk("chant")],
+			"each with its class's shared row first: a Cleric's Pray and Renew, a Warlock's Hex, Sweet Nothings and Chant")
+	var callings := TreeChoice.new()
+	callings.borrows = ["Calling", "Prowess"]
+	ok(titles(callings.all()) == ["Calling: Freedom", "Prowess: Brawn", "Prowess: Fury", "Prowess: Havoc", "Prowess: Protector", "Prowess: Vanguard", "Prowess: Slayer"],
+			"whatever kinds a choice borrows, from every class that has them, each tree once: %s" % [titles(callings.all())])
 	ok(sk("igna") in wizard.options and sk("aetha") in wizard.options and sk("darkstone") in wizard.options, "every starter spell, and Darkstone, on its core ring")
 	ok(wizard.tier(sk("sola")) == 1 and wizard.tier(sk("igna")) == 1 and wizard.tier(sk("mana")) == 0 and wizard.tier(sk("spellweave")) == 2 and wizard.tier(sk("unbound")) == 5,
 			"its own spells tier 1 (Sola and Igna, on the Bard's and Sol's trees too), Spellweave after Arcana, Unbound a capstone of 4")
@@ -65,7 +74,7 @@ func test_wizard_dabblings() -> void:
 	var pact := choice(wizard, "Pact")
 	ok(u.unlock(sk("witchery")) and u.pick(pact, named(pact, "Hogel")) and u.devotions().map(func(t: SkillTab): return t.name) == ["Luun", "Sol", "Hogel"],
 			"Witchery: Hogel too - gods and a patron")
-	ok(u.missing(sk("brainfog")) == "Pick Pact: Elmon first" and u.missing(sk("hex")) == "" and u.unlock(sk("gasp")), "Hogel's tab open (Hex on it too), Elmon's shut")
+	ok(u.missing(sk("brainfog")) == "Pick Patron: Elmon first" and u.missing(sk("hex")) == "" and u.unlock(sk("gasp")), "Hogel's tab open (Hex on it too), Elmon's shut")
 	var school := choice(wizard, "School")
 	ok(u.unlock(sk("mastery")) and u.pick(school, named(school, "Stars")) and u.affinity(sk("fortune")) == 0, "Mastery: a Mage school, no Affinity penalty")
 

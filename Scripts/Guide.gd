@@ -12,7 +12,7 @@ const PAGES := {
 Click a unit to select it; Tab steps through the units taking orders. Shift-click a foe to look it over without attacking.
 
 [color=#e8c547]Moving and acting[/color]
-With a unit that takes orders selected, hover a tile to plan a move and click to walk there. Click a foe to walk into reach and use slot 1 on it. A number key (or clicking a slot) arms that skill: click its target, or press it again to put it away. A switched passive turns on or off instead. Ctrl-click a tile to strike at whatever may be there. Esc or right-click backs out.
+With a unit that takes orders selected, hover a tile to plan a move and click to walk there. Click a foe to walk into reach and use slot 1 on it. A number key (or clicking a slot) arms that skill: click its target, or press it again to put it away. A switched passive turns on or off instead. Ctrl-click a tile to strike at whatever may be there; Alt-click casts a Rift unchanneled. Esc or right-click backs out.
 
 [color=#e8c547]Your side[/color]
 Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own. Initiative is each side's d20s plus its best bonus."""],

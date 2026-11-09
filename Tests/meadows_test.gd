@@ -70,6 +70,23 @@ func test_spawning() -> void:
 	var group := md.spawn(load("res://Formations/undine_and_sirens.tres"))
 	ok(group.size() == 3 and group[0].tags.has(&"undine"), "an Undine and its two Sirens")
 	ok(load("res://Formations/undine_and_sirens.tres").count(1.5) == 5 and load("res://Formations/sirens_by_water.tres").count(0.5) == 1, "harder areas bring more, easier fewer")
+	ok(mb.last_seen(demons).size() == 7 and mb.last_seen(demons).keys().all(func(u: Unit): return u.faction == lancin), "they arrive knowing where the living are")
+	m.free()
+
+
+func test_cap_counts_the_living() -> void:
+	var m: Node = await meadows()
+	var mb: Battle = m.get_node("Battle")
+	var md: Meadows = mb.get_node("Meadows")
+	for i in 3:
+		md.spawn(load("res://Formations/undine_and_sirens.tres"))
+	ok(md.alive_demons() == 9 and md.cap() == 7, "9 demons against the party's 7")
+	for u in md.party().filter(func(x: Unit): return x != mb.player).slice(0, 4):
+		u.hearts = 0
+		u.damage(999)
+	ok(md.party().size() == 3 and md.cap() == 3, "4 of the party fall: the cap counts the living, 3")
+	md._on_turn(lancin, demons)
+	ok(md.alive_demons() == 9, "the demons over it stay; none join until they're under it")
 	m.free()
 
 

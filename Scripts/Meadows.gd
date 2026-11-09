@@ -182,6 +182,8 @@ func spawn(f: Formation) -> Array[Unit]:
 		if u:
 			u.died.connect(_on_kill)
 			out.append(u)
+	for p in party():
+		battle.sighted(demons, p, p.cell)  # they arrive knowing where the living are
 	return out
 
 

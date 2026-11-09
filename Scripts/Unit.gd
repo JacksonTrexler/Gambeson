@@ -695,11 +695,11 @@ func _learned_on(t: SkillTab) -> bool:
 # (units authored with their skills, no picks).
 func picks(c: TreeChoice) -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
-	for t in c.tabs:
+	for t in c.all():
 		if t and c.key(t) in picked:
 			out.append(t)
 	if out.is_empty():
-		for t in c.tabs:
+		for t in c.all():
 			if t and _learned_on(t):
 				out.append(t)
 	return out

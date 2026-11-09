@@ -139,7 +139,7 @@ func _layout() -> void:
 		var cap := unit.pick_cap(c)
 		var heading := "%s · %s" % [c.name.to_upper(), "LEARN " + c.by.name.to_upper() if c.by and unit.rank(c.by) == 0 else "PICK UP TO %d" % cap]
 		var start := x + 3.0
-		var offered: Array = c.tabs.filter(func(t: SkillTab): return t and unit.suits(t))  # a Paladin sees only the Prowess its god suits
+		var offered: Array = c.all().filter(func(t: SkillTab): return t and unit.suits(t))  # a Paladin sees only the Prowess its god suits
 		for i in offered.size():
 			_entries[offered[i]] = [Rect2(Vector2(start + i * (BOX.x + GAP.x), row_y(row)), BOX), c]
 		var inner := offered.size() * (BOX.x + GAP.x) - GAP.x

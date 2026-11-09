@@ -44,7 +44,7 @@ extends Resource
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
 @export var engulfs := false  # used on a foe: a contest in its stat; won, the caster moves into the foe's tile, sharing it (Coalescing; Battle.engulf())
 @export var mist_only := false  # only while its caster is a mist (Vaporize), and the only kind of skill a mist can use (Coalescing)
-@export var rifts := false  # aimed at a tile in sight within range (over walls from rank III): opens a door to a domain, kept open while its caster channels it; used again, it stops (Rift; Battle.open_rift())
+@export var rifts := false  # aimed at a tile in sight within range (over walls from rank III): opens a door to a domain, kept open while its caster channels it (or not: Alt-click), its count starting once it stops; used again, the channel stops (Rift; Battle.open_rift())
 @export var exits := false  # hastens a forming escape portal by rank turns; with none forming, warps its caster and allies within rank tiles to a pocket of stone for rank turns (Emergency Exit; Battle.emergency_exit())
 @export var wells := false  # aimed at a tile: floods it rank deep, the tiles beside it a rank less, for rank of its side's turns (Well Up; Battle.flood())
 @export var fog := false  # lays fog around its caster, radius rank + the better of its dex and cha mods, concealing at its rank (Waltz of Vapors)
@@ -583,7 +583,7 @@ func markup(rank := 1, with_spec := true) -> String:
 	if mist_only:
 		lines.append("Only as a mist (Vaporize)")
 	if rifts:
-		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). It stays open while the caster channels it (shown as infinite); used again, it closes, and the domain's escape portal returns everyone in it in {t:%d turns}" % ceili(3.0 * Battle.rift_difficulty(rank)))
+		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door both ways to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). Channeled, it stays open while the caster keeps channeling (shown as infinite); used again, the channel stops. Its {t:%d turns} start once the channel stops, or at once if it's cast unchanneled (Alt-click); then the caster's side comes back and the domain goes" % Battle.rift_turns(rank))
 	if exits:
 		lines.append("An escape portal forming opens {r:%d} turns sooner. With none forming: warps the caster and allies within {r:%d} tiles to a pocket of stone, a door back and forth, for {t:%d turns}; then it returns them in a clump" % [rank, rank, rank])
 	if wells:

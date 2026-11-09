@@ -351,18 +351,18 @@ static func _sense(r: Read, left: Dictionary, recon: float, net_luck: int) -> vo
 	r.net = Luck.settle(recon - left.values().reduce(func(a, x): return a + x, 0), net_luck, true, false)
 
 
-# Where sight is limited (Battle.sight): beyond o's perception range it doesn't perceive t at all;
-# beyond half of it, it makes out where t is but not how it looks. Its own side it always knows.
+# Where sight is limited (Battle.sight): beyond every perception range on o's side it doesn't perceive t
+# at all; beyond half of them all, it makes out where t is but not how it looks (Battle.in_range()).
+# Its own side it always knows.
 static func _range(b: Battle, o: Unit, t: Unit, r: Read) -> void:
-	var reach := b.perception_range(o)
-	if reach < 0.0 or o == t or Faction.friends(o.faction, t.faction):
+	if not b.sight or o == t or Faction.friends(o.faction, t.faction):
 		return
-	var d := Vector2(o.cell).distance_to(Vector2(t.cell))
-	if d > reach + 0.0001:
-		r.net = mini(r.net, -4)
-		r.seen = false
-	elif d > reach / 2.0 + 0.0001:
-		r.net = mini(r.net, -2)
+	match b.in_range(o, t):
+		0:
+			r.net = mini(r.net, -4)
+			r.seen = false
+		1:
+			r.net = mini(r.net, -2)
 
 
 static func _kind(k: StringName) -> Dictionary:
