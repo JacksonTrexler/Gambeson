@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Rift"
+ai = true
 passive = false
 tags = Array[StringName]([&"magical"])
 stub = "Spawning mid-battle (docs/todo/systems.md)"

@@ -84,7 +84,7 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	elif sense == 1:
 		tooltip_text = "[%s] %s\nYour side can't make out more of it" % [_key(), s.name]
 	else:
-		tooltip_text = "[%s] %s %s\n%s" % [_key(), s.name, Skill.roman(r), s.markup(r)]
+		tooltip_text = "[%s] %s %s\n%s" % [_key(), s.title(), Skill.roman(r), s.markup(r)]
 	queue_redraw()
 
 

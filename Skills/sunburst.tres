@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Sunburst"
+ai = true
 passive = true
 tags = Array[StringName]([&"fire", &"light", &"magical", &"offensive"])
 stub = "?70"

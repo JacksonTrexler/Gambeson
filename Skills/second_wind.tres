@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Second Wind"
+ai = true
 tags = Array[StringName]([&"martial", &"con"])
 ap = 3.0
 cost = 2

@@ -8,6 +8,7 @@ script = ExtResource("2_effect")
 stat = "damage"
 amount = 0.1
 name = "Frenzy"
+ai = true
 per_rank = true
 
 [sub_resource type="Resource" id="E_def"]

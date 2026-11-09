@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Counterspell"
+ai = true
 passive = true
 tags = Array[StringName]([&"magical", &"defensive"])
 stub = "Reactions (docs/todo/systems.md)"

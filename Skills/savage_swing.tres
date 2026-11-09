@@ -11,6 +11,7 @@ stat = &"strength"
 [resource]
 script = ExtResource("1_skill")
 name = "Savage Swing"
+ai = true
 tags = Array[StringName]([&"martial", &"str"])
 ap = 5.0
 cost = 3

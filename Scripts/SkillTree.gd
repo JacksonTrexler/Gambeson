@@ -188,7 +188,7 @@ func _show_pick() -> void:
 	if not s:
 		return
 	var r := unit.base_rank(s)
-	%DetailName.text = s.name + (" " + Skill.roman(r) if r else "")
+	%DetailName.text = s.title() + (" " + Skill.roman(r) if r else "")
 	%DetailState.text = state(s)
 	_fill_spec(s)
 	%DetailText.text = Glossary.rich(s.plan if s.stub else s.markup(maxi(r, 1), false))

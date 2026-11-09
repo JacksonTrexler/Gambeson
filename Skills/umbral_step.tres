@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Umbral Step"
+ai = true
 passive = false
 tags = Array[StringName]([&"dark", &"magical"])
 stub = "?70"

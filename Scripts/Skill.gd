@@ -10,7 +10,8 @@ extends Resource
 @export var tags: Array[StringName] = []  # e.g. physical, dark, magical, str, wis; martial, magical, specialist: its category
 @export var effects: Array[Effect] = []  # passives: on the holder; actives: put on the target
 @export var max_rank := 0  # the highest rank it can be raised to; 0: no cap
-@export var glyph := ""  # up to 2 characters standing for it on skill trees; empty: its initials
+@export var glyph := ""  # up to 2 characters standing for it on skill trees, its placeholder icon; empty: its initials
+@export var ai := false  # designed by an AI, a placeholder open for the user's design: its name shows with ?? after it (title())
 @export var rank_cost := 0  # skill points for rank II, times rank_growth for each rank after (Clever Disguise: 4, 8, 16...); 0: the usual 1 + r^2
 @export var rank_growth := 2.0
 
@@ -263,10 +264,14 @@ func query() -> Array[StringName]:
 	return out
 
 
-# Up to 2 characters for it on skill trees: a stub's question ("?3"), its glyph, or its initials.
+# Its name as the skills screen and hotbar show it: an AI's placeholder design ends with ?? (ai).
+func title() -> String:
+	return name + " ??" if ai else name
+
+
+# Up to 2 characters for it on skill trees, its placeholder icon: its glyph, or its initials (a stub's
+# dashed edge says it isn't built).
 func mark() -> String:
-	if stub:
-		return stub.split(" ")[0]
 	if glyph:
 		return glyph
 	var words := name.split(" ", false)

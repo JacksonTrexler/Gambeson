@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Pact of Hogel"
+ai = true
 passive = true
 tags = Array[StringName]([&"magical"])
 stub = "?70"

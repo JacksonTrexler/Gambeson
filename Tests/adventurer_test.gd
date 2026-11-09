@@ -200,8 +200,8 @@ func test_typed_slots() -> void:
 func test_stubs() -> void:
 	ok(igna.stub == "" and aetha.stub == "" and "skill AP at once" in igna.describe() and "move AP at once" in aetha.describe(), "Igna and Aetha are built: %s" % igna.describe())
 	ok(skill_slot.describe().begins_with("Not built yet. Waits on open question 3 (todo.md)") and "base slot" in skill_slot.describe(), "a stub says so, and what it's meant to do")
-	ok(trade_skills.waits() == "Waits on open questions 2 and 11 (todo.md)" and grind.mark() == "?2", "two questions")
-	ok(skill_slot.mark() == "?3" and grind.mark() == "?2", "Skill Slot +1: 3; Grind: 2")
+	ok(trade_skills.waits() == "Waits on open questions 2 and 11 (todo.md)" , "two questions")
+	ok(skill_slot.mark() == "SS" and grind.mark() == "Gr", "stubs show initials too: Skill Slot +1, Grind")
 	ok(sola.mark() == "So" and field_experience.mark() == "FE" and magic_slot.mark() == "+1", "the rest: initials, or a glyph")
 	ok(skill_slot.summary() == "Not built yet" and rejuvinate.summary() != "Not built yet", "listed as not built (Rejuvinate is built now)")
 

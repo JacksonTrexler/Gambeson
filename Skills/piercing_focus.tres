@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skill")
 name = "Piercing Focus"
+ai = true
 passive = true
 tags = Array[StringName]([&"magical", &"offensive"])
 stub = "?70"

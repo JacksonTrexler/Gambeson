@@ -4,16 +4,17 @@ extends Control
 # A tab of a skill tree drawn as rows of tiers, growing from the bottom (tier 0: what the unit starts
 # with) toward the top, inside a scroll box on the skills screen (SkillTree). Its centre and core sit in
 # a column of their own on the left, then a column per root in its colour (the typed slot colours),
-# each with its name along the bottom; lines run up from what a skill comes after. Learned skills are
-# filled in, their rank beside them; skills that could be learned now are outlined brightly (ringed in
-# gold while there's a point to spend on them), the rest dimly; stubs are dashed. Hover a skill for its
-# tooltip; click it to pick it (the skills screen's footer shows it). The same face as SkillWheel, which
-# still draws the Adventurer's own tab.
+# each with its name along the bottom; lines run up from what a skill comes after. Each skill is an
+# icon box: its glyph or initials (Skill.mark()) as a placeholder icon, its name in its tooltip and the
+# footer. Learned skills are filled in, their rank in the corner; skills that could be learned now are
+# outlined brightly (ringed in gold while there's a point to spend on them), the rest dimly; stubs are
+# dashed. Hover a skill for its tooltip; click it to pick it (the skills screen's footer shows it). The
+# same face as SkillWheel, which still draws the Adventurer's own tab.
 
 signal picked(s: Skill)
 
-const BOX := Vector2(70.0, 13.0)  # a skill's box
-const GAP := Vector2(6.0, 9.0)  # between boxes, across and up
+const BOX := Vector2(16.0, 16.0)  # a skill's icon box
+const GAP := Vector2(5.0, 8.0)  # between boxes, across and up
 const LEFT := 16.0  # the tier labels' gutter
 const BASE := 12.0  # the root names under the bottom row
 const PAD := 4.0
@@ -111,14 +112,16 @@ func _layout() -> void:
 				var s: Skill = rows[t][i]
 				_boxes[s] = Rect2(Vector2(x + i * (BOX.x + GAP.x), row_y(t)), BOX)
 				_tones[s] = g[0]
+		var name_w := 0.0
 		if g[3]:
 			_labels.append([Vector2(x, row_y(0) + BOX.y + 8.0), g[3], g[0]])
+			name_w = get_theme_font(&"font").get_string_size(g[3], HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x + 4.0
 		var root: SkillRoot = g[2]
 		if root:
 			for s: Skill in g[1]:
 				for a in root.branch(s).after:
 					_lines.append([a, s, g[0]])
-		x += wide * (BOX.x + GAP.x) + GAP.x
+		x += maxf(wide * (BOX.x + GAP.x), name_w) + GAP.x  # wide enough for its name along the bottom
 	custom_minimum_size = Vector2(x + PAD, row_y(0) + BOX.y + BASE + PAD)
 
 
@@ -160,9 +163,12 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 			ink = STUB
 	draw_rect(box, fill)
 	if state == &"stub":
-		for i in int(box.size.x / 6.0):  # dashed: not built yet
-			draw_line(box.position + Vector2(i * 6.0, 0), box.position + Vector2(i * 6.0 + 3.0, 0), edge, 1.0)
-			draw_line(Vector2(box.position.x + i * 6.0, box.end.y), Vector2(box.position.x + i * 6.0 + 3.0, box.end.y), edge, 1.0)
+		for i in int(box.size.x / 4.0):  # dashed all round: not built yet
+			var a := i * 4.0
+			draw_line(box.position + Vector2(a, 0), box.position + Vector2(a + 2.0, 0), edge, 1.0)
+			draw_line(Vector2(box.position.x + a, box.end.y), Vector2(box.position.x + a + 2.0, box.end.y), edge, 1.0)
+			draw_line(box.position + Vector2(0, a), box.position + Vector2(0, a + 2.0), edge, 1.0)
+			draw_line(Vector2(box.end.x, box.position.y + a), Vector2(box.end.x, box.position.y + a + 2.0), edge, 1.0)
 	else:
 		draw_rect(box, edge, false, 1.0)
 	if state == &"open" and spend:
@@ -171,12 +177,14 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 		draw_rect(box.grow(2.5), Color.WHITE, false, 1.0)
 	elif s == _hover:
 		draw_rect(box.grow(2.5), Color(1, 1, 1, 0.45), false, 1.0)
+	var text := s.mark()
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x
+	draw_string(font, box.get_center() + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, ink)
 	var r := unit.base_rank(s)
 	var numeral := Skill.roman(r) if r > 0 else ("?" if s.stub else "")
-	var nw := font.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
-	draw_string(font, box.position + Vector2(3.0, box.size.y / 2.0 + 2.0), s.name, HORIZONTAL_ALIGNMENT_LEFT, box.size.x - nw - 8.0, 6, ink)
-	if numeral:
-		draw_string(font, Vector2(box.end.x - nw - 2.0, box.position.y + box.size.y / 2.0 + 2.0), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, GOLD if r > 0 else STUB)
+	if numeral:  # its rank in the corner (a stub's question mark)
+		var nw := font.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 4).x
+		draw_string(font, box.end + Vector2(-nw - 1.0, -1.5), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 4, GOLD if r > 0 else STUB)
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -207,7 +215,7 @@ func _get_tooltip(at: Vector2) -> String:
 		return ""
 	var r := unit.base_rank(s)
 	var why := unit.missing(s) if r == 0 and not s.stub else ""
-	return "%s%s · T%d\n%s%s" % [s.name, " " + Skill.roman(r) if r else "", unit.tier(s), s.markup(maxi(r, 1)), "\n" + why if why else ""]
+	return "%s%s · T%d\n%s%s" % [s.title(), " " + Skill.roman(r) if r else "", unit.tier(s), s.markup(maxi(r, 1)), "\n" + why if why else ""]
 
 
 # Its tooltips are Glossary markup, shown rich.
