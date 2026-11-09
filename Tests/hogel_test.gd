@@ -87,7 +87,7 @@ func test_cleric() -> void:
 	b.get_node("Units").add_child(u)
 	ok(u.rank(load("res://Skills/pray.tres")) == 1 and u.rank(load("res://Skills/renew.tres")) == 1, "Pray and Renew from the start")
 	var god: TreeChoice = cleric.choices[0]
-	ok(cleric.trees().map(func(t: SkillTab): return t.title()) == ["Cleric", "Divinity: Luun", "Divinity: Sol"] and god.name == "God", "its own tab, then a tab per god to pick")
+	ok(cleric.trees().map(func(t: SkillTab): return t.title()) == ["Cleric", "Divinity: Luun", "Divinity: Sol", "Divinity: Eros"] and god.name == "God", "its own tab, then a tab per god to pick")
 	ok(u.deity() == &"" and u.class_trees().size() == 1, "no god yet: only its own tab")
 	u.skill_points = 2
 	var level_down: Skill = load("res://Skills/level_down.tres")
@@ -97,6 +97,22 @@ func test_cleric() -> void:
 	ok(u.funding(level_down) == &"energy", "no Sweet Nothings to need: Energy pays")
 	u.wisdom = 18
 	ok(u.mod(&"charisma", level_down.tags) == 4, "its magical skills use wis for cha")
+
+
+# Eros among a Cleric's gods: the Paladin's tree, its class features (Smite, Lovely Caster, Impassioned
+# Fighter) the Paladin's alone.
+func test_cleric_of_eros() -> void:
+	var u := b.starter({faction = lancin, role = cleric, name = "Abbess"})
+	b.get_node("Units").add_child(u)
+	u.skill_points = 20
+	var god: TreeChoice = cleric.choices[0]
+	var eros: SkillTab = god.tabs[2]
+	ok(eros.roots[0] == load("res://Roles/paladin.tres").roots[0] and eros.god == &"eros", "the Paladin's own Divinity: Eros")
+	ok(cleric.trees()[3].core.is_empty(), "Pray and Renew stay on its root, not twice on the tab")
+	ok(u.pick(god, eros) and u.deity() == &"eros" and u.unlock(load("res://Skills/rejuvinate.tres")) and u.unlock(load("res://Skills/send_off.tres")), "picked: Rejuvinate, then Send Off")
+	for n in ["smite", "lovely_caster", "impassioned_fighter"]:
+		ok(u.missing(load("res://Skills/%s.tres" % n)) == "Paladin only" and not u.unlock(load("res://Skills/%s.tres" % n)), "%s: the Paladin's, locked" % n)
+	ok(load("res://Skills/smite.tres").markup(1).contains("Tags: Paladin, "), "tagged with its class")
 
 
 func test_synergy_range() -> void:

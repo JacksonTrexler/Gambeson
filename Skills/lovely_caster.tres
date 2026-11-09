@@ -12,6 +12,7 @@ per_rank = true
 [resource]
 script = ExtResource("1_skill")
 name = "Lovely Caster"
+classes = Array[StringName]([&"paladin"])
 passive = true
 tags = Array[StringName]([&"divine", &"love", &"magical"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_lovely")])

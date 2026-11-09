@@ -23,6 +23,7 @@ stat = &"charisma"
 [resource]
 script = ExtResource("1_skill")
 name = "Smite"
+classes = Array[StringName]([&"paladin"])
 tags = Array[StringName]([&"divine", &"cha"])
 ap = 5.0
 cost = 4

@@ -35,7 +35,7 @@ func named(c: TreeChoice, n: String) -> SkillTab:
 
 
 func test_wizard_tree() -> void:
-	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Luun", "Divinity: Sol", "Genre: Song", "Patron: Elmon", "Patron: Hogel",
+	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Luun", "Divinity: Sol", "Divinity: Eros", "Genre: Song", "Patron: Elmon", "Patron: Hogel",
 			"School: Radiance", "School: Currents", "School: Stone", "School: Shadow", "School: Stars"], "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
 	ok(wizard.choices.all(func(c: TreeChoice): return c.tabs.is_empty()) and wizard.choices.map(func(c: TreeChoice): return c.borrows) == [["Divinity"], ["Genre"], ["Patron"], ["School"]],
 			"no list of its own: each borrows a kind of tree")
@@ -50,9 +50,9 @@ func test_wizard_tree() -> void:
 	ok(named(choice(wizard, "Domain"), "Luun").core == [sk("pray"), sk("renew")] and named(choice(wizard, "Pact"), "Hogel").core == [sk("hex"), sk("sweet_nothings"), sk("chant")],
 			"each with its class's shared row first: a Cleric's Pray and Renew, a Warlock's Hex, Sweet Nothings and Chant")
 	var callings := TreeChoice.new()
-	callings.borrows = ["Calling", "Prowess"]
-	ok(titles(callings.all()) == ["Calling: Freedom", "Prowess: Brawn", "Prowess: Fury", "Prowess: Havoc", "Prowess: Protector", "Prowess: Vanguard", "Prowess: Slayer"],
-			"whatever kinds a choice borrows, from every class that has them, each tree once: %s" % [titles(callings.all())])
+	callings.borrows = ["Calling", "Prowess", "Divinity"]
+	ok(titles(callings.all()) == ["Divinity: Luun", "Divinity: Sol", "Divinity: Eros"],
+			"caster trees of the kinds it borrows, from any class, each once; no martial Prowess, no specialist Calling: %s" % [titles(callings.all())])
 	ok(sk("igna") in wizard.options and sk("aetha") in wizard.options and sk("darkstone") in wizard.options, "every starter spell, and Darkstone, on its core ring")
 	ok(wizard.tier(sk("sola")) == 1 and wizard.tier(sk("igna")) == 1 and wizard.tier(sk("mana")) == 0 and wizard.tier(sk("spellweave")) == 2 and wizard.tier(sk("unbound")) == 5,
 			"its own spells tier 1 (Sola and Igna, on the Bard's and Sol's trees too), Spellweave after Arcana, Unbound a capstone of 4")
@@ -75,6 +75,9 @@ func test_wizard_dabblings() -> void:
 	ok(u.unlock(sk("witchery")) and u.pick(pact, named(pact, "Hogel")) and u.devotions().map(func(t: SkillTab): return t.name) == ["Luun", "Sol", "Hogel"],
 			"Witchery: Hogel too - gods and a patron")
 	ok(u.missing(sk("brainfog")) == "Pick Patron: Elmon first" and u.missing(sk("hex")) == "" and u.unlock(sk("gasp")), "Hogel's tab open (Hex on it too), Elmon's shut")
+	ok(u.raise(sk("divinity")) and u.pick(domain, named(domain, "Eros")) and u.unlock(sk("rejuvinate")) and u.missing(sk("send_off")) == ""
+			and u.missing(sk("smite")) == "Paladin only" and u.missing(sk("lovely_caster")) == "Paladin only" and u.missing(sk("impassioned_fighter")) == "Paladin only",
+			"Divinity III: Eros too, its spells but none of the Paladin's features")
 	var school := choice(wizard, "School")
 	ok(u.unlock(sk("mastery")) and u.pick(school, named(school, "Stars")) and u.affinity(sk("fortune")) == 0, "Mastery: a Mage school, no Affinity penalty")
 

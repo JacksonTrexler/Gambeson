@@ -11,7 +11,7 @@ extends Resource
 @export var picks := 1  # how many may be picked: "Pick up to 1"
 @export var by: Skill  # a skill that opens the choice: up to its rank may be picked instead (a Wizard's Divinity)
 @export var affinity := 0  # the picked trees' skills' Affinity for their picker (Unit.affinity(): a Wizard's guest trees -1)
-@export var borrows: Array[String] = []  # kinds of tree it also offers from every other class, found when first asked (all()): a Wizard's Domain takes every Divinity
+@export var borrows: Array[String] = []  # kinds of caster tree it also offers from every class, found when first asked (all()): a Wizard's Domain takes every Divinity
 
 const CLASSES := "res://Roles/"
 
@@ -19,9 +19,10 @@ var _all: Array[SkillTab] = []
 var _found := false
 
 
-# Every tree it offers: its own tabs, then every other class's tab of a kind it borrows (their own
-# trees, each a copy with its class's shared row first on the core ring, as that class shows it: a
-# Cleric's Pray and Renew on Luun).
+# Every tree it offers: its own tabs, then every caster tree (its roots all magical) of a kind it
+# borrows, whichever class it's on - each a copy with its class's shared row first on the core ring,
+# as that class shows it (a Cleric's Pray and Renew on Luun). Class features on them stay that class's
+# (Skill.classes: the Paladin's Smite on Eros).
 func all() -> Array[SkillTab]:
 	if borrows.is_empty():
 		return tabs
@@ -33,13 +34,18 @@ func all() -> Array[SkillTab]:
 			if r == null:
 				continue
 			for t in r.own_tabs():
-				if t.kind in borrows and not _all.any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind):
+				if t.kind in borrows and caster(t) and not _all.any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind):
 					var copy: SkillTab = t.duplicate()
 					var row: Array[Skill] = []
-					row.assign(r.shared.filter(func(x: Skill): return x != null and x not in t.core) + t.core)
+					row.assign(r.shared.filter(func(x: Skill): return x != null and not t.offers(x)) + t.core)
 					copy.core = row
 					_all.append(copy)
 	return _all
+
+
+# A caster tree: roots, every one of them magical (not a Paladin's Prowess).
+static func caster(t: SkillTab) -> bool:
+	return not t.roots.is_empty() and t.roots.all(func(r: SkillRoot): return r and r.tag == &"magical")
 
 
 # The tab of it that's t, or the same tree under another copy (Role.trees() copies tabs for the shared row).

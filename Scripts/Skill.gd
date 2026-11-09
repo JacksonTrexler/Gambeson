@@ -13,6 +13,7 @@ extends Resource
 @export var glyph := ""  # up to 2 characters standing for it on skill trees, its placeholder icon; empty: its initials
 @export var studies := ""  # a Wizard's expanded study (Dabblings): what it lets its holder pick, up to its rank (TreeChoice.by: "religious domains")
 @export var ai := false  # designed by an AI, a placeholder open for the user's design: its name shows with ?? after it (title())
+@export var classes: Array[StringName] = []  # a class feature: only units of these classes learn it (Paladin: Smite), tagged with them; anyone else meeting it on a tree it borrows (a Cleric's or Wizard's Eros) sees it locked (Unit.missing())
 @export var rank_cost := 0  # skill points for rank II, times rank_growth for each rank after (Clever Disguise: 4, 8, 16...); 0: the usual 1 + r^2
 @export var rank_growth := 2.0
 
@@ -599,8 +600,8 @@ func markup(rank := 1, with_spec := true) -> String:
 				", ".join(replaces.map(func(x): return String(x).capitalize())), ", ".join(tags)])
 	if rank_cost:
 		lines.append("Ranks cost more: II takes %d points, then x%s each rank" % [rank_cost, num(rank_growth)])
-	if not tags.is_empty() and not stand_in:
-		lines.append("Tags: " + ", ".join(tags.map(func(t): return "{x:%s}" % t)))
+	if (not tags.is_empty() and not stand_in) or not classes.is_empty():
+		lines.append("Tags: " + ", ".join(classes.map(func(c): return String(c).capitalize()) + ([] if stand_in else tags.map(func(t): return "{x:%s}" % t))))
 	if lore:
 		lines.append(lore.replace("{", "(").replace("}", ")"))
 	return "\n".join(lines)

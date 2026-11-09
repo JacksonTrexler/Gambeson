@@ -626,6 +626,8 @@ func intent_skill(posture: StringName) -> Skill:
 func missing(s: Skill) -> String:
 	if s.stub:
 		return s.waits()
+	if not s.classes.is_empty() and not (role and StringName(role.name.to_lower()) in s.classes):
+		return "%s only" % " and ".join(s.classes.map(func(c): return String(c).capitalize()))
 	if s.exclusive:
 		for x in slots:
 			if x.skill != s and x.skill.exclusive == s.exclusive and x.rank > 0:

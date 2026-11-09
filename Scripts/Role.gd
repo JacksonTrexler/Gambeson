@@ -102,7 +102,7 @@ func trees() -> Array[SkillTab]:
 		if t and not shared.is_empty():
 			var copy: SkillTab = t.duplicate()
 			var row: Array[Skill] = []
-			row.assign(shared.filter(func(s: Skill): return s != null and s not in t.core) + t.core)
+			row.assign(shared.filter(func(s: Skill): return s != null and not t.offers(s)) + t.core)  # what its roots hold stays there (Pray and Renew on Eros)
 			copy.core = row
 			out.append(copy)
 		elif t:

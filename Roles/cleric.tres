@@ -30,6 +30,7 @@
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
 [ext_resource type="Resource" path="res://Trees/luun.tres" id="r_luun"]
+[ext_resource type="Resource" path="res://Trees/eros.tres" id="r_eros"]
 [ext_resource type="Resource" path="res://Trees/sol.tres" id="r_sol"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
 
@@ -61,10 +62,18 @@ roots = Array[ExtResource("6_root")]([ExtResource("r_sol")])
 god = &"sol"
 devotes = true
 
+[sub_resource type="Resource" id="Tab_Eros"]
+script = ExtResource("8_tab")
+name = "Eros"
+kind = "Divinity"
+roots = Array[ExtResource("6_root")]([ExtResource("r_eros")])
+god = &"eros"
+devotes = true
+
 [sub_resource type="Resource" id="Choice_God"]
 script = ExtResource("c_choice")
 name = "God"
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol")])
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol"), SubResource("Tab_Eros")])
 picks = 1
 
 [resource]
