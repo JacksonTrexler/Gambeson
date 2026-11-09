@@ -37,3 +37,4 @@
 - [x] **Icon boxes** (`SkillGrid`): each skill a small square with its glyph or initials (`Skill.mark()`) as a placeholder icon, its rank in the corner; its name in its tooltip and the footer. Stubs are dashed all round.
 - [x] **?? for an AI's designs** (`Skill.ai`, `Skill.title()`): on the skills screen and the hotbar's tooltips.
 - [x] **Choice boxes** on a class's own tab: a darkened box per choice of trees headed "SCHOOL · PICK UP TO 1" (or "LEARN DIVINITY" until its study is learned), holding each tree's tier 0 root; click one, and the footer offers to pick it, free. A gated choice sits just above the skill that opens it, a line running up to it.
+- [x] **Key rebinds** (`KeyBinds`, in Settings under its toggles): a dropdown of the game's actions, the key on the one picked, and Rebind - the next key pressed takes it (Esc keeps the old one). Saved to `user://keybinds.cfg` and loaded as the HUD starts. `keybinds_test.gd`.

@@ -38,7 +38,7 @@ Build roughly in this order; the content below depends on them.
   - [x] **Perception range** (`Battle.sight`, `Perception._range()`; on in the Meadows): units perceive within their wisdom total, and make out appearances within half that.
   - [x] **Area conditions** (`Battle.conditions`): Fog halves perception distances.
   - [x] **Camera** (`BattleCamera`, the Meadows): centred on the player's unit (its commander if it's down), or on the commanded unit while commanding, once it's far enough away. Home refocuses on the selected unit; Home again returns to the player's unit.
-  - [ ] **Key rebinds** in Settings: a dropdown of bindable actions and a press-a-key panel.
+  - [x] **Key rebinds** in Settings: a dropdown of bindable actions and a press-a-key panel (`KeyBinds`, saved to `user://keybinds.cfg`).
 - [x] **Water tiles**: flowing water, ponds, and shallows (their rank is their depth). Built (`docs/done/systems.md`). (?72)
 - [x] **Flood**: a tile layer that slows movement and douses, often laid by effects or tile reactions. Its rank is its depth; deeper than a unit's size and the unit is submerged, so Sirens drown smaller creatures more easily. Laid Flood holds its depth for rank rounds, then dissipates. Built (`docs/done/systems.md`). (?72)
 - [x] **Grappling and drowning as mechanics of their own**: drowning needs the Grappled effect on its target. Built (`docs/done/systems.md`). (?72)

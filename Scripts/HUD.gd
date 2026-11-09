@@ -187,6 +187,11 @@ func _ready() -> void:
 		high_contrast = on
 		_apply_contrast()
 		_mark())
+	KeyBinds.load_saved()
+	var keys := KeyBinds.new()  # Settings: key rebinds
+	keys.name = "KeyBinds"
+	%Settings.get_node("Column").add_child(keys)
+	%Settings.get_node("Column").move_child(keys, %Settings.get_node("Column/Options").get_index() + 1)
 	%SuspiciousMarks.toggled.connect(func(on: bool) -> void:
 		suspicious_marks = on
 		_mark())
