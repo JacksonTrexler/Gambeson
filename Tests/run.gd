@@ -35,6 +35,8 @@ func _initialize() -> void:
 				continue
 			var start := Time.get_ticks_msec()
 			var t: Test = suite.new()
+			Game.level = 1  # a player's starter levelled by an earlier test's battle doesn't carry over
+			Game.xp = 0
 			var scene: Node = load(MUSEUM).instantiate()
 			scene.get_node("Battle").rng.seed = 1
 			root.add_child(scene)

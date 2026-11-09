@@ -127,7 +127,9 @@ class Applied:
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
-var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets its XP (Battle._award())
+var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets two shares of its XP (Battle._award())
+var paid_fall := false  # it has paid out its XP for falling (Battle._award()): a unit pays once...
+var paid_rise := false  # ...and once more for being brought back (Battle.rescued())
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
 var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
@@ -595,11 +597,12 @@ func level_up() -> void:
 
 # --- Experience
 # Levels are bought with XP, each one's cost growing n log n: from level n to the next takes
-# XP_PER_LEVEL x n log2 n (at least x n: 20, 40, 100, 160, 240... ). A unit is worth XP by its base
-# stat total and its level (xp_worth()), paid to whoever's blow fells it (Battle._award()).
+# XP_PER_LEVEL x n log2 n (at least x n: 20, 40, 100, 160, 240... ), up to MAX_LEVEL. A unit is worth
+# the mean of its six core stats and its level (xp_worth()), shared by those near it as it falls, or
+# as it's brought back (Battle._award(), Battle.rescued()).
 
 const XP_PER_LEVEL := 20
-const XP_DIVISOR := 10.0  # a fallen unit's worth: its BST x its level / this
+const MAX_LEVEL := 20
 
 
 # XP it takes to go from level n to the next.
@@ -615,20 +618,26 @@ func bst() -> int:
 	return t
 
 
-# What felling it is worth: its BST x its level / XP_DIVISOR, rounded (a level 1 villager 6; a level 4
-# Siren 31), at least 1.
+# What felling it (or bringing it back) is worth: its BST and its level, over the seven of them -
+# level counts as one more stat - rounded, at least 1 (a level 1 villager 65 / 7: 9; a level 4 Siren
+# 82 / 7: 12).
 func xp_worth() -> int:
-	return maxi(roundi(bst() * maxi(level, 1) / XP_DIVISOR), 1)
+	return maxi(roundi((bst() + level) / 7.0), 1)
 
 
-# Takes n XP, levelling up as often as it covers the next level's cost. The levels gained.
+# Takes n XP, levelling up as often as it covers the next level's cost. The levels gained. At
+# MAX_LEVEL it takes no more.
 func gain_xp(n: int) -> int:
+	if level >= MAX_LEVEL:
+		return 0
 	xp += maxi(n, 0)
 	var gained := 0
-	while xp >= xp_to_next(level):
+	while level < MAX_LEVEL and xp >= xp_to_next(level):
 		xp -= xp_to_next(level)
 		level_up()
 		gained += 1
+	if level >= MAX_LEVEL:
+		xp = 0
 	return gained
 
 

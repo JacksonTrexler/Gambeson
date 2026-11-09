@@ -61,6 +61,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | 7.27 | Gamut's Tower walkable, a floor per difficulty; dungeon menus (?77) | `tower_test.gd` |
 | — | Eros for Clerics, caster trees from any class, class features (?76) | `hogel_test.gd`, `casters_test.gd` |
 | — | Levels: XP from BST and level, n log n requirements (?78) | `level_test.gd` |
+| — | Levels revised: (BST + level) / 7, shared near the fall, XP for revivals, once each, cap 20 (?79) | `level_test.gd` |
 
 ## Questions to answer first
 

@@ -42,7 +42,7 @@ signal burned(u: Unit, hp: int, why: String)  # u took fire from a flame, a burn
 signal perfect(u: Unit)  # 36 Strike hits in a row: u healed PERFECT_HEAL
 signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
-signal gained_xp(u: Unit, n: int, levels: int, from: Unit)  # u felled `from`, earning n XP (and levels: Unit.gain_xp())
+signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
 
 enum Phase { INITIATIVE, TURNS, OVER }
 
@@ -55,6 +55,7 @@ const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken 
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
+const XP_NEAR := 3.0  # tiles from a unit falling or brought back within which others get a share of its XP (_share())
 const RECAST_LIMIT := 20  # recasts on a natural 20 in a row (Jugular: "without limit for now"), a guard on a rigged rng
 var _recasts := 0
 const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to a source with any Power in it...
@@ -328,7 +329,7 @@ func move(u: Unit, c: Vector2i) -> bool:
 # (Game.outfit), with the hearts it's been given (Game.hearts).
 func starter(s: Dictionary) -> Unit:
 	var u := from_role(s.faction, s.role, s.name)
-	u.level = maxi(Game.level, 1)  # its levels and XP from earlier battles; a point a level gained to learn its skills again
+	u.level = clampi(Game.level, 1, Unit.MAX_LEVEL)  # its levels and XP from earlier battles; a point a level gained to learn its skills again
 	u.xp = Game.xp
 	u.skill_points = u.level - 1
 	for slot in Game.outfit:  # what it had on last battle
@@ -3653,18 +3654,56 @@ func _synergize(o: Unit) -> void:
 					break
 
 
-# u fell: whoever struck it last earns its worth (Unit.xp_worth()), if still standing and not on its
-# side. The player's starter keeps its levels for the next battle (Game.level, Game.xp).
+# u fell: its foes standing near share its worth (_share()), two shares to whoever struck it last,
+# wherever it stands (if still standing and not on u's side). A unit pays out for falling only once.
 func _award(u: Unit) -> void:
-	var k := u.last_hit_by
-	if not k or not is_instance_valid(k) or not k.is_alive() or Faction.friends(k.faction, u.faction):
+	if u.paid_fall:
 		return
-	var n := u.xp_worth()
-	var levels := k.gain_xp(n)
-	if k == player:
-		Game.level = k.level
-		Game.xp = k.xp
-	gained_xp.emit(k, n, levels, u)
+	u.paid_fall = true
+	var k := u.last_hit_by
+	if k and (not is_instance_valid(k) or not k.is_alive() or Faction.friends(k.faction, u.faction)):
+		k = null
+	_share(u, k, false)
+
+
+# u, down or dead, was brought back by `by` (a resurrection, or healed back up from going down): its
+# side standing near shares its worth (_share()), two shares to `by`. A unit pays out for this only
+# once. Hearts and a Red Spinel Ring get a unit up on their own: nobody brings it back.
+func rescued(u: Unit, by: Unit) -> void:
+	if u.paid_rise:
+		return
+	u.paid_rise = true
+	_share(u, by if by and by != u and is_instance_valid(by) and by.is_alive() else null, true)
+
+
+# u's worth (Unit.xp_worth()), split in shares: one for each unit standing within XP_NEAR of it - its
+# foes as it falls, its side as it's saved - and two for k (the one who felled or saved it, if any).
+# Each share rounds, at least 1 XP. The player's starter keeps its levels for the next battle
+# (Game.level, Game.xp).
+func _share(u: Unit, k: Unit, saved: bool) -> void:
+	var near: Array[Unit] = []
+	for o: Unit in $Units.get_children():
+		if o != u and o != k and o.is_alive() and Faction.friends(o.faction, u.faction) == saved \
+				and Vector2(o.cell).distance_to(Vector2(u.cell)) <= XP_NEAR + 0.0001:
+			near.append(o)
+	var shares := near.size() + (2 if k else 0)
+	if shares == 0:
+		return
+	var each := u.xp_worth() / float(shares)
+	if k:
+		_pay(k, maxi(roundi(each * 2.0), 1), u, saved)
+	for o in near:
+		_pay(o, maxi(roundi(each), 1), u, saved)
+
+
+func _pay(o: Unit, n: int, from: Unit, saved: bool) -> void:
+	if o.level >= Unit.MAX_LEVEL:
+		return
+	var levels := o.gain_xp(n)
+	if o == player:
+		Game.level = o.level
+		Game.xp = o.xp
+	gained_xp.emit(o, n, levels, from, saved)
 
 
 func _on_died(u: Unit) -> void:

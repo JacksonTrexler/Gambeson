@@ -101,6 +101,7 @@ func fill(title: String, spend: bool) -> void:
 		grid.selected = picked
 	_show_pick()
 	level_button.visible = can_spend and OS.is_debug_build()
+	level_button.disabled = unit.level >= Unit.MAX_LEVEL
 
 
 # Trees grow from the bottom: open on tier 0, once the scroll box has taken the tree's new height (its

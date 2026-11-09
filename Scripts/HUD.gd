@@ -76,6 +76,7 @@ var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 var _roll := {}  # the attack roll the next used signal is for (_on_attacked())
 var _looks: Array = []  # [by, total, against, whether the player knows `against`]: investigations of the skill being used, logged after it
 var _falls: Array[String] = []  # "X falls" lines, held until the hit that did it is logged (_flush_falls())
+var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logged after the falls (_flush_falls())
 
 @onready var card: UnitCard = %Card
 @onready var bar: VBoxContainer = %Hotbar
@@ -170,9 +171,11 @@ func _ready() -> void:
 		_mark())
 	battle.leveled.connect(func(caster: Unit, t: Unit, n: int):
 		_log("%s Level Down %s %s%s" % [_tag(caster), "-->" if n else "-x>", _tag(t), " (-%d level%s)" % [n, "" if n == 1 else "s"] if n else ""]))
-	battle.gained_xp.connect(func(u: Unit, n: int, levels: int, _from: Unit):
+	battle.gained_xp.connect(func(u: Unit, n: int, levels: int, from: Unit, saved: bool):
 		if known(u):  # its own side's progress only
-			_log("%s +%d XP%s" % [_tag(u), n, " --> level %d" % u.level if levels else ""])
+			_earned.append(["XP for %s %s" % ["saving" if saved else "felling", _tag(from)],
+					"%s +%d%s" % [_tag(u), n, " (level %d)" % u.level if levels else ""]])
+			_flush_falls.call_deferred()
 			_mark())
 	for u: Unit in battle.get_node("Units").get_children():
 		_watch_unit(u)
@@ -1110,6 +1113,15 @@ func _flush_falls() -> void:
 	for line in _falls:
 		_log(line)
 	_falls.clear()
+	var lines: Array = []  # [what for, its parts]: "XP for felling Siren: Brick +6, Ash +3 (level 2)"
+	for e in _earned:
+		if lines and lines[-1][0] == e[0]:
+			lines[-1][1].append(e[1])
+		else:
+			lines.append([e[0], [e[1]]])
+	_earned.clear()
+	for l in lines:
+		_log("%s: %s" % [l[0], ", ".join(l[1])])
 
 
 # Whether the player knows the roll u's skill was put on it with (Clever Disguise): u is on its
@@ -1549,7 +1561,7 @@ func _on_raised(s: Skill) -> void:
 
 func _on_leveled() -> void:
 	var u := skills.unit
-	if _can_spend(u):
+	if _can_spend(u) and u.level < Unit.MAX_LEVEL:
 		u.level_up()
 		_log("%s reaches level %d" % [_tag(u), u.level])
 	_mark()

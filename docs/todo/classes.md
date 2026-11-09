@@ -107,6 +107,7 @@ Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** a
 
 - [x] **Chant** and **Hogel's path** (Humble, Gasp, Breathtaking, Irradiate; resting whole satisfies him): built (`docs/done/classes.md`). (?42 ?45)
 - [x] Level Down (tier 5) and Death (capstone) need a Sweet Nothing (`docs/done/classes.md`).
+- [ ] **A Demon / Warlock / Dark Magic skill**: your message of 2026-11-09 cut off after "Demon / Warlock / Dark Magic skill:", between the XP rules and the level cap. Nothing built; what does it do?
 
 42. Chant, as built: "waiting" is resting the whole turn (no move, no AP spent). It primes the next rank Sweet Nothing gains to bring one more each ("from the next rank gains"), and the next Warlock skill to be used a rank higher. Right reading?
 45. Humble: "lasts longer the less max HP the unit loses (rank * (4 * % of max HP cut) turns)" - as written the formula grows with the cut. Built as rank x 4 x (1 - the share cut), at least 1 turn: rank I on a unit at full HP lasts 4 turns. Right?

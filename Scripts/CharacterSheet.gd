@@ -43,7 +43,8 @@ func open(u: Unit, editable: bool) -> void:
 	_column.add_child(head)
 	var who := u.nick if u.nick else String(u.name)
 	var hearts := " · %d of %d hearts left" % [u.lives_left(), u.lives()] if u.lives() > 0 else ""
-	_column.add_child(_muted("%s · Lv %d · %d / %d XP%s" % [who, u.lv(), u.xp, Unit.xp_to_next(u.level), hearts]))
+	var xp := "max level" if u.level >= Unit.MAX_LEVEL else "%d / %d XP" % [u.xp, Unit.xp_to_next(u.level)]
+	_column.add_child(_muted("%s · Lv %d · %s%s" % [who, u.lv(), xp, hearts]))
 	for slot in SLOTS:
 		var it: Item = u.get(slot)
 		var row := HBoxContainer.new()
