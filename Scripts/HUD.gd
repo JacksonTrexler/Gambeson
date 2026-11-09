@@ -739,8 +739,10 @@ func tile_view(c: Vector2i) -> Read:
 
 # How the player's side judges a tile: &"bad" (a known trap, or known to be detrimental), &"unsure"
 # (not made out, or something may be lurking there), or &"safe" (most ground: neutral, or beneficial).
-func ground(c: Vector2i) -> StringName:
-	var r := tile_view(c)
+# `r`: its tile_view(), if already read.
+func ground(c: Vector2i, r: Read = null) -> StringName:
+	if r == null:
+		r = tile_view(c)
 	if r.trap == true or (r.worth != null and r.worth < 0):
 		return &"bad"
 	if r.net < 0 or r.hint or c in dubious:
@@ -1260,6 +1262,23 @@ func _on_died(u: Unit) -> void:
 
 # --- Showing it
 
+# The tiles whose look the map shows (grounds, traps, suspect): those the selected unit can move to,
+# and those that could hide something from the player's side (Battle.maybe_suspicious(), what it finds
+# dubious) - the rest read as plain ground. Reading every tile of a plane as big as the Meadows' grows,
+# on every refresh, was what slowed it.
+func _shown_cells() -> Array[Vector2i]:
+	var out: Dictionary[Vector2i, bool] = {}
+	for c in reach:
+		out[c] = true
+	for c in dubious:
+		out[c] = true
+	var o := observer()
+	if o:
+		for c in battle.maybe_suspicious(o):
+			out[c] = true
+	return out.keys()
+
+
 func _mark() -> void:
 	_dirty = true
 	_reach_of = null
@@ -1271,9 +1290,9 @@ func _refresh() -> void:
 	grounds.clear()
 	traps.clear()
 	suspect.clear()
-	for c in battle.map.get_used_cells():
-		grounds[c] = ground(c)
+	for c in _shown_cells():
 		var tv := tile_view(c)
+		grounds[c] = ground(c, tv)
 		if tv.trap == true:
 			traps[c] = c in battle.snares and battle.snares[c].faction == command.faction()
 		if tv.hint != "" and c not in dubious:  # concealed ground it suspects is more than it looks
@@ -2275,8 +2294,13 @@ func _find_reach() -> void:
 	reach.clear()
 	if not u or u.move_left() <= 0.0001:
 		return
-	for c in battle.map.get_used_cells():
-		if c != u.cell and not unit_seen(c):
+	var far := u.move_left() + 2.0  # every step costs at least 1, and luck squeezes in one more: nothing farther is reached
+	var r := ceili(far)
+	for dx in range(-r, r + 1):
+		for dy in range(-r, r + 1):
+			var c := u.cell + Vector2i(dx, dy)
+			if Vector2(dx, dy).length() > far or not battle.on_map(c) or c == u.cell or unit_seen(c):
+				continue
 			var w := battle.walk(u, c, true)
 			if not w.path.is_empty() and w.path[-1] == c:
 				reach[c] = w.costs.reduce(func(sum, x): return sum + x, 0.0)

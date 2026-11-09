@@ -2103,6 +2103,34 @@ func wake() -> void:
 # on, and effect of its items. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
 # Stoneskin golem), nor does one `viewer` saw through.
 func _effects(viewer: Unit = null) -> Array:
+	var key := [self, viewer]
+	if reading > 0 and key in _read_fx:
+		return _read_fx[key]
+	var out := _gather_effects(viewer)
+	if reading > 0:
+		_read_fx[key] = out
+	return out
+
+
+# While a read is under way (Battle.read(): reading > 0), what _effects() found for each unit and
+# viewer, kept for the read's length: a read changes no one's effects, and asks for the same few
+# units' stats dozens of times. Cleared as the outermost read ends (end_read()).
+static var reading := 0
+static var _read_fx := {}
+
+
+static func begin_read() -> void:
+	reading += 1
+
+
+static func end_read() -> void:
+	reading -= 1
+	if reading <= 0:
+		reading = 0
+		_read_fx.clear()
+
+
+func _gather_effects(viewer: Unit) -> Array:
 	var out := []
 	var own := {}
 	for x in on_passives:

@@ -146,6 +146,7 @@ var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), o
 var debris: Dictionary[Vector2i, Debris] = {}  # evidence hiding units leave behind (_scatter())
 var flames: Dictionary[Vector2i, Flame] = {}  # tiles on fire (Flamewall)
 var layers: Dictionary[Vector2i, Array] = {}  # cell -> the layers laid over its ground, top first (lay_layer())
+var _concealed_tiles: Array = []  # [source, atlas coords, alternative] of the map's concealed tiles, after a first entry marking them looked for (_maybe_hidden())
 var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, until its stack changes
 @export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
 var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
@@ -962,7 +963,7 @@ func _look_harder(u: Unit) -> void:
 # whose tags it sees scrambled (Haluca). Nearest first.
 func suspicious(o: Unit) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	for c in map.get_used_cells():
+	for c in maybe_suspicious(o):
 		var r := read(o, c)
 		if c != o.cell and (r.hint != "" or (o.suspects(c) > 0 and r.net < 0)):
 			out.append(c)
@@ -972,6 +973,50 @@ func suspicious(o: Unit) -> Array[Vector2i]:
 			if r.located() and (r.hint != "" or (o.suspects(t) + o.suspects(t.cell) > 0 and r.net < 0) or (t.faction == o.faction and o.scrambles(t))):
 				out.append(t.cell)
 	out.sort_custom(func(x: Vector2i, y: Vector2i): return Vector2(x).distance_to(Vector2(o.cell)) < Vector2(y).distance_to(Vector2(o.cell)))
+	return out
+
+
+# The tiles that could look suspicious to o, for suspicious() to read: only concealment levels give a
+# tile a hint (Perception.tile(); recon only adds), and those come from darkness over it, hidden ground
+# (a trap) or o's own suspicion of it. Reading every tile of a plane as big as the Meadows' grows,
+# for every unit, every turn, was what slowed it.
+func maybe_suspicious(o: Unit) -> Array[Vector2i]:
+	var out: Dictionary[Vector2i, bool] = {}
+	for z in zones:
+		if not z.allied:
+			for c in z.levels:
+				out[c] = true
+	for c in _maybe_hidden():
+		if hidden(c):
+			out[c] = true
+	for k in o.suspicion:
+		if k is Vector2i:
+			out[k] = true
+	return out.keys().filter(func(c: Vector2i): return map.get_cell_source_id(c) != -1)
+
+
+# Every cell that could be hidden (hidden()): those layered over or trapped (their terrain isn't the
+# map's), and those painted with a tile whose terrain is concealed - found by tile, not cell by cell.
+func _maybe_hidden() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	out.assign(layers.keys() + snares.keys())
+	if _concealed_tiles.is_empty() and map.tile_set:
+		_concealed_tiles.append([])  # looked: the first entry marks it, whatever's found
+		var ts := map.tile_set
+		for i in ts.get_source_count():
+			var src := ts.get_source(ts.get_source_id(i)) as TileSetAtlasSource
+			if not src:
+				continue
+			for t in src.get_tiles_count():
+				var at := src.get_tile_id(t)
+				for a in src.get_alternative_tiles_count(at):
+					var alt := src.get_alternative_tile_id(at, a)
+					var d := src.get_tile_data(at, alt)
+					var ter: Terrain = d.get_custom_data("terrain") if d and ts.get_custom_data_layer_by_name("terrain") >= 0 else null
+					if ter and ter.concealment > 0:
+						_concealed_tiles.append([ts.get_source_id(i), at, alt])
+	for k in _concealed_tiles.slice(1):
+		out.append_array(map.get_used_cells_by_id(k[0], k[1], k[2]))
 	return out
 
 
@@ -1047,13 +1092,25 @@ func _look_ahead(o: Unit) -> bool:
 	var dir := Vector2(way).normalized()
 	var ahead := rank + o.mod(&"wisdom")
 	var strip: Array[Vector2i] = []
-	for c in map.get_used_cells():
+	var r := ceili(ahead + rank + 1.0)
+	for c in _box(o.cell, r):
 		var rel := Vector2(c - o.cell)
 		var along := rel.dot(dir)
 		if along > 0.0 and along <= ahead + 0.5 and absf(rel.cross(dir)) <= rank + 0.5:
 			strip.append(c)
 	search(o, strip)
 	return true
+
+
+# The cells of the map within r tiles of c, either way: a square to look over, rather than every cell.
+func _box(c: Vector2i, r: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for dx in range(-r, r + 1):
+		for dy in range(-r, r + 1):
+			var x := c + Vector2i(dx, dy)
+			if map.get_cell_source_id(x) != -1:
+				out.append(x)
+	return out
 
 
 # What looking at c from a distance costs o's check: nothing beside it; further off, a point a tile
@@ -1672,14 +1729,15 @@ func _linked_read(o: Unit, target: Variant) -> Read:
 
 # What o makes out, with what its synergized partners make out filling the gaps: the clearest of them.
 func read(o: Unit, target: Variant) -> Read:
+	Unit.begin_read()  # its effects held still for the read's length (Unit._effects())
 	var r := _linked_read(o, target)
-	if target is Unit and target == o:
-		return r
-	for p in synergized(o):
-		if not (target is Unit and p == target):
-			var pr := _linked_read(p, target)
-			if clearer(pr, r):
-				r = pr
+	if not (target is Unit and target == o):
+		for p in synergized(o):
+			if not (target is Unit and p == target):
+				var pr := _linked_read(p, target)
+				if clearer(pr, r):
+					r = pr
+	Unit.end_read()
 	return r
 
 
