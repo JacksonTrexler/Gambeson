@@ -43,7 +43,7 @@ Personify puts forward a persona: how others take a unit. Each persona rank open
 [color=#e8c547]Fooling[/color]
 A unit a persona fools takes it at its word: enraptured while it has no suspicion of it. Suspicion comes in stacks, each making it harder to fool. Showing what it isn't is dissonance, counting against the unit's own rolls."""],
 	&"board": ["The board", """[color=#e8c547]Reading the board[/color]
-While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A black shape is something you can't identify; a marked area is where something is only suspected. Hover a tile for its effects.
+While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A unit with a grey glow and no bars is one you can't identify; a marked area is where something is only suspected. Hover a tile for its effects.
 
 [color=#e8c547]Rolls[/color]
 Attacks and the other checks are a d20 plus a mod; the forecast gives the chance to hit when you can make the target out. The Checks page has each kind."""],

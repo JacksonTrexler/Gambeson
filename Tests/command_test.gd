@@ -64,6 +64,29 @@ func test_orders() -> void:
 	ok(not c.can_order(v(2)), "no one once the leader falls")
 
 
+# A turn's caps: the leader gives orders to at most its cha mod allies, and at most its cha mod orders
+# to each (at least 1 of each); its own actions aren't capped. A new turn starts them over.
+func test_caps() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 4), al: Vector2i(3, 4)})
+	var c := Command.new(b, v(1))
+	v(1).charisma = 8  # -1
+	ok(c.ally_cap() == 1 and c.order_cap() == 1, "cha -1: still one ally a turn, one order")
+	v(1).charisma = 12  # +1
+	c.order(v(2))
+	ok(not c.can_order(v(2)) and not c.can_order(al), "cha +1: an order to one ally, and that's all: neither takes another")
+	for i in 5:
+		c.order(v(1))
+	ok(c.can_order(v(1)) and c.commanded() == 1, "the leader's own actions aren't capped, nor count as an ally commanded")
+	c.new_turn()
+	ok(c.can_order(v(2)) and c.can_order(al), "a new turn: orders start over")
+	v(1).charisma = 14  # +2
+	c.order(v(2))
+	ok(c.can_order(v(2)) and c.can_order(al), "cha +2: a second order for the same ally, or one for another")
+	c.order(v(2))
+	ok(not c.can_order(v(2)) and c.can_order(al) and c.under_caps(al), "its two given: it's done; the other ally isn't")
+
+
 func test_party() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3), al: Vector2i(3, 4), v(3): Vector2i(8, 2)})

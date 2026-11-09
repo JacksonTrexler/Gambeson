@@ -14,7 +14,7 @@ extends CanvasLayer
 # without orders act on their own as the turn ends, and other sides play themselves, paced so they
 # can be followed.
 # Other sides are shown only as the player's units make them out (Perception, shared across the
-# side): unlocated units aren't drawn, ones whose side can't be told are black shapes, and areas
+# side): unlocated units aren't drawn, ones whose side can't be told glow grey with no bars, and areas
 # where something is only suspected are marked. Ground is judged the same way - safe, unsure (not
 # made out, or something may lurk there) or bad (a known trap, or known detrimental) - which colours where a
 # unit can walk, puts a '?' on move costs through unsure ground, and heads the tile pane, a corner
@@ -833,21 +833,20 @@ func _use_on(c: Vector2i, force := false, alt := false) -> void:
 
 
 # Strikes at a tile, whatever seems to be there (Battle.attempt).
-func _strike_at(u: Unit, s: Skill, c: Vector2i) -> void:
+func _strike_at(u: Unit, s: Skill, c: Vector2i, counted := false) -> void:
 	match battle.attempt(u, s, c):
 		&"hit":
-			_done(u)
+			_done(u, counted)
 		&"miss":
-			_done(u)
+			_done(u, counted)
 			_say("Nothing there")
 		&"shattered":
-			_done(u)
+			_done(u, counted)
 		_:
 			var why := why_not(u, s, c)
 			_say(why if why else "Can't strike there")
 
 
-# The order went through: the unit has acted, and whatever was armed is spent.
 # The persona panel's Done: Personify pays its AP and puts the picks forward.
 func _on_personified(changes: Dictionary) -> void:
 	var u: Unit = _personifying[0]
@@ -911,8 +910,11 @@ func _on_doubted(by: Unit, of: Unit, total: int, against: int) -> void:
 		_mark()
 
 
-func _done(u: Unit) -> void:
-	command.order(u)
+# The order went through: the unit has acted, and whatever was armed is spent. counted: the order
+# was already counted (a charge's walk, then its strike: one order).
+func _done(u: Unit, counted := false) -> void:
+	if not counted:
+		command.order(u)
 	armed = null
 	_note = ""
 	_replan()
@@ -948,20 +950,21 @@ func _approach(u: Unit, s: Skill, c: Vector2i) -> Dictionary:
 
 
 # A click on a foe (or a Ctrl-click on a tile): walk into reach and use the primary skill on it. If
-# it can't get there this turn, it walks as close as it can.
+# it can't get there this turn, it walks as close as it can. The walk and the strike are one order.
 func _charge(u: Unit, c: Vector2i, force: bool) -> void:
 	var s := _primary(u)
 	var a := _approach(u, s, c)
-	if a.dest != u.cell:
+	var walked: bool = a.dest != u.cell
+	if walked:
 		battle.travel(u, a.dest)
 		command.order(u)
 	var t := unit_seen(c)
 	if force or not t:
-		_strike_at(u, s, c)
+		_strike_at(u, s, c, walked)
 		return
 	var why := why_not(u, s, t)
 	if why == "" and battle.cast(u, s, t):
-		_done(u)
+		_done(u, walked)
 		return
 	_say(why if why else "%s doesn't take" % s.name)
 	_replan()
@@ -1328,10 +1331,12 @@ func _show_units() -> void:
 			continue
 		if known(u):
 			u.appear(null)
-			u.command_look(_sat_of(command_state(u)), command_state(u) == &"ready", high_contrast)
+			var state := command_state(u)
+			u.command_look(command_sat(u, state), state == &"ready", high_contrast)
 			continue
 		var r := view(u)
 		u.appear(r)
+		u.set_saturation(1.0)  # its colour isn't the player's to drain (a unit that changed sides)
 		for c in r.area:
 			if battle.on_map(c):
 				dubious[c] = r.hint
@@ -1856,10 +1861,13 @@ func _info(u: Unit) -> Dictionary:
 	if sleeping(u):
 		chips.append(["Asleep", SLEEP])
 	elif known(u) and battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS:
-		if u in command.ordered:
+		var given: int = command.ordered.get(u, 0)
+		if command.can_order(u):
+			chips.append(["Takes orders" if given == 0 or u == command.leader else "Ordered %d/%d" % [given, command.order_cap()], FRIEND])
+		elif given > 0:
 			chips.append(["Ordered", MUTED])
-		elif command.can_order(u):
-			chips.append(["Takes orders", FRIEND])
+		elif not command.under_caps(u):
+			chips.append(["Command spent", MUTED])
 		else:
 			chips.append(["Out of range", MUTED])
 	if r.vibe:
@@ -2220,10 +2228,6 @@ func _show_intents(u: Unit) -> void:
 # How a unit of the player's own stands this turn, for the map: &"ready"
 
 
-# How a unit of the player's own stands this turn, for the map: &"ready" (commandable now - lit and
-# full colour), &"ordered" (told to act, colour half drained), &"tapped" (ordered and out of AP, or
-# can't act - greyed), &"idle" (not this turn / not commandable now - left as it is). Commanded units
-# desaturate along ready -> ordered -> tapped.
 # High contrast (accessibility): whiter body text and a heavier faction trim; the brighter allied
 # glow comes through command_look (passed high_contrast in _show_units), the bolder suspicious marks
 # through the Overlay. A plain, easy win on legibility.
@@ -2233,21 +2237,29 @@ func _apply_contrast() -> void:
 	_mark()
 
 
+# How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order
+# now, with AP to act on it: lit), &"spent" (on the player's turn, it can't take another - out of AP,
+# out of reach, asleep, past the turn's command caps) or &"idle" (not the player's turn, or not its
+# side: allies of another side and foes are drawn as they are).
 func command_state(u: Unit) -> StringName:
 	if not my_turn() or not known(u):
 		return &"idle"
-	if u == command.leader:
-		return &"ready" if u.ap_left() > 0.001 else &"tapped"
-	if u in command.ordered:  # commanded already - stays drained even if it moved out of range
-		return &"tapped" if u.ap_left() <= 0.001 else &"ordered"
-	if not command.can_order(u):
-		return &"idle"
-	return &"ready"
+	return &"ready" if command.can_order(u) and u.ap_left() > 0.001 else &"spent"
 
 
-# The saturation a command state draws at.
-func _sat_of(state: StringName) -> float:
-	return {&"ready": 1.0, &"ordered": 0.5, &"tapped": 0.0, &"idle": 1.0}[state]
+const SAT_LOW := 0.55  # the colour a unit that can still be commanded keeps on its last AP
+
+
+# How much colour it draws with (Unit.command_look()): full, but for the player's own side on its
+# turn. One that can still be commanded drains only a little, and mostly as its AP runs out
+# (SAT_LOW with none left); one that can't be any more this turn is grey.
+func command_sat(u: Unit, state := command_state(u)) -> float:
+	match state:
+		&"ready":
+			return 1.0 - (1.0 - SAT_LOW) * pow(1.0 - u.ap_share(), 2.0)
+		&"spent":
+			return 0.0
+	return 1.0
 
 
 func _why_no_orders(u: Unit) -> String:
@@ -2263,6 +2275,11 @@ func _why_no_orders(u: Unit) -> String:
 		return "Fallen"
 	if u.asleep():
 		return "Asleep: an ally ending the turn beside it wakes it"
+	if not command.under_caps(u):
+		var cha := "charisma %+d" % command.leader.mod(&"charisma")
+		if u in command.ordered:
+			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", cha]
+		return "%s commands %d all%s a turn (%s)" % [_name(command.leader), command.ally_cap(), "y" if command.ally_cap() == 1 else "ies", cha]
 	return ""  # too far: no nag - its hotbar is grayed, and the units you can command are lit
 
 

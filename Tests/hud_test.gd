@@ -89,13 +89,13 @@ func test_orders_in_range() -> void:
 	h.click(Vector2i(2, 3))
 	h.click(Vector2i(3, 3))
 	ok(v(2).cell == Vector2i(3, 3), "an ally a step from the leader takes orders")
-	ok(v(2) in h.command.ordered and h.command_state(v(2)) in [&"ordered", &"tapped"],
-			"...and now reads as commanded, its colour draining")
-	ok(h.command_state(v(1)) == &"ready", "the leader, yet to act, reads as commandable (lit, full colour)")
+	ok(v(2) in h.command.ordered and h.command_state(v(2)) == &"spent" and h.command_sat(v(2)) == 0.0,
+			"...and, its one order given (charisma -1), reads as spent: grey")
+	ok(h.command_state(v(1)) == &"ready" and h.command_sat(v(1)) == 1.0, "the leader, yet to act, reads as commandable (lit, full colour)")
 	h.click(Vector2i(5, 5))
 	h.click(Vector2i(5, 4))
-	ok(al.cell == Vector2i(5, 5) and h.command_state(al) == &"idle" and not h._note.begins_with("Too far"),
-			"one further off can't be ordered: not lit as commandable, and no 'too far' nag")
+	ok(al.cell == Vector2i(5, 5) and h.command_state(al) == &"spent" and not h._note.begins_with("Too far"),
+			"one further off can't be ordered: grey, not lit as commandable, and no 'too far' nag")
 	h.free()
 
 
@@ -193,13 +193,13 @@ func test_drawn_as_seen() -> void:
 	v(3).afflict(effect("concealment", 3), 9)
 	v(4).afflict(effect("concealment", 1), 9)
 	var h := await start(v(1))
-	var shadow := func(u: Unit) -> bool: return u.sprite.modulate == Unit.SHAPE
+	var shadow := func(u: Unit) -> bool: return not u.hp_bar.visible and u.glow.visible and Color(u.glow.modulate, 1.0) == Unit.SHAPE_EDGE
 	var edge := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0) if u.glow.visible else Color.TRANSPARENT
 	ok(not icor.visible, "unlocated: not drawn at all")
 	ok(not v(3).visible and not h.dubious.is_empty() and h.dubious.keys().all(func(c): return Vector2(c).distance_to(Vector2(5, 5)) < 3),
 			"only suspected: not drawn, but the area it may be in is marked")
-	ok(v(4).visible and shadow.call(v(4)) and not v(4).hp_bar.visible and edge.call(v(4)) == Unit.SHAPE_EDGE,
-			"located, side unknown: a black shape, neutral glow, no bars")
+	ok(v(4).visible and shadow.call(v(4)) and v(4).sprite.modulate == Color.WHITE,
+			"located, side unknown: in its own colours, but a neutral glow and no bars")
 	ok(h._info(v(4)).shape and h._info(v(4)).chips[0][0] == "Unknown", "the card shows a shape too")
 	ok(siren.visible and not shadow.call(siren) and edge.call(siren) == lancin.primary, "the Siren wears the side its persona claims")
 	ok(not siren.sprite.visible and siren._face.visible and siren._face.text == siren.alias_face, "...and the stand-in sprite of its made-up name")
@@ -240,6 +240,53 @@ func test_click_attacks() -> void:
 	h.free()
 
 
+# The player's own side, on its turn: one it can still command keeps its colour, draining only a
+# little and mostly as its AP runs out; one it can't command any more is grey. Allies of another side,
+# foes, and everyone off the player's turn keep their colours.
+func test_command_colour() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), al: Vector2i(1, 3), v(3): Vector2i(8, 2)})
+	v(1).charisma = 14  # two allies a turn, two orders each
+	var h := await start(v(1))
+	var sat := func(u: Unit) -> float: return u.sprite.material.get_shader_parameter(&"saturation")
+	ok(sat.call(v(2)) == 1.0 and h.command_state(v(2)) == &"ready", "a fresh ally: full colour, lit")
+	for p in v(2).ap:
+		p.amount *= 0.5
+	h._refresh()
+	ok(sat.call(v(2)) > 0.85 and sat.call(v(2)) < 1.0, "half its AP spent: barely drained (%.2f)" % sat.call(v(2)))
+	for p in v(2).ap:
+		p.amount *= 0.2
+	h._refresh()
+	ok(sat.call(v(2)) > HUD.SAT_LOW and sat.call(v(2)) < 0.7, "its last tenth: noticeably drained, still in colour (%.2f)" % sat.call(v(2)))
+	for p in v(2).ap:
+		p.amount = 0.0
+	h._refresh()
+	ok(sat.call(v(2)) == 0.0 and h.command_state(v(2)) == &"spent", "out of AP: it can't be commanded any further: grey")
+	ok(sat.call(v(3)) == 1.0, "foes keep their colours")
+	var friends := Faction.new()
+	friends.allies = [lancin]
+	al.faction = friends
+	h._refresh()
+	ok(Faction.friends(al.faction, lancin) and h.command_state(al) == &"idle" and sat.call(al) == 1.0, "so do allies of another side")
+	al.faction = lancin
+	b.end_turn()
+	h._refresh()
+	ok(sat.call(v(2)) == 1.0, "off the player's turn, its own side keeps its colours too")
+	h.free()
+
+
+# A charge - walking into reach, then striking - is one order.
+func test_charge_one_order() -> void:
+	stage(lancin, {v(1): Vector2i(2, 2), v(2): Vector2i(1, 3), v(3): Vector2i(4, 3)})
+	v(1).charisma = 14
+	var h := await start(v(1))
+	h.select(v(2))
+	h.click(Vector2i(4, 3))
+	ok(v(2).cell == Vector2i(3, 3) and v(3).hp < v(3).max_hp and h.command.ordered.get(v(2), 0) == 1 and h.command_state(v(2)) == &"ready",
+			"it walks up and strikes: one of its two orders")
+	h.free()
+
+
 func test_command_slots() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 2), al: Vector2i(2, 2), v(3): Vector2i(3, 2), v(4): Vector2i(9, 0)})
@@ -253,6 +300,7 @@ func test_command_slots() -> void:
 	h.click(Vector2i(2, 3))
 	ok(al.cell == Vector2i(2, 3), "but it moves")
 	v(1).charisma = 12
+	h.command.new_turn()  # its one order spent (cha 8): a fresh turn's
 	h.select(al)
 	h._refresh()
 	ok(not (h.bar.get_child(0) as SkillSlot).locked and (h.bar.get_child(1) as SkillSlot).locked, "cha 12: slot 1 open, slot 2 locked")
@@ -770,6 +818,7 @@ func test_default_orders() -> void:
 	u.wisdom = 2  # wis mod -4
 	ally.charisma = 4  # cha mod -3: read -7, the commander is guessing
 	ally.refresh()  # a fresh turn's AP, so ATTACK is affordable again
+	h.command.new_turn()  # and orders: a cha-0 leader gives an ally one a turn
 	var opts := h.intent_options(ally)
 	ok(opts.size() == 3 and opts.all(func(o: Array): return o[2]), "guessing (read <= -5): all three intents show, each with a '?'")
 	ok(opts[0][0] == &"attack" and opts[0][1] and not opts[1][1] and not opts[2][1], "...ATTACK eligible (it has Strike), DEFEND and HELP not")

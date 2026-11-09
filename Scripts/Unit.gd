@@ -22,8 +22,7 @@ const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count(
 const ENERGY_COLOR := Color("#e8c547")
 const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full
 const HP_COLOR := Color("#3fbf4f")
-const SHAPE_EDGE := Color("#8a8f9c")  # glow of a shape whose side can't be told
-const SHAPE := Color(0.03, 0.03, 0.03)  # what a shape is painted
+const SHAPE_EDGE := Color("#8a8f9c")  # glow of a unit whose side can't be told
 const GLOW := 0.55  # how strongly a unit glows in its side's colour
 const DESATURATE := preload("res://Scenes/UI/desaturate.gdshader")
 const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in high contrast
@@ -1950,6 +1949,12 @@ func ap_left() -> float:
 	return ap.reduce(func(sum: float, p: AP): return sum + p.amount, 0.0)
 
 
+# The share of its turn's AP it has left: 1 as its turn starts (or with none to spend), 0 spent.
+func ap_share() -> float:
+	var start: float = _ap_start.reduce(func(sum: float, a: float): return sum + a, 0.0)
+	return clampf(ap_left() / start, 0.0, 1.0) if start > 0.0001 else 1.0
+
+
 # Movement it can still make this turn: what's left of its movement, as far as its AP allows.
 func move_left() -> float:
 	return minf(stat(&"movement") - moved, ap_for(&"move"))
@@ -2238,12 +2243,12 @@ func _stack() -> void:
 
 
 # How the player's side sees it (the HUD calls this; until then it's drawn as it is). Not located:
-# not drawn at all. Located with its side unknown: a black shape with no side colours and no bars.
+# not drawn at all. Located with its side unknown: in its own colours, but with no side colours and no bars.
 # Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
 # whatever of HP, energy and reserves can be made out. A persona posing as someone shows that
 # name's stand-in sprite instead of its own. null: as it is.
-# How saturated its sprite is (1 full colour .. 0 greyscale): the HUD drains it on units it has
-# commanded this turn (HUD.command_state()).
+# How saturated its sprite is (1 full colour .. 0 greyscale): the HUD drains it on the player's units
+# as their AP runs low, and all the way once they can't be commanded this turn (HUD.command_sat()).
 func set_saturation(v: float) -> void:
 	if sprite and sprite.material:
 		sprite.material.set_shader_parameter(&"saturation", v)
@@ -2313,9 +2318,8 @@ func _show_faction() -> void:
 
 
 # Stand-in art: a faint glow of the side's primary behind the sprite; the bars get its primary,
-# darkened, as trim and its secondary behind HP. A shape is painted black over a neutral glow.
+# darkened, as trim and its secondary behind HP. One whose side can't be told (shape) glows neutral grey.
 func _show_side(f: Faction, shape: bool) -> void:
-	sprite.modulate = SHAPE if shape else Color.WHITE
 	glow.visible = shape or f != null
 	if glow.visible:
 		glow.modulate = Color(SHAPE_EDGE if shape else f.primary, GLOW)

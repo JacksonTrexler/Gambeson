@@ -6,15 +6,16 @@ extends RefCounted
 # party of up to party_size() allies (the same mod, at least 1), who hear its orders from
 # PARTY_REACH times as far. The command and party stats (effects) add to the reach and party size.
 # A commanded ally uses only the first slots() of its hotbar - the leader's charisma mod - so at +0
-# or below it can only be told to move. Allies without an order this turn act on their own when it
-# ends.
+# or below it can only be told to move. Each turn the leader gives orders to at most ally_cap()
+# allies, and at most order_cap() orders to each (both its charisma mod, at least 1); its own
+# actions are its own. Allies without an order this turn act on their own when it ends.
 
 const PARTY_REACH := 2.0
 
 var battle: Battle
 var leader: Unit
 var party: Array[Unit] = []
-var ordered: Dictionary[Unit, bool] = {}  # given an order this turn
+var ordered: Dictionary[Unit, int] = {}  # orders given this turn, by unit (the leader's own moves count here too, uncapped)
 var locked: Dictionary[Unit, bool] = {}  # a wasted intent order barred it from more commands this faction turn (HUD.issue_intent)
 
 
@@ -54,6 +55,27 @@ func party_size() -> int:
 	return maxi(leader.mod(&"charisma") + roundi(leader.stat(&"party")), 1)
 
 
+# How many allies the leader may give orders to in a turn: its cha mod, at least 1.
+func ally_cap() -> int:
+	return maxi(leader.mod(&"charisma"), 1)
+
+
+# How many orders it may give each of them in a turn: its cha mod, at least 1.
+func order_cap() -> int:
+	return maxi(leader.mod(&"charisma"), 1)
+
+
+# Allies (the leader aside) given an order this turn.
+func commanded() -> int:
+	return ordered.keys().filter(func(u: Unit): return u != leader).size()
+
+
+# Whether the turn's caps leave u another order: it's the leader, or it has orders left and is one of
+# the allies already commanded, or there's room for one more.
+func under_caps(u: Unit) -> bool:
+	return u == leader or (ordered.get(u, 0) < order_cap() and (u in ordered or commanded() < ally_cap()))
+
+
 # How many hotbar slots, from the first, a commanded ally will use.
 func slots() -> int:
 	return maxi(leader.mod(&"charisma"), 0)
@@ -89,12 +111,12 @@ func in_range(u: Unit) -> bool:
 	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach()))
 
 
-# Takes an order right now: alive and awake, not one that acts on its own (uncontrolled), on the leader's side on its turn, in range, and each
-# taking the other for a teammate (Battle.teammates()).
+# Takes an order right now: alive and awake, not one that acts on its own (uncontrolled), on the leader's side on its turn, in range,
+# within the turn's caps (under_caps()), and each taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
 	return u != null and u.is_alive() and not u.asleep() and not u.uncontrolled and leader.is_alive() \
 			and u not in locked and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u) \
-			and battle.teammates(leader, u)
+			and under_caps(u) and battle.teammates(leader, u)
 
 
 # Allies join from within plain order range while there's room, if each takes the other for a
@@ -120,12 +142,12 @@ func leave(u: Unit) -> void:
 
 
 func order(u: Unit) -> void:
-	ordered[u] = true
+	ordered[u] = ordered.get(u, 0) + 1
 
 
 # A wasted intent order: u takes no more commands this faction turn (HUD default orders).
 func lock(u: Unit) -> void:
-	ordered[u] = true
+	order(u)
 	locked[u] = true
 
 

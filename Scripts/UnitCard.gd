@@ -37,14 +37,15 @@ func _ready() -> void:
 
 # info: {name, sub, look: Texture2D, face: String, shape: bool, chips: [[text, Color]], effects:
 # [[mark, Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String}. face: text
-# standing in for the look (a persona's claimed name). shape: only a black outline of it shows.
+# standing in for the look (a persona's claimed name). shape: its side can't be told (the card's
+# "Unknown" chip says so).
 # roll: the roll an effect was put on with, in its icon's top right ("" when unknown). A row whose
 # max is null shows its value as text alone. note: a line of prose under the rows (an insightful
 # read). No info: nothing selected.
 func set_info(info: Dictionary) -> void:
 	face.text = info.get("face", "")
 	portrait.texture = null if face.text else info.get("look")
-	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("shape", false) else Color.WHITE
+	portrait.modulate = Color.WHITE
 	title.text = info.get("name", "")
 	sub.text = info.get("sub", "Nothing selected")
 	for c in chips.get_children() + effects.get_children() + rows.get_children():
