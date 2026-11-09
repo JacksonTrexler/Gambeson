@@ -10,6 +10,19 @@ Each system lists:
 
 Every system gets a test file in `Tests/` like the existing ones, and its entries move from `docs/todo/` to `docs/done/` when it's finished.
 
+## The round of 2026-11-09: silhouettes, glow, downed units, command skills, exhaustion
+
+Six pieces of work, each built in its own worktree and merged in turn. The first four share no design and run side by side; the last two wait on them. Each has a question number for the calls made on judgement (`todo.md`).
+
+| # | Work | What it is | Waits on | Tests | ? |
+| --- | --- | --- | --- | --- | --- |
+| A | **Silhouettes and glow** | Black shapes only for what might be a "monster in the brush": a suspected hider, or a unit in darkness or fog. Never an ally in ordinary conditions; a unit in broad daylight the viewer can't identify looks like any other. The faction glow gets four strengths, used by every skill and by commanding: barely (can't be reached), somewhat (reachable after a move that isn't certain), mostly (a certain move brings it in range; clicking makes the move and acts), fully (in range now). Allies out of command range keep their colour with a weaker glow. | — | `hud_test.gd` | 84 |
+| B | **Downed** | One Downed condition (down but not out): HP runs below 0 while downed, to a limit of 20% max HP x rank; past it the unit dies. *Tenacity* (Adventurer, Fighter; passive): at 0 HP it lingers downed for rank rounds. *Grudge* (Berserker, low tier): downed, it keeps acting for rank rounds; more than rank actions, or a round ended without a melee attack, and it dies. Healed back above 0, a downed unit is saved (`Battle.rescued()` pays XP). | — | `downed_test.gd` | 85 |
+| C | **Command skills and trinkets** | The limits stay at least 1 at low charisma; leadership skills and items stand in for talent. *Strategist*: rank more units a turn. *Tactician*: rank more orders per unit. Trinkets *Strategy Guide* and *Tactician's Playbook* do the same by rank. A Legendary rarity (4x the resources to rank up); *Grand Design*, legendary: +1 cha mod a rank when commanding. | — | `command_test.gd`, `items_test.gd` | 86 |
+| D | **Exhaustion** | Each use of a skill in a round raises the next use's cost, AP and resource alike. Full weight on the skill used, half on the rest of its broad kind (physical, technical, mental). A channeled skill counts as one cast however long it's held. A unit recovers one use of each skill a turn; resting recovers its con mod more, or a fraction of a use at con mod 0 or less (at -3, one more every 4 turns rested). | — | `exhaustion_test.gd` | 87 |
+| E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
+| F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
+
 ## Built since the plan was written
 
 Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `docs/done/`, each with its test file.
