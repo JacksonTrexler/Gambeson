@@ -1,0 +1,105 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Elmit.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="5_tab"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="6_choice"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="7_root"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="8_reserve"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="8_mana"]
+[ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
+[ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
+[ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/beastshape.tres" id="s_beastshape"]
+[ext_resource type="Resource" path="res://Trees/astral.tres" id="r_astral"]
+[ext_resource type="Resource" path="res://Trees/sylvan.tres" id="r_sylvan"]
+[ext_resource type="Resource" path="res://Trees/montane.tres" id="r_montane"]
+[ext_resource type="Resource" path="res://Trees/xeric.tres" id="r_xeric"]
+[ext_resource type="Resource" path="res://Trees/nival.tres" id="r_nival"]
+[ext_resource type="Resource" path="res://Trees/thalassic.tres" id="r_thalassic"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
+[sub_resource type="Resource" id="Slot_beastshape"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_beastshape")
+
+[sub_resource type="Resource" id="Tab_astral"]
+script = ExtResource("5_tab")
+name = "Astral"
+kind = "Biome"
+kin = Array[String](["Stars"])
+reserves = Dictionary[ExtResource("8_reserve"), int]({ExtResource("8_mana"): 10})
+color = Color(0.78, 0.77, 0.94, 1)
+roots = Array[ExtResource("7_root")]([ExtResource("r_astral")])
+
+[sub_resource type="Resource" id="Tab_sylvan"]
+script = ExtResource("5_tab")
+name = "Sylvan"
+kind = "Biome"
+kin = Array[String](["Nature"])
+color = Color(0.5, 0.78, 0.45, 1)
+roots = Array[ExtResource("7_root")]([ExtResource("r_sylvan")])
+
+[sub_resource type="Resource" id="Tab_montane"]
+script = ExtResource("5_tab")
+name = "Montane"
+kind = "Biome"
+kin = Array[String](["Stone"])
+color = Color(0.72, 0.62, 0.5, 1)
+roots = Array[ExtResource("7_root")]([ExtResource("r_montane")])
+
+[sub_resource type="Resource" id="Tab_xeric"]
+script = ExtResource("5_tab")
+name = "Xeric"
+kind = "Biome"
+kin = Array[String](["Radiance"])
+color = Color(0.9, 0.75, 0.45, 1)
+roots = Array[ExtResource("7_root")]([ExtResource("r_xeric")])
+
+[sub_resource type="Resource" id="Tab_nival"]
+script = ExtResource("5_tab")
+name = "Nival"
+kind = "Biome"
+kin = Array[String](["Currents"])
+color = Color(0.8, 0.9, 0.97, 1)
+roots = Array[ExtResource("7_root")]([ExtResource("r_nival")])
+
+[sub_resource type="Resource" id="Tab_thalassic"]
+script = ExtResource("5_tab")
+name = "Thalassic"
+kind = "Biome"
+kin = Array[String](["Currents"])
+color = Color(0.4, 0.68, 0.9, 1)
+roots = Array[ExtResource("7_root")]([ExtResource("r_thalassic")])
+
+[sub_resource type="Resource" id="Choice_Biome"]
+script = ExtResource("6_choice")
+name = "Biome"
+tabs = Array[ExtResource("5_tab")]([SubResource("Tab_astral"), SubResource("Tab_sylvan"), SubResource("Tab_montane"), SubResource("Tab_xeric"), SubResource("Tab_nival"), SubResource("Tab_thalassic")])
+picks = 2
+
+[sub_resource type="Resource" id="Choice_Guest"]
+script = ExtResource("6_choice")
+name = "Guest"
+affinity = -1
+spares_kin = true
+borrows = Array[String](["School", "College"])
+
+[resource]
+script = ExtResource("1_script")
+noun = "Caster"
+name = "Druid"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_beastshape")])
+stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 11, &"constitution": 12, &"intelligence": 11, &"wisdom": 15, &"charisma": 10})
+items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_health_potion")])
+general = Array[StringName]([&"magical"])
+choices = Array[ExtResource("6_choice")]([SubResource("Choice_Biome"), SubResource("Choice_Guest")])

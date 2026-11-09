@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="Role" format=3]
 
 [ext_resource type="Resource" path="res://Skills/judgement.tres" id="s_judgement"]
+[ext_resource type="Resource" path="res://Skills/discipline.tres" id="s_discipline"]
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/Pallas.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/halfling.tres" id="3_race"]
@@ -110,7 +111,7 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 12, &"dexterity": 10, &"constitution": 13, &"intelligence": 8, &"wisdom": 11, &"charisma": 13})
-options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement")])
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement"), ExtResource("s_discipline")])
 roots = Array[ExtResource("6_root")]([ExtResource("r_eros"), SubResource("Root_Idealism")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"martial", &"magical"])

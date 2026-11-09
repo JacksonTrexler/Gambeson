@@ -11,9 +11,13 @@ extends Resource
 @export var picks := 1  # how many may be picked: "Pick up to 1"
 @export var by: Skill  # a skill that opens the choice: up to its rank may be picked instead (a Wizard's Divinity)
 @export var affinity := 0  # the picked trees' skills' Affinity for their picker (Unit.affinity(): a Wizard's guest trees -1)
+@export var invest := 0  # magical skills learned past which its affinity penalty lifts: major investment in magic (a Ranger's Nature: 4)
+@export var talent := &""  # a stat raising its trees' skills' Affinity by 1, up to the tier the stat reads (a Ranger's Nature: Natural Talent)
+@export var spares_kin := false  # its affinity penalty spares elemental skills (ELEMENTS) and trees kin to a tree its picker has picked (SkillTab.kin: a Druid's guest trees)
 @export var borrows: Array[String] = []  # kinds of caster tree it also offers from every class, found when first asked (all()): a Wizard's Domain takes every Divinity
 
 const CLASSES := "res://Roles/"
+const ELEMENTS: Array[StringName] = [&"fire", &"water", &"earth", &"light", &"dark", &"energy", &"ice", &"air", &"wind", &"nature"]  # tags a guest skill spares_kin spares
 
 var _all: Array[SkillTab] = []
 var _found := false

@@ -14,6 +14,8 @@ extends Resource
 @export var roots: Array[SkillRoot] = []
 @export var god := &""  # the god its devotees worship (a Cleric's Luun, Sol: Unit.deity())
 @export var devotes := false
+@export var reserves: Dictionary[Reserve, int] = {}  # reserves its picker gets, by max (a Druid's Astral: mana 10; Unit.pools())
+@export var kin: Array[String] = []  # names of other classes' trees it's kin to (a Druid's Astral: Stars): picked, they're no guests to its picker (TreeChoice.spares_kin)
 @export var glyph := ""  # up to 2 characters for its tier 0 root in a choice's box (Role.choices); empty: its name's first two letters
 @export var satisfied_by := &""  # what wins its devotees Sweet Nothings back (Hogel: rest_whole, resting a turn out at full HP; Battle.end_turn())  # learning a skill on its roots devotes its learner to it: other devoting tabs close (a Warlock's patron; Unit.devotion())
 
@@ -22,10 +24,10 @@ const GENERAL := {&"": Color("#7a7d85"), &"martial": Color("#d27a70"), &"special
 const GODS := {&"ramut": Color("#c08a5a"), &"eros": Color("#ee95c0"), &"sol": Color("#f08a55"), &"urlo": Color("#6fd8e4"),
 		&"luun": Color("#8f86d6"), &"drael": Color("#68aee8"), &"vetruvis": Color("#b8935e")}
 const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a")}
-const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": Color("#a6c46a"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
+const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": Color("#a6c46a"), "Biome": Color("#7fb87a"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
 const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
 		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
-		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f")}
+		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f"), "Ranger": Color("#8fae6a"), "Druid": Color("#6fae8c")}
 
 
 # Its tier 0 root's placeholder icon in a choice's box.

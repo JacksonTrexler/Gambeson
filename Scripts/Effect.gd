@@ -120,7 +120,8 @@ extends Resource
 		"level", "range", "rank", "opening_ap", "sap", "starkind", "sickness", "reforming", "synergy",
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
-		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known") var stat := "luck"
+		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
+		"discipline", "natural_talent") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -153,6 +154,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
 		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
 		"sickness": "Resurrection Sickness", "hardy": "Hardy", "shackled": "Shackled", "affinity": "Affinity", "abandon": "Reckless", "self_known": "Self-knowledge",
+		"discipline": "Discipline", "natural_talent": "Natural Talent",
 		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
@@ -282,6 +284,10 @@ func value(rank := 1) -> String:
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "abandon":
 		return "may skip defensive and supportive skills on its trees"
+	elif stat == "discipline":
+		return "an attack burns up to %s of the AP you have left: each point +%d to hit, +%d%% damage and crits a face lower" % [Skill.num(x), Battle.DISCIPLINE_HIT, roundi(Battle.DISCIPLINE_DAMAGE * 100.0)]
+	elif stat == "natural_talent":
+		return "Nature magic up to tier %s is easier to learn: Affinity +1" % Skill.num(x)
 	elif stat == "shackled":
 		return "its shackles are locked"
 	elif stat == "hardy":

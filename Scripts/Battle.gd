@@ -42,6 +42,8 @@ signal burned(u: Unit, hp: int, why: String)  # u took fire from a flame, a burn
 signal perfect(u: Unit)  # 36 Strike hits in a row: u healed PERFECT_HEAL
 signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
+signal shaped(u: Unit, form: StringName, element: StringName)  # u took a beast's form (Beastshape), or its own back (form "")
+signal disciplined(u: Unit, burned: int)  # u burned AP into an attack (Discipline)
 signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
 
 enum Phase { INITIATIVE, TURNS, OVER }
@@ -52,6 +54,8 @@ static var PLAIN: Terrain = load("res://Terrain/grass.tres")  # tiles with no te
 const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
+const DISCIPLINE_HIT := 2  # to hit, a point of AP burned (Discipline)
+const DISCIPLINE_DAMAGE := 0.25  # more damage, a point burned
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
@@ -425,7 +429,7 @@ func resolve(c: Check) -> Check.Roll:
 	r.d20 = d
 	r.total = d + c.bonus if is_equal_approx(c.share, 1.0) else floori((d + c.bonus) * c.share)
 	r.target = c.target
-	r.crit = c.crits and d == 20
+	r.crit = c.crits and d >= c.crit_on
 	r.hit = c.floor_hit or r.crit or r.total >= c.target
 	return r
 
@@ -558,6 +562,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return false  # only as its turn opens (Flamedance)
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
 		return false  # a mist only Coalesces (Vaporize)
+	if not caster.shaped_allows(skill) or (skill.shapes and not caster.form and form_for(caster).is_empty()):
+		return false  # a beast's mind (Beastshape); no beast thrives here
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill):
 		return false
@@ -565,7 +571,13 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if &"warlock" in skill.tags:
 		caster.chant_up = false  # a primed Chant goes into this one
 	_burn(caster, skill)
+	if not spreading:
+		_discipline(caster, skill, foe)
 	var before := target.hp
+	if skill.shapes:
+		beastshape(caster, r)
+		used.emit(caster, skill, target, 0)
+		return true
 	if skill.aura or skill.retrieves or skill.humbles or skill.fog or skill.exits or (skill.boost_pool and not foe) or not skill.elements.is_empty():
 		if skill.exits:
 			emergency_exit(caster, skill)
@@ -653,8 +665,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var overage := 0  # what a roll beat Defense by (Irradiate)
 	var natural := false  # a natural 20 (Jugular recasts on one)
 	if foe and skill.attacks():
-		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive")
-		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)))
+		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
+				+ caster.disciplined * DISCIPLINE_HIT
+		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(caster.disciplined))
 		overage = maxi(hit.margin(), 0)
 		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
 		natural = hit.crit
@@ -722,7 +735,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			if not target.is_alive():
 				break
 			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
-			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags))), 1) * (2 if crit else 1)
+			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
 			gross += power
 			if &"energy" in tags:
 				target.drain(power, tags, caster, skill.carry * (r - 1))
@@ -1343,6 +1356,8 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		return false
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
 		return false  # a mist only Coalesces (Vaporize)
+	if not caster.shaped_allows(skill):
+		return false  # a beast's mind (Beastshape)
 	if skill.channel and caster.channel and caster.channel.skill == skill:
 		return _detonate(caster, skill, c)
 	if skill.rifts and caster.channel and caster.channel.skill == skill:
@@ -1937,7 +1952,10 @@ func wading(u: Unit, c: Vector2i) -> float:
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
-	return maxf(from.exit + to.enter + to.drag + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
+	var cost := maxf(from.exit + to.enter + to.drag + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
+	if u and u.form and &"tunneler" in FORMS[u.form][2] and to.tags.any(func(t: StringName): return t in TUNNELS):
+		cost = maxf(cost / maxi(u.form_rank, 1), minf(cost, 1.0))  # a mole: stone and dirt's cost cut by its rank, to 1
+	return cost
 
 
 # The straight line from a to b as ceil(distance) distinct tiles, each the one nearest its point
@@ -3261,8 +3279,8 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty
-		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure))
+		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty + caster.disciplined * DISCIPLINE_HIT
+		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure).keen(caster.disciplined))
 		var crit := hit.crit
 		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
@@ -3284,7 +3302,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if i == 0:
 			power += (brutal + (caster.weapon.rank if caster.weapon else 0)) if brutal > 0 else 0
 			power += mental * (int(imbued) + int(elemental))
-		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow))), 1) * (2 if crit else 1)
+		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
 		t.hit(dealt, blow, caster)
 		gross += dealt
 		landed += 1
@@ -3335,6 +3353,60 @@ func imbue(u: Unit, skill: Skill, r: int) -> void:
 	if u.element not in skill.elements:
 		u.element = skill.elements[0]
 	u.imbued = r
+
+
+# --- Beastshape
+
+# Beasts a Druid can take the form of (Beastshape): form -> [the ground it thrives on (tile tags), the
+# biomes it belongs to, its traits]. A mote thrives on any elemental ground (MOTES). Traits built:
+# haste (+rank movement), tunneler (stone and dirt cost rank times less, to 1) and elementstrike (its
+# Strikes carry the ground's element, rank uses: Elemental Strike's way). Climber, blindsense,
+# floating, siphon and coalesce wait (docs/todo/classes.md: Druid).
+const FORMS := {
+	&"rabbit": [[&"grass", &"dirt"], [&"sylvan", &"montane", &"xeric", &"nival"], [&"haste"]],
+	&"squirrel": [[&"wood", &"leaves", &"brush", &"shrubbery"], [&"sylvan", &"montane"], [&"climber"]],
+	&"mole": [[&"stone", &"dirt", &"rock"], [&"sylvan", &"montane", &"xeric"], [&"blindsense", &"tunneler"]],
+	&"wisp": [[&"star", &"void"], [&"astral"], [&"siphon", &"floating"]],
+	&"mote": [[], [&"astral"], [&"elementstrike", &"coalesce"]],
+}
+# Elemental ground a mote thrives on: tile tag -> [the element its Strikes carry, the elemental it
+# would Coalesce into].
+const MOTES := {
+	&"water": [&"water", "Undine"], &"wet": [&"water", "Undine"], &"dark": [&"dark", "Wraith"], &"light": [&"light", "Seraph"],
+	&"magic": [&"magical", "Sandestin"], &"stone": [&"earth", "Oread"], &"rock": [&"earth", "Oread"], &"earth": [&"earth", "Oread"],
+	&"grass": [&"nature", "Sprite"], &"leaves": [&"nature", "Sprite"], &"shrubbery": [&"nature", "Sprite"], &"fire": [&"fire", "Ifrit"],
+	&"sand": [&"air", "Djinn"], &"desert": [&"air", "Djinn"], &"ice": [&"ice", "Hrimling"], &"snow": [&"ice", "Hrimling"],
+}
+const TUNNELS: Array[StringName] = [&"stone", &"dirt", &"rock"]
+
+
+# The beast u could become where it stands: [form, element] for the first of FORMS of a biome it
+# picked thriving on its ground (a mote: the first elemental tag there), or [] for none.
+func form_for(u: Unit) -> Array:
+	var biomes := u.biomes()
+	for f: StringName in FORMS:
+		if not (FORMS[f][1] as Array).any(func(b: StringName): return b in biomes):
+			continue
+		if f == &"mote":
+			for t in u.ground:
+				if t in MOTES:
+					return [f, MOTES[t][0]]
+		elif (FORMS[f][0] as Array).any(func(t: StringName): return t in u.ground):
+			return [f, &""]
+	return []
+
+
+# Beastshape at rank r: u becomes the beast its ground suits (form_for()) for rank + 1 of its turns,
+# body and mind - only Strike, beast skills and Beastshape until then (Unit.shaped_allows()). Used
+# shaped, it turns back.
+func beastshape(u: Unit, r: int) -> void:
+	if u.form:
+		u.unshape()
+		shaped.emit(u, &"", &"")
+		return
+	var f := form_for(u)
+	u.shape(f[0], f[1], r, r + 1)
+	shaped.emit(u, f[0], f[1])
 
 
 # --- Sol's fire
@@ -3442,6 +3514,24 @@ func _burn(u: Unit, s: Skill) -> void:
 	if i >= 0 and i in hot:
 		var n := u.hit(hot[i][0], [&"fire"] as Array[StringName], hot[i][1])
 		burned.emit(u, n, "its slot burns")
+
+
+# Discipline (a toggle): an attack on a foe burns the AP its user has left, up to the skill's rank, and
+# each point burned is DISCIPLINE_HIT to hit, DISCIPLINE_DAMAGE more damage and a face lower to crit on
+# (Unit.disciplined, for this attack). The less it has spent this turn, the more there is to burn.
+func _discipline(u: Unit, s: Skill, foe: bool) -> void:
+	u.disciplined = 0
+	var cap := roundi(u.stat(&"discipline"))
+	if cap <= 0 or not foe or not (s.attacks() or s.chain):
+		return
+	var left := 0.0
+	for p in u.ap:
+		if p.only != &"move":
+			left += p.amount
+	var burn := mini(floori(left + 0.0001), cap)
+	if burn > 0 and u.pay(burn, &"skill"):
+		u.disciplined = burn
+		disciplined.emit(u, burn)
 
 
 # A skill on its user that spreads its effects to every ally within rank tiles (Flamecharm,

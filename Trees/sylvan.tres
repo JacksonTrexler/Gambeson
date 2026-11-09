@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/regeneration_pulse.tres" id="s_regeneration_pulse"]
+[ext_resource type="Resource" path="res://Skills/first_aid.tres" id="s_first_aid"]
+[ext_resource type="Resource" path="res://Skills/snare.tres" id="s_snare"]
+[ext_resource type="Resource" path="res://Skills/barkskin.tres" id="s_barkskin"]
+[ext_resource type="Resource" path="res://Skills/draw_from_the_land.tres" id="s_draw_from_the_land"]
+
+[sub_resource type="Resource" id="Branch_regeneration_pulse"]
+script = ExtResource("branch")
+skill = ExtResource("s_regeneration_pulse")
+
+[sub_resource type="Resource" id="Branch_first_aid"]
+script = ExtResource("branch")
+skill = ExtResource("s_first_aid")
+after = Array[ExtResource("skill")]([ExtResource("s_regeneration_pulse")])
+
+[sub_resource type="Resource" id="Branch_snare"]
+script = ExtResource("branch")
+skill = ExtResource("s_snare")
+after = Array[ExtResource("skill")]([ExtResource("s_regeneration_pulse")])
+
+[sub_resource type="Resource" id="Branch_barkskin"]
+script = ExtResource("branch")
+skill = ExtResource("s_barkskin")
+after = Array[ExtResource("skill")]([ExtResource("s_first_aid")])
+
+[sub_resource type="Resource" id="Branch_draw_from_the_land"]
+script = ExtResource("branch")
+skill = ExtResource("s_draw_from_the_land")
+after = Array[ExtResource("skill")]([ExtResource("s_snare")])
+
+[resource]
+script = ExtResource("root")
+name = "Sylvan"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_regeneration_pulse"), SubResource("Branch_first_aid"), SubResource("Branch_snare"), SubResource("Branch_barkskin"), SubResource("Branch_draw_from_the_land")])

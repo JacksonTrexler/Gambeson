@@ -22,6 +22,7 @@ extends Resource
 @export var core: Array[Skill] = []  # around it, with its innate skills: a first choice at any time (Hex)
 @export var roots: Array[SkillRoot] = []  # reaching out from there (Magic, Martial, Specialist)
 @export var tabs: Array[SkillTab] = []  # more of its tree, beside its own, each a wheel of its own (Rogue: Calling: Freedom)
+@export var knack: Array[Skill] = []  # skills easier for its units to learn: Affinity +1 (a Ranger's Discipline; Unit.guest_affinity())
 @export var choices: Array[TreeChoice] = []  # trees picked on its own tab, their tabs opening once picked (Paladin: a Prowess; Mage: a school and a college)
 @export var radial := false  # its own tab drawn as a wheel (the Adventurer)
 @export var shared: Array[Skill] = []  # a static tier 1 row on every tab's core ring, learned from the start as innate skills (Warlock: Hex, Sweet Nothings, Chant)

@@ -44,6 +44,8 @@ extends Resource
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
 @export var engulfs := false  # used on a foe: a contest in its stat; won, the caster moves into the foe's tile, sharing it (Coalescing; Battle.engulf())
+@export var shapes := false  # turns its user, body and mind, into a beast its tile suits, of a biome it picked; used again, back (Beastshape; Battle.beastshape())
+@export var beast := false  # a beast's own: usable while beastshaped, beside Strike (Unit.form)
 @export var mist_only := false  # only while its caster is a mist (Vaporize), and the only kind of skill a mist can use (Coalescing)
 @export var rifts := false  # aimed at a tile in sight within range (over walls from rank III): opens a door to a domain, kept open while its caster channels it (or not: Alt-click), its count starting once it stops; used again, the channel stops (Rift; Battle.open_rift())
 @export var exits := false  # hastens a forming escape portal by rank turns; with none forming, warps its caster and allies within rank tiles to a pocket of stone for rank turns (Emergency Exit; Battle.emergency_exit())

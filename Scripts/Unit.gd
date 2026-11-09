@@ -133,6 +133,11 @@ var paid_rise := false  # ...and once more for being brought back (Battle.rescue
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
 var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
+var form := &""  # the beast it's shaped into (Beastshape: rabbit, squirrel, mole, wisp, mote; Battle.FORMS), body and mind; "" itself
+var form_turns := 0  # its turns left as one
+var form_rank := 0  # the rank it was shaped at
+static var HASTE: Effect = _haste()
+var disciplined := 0  # AP burned into the attack it's making (Discipline: Battle._discipline()); 0 between them
 var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
 var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
@@ -386,15 +391,87 @@ func affinity(s: Skill) -> int:
 	return (roundi(stat(&"affinity", ps)) if not ps.is_empty() else 0) + guest_affinity(s)
 
 
-# The Affinity a picked tree brings its skills, as its choice says (a Wizard's guest trees: -1;
-# Mage schools by Mastery: 0).
+# The Affinity its class and a picked tree bring a skill: +1 for its class's knack (a Ranger's
+# Discipline), and what the tree's choice says (a Wizard's guest trees: -1; Mage schools by Mastery:
+# 0) - a penalty lifted by enough magic learned (invest: a Ranger's Nature) or, sparing kin, for an
+# elemental skill or a tree kin to one it picked (a Druid's guests), and +1 by its talent up to the
+# tier it reads (Natural Talent).
 func guest_affinity(s: Skill) -> int:
-	if not role or not role.choices.any(func(c: TreeChoice): return c and c.affinity != 0):
+	if not role:
 		return 0
+	var out := 1 if s in role.knack else 0
+	if not role.choices.any(func(c: TreeChoice): return c and (c.affinity != 0 or c.talent)):
+		return out
 	for t in role.tabs_of(s):
-		if role.choice_of(t) and open_tab(t):
-			return role.choice_of(t).affinity
-	return 0
+		var c := role.choice_of(t)
+		if c and open_tab(t):
+			var a := c.affinity
+			if a < 0 and ((c.invest > 0 and magic_learned() >= c.invest) or (c.spares_kin and _kin(s, t))):
+				a = 0
+			if c.talent and role.tier(s) <= roundi(stat(c.talent)):
+				a += 1
+			return out + a
+	return out
+
+
+# The biomes it has picked (a Druid's: astral, sylvan, montane, xeric, nival, thalassic), by name.
+func biomes() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for c in role.choices if role else []:
+		for t in picks(c):
+			if t.kind == "Biome":
+				out.append(StringName(t.name.to_lower()))
+	return out
+
+
+# Takes form f at rank r for `turns` of its turns (Battle.beastshape()): a rabbit's haste is +rank
+# movement; a mote's element goes into its Strikes, rank uses.
+func shape(f: StringName, el: StringName, r: int, turns: int) -> void:
+	form = f
+	form_rank = r
+	form_turns = turns
+	if &"haste" in Battle.FORMS[f][2]:
+		afflict(HASTE, turns, r)
+	if el:
+		element = el
+		imbued = r
+
+
+# Back to itself.
+func unshape() -> void:
+	timed.erase(HASTE)
+	form = &""
+	form_turns = 0
+	form_rank = 0
+
+
+# Whether it can use s as it is now: shaped, only Strike, beast skills and Beastshape (to turn back).
+func shaped_allows(s: Skill) -> bool:
+	return not form or s.chain or s.beast or s.shapes
+
+
+static func _haste() -> Effect:
+	var e := Effect.new()
+	e.stat = "movement"
+	e.per_rank = true
+	e.name = "Haste"
+	return e
+
+
+# How many magical skills it has learned (TreeChoice.invest).
+func magic_learned() -> int:
+	return slots.filter(func(x: Slot): return x.rank > 0 and &"magical" in x.skill.tags).size()
+
+
+# Whether s on tree t is kin to it (TreeChoice.spares_kin): s carries an element, or a tree it has
+# picked names t its kin (a Druid's Thalassic: Currents).
+func _kin(s: Skill, t: SkillTab) -> bool:
+	if s.tags.any(func(x: StringName): return x in TreeChoice.ELEMENTS):
+		return true
+	for c in role.choices:
+		if c and picks(c).any(func(p: SkillTab): return t.name in p.kin):
+			return true
+	return false
 
 
 # Skill points put into s: what was spent on it, or what its rank is worth on the even curve.
@@ -708,15 +785,55 @@ func missing(s: Skill) -> String:
 	var root := role.root_of(s) if role else null
 	if not root:
 		return ""
-	var b := root.branch(s)
-	var first := b.after.filter(func(x: Skill): return rank(x) == 0 and not _skippable(x))
+	var why := ""
+	for r in _homes(s, root):  # on several trees (a Druid's borrowed skills), the way on any one will do
+		var w := _root_missing(r, s)
+		if w == "":
+			return ""
+		if why == "":
+			why = w
+	return why
+
+
+# The roots of its class s is on that are open to it (its own, and picked trees'), else just `fallback`.
+func _homes(s: Skill, fallback: SkillRoot) -> Array[SkillRoot]:
+	var out: Array[SkillRoot] = []
+	for r in role.roots:
+		if r and r.branch(s):
+			out.append(r)
+	for t in role.all_tabs():
+		if t and open_tab(t):
+			for r in t.roots:
+				if r and r.branch(s) and r not in out:
+					out.append(r)
+	if out.is_empty():
+		out.append(fallback)
+	return out
+
+
+# What stands between it and s on root r: the skills its branch comes after, reached on r, and the
+# count of r's skills a capstone needs.
+func _root_missing(r: SkillRoot, s: Skill) -> String:
+	var b := r.branch(s)
+	var first := b.after.filter(func(x: Skill): return not reached(r, x) and not _skippable(x))
 	if not first.is_empty():
 		return "Learn %s first" % " and ".join(first.map(func(x: Skill): return x.name))
 	if b.needs > 0:
-		var have := root.skills().filter(func(x: Skill): return x != s and rank(x) > 0).size()
+		var have := r.skills().filter(func(x: Skill): return x != s and rank(x) > 0).size()
 		if have < b.needs:
-			return "Needs %d %s skills (%d so far)" % [b.needs, root.name, have]
+			return "Needs %d %s skills (%d so far)" % [b.needs, r.name, have]
 	return ""
+
+
+# Whether it has reached x on root r: learned it, and - for a skill on more than one tree, learned
+# on another - what comes before it on r too. A shared skill is one skill, learned and ranked once;
+# having it doesn't skip the way to it on another tree.
+func reached(r: SkillRoot, x: Skill) -> bool:
+	if rank(x) == 0:
+		return false
+	if not role or role.all_roots().filter(func(o: SkillRoot): return o.branch(x)).size() < 2:
+		return true
+	return r.branch(x).after.all(func(y: Skill): return reached(r, y) or _skippable(y))
 
 
 # A step on its trees it may pass over (Reckless Abandon: defensive and supportive skills that don't
@@ -799,6 +916,8 @@ func pick(c: TreeChoice, t: SkillTab) -> bool:
 		return false
 	picked.append(c.key(t))
 	refit()
+	for r in t.reserves:  # a reserve it brings comes full (a Druid's Astral: mana)
+		set_store(r, pools()[r])
 	return true
 
 
@@ -1363,11 +1482,16 @@ func heal(h: int) -> void:
 		hp += maxi(h, 0)
 
 
-# Every reserve it has, by max: its own (reserves), and those its passives give - each the holder's
+# Every reserve it has, by max: its own (reserves), those the trees it picked bring (SkillTab.reserves:
+# a Druid's Astral), and those its passives give - each the holder's
 # mod in the passive's reserve_mod x its rank, no less than 0 (Sweet Nothings: cha mod x rank). A
 # passive switched off or disabled keeps its reserve, but nothing is spent from it (spends()).
 func pools() -> Dictionary[Reserve, int]:
 	var out: Dictionary[Reserve, int] = reserves.duplicate()
+	for c in role.choices if role else []:
+		for t in picks(c):
+			for r in t.reserves:
+				out[r] = out.get(r, 0) + t.reserves[r]
 	for x in slots:
 		var r := x.skill.reserve
 		if r and x.skill.passive:
@@ -1646,6 +1770,11 @@ func pay_strike(s: Skill) -> bool:
 # Start of this unit's faction turn: fresh AP and movement, and it can slip back into hiding.
 func refresh() -> void:
 	turns_taken += 1
+	disciplined = 0
+	if form:
+		form_turns -= 1
+		if form_turns <= 0:
+			unshape()
 	ap = _pools()
 	_ap_start.assign(ap.map(func(p: AP): return p.amount))
 	_walk_ap.assign(ap.map(func(_p: AP): return 0.0))

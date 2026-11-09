@@ -18,6 +18,7 @@ var bonus := 0  # the roller's whole modifier, added to the d20
 var advantage := 0  # +1 the better of two d20s, -1 the worse, 0 a single roll
 var target := 0  # the number to meet or beat (Defense, a DC, the other side's total)
 var crits := false  # a natural 20 always hits and crits, a miss aside (attacks)
+var crit_on := 20  # the lowest face that crits, where it crits at all (Discipline: 1 lower a point burned)
 var floor_hit := false  # a hit is forced regardless of the roll (decisive Strike after a crit)
 var share := 1.0  # only this share of the total counts, rounded down (an execute: HP left / max HP / rank)
 
@@ -86,6 +87,12 @@ func cut(f: float) -> Check:
 
 
 # This roll hits no matter what (a decisive Strike's remaining hits after a critical).
+# Crits on n faces more than a natural 20 (Discipline: 19 and up for 1), never below a natural 2.
+func keen(n: int) -> Check:
+	crit_on = maxi(20 - maxi(n, 0), 2)
+	return self
+
+
 func sure(on := true) -> Check:
 	floor_hit = on
 	return self

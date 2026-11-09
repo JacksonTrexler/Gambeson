@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/igna.tres" id="s_igna"]
+[ext_resource type="Resource" path="res://Skills/inner_fire.tres" id="s_inner_fire"]
+[ext_resource type="Resource" path="res://Skills/searing.tres" id="s_searing"]
+[ext_resource type="Resource" path="res://Skills/mirage.tres" id="s_mirage"]
+[ext_resource type="Resource" path="res://Skills/sunburst.tres" id="s_sunburst"]
+
+[sub_resource type="Resource" id="Branch_igna"]
+script = ExtResource("branch")
+skill = ExtResource("s_igna")
+
+[sub_resource type="Resource" id="Branch_inner_fire"]
+script = ExtResource("branch")
+skill = ExtResource("s_inner_fire")
+after = Array[ExtResource("skill")]([ExtResource("s_igna")])
+
+[sub_resource type="Resource" id="Branch_searing"]
+script = ExtResource("branch")
+skill = ExtResource("s_searing")
+after = Array[ExtResource("skill")]([ExtResource("s_igna")])
+
+[sub_resource type="Resource" id="Branch_mirage"]
+script = ExtResource("branch")
+skill = ExtResource("s_mirage")
+after = Array[ExtResource("skill")]([ExtResource("s_inner_fire")])
+
+[sub_resource type="Resource" id="Branch_sunburst"]
+script = ExtResource("branch")
+skill = ExtResource("s_sunburst")
+after = Array[ExtResource("skill")]([ExtResource("s_searing")])
+
+[resource]
+script = ExtResource("root")
+name = "Xeric"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_igna"), SubResource("Branch_inner_fire"), SubResource("Branch_searing"), SubResource("Branch_mirage"), SubResource("Branch_sunburst")])

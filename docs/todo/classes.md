@@ -206,3 +206,39 @@ Three roots, each a flavour of Prowess of the player's choosing. Three exist so 
 - [x] **Hardy** (Actualization passive; Alabaster borrows it): con mod counts (1 + rank) times in the HP each level brings.
 64. **Wildfire - built on judgement.** Sol's tab, after Solar. *Choices:* a fixed 60 degree cone; extreme = (3 x rank)d6 + wis mod; it spares its caster (Solar doesn't); an earth unit's evasion uses the impossible rung's DC rather than failing outright (at rank I that's DC 10).
 65. **Judgement - built on judgement.** A Paladin option, and on the Cleric's Sol tab ("lawful domains": Sol among the Cleric's gods; Ramut's too, when a Cleric can follow him). *Choices:* an attack within rank tiles for 1d4 + wis mod, open from the start; the shackles are its payload.
+
+## Ranger (2026-11-09)
+
+Bounty hunters, scouts, detectives and border-justice types (an Arizona ranger), as well as foresters and protectors of nature: survival and efficiency, on Central's streets or in the circus wilds.
+- [x] **The class** (`Roles/ranger.tres`): general Specialist and Martial trees; its own tab's roots - **Bounty** (Observe -> Snare, Special Eyes), **Scout** (Hide -> Eyes Forward, Wary), **Forester** (First Aid -> Field Experience) - borrow what's built. (?81)
+- [x] **Discipline comes easier** (`Role.knack`: Affinity +1).
+- [x] **Nature trees**: a Nature choice borrowing the Druid's biomes (pick 1), learned inefficiently (Affinity -1) until it has learned 4 magical skills, its "major investment in magical abilities" (`TreeChoice.invest`). (?81)
+- [x] **Natural Talent** (core ring, passive): Nature skills up to tier rank are easier to learn, Affinity +1 (`TreeChoice.talent`).
+
+**Discipline** (specialist general skill, tier 3; on the Paladin's and the Mage's own trees too) - [x] built: a toggle. An attack on a foe burns the AP its user has left (not dex move AP), up to rank; each point burned is +2 to hit, +25% damage and crits a face lower (19+ for one point). The less spent before it, the more to burn. (?80)
+
+80. **Discipline - built on judgement, open for review.** *Choices:* a passive toggle, off-able when you'd rather keep the AP; it burns only up to its rank (not everything left); +2 to hit, +25% damage and a face off the crit range a point - "massive" - on Strike's every hit and any attack skill; area skills and saves aren't attacks, so they don't burn. *Deferred:* the initiative half of "the less AP / init you spend" - nothing spends initiative yet; when delaying a turn exists, initiative given up could burn the same way.
+81. **Ranger - built on judgement, open for review.** *Choices:* the three roots and their names (Bounty, Scout, Forester), all borrowed skills, no new ones; Specialist and Martial general trees; one Nature tree; "major investment" = 4 magical skills learned, lifting the -1 on every Nature skill; Natural Talent's +1 stacks with it (so a talented, invested Ranger learns low-tier Nature magic at +1). Gambeson, rapier and the Adventurer's sprite for now.
+
+## Druid (2026-11-09)
+
+Oft-secluded experts in natural and celestial magic - wizards for natural magic, wildshaping.
+- [x] **The class** (`Roles/druid.tres`): general Caster tree; **Beastshape** at tier 0.
+- [x] **Biomes** - pick 1 or 2 on its own tab: **Astral** (stars, cosmic magic, spirit realms), **Sylvan**, **Montane** (mountains, highlands), **Xeric** (desert, drought), **Nival** (snow, ice), **Thalassic** (sea). Each borrows what's built where it fits (`Trees/<biome>.tres`):
+  - Astral: Mana -> Astera, Fortune -> Starkind, Constellation, Starsap, Starfall. Picking it **grants mana** (10, `SkillTab.reserves`).
+  - Sylvan: Regeneration Pulse -> First Aid, Snare -> Barkskin ??, Draw from the Land.
+  - Montane: Stonegift -> Terestera, Quake -> Stoneskin, Rampart -> Bedrock.
+  - Xeric: Igna -> Inner Fire, Searing -> Mirage ??, Sunburst.
+  - Nival: Gale -> Hoarfrost ??, Weathercraft -> Whiteout ??.
+  - Thalassic: Waterstrike -> Oceanic, Hydera -> Undertow, Well Up -> Maelstrom.
+- [x] **Guest mage trees** (a Guest choice borrowing the Mage's schools and colleges, pick 1): Affinity -1, none for an elemental skill or a tree kin to a picked biome (`SkillTab.kin`: Astral - Stars, Thalassic and Nival - Currents, Montane - Stone, Xeric - Radiance, Sylvan - the Wizard's Nature). (?82)
+- [x] **A skill on two trees is one skill**: learned and ranked once. Its tree's progress can't be skipped: a skill learned by one tree's way counts on another only once what comes before it there is learned too (`Unit.reached()`).
+- [x] **Beastshape** (T0, 2 AP, self): body and mind become a beast that thrives on the tile and belongs to a picked biome, for rank + 1 turns; used again, back. Shaped, only Strike, beast skills and Beastshape work.
+  - dirt, grass: **rabbit** - haste (+rank movement). [x]
+  - wood, leaves, brush: **squirrel** - climber (occupies tree tiles). [ ] waits on tree tiles
+  - stone, dirt: **mole** - tunneler (stone and dirt cost rank times less, at least 1) [x]; blindsense (non-solid visual blocks and visual illusions ignored within rank tiles) [ ]
+  - Astral only - star, void: **wisp** - Siphon (steal Power from a nearby unit or occupied power source), floating. [ ]
+  - Astral only - elemental ground: **mote** - <element>strike (its Strikes carry the element, rank uses: Elemental Strike's way) [x]; Coalesce: absorb tile or energy from a nearby unit to evolve into a basic elemental - water Undine, dark Wraith, light Seraph, magic Sandestin, stone/earth Oread, woodland Sprite, fire Ifrit, desert Djinn, ice Hrimling. [ ] (only the Undine exists)
+
+82. **Druid - built on judgement, open for review.** *Choices:* which skills each biome borrows, and the four new stubs (Barkskin, Mirage, Hoarfrost, Whiteout, marked ??); the kin table above; elemental = fire, water, earth, light, dark, energy, ice, air/wind, nature tags; one guest tree; which biomes each beast belongs to (rabbit: Sylvan, Montane, Xeric, Nival; squirrel: Sylvan, Montane; mole: Sylvan, Montane, Xeric; wisp and mote: Astral); the first beast that fits wins, in that order; a mote of desert ground is air (the Djinn); shaping lasts rank + 1 turns and costs 2 AP. *Open:* Thalassic has no beast of its own yet (an otter? a seal?); no sprite change while shaped; Druid sprite borrowed (Elmit).
+

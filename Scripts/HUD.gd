@@ -144,6 +144,8 @@ func _ready() -> void:
 		_mark())
 	battle.teetered.connect(func(u: Unit, total: int, dc: int, kept: bool):
 		_log("%s %s (%d vs %d)" % [_tag(u), "catches itself" if kept else "falls through", total, dc]))
+	battle.shaped.connect(func(u: Unit, form: StringName, element: StringName):
+		_log("%s %s" % [_tag(u), ("takes the shape of a %s%s" % [form, " of %s" % element if element else ""]) if form else "takes its own shape back"]))
 	battle.bound.connect(func(_by: Unit, u: Unit, it: Item):
 		_log("%s is in %s (weight %d)" % [_tag(u), it.name.to_lower(), it.heft()])
 		_mark())

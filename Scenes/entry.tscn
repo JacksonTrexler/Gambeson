@@ -14,6 +14,8 @@
 [ext_resource type="Resource" path="res://Roles/warlock.tres" id="12_warlock"]
 [ext_resource type="Resource" path="res://Roles/cleric.tres" id="13_cleric"]
 [ext_resource type="Resource" path="res://Roles/berserker.tres" id="14_berserker"]
+[ext_resource type="Resource" path="res://Roles/ranger.tres" id="15_ranger"]
+[ext_resource type="Resource" path="res://Roles/druid.tres" id="16_druid"]
 
 [sub_resource type="Theme" id="Theme_small"]
 default_font_size = 10
@@ -28,7 +30,7 @@ grow_vertical = 2
 theme = SubResource("Theme_small")
 script = ExtResource("1_entry")
 sides = Array[ExtResource("3_faction")]([ExtResource("4_lancin"), ExtResource("5_nemes")])
-roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin"), ExtResource("10_rogue"), ExtResource("11_bard"), ExtResource("12_warlock"), ExtResource("13_cleric"), ExtResource("14_berserker")])
+roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin"), ExtResource("10_rogue"), ExtResource("11_bard"), ExtResource("12_warlock"), ExtResource("13_cleric"), ExtResource("14_berserker"), ExtResource("15_ranger"), ExtResource("16_druid")])
 default_side = ExtResource("4_lancin")
 default_role = ExtResource("7_adventurer")
 

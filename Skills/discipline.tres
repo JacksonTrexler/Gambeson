@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_discipline"]
+script = ExtResource("2_effect")
+stat = "discipline"
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Discipline"
+passive = true
+toggle = true
+tags = Array[StringName]([&"specialist", &"offensive"])
+glyph = "Ds"
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_discipline")])
+lore = "Spend nothing, waste nothing, then spend it all at once."

@@ -1,0 +1,107 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Journeyer.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="6_choice"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="7_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="8_branch"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
+[ext_resource type="Resource" path="res://Items/rapier.tres" id="i_rapier"]
+[ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
+[ext_resource type="Resource" path="res://Skills/discipline.tres" id="s_discipline"]
+[ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="s_eyes_forward"]
+[ext_resource type="Resource" path="res://Skills/field_experience.tres" id="s_field_experience"]
+[ext_resource type="Resource" path="res://Skills/first_aid.tres" id="s_first_aid"]
+[ext_resource type="Resource" path="res://Skills/hide.tres" id="s_hide"]
+[ext_resource type="Resource" path="res://Skills/natural_talent.tres" id="s_natural_talent"]
+[ext_resource type="Resource" path="res://Skills/observe.tres" id="s_observe"]
+[ext_resource type="Resource" path="res://Skills/snare.tres" id="s_snare"]
+[ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/wary.tres" id="s_wary"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
+[sub_resource type="Resource" id="B_observe"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_observe")
+
+[sub_resource type="Resource" id="B_snare"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_snare")
+after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
+
+[sub_resource type="Resource" id="B_special_eyes"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_special_eyes")
+after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
+
+[sub_resource type="Resource" id="Root_Bounty"]
+script = ExtResource("7_root")
+name = "Bounty"
+tag = &"specialist"
+branches = Array[ExtResource("8_branch")]([SubResource("B_observe"), SubResource("B_snare"), SubResource("B_special_eyes")])
+
+[sub_resource type="Resource" id="B_hide"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_hide")
+
+[sub_resource type="Resource" id="B_eyes_forward"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_eyes_forward")
+after = Array[ExtResource("5_skill")]([ExtResource("s_hide")])
+
+[sub_resource type="Resource" id="B_wary"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_wary")
+after = Array[ExtResource("5_skill")]([ExtResource("s_hide")])
+
+[sub_resource type="Resource" id="Root_Scout"]
+script = ExtResource("7_root")
+name = "Scout"
+tag = &"specialist"
+branches = Array[ExtResource("8_branch")]([SubResource("B_hide"), SubResource("B_eyes_forward"), SubResource("B_wary")])
+
+[sub_resource type="Resource" id="B_first_aid"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_first_aid")
+
+[sub_resource type="Resource" id="B_field_experience"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_field_experience")
+after = Array[ExtResource("5_skill")]([ExtResource("s_first_aid")])
+
+[sub_resource type="Resource" id="Root_Forester"]
+script = ExtResource("7_root")
+name = "Forester"
+tag = &"specialist"
+branches = Array[ExtResource("8_branch")]([SubResource("B_first_aid"), SubResource("B_field_experience")])
+
+[sub_resource type="Resource" id="Choice_Nature"]
+script = ExtResource("6_choice")
+name = "Nature"
+affinity = -1
+invest = 4
+talent = &"natural_talent"
+borrows = Array[String](["Biome"])
+
+[resource]
+script = ExtResource("1_script")
+noun = "Scout"
+name = "Ranger"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike")])
+core = Array[ExtResource("5_skill")]([ExtResource("s_natural_talent")])
+knack = Array[ExtResource("5_skill")]([ExtResource("s_discipline")])
+stats = Dictionary[StringName, int]({&"strength": 11, &"dexterity": 14, &"constitution": 12, &"intelligence": 10, &"wisdom": 13, &"charisma": 9})
+items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_rapier"), ExtResource("i_health_potion")])
+general = Array[StringName]([&"specialist", &"martial"])
+roots = Array[ExtResource("7_root")]([SubResource("Root_Bounty"), SubResource("Root_Scout"), SubResource("Root_Forester")])
+choices = Array[ExtResource("6_choice")]([SubResource("Choice_Nature")])
