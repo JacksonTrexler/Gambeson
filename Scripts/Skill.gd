@@ -42,6 +42,8 @@ extends Resource
 @export var decays := 0.0  # its effects' strength falls this share a tile past the first between caster and target, set as they're put on; none paid wholly with mana (Rejuvinate: 0.05)
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
+@export var grapples := false  # its effects hold the foe (grappled) until it breaks free by moving away (Drown; Battle._break_free())
+@export var drowns := Vector2i.ZERO  # each turn the foe it holds ends submerged (Battle.submerged()), these dice + the caster's mod in its stat (Drown: 1d12)
 @export var grip := Vector2i.ZERO  # its effects hold the foe (grappled) until it breaks free by moving away: each turn it ends held, these dice + the caster's mod in its stat (Drown: 1d12; Battle._break_free(), Battle._grip())
 @export var links := false  # on itself: links it with its teammates within its cha mod in tiles (at least 1) and its leader, to pool what they make out (Coordinate; Battle._link())
 @export var prays := false  # prays to the caster's god, an effect by god (Pray; Battle.pray())
@@ -152,6 +154,11 @@ func fits_bar() -> bool:
 
 # Its holder's build stands on it (Powerful): it's the easiest to disable, and one going takes every
 # pillar skill with it (Unit.disable()).
+# Whether its effects hold the foe until it breaks free: it grapples, drowns or grips.
+func holds() -> bool:
+	return grapples or drowns != Vector2i.ZERO or grip != Vector2i.ZERO
+
+
 func pillar() -> bool:
 	return &"pillar" in Tags.expand(tags)
 
@@ -532,9 +539,12 @@ func markup(rank := 1, with_spec := true) -> String:
 		if drags_to:
 			lines.append("%s (%s vs %s) in place of an attack, -1 a tile it must drag the foe%s. Won: drags it to the nearest %s the caster could walk to, and both go in"
 					% [Glossary.term(&"contest"), me, Glossary.mod(stat(), true), " (less {r:%d})" % (rank - 1) if rank > 1 else "", drags_to])
+		if holds():
+			lines.append("%s it: moving away first takes 1 + %s tiles of movement and a %s" % [Glossary.term(&"held", "Holds"), me, Glossary.term(&"contest", "contest")])
 		if grip != Vector2i.ZERO:
-			lines.append("%s it: moving away first takes 1 + %s tiles of movement and a %s. Each turn it ends held, it takes %dd%d + %s"
-					% [Glossary.term(&"held", "Holds"), me, Glossary.term(&"contest", "contest"), grip.x, grip.y, me])
+			lines.append("Each turn it ends held, it takes %dd%d + %s" % [grip.x, grip.y, me])
+		if drowns != Vector2i.ZERO:
+			lines.append("%s: each turn it ends held and %s, it takes %dd%d + %s" % [Glossary.term(&"drowning", "Drowns it"), Glossary.term(&"submerged", "submerged"), drowns.x, drowns.y, me])
 		if pull:
 			lines.append("%s%s it up to {r:%d} tile%s toward the caster" % [foe, "draws" if dual else "Draws", pull * rank, "" if pull * rank == 1 else "s"])
 		if resisted:

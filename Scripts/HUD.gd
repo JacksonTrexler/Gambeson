@@ -1897,7 +1897,7 @@ func suspicion_icons(of: Dictionary) -> Array:
 # " · 2 turns left", " · until it moves", " · until it breaks free", " · 1 turn left, then fading".
 func _time_left(a: Unit.Applied) -> String:
 	if a.lasting:
-		return " · until it breaks free" if a.skill and a.skill.grip != Vector2i.ZERO else " · for the rest of the battle"
+		return " · until it breaks free" if a.skill and a.skill.holds() else " · for the rest of the battle"
 	if a.until_move and a.turns == 0:
 		return " · until it moves"
 	return " · %d turn%s left%s" % [a.turns, "" if a.turns == 1 else "s", ", then fading" if a.fades and a.rank > 1 else ""]

@@ -76,8 +76,8 @@ func test_drown() -> void:
 	ok(b.cast(siren(), drown, v(1)) and b.terrain(v(1).cell).tags.has(&"water") and Battle.next_to(siren().cell, v(1).cell)
 			and b.terrain(siren().cell).tags.has(&"water"), "won: dragged into the water, the Siren beside it, both submerged")
 	var held := drown.effects[0]
-	ok(held in v(1).timed and v(1).timed[held].by == siren() and v(1).timed[held].lasting and v(1).hp == hp, "Submerged: held till it breaks free, no damage yet")
-	ok("Holds it: moving away first takes 1 + str mod tiles of movement and a contest. Each turn it ends held, it takes 1d12 + str mod" in drown.describe(1),
+	ok(held in v(1).timed and v(1).timed[held].by == siren() and v(1).timed[held].lasting and v(1).hp == hp and b.submerged(v(1)), "Grappled and submerged: held till it breaks free, no damage yet")
+	ok("Holds it: moving away first takes 1 + str mod tiles of movement and a contest" in drown.describe(1) and "Drowns it: each turn it ends held and submerged, it takes 1d12 + str mod" in drown.describe(1),
 			"described (%s)" % drown.describe(1))
 	var struggles := []
 	var grips := []

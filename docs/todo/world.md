@@ -28,7 +28,7 @@
 
 ### Siren
 
-- [ ] **Closing in**: a Siren too far away to lure moves toward units aggressively. True of all Sirens.
+- [x] **Closing in**: a Siren too far away to lure moves toward units aggressively. True of all Sirens. Built (`AI._out_of_song()`). (?72)
 - [ ] **Charm**: the Siren's cha check against the target's wis check. A target that beats it gets a standard investigation pass and a stack of suspicion of the Siren. (?14)
 
 14. Siren:

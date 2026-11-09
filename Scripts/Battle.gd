@@ -62,6 +62,7 @@ const STAR_ENERGY := 0.3  # regular Energy gets this share of what the boost add
 const STAR_CAPACITY := 20  # Power a starpower source holds full
 static var STARPANE: Terrain = load("res://Terrain/starpane.tres")
 static var STARTILE: Terrain = load("res://Terrain/startile.tres")
+static var FLOOD: Terrain = load("res://Terrain/flood.tres")  # laid by Battle.flood(), a copy per depth
 const REPAIR_COST := 0.05  # of a source's capacity, drawn to begin mending a cracked startile
 const REPAIR_SPAN := 20.0  # a source reaches (how full it is, in %) / this tiles to mend from: 5 when full
 const SICKNESS: Effect = preload("res://Effects/resurrection_sickness.tres")
@@ -228,6 +229,9 @@ class Zone:
 class Layer:
 	var terrain: Terrain
 	var passes: bool
+	var rank := 0  # a Flood's depth
+	var turns := 0  # its setter's side's turns left before it drains away (a Flood); 0: it lasts
+	var faction: Faction  # whose turns count it down
 	var repairing := 0  # rounds of mending done
 	var repair_goal := 0  # rounds it takes - its distance from the source it draws on; 0: not begun
 	var source: Variant = null  # that source's cell
@@ -617,7 +621,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			a.total = n
 			a.fades = skill.fades
 			a.until_move = skill.until_move
-			a.lasting = skill.grip != Vector2i.ZERO  # held until it breaks free
+			a.lasting = skill.holds()  # held until it breaks free
 			a.skill = skill
 			a.by = caster
 			a.since = turns_begun
@@ -1714,7 +1718,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 func held_by(u: Unit) -> Unit.Applied:
 	for e in u.timed:
 		var a := u.timed[e]
-		if a.lasting and a.skill and a.skill.grip != Vector2i.ZERO:
+		if a.lasting and a.skill and a.skill.holds():
 			return a
 	return null
 
@@ -1735,7 +1739,7 @@ func _break_free(u: Unit) -> bool:
 	var a := held_by(u)
 	var by := a.by
 	var s := a.skill
-	if not by or not by.is_alive() or not next_to(by.cell, u.cell):
+	if not by or not by.is_alive() or not _within_grip(by, u):
 		_let_go(u, s)
 		return true
 	var cost := escape_cost(u)
@@ -1965,6 +1969,7 @@ func _compose(c: Vector2i) -> Terrain:
 	if chain.size() == 1:
 		return chain[0]
 	var v: Terrain = chain[-1].duplicate()
+	v.douses = chain.any(func(t: Terrain): return t.douses)
 	v.tags = v.tags.duplicate()
 	v.effects = v.effects.duplicate()
 	v.afflicts = v.afflicts.duplicate()
@@ -1974,6 +1979,7 @@ func _compose(c: Vector2i) -> Terrain:
 		var t: Terrain = chain[k]
 		v.drag += t.drag
 		v.exit += t.exit
+		v.depth += t.depth
 		for tag in t.tags:
 			if tag not in v.tags:
 				v.tags.append(tag)
@@ -2343,6 +2349,7 @@ func end_turn() -> void:
 			flames[c].turns -= 1
 			if flames[c].turns <= 0:
 				flames.erase(c)
+	_drain(turn)
 	if not order.is_empty() and turn == order[-1]:
 		_repair_tiles()  # a round has passed
 	for c in earthworks.keys():
@@ -2415,22 +2422,97 @@ func _ire(u: Unit) -> void:
 
 
 # Still held as its side's turn ends (a grapple: Drown's effects), u takes the grip's dice + its
-# holder's mod in the grip's stat - and, fooled by its holder, looks harder at it. A holder that's
-# fallen, or isn't beside it any more, lets go.
+# holder's mod in the grip's stat, and drowns while submerged (the skill's drowns dice + that mod) -
+# and, fooled by its holder, looks harder at it. A holder that's fallen, or isn't beside it (or on its
+# tile) any more, lets go.
 func _grip(u: Unit) -> void:
 	var a := held_by(u)
 	if a == null:
 		return
 	var by := a.by
 	var s := a.skill
-	if not by or not by.is_alive() or not next_to(by.cell, u.cell):
+	if not by or not by.is_alive() or not _within_grip(by, u):
 		_let_go(u, s)
 		return
 	var before := u.hp
-	u.hit(roll(s.grip) + by.mod(s.stat(), s.tags), s.tags, by)
+	if s.grip != Vector2i.ZERO:
+		u.hit(roll(s.grip) + by.mod(s.stat(), s.tags), s.tags, by)
+	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u):
+		u.hit(roll(s.drowns) + by.mod(s.stat(), s.tags), s.tags, by)
 	gripped.emit(u, by, before - u.hp)
 	if u.is_alive() and u.hp < before and read(u, by).deceived:
 		doubt(u, by)
+
+
+# Whether `by` can still hold u: beside it, or engulfing it on its own tile (a mist Undine).
+func _within_grip(by: Unit, u: Unit) -> bool:
+	return by.cell == u.cell or next_to(by.cell, u.cell)
+
+
+# --- Water
+# Water's depth is in unit sizes: deeper than a unit's size, it's submerged (and so can be drowned).
+
+# How deep the water on c stands: its ground's and each Flood's laid on it, added up.
+func depth(c: Vector2i) -> int:
+	return terrain(c).depth
+
+
+# Whether u is under water: deeper than its size, or engulfed by whoever holds it on its own tile.
+func submerged(u: Unit) -> bool:
+	if depth(u.cell) > _size(u):
+		return true
+	var a := held_by(u)
+	return a != null and a.by != null and a.by.cell == u.cell
+
+
+# Floods c to `rank` deep for `turns` of its setter's side's turns (Well Up): a layer over what's there,
+# slowing movement and putting out fire. Laid again, it keeps the deeper and the longer.
+func flood(c: Vector2i, rank: int, turns: int, by: Unit = null) -> void:
+	if rank <= 0 or not on_map(c):
+		return
+	for l: Layer in layers.get(c, []):
+		if l.rank > 0:
+			if rank > l.rank:
+				l.rank = rank
+				l.terrain = _flood_terrain(rank)
+			l.turns = maxi(l.turns, turns)
+			_restack(c)
+			douse(c)
+			return
+	var l := lay_layer(c, _flood_terrain(rank), true)
+	l.rank = rank
+	l.turns = turns
+	l.faction = by.faction if by else turn
+	douse(c)
+
+
+var _floods := {}  # rank -> the Flood terrain at that depth
+
+
+func _flood_terrain(rank: int) -> Terrain:
+	if rank not in _floods:
+		var t: Terrain = FLOOD.duplicate()
+		t.depth = rank
+		t.drag = FLOOD.drag * rank
+		t.name = "Flood %s" % Skill.roman(rank)
+		_floods[rank] = t
+	return _floods[rank]
+
+
+# Puts out fire on c (water, a Flood).
+func douse(c: Vector2i) -> void:
+	flames.erase(c)
+
+
+# Floods drain as their setter's side ends its turns.
+func _drain(side: Faction) -> void:
+	for c: Vector2i in layers.keys():
+		for l: Layer in layers[c].duplicate():
+			if l.rank > 0 and l.turns > 0 and l.faction == side:
+				l.turns -= 1
+				if l.turns <= 0:
+					layers[c].erase(l)
+					_restack(c)
 
 
 func _let_go(u: Unit, s: Skill) -> void:
@@ -2908,7 +2990,7 @@ func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
 		tiles.append(c + across * i)
 		tiles.append(c - across * i)
 	for t in tiles:
-		if not on_map(t):
+		if not on_map(t) or terrain(t).douses:  # no fire on water
 			continue
 		flames[t] = Flame.new(caster, r)
 		var u := unit_at(t)

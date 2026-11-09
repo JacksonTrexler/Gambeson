@@ -75,6 +75,13 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 					reads[o] = b.read(u, o)
 		if _luring(b, u, reads):
 			if not _ambush(b, u, reads, log):
+				if not rooted and _out_of_song(b, u, reads):  # too far away to lure anyone: it closes in
+					var near := _best_target(u, reads)
+					if near:
+						log.append("%s closes in %s" % [u.name, b.travel(u, _approach(b, u, near, reads))])
+						reads[near] = b.read(u, near)
+						if _ambush(b, u, reads, log):
+							return log
 				_sing(b, u, reads, log)
 			return log
 	if not _strike(b, u, reads, log):
@@ -248,6 +255,15 @@ static func _luring(b: Battle, u: Unit, reads: Dictionary) -> bool:
 			continue
 		var r := b.read(o, u)
 		if not r.deceived and r.net >= 0:
+			return false
+	return true
+
+
+# No foe within reach of any song it could lure with (Sing: Skill.auto, pulling): a Siren too far away
+# to lure moves in on them instead.
+static func _out_of_song(b: Battle, u: Unit, reads: Dictionary) -> bool:
+	for s in u.actives.filter(func(x: Skill): return x.auto and x.pull > 0):
+		if b.auto_targets(u, s).any(func(t: Unit): return reads.has(t) and _foe(u, reads[t])):
 			return false
 	return true
 

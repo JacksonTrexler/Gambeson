@@ -235,7 +235,7 @@ func value(rank := 1) -> String:
 	elif stat == "bleed":
 		text = "%dd%d%s HP as each of its turns ends" % [dice.x, dice.y, " + %s mod" % String(dice_mod).left(3) if dice_mod else ""] if dice != Vector2i.ZERO else "%s HP as each of its turns ends" % Skill.num(x)
 	elif stat == "grappled":
-		text = "held: must break free to move, and takes its holder's grip each turn it ends held"
+		text = "held: must break free to move; its holder's grip, and drowning while submerged, hurt it each turn it ends held"
 	elif stat == "ire":
 		text = "%s rank%s of its concealment and trickery defeated, against everyone" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat in ["ap", "dex_ap", "damage"]:

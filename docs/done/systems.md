@@ -127,3 +127,10 @@
 - [x] **Investigating on contact** (`Battle._contact()`, `_feel()`, from `travel()`): walking past a hidden foe, or a hider ending beside one, has the foe investigate against the hider's own roll. (?68)
 - [x] **Facing for a shield** (`Unit.guard`, `Unit.guarding()`): the way Shields Up! faces; a 90° cone. General facing is still to come.
 - [x] **Stubs waiting on a system** (`Skill.waits()`): a stub whose `stub` isn't a question names what it waits on ("Waits on Reactions (docs/todo/systems.md)").
+
+## Water, 2026-11-08
+
+- [x] **Depth** (`Terrain.depth`, `Battle.depth()`, `Battle.submerged()`): water's depth in unit sizes. Water and Pond 5, Flowing Water 2, Shallows 1 (`Terrain/pond.tres`, `flowing_water.tres`, `shallows.tres`). Deeper than a unit's size, it's submerged; so is a unit its holder engulfs on its own tile. Water puts out fire (`Terrain.douses`): Flamewall won't burn on it. (?72)
+- [x] **Flood** (`Battle.flood()`, `Terrain/flood.tres`): a layer over a tile, its rank its depth (added to what's beneath), +0.5 movement a rank to cross. It puts out fire, keeps the deeper and longer when laid again, and drains after its setter's side's turns (`Battle._drain()`). (?72)
+- [x] **Grappling and drowning apart** (`Skill.grapples`, `Skill.drowns`, `Skill.grip`; `Battle._grip()`): a grapple holds until the unit breaks free; a grip hurts each turn it ends held; drowning hurts only while it's held and submerged. Drown: a grapple that drowns (1d12 + str), its effect now named Grappled. (?72)
+- [x] **Sirens close in** (`AI._out_of_song()`): too far away to sing to any foe, a luring Siren walks toward its best target, then ambushes from there. `water_test.gd`. (?72)

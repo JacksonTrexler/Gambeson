@@ -7,3 +7,5 @@ script = ExtResource("1_terrain")
 name = "Water"
 enter = 3
 tags = Array[StringName]([&"water", &"wet"])
+depth = 5
+douses = true

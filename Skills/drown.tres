@@ -7,7 +7,7 @@
 script = ExtResource("2_effect")
 stat = "grappled"
 amount = 1.0
-name = "Submerged"
+name = "Grappled"
 
 [resource]
 script = ExtResource("1_script")
@@ -19,4 +19,5 @@ cost = 2
 radius = 1.0
 rolls = false
 drags_to = &"water"
-grip = Vector2i(1, 12)
+grapples = true
+drowns = Vector2i(1, 12)

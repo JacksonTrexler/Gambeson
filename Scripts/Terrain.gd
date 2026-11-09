@@ -7,6 +7,8 @@ extends Resource
 @export var enter := 1  # movement to step onto it
 @export var exit := 0  # extra movement to step off it (sticky ground)
 @export var tags: Array[StringName] = []  # beneficial / detrimental, rough, sticky, trap, water, wet...
+@export var depth := 0  # how deep its water stands, in unit sizes (Unit.size: 3 Medium): deeper than a unit's size, it's submerged and can be drowned (Water and Pond 5, Flowing Water 2, Shallows 1; a Flood: its rank; Battle.submerged())
+@export var douses := false  # puts out fire on its tile (water; a Flood: Battle.douse())
 
 @export_group("Concealment")  # traps: what it really is hides behind levels of concealment
 @export var concealment := 0
