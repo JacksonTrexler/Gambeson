@@ -32,6 +32,16 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Rangers**: Observe belongs on their tree too, once they exist.
 - [ ] **Dissonance by how far the lie is**: harder to pretend to be something you very much aren't (a wolf in sheep's clothing, not a scary dog). *Now:* a tally of what the persona puts forward.
 - [ ] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. *Now:* units can be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
+  - [ ] **Procedural maps** generated around the party: grass, light brush, ponds, thin streams.
+  - [ ] **Spawn formations**: prefab groups (units and offsets) that scale and are reused, placed beside features (ponds) beyond the party's perception.
+  - [ ] **Area difficulty**: an area attribute (0.5, 1, 1.5) for dungeons and scenarios, built off the roll difficulties; it caps live spawns at ally faction count x difficulty and slows the escape portal.
+  - [ ] **Perception range**: units perceive within their wisdom total, and make out appearances within half that.
+  - [ ] **Area conditions**: Fog halves perception distances.
+  - [ ] **Camera**: centred on the player's unit (its commander if it's down), or on the commanded unit while commanding, once it's far enough away. Home refocuses on the selected unit; Home again returns to the player's unit.
+  - [ ] **Key rebinds** in Settings: a dropdown of bindable actions and a press-a-key panel.
+- [ ] **Water tiles**: flowing water, ponds, and shallows (their rank is their depth).
+- [ ] **Flood**: a tile layer that slows movement and douses, often laid by effects or tile reactions. Its rank is its depth; deeper than a unit's size and the unit is submerged, so Sirens drown smaller creatures more easily. Laid Flood holds its depth for rank rounds, then dissipates.
+- [ ] **Grappling and drowning as mechanics of their own**: drowning needs the Grappled effect on its target. *Now:* both live inside the Siren's Drown.
 
 21. Evidence:  "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
 

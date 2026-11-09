@@ -69,6 +69,16 @@ Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** a
     - Both use the Red Mage sprite, and neither is on the entry screen. Starting Mana 10 for both.
     - The tab row now wraps to a second line: an undecided Mage has 11 tabs, 5 once it has a school and a college.
 
+### Wizards, revised (2026-11-08)
+
+- [ ] **Dabblings**: a branch of the Wizard's own tree, its way into other classes' trees: the Bard's magic trees, and really any tree tagged Caster.
+  - **Expanded studies** (guest trees at -1 Affinity): **Divinity** gains a religious domain, **Symphony** a Bard genre, **Witchery** a Warlock pact.
+  - No Affinity penalty: **Mastery** gains a Mage school.
+  - Guest skill trees default to -1 Affinity.
+- [ ] **Picking trees**: every class picks its trees on its own (universal) tree by unlocking their tier 0 roots there. A box around the choice says "Pick up to x" (the cap), and darkens the tree's backdrop behind it.
+- [ ] **Emergency Exit** (high tier): makes the forming escape portal open rank turns early where it's forming; otherwise warps the party to a bland pocket dimension of stone (still in the scenario, reachable only by a two-way portal). The pocket lasts rank rounds, then returns its units in a clump.
+- [ ] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it.
+
 ## Warlock
 
 *Now:* `Roles/warlock.tres` (cha 15, the Gaunt sprite; on the entry screen): a tab per patron, **Elmon** and **Hogel**, sharing a static tier 1 row (Hex, Sweet Nothings, Chant), with Hex and Sweet Nothings learned from the start. Elmon's tab: Analysis Dialysis, wauaw, Brainfog and Haluca, from tier 2. One patron per Warlock. Built entries are in `docs/done/classes.md`.

@@ -4,7 +4,16 @@
 
 ## Scenes
 
-- [ ] **Infernal Meadows**: an overworld or challenge area for now. An endless plane of grass (grass is the default empty tile); demons spawn out of view over time, just Sirens for now. Once 30 enemies are slain, an escape portal opens, and a unit stepping onto it wins the battle at once.
+- [ ] **Infernal Meadows**: a standalone challenge for now, reached later through a dungeon gate on the overworld. Ordinary grass with a "Paradise" feel. Your answers (2026-11-08):
+  - The map is generated around the party as it moves: a procedural generation test map. Light brush, a few ponds and thin streams.
+  - Demons spawn in small groups: 1-2 Sirens near water, or near an Undine. Spawn formations are prefabs that are easy to tweak, scale and reuse, and they spawn beside features such as ponds. Out of view means beyond the whole party's perception.
+  - At most (ally faction count x difficulty) demons alive at once. Difficulty is an area attribute (0.5, 1, 1.5), built off the roll difficulties.
+  - The player gets the commanders and soldiers of both sides.
+  - Kills are counted in total; in-fighting is assumed to come from outside influence in most scenarios.
+  - Once 30 are slain, the escape portal forms where the last one died. It takes longer to open the higher the difficulty, and spawning ramps up hard meanwhile. The portal shows its turns remaining. A unit stepping onto it once it's open wins the battle at once.
+  - No leaving early yet, except by the Wizard's Emergency Exit.
+- [ ] **Gamut's Tower**: a new scene with a selection of portals, just the Meadows for now.
+- [ ] **A Rift's domain**: the Wizard's Rift opens a portal to a pared-down Meadows, an 8x8 grass diamond with an escape portal at its centre, its difficulty scaled on the Rift's rank and its level shared with the Wizard's.
 - [ ] **Astral Envoy**: tuning. (?29) Balance waits: there's a lot of ground to cover first. *Now:* built, with the star lattice and two Starmen (`docs/done/world.md`).
 
 ## Items
@@ -19,11 +28,20 @@
 
 ### Siren
 
+- [ ] **Closing in**: a Siren too far away to lure moves toward units aggressively. True of all Sirens.
 - [ ] **Charm**: the Siren's cha check against the target's wis check. A target that beats it gets a standard investigation pass and a stack of suspicion of the Siren. (?14)
 
 14. Siren:
     - Does "2+: Rank −1 mitigation to tile roll penalty" mean each rank past 1 takes 1 off the per-tile penalty? (Built that way.)
     - What does a charm that lands do to the target? (Beating it is settled.)
+
+### Undine
+
+- [ ] **Undine**: an elemental, here a demon variant. Meadows Undines' natures are Malevolent and Abyssal. Their appearance is Murky instead of Clear; all Undines are Aquatic.
+  - **Waterstrike**.
+  - **Waltz of Vapors**: a circle of fog within rank + dex or cha total. Channeled: it must be used every turn to keep it up, and only at the start of a turn.
+  - **Vaporize**: the Undine turns into a mist cloud: major physical resistance, respectable magic resistance, weak to wind. It can share tiles with other units and can't attack, but by **Coalescing** (its only active) on an occupied tile it can try to grapple and drown a unit there as a Siren can, until it's physically moved off the shared tile or the unit moves off.
+  - **Well Up**: floods a tile within rank range with rank Flood; adjacent tiles flood at rank - range.
 
 ### Astral Princess
 
