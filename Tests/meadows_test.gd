@@ -106,7 +106,7 @@ func test_tower_difficulty() -> void:
 	ok(Difficulty.area(1.5) == &"difficult" and Difficulty.area(0.5) == &"approachable", "area difficulty on the check ladder")
 	var tower: Control = load("res://Scenes/gamuts_tower.tscn").instantiate()
 	tree.root.add_child(tower)
-	ok(tower.get_node("VBoxContainer/Enter") != null or tower.find_children("Enter", "", true, false).size() == 1, "a portal to enter")
+	ok(tower.find_children("Enter", "", true, false).size() == 1, "a portal to enter")
 	tower.free()
 	m.free()
 

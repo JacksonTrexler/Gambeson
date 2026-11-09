@@ -10,10 +10,15 @@ var _pick := ""
 
 
 func _ready() -> void:
+	var small := Theme.new()  # the entry screen's size
+	small.default_font_size = 10
+	theme = small
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(centre)
 	var col := VBoxContainer.new()
-	col.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	col.add_theme_constant_override(&"separation", 6)
-	add_child(col)
+	col.add_theme_constant_override(&"separation", 5)
+	centre.add_child(col)
 	var title := Label.new()
 	title.text = "Gamut's Tower"
 	title.add_theme_font_size_override(&"font_size", 14)
@@ -24,6 +29,7 @@ func _ready() -> void:
 	lead.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(lead)
 	var portals := HBoxContainer.new()
+	portals.alignment = BoxContainer.ALIGNMENT_CENTER
 	var group := ButtonGroup.new()
 	for name in PORTALS:
 		var b := Button.new()
@@ -37,6 +43,7 @@ func _ready() -> void:
 			b.button_pressed = true
 	col.add_child(portals)
 	var diff := HBoxContainer.new()
+	diff.alignment = BoxContainer.ALIGNMENT_CENTER
 	var dgroup := ButtonGroup.new()
 	for x in Difficulty.AREA_NAMES:
 		var b := Button.new()
