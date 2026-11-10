@@ -5,6 +5,8 @@ signal hp_changed(was: int, now: int)
 signal energy_changed(was: int, now: int)
 signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
+signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage (from blow.by, tagged blow.tags); listeners may change it (Battle: Molothrus)
+signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp back; listeners may take a cut (Battle: Molothrus)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
@@ -115,6 +117,7 @@ class Applied:
 @export_file("*.tscn") var reverts_to := ""  # what it falls back into as it dies, on its tile (a Starman: a Starmote; Battle._on_died()) - a path: the two scenes name each other
 @export_file("*.tscn") var reforms_into := ""  # what it becomes once its Reforming stacks reach its level (a Starmote: a Starman; Battle._starkind())
 @export var hunts: Array[Faction] = []  # sides its AI goes after first (Starmen: the Stellar Order; AI.HUNT)
+@export var bio: Bio  # how it behaves (its AI), looks, what it's made of and whom it has standing with (Scripts/Bio.gd)
 
 @export_group("Persona")  # what it advertises; the Persona skill's rank says how much
 # The side it presents as, to those it fools (Read.stance): Friendly (rank 2) passes for their ally;
@@ -323,6 +326,11 @@ func _ready() -> void:
 		race = role.race
 	if role and not look:
 		look = role.look
+	if bio:
+		for p in bio.properties:
+			for x in p.tags:
+				if x not in tags:
+					tags.append(x)  # an Aquatic unit counts as water to skills that ask
 	_take_looks()
 	_pick_alias()
 	_fill_bar()
@@ -1152,6 +1160,19 @@ func conspiring() -> int:
 	return roundi(stat(&"conspire"))
 
 
+# How its AI behaves (Bio.BEHAVIOURS): its bio's behaviour; a craven unit's timid.
+func temper() -> StringName:
+	if bio and bio.behaviour:
+		return bio.behaviour
+	return &"timid" if behaviour == &"craven" else &""
+
+
+# Its standing with side f (Bio.clout): to f's units its persona goes this much further, or its
+# trickery, and doubting it is this much harder (Battle.doubt()).
+func clout(f: Faction) -> int:
+	return bio.clout.get(f, 0) if bio and f else 0
+
+
 # Has Conspire, switched off: its allies see straight through its persona.
 func candid() -> bool:
 	return slots.any(func(x: Slot): return x.skill.passive and not x.on and x.skill.effects.any(func(e: Effect): return e.stat == "conspire"))
@@ -1209,8 +1230,20 @@ func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 	var taken := Luck.settle(raw * (1.0 - cut), net, false)
 	if by and by != self:
 		last_hit_by = by
+	var blow := {damage = taken, by = by, tags = tags}
+	taking_hit.emit(self, blow)  # its battle lets its passives have their say (Molothrus passes some on)
+	taken = blow.damage
 	damage(taken)
 	return taken
+
+
+# Its switched-on passives' behaviours, each with the passive's rank: [Behaviour, rank] (Behaviour's hooks).
+func hooks() -> Array:
+	var out := []
+	for x in on_passives:
+		for h in x.skill.behaviours:
+			out.append([h, x.rank])
+	return out
 
 
 # Shields Up! is on it and c's centre lies within the 90 degree cone it faces.
@@ -1491,10 +1524,15 @@ func drain(raw: float, tags: Array[StringName], by: Unit, carry: float) -> int:
 	return over
 
 
-# Dead units stay dead.
-func heal(h: int) -> void:
-	if is_alive():
-		hp += maxi(h, 0)
+# Dead units stay dead. heard: told first (being_healed), so others' passives may take a cut (Molothrus).
+func heal(h: int, heard := true) -> void:
+	if not is_alive():
+		return
+	if heard:
+		var got := {hp = h}
+		being_healed.emit(self, got)
+		h = got.hp
+	hp += maxi(h, 0)
 
 
 # Every reserve it has, by max: its own (reserves), those the trees it picked bring (SkillTab.reserves:
@@ -2191,6 +2229,10 @@ func _gather_effects(viewer: Unit) -> Array:
 	for it in items():
 		for e in it.effects:
 			out.append([e, it.rank, 1.0])
+	if bio:
+		for p in bio.properties:
+			for e in p.effects:
+				out.append([e, 1, 1.0])
 	return out
 
 

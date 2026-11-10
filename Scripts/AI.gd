@@ -4,8 +4,11 @@ class_name AI
 # an ally (sparing the beloved), takes the hit worth most - perceived damage, a likely kill, an
 # ominous aura (the hated) - and walks around ground it knows or suspects is bad. Units presenting
 # as Aggressive it keeps clear of, and Passive ones it leaves be (Read.attitude()). A craven unit
-# won't advance without an ally it reads as a higher level within CRAVEN_REACH tiles, and backs away
-# from the Aggressive within that reach before anything else. A luring unit
+# (timid) won't advance without an ally it reads as a higher level within CRAVEN_REACH tiles, and backs
+# away from the Aggressive within that reach before anything else. A unit's bio sets its temper
+# (Bio.BEHAVIOURS): timid as craven; brave and aggressive charge, going for the strongest and the
+# weakest; aggressive heals last; helpful goes to the wounded to heal them; stoic holds its ground.
+# Where it can't make out a level or an aura it guesses from how the unit looks (_level(), _hate()). A luring unit
 # (the Siren) stays serene and still until an enemy sees through it: it sings, and whatever comes
 # into its reach it drowns or rakes. Healers heal the ally they most want to, by how they tend. A
 # held unit tries to break free by moving away, and its holder stays put rather than let go, unless
@@ -28,6 +31,7 @@ const PARTY := 1.0  # how much a loyal healer favours its party
 const WOUND := 0.25  # how much a healer wants to clear a wound it can see
 const WARY := 10.0  # cost of ending a walk beside a unit it takes for aggressive
 const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts)
+const BOLD: Array[StringName] = [&"brave", &"aggressive"]  # tempers that walk up to the aggressive regardless
 const LAST := 1000.0  # how much less a unit wants to go after a helpless, Downed foe: the standing come first
 const FINISH := 0.5  # the most a blow at a helpless, Downed foe is worth: only when no standing foe is worth one
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
@@ -60,8 +64,12 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	if posture == &"defensive":
 		_defend(b, u, log)
 		return log
-	if posture != &"offensive":  # a full turn, or HELP: heal and support
+	var temper := u.temper() if posture == &"" else &""  # a self-directed turn goes by its temper (Bio)
+	if posture != &"offensive" and temper != &"aggressive":  # a full turn, or HELP: heal and support (the aggressive strike first)
+		var healed := log.size()
 		_heal(b, u, reads, log)
+		if temper == &"helpful" and log.size() == healed:
+			_tend(b, u, reads, log)
 		_support(b, u, reads, log)
 	if posture == &"supportive":
 		return log
@@ -92,7 +100,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 							return log
 				_sing(b, u, reads, log)
 			return log
-	if not _strike(b, u, reads, log):
+	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
 			var p := b.travel(u, _approach(b, u, target, reads))
@@ -102,7 +110,33 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_hunt(b, u, reads, log)
 	while _strike(b, u, reads, log):
 		pass
+	if temper == &"aggressive":  # what it has left, it spends on its side
+		_heal(b, u, reads, log)
+		_support(b, u, reads, log)
 	return log
+
+
+# Helpful (Bio): with no one to heal in reach, it goes to the ally it most wants to heal (want()) and
+# heals it. Other healers heal only whom they happen to reach.
+static func _tend(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+	var heals := u.actives.filter(func(x: Skill): return x.heals() and not x.hostile and u.can_afford(x))
+	if heals.is_empty() or _rooted(b, u):
+		return
+	var best: Unit = null
+	var best_score := 0.0
+	for t: Unit in reads:
+		var r: Read = reads[t]
+		if not t.is_alive() or r.attitude(u) != &"ally" or not r.located():
+			continue
+		var v := want(b, u, heals[0], t, r)
+		if v > best_score:
+			best = t
+			best_score = v
+	if best == null or b.in_reach(u, heals[0], best):
+		return
+	log.append("%s goes to %s %s" % [u.name, best.name, b.travel(u, _approach(b, u, best, reads))])
+	reads[best] = b.read(u, best)
+	_heal(b, u, reads, log)
 
 
 # Downed and still acting (Grudge; Scripts/Downed.gd): it closes with the nearest foe and strikes one
@@ -166,21 +200,31 @@ static func _hunted(u: Unit, r: Read) -> float:
 
 
 static func _hate(r: Read) -> float:
-	return HATE * (r.aura if r.aura != null else 0)
+	return HATE * (r.aura if r.aura else Bio.aura(r.looks))  # no aura to go by: how it looks (Horrific, Beautiful)
+
+
+# The level u takes t (read as r) for: what it makes out, else a guess from how it looks - its own level,
+# give or take what its appearance and adjectives suggest (Bio.standing(): a Knight 2 more). null: no idea.
+static func _level(u: Unit, r: Read) -> Variant:
+	if r.level != null:
+		return r.level
+	return u.lv() + Bio.standing(r.looks) if r.looks else null
 
 
 static func _foe(u: Unit, r: Read) -> bool:
 	return r.located() and r.attitude(u) == &"foe"
 
 
-# Ready to advance: not craven, or an ally it takes for one is near, of a level it reads as higher
-# (it must make out the level, or have it advertised: Persona II).
+# Ready to advance: not timid (craven), or an ally it takes for one is near, of a level it reads as
+# higher (it must make out the level, have it advertised - Persona II - or guess it from how the ally
+# looks: _level()).
 static func _emboldened(u: Unit, reads: Dictionary) -> bool:
-	if u.behaviour != &"craven":
+	if u.temper() != &"timid":
 		return true
 	for o: Unit in reads:
 		var r: Read = reads[o]
-		if o.is_alive() and r.attitude(u) == &"ally" and r.level != null and r.level > u.lv() and Command.tiles(o.cell, u.cell) <= CRAVEN_REACH:
+		var lv: Variant = _level(u, r)
+		if o.is_alive() and r.attitude(u) == &"ally" and lv != null and lv > u.lv() and Command.tiles(o.cell, u.cell) <= CRAVEN_REACH:
 			return true
 	return false
 
@@ -189,7 +233,7 @@ static func _emboldened(u: Unit, reads: Dictionary) -> bool:
 # tile it can reach (as it expects the walk to go) furthest from the nearest of them. False if
 # there's none near, or nowhere better.
 static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
-	if u.behaviour != &"craven":
+	if u.temper() != &"timid":
 		return false
 	var scary: Array[Vector2i] = []
 	for o: Unit in reads:
@@ -416,7 +460,7 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 	if r.hp != null and r.max_hp:
 		lost = r.max_hp - r.hp
 		share = float(lost) / r.max_hp
-	elif r.healthy == false:
+	elif r.healthy == false or (r.healthy == null and Bio.hurt(r.looks)):  # bloodied, or looks it (Injured)
 		share = 0.5
 	var wounds := 0
 	for e in r.effects:
@@ -430,7 +474,8 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 		&"pragmatic":
 			if wounds == 0 and lost != null and lost * 2 < heal:
 				return 0.0
-			v += float(r.level if r.level != null else 0)
+			var lv: Variant = _level(u, r)
+			v += float(lv if lv != null else 0)
 		&"loyal":
 			var party := u.follows if u.follows else u
 			if t != u and (t == party or t.follows == party):
@@ -564,13 +609,22 @@ static func _best_target(u: Unit, reads: Dictionary) -> Unit:
 	for t in reads:
 		if not _foe(u, reads[t]) or not t.is_alive():
 			continue
-		var lv: float = reads[t].level if reads[t].level != null else 0.0
+		var guess: Variant = _level(u, reads[t])
+		var lv: float = guess if guess != null else 0.0
 		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, reads[t]) \
-				+ STRONG * lv * (int(&"strongest" in u.strategy) - int(&"weakest" in u.strategy)) - (LAST if t.helpless() else 0.0)
+				+ STRONG * lv * _leaning(u) - (LAST if t.helpless() else 0.0)
 		if v > best_score:
 			best = t
 			best_score = v
 	return best
+
+
+# Which way u leans between the strongest foe (+1) and the weakest (-1): its strategy, else its temper -
+# the brave go for the strongest, the aggressive for the weakest.
+static func _leaning(u: Unit) -> int:
+	if &"strongest" in u.strategy or &"weakest" in u.strategy:
+		return int(&"strongest" in u.strategy) - int(&"weakest" in u.strategy)
+	return {&"brave": 1, &"aggressive": -1}.get(u.temper(), 0)
 
 
 # Where to head for a target: a cell beside it (side-on first: diagonals can be near misses) whose
@@ -593,7 +647,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0)
 			for o in reads:
 				var ro: Read = reads[o]
-				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1:
+				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:
 					v += WARY
 			if v < best_cost:
 				best = c

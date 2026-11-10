@@ -1871,6 +1871,11 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
 		if u.asleep():
 			chips.append(["Asleep", SLEEP])
+		if u.bio:  # its own side knows its bio
+			for p in u.bio.properties:
+				chips.append([p.name, MUTED])
+			if u.bio.behaviour:
+				chips.append([String(u.bio.behaviour).capitalize(), MUTED])
 		_heart_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
 		var main := u.main_reserve()
@@ -1895,6 +1900,8 @@ func _info(u: Unit) -> Dictionary:
 		parts.append("Lv %d" % r.level)
 	if r.role:
 		parts.append(r.role.name)
+	elif r.looks and r.name:  # its class lost on the observer: how it looks (Bio)
+		parts.append(r.looks)
 	elif not r.tags.is_empty():
 		parts.append(" ".join(r.tags.map(func(t): return String(t).capitalize())))
 	if not parts:
@@ -1928,6 +1935,8 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["Out of range", MUTED])
 	if r.vibe:
 		chips.append([r.vibe, MUTED])
+	for p in r.properties:
+		chips.append([p.name, MUTED])
 	if r.hp != null:
 		_heart_chips(u, chips)
 	var rows := []
@@ -1952,6 +1961,8 @@ func _info(u: Unit) -> Dictionary:
 		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
 			info.effects = [["?", MUTED, "Something's affecting %s; your side can't make out what" % _name(u), ""]]
 	info.note = "" if known(u) and r.insight.ends_with("appear otherwise.") else r.insight  # an honest ally goes without saying
+	if r.temper:
+		info.note = (info.note + "\n" if info.note else "") + "Seems %s." % r.temper
 	if r.intention or not r.strategy.is_empty():
 		info.note = (info.note + "\n" if info.note else "") + "Intends to %s%s." % [r.intention.to_lower() if r.intention else "fight",
 				"; goes for the %s" % " and ".join(r.strategy) if not r.strategy.is_empty() else ""]

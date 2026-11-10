@@ -27,6 +27,7 @@ signal prayed(u: Unit, god: StringName, rank: int)  # pray(): u prays to its god
 signal untangled(by: Unit, of: Unit, total: int, against: int)  # inspect(): by, under Haluca, sees of's tags straight when total >= against
 signal refused(u: Unit, leader: Unit)  # a traitor in leader's party won't do as it's told, or acted on its own side's turn (_refuse())
 signal doubted(by: Unit, of: Unit, total: int, against: int)  # doubt(): by grows suspicious of `of` when total >= against
+signal told(by: Unit, to: Unit, of: Unit, heard: bool)  # spread(): by told an ally it suspects `of`; heard: the word got through
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
@@ -60,6 +61,7 @@ const DISCIPLINE_DAMAGE := 0.25  # more damage, a point burned
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
+const WORD := 4  # tiles (+ its cha mod) within which a unit tells its allies what it's grown suspicious of (spread())
 const XP_NEAR := 3.0  # tiles from a unit falling or brought back within which others get a share of its XP (_share())
 const RECAST_LIMIT := 20  # recasts on a natural 20 in a row (Jugular: "without limit for now"), a guard on a rigged rng
 var _recasts := 0
@@ -301,14 +303,34 @@ func _ready() -> void:
 			push_error("%s has no free cell at %s" % [u.name, u.cell])
 			u.free()
 			continue
-		u.died.connect(_on_died)
-		u.downed.connect(_on_downed)
-		u.dbno_changed.connect(_on_dbno)
+		_listen(u)
 	for u: Unit in units.values():
 		for t: Unit in units.values():
 			if u.faction and t.faction and not Faction.friends(u.faction, t.faction) and Perception.cover(self, t) == 0:
 				sighted(u.faction, t, t.cell)  # each side knows where the others drew up in the open
 	_enter(phase)
+
+
+# Hears what a unit on the field goes through: its falling, and the hits and heals its passives and
+# others' have a say in (Unit.hooks(), Behaviour's hooks: Molothrus).
+func _listen(u: Unit) -> void:
+	u.died.connect(_on_died)
+	u.downed.connect(_on_downed)
+	u.dbno_changed.connect(_on_dbno)
+	u.taking_hit.connect(_on_taking_hit)
+	u.being_healed.connect(_on_being_healed)
+
+
+func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
+	for h in u.hooks():
+		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
+
+
+func _on_being_healed(u: Unit, got: Dictionary) -> void:
+	for o: Unit in units.values():
+		if o != u and o.is_alive():
+			for h in o.hooks():
+				got.hp = h[0].healing(self, o, h[1], u, got.hp)
 
 
 func unit_at(c: Vector2i) -> Unit:
@@ -933,8 +955,8 @@ func _lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 
 
 # o grows n stacks more suspicious of t, a unit or a tile (fewer, for a negative n; none left, it
-# trusts it again).
-func suspect(o: Unit, t: Variant, n := 1) -> void:
+# trusts it again). Of an enemy unit, it passes the word on (spread()) - unless it was told.
+func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 	var who: Unit = t if t is Unit else unit_at(t)  # suspicion of a tile works on whoever hides there
 	var pleased := n > 0 and who != null and who.faction != o.faction and (o.stat(&"unmask_gain") > 0 or o.stat(&"uncover_gain") > 0)
 	var was: Read = read(o, who) if pleased else null
@@ -946,6 +968,23 @@ func suspect(o: Unit, t: Variant, n := 1) -> void:
 		o.suspicion.erase(t)
 	if pleased:
 		_dialysis(o, who, was, hid)
+	if n > 0 and not told_of and t is Unit and o.faction and not Faction.friends(o.faction, t.faction):
+		spread(o, t)
+
+
+# o has grown suspicious of t, an enemy: it tells each ally within WORD + its cha mod tiles (at least 1)
+# that's awake and doesn't suspect t yet, which grows a stack suspicious of it in turn - and doesn't
+# pass it on. t's passives can stop the word (Behaviour.lets_word(): Bandwagon).
+func spread(o: Unit, t: Unit) -> void:
+	var reach := maxi(WORD + o.mod(&"charisma"), 1)
+	for a: Unit in units.values():
+		if a == o or not a.is_alive() or a.asleep() or not Faction.friends(a.faction, o.faction) or a.suspects(t) > 0 \
+				or Command.tiles(a.cell, o.cell) > reach:
+			continue
+		var heard := t.hooks().all(func(h: Array): return h[0].lets_word(self, t, h[1], o, a))
+		if heard:
+			suspect(a, t, 1, true)
+		told.emit(o, a, t, heard)
 
 
 # Analysis Dialysis: o satisfies its patron, Sweet Nothings back for it, unmasking an enemy t it took
@@ -968,9 +1007,10 @@ func _hidden_from(o: Unit, t: Unit) -> int:
 # o looks harder at t, which fools it: d20 + its wis mod (the better of two within wis mod - lie tiles,
 # or with edge 1; the worse of two with edge -1) against t's own check, d20 + its cha mod + its lie -
 # its dissonance penalty (a less believable lie, the more it lies). The lie is its persona to its
-# allies, its trickery to its enemies. Meeting it, o grows a stack more suspicious of t.
+# allies, its trickery to its enemies, plus its clout with o's side (Unit.clout()). Meeting it, o grows a stack more suspicious of t.
 func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
+	lie += t.clout(o.faction)  # standing with o's side: its word carries
 	var close := Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie
 	var vs := beats(Check.side(o.check_mod(&"wisdom", &"offensive")).edge(-1 if edge < 0 else (1 if edge > 0 or close else 0)),
 			Check.side(t.mod(&"charisma") + lie - t.dissonance_penalty()))
@@ -2460,9 +2500,7 @@ func summon(scene: PackedScene, f: Faction, c: Vector2i) -> Unit:
 	u.faction = f
 	$Units.add_child(u, true)
 	move(u, spot)
-	u.died.connect(_on_died)
-	u.downed.connect(_on_downed)
-	u.dbno_changed.connect(_on_dbno)
+	_listen(u)
 	if f == turn:
 		u.refresh()
 	return u

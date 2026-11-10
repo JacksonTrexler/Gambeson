@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="Property" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Property.gd" id="1_property"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.5
+tags = Array[StringName]([&"energy"])
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "initiative"
+amount = 2.0
+
+[sub_resource type="Resource" id="Effect_3"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = -0.25
+tags = Array[StringName]([&"water"])
+
+[resource]
+script = ExtResource("1_property")
+name = "Energized"
+tags = Array[StringName]([&"energized"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2"), SubResource("Effect_3")])
+text = "Quick off the mark and full of charge; water shorts it out."

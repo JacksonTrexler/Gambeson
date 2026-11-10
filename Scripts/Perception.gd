@@ -55,6 +55,8 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		return r
 	r.aura = t.aura
 	var p := roundi(t.stat(&"persona"))
+	if p > 0 and o != t and Faction.friends(o.faction, t.faction):
+		p += t.clout(o.faction)  # standing with the side: its persona goes further with them
 	var shown := func(tier: int, persona_tier: int) -> bool:
 		return r.net >= tier or (p >= persona_tier and r.net >= -1)
 	if shown.call(0, 99):
@@ -81,6 +83,8 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		for x in [t.race, t.role]:
 			if x:
 				r.tags.append(StringName(x.name))
+		if t.bio:
+			r.properties = t.bio.properties.duplicate()
 	if shown.call(1, 99):
 		for s in Unit.CORE:
 			r.stats[s] = t.stat(s)
@@ -106,6 +110,10 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	if r.net >= 2 and o != t and o.insightful():
 		r.intention = t.intention
 		r.strategy = t.strategy.duplicate()
+	if r.looks == "" and r.role == null and r.net >= -1 and r.seen and o != t:
+		r.looks = looks(t, r.deceived)  # its class lost on it, it goes by how it looks
+	if r.net >= 2 and o != t and o.insightful():
+		r.temper = t.temper()
 	if o.scrambles(t) and not r.tags.is_empty():
 		r.tags = scramble(o, t, r.tags.size())
 	return r
@@ -203,7 +211,7 @@ static func _dim(o: Unit, t: Unit, r: Read, p: int, f: Dictionary) -> void:
 		r.traits.clear()
 		if p < 1:
 			r.healthy = null
-		r.looks = t.alias_noun if p >= 3 and t.alias_noun else kind_noun(t)
+		r.looks = t.alias_noun if p >= 3 and t.alias_noun else looks(t)
 
 
 # The limited judgment a low-wisdom ally makes of t, from its stats as they seem (factors f):
@@ -235,10 +243,21 @@ static func traits(t: Unit, f: Dictionary) -> Array[String]:
 	return out
 
 
-# What a unit of t's kind looks like, at a glance: its class's noun (casters "Caster", martial
-# classes "Soldier", specialists "Tradefolk", Adventurers "Everyman"), "Beast" for monsters, else
-# "Everyman".
+# What t looks like, to one that can't make out its class: its bio's adjectives before its kind's noun
+# ("Injured Soldier"). Fooled by a persona with a name (rank 3), the name it goes by ("Precious Lady").
+static func looks(t: Unit, deceived := false) -> String:
+	if deceived and t.alias:
+		return t.alias
+	var words: PackedStringArray = t.bio.adjectives if t.bio else PackedStringArray()
+	return " ".join(words + PackedStringArray([kind_noun(t)]))
+
+
+# What a unit of t's kind looks like, at a glance: its bio's appearance (a Knight), else its class's
+# noun (casters "Caster", martial classes "Soldier", specialists "Tradefolk", Adventurers "Everyman"),
+# "Beast" for monsters, else "Everyman".
 static func kind_noun(t: Unit) -> String:
+	if t.bio and t.bio.appearance:
+		return t.bio.appearance  # its bio says how it looks: a Knight
 	if t.role:
 		return t.role.noun if t.role.noun else t.role.name
 	return "Beast" if &"monster" in t.tags else "Everyman"
@@ -344,6 +363,8 @@ static func trickery(t: Unit, r: Read, viewer: Unit = null, b: Battle = null) ->
 	var sight := t.stat(&"trickery", [&"sight"], viewer) - plain
 	if b and t.conspiring() > 1:
 		plain += (t.conspiring() - 1) * b.units.values().filter(func(a: Unit): return conspires_with(a, t)).size()
+	if viewer and not Faction.friends(viewer.faction, t.faction):
+		plain += t.clout(viewer.faction)  # standing with the viewer's side lends its lies weight
 	var defeated := t.stat(&"ire") + (viewer.suspects(t) if viewer else 0)
 	return maxf(plain + sound * (2.0 if r.heard and not r.seen else 1.0) + sight * (2.0 if not r.heard else 1.0) - defeated, 0.0)
 

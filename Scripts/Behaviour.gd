@@ -37,3 +37,24 @@ func apply(_c: Cast) -> void:
 # What apply() does at this rank, in Glossary markup: one or more lines of the skill's description.
 func describe(_rank: int) -> String:
 	return ""
+
+
+# Hooks: what a switched-on passive's behaviours do outside a cast (Unit.hooks()), each given the
+# holder and the passive's rank. Each does nothing unless a behaviour says otherwise.
+
+# Whether word that `teller` has grown suspicious of the holder reaches `listener`, an ally of the
+# teller's (Battle.spread(); Bandwagon: a cha check).
+func lets_word(_b: Battle, _holder: Unit, _rank: int, _teller: Unit, _listener: Unit) -> bool:
+	return true
+
+
+# The holder is about to take damage d from a hit (Unit.taking_hit, Battle._on_taking_hit()): how much it still takes
+# (Molothrus passes some on).
+func hurt(_b: Battle, _holder: Unit, _rank: int, d: int) -> int:
+	return d
+
+
+# t, any unit but the holder, is about to be healed n (Unit.being_healed): how much of it t still gets
+# (Molothrus siphons some).
+func healing(_b: Battle, _holder: Unit, _rank: int, _t: Unit, n: int) -> int:
+	return n

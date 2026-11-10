@@ -20,6 +20,7 @@ func siren() -> Unit:
 func test_stacks() -> void:
 	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(5, 6), v(2): Vector2i(5, 4), v(3): Vector2i(2, 6)})
 	var trick := Perception.trickery(siren(), Read.new(), v(1), b)
+	v(1).charisma = 1  # too poor a talker to pass the word on (Battle.spread(): word_test)
 	b.suspect(v(1), siren())
 	ok(v(1).suspects(siren()) == 1 and is_equal_approx(Perception.trickery(siren(), Read.new(), v(1), b), trick - 1.0)
 			and is_equal_approx(Perception.trickery(siren(), Read.new(), v(2), b), trick), "a stack sees through a rank of the Siren's trickery, for v(1) alone")
@@ -47,6 +48,7 @@ func test_doubt() -> void:
 	ok(b.read(v(2), siren()).deceived, "enraptured")
 	v(2).max_hp = 99
 	v(2).hp = 99
+	v(2).charisma = 1  # keeps what it sees through to itself (Battle.spread())
 	siren().strength = 40
 	siren().refresh()
 	ok(b.cast(siren(), rake, v(2)) and v(2).hp < 99 and looks.size() == 1 and looks[0][0] == v(2), "raked by what fools it: it looks harder")
