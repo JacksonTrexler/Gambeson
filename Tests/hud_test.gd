@@ -198,8 +198,8 @@ func test_drawn_as_seen() -> void:
 	ok(not icor.visible, "unlocated: not drawn at all")
 	ok(not v(3).visible and not h.dubious.is_empty() and h.dubious.keys().all(func(c): return Vector2(c).distance_to(Vector2(5, 5)) < 3),
 			"only suspected: not drawn, but the area it may be in is marked")
-	ok(v(4).visible and shadow.call(v(4)) and v(4).sprite.modulate == Color.WHITE,
-			"located, side unknown: in its own colours, but a neutral glow and no bars")
+	ok(v(4).visible and shadow.call(v(4)) and v(4).sprite.modulate == Unit.SHAPE,
+			"located, side unknown, and it hides: a black shape with a neutral glow and no bars")
 	ok(h._info(v(4)).shape and h._info(v(4)).chips[0][0] == "Unknown", "the card shows a shape too")
 	ok(siren.visible and not shadow.call(siren) and edge.call(siren) == lancin.primary, "the Siren wears the side its persona claims")
 	ok(not siren.sprite.visible and siren._face.visible and siren._face.text == siren.alias_face, "...and the stand-in sprite of its made-up name")
@@ -207,7 +207,51 @@ func test_drawn_as_seen() -> void:
 	ok(v(1).visible and edge.call(v(1)) == lancin.primary and not shadow.call(v(1)), "your own as they are")
 	v(4).timed.clear()
 	h._refresh()
-	ok(not shadow.call(v(4)) and edge.call(v(4)) == nemes.primary and v(4).hp_bar.visible, "in the open again: its side shows")
+	ok(not shadow.call(v(4)) and edge.call(v(4)) == nemes.primary and v(4).hp_bar.visible and v(4).sprite.modulate == Color.WHITE,
+			"in the open again: its side shows, in its own colours")
+	h.free()
+
+
+# A black shape is what might be a monster in the brush: a unit the player's unit has placed but
+# can't tell the side of, that hides, stands in concealment (darkness), is too far to make out, or is
+# one it suspects. One in plain view it only can't identify keeps its colours with a neutral glow; so
+# does every ally in ordinary conditions.
+func test_silhouette() -> void:
+	var al := unit("Alabaster")
+	var icor := unit("Icor")
+	stage(lancin, {v(1): Vector2i(1, 1), v(2): Vector2i(8, 2), al: Vector2i(1, 6), v(3): Vector2i(5, 1), v(4): Vector2i(8, 6), icor: Vector2i(8, 1)})
+	var friends := Faction.new()
+	friends.allies = [lancin]
+	al.faction = friends
+	v(4).afflict(effect("concealment", 1), 9)
+	var dark: Dictionary[Vector2i, int] = {Vector2i(8, 1): 1, Vector2i(8, 2): 1}
+	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))
+	var h := await start(v(1))
+	var black := func(u: Unit) -> bool: return u.sprite.modulate == Unit.SHAPE
+	var grey := func(u: Unit) -> bool: return not u.hp_bar.visible and u.glow.visible and Color(u.glow.modulate, 1.0) == Unit.SHAPE_EDGE
+	ok(v(4).visible and black.call(v(4)) and grey.call(v(4)), "a hider it has placed but can't make out: a black shape")
+	ok(h._info(v(4)).silhouette, "on its card too")
+	h.card.set_info(h._info(v(4)))
+	ok(h.card.portrait.modulate != Color.WHITE, "whose portrait is as black")
+	ok(icor.visible and black.call(icor) and grey.call(icor), "so is one standing in darkness")
+	ok(not black.call(v(3)) and not grey.call(v(3)), "a foe in plain view is itself")
+	ok(not black.call(v(1)) and not black.call(v(2)) and not grey.call(v(2)), "its own side never is, even in that darkness")
+	ok(not black.call(al) and not grey.call(al) and not h._info(al).silhouette, "nor an ally of another side, in ordinary conditions")
+	v(1).afflict(effect("recon", -1), 9)
+	h._refresh()
+	ok(v(3).visible and grey.call(v(3)) and not black.call(v(3)) and not h._info(v(3)).silhouette,
+			"in plain view but not identified (recon -1): its own colours, a neutral glow, no bars")
+	ok(grey.call(al) and not black.call(al), "an ally of another side it can't identify, the same: in colour")
+	v(1).suspicion[v(3)] = 1
+	h._refresh()
+	ok(grey.call(v(3)) and black.call(v(3)), "one it suspects and still can't make out: a black shape")
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(7, 2)})
+	b.zones.clear()
+	b.sight = true  # stage() calms, turning it off
+	v(1).timed.clear()
+	v(1).wisdom = 8
+	h._refresh()
+	ok(b.in_range(v(1), v(3)) == 1 and v(3).visible and black.call(v(3)), "where sight is limited, one too far to tell how it looks is a shape too")
 	h.free()
 
 
@@ -272,6 +316,113 @@ func test_command_colour() -> void:
 	b.end_turn()
 	h._refresh()
 	ok(sat.call(v(2)) == 1.0, "off the player's turn, its own side keeps its colours too")
+	h.free()
+
+
+# With a skill armed, every unit it's for glows by how reachable it is: fully in reach now, mostly
+# when a walk it can count on gets there (a click walks, then uses it), somewhat when only a walk
+# across unsure ground does, barely when out of reach this turn. The rest keep their plain glow.
+func test_skill_glow() -> void:
+	var icor := unit("Icor")
+	var aid: Skill = load("res://Skills/first_aid.tres")
+	v(1).learned.append(slot(aid))
+	v(1).hotbar[1] = aid
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(1, 6), v(3): Vector2i(0, 3), v(4): Vector2i(4, 3), icor: Vector2i(9, 0)})
+	var h := await start(v(1))
+	var a := func(u: Unit) -> float: return u.glow.modulate.a
+	h.use_slot(0)
+	h._refresh()
+	ok(h.armed == strike and h.skill_glow(v(1), strike, v(3)) == Unit.Intensity.FULLY, "Strike armed: a foe in reach glows fully")
+	ok(h.skill_glow(v(1), strike, v(4)) == Unit.Intensity.MOSTLY, "one a sure walk reaches, mostly")
+	ok(h.skill_glow(v(1), strike, icor) == Unit.Intensity.BARELY, "one out of reach this turn, barely")
+	ok(h.skill_glow(v(1), strike, v(2)) == -1 and h.glow_of(v(2)) == -1 and is_equal_approx(a.call(v(2)), Unit.GLOW), "an ally isn't Strike's to glow: its plain glow")
+	ok(a.call(icor) < a.call(v(2)) and a.call(v(2)) < a.call(v(4)) and a.call(v(4)) < a.call(v(3)),
+			"drawn so: %.2f < plain %.2f < %.2f < %.2f" % [a.call(icor), a.call(v(2)), a.call(v(4)), a.call(v(3))])
+	ok(icor.glow.scale.x < v(4).glow.scale.x and v(4).glow.scale.x < v(3).glow.scale.x, "and larger the stronger")
+	ok(h.targets() == ([v(3)] as Array[Unit]), "only the one in reach is marked as a target")
+	var dark: Dictionary[Vector2i, int] = {}
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			if dx != 0 or dy != 0:
+				dark[Vector2i(4 + dx, 3 + dy)] = 1
+	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))
+	h._mark()
+	h._refresh()
+	ok(h.ground(Vector2i(3, 3)) == &"unsure" and h.skill_glow(v(1), strike, v(4)) == Unit.Intensity.SOMEWHAT,
+			"every way to it across ground it can't make out: somewhat")
+	ok(a.call(icor) < a.call(v(4)) and a.call(v(4)) < a.call(v(2)), "between barely and plain (%.2f)" % a.call(v(4)))
+	h.hover_cell(Vector2i(4, 3))
+	ok(h.plan.is_empty() and "no sure walk" in h.tip_label.text, "the tip says why a click won't do (%s)" % h.tip_label.text)
+	h.click(Vector2i(4, 3))
+	ok(v(1).cell == Vector2i(1, 3) and h.armed == strike and v(4).hp == v(4).max_hp and h._note == "Out of reach", "and a click doesn't walk it there")
+	b.zones.clear()
+	h._mark()
+	h._refresh()
+	h.hover_cell(Vector2i(5, 5))
+	h.hover_cell(Vector2i(4, 3))
+	ok(h.plan.path.back() == Vector2i(3, 3) and "Click: walk 2, then use" in h.tip_label.text, "hovering a mostly-lit one plans the walk (%s)" % h.tip_label.text)
+	h.click(Vector2i(4, 3))
+	ok(v(1).cell == Vector2i(3, 3) and v(4).hp < v(4).max_hp and h.armed == null and h.command.ordered.get(v(1), 0) == 1,
+			"clicking it walks into reach and strikes: one order")
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(4, 3), v(3): Vector2i(9, 0)})
+	v(2).hp = 3
+	h.select(v(1))
+	h.use_slot(1)
+	h._refresh()
+	ok(h.armed == aid and h.skill_glow(v(1), aid, v(2)) == Unit.Intensity.MOSTLY and h.skill_glow(v(1), aid, v(3)) == -1,
+			"First Aid armed: the ally a walk away glows mostly, the foe not at all")
+	h.click(Vector2i(4, 3))
+	ok(v(1).cell == Vector2i(3, 3) and v(2).hp > 3 and h.armed == null, "any armed skill walks up and is used, not only Strike")
+	h.free()
+
+
+# With no skill armed, on the player's turn, its own side glows by how ready each is for an order:
+# fully in reach of the leader's orders; out of reach it stays in colour, glowing mostly when the
+# leader's sure walk toward it brings it into reach, somewhat when only an unsure one does, barely
+# when none does. One that can't take another order is grey and glows barely. Others glow plainly.
+func test_command_glow() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(2, 3), al: Vector2i(6, 3), v(3): Vector2i(9, 7)})
+	v(1).charisma = 14  # orders reach 2 tiles
+	var h := await start(v(1))
+	var sat := func(u: Unit) -> float: return u.sprite.material.get_shader_parameter(&"saturation")
+	var a := func(u: Unit) -> float: return u.glow.modulate.a
+	ok(h.command_state(v(2)) == &"ready" and h.command_glow(v(2)) == Unit.Intensity.FULLY and is_equal_approx(a.call(v(2)), Unit.GLOW * Unit.PROMINENCE),
+			"an ally in reach of orders glows fully")
+	ok(h.command_state(al) == &"far" and sat.call(al) == 1.0, "one only out of reach stays in colour")
+	ok(h.command_glow(al) == Unit.Intensity.MOSTLY and a.call(al) < a.call(v(2)) and al.glow.scale.x < v(2).glow.scale.x,
+			"its glow weaker: mostly, the leader's walk toward it bringing it into reach")
+	ok(h.command_glow(v(3)) == -1 and is_equal_approx(a.call(v(3)), Unit.GLOW), "a foe glows plainly")
+	var dark: Dictionary[Vector2i, int] = {Vector2i(2, 3): 1, Vector2i(3, 3): 1, Vector2i(4, 3): 1}
+	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))
+	b.move(v(2), Vector2i(1, 4))
+	h._mark()
+	h._refresh()
+	ok(h.command_glow(al) == Unit.Intensity.SOMEWHAT and a.call(al) < Unit.GLOW, "the way toward it unsure: somewhat (%.2f)" % a.call(al))
+	b.zones.clear()
+	b.move(al, Vector2i(9, 0))
+	h._mark()
+	h._refresh()
+	ok(h.command_state(al) == &"far" and h.command_glow(al) == Unit.Intensity.BARELY and sat.call(al) == 1.0,
+			"too far for the leader to walk into reach this turn: barely, still in colour")
+	b.move(al, Vector2i(2, 3))
+	h._mark()
+	h._refresh()
+	ok(h.command_state(al) == &"ready" and h.command_glow(al) == Unit.Intensity.FULLY, "closer: its glow strengthens, ready for orders")
+	for p in v(2).ap:
+		p.amount = 0.0
+	h._refresh()
+	ok(h.command_state(v(2)) == &"spent" and sat.call(v(2)) == 0.0 and h.command_glow(v(2)) == Unit.Intensity.BARELY,
+			"out of AP: grey, and barely glowing")
+	b.move(al, Vector2i(6, 3))
+	for p in al.ap:
+		p.amount = 0.0
+	h._mark()
+	h._refresh()
+	ok(h.command_state(al) == &"spent" and sat.call(al) == 0.0, "out of reach and out of AP: grey like any other that can't be commanded")
+	b.end_turn()
+	h._refresh()
+	ok(h.command_glow(v(2)) == -1 and is_equal_approx(a.call(v(2)), Unit.GLOW), "off the player's turn, everyone glows plainly")
 	h.free()
 
 

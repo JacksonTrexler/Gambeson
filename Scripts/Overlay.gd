@@ -67,7 +67,7 @@ func _draw() -> void:
 			var at := _center(cmd.leader.cell)
 			_ring(at, (cmd.reach() + 0.5) * TILE, Color(1, 1, 1, 0.3), false)
 			_ring(at, (floorf(cmd.party_reach()) + 0.5) * TILE, Color(GOLD, 0.35), true)
-	if not hud.reach.is_empty():
+	if not hud.reach.is_empty() and not hud.armed:
 		_draw_reach(sel)
 	if not hud.plan.is_empty():
 		_draw_plan(sel)

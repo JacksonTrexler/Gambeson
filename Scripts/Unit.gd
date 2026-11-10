@@ -23,9 +23,17 @@ const ENERGY_COLOR := Color("#e8c547")
 const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full
 const HP_COLOR := Color("#3fbf4f")
 const SHAPE_EDGE := Color("#8a8f9c")  # glow of a unit whose side can't be told
+const SHAPE := Color(0.03, 0.03, 0.03)  # what a silhouette is painted: one that might be a monster in the brush (Read.silhouette())
 const GLOW := 0.55  # how strongly a unit glows in its side's colour
 const DESATURATE := preload("res://Scenes/UI/desaturate.gdshader")
 const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in high contrast
+# The four strengths a unit's glow takes when the HUD has something to say with it (set_glow();
+# HUD.glow_of()): barely for one out of reach this turn, somewhat for one only a walk that can't be
+# counted on reaches, mostly for one a sure walk reaches, fully for one ready now.
+enum Intensity { BARELY, SOMEWHAT, MOSTLY, FULLY }
+const INTENSITY: Array[float] = [0.3, 0.65, 1.25, PROMINENCE]  # each strength's glow, times GLOW: the plain glow (1) sits between somewhat and mostly
+const INTENSITY_SIZE: Array[float] = [0.8, 0.9, 1.15, 1.3]  # ...and how large it spreads
+const CONTRAST_GLOW := 1.6  # high contrast: glows this much stronger again
 # The gods units pray to (god; Pray: Battle.pray()), by domain.
 const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
 		&"drael": "water, air", &"vetruvis": "earth, music"}
@@ -2258,7 +2266,8 @@ func _stack() -> void:
 
 
 # How the player's side sees it (the HUD calls this; until then it's drawn as it is). Not located:
-# not drawn at all. Located with its side unknown: in its own colours, but with no side colours and no bars.
+# not drawn at all. Located with its side unknown: in its own colours, but with no side colours and no bars -
+# or, when it hides, stands in concealment or is suspected, a black shape (Read.silhouette()).
 # Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
 # whatever of HP, energy and reserves can be made out. A persona posing as someone shows that
 # name's stand-in sprite instead of its own. null: as it is.
@@ -2269,25 +2278,20 @@ func set_saturation(v: float) -> void:
 		sprite.material.set_shader_parameter(&"saturation", v)
 
 
-# Its look while taking orders: `sat` saturation, and a brighter, larger glow when `prominent` (a
-# unit the player can command now), brighter still in high `contrast`. Allies keep a lifted glow in
-# high contrast even when not prominent.
-func command_look(sat: float, prominent: bool, contrast := false) -> void:
-	set_saturation(sat)
+# How strongly it glows: at one of the four strengths (`level`, an Intensity: brighter and larger
+# the stronger), or its plain glow (-1: the HUD has nothing to say of it). Stronger again in high
+# `contrast`.
+func set_glow(level: int, contrast := false) -> void:
 	if glow.visible:
-		var mult := 1.0
-		if prominent:
-			mult = PROMINENCE * (2.0 if contrast else 1.0)
-		elif contrast:
-			mult = 1.6
-		glow.modulate.a = clampf(GLOW * mult, 0.0, 1.0)
-		glow.scale = Vector2.ONE * (1.3 if prominent else 1.0)
+		var mult := INTENSITY[level] if level >= 0 else 1.0
+		glow.modulate.a = clampf(GLOW * mult * (CONTRAST_GLOW if contrast else 1.0), 0.0, 1.0)
+		glow.scale = Vector2.ONE * (INTENSITY_SIZE[level] if level >= 0 else 1.0)
 
 
 func appear(r: Read) -> void:
 	shown = r
 	visible = r == null or r.located()
-	_show_side(faction if r == null else r.faction, r != null and r.faction == null)
+	_show_side(faction if r == null else r.faction, r != null and r.faction == null, r != null and r.silhouette())
 	_show_face(r.face if r else "")
 	_show_bars()
 
@@ -2329,15 +2333,18 @@ func _show_bars() -> void:
 
 
 func _show_faction() -> void:
-	_show_side(faction, false)
+	_show_side(faction, false, false)
 
 
 # Stand-in art: a faint glow of the side's primary behind the sprite; the bars get its primary,
-# darkened, as trim and its secondary behind HP. One whose side can't be told (shape) glows neutral grey.
-func _show_side(f: Faction, shape: bool) -> void:
+# darkened, as trim and its secondary behind HP. One whose side can't be told (shape) glows neutral grey;
+# `dark`, it's painted black as well: a silhouette, what might be a monster in the brush.
+func _show_side(f: Faction, shape: bool, dark: bool) -> void:
+	sprite.modulate = SHAPE if dark else Color.WHITE
 	glow.visible = shape or f != null
 	if glow.visible:
 		glow.modulate = Color(SHAPE_EDGE if shape else f.primary, GLOW)
+		glow.scale = Vector2.ONE
 	if f:
 		hp_bar.add_theme_stylebox_override("background", _flat(f.secondary))
 		(trim.get_theme_stylebox("panel") as StyleBoxFlat).border_color = f.primary.darkened(TRIM_DARKEN)

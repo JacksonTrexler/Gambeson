@@ -12,7 +12,7 @@ const PAGES := {
 Click a unit to select it; Tab steps through the units taking orders. Shift-click a foe to look it over without attacking.
 
 [color=#e8c547]Moving and acting[/color]
-With a unit that takes orders selected, hover a tile to plan a move and click to walk there. Click a foe to walk into reach and use slot 1 on it. A number key (or clicking a slot) arms that skill: click its target, or press it again to put it away. A switched passive turns on or off instead. Ctrl-click a tile to strike at whatever may be there; Alt-click casts a Rift unchanneled. Esc or right-click backs out.
+With a unit that takes orders selected, hover a tile to plan a move and click to walk there. Click a foe to walk into reach and use slot 1 on it. A number key (or clicking a slot) arms that skill: click its target (one a sure walk reaches is walked up to first), or press it again to put it away. A switched passive turns on or off instead. Ctrl-click a tile to strike at whatever may be there; Alt-click casts a Rift unchanneled. Esc or right-click backs out.
 
 [color=#e8c547]Your side[/color]
 Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own. Initiative is each side's d20s plus its best bonus."""],
@@ -46,7 +46,10 @@ Personify puts forward a persona: how others take a unit. Each persona rank open
 [color=#e8c547]Fooling[/color]
 A unit a persona fools takes it at its word: enraptured while it has no suspicion of it. Suspicion comes in stacks, each making it harder to fool. Showing what it isn't is dissonance, counting against the unit's own rolls."""],
 	&"board": ["The board", """[color=#e8c547]Reading the board[/color]
-While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A unit with a grey glow and no bars is one you can't identify; a marked area is where something is only suspected. Hover a tile for its effects.
+While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A unit with a grey glow and no bars is one you can't identify; a black shape is one that hides, stands where you can't make it out, or that you suspect. A marked area is where something is only suspected. Hover a tile for its effects.
+
+[color=#e8c547]Glow[/color]
+A unit's glow comes in four strengths. With a skill armed, the units it's for glow fully when in reach, mostly when a sure walk gets there (click: it walks, then uses the skill), somewhat when only an unsure walk does, and barely when out of reach this turn. With none armed, your own side glows by how ready each is for an order: fully in reach of your orders, weaker out of it (mostly or somewhat if your leader could walk into reach, barely if not), and barely once it can take no more, when it also turns grey.
 
 [color=#e8c547]Rolls[/color]
 Attacks and the other checks are a d20 plus a mod; the forecast gives the chance to hit when you can make the target out. The Checks page has each kind."""],
