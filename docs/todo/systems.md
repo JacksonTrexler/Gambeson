@@ -103,18 +103,22 @@ Plan and rules: `docs/plans/exhaustion.md`.
     - **The AI is unchanged** and doesn't weigh exhaustion: it picks by score and stops when `can_afford()` says no.
     - Step 0.5 of base cost per use, linear (AP stays fractional, resource rounds up, 0 stays 0), tunable in three constants (`STEP`, `KIND` 0.5, `RECOVERY` 1). The half share is derived from the other skills' own counts, so it recovers as they do. Counts fall at the end of the unit's own side's turn (one use a turn is free for ever, two build up). A channeled skill is one use, paid at the rate the channel was. Strike III's three hits are one use; free recasts and toggles are none. Light activity gets no resting bonus. A reserve that pays whole costs still pays its 1 point. Staged tests run with exhaustion off (`Test.calm()`).
 
-## Skill tooling, Kick and CLAUDE.md (2026-11-09) - planned, not built
+## Skill tooling, Kick and CLAUDE.md (2026-11-09)
 
-Plan: `docs/plans/skill-tooling.md`. **In progress; results to be filled in.**
-- [ ] **`Util/skill.py new`**: writes the `.tres` from a few arguments, adds it to a tree after a named skill, writes a test stub, runs the import; fails loudly on a missing anchor.
-- [ ] **`Util/skill.py check`**, also run as `skills_test.gd`: every skill on a tree or granted, every tag in the Glossary, every flag described, no stale stub.
-- [ ] **Behaviour seam** (seam 3 of `docs/plan-composability.md`): `Skill.behaviours`, small scripts with `apply(cast)` and `describe(rank)` side by side; Kick the first user.
-- [ ] **An agent skill** (`.claude/skills/new-skill/SKILL.md`): data alone vs a behaviour, the commands, the traps.
-- [ ] **Kick** (`Behaviours/kick.gd`, `Tests/kick_test.gd`): an attack at rank range; loose ground blinds, water soaks, a trap is kicked into the target, an edge or hole pushes, nothing between is plain damage; adjacent targets take plain damage and a 1-tile push.
-- [ ] **CLAUDE.md** under four lines on how skills are composed.
+Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/systems.md`, `docs/done/classes.md`). Suite after the merge: 487 tests, 0 failed.
+- [x] `Util/skill.py new` and `check`, the behaviour seam (`Scripts/Behaviour.gd`, `Skill.behaviours`), Kick, the agent skill `.claude/skills/new-skill/SKILL.md` and `CLAUDE.md`. (?88)
+- [ ] **Behaviours don't run on the early-return paths in `Battle.cast()`** (Strike's chain, contests, saves).
+- [ ] **The HUD forecast and the AI don't know Kick's tile effects.**
+- [ ] **No map has a hole tile yet**, so Kick's hole push is only tested.
+- [ ] **The stale-count check covers only the Adventurer wheel** (`hud_test`).
+- [ ] **`skills_test.test_wiring` skips without python3.**
+- [ ] **Waterstrike's tag `bludgeon` probably should be `blunt`.**
+- [ ] **Shrink `UNSAID`**: 11 existing `Skill` fields that no description mentions are exempted in `skills_test`.
+- [ ] **Lift `pings` into a behaviour and lower `FLAG_CEILING`** (raised from 124 to 125 because Clairvoyance's `pings` flag was built in parallel, beside the seam).
 
-88. **Skill tooling, Kick, CLAUDE.md - planned, open (2026-11-09).** **Built results: to be filled in.**
-    - **"g-action skill/ tool"** is read as a Claude Code agent skill (`.claude/skills/new-skill`) plus a script (`Util/skill.py`). Say if you meant something else.
-    - Kick's first set of tile effects is mine, open for review (above).
-    - New skills use behaviours; old flags move over only when touched. CLAUDE.md says skills are data first, behaviour in a behaviour script with its description beside it and never a new `Skill.gd` flag, to use `skill.py new` and `check`, and where the tests go.
-    - Order: `new` and `check` first (no rule changes), then the seam with Kick, then the agent skill and CLAUDE.md.
+88. **Skill tooling, Kick, CLAUDE.md - built on judgement, open for review (2026-11-09).**
+    - **"g-action skill/ tool"** was read as a Claude Code agent skill (`.claude/skills/new-skill`) plus a script (`Util/skill.py`). Say if you meant something else.
+    - It paid: Kick took 9 files with no hand wiring, against 17 files and about 12 hand-edited .tres for Tenacity and Grudge.
+    - **Kick:** General Martial tier 1, 4 AP, 1 Energy, 1d4 + str, range = rank, effects last rank turns. "The tile between" is the tile at the kicker's feet toward the target. Checks run trap, water, loose ground, hole/edge, bare; the first match wins. A trap springs on the target but stays where it is, revealed. Water leaves **Soaked** (movement -rank), loose ground (leaves, sand, debris) **Blinded** (offensive checks -rank), a hole, edge or off-map tile pushes rank tiles, bare ground is plain damage; adjacent targets take a 1-tile push. Soaked and Blinded are new reusable effects (`Effects/soaked.tres`, `blinded.tres`).
+    - **CLAUDE.md** is four lines: two on skills (data first, behaviours in `Behaviours/*.gd`, never a new `Skill.gd` flag; use `skill.py new` and `check`), one on reading the big files by range, one on running the tests.
+    - New skills use behaviours; old flags move over only when touched. `check` runs as `skills_test.test_wiring`; `skills_test.test_flags_described` fails when a field a skill sets doesn't change its description.

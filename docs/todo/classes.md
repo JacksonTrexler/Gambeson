@@ -263,16 +263,22 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
     - XP: fall XP is paid when it actually dies, not when it goes down; rescue XP when its HP rises above 0, two shares to whoever healed it last (if another unit), once. Downing gives no kill credit; the death does.
     - Executes (Death, Luun's Smite): a standing unit goes Downed as with a heart; one already Downed dies. With several Downed skills the highest rank counts, first listed on a tie, fixed as it goes down.
     - Placement: Tenacity beside Wary (Adventurer's Martial root, open from the start; among the Fighter's options). Grudge open from the start, `classes = [berserker]` (a Paladin borrowing Fury sees it locked).
+    - **Open: does going Downed end a channel?** It doesn't appear to: the death path calls `Battle.end_channel`, the Downed path doesn't, so a helpless Tenacity unit would keep Clairvoyance or any channel running. Unverified by a test. Suggested: becoming helpless ends a channel (Tenacity), a Grudge unit keeps its channel since it still acts. Say yes or no to each.
 
-## Clairvoyance (2026-11-09) - planned, not built
+## Clairvoyance (2026-11-09)
 
-An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan: `docs/plans/clairvoyance.md`. Starts once Silhouettes and glow is in (it is). **In progress; results to be filled in.**
-- [ ] `Skills/clairvoyance.tres` on the Wizard's and Mage's arcane tree and a Cleric tab (which god's: Luun, as the god of the hidden, is the first guess). Range: wisdom score + rank; every unseen foe in range is pinged and drawn as a silhouette at its tile, location only; each ping adds a stack of suspicion of the tile; at each of the caster's turn ends it holds, pings update and the channel's rank rises by 1; ending the channel drops the silhouettes, suspicion fades as usual; one use for exhaustion. (?89)
-- [ ] `Tests/clairvoyance_test.gd`.
+An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.
+- [x] `Skills/clairvoyance.tres`: 3 AP, 3 cost, wisdom + rank range, location only, suspicion added, pings updated and the rank raised at each turn end held. (?89)
+- [ ] **The AI never casts it.**
+- [ ] **No screenshot check** of how pings look in the running game.
+- [ ] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`).
 
-89. **Clairvoyance - assumptions to confirm (2026-11-09).** Planned with these four; change any:
+89. **Clairvoyance - built on judgement, open for review (2026-11-09).** The plan's four assumptions, as built, and my calls:
     - A ping sees through walls (it is not sight).
-    - The rank gained each turn has no cap while the channel is paid for.
-    - AP and cost per turn held: the cast's cost once, like Metea's channel.
+    - The rank gained each turn has no cap while the channel holds.
+    - AP and cost are paid once for the whole channel (3 AP, 3 cost), like Metea's; exhaustion counts it as one use.
     - Allies share the pings, as sight is shared across a side.
-    - Also a call: Luun's tab for the Cleric. **Built results: to be filled in.**
+    - **Moving does not end the channel**; casting it again stops it, free. Only `end_channel()` paths end it (a recast, another channel, death).
+    - Suspicion is added at the cast and at every update, so it builds each turn. Range is measured from the caster's current tile.
+    - **Placement:** the Wizard's Arcane root; the Mage has no Arcane tree, so its Refinement root; for the Cleric, Luun's tree after Pray.
+    - **Between updates a foe that moved is still drawn at its old pinged tile** ("Something may be here: sensed"), and only there until the next update.

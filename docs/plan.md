@@ -23,7 +23,7 @@ Six pieces of work, each built in its own worktree and merged in turn. The first
 | E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
 | F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
 
-**Status.** A, B, C and D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are in progress: planned, not built, results to be filled in. The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
+**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
 
 ## Built since the plan was written
 
@@ -83,6 +83,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | B | Downed; Tenacity and Grudge (?85) | `downed_test.gd` |
 | C | Command skills and trinkets: Strategist, Tactician, Strategy Guide, Tactician's Playbook, Grand Design, Legendary rarity (?86) | `command_test.gd`, `items_test.gd` |
 | D | Exhaustion (?87) | `exhaustion_test.gd` |
+| E | Skill tooling (`Util/skill.py`, the behaviour seam), Kick, CLAUDE.md (?88) | `skills_test.gd`, `kick_test.gd` |
+| F | Clairvoyance (?89) | `clairvoyance_test.gd` |
 
 ## Questions to answer first
 

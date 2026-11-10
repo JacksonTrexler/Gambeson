@@ -111,6 +111,7 @@ Four trees beside every class's own, on the far right of the skills screen (`Tre
 - [x] **Decisive Strike** (low tier, exclusive): Strike becomes Decisive Strike. After a critical, the rest of its hits land; damage by the higher of dex and str mod.
 - [x] **Striking Features** (mid): its first rank hits add cha mod, up to rank.
 - [x] **Decisive Mastery** (high, stacks): the same as Decisive Strike, as a passive.
+- [x] **Kick** (Martial, tier 1; 4 AP, 1 Energy; `Behaviours/kick.gd`): an attack at rank range for 1d4 + str, and what the tile at the kicker's feet does, rank turns: a trap springs on the foe (and stays, revealed); water Soaks (movement -rank); leaves, sand or debris Blind (offensive checks -rank); a hole, edge or off-map tile pushes rank tiles; bare ground is plain damage; adjacent, a 1-tile push. (?88)
 - [x] **Strategist** and **Tactician** (tier 3, passives, beside Discipline; the usual point curve, no rank cap): rank more allies a turn, rank more orders per ally. Only the Adventurer, Bard, Rogue and Ranger have this tree natively. (?86)
 
 **Caster** (light purple): Elemental Strike (II), Record Striker (IV), Meditative and Invigorating Bracing (V), Elemental Mastery (VII).
@@ -178,3 +179,7 @@ The rule is in `docs/done/rules.md`.
 - [x] **Tenacity** (Adventurer, Fighter; passive; beside Wary): at 0 HP it lingers downed, helpless, for rank rounds. (?85)
 - [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`, open from the start; a Paladin borrowing Fury sees it locked): downed, it keeps acting for rank rounds. (?85)
 - [x] The Adventurer's wheel on the skills screen is 37 skills (was 36).
+
+## Clairvoyance (2026-11-09)
+
+- [x] **Clairvoyance** (`Skills/clairvoyance.tres`; magical, wis; 3 AP, 3 cost, self only; flag `pings`): channeled. The caster's side senses every unseen foe within wisdom + rank, location only, and the caster builds suspicion of each tile; each of the caster's turn ends it holds, the pings update and its rank rises by 1. Moving doesn't end it; casting it again does, free. On the Wizard's Arcane root, the Mage's Refinement root and Luun's tree after Pray. (?89)
