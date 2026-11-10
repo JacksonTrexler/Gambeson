@@ -31,6 +31,7 @@ var cost: Variant = null  # tile: movement to enter
 var exit: Variant = null  # tile: extra movement to leave
 var trap: Variant = null  # tile: springs when entered
 var obscured := false  # tile: under a layer that hides what's beneath (Leaves), nobody standing on it
+var concealed := false  # unit: something stands between it and the observer - concealment the observer hasn't got through (darkness, fog, its own hiding), sight too far to tell how it looks, or the observer's suspicion of it
 
 var tags: Array[StringName] = []  # identity: race, role, unit tags (Halfling Paladin, holy); tile: what the ground is (water, sticky)
 var stats := {}
@@ -71,6 +72,13 @@ func attitude(o: Unit) -> StringName:
 
 func located() -> bool:
 	return cell != null
+
+
+# Drawn as a black shape: what might be a monster in the brush - a unit it has placed, whose side it
+# can't tell, that hides, stands in concealment or is one it suspects. One in plain view that it
+# only can't identify isn't (it keeps its colours), nor is one whose side shows.
+func silhouette() -> bool:
+	return located() and faction == null and concealed
 
 
 # Ground it knows is bad (or knows is a trap).

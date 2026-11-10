@@ -14,8 +14,10 @@ extends CanvasLayer
 # without orders act on their own as the turn ends, and other sides play themselves, paced so they
 # can be followed.
 # Other sides are shown only as the player's units make them out (Perception, shared across the
-# side): unlocated units aren't drawn, ones whose side can't be told glow grey with no bars, and areas
-# where something is only suspected are marked. Ground is judged the same way - safe, unsure (not
+# side): unlocated units aren't drawn, ones whose side can't be told glow grey with no bars (black
+# shapes when they hide, stand in concealment or are suspected: Read.silhouette()), and areas
+# where something is only suspected are marked. A unit's glow says how ready it is for what the
+# player is about, in four strengths (glow_of()). Ground is judged the same way - safe, unsure (not
 # made out, or something may lurk there) or bad (a known trap, or known detrimental) - which colours where a
 # unit can walk, puts a '?' on move costs through unsure ground, and heads the tile pane, a corner
 # panel with what's known of the hovered tile.
@@ -71,6 +73,8 @@ var overlay: Overlay
 var _last_turn := 999  # order index of the previous turn, for counting rounds
 var _dirty := true
 var _reach_of: Unit  # whose reach `reach` holds, until something changes
+var _ways: Dictionary[Vector2i, Array] = {}  # the tiles its walk to each tile in `reach` crosses
+var _unsure: Dictionary[Vector2i, bool] = {}  # tiles a walk can't be counted on to cross (_sure_walk()), as looked up since `reach` was found
 var _note := ""  # a passing message for the hint line ("Out of reach")
 var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 var _roll := {}  # the attack roll the next used signal is for (_on_attacked())
@@ -823,6 +827,9 @@ func _use_on(c: Vector2i, force := false, alt := false) -> void:
 	if why == "Pick a unit":
 		_say("Pick a unit, or Ctrl-click to strike at the tile" if s.for_foes() else why)
 		return
+	if why == "Out of reach" and target is Unit and _approach(u, s, c, true).ready:
+		_charge(u, c, false, s, true)  # a walk it can count on brings it into reach: it walks, then uses it
+		return
 	if why == "Out of reach" or why == "Already fallen":
 		_say(why)
 		return
@@ -929,8 +936,9 @@ func _primary(u: Unit) -> Skill:
 
 # Where u would walk to use s on whatever is at c: the cheapest tile it expects to reach that has c
 # in reach and leaves the AP to use s; failing that, the reachable tile nearest c. Its own tile if
-# it's already in reach. {dest, ready}: ready says s should be usable from dest.
-func _approach(u: Unit, s: Skill, c: Vector2i) -> Dictionary:
+# it's already in reach. {dest, ready}: ready says s should be usable from dest. sure: only by a walk
+# it can count on (_sure_walk()).
+func _approach(u: Unit, s: Skill, c: Vector2i, sure := false) -> Dictionary:
 	var span := battle.skill_range(u, s, unit_seen(c))
 	var near := func(at: Vector2i) -> bool: return Vector2(at).distance_to(Vector2(c)) <= span + 0.0001
 	if near.call(u.cell):
@@ -940,7 +948,7 @@ func _approach(u: Unit, s: Skill, c: Vector2i) -> Dictionary:
 	var best_cost := INF
 	var closest := u.cell
 	for at in reach:
-		if near.call(at) and u.can_afford_after(s, reach[at]) and reach[at] < best_cost:
+		if near.call(at) and u.can_afford_after(s, reach[at]) and reach[at] < best_cost and (not sure or _sure_walk(u, _ways[at])):
 			best = at
 			best_cost = reach[at]
 		var d := Vector2(at).distance_to(Vector2(c))
@@ -951,9 +959,10 @@ func _approach(u: Unit, s: Skill, c: Vector2i) -> Dictionary:
 
 # A click on a foe (or a Ctrl-click on a tile): walk into reach and use the primary skill on it. If
 # it can't get there this turn, it walks as close as it can. The walk and the strike are one order.
-func _charge(u: Unit, c: Vector2i, force: bool) -> void:
-	var s := _primary(u)
-	var a := _approach(u, s, c)
+# With a skill armed, a click on a unit it's for that a sure walk reaches does the same with that
+# skill (s, sure: _use_on()).
+func _charge(u: Unit, c: Vector2i, force: bool, s := _primary(u), sure := false) -> void:
+	var a := _approach(u, s, c, sure)
 	var walked: bool = a.dest != u.cell
 	if walked:
 		battle.travel(u, a.dest)
@@ -1322,6 +1331,7 @@ func _refresh() -> void:
 
 
 # Draws other sides as the player's side makes them out, and notes where something is only suspected.
+# Then every unit glows by how ready it is for what the player is about (glow_of()).
 func _show_units() -> void:
 	dubious.clear()
 	if battle.phase == Battle.Phase.OVER:
@@ -1331,8 +1341,7 @@ func _show_units() -> void:
 			continue
 		if known(u):
 			u.appear(null)
-			var state := command_state(u)
-			u.command_look(command_sat(u, state), state == &"ready", high_contrast)
+			u.set_saturation(command_sat(u))
 			continue
 		var r := view(u)
 		u.appear(r)
@@ -1340,6 +1349,10 @@ func _show_units() -> void:
 		for c in r.area:
 			if battle.on_map(c):
 				dubious[c] = r.hint
+	for u: Unit in battle.get_node("Units").get_children():  # once every suspicion is noted: whether a walk is sure reads them
+		if u.is_alive() and u.visible:
+			var level := glow_of(u)
+			u.set_glow(level, high_contrast and (known(u) or level >= 0))
 
 
 # The move cost line in the tile pane: nothing for plain ground (1) or free ground, "Mv -N" for a
@@ -1834,6 +1847,7 @@ func _info(u: Unit) -> Dictionary:
 	info.name = r.name if r.name else ("Looks like a %s" % r.looks if r.looks else "Unknown")
 	info.face = r.face
 	info.shape = r.faction == null
+	info.silhouette = r.silhouette()
 	var parts: PackedStringArray = []
 	if r.level != null:
 		parts.append("Lv %d" % r.level)
@@ -1992,6 +2006,12 @@ func _tip_text() -> String:
 		var target: Variant = hover if armed.on_tile() else u
 		var why := why_not(selected, armed, target)
 		var head := armed.name + (" on " + _name(u) if u and not armed.on_tile() else "")
+		if why == "Out of reach" and target is Unit and _orders(selected):
+			var a := _approach(selected, armed, hover, true)
+			if a.ready:
+				return "%s\nClick: walk %s, then use: %s" % [head, Skill.num(reach[a.dest]), _forecast(selected, armed, target)]
+			if _approach(selected, armed, hover).ready:
+				why = "Out of reach: no sure walk gets there"
 		return "%s\n%s" % [head, why if why else "Click to use: " + _forecast(selected, armed, target if target is Unit else null)]
 	if u:
 		return _unit_line(u) + ("\n" + _charge_line(selected, hover) if charge == hover else "")
@@ -2229,7 +2249,7 @@ func _show_intents(u: Unit) -> void:
 
 
 # High contrast (accessibility): whiter body text and a heavier faction trim; the brighter allied
-# glow comes through command_look (passed high_contrast in _show_units), the bolder suspicious marks
+# glow comes through Unit.set_glow() (passed high_contrast in _show_units), the bolder suspicious marks
 # through the Overlay. A plain, easy win on legibility.
 func _apply_contrast() -> void:
 	%Guide.add_theme_color_override(&"default_color", Color.WHITE if high_contrast else Color(0.78, 0.8, 0.85))
@@ -2238,24 +2258,90 @@ func _apply_contrast() -> void:
 
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order
-# now, with AP to act on it: lit), &"spent" (on the player's turn, it can't take another - out of AP,
-# out of reach, asleep, past the turn's command caps) or &"idle" (not the player's turn, or not its
-# side: allies of another side and foes are drawn as they are).
+# now, with AP to act on it: lit), &"far" (it would, but for standing out of reach of the leader's
+# orders: in colour, its glow weaker), &"spent" (on the player's turn, it can't take another - out of
+# AP, asleep, past the turn's command caps: grey) or &"idle" (not the player's turn, or not its side:
+# allies of another side and foes are drawn as they are).
 func command_state(u: Unit) -> StringName:
 	if not my_turn() or not known(u):
 		return &"idle"
-	return &"ready" if command.can_order(u) and u.ap_left() > 0.001 else &"spent"
+	if u.ap_left() <= 0.001 or not command.could_order(u):
+		return &"spent"
+	return &"ready" if command.in_range(u) else &"far"
+
+
+# How strongly a unit glows (Unit.set_glow()): one of the four strengths, by how ready it is for what
+# the player is about - or -1, its plain glow, when that says nothing of it. With a skill armed, the
+# units it's for glow by how reachable they are (skill_glow()); with none, on the player's turn, its
+# own side glows by how ready each is for an order (command_glow()).
+func glow_of(u: Unit) -> int:
+	if armed and selected:
+		return skill_glow(selected, armed, u) if not armed.on_tile() and unit_seen(u.cell) == u else -1
+	return command_glow(u)
+
+
+# How reachable t is for u's s, as far as the player can tell: fully, in reach now; mostly, a walk it
+# can count on brings u into reach with the AP left to use it (a click walks there and uses it:
+# _use_on()); somewhat, only a walk it can't count on does (_sure_walk()); barely, not this turn.
+# -1: s isn't for t at all.
+func skill_glow(u: Unit, s: Skill, t: Unit) -> int:
+	var why := why_not(u, s, t)
+	if why == "":
+		return Unit.Intensity.FULLY
+	if why != "Out of reach":
+		return -1
+	if _approach(u, s, t.cell, true).ready:
+		return Unit.Intensity.MOSTLY
+	return Unit.Intensity.SOMEWHAT if _approach(u, s, t.cell).ready else Unit.Intensity.BARELY
+
+
+# How ready one of the player's own side is for an order, on the player's turn: fully, it takes one
+# now. Out of reach of the leader's orders with nothing else against it (far): mostly when a walk
+# the leader can count on, straight toward it, brings it into reach; somewhat when only one it can't
+# count on does; barely when none does this turn. One that can't take another at all (spent: grey)
+# glows barely too. -1: not the player's turn, or not its side.
+func command_glow(u: Unit) -> int:
+	match command_state(u):
+		&"ready":
+			return Unit.Intensity.FULLY
+		&"spent":
+			return Unit.Intensity.BARELY
+		&"far":
+			var lead := command.leader
+			var span := command.party_reach() if u in command.party else float(command.reach())
+			var path: Array[Vector2i] = []
+			for c in battle.walk(lead, u.cell, true).path:
+				path.append(c)
+				if Command.tiles(c, u.cell) <= span and not unit_seen(c):
+					return Unit.Intensity.MOSTLY if _sure_walk(lead, path) else Unit.Intensity.SOMEWHAT
+			return Unit.Intensity.BARELY
+	return -1
+
+
+# Whether u's walk across `path` is one the player can count on: nothing holds u (breaking free is a
+# contest), and none of the ground it crosses is unsure - not made out, hinting at more, or where
+# something may lurk (ground(): the '?' on a move cost) - or a known trap (it springs: dice).
+func _sure_walk(u: Unit, path: Array) -> bool:
+	if battle.held_by(u):
+		return false
+	for c: Vector2i in path:
+		if c not in _unsure:
+			var r := tile_view(c)
+			_unsure[c] = r.trap == true or ground(c, r) == &"unsure"
+		if _unsure[c]:
+			return false
+	return true
 
 
 const SAT_LOW := 0.55  # the colour a unit that can still be commanded keeps on its last AP
 
 
-# How much colour it draws with (Unit.command_look()): full, but for the player's own side on its
-# turn. One that can still be commanded drains only a little, and mostly as its AP runs out
-# (SAT_LOW with none left); one that can't be any more this turn is grey.
+# How much colour it draws with (Unit.set_saturation()): full, but for the player's own side on its
+# turn. One that can still be commanded - or could, were it in reach - drains only a little, and
+# mostly as its AP runs out (SAT_LOW with none left); one that can't be any more this turn is grey.
 func command_sat(u: Unit, state := command_state(u)) -> float:
 	match state:
-		&"ready":
+		&"ready", &"far":
 			return 1.0 - (1.0 - SAT_LOW) * pow(1.0 - u.ap_share(), 2.0)
 		&"spent":
 			return 0.0
@@ -2302,13 +2388,16 @@ func _reads_as_ally(t: Unit) -> bool:
 
 
 # Tiles the selected unit expects to reach this turn, with what each would cost (kept until the
-# next change).
+# next change) and the tiles its walk there crosses. With a skill armed they aren't drawn (Overlay),
+# but say which of its targets a walk reaches (skill_glow()).
 func _find_reach() -> void:
-	var u := selected if not armed and _orders(selected) else null
+	var u := selected if _orders(selected) else null
 	if u and u == _reach_of:
 		return
 	_reach_of = u
 	reach.clear()
+	_ways.clear()
+	_unsure.clear()
 	if not u or u.move_left() <= 0.0001:
 		return
 	var far := u.move_left() + 2.0  # every step costs at least 1, and luck squeezes in one more: nothing farther is reached
@@ -2321,16 +2410,24 @@ func _find_reach() -> void:
 			var w := battle.walk(u, c, true)
 			if not w.path.is_empty() and w.path[-1] == c:
 				reach[c] = w.costs.reduce(func(sum, x): return sum + x, 0.0)
+				_ways[c] = w.path
 
 
-# The hovered move, or the walk up to a hovered foe a click would attack.
+# The hovered move, or the walk up to a hovered foe a click would attack - or, with a skill armed,
+# up to a hovered unit it's for that a sure walk reaches (_use_on()).
 func _replan() -> void:
 	plan = {}
 	charge = NOWHERE
 	var u := selected
-	if hover == NOWHERE or not u or armed or not _orders(u) or hover == u.cell:
+	if hover == NOWHERE or not u or not _orders(u) or hover == u.cell:
 		return
 	var t := unit_seen(hover)
+	if armed:
+		if t and not armed.on_tile() and why_not(u, armed, t) == "Out of reach":
+			var a := _approach(u, armed, hover, true)
+			if a.ready:
+				plan = battle.walk(u, a.dest, true)
+		return
 	if foe(t) and _primary(u):
 		charge = hover
 		var a := _approach(u, _primary(u), hover)

@@ -114,8 +114,14 @@ func in_range(u: Unit) -> bool:
 # Takes an order right now: alive and awake, not one that acts on its own (uncontrolled), on the leader's side on its turn, in range,
 # within the turn's caps (under_caps()), and each taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
+	return could_order(u) and in_range(u)
+
+
+# Would take an order right now were it in range: all can_order() asks but that. One this holds for
+# out of range stays in colour on the map, its glow weaker (HUD.command_state()).
+func could_order(u: Unit) -> bool:
 	return u != null and u.is_alive() and not u.asleep() and not u.uncontrolled and leader.is_alive() \
-			and u not in locked and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and in_range(u) \
+			and u not in locked and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction \
 			and under_caps(u) and battle.teammates(leader, u)
 
 

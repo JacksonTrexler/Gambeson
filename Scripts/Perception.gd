@@ -39,6 +39,7 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	var recon := o.stat(&"recon", t.tags) + extra
 	var left := _left(o, _levels(b, t.cell, t, true, o))
 	_sense(r, left, recon, o.luck - t.luck)
+	r.concealed = o != t and (left.values().any(func(x): return x > 0) or o.suspects(t) + o.suspects(t.cell) > 0)
 	_range(b, o, t, r)
 	_place(r, o, t, _main(left))
 	var trick := trickery(t, r, o, b)
@@ -363,6 +364,7 @@ static func _range(b: Battle, o: Unit, t: Unit, r: Read) -> void:
 			r.seen = false
 		1:
 			r.net = mini(r.net, -2)
+			r.concealed = true  # too far to tell how it looks
 
 
 static func _kind(k: StringName) -> Dictionary:
