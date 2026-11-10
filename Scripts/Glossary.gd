@@ -60,6 +60,8 @@ const TERMS := {
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
 	&"exhaustion": ["Exhaustion", &"condition", "Each use of a skill a unit hasn't got over adds half that skill's AP and cost to its next use, and counts half against its other skills of the same kind (martial, specialist, magical). A turn's end takes one use off each; resting takes off the con mod more, or below 1 a part of one: 1 / (1 - con mod)."],
 	&"downed": ["Downed", &"condition", "Down but not out, on its last life: at 0 HP or below it lingers for a few of its side's turns. Healed above 0 it is saved. It dies when its HP passes its limit below 0, or its rounds run out."],
+	&"blinded": ["Blinded", &"condition", "Grit in the eyes: its attacks and offensive checks come at a minus."],
+	&"soaked": ["Soaked", &"condition", "Drenched and heavy: it moves less."],
 	&"asleep": ["Asleep", &"condition", "Can't act. An ally ending the turn beside it wakes it for the next one."],
 	&"self_knowledge": ["Self-knowledge", &"condition", "How well a unit knows itself, in levels: a Meditation shifts its stats no further than it knew itself before."],
 	&"aura": ["Aura", &"condition", "Used on itself, it goes on allies within range too."],
