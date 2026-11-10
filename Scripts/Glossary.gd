@@ -57,6 +57,7 @@ const TERMS := {
 	&"suspicion": ["Suspicion", &"condition", "Stacks of doubt about a unit's persona: each makes it harder to fool."],
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
+	&"exhaustion": ["Exhaustion", &"condition", "Each use of a skill a unit hasn't got over adds half that skill's AP and cost to its next use, and counts half against its other skills of the same kind (martial, specialist, magical). A turn's end takes one use off each; resting takes off the con mod more, or below 1 a part of one: 1 / (1 - con mod)."],
 	&"asleep": ["Asleep", &"condition", "Can't act. An ally ending the turn beside it wakes it for the next one."],
 	&"self_knowledge": ["Self-knowledge", &"condition", "How well a unit knows itself, in levels: a Meditation shifts its stats no further than it knew itself before."],
 	&"aura": ["Aura", &"condition", "Used on itself, it goes on allies within range too."],

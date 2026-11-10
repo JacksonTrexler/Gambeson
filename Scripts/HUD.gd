@@ -794,7 +794,7 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 	elif target is Vector2i and s.channel and u.channel and u.channel.skill == s:
 		if target not in battle.strike_tiles(u):
 			return "Out of the channel's reach: %d tile%s from where it was cast" % [u.channel.turns, "" if u.channel.turns == 1 else "s"]
-		return "" if u.can_strike(s) else "Not enough to strike: %s AP, %d Energy" % [Skill.num(s.strike_ap), s.strike_cost]
+		return "" if u.can_strike(s) else "Not enough to strike: %s AP, %d Energy" % [Skill.num(u.strike_ap(s)), u.strike_cost(s)]
 	elif target is Vector2i:
 		var span := battle.area_reach(u, s) if s.on_tile() else battle.skill_range(u, s)
 		if not battle.on_map(target) or Vector2(u.cell).distance_to(Vector2(target)) > span + 0.0001:
@@ -1648,6 +1648,18 @@ func _refresh_bar() -> void:
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked()
+		if u and s and sense == 2 and not s.passive and u.exhaustion.note(s):
+			slot.tooltip_text = "%s\n%s" % [_exhausted(u, s), slot.tooltip_text]
+
+
+# Why u's skill s costs more than it says, and what it costs now, for its slot's tooltip:
+# "Exhausted x2: 6 AP, 4 energy now" (Exhaustion.note()).
+func _exhausted(u: Unit, s: Skill) -> String:
+	var fund: Variant = u.funding(s)
+	var text := "%s x%s: %s AP" % [Glossary.term(&"exhaustion", "Exhausted"), Skill.num(u.exhaustion.of(s)), Skill.num(u.ap_cost(s, fund))]
+	if u.cost_from(s, fund):
+		text += ", %d %s" % [u.cost_from(s, fund), fund.name if fund is Reserve else "energy"]
+	return text + " now"
 
 
 # How much of u's skill s the player's side makes out (r: its read of u): 2 all of it (the leader's
@@ -2057,6 +2069,8 @@ func _forecast(u: Unit, s: Skill, target: Unit = null) -> String:
 	var text := "%s AP" % Skill.num(u.ap_cost(s, fund))
 	if u.cost_from(s, fund):
 		text += ", %d %s" % [u.cost_from(s, fund), fund.name if fund is Reserve else "energy"]
+	if u.exhaustion.note(s):
+		text += " (%s)" % u.exhaustion.note(s)
 	if s.dual and target and not foe(target):
 		var n := s.lasts(u.rank(s), u)
 		return text + " · %s, %d turn%s" % [", ".join(s.effects.map(func(e: Effect): return e.describe(u.rank(s)))), n, "" if n == 1 else "s"]

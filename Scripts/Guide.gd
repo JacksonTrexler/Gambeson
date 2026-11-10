@@ -26,7 +26,10 @@ Skills sit in tiers, T0 (what a unit starts with) at the bottom, growing up. A s
 Each tab is a tree, in its colour: a class's own, its callings and gods, its species, what it knows, then the general trees on the far right (General, Martial, Specialist, Caster). General-tree skills need 3 skills of their tier or higher; Generalist, Martialist, Journeyman and Thaumaturgist open their trees without that. An Adventurer's own tree is a wheel. A dashed skill isn't built yet.
 
 [color=#e8c547]Reading a skill[/color]
-Every skill leads with the same line: its target (Foe, Ally, Self, Tile...), its range, its AP and its cost. In what it does, [color=#eba25e]orange[/color] mods are the user's own, [color=#74b4e8]blue[/color] ones the target's; [color=#e8c547]gold[/color] numbers grow with rank, [color=#9fd6c8]teal[/color] ones say how long. Underlined words are terms: hover one for what it means, click it for its page."""],
+Every skill leads with the same line: its target (Foe, Ally, Self, Tile...), its range, its AP and its cost. In what it does, [color=#eba25e]orange[/color] mods are the user's own, [color=#74b4e8]blue[/color] ones the target's; [color=#e8c547]gold[/color] numbers grow with rank, [color=#9fd6c8]teal[/color] ones say how long. Underlined words are terms: hover one for what it means, click it for its page.
+
+[color=#e8c547]Exhaustion[/color]
+Using a skill again before a unit has got over the last use costs more: each use still counted adds half the skill's AP and half its cost. A use counts whole against the skill used and half against the unit's other skills of the same kind (martial, specialist, magical). However many times it hits or however many it lands on, a skill used once is one use, and a channeled skill is one use from its channel to its strike. As each of its turns ends a unit gets over one use of every skill; a turn rested through takes off its con mod more (with a mod below 1, a part of a use: 1 / (1 - con mod)). An exhausted skill's tooltip says by how many uses, and what it costs now."""],
 	&"hotbar": ["Hotbar", """[color=#e8c547]Spellbook[/color]
 B opens the spellbook: every skill a unit knows, by rank. Drag a skill onto a hotbar slot; right-click a slot to empty it. Only your own units' hotbars can be changed.
 

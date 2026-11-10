@@ -67,6 +67,7 @@ func calm() -> void:
 	for u: Unit in b.get_node("Units").get_children():
 		u.suspicion.clear()
 	b.sight = false  # the museum's tests read across the map: sight limits only where a test turns them on (sight_test)
+	Exhaustion.on = false  # staged tests use a skill over and over at its plain cost: it wears units out only where a test turns it on (exhaustion_test, combat_test)
 
 
 # Armor of no weight with a flat Defense of 20 (its floor, with nothing to scale): a target only 19

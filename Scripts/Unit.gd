@@ -234,6 +234,7 @@ var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arrange
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
+var exhaustion := Exhaustion.new()  # its uses of each skill lately, and what they add to its costs (price(), ap_cost())
 var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
 var _hp_bonus := 0  # what its level, items and passives add to its max HP now (refit())
 var respec: Dictionary[StringName, int] = {}  # how far each base stat has been shifted from what it was born with (respec_by())
@@ -1533,9 +1534,10 @@ func set_store(r: Reserve, v: int) -> void:
 	reserve_changed.emit(r, was, v)
 
 
-# What s costs it, at its rank (starter spells: cost x rank), before any savings (cost_from()).
+# What s costs it, at its rank (starter spells: cost x rank), before any savings (cost_from()): more
+# the more it has used it lately (Exhaustion.rate()), rounded up.
 func price(s: Skill) -> int:
-	return s.price(rank(s))
+	return ceili(s.price(rank(s)) * exhaustion.rate(s) - 0.0001)
 
 
 # What s costs it paid from fund: a reserve that pays whole costs takes its few points for any cost
@@ -1708,13 +1710,14 @@ func pays_as(s: Skill, fund: Variant, r: Reserve) -> bool:
 	return energy_tags().any(func(t): return t in s.tags and t in r.only)
 
 
-# AP to use s paid from fund: its AP, times the best factor of any reserve that payment counts as.
+# AP to use s paid from fund: its AP, times the best factor of any reserve that payment counts as,
+# and more the more it has used it lately (Exhaustion.rate()).
 func ap_cost(s: Skill, fund: Variant) -> float:
 	var factor := 1.0
 	for r in s.ap_with:
 		if pays_as(s, fund, r):
 			factor = minf(factor, s.ap_with[r])
-	return s.ap * factor
+	return s.ap * factor * exhaustion.rate(s)
 
 
 func can_afford(s: Skill) -> bool:
@@ -1739,7 +1742,8 @@ func can_afford_after(s: Skill, steps: float) -> bool:
 	return general >= maxf(steps - move_only, 0.0) - 0.0001 and left >= ap_cost(s, fund) - 0.0001
 
 
-# Pays a skill's AP and cost from its funding. False (and nothing spent) if it can't.
+# Pays a skill's AP and cost from its funding: one use of it (Exhaustion.used()). False (and nothing
+# spent) if it can't.
 func pay_for(s: Skill) -> bool:
 	var fund: Variant = funding(s)
 	if fund == null or not pay(ap_cost(s, fund), s.pays_with if s.pays_with else &"skill"):
@@ -1748,12 +1752,23 @@ func pay_for(s: Skill) -> bool:
 		set_store(fund, store(fund) - cost_from(s, fund))
 	else:
 		energy -= cost_from(s, fund)
+	exhaustion.used(s)
 	return true
+
+
+# A channeled skill's strike AP and cost for it: the skill's, at the rate its channel was paid at
+# (Exhaustion.strike_rate(): channel and strike are one use), the cost rounded up.
+func strike_ap(s: Skill) -> float:
+	return s.strike_ap * exhaustion.strike_rate(s)
+
+
+func strike_cost(s: Skill) -> int:
+	return ceili(s.strike_cost * exhaustion.strike_rate(s) - 0.0001)
 
 
 # Whether it could pay a channeled skill's strike now.
 func can_strike(s: Skill) -> bool:
-	return energy >= s.strike_cost and ap_for(&"skill") >= s.strike_ap - 0.0001
+	return energy >= strike_cost(s) and ap_for(&"skill") >= strike_ap(s) - 0.0001
 
 
 # Pays a channeled skill's strike (Metea): its strike AP, and its strike cost in Energy. False (and
@@ -1761,8 +1776,8 @@ func can_strike(s: Skill) -> bool:
 func pay_strike(s: Skill) -> bool:
 	if not can_strike(s):
 		return false
-	pay(s.strike_ap, &"skill")
-	energy -= s.strike_cost
+	pay(strike_ap(s), &"skill")
+	energy -= strike_cost(s)
 	return true
 
 
