@@ -31,7 +31,9 @@ var cost: Variant = null  # tile: movement to enter
 var exit: Variant = null  # tile: extra movement to leave
 var trap: Variant = null  # tile: springs when entered
 var obscured := false  # tile: under a layer that hides what's beneath (Leaves), nobody standing on it
-var concealed := false  # unit: something stands between it and the observer - concealment the observer hasn't got through (darkness, fog, its own hiding), sight too far to tell how it looks, or the observer's suspicion of it
+var concealed := false  # unit: something stands between it and the observer - concealment the observer hasn't got through (darkness, fog, its own hiding), or sight too far to tell how it looks
+var doubted := false  # unit: the observer suspects it or its tile (Unit.suspicion)
+var trick := false  # unit, doubted: it would fool the observer but for that suspicion (trickery, a front, Conspire)
 
 var tags: Array[StringName] = []  # identity: race, role, unit tags (Halfling Paladin, holy); tile: what the ground is (water, sticky)
 var stats := {}
@@ -76,11 +78,23 @@ func located() -> bool:
 	return cell != null
 
 
-# Drawn as a black shape: what might be a monster in the brush - a unit it has placed, whose side it
-# can't tell, that hides, stands in concealment or is one it suspects. One in plain view that it
-# only can't identify isn't (it keeps its colours), nor is one whose side shows.
+# Drawn as a black shape: what might be a monster in the brush - a unit it has placed that hides or
+# stands in concealment, whose side it can't tell or suspects is a lie. One in plain view isn't, even
+# suspected (it keeps its colours: mark()), nor is a concealed one whose side shows honestly.
 func silhouette() -> bool:
-	return located() and faction == null and concealed
+	return located() and concealed and (faction == null or (doubted and deceived))
+
+
+enum Mark { NONE, DOUBT, CAUGHT }
+
+# What suspicion makes of a trick in plain view: DOUBT ("?"), the observer suspects it but it still
+# fools it or its side can't be told - drawn as if unaffiliated; CAUGHT ("!"), the suspicion has seen
+# through it to its true side - drawn as that side. NONE: not located, concealed (a black shape:
+# silhouette()), not suspected, or no trick.
+func mark() -> Mark:
+	if not located() or concealed or not doubted or not trick:
+		return Mark.NONE
+	return Mark.CAUGHT if faction != null and not deceived else Mark.DOUBT
 
 
 # Ground it knows is bad (or knows is a trap).

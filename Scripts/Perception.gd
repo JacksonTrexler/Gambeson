@@ -39,7 +39,8 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	var recon := o.stat(&"recon", t.tags) + extra
 	var left := _left(o, _levels(b, t.cell, t, true, o))
 	_sense(r, left, recon, o.luck - t.luck)
-	r.concealed = o != t and (left.values().any(func(x): return x > 0) or o.suspects(t) + o.suspects(t.cell) > 0)
+	r.concealed = o != t and left.values().any(func(x): return x > 0)
+	r.doubted = o != t and o.suspects(t) + o.suspects(t.cell) > 0
 	_range(b, o, t, r)
 	_place(r, o, t, _main(left))
 	if r.cell == null and o != t and b.pinged(o.faction).has(t) and b.pinged(o.faction)[t] == t.cell:
@@ -49,6 +50,9 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	var tricked := trick > 0 and trick >= recon
 	var candid := o.faction == t.faction and t.candid()
 	r.deceived = o != t and not candid and (tricked or fronts_to(o, t) or conspires_with(o, t))
+	if r.doubted and not candid:  # would it fool o but for o's suspicion?
+		var bare := trickery(t, r, o, b, false)
+		r.trick = (bare > 0 and bare >= recon) or fronts_to(o, t, false) or conspires_with(o, t)
 	if r.deceived and tricked and o.faction != t.faction:
 		r.twist = 1.0 if recon <= 0 else clampf(trick / (2.0 * recon), 0.0, 1.0)
 	if r.net <= -4:
@@ -136,9 +140,9 @@ static func fronts(t: Unit) -> bool:
 
 
 # Fronting fools an ally that isn't insightful, trickery or not - and anyone of wis mod -3 or less -
-# unless it's grown suspicious of t.
-static func fronts_to(o: Unit, t: Unit) -> bool:
-	return fronts(t) and not o.insightful() and (o.faction == t.faction or o.mod(&"wisdom") <= -3) and o.suspects(t) == 0
+# unless it's grown suspicious of t (`doubt` false: as if it hadn't).
+static func fronts_to(o: Unit, t: Unit, doubt := true) -> bool:
+	return fronts(t) and not o.insightful() and (o.faction == t.faction or o.mod(&"wisdom") <= -3) and (not doubt or o.suspects(t) == 0)
 
 
 # t's Conspire is on and o is an ally within its rank + cha mod tiles: o lets t's persona fool it.
@@ -355,9 +359,9 @@ static func tile(b: Battle, o: Unit, c: Vector2i, extra := 0.0) -> Read:
 
 # Trickery, doubled per its kind: sound when heard but not seen, sight when unheard. Against
 # `viewer`, without what it saw through (Clever Disguise, investigated), less a rank for each stack of
-# suspicion it has of t. With a battle, Conspire adds (rank - 1) for each ally it fools. Ramut's Ire
+# suspicion it has of t (`doubt` false: as if it had none). With a battle, Conspire adds (rank - 1) for each ally it fools. Ramut's Ire
 # takes off its ranks, against everyone.
-static func trickery(t: Unit, r: Read, viewer: Unit = null, b: Battle = null) -> float:
+static func trickery(t: Unit, r: Read, viewer: Unit = null, b: Battle = null, doubt := true) -> float:
 	var plain := t.stat(&"trickery", [], viewer)
 	var sound := t.stat(&"trickery", [&"sound"], viewer) - plain
 	var sight := t.stat(&"trickery", [&"sight"], viewer) - plain
@@ -365,7 +369,7 @@ static func trickery(t: Unit, r: Read, viewer: Unit = null, b: Battle = null) ->
 		plain += (t.conspiring() - 1) * b.units.values().filter(func(a: Unit): return conspires_with(a, t)).size()
 	if viewer and not Faction.friends(viewer.faction, t.faction):
 		plain += t.clout(viewer.faction)  # standing with the viewer's side lends its lies weight
-	var defeated := t.stat(&"ire") + (viewer.suspects(t) if viewer else 0)
+	var defeated := t.stat(&"ire") + (viewer.suspects(t) if viewer and doubt else 0)
 	return maxf(plain + sound * (2.0 if r.heard and not r.seen else 1.0) + sight * (2.0 if not r.heard else 1.0) - defeated, 0.0)
 
 

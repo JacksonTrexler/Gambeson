@@ -15,7 +15,8 @@ extends CanvasLayer
 # can be followed.
 # Other sides are shown only as the player's units make them out (Perception, shared across the
 # side): unlocated units aren't drawn, ones whose side can't be told glow grey with no bars (black
-# shapes when they hide, stand in concealment or are suspected: Read.silhouette()), and areas
+# shapes when they hide or stand in concealment: Read.silhouette(); a trick it suspects in plain view
+# pops a "?" and shows as if unaffiliated, a "!" once seen through: _pop()), and areas
 # where something is only suspected are marked. A unit's glow says how ready it is for what the
 # player is about, in four strengths (glow_of()). Ground is judged the same way - safe, unsure (not
 # made out, or something may lurk there) or bad (a known trap, or known detrimental) - which colours where a
@@ -61,6 +62,7 @@ var dubious: Dictionary[Vector2i, String] = {}  # tiles where something is only 
 var sleepers: Array[Unit] = []  # units the player can see are asleep, as of the last refresh
 var traps: Dictionary[Vector2i, bool] = {}  # traps the player's side knows of: true for ones it laid
 var grounds: Dictionary[Vector2i, StringName] = {}  # ground() for every tile, as of the last refresh
+var marks: Dictionary[Unit, int] = {}  # what the player's side last made of each trick in plain view (Read.mark()): a change pops a mark (_pop())
 var suspect: Dictionary[Vector2i, String] = {}  # concealed tiles the player has a hint about (a disguised trap) -> the hint
 var _icons := {}  # [source id, atlas coords] -> AtlasTexture, for the tile pane
 var _pane_list := ""  # what the pane's effect list last showed (a new one scrolls from the start)
@@ -1370,6 +1372,7 @@ func _show_units() -> void:
 			continue
 		var r := view(u)
 		u.appear(r)
+		_pop(u, r)
 		u.position = battle.map.map_to_local(r.cell if r.located() else u.cell)  # a stale ping: where it was sensed
 		u.set_saturation(1.0)  # its colour isn't the player's to drain (a unit that changed sides)
 		if r.located() and r.silhouette() and battle.pinged(command.faction()).has(u):
@@ -1381,6 +1384,20 @@ func _show_units() -> void:
 		if u.is_alive() and u.visible:
 			var level := glow_of(u)
 			u.set_glow(level, high_contrast and (known(u) or level >= 0))
+
+
+# Once per change in what the player's side makes of a trick in plain view (Read.mark()), a mark
+# pops over it and fades: "?" (neutral) when suspicion first lands on it, "!" in its true side's
+# colour when that suspicion sees through it.
+func _pop(u: Unit, r: Read) -> void:
+	var m := r.mark()
+	if m == marks.get(u, Read.Mark.NONE):
+		return
+	marks[u] = m
+	if m == Read.Mark.DOUBT:
+		u.pop_mark("?", Color.WHITE)
+	elif m == Read.Mark.CAUGHT:
+		u.pop_mark("!", r.faction.primary.lightened(0.15))
 
 
 # The move cost line in the tile pane: nothing for plain ground (1) or free ground, "Mv -N" for a
@@ -1893,7 +1910,8 @@ func _info(u: Unit) -> Dictionary:
 	var r := view(u)
 	info.name = r.name if r.name else ("Looks like a %s" % r.looks if r.looks else "Unknown")
 	info.face = r.face
-	info.shape = r.faction == null
+	var doubt := r.mark() == Read.Mark.DOUBT  # a trick it suspects: as if unaffiliated
+	info.shape = r.faction == null or doubt
 	info.silhouette = r.silhouette()
 	var parts: PackedStringArray = []
 	if r.level != null:
@@ -1909,6 +1927,8 @@ func _info(u: Unit) -> Dictionary:
 	info.sub = " ".join(parts)
 	if r.faction == null:
 		chips.append(["Unknown", MUTED])
+	elif doubt:
+		chips.append(["Suspected", MUTED])
 	elif r.stance in [&"aggressive", &"passive", &"traitor"]:
 		chips.append([String(r.stance).capitalize(), FOE if r.attitude(observer()) == &"avoid" else MUTED])
 	elif known(u) and r.faction == command.faction():
