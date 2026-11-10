@@ -63,8 +63,9 @@ func test_loot() -> void:
 	for i in 400:
 		var it := loot.roll(b.rng)
 		got[it.name] = got.get(it.name, 0) + 1
-	ok(got.get("Heart Up", 0) > 60 and got.get("Heart Up", 0) < 140 and got.get("Heart", 0) > 260, "one of them, 25%% / 75%%: %s" % [got])
-	ok(loot.describe() == "Heart Up (25%) or Heart (75%)", loot.describe())
+	ok(got.get("Heart Up", 0) > 50 and got.get("Heart Up", 0) < 120 and got.get("Heart", 0) > 210, "mostly its hearts, 1 to 3: %s" % [got])
+	ok(got.get("Strategy Guide", 0) + got.get("Tactician's Playbook", 0) > 30 and got.get("Grand Design", 0) < 20, "the leadership trinkets now and then (uncommon), Grand Design hardly ever (legendary): %s" % [got])
+	ok(loot.describe() == "Heart Up (21%) or Heart (62%) or Strategy Guide (8%) or Tactician's Playbook (8%) or Grand Design (1%)", loot.describe())
 	stage(lancin, {v(1): Vector2i(1, 1), b.get_node("Units/Icor"): Vector2i(5, 5)})
 	var icor: Unit = b.get_node("Units/Icor")
 	var dropped := []
@@ -74,6 +75,24 @@ func test_loot() -> void:
 	ok(b.phase == Battle.Phase.OVER and b.winnings(lancin) == [blade, load("res://Items/quartz_ring.tres")] and b.winnings(nemes).is_empty(), "the victor takes it home, and the Museum's reward (a Quartz Ring)")
 	b.rewards = [heart]
 	ok(b.winnings(lancin) == [blade, heart], "with the scenario's rewards")
+
+
+# Legendary: rarer than rare in a drop table, and each rank worth four of a common item's.
+func test_legendary() -> void:
+	var design: Item = load("res://Items/grand_design.tres")
+	ok(design.rarity == "legendary" and design.slot == "trinket", "Grand Design: a legendary trinket")
+	ok(design.rarity_pull() < Item.RARITY_WEIGHT["rare"] and design.rarity_pull() > 0.0, "rarer than rare (%s)" % design.rarity_pull())
+	var common := Item.new()
+	common.rank = 4
+	ok(design.worth() == 4 and design.worth() == common.worth(), "at rank 1, worth a rank 4 common")
+	var higher: Item = design.duplicate()
+	higher.rank = 3
+	var rare: Item = load("res://Items/aethendine.tres")
+	ok(higher.worth() == 12 and rare.worth() == rare.rank, "a rank four times the resources; other rarities one for one")
+	var table := Loot.new()
+	table.items.assign([heart, design])
+	ok(table.describe() == "Heart (95%) or Grand Design (5%)", table.describe())
+	ok(load("res://Items/strategy_guide.tres").rarity == "uncommon" and load("res://Items/tacticians_playbook.tres").rarity == "uncommon", "the Strategy Guide and the Tactician's Playbook: uncommon")
 
 
 func test_sheet() -> void:

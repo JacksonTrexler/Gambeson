@@ -9,6 +9,9 @@ extends RefCounted
 # or below it can only be told to move. Each turn the leader gives orders to at most ally_cap()
 # allies, and at most order_cap() orders to each (both its charisma mod, at least 1); its own
 # actions are its own. Allies without an order this turn act on their own when it ends.
+# Leadership learned or carried stands in for charisma: the strategy and tactics stats (Strategist,
+# Tactician; a Strategy Guide, a Tactician's Playbook) add to the two caps on top of that floor of 1,
+# and command_mod (Grand Design) to the charisma mod itself, here and nowhere else (cha_of()).
 
 const PARTY_REACH := 2.0
 
@@ -41,9 +44,19 @@ func party_reach() -> float:
 	return party_reach_of(leader)
 
 
+# A leader's charisma mod as it commands: its own, plus its command_mod stat (Grand Design: +1 a
+# rank). Everything here that goes by charisma goes by this.
+static func cha_of(l: Unit) -> int:
+	return l.mod(&"charisma") + roundi(l.stat(&"command_mod"))
+
+
+func cha() -> int:
+	return cha_of(leader)
+
+
 # How far a leader's orders carry: its cha mod + its command stat (a Quartz Ring: no limit), at least 1.
 static func reach_of(l: Unit) -> int:
-	return maxi(l.mod(&"charisma") + roundi(l.stat(&"command")), 1)
+	return maxi(cha_of(l) + roundi(l.stat(&"command")), 1)
 
 
 # ...and to its party: PARTY_REACH times as far (Synergy's reach too: Battle.synergized()).
@@ -52,17 +65,39 @@ static func party_reach_of(l: Unit) -> float:
 
 
 func party_size() -> int:
-	return maxi(leader.mod(&"charisma") + roundi(leader.stat(&"party")), 1)
+	return maxi(cha() + roundi(leader.stat(&"party")), 1)
 
 
-# How many allies the leader may give orders to in a turn: its cha mod, at least 1.
+# How many allies the leader may give orders to in a turn: its cha mod, at least 1, and its strategy
+# stat on top of that (Strategist, a Strategy Guide: a rank each) - never fewer than 1.
 func ally_cap() -> int:
-	return maxi(leader.mod(&"charisma"), 1)
+	return maxi(maxi(cha(), 1) + ally_bonus(), 1)
 
 
-# How many orders it may give each of them in a turn: its cha mod, at least 1.
+# How many orders it may give each of them in a turn: its cha mod, at least 1, and its tactics stat
+# on top of that (Tactician, a Tactician's Playbook: a rank each) - never fewer than 1.
 func order_cap() -> int:
-	return maxi(leader.mod(&"charisma"), 1)
+	return maxi(maxi(cha(), 1) + order_bonus(), 1)
+
+
+# What its skills and items add to the two caps.
+func ally_bonus() -> int:
+	return roundi(leader.stat(&"strategy"))
+
+
+func order_bonus() -> int:
+	return roundi(leader.stat(&"tactics"))
+
+
+# What a cap goes by, for the HUD's reasons: "charisma +1", "charisma +3 as it commands" (Grand
+# Design), "charisma -1, +2 from skills and items".
+func basis(bonus := 0) -> String:
+	var text := "charisma %+d" % cha()
+	if cha() != leader.mod(&"charisma"):
+		text += " as it commands"
+	if bonus != 0:
+		text += ", %+d from skills and items" % bonus
+	return text
 
 
 # Allies (the leader aside) given an order this turn.
@@ -78,7 +113,7 @@ func under_caps(u: Unit) -> bool:
 
 # How many hotbar slots, from the first, a commanded ally will use.
 func slots() -> int:
-	return maxi(leader.mod(&"charisma"), 0)
+	return maxi(cha(), 0)
 
 
 # Whether u may be told to use hotbar slot i: the leader uses all of its own.

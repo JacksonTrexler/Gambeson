@@ -111,6 +111,11 @@ extends Resource
 # impassioned: added to a skill's primary mod used on an adjacent unit (Impassioned Fighter;
 # Battle.passion()).
 # regen_hp: HP healed as the unit's side starts a turn, on top of regen (Rejuvinate's cha mod).
+# strategy / tactics: a leader commands that many more allies a turn / gives each that many more orders,
+# on top of what its charisma allows (Strategist, a Strategy Guide / Tactician, a Tactician's Playbook;
+# Command.ally_cap(), Command.order_cap()).
+# command_mod: added to its cha mod wherever Command reads it - reach, party size, slots, both caps -
+# and nowhere else (Grand Design; Command.cha_of()).
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -121,7 +126,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -156,7 +161,8 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"sickness": "Resurrection Sickness", "hardy": "Hardy", "shackled": "Shackled", "affinity": "Affinity", "abandon": "Reckless", "self_known": "Self-knowledge",
 		"discipline": "Discipline", "natural_talent": "Natural Talent",
 		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
-		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist"}
+		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
+		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)

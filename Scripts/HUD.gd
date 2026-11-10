@@ -2086,7 +2086,7 @@ func _editable(u: Unit) -> bool:
 func _why_locked() -> String:
 	var n := command.slots()
 	if n == 0:
-		return "Allies only take move orders from %s (charisma %+d)" % [_name(command.leader), command.leader.mod(&"charisma")]
+		return "Allies only take move orders from %s (%s)" % [_name(command.leader), command.basis()]
 	return "Allies use only slot%s 1%s on %s's orders" % ["" if n == 1 else "s", "" if n == 1 else "-%d" % n, _name(command.leader)]
 
 
@@ -2276,10 +2276,9 @@ func _why_no_orders(u: Unit) -> String:
 	if u.asleep():
 		return "Asleep: an ally ending the turn beside it wakes it"
 	if not command.under_caps(u):
-		var cha := "charisma %+d" % command.leader.mod(&"charisma")
-		if u in command.ordered:
-			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", cha]
-		return "%s commands %d all%s a turn (%s)" % [_name(command.leader), command.ally_cap(), "y" if command.ally_cap() == 1 else "ies", cha]
+		if u in command.ordered:  # what skills and items add to a cap is named beside the charisma (Command.basis())
+			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", command.basis(command.order_bonus())]
+		return "%s commands %d all%s a turn (%s)" % [_name(command.leader), command.ally_cap(), "y" if command.ally_cap() == 1 else "ies", command.basis(command.ally_bonus())]
 	return ""  # too far: no nag - its hotbar is grayed, and the units you can command are lit
 
 

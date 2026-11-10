@@ -15,7 +15,7 @@ extends Resource
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
 @export var rank := 1  # how good it is: what its effects scale by (per_rank)
 @export var weight := -1  # what it adds to its wearer's weight while equipped (heft()); -1: by its kind - armor by class (light 0, medium 1, heavy 2), a weapon medium (1) unless tagged light (0) or heavy (2), anything else 0
-@export_enum("common", "uncommon", "rare") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare
+@export_enum("common", "uncommon", "rare", "legendary") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare; legendary: rarer still, and RANK_COST times the resources a rank (worth())
 
 @export_group("Armor")  # sets its wearer's Defense (Unit.armor_defense())
 @export var defense := 0  # the least it gives (Gambeson: 10)
@@ -56,7 +56,8 @@ const WEIGHTS := {
 	&"heavy": [14, 1.0, 0.25],  # Brigandine: high level scaling, low dex scaling
 }
 const ARMOR_AP := 10  # armor takes this - its wearer's dex mod in AP to put on in battle: hardly worth it mid-fight
-const RARITY_WEIGHT := {"common": 1.0, "uncommon": 0.4, "rare": 0.15}  # a drop table's relative pull, before its own weights
+const RARITY_WEIGHT := {"common": 1.0, "uncommon": 0.4, "rare": 0.15, "legendary": 0.05}  # a drop table's relative pull, before its own weights
+const RANK_COST := {"legendary": 4}  # the resources each of its ranks takes, against a common item's 1 (worth()); a rarity not here: 1
 
 
 # "Defense: the higher of 10 and level / 2, + dex mod".
@@ -74,6 +75,8 @@ func describe() -> String:
 			lines.append("Trinket" + plus)
 		"consumable":
 			lines.append("Used up")
+	if rarity == "legendary":
+		lines.append("Legendary: a rank takes %dx a common item's resources" % RANK_COST[rarity])
 	if restores:
 		lines.append(("Empty: it fills again as the battle ends" if empty else "Used from its slot: gives back %s; emptied, it fills again as the battle ends" % restoring()))
 	if hearts or hearts_mod:
@@ -162,6 +165,13 @@ func heft() -> int:
 # How much a drop table leans toward it, by rarity (Loot.weight()).
 func rarity_pull() -> float:
 	return RARITY_WEIGHT.get(rarity, 1.0)
+
+
+# What it's worth, in ranks of a common item: its rank x what a rank of its rarity costs (RANK_COST) -
+# a rank 1 legendary is a rank 4 common, a rank 2 one a rank 8. What ranking an item up is to charge
+# and trade by.
+func worth() -> int:
+	return rank * int(RANK_COST.get(rarity, 1))
 
 
 func sets_defense() -> bool:

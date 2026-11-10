@@ -4,8 +4,11 @@
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="2_item"]
 [ext_resource type="Resource" path="res://Items/heart_up.tres" id="3_heart_up"]
 [ext_resource type="Resource" path="res://Items/heart.tres" id="4_heart"]
+[ext_resource type="Resource" path="res://Items/strategy_guide.tres" id="5_strategy_guide"]
+[ext_resource type="Resource" path="res://Items/tacticians_playbook.tres" id="6_playbook"]
+[ext_resource type="Resource" path="res://Items/grand_design.tres" id="7_grand_design"]
 
 [resource]
 script = ExtResource("1_loot")
-items = Array[ExtResource("2_item")]([ExtResource("3_heart_up"), ExtResource("4_heart")])
-weights = Array[float]([1.0, 3.0])
+items = Array[ExtResource("2_item")]([ExtResource("3_heart_up"), ExtResource("4_heart"), ExtResource("5_strategy_guide"), ExtResource("6_playbook"), ExtResource("7_grand_design")])
+weights = Array[float]([1.0, 3.0, 1.0, 1.0, 1.0])
