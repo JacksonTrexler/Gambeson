@@ -23,6 +23,8 @@ Six pieces of work, each built in its own worktree and merged in turn. The first
 | E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
 | F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
 
+**Status.** A, B, C and D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are in progress: planned, not built, results to be filled in. The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
+
 ## Built since the plan was written
 
 Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `docs/done/`, each with its test file.
@@ -77,6 +79,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Levels revised: (BST + level) / 7, shared near the fall, XP for revivals, once each, cap 20 (?79) | `level_test.gd` |
 | — | Units in their own colours, drained by AP, grey once uncommandable; command limits by cha mod (?83) | `hud_test.gd`, `command_test.gd` |
 | — | Discipline; the Ranger (Nature trees, Natural Talent); the Druid (biomes, guest trees, Beastshape); shared skills reached tree by tree (?80, ?81, ?82) | `nature_test.gd` |
+| A | Silhouettes and the four strengths of glow (?84) | `hud_test.gd` |
+| B | Downed; Tenacity and Grudge (?85) | `downed_test.gd` |
+| C | Command skills and trinkets: Strategist, Tactician, Strategy Guide, Tactician's Playbook, Grand Design, Legendary rarity (?86) | `command_test.gd`, `items_test.gd` |
+| D | Exhaustion (?87) | `exhaustion_test.gd` |
 
 ## Questions to answer first
 

@@ -77,3 +77,17 @@
 
 63. **Magnitudes - built on judgement.** Your "extreme fire damage" and "intense rank cone range" read as tags that scale a number by rank: faint 0.5, mild 1, moderate 1.5, strong 2, intense 2.5, extreme 3, overwhelming 4 x rank, rounded up (`Difficulty.MAGNITUDE`). Open for review.
 66. **Shackles - built on judgement.** *Choices:* each pick (approachable, dex) or pry (unfair, str) try costs the shackles' rank in AP, the same as taking them off unlocked; once off they fall away rather than going to the stash, and the stowed trinket goes back on; an AI unit works at them before anything else. Open for review.
+
+## Command skills and trinkets (2026-11-09)
+
+Plan: `docs/plans/command-skills.md`.
+- [x] **Strategist, Tactician, Strategy Guide, Tactician's Playbook, Grand Design, Legendary rarity** built (`docs/done/classes.md`, `docs/done/world.md`, `docs/done/rules.md`). (?86)
+- [ ] **Nothing ranks items up yet**, so nothing calls `Item.worth()` (rank x 4 for a legendary).
+- [ ] No screenshot taken of the Specialist tree with three skills at tier 3.
+
+86. **Command skills and trinkets - built on judgement, open for review (2026-11-09).**
+    - **The bonus applies above the floor of 1**, not inside it: a cha -1 leader with Strategist II commands 3 allies. Inside the floor, rank I would do nothing at low charisma.
+    - **Tree placement:** Strategist and Tactician sit on the Specialist general tree at tier 3, beside Discipline, on the usual point curve with no rank cap. Only Adventurer, Bard, Rogue and Ranger have that tree natively; a Fighter or Paladin needs Journeyman IV. The base General tree would open them to every class.
+    - **Loot:** the trinkets drop from the Astral Princess, the only table with a trinket: Heart Up 21%, Heart 62%, Strategy Guide 8%, Tactician's Playbook 8%, Grand Design 1% (hearts were 25% / 75%).
+    - **Grand Design is a trinket** (my reading of your wording): the first legendary, +1 to the leader's cha mod per rank wherever Command reads it (reach, party reach and size, slots, both limits, Synergy's range); the charisma stat is untouched, so checks don't change. Being a trinket, it can't be worn with a Guide or Playbook; it stacks with both skills. Say if it should be something else.
+    - Strategy Guide and Tactician's Playbook: uncommon trinkets, the same as the skills by item rank. Legendary: drop pull 0.05 (rare 0.15), each rank worth four of a common item's. A refused order says where the limit comes from ("charisma -1, +2 from skills and items").

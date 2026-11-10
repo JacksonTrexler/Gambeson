@@ -42,6 +42,8 @@ Trinkets and consumables
 - [x] **Health / Energy / Mana Potion** (trinkets): used from the trinket slot, they give back 15% × rank of max HP / Energy / Mana + con mod, and are emptied: still worn, and full again as the battle ends.
 - [x] **Sweet Something** (trinket; a dubious treat): used, a Sweet Nothing; emptied the same way.
 - [x] **Heart Up** (trinket): an extra life while worn; +1 Defense for each heart its wearer has spent. (?29)
+- [x] **Strategy Guide**, **Tactician's Playbook** (trinkets, uncommon): rank more allies a turn, rank more orders per ally; the Strategist and Tactician skills as items. (?86)
+- [x] **Grand Design** (trinket, the first **legendary**): +1 per rank to its wearer's cha mod wherever Command reads it. A legendary has a drop pull of 0.05 (rare 0.15); each rank is worth four of a common item's (`Item.worth()`, which nothing calls yet). (?86)
 - [x] **Heart** (consumable): used from the character sheet, an extra life for good. (?29)
 
 More weapons and armor
@@ -65,7 +67,7 @@ Acts serene and stands still until unmasked. It tries to get units close by enra
 
 ### Astral Princess (boss)
 
-`Scenes/astral_princess.tscn`, `Units/AstralPrincess.png` (a placeholder). Level 18; str 18, dex 18, con 12, int 14, cha 14, wis 8; 60 HP, 20 Power. Starblade, Heart Up-Link and Heart Up: two lives; Defense 5 (dex + con mods), +1 for each heart spent. Worships Urlo. Persona: Personify III, going by Glittering / Shining / Gleaming / Glimmering Princess / Heroine / Vindicator. Intention "Purge evil: evil resides in the living"; strategy closest, strongest. Each revive brings a Regeneration Probe. Drops Heart Up (25%) or a Heart (75%). (?29)
+`Scenes/astral_princess.tscn`, `Units/AstralPrincess.png` (a placeholder). Level 18; str 18, dex 18, con 12, int 14, cha 14, wis 8; 60 HP, 20 Power. Starblade, Heart Up-Link and Heart Up: two lives; Defense 5 (dex + con mods), +1 for each heart spent. Worships Urlo. Persona: Personify III, going by Glittering / Shining / Gleaming / Glimmering Princess / Heroine / Vindicator. Intention "Purge evil: evil resides in the living"; strategy closest, strongest. Each revive brings a Regeneration Probe. Drops Heart Up (21%), a Heart (62%), a Strategy Guide (8%), a Tactician's Playbook (8%) or Grand Design (1%); it was Heart Up 25%, Heart 75%. (?29 ?86)
 - [x] **Powerful** (`pillar`): her Energy is Power.
 - [x] **Physical Intelligence** V (`magical`, `pillar`): str mod can stand in for int mod on magical skills, with a max mod difference of 20% × rank. *Now:* `Skills/physical_intelligence.tres`, capped like Arcanist Perspective; she has it at rank III.
 - [x] **Metea II** (tier 3 magical spell, `earth`, `fire`; channeled): cast on a tile in range, then strike a tile within (turns since) tiles of it: rank d12 + int mod to everyone within rank tiles but her.

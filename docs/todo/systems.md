@@ -87,3 +87,34 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Behaviour spine for skills**: grow `Skill.behaviours` (compose verbs that read a shared `Cast` bag) beside the flags; lift flags into behaviours on touch, densest clusters first (Strike chain, damage+riders, heals). Describe-where-you-execute. Answers ?55.
 - [ ] **Context tags**: tag each cast offensive / defensive / supportive by use, feeding `Check` and the Affinity rank-cost. Enables Berserker and "invest under circumstances".
 - [x] **Derived-stat pipeline** - done (`Unit.refit()`, `level_hp()`, `respec_by()`); see `docs/done/systems.md`. As built, HP = authored base (10 for class units) + `((con mod · (1 + Hardy)) + vigor) · level` - your formula as the *level scaling* on top of a base, not the whole of HP (alone it gives a level 1 Wizard 1 HP). (?61)
+
+## Exhaustion (2026-11-09)
+
+Plan and rules: `docs/plans/exhaustion.md`.
+- [x] **Exhaustion** (`Scripts/Exhaustion.gd`, `Unit.exhaustion`): built (`docs/done/rules.md`, `docs/done/systems.md`). (?87)
+- [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. (?87)
+- [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
+- [ ] **Static skill descriptions** (skills screen, spellbook) show base costs only.
+
+87. **Exhaustion - built on judgement, open for review (2026-11-09).**
+    - **Broad kinds** (your physical / technical / mental, for the half share) are read as the existing martial / specialist / magical category tags. **Twenty of the 65 active skills carry none** (Smite, Solar, Renew, Sing, Drown, Rake, Energy Missile, Flamecharm...) and wear on themselves only. A skill with two kinds shares with both, half once.
+    - **Con mod 0 rests like +1** (one extra use), as Energy recovery does; read literally ("adds con mod") it would add nothing. Below 1, 1 / (1 - mod) of a use: -1 half, -3 a quarter. Fractions are continuous.
+    - **The museum sims flip** from Lancin 8 / Nemes 22 (3-14 turns) to Lancin 29 / Nemes 1 (8-20 turns); Nemes won by casting Hex over and over (437 casts to 293), and at a step of 0.25 it is still 25 to 5.
+    - **The AI is unchanged** and doesn't weigh exhaustion: it picks by score and stops when `can_afford()` says no.
+    - Step 0.5 of base cost per use, linear (AP stays fractional, resource rounds up, 0 stays 0), tunable in three constants (`STEP`, `KIND` 0.5, `RECOVERY` 1). The half share is derived from the other skills' own counts, so it recovers as they do. Counts fall at the end of the unit's own side's turn (one use a turn is free for ever, two build up). A channeled skill is one use, paid at the rate the channel was. Strike III's three hits are one use; free recasts and toggles are none. Light activity gets no resting bonus. A reserve that pays whole costs still pays its 1 point. Staged tests run with exhaustion off (`Test.calm()`).
+
+## Skill tooling, Kick and CLAUDE.md (2026-11-09) - planned, not built
+
+Plan: `docs/plans/skill-tooling.md`. **In progress; results to be filled in.**
+- [ ] **`Util/skill.py new`**: writes the `.tres` from a few arguments, adds it to a tree after a named skill, writes a test stub, runs the import; fails loudly on a missing anchor.
+- [ ] **`Util/skill.py check`**, also run as `skills_test.gd`: every skill on a tree or granted, every tag in the Glossary, every flag described, no stale stub.
+- [ ] **Behaviour seam** (seam 3 of `docs/plan-composability.md`): `Skill.behaviours`, small scripts with `apply(cast)` and `describe(rank)` side by side; Kick the first user.
+- [ ] **An agent skill** (`.claude/skills/new-skill/SKILL.md`): data alone vs a behaviour, the commands, the traps.
+- [ ] **Kick** (`Behaviours/kick.gd`, `Tests/kick_test.gd`): an attack at rank range; loose ground blinds, water soaks, a trap is kicked into the target, an edge or hole pushes, nothing between is plain damage; adjacent targets take plain damage and a 1-tile push.
+- [ ] **CLAUDE.md** under four lines on how skills are composed.
+
+88. **Skill tooling, Kick, CLAUDE.md - planned, open (2026-11-09).** **Built results: to be filled in.**
+    - **"g-action skill/ tool"** is read as a Claude Code agent skill (`.claude/skills/new-skill`) plus a script (`Util/skill.py`). Say if you meant something else.
+    - Kick's first set of tile effects is mine, open for review (above).
+    - New skills use behaviours; old flags move over only when touched. CLAUDE.md says skills are data first, behaviour in a behaviour script with its description beside it and never a new `Skill.gd` flag, to use `skill.py new` and `check`, and where the tests go.
+    - Order: `new` and `check` first (no rule changes), then the seam with Kick, then the agent skill and CLAUDE.md.

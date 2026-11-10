@@ -111,6 +111,7 @@ Four trees beside every class's own, on the far right of the skills screen (`Tre
 - [x] **Decisive Strike** (low tier, exclusive): Strike becomes Decisive Strike. After a critical, the rest of its hits land; damage by the higher of dex and str mod.
 - [x] **Striking Features** (mid): its first rank hits add cha mod, up to rank.
 - [x] **Decisive Mastery** (high, stacks): the same as Decisive Strike, as a passive.
+- [x] **Strategist** and **Tactician** (tier 3, passives, beside Discipline; the usual point curve, no rank cap): rank more allies a turn, rank more orders per ally. Only the Adventurer, Bard, Rogue and Ranger have this tree natively. (?86)
 
 **Caster** (light purple): Elemental Strike (II), Record Striker (IV), Meditative and Invigorating Bracing (V), Elemental Mastery (VII).
 - [x] **Elemental Strike** (low tier, exclusive; active, 2 AP, cost 2): pick an element (fire, water, earth, air, light, dark: a menu as it's used); the next rank Strikes become <Element>strike (Firestrike), dealing it, the first hit of each + the highest mental mod (`Battle.imbue()`).
@@ -170,3 +171,10 @@ The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped arm
 - [x] **Interdict** (after Shields Up! · 3 AP · 2 Energy · adjacent; `Skills/interdict.tres`): a str save (d20 + str mod + rank against the foe's d20 + str mod). Won: **Attack Down**, -20% × rank damage dealt, and the caster's str mod off the foe's general AP (`base_ap`, scaled by `Effect.by_mod`), for one of its turns.
 - [x] **Turtle Tactics** (after Shields Up!, passive; the `check` effect, `Unit.check_bonus()`): +2 × rank to its defensive checks and -rank to its offensive ones - attack rolls among them - armor or not.
 - [x] **Jugular** (Slayer root · 4 AP · 2 Energy · adjacent · 1d6 + str mod, its weapon's blow; `Skills/jugular.tres`): an attack at disadvantage (`Skill.disadvantage`), + (rank - 1) to the roll (`roll_per_rank`, `roll_bonus`); a hit is a critical (`sure_crit`). A natural 20 casts it again at once on the same foe, free (`recast_on_crit`), up to 20 in a row.
+
+## Downed: Tenacity and Grudge (2026-11-09)
+
+The rule is in `docs/done/rules.md`.
+- [x] **Tenacity** (Adventurer, Fighter; passive; beside Wary): at 0 HP it lingers downed, helpless, for rank rounds. (?85)
+- [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`, open from the start; a Paladin borrowing Fury sees it locked): downed, it keeps acting for rank rounds. (?85)
+- [x] The Adventurer's wheel on the skills screen is 37 skills (was 36).

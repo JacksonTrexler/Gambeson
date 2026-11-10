@@ -242,3 +242,37 @@ Oft-secluded experts in natural and celestial magic - wizards for natural magic,
 
 82. **Druid - built on judgement, open for review.** *Choices:* which skills each biome borrows, and the four new stubs (Barkskin, Mirage, Hoarfrost, Whiteout, marked ??); the kin table above; elemental = fire, water, earth, light, dark, energy, ice, air/wind, nature tags; one guest tree; which biomes each beast belongs to (rabbit: Sylvan, Montane, Xeric, Nival; squirrel: Sylvan, Montane; mole: Sylvan, Montane, Xeric; wisp and mote: Astral); the first beast that fits wins, in that order; a mote of desert ground is air (the Djinn); shaping lasts rank + 1 turns and costs 2 AP. *Open:* Thalassic has no beast of its own yet (an otter? a seal?); no sprite change while shaped; Druid sprite borrowed (Elmit).
 
+
+## Downed, Tenacity and Grudge (2026-11-09)
+
+Down but not out: one condition any skill configures by data. Plan: `docs/plans/downed.md`.
+- [x] **Downed** (`Scripts/Downed.gd`; `Skill.downed`): a unit with such a passive, on its last life, taken to 0 HP doesn't die. Later blows take it below 0, to a limit of share x rank x max HP; past it, it dies. Healed above 0, it is saved and `Battle.rescued()` pays the rescue XP. (`docs/done/rules.md`) (?85)
+- [x] **Tenacity** (Adventurer, Fighter; passive; beside Wary): lingers downed for rank rounds, 20% x rank limit, helpless. (?85)
+- [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`; passive): downed, it keeps acting for rank rounds, 20% x rank limit; more than rank skill uses in all, or a round ending without a melee attack, and it dies. (?85)
+- [x] The card chip, log lines and floats ("Downed", "Saved") say so; the AI takes no turn for a helpless unit, strikes a helpless foe last, and closes in with a Grudge unit's last blows.
+- [ ] **Draw a Downed unit differently on the map.** Nothing does: only the card chip, the log and the float text say so (unit drawing was being reworked elsewhere).
+- [ ] **The AI doesn't try to starve Grudge of melee**: it won't keep away from a Grudge unit to let it die of a round without a melee attack, and a Grudge unit doesn't try to heal itself back up.
+- [ ] **Bug, noticed and not fixed:** a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
+- [ ] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before.
+
+85. **Downed, Tenacity, Grudge - built on judgement, open for review (2026-11-09).**
+    - A round is one of the unit's own side's turns ending after it went down; if it went down on its own side's turn, the rest of that turn is free. Its last round ending at 0 HP or below, it dies. The blow that downs it leaves it at 0; at exactly the limit it lives. Overkill isn't carried into the negatives; a multi-hit Strike's later hits do land.
+    - Hearts and a Red Spinel Ring are spent before a Downed skill does anything: Downed is only for the last life.
+    - A Grudge action is each skill use it pays for (Strike counts once however many hits); walking, toggles and items don't. The use that goes over still resolves; then it dies. A melee attack is an attack, hit or miss, on a foe touching it.
+    - Helpless (Tenacity): can't act, move, use items or take orders; still holds its tile, can be hit, targeted and healed; its effects tick, it still sees, its passives stay on, and its side isn't beaten while it lingers.
+    - XP: fall XP is paid when it actually dies, not when it goes down; rescue XP when its HP rises above 0, two shares to whoever healed it last (if another unit), once. Downing gives no kill credit; the death does.
+    - Executes (Death, Luun's Smite): a standing unit goes Downed as with a heart; one already Downed dies. With several Downed skills the highest rank counts, first listed on a tie, fixed as it goes down.
+    - Placement: Tenacity beside Wary (Adventurer's Martial root, open from the start; among the Fighter's options). Grudge open from the start, `classes = [berserker]` (a Paladin borrowing Fury sees it locked).
+
+## Clairvoyance (2026-11-09) - planned, not built
+
+An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan: `docs/plans/clairvoyance.md`. Starts once Silhouettes and glow is in (it is). **In progress; results to be filled in.**
+- [ ] `Skills/clairvoyance.tres` on the Wizard's and Mage's arcane tree and a Cleric tab (which god's: Luun, as the god of the hidden, is the first guess). Range: wisdom score + rank; every unseen foe in range is pinged and drawn as a silhouette at its tile, location only; each ping adds a stack of suspicion of the tile; at each of the caster's turn ends it holds, pings update and the channel's rank rises by 1; ending the channel drops the silhouettes, suspicion fades as usual; one use for exhaustion. (?89)
+- [ ] `Tests/clairvoyance_test.gd`.
+
+89. **Clairvoyance - assumptions to confirm (2026-11-09).** Planned with these four; change any:
+    - A ping sees through walls (it is not sight).
+    - The rank gained each turn has no cap while the channel is paid for.
+    - AP and cost per turn held: the cast's cost once, like Metea's channel.
+    - Allies share the pings, as sight is shared across a side.
+    - Also a call: Luun's tab for the Cleric. **Built results: to be filled in.**
