@@ -24,3 +24,4 @@ hud_test.test_tabbed_skills_screen
 slots_test.test_slot_looks
 hud_test.test_self_evaluation_ui
 champions_test.test_stonegift
+downed_test.test_hud

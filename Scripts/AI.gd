@@ -28,6 +28,8 @@ const PARTY := 1.0  # how much a loyal healer favours its party
 const WOUND := 0.25  # how much a healer wants to clear a wound it can see
 const WARY := 10.0  # cost of ending a walk beside a unit it takes for aggressive
 const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts)
+const LAST := 1000.0  # how much less a unit wants to go after a helpless, Downed foe: the standing come first
+const FINISH := 0.5  # the most a blow at a helpless, Downed foe is worth: only when no standing foe is worth one
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -36,7 +38,7 @@ const STRONG := 0.5  # per level it reads, how much a unit going for the stronge
 # only, &"defensive" a self-protective skill only. The default (&"") is a full, self-directed turn.
 static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	var log: Array[String] = []
-	if not u.is_alive() or u.asleep():
+	if not u.is_alive() or u.asleep() or u.helpless():
 		return log
 	var reads := {}
 	for o in b.units.values():
@@ -45,6 +47,9 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	_remember(b, u, reads)
 	if b.held_by(u):
 		_escape(b, u, log)
+	if u.dbno:  # Downed and fighting on (Grudge): what's left of it goes into blows
+		_last_blows(b, u, reads, log)
+		return log
 	if b.posing(u):
 		if b.turn == u.faction:
 			_strike(b, u, reads, log, false, KILL)
@@ -100,6 +105,21 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	return log
 
 
+# Downed and still acting (Grudge; Scripts/Downed.gd): it closes with the nearest foe and strikes one
+# beside it - the melee attack each of its rounds asks for - with no more skill uses than its rule
+# leaves it, but in its last round, when one too many costs it nothing.
+static func _last_blows(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+	var target := _best_target(u, reads)
+	if target and not Battle.next_to(u.cell, reads[target].cell) and not _rooted(b, u):
+		log.append("%s closes in %s" % [u.name, b.travel(u, _approach(b, u, target, reads))])
+	var near := {}
+	for o: Unit in reads:
+		if Battle.next_to(u.cell, o.cell):
+			near[o] = b.read(u, o)
+	while u.dbno and (u.dbno.spare() != 0 or u.dbno.left <= 1) and _strike(b, u, near, log, true):
+		pass
+
+
 # Shackled (a binding trinket): off with them if they're unlocked; locked, one try at whichever of
 # picking (dex) and prying (str) its mods favour - its turn's AP are worth it to be rid of the weight.
 static func _unshackle(b: Battle, u: Unit, log: Array[String]) -> void:
@@ -134,7 +154,7 @@ static func score(u: Unit, s: Skill, r: Read) -> float:
 	var dmg := 0.0
 	if t:
 		dmg = (t.power + t.dice.x * (t.dice.y + 1) / 2.0 + (u.mod(t.stat, s.tags) if t.stat else 0)) * (u.rank(s) if s.hits_per_rank else 1)
-	var hp: float = r.hp if r.hp != null else GUESS_HP
+	var hp: float = maxf(r.hp, 1.0) if r.hp != null else GUESS_HP  # (one Downed, at 0 or below: any blow may be its last)
 	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) else 0.0) \
 			+ (KILL if s.drags_to else 0.0)  # into the water: the Siren's favourite
 	return value - _hate(r)
@@ -174,7 +194,7 @@ static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 	var scary: Array[Vector2i] = []
 	for o: Unit in reads:
 		var r: Read = reads[o]
-		if o.is_alive() and r.located() and r.attitude(u) == &"avoid" and Command.tiles(r.cell, u.cell) <= CRAVEN_REACH:
+		if o.is_alive() and not o.helpless() and r.located() and r.attitude(u) == &"avoid" and Command.tiles(r.cell, u.cell) <= CRAVEN_REACH:
 			scary.append(r.cell)
 	if scary.is_empty() or not _away(b, u, scary):
 		return false
@@ -197,6 +217,8 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if s.drags_to and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
 			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
+			if t.helpless():
+				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
 				best = [s, t]
 				best_score = v
@@ -544,7 +566,7 @@ static func _best_target(u: Unit, reads: Dictionary) -> Unit:
 			continue
 		var lv: float = reads[t].level if reads[t].level != null else 0.0
 		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, reads[t]) \
-				+ STRONG * lv * (int(&"strongest" in u.strategy) - int(&"weakest" in u.strategy))
+				+ STRONG * lv * (int(&"strongest" in u.strategy) - int(&"weakest" in u.strategy)) - (LAST if t.helpless() else 0.0)
 		if v > best_score:
 			best = t
 			best_score = v

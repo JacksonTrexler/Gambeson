@@ -31,6 +31,8 @@ const FRIEND := Color("#6fdc8c")
 const AP_COLOR := Color("#7cc4ff")
 const MOVE_COLOR := Color("#b8c0cc")
 const SLEEP := Color("#9db4ff")
+# What a Downed unit died of (Downed.succumb()), for the log.
+const DBNO_DEATHS := {&"limit": "its HP past its limit", &"rounds": "its rounds are up", &"actions": "one skill too many", &"melee": "a round without a melee attack", &"slain": "finished off"}
 const GROUND := {&"safe": Color("#7cc4ff"), &"unsure": Color("#f2c94c"), &"bad": Color("#a32424")}
 const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it scrolls
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
@@ -138,6 +140,7 @@ func _ready() -> void:
 		_looks.append([by, total, against, roll_known(of, s)]))
 	battle.evaluated.connect(_on_evaluated)
 	battle.downed.connect(_on_downed)
+	battle.dbno_changed.connect(_on_dbno)
 	battle.revived.connect(_on_revived)
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
@@ -1215,6 +1218,23 @@ func _on_downed(u: Unit) -> void:
 	_mark()
 
 
+# Downed (down but not out, on its last life - not the hearts' going down): it goes down, is saved, or
+# dies of it - told just before it falls (_on_died()).
+func _on_dbno(u: Unit, how: StringName) -> void:
+	match how:
+		&"down":
+			var n := u.dbno.left
+			_falls.append("%s is Downed%s: %d round%s to get it above 0 HP" % [_tag(u), ", and fights on" if u.dbno.rule.acts else "", n, "" if n == 1 else "s"])
+			overlay.float_text(u, "Downed", FOE)
+		&"saved":
+			_falls.append("%s is saved: no longer Downed" % _tag(u))
+			overlay.float_text(u, "Saved", FRIEND)
+		_:
+			_falls.append("%s, Downed, dies of it: %s" % [_tag(u), DBNO_DEATHS.get(how, String(how))])
+	_flush_falls.call_deferred()
+	_mark()
+
+
 # Back up as the turn ends - with whatever it brings (a Regeneration Probe), which the HUD now follows.
 func _on_revived(u: Unit, came: Unit) -> void:
 	u.modulate.a = 1.0
@@ -1742,6 +1762,8 @@ func _hint() -> String:
 		return ""
 	if u.asleep():
 		return "Asleep."
+	if u.helpless():
+		return "Downed: helpless until it's healed above 0 HP."
 	return ""  # not commandable (too far): the grayed hotbar and the lit commandable units say so
 
 
@@ -1929,10 +1951,18 @@ func _info(u: Unit) -> Dictionary:
 	return info
 
 
-# Its hearts, if it has any: how many lives it has left, and whether it's down.
+# Its hearts, if it has any: how many lives it has left, and whether it's down. And whether it's Downed
+# (down but not out): the rounds it has left, and for one that fights on (Grudge) the skill uses left
+# to it and the melee attack it owes this round.
 func _heart_chips(u: Unit, chips: Array) -> void:
 	if u.reviving:
 		chips.append(["Down", FOE])
+	if u.dbno:
+		chips.append(["Downed: %d round%s left" % [u.dbno.left, "" if u.dbno.left == 1 else "s"], FOE])
+		if u.dbno.spare() >= 0:
+			chips.append(["%d skill use%s left" % [u.dbno.spare(), "" if u.dbno.spare() == 1 else "s"], FOE if u.dbno.spare() == 0 else GOLD])
+		if u.dbno.rule.melee and not u.dbno.meleed and not u.dbno.fresh:
+			chips.append(["Owes a melee attack", GOLD])
 	if u.lives() > 0:
 		chips.append(["%d heart%s left" % [u.lives_left(), "" if u.lives_left() == 1 else "s"], FOE if u.lives_left() == 0 else GOLD])
 
@@ -2375,6 +2405,8 @@ func _why_no_orders(u: Unit) -> String:
 		return "Fallen"
 	if u.asleep():
 		return "Asleep: an ally ending the turn beside it wakes it"
+	if u.helpless():
+		return "Downed: helpless until it's healed above 0 HP"
 	if not command.under_caps(u):
 		if u in command.ordered:  # what skills and items add to a cap is named beside the charisma (Command.basis())
 			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", command.basis(command.order_bonus())]

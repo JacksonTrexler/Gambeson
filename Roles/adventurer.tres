@@ -29,6 +29,7 @@
 [ext_resource type="Resource" path="res://Skills/hydera.tres" id="s_hydera"]
 [ext_resource type="Resource" path="res://Skills/magic_slot.tres" id="s_magic_slot"]
 [ext_resource type="Resource" path="res://Skills/wary.tres" id="s_wary"]
+[ext_resource type="Resource" path="res://Skills/tenacity.tres" id="s_tenacity"]
 [ext_resource type="Resource" path="res://Skills/martial_slot.tres" id="s_martial_slot"]
 [ext_resource type="Resource" path="res://Skills/snare.tres" id="s_snare"]
 [ext_resource type="Resource" path="res://Skills/move_plus_one.tres" id="s_move_plus_one"]
@@ -116,6 +117,10 @@ branches = Array[ExtResource("7_branch")]([SubResource("Branch_sola"), SubResour
 script = ExtResource("7_branch")
 skill = ExtResource("s_wary")
 
+[sub_resource type="Resource" id="Branch_tenacity"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_tenacity")
+
 [sub_resource type="Resource" id="Branch_martial_slot"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_martial_slot")
@@ -125,7 +130,7 @@ needs = 3
 script = ExtResource("6_root")
 name = "Martial"
 tag = &"martial"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_martial_slot")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_tenacity"), SubResource("Branch_martial_slot")])
 
 [sub_resource type="Resource" id="Branch_first_aid"]
 script = ExtResource("7_branch")
