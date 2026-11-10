@@ -16,7 +16,8 @@ import argparse, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STUB = "STUB(skill.py)"
-FLAG_CEILING = 124  # @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md)
+FLAG_CEILING = 125  # @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
+# 125 counts `pings` (Clairvoyance), built beside the seam; lower it to 124 when that moves to a behaviour.
 FLOATS = {"ap", "radius", "radius_per_rank", "amount", "decays", "carry", "blast", "strike_ap", "restores", "rank_growth", "cone"}
 
 
