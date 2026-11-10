@@ -2433,7 +2433,7 @@ func pop_mark(text: String, colour: Color) -> void:
 	mark.z_index = 10
 	mark.size = Vector2(16, 18)
 	mark.pivot_offset = mark.size / 2.0
-	mark.position = Vector2(-8, -26)
+	mark.position = Vector2(-8, -39)  # above its bars
 	add_child(mark)
 	mark.scale = Vector2.ONE * 0.4
 	var tw := mark.create_tween()
