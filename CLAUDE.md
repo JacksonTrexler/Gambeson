@@ -1,0 +1,4 @@
+Skills are data first (`Skills/*.tres` built from existing `Skill.gd` fields and `Effect` stats); anything new a skill does goes in a `Behaviours/*.gd` script with `apply()` and `describe()` side by side, never a new `Skill.gd` flag.
+Add one with `python3 Util/skill.py new` (writes the .tres, wires it onto a tree/role, stubs its behaviour and `Tests/<id>_test.gd`; see `.claude/skills/new-skill`), not by hand-editing .tres ids, and run `python3 Util/skill.py check` before committing.
+`Battle.gd`, `HUD.gd` and `Unit.gd` run to thousands of lines: grep and read ranges, never whole files.
+Tests: `godot --headless --path . --import` after adding a script or class_name, then `godot --headless --path . -s Tests/run.gd -- [words]` (words match `file.test_name`; none runs all, ~30 s, ending `N checks, M failed`); a compile error hangs it.
