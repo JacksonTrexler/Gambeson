@@ -1,6 +1,15 @@
 extends Test
 
-# Strike and Hex: reach, size, net luck, AP and energy, turn rules, timed effects.
+# Strike and Hex: reach, size, net luck, AP and energy, turn rules, timed effects. And every skill's
+# wiring (Util/skill.py check), and every flag a skill sets saying so in its description.
+
+# Fields that shape how a skill works without a line of their own (its name, its glyph; whether it rolls).
+const QUIET := ["name", "glyph", "ai", "max_rank", "min_tier", "hostile", "rolls", "weapon_tag", "needs", "hybrid",
+		"difficulty", "reach_scale", "dice_scale"]
+# Flags set before this check that their skills don't mention yet. Shrink it; never grow it.
+const UNSAID := ["Alluring.shows_adjectives", "Alluring.shows_nouns", "Beastshape.shapes", "Cindering.cinders",
+		"Coalescing.grapples", "Drown.grapples", "Coordinate.links", "Personify.ap", "Pray.radius_per_rank",
+		"Sweet Nothings.reserve", "Sweet Nothings.reserve_mod"]
 
 
 func test_strike_damage() -> void:
@@ -99,3 +108,31 @@ func test_costs_and_turns() -> void:
 	stage(nemes, {v(3): Vector2i(4, 3), v(1): Vector2i(5, 3), v(2): Vector2i(0, 7)})
 	v(1).damage(99)
 	ok(b.phase == Battle.Phase.TURNS and not b.cast(v(3), strike, v(1)), "no casting at the dead (battle still on)")
+
+
+func test_wiring() -> void:
+	var out := []
+	var code := OS.execute("python3", [ProjectSettings.globalize_path("res://Util/skill.py"), "check"], out, true)
+	if code == -1 or code == 127:
+		print("skills_test: no python3, Util/skill.py check skipped")
+		return
+	ok(code == 0, "Util/skill.py check: %s" % "".join(out).strip_edges())
+
+
+func test_flags_described() -> void:
+	var blank := Skill.new()
+	var unsaid: Array[String] = []
+	for f in DirAccess.get_files_at("res://Skills"):
+		var s: Skill = load("res://Skills/" + f) if f.ends_with(".tres") else null
+		if not s or s.stub:
+			continue
+		var said := s.markup(3)
+		for p in s.get_property_list():
+			if not (p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and p.usage & PROPERTY_USAGE_STORAGE) or p.name in QUIET \
+					or s.get(p.name) == blank.get(p.name) or "%s.%s" % [s.name, p.name] in UNSAID:
+				continue
+			var d: Skill = s.duplicate()
+			d.set(p.name, blank.get(p.name))
+			if d.markup(3) == said:
+				unsaid.append("%s.%s" % [s.name, p.name])
+	ok(unsaid.is_empty(), "every flag a skill sets changes what it says - a flag or behaviour without its line (%s)" % [unsaid])
