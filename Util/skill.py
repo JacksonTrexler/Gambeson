@@ -381,7 +381,7 @@ def put_on_tree(a, sid):
     branch = ext_id_for(secs, "res://Scripts/Branch.gd") or die("%s: no Branch.gd ext_resource" % p)
     sk = free_id(secs, "s_" + sid)
     bid = free_id(secs, "Branch_" + sid)
-    roots = [s for s in secs if s["kind"] == "sub_resource" and "branches" in s["props"]]
+    roots = [s for s in secs if s["kind"] in ("sub_resource", "resource") and "branches" in s["props"]]
     if a.after:
         aid = ext_id_for(secs, "res://Skills/%s.tres" % a.after) or die("%s: --after %s isn't on it" % (p, a.after))
         anchor = next((b for b, s in skill_refs(secs).items() if s == aid), None) or die("%s: no branch for %s" % (p, a.after))
