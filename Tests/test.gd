@@ -36,6 +36,19 @@ func effect(stat: String, amount: float, tags: Array[StringName] = []) -> Effect
 	return e
 
 
+# Lets u read everything about others (recon 3): their level, class, skills - what an AI weighs
+# targets by (AI._best_target(), want()). Without it, two villagers look alike.
+func sharp(u: Unit) -> Unit:
+	u.afflict(effect("recon", 3), 9)
+	return u
+
+
+# Leaves u at `left` HP (a heal's target for a helpful healer).
+func hurt_to(u: Unit, left := 2) -> Unit:
+	u.hp = left
+	return u
+
+
 func slot(s: Skill, r := 1) -> Slot:
 	var x := Slot.new()
 	x.skill = s
