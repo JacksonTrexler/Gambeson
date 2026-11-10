@@ -89,3 +89,27 @@ func test_channel_ends() -> void:
 	var ap := v(1).ap_left()
 	ok(b.cast(v(1), clairvoyance, v(1)) and v(1).channel == null and b.pinged(lancin).is_empty(), "cast while channeling: it stops")
 	ok(is_equal_approx(v(1).ap_left(), ap), "stopping is free")
+
+
+func test_hud() -> void:
+	setup(Vector2i(5, 2), Vector2i(8, 6))
+	b.player = v(1)
+	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
+	h.battle = b
+	h.auto = false
+	h.pace = 0.0
+	tree.root.add_child(h)
+	await tree.process_frame
+	h._refresh()
+	ok(not v(3).visible, "hidden: not drawn")
+	b.cast(v(1), clairvoyance, v(1))
+	h._refresh()
+	ok(v(3).visible and v(3).sprite.modulate == Unit.SHAPE and h.dubious.has(Vector2i(5, 2)), "pinged: a black shape, its tile marked")
+	b.move(v(3), Vector2i(4, 3))
+	h._refresh()
+	ok(v(3).visible and v(3).position == b.map.map_to_local(Vector2i(5, 2)), "moved since: drawn where it was sensed")
+	ok(h.unit_seen(Vector2i(4, 3)) == null, "nothing shown where it really is")
+	b.end_channel(v(1))
+	h._refresh()
+	ok(not v(3).visible and v(3).position == b.map.map_to_local(Vector2i(4, 3)), "the channel ended: gone, back in place")
+	h.free()
