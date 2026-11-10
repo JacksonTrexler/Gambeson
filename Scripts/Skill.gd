@@ -57,6 +57,7 @@ extends Resource
 @export var links := false  # on itself: links it with its teammates within its cha mod in tiles (at least 1) and its leader, to pool what they make out (Coordinate; Battle._link())
 @export var prays := false  # prays to the caster's god, an effect by god (Pray; Battle.pray())
 @export var observes := false  # cast on a tile: the caster inspects every tile around it as if it had rested rank turns (Observe; Battle.observe())
+@export var pings := false  # on itself, channeled: foes its side can't see within its wisdom + rank tiles show as black shapes, location only, each a stack of its suspicion of the tile; each turn end it holds, they move to where the foes are and its rank for the channel rises (Clairvoyance; Battle.clairvoy())
 @export var auto := false  # used at once, landing on the nearest units in range - allies and foes alike - no more than its rank (Sing; Battle.auto_targets())
 @export var save := &""  # used on a foe: in place of the attack roll, it saves - d20 + its mod in this beating d20 + the caster's mod in the skill's stat + rank; failing, it takes the effects, and that roll is what seeing through them must beat (Haluca: wisdom)
 @export var disables := false  # a curse: with its save, the caster's luck-rounded sqrt(rank) of the foe's skill slots are switched off, right to left, for its turns; the foe adds the ranks of the skills in them to its save (Brainfog; Unit.disable_order())
@@ -591,6 +592,8 @@ func markup(rank := 1, with_spec := true) -> String:
 		lines.append("An escape portal forming opens {r:%d} turns sooner. With none forming: warps the caster and allies within {r:%d} tiles to a pocket of stone, a door back and forth, for {t:%d turns}; then it returns them in a clump" % [rank, rank, rank])
 	if wells:
 		lines.append("Floods the tile {r:%d} deep and the tiles beside it {r:%d}, for {t:%d turns}" % [rank, maxi(rank - 1, 0), rank])
+	if pings:
+		lines.append("Channeled on the caster: foes its side can't see within its wisdom + {r:%d} tiles, walls or not, show where they are as black shapes, and nothing more (%s). Each adds a stack of %s of its tile. As each of its turns ends while it holds, they move to where the foes are now, and the rank rises by 1 for the channel. Cast again to stop" % [rank, Glossary.term(&"pinged", "pinged"), Glossary.term(&"suspicion", "suspicion")])
 	if fog:
 		lines.append("Fog around the caster, radius {r:%d} + the better of its dex and cha mods, concealing at {r:%d}. Kept up only by using it again as each of its turns opens" % [rank, rank])
 	if studies:

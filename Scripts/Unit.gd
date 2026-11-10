@@ -49,6 +49,8 @@ class Channel:
 	var skill: Skill
 	var at: Vector2i
 	var turns := 0
+	var rank := 0  # Clairvoyance: its rank for this channel, rising each turn end it holds
+	var pings: Dictionary[Unit, Vector2i] = {}  # Clairvoyance: the foes it sensed -> where (Battle.clairvoy())
 
 	func _init(s: Skill, c: Vector2i) -> void:
 		skill = s

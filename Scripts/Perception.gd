@@ -42,6 +42,9 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	r.concealed = o != t and (left.values().any(func(x): return x > 0) or o.suspects(t) + o.suspects(t.cell) > 0)
 	_range(b, o, t, r)
 	_place(r, o, t, _main(left))
+	if r.cell == null and o != t and b.pinged(o.faction).has(t) and b.pinged(o.faction)[t] == t.cell:
+		r.cell = t.cell  # pinged where it still stands (Clairvoyance): where it is, and nothing more
+		r.concealed = true
 	var trick := trickery(t, r, o, b)
 	var tricked := trick > 0 and trick >= recon
 	var candid := o.faction == t.faction and t.candid()
