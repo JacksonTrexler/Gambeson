@@ -183,3 +183,9 @@ The rule is in `docs/done/rules.md`.
 ## Clairvoyance (2026-11-09)
 
 - [x] **Clairvoyance** (`Skills/clairvoyance.tres`; magical, wis; 3 AP, 3 cost, self only; flag `pings`): channeled. The caster's side senses every unseen foe within wisdom + rank, location only, and the caster builds suspicion of each tile; each of the caster's turn ends it holds, the pings update and its rank rises by 1. Moving doesn't end it; casting it again does, free. On the Wizard's Arcane root, the Mage's Refinement root and Luun's tree after Pray. (?89)
+
+## Bandwagon, Molothrus and Blinthe (2026-11-10)
+
+- [x] **Bandwagon** (`Skills/bandwagon.tres`, `Behaviours/bandwagon.gd`; passive, specialist, cha): word of suspicion of its holder takes a cha check against the standard rung at its rank + the holder's cha mod, while no more than rank + 1 foes suspect it. (?94)
+- [x] **Molothrus** (`Skills/molothrus.tres`, `Behaviours/molothrus.gd`; passive, specialist, cha): those it fools within rank tiles give up rank x 10% of their heals to it and take rank x 20% of its hits, shared; its persona goes by Precious. (?94)
+- [x] **Blinthe** (`Scenes/blinthe.tscn`, `Factions/unaligned.tres`): a level 16 Bard, his own side, made with `Util/unit.py` as the example of a unit with a bio. `blinthe_test.gd`. (?94)

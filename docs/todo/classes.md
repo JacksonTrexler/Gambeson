@@ -129,6 +129,7 @@ Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** a
 
 - [ ] **Rogue**: will get more tricks. Sprite is a placeholder (Elman).
 - [ ] **Bard**: will get songs. Sprite is a placeholder (Doebour).
+- [x] **Bandwagon** and **Molothrus** (2026-11-10) on the Freedom tab's Performance root, after Personify; Blinthe, a level 16 Bard of his own side, has both at III. (?94)
 
 19. Rogue and Bard, as built:
     - Each Freedom tab is the class's own copy, so the Bard's has no Snare. Should Calling: Freedom instead be one tree both classes share?

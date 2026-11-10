@@ -122,3 +122,9 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
     - **Kick:** General Martial tier 1, 4 AP, 1 Energy, 1d4 + str, range = rank, effects last rank turns. "The tile between" is the tile at the kicker's feet toward the target. Checks run trap, water, loose ground, hole/edge, bare; the first match wins. A trap springs on the target but stays where it is, revealed. Water leaves **Soaked** (movement -rank), loose ground (leaves, sand, debris) **Blinded** (offensive checks -rank), a hole, edge or off-map tile pushes rank tiles, bare ground is plain damage; adjacent targets take a 1-tile push. Soaked and Blinded are new reusable effects (`Effects/soaked.tres`, `blinded.tres`).
     - **CLAUDE.md** is four lines: two on skills (data first, behaviours in `Behaviours/*.gd`, never a new `Skill.gd` flag; use `skill.py new` and `check`), one on reading the big files by range, one on running the tests.
     - New skills use behaviours; old flags move over only when touched. `check` runs as `skills_test.test_wiring`; `skills_test.test_flags_described` fails when a field a skill sets doesn't change its description.
+
+## Unit bios (2026-11-10)
+
+- [ ] More tempers as they're wanted (cowardly, vengeful...): each is a word in `Bio.BEHAVIOURS` and a branch in `AI.act()`. (?91)
+- [ ] Bio text on the character sheet and the Guide; appearance words beyond the Bio tables are flavour only. (?91)
+- [ ] Clout earned in play (helping a side, lying to it) rather than set by hand. (?93)
