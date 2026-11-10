@@ -285,7 +285,10 @@ def put_on_tree(a, sid):
         anchor = (items(root["props"]["branches"]) or [None])[-1]  # None: a new tree's first skill (role.py --tree)
     lines = ['[sub_resource type="Resource" id="%s"]' % bid, 'script = ExtResource("%s")' % branch, 'skill = ExtResource("%s")' % sk]
     if a.prereq:
-        skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd") or die("%s: no Skill.gd ext_resource for --prereq" % p)
+        skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd")
+        if not skill_ext:  # a new tree (role.py) declares no Skill.gd yet: declare it
+            skill_ext = free_id(secs, "skill")
+            text = add_ext(text, '[ext_resource type="Script" path="res://Scripts/Skill.gd" id="%s"]' % skill_ext)
         pre = [ext_id_for(secs, "res://Skills/%s.tres" % x) or die("%s: --prereq %s isn't on it" % (p, x)) for x in a.prereq.split(",")]
         lines.append('after = Array[ExtResource("%s")]([%s])' % (skill_ext, ", ".join('ExtResource("%s")' % x for x in pre)))
     if a.branch_tier:

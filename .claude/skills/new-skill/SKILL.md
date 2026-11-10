@@ -31,13 +31,21 @@ Follow the steps in order; each ends in something you can check.
        --tree <Trees/ or Roles/ file stem> --after <skill id> [--prereq <id>] [--branch-tier N] [--role <class>] \
        [--glyph Kk] [--human] [--set key=value]
    ```
-   `--help` lists the rest (`--root`, `--dry-run`). It writes the skill, its icon
+   `--help` lists the rest (`--root`, `--dry-run`). `--after` places it in the file; `--prereq` is what must
+   be learned first. It writes the skill, its icon
    (`Icons/Skills/<id>.png`: its glyph or initials, white on clear - replace the PNG with art any time,
    same path), the behaviour and test stubs, wires it onto the tree, imports, then checks. The first
    skill on a new, empty tree needs no `--after`.
 
 4. **Fill in the stubs** (`STUB(skill.py)` in the behaviour and `Tests/<id>_test.gd`), in the style of a
-   neighbouring test: `describe()` says in Glossary markup what `apply()`/the hooks do, at a rank. Reusable
+   neighbouring test: `describe()` says in Glossary markup what `apply()`/the hooks do, at a rank (a
+   passive's too). Markup (`Scripts/Glossary.gd`): `{k:attack}` a term (`{k:check|Checks}` in other
+   words), `{o:str mod}` the user's mod, `{d:wis mod}` the target's, `{r:3}` a number growing with rank,
+   `{t:3 turns}` a duration, `{x:fire}` a damage tag. Data-only skills describe themselves from their
+   fields. Test cheat sheet (`Tests/Test.gd`): `v(1)`..`v(4)` villagers (1-2 Lancin, 3-4 Nemes),
+   `stage(side, {unit: cell})`, `slot(skill, rank)` to learn one, `b.cast(u, skill, target)`,
+   `b.read(o, t)`, `sharp(u)` (recon 3), `effect("stat", amount)`; a tier's `stat` adds the *mod*;
+   which tree offers it: `SkillRoot.branch(skill)`, `SkillTab.offers(skill)`. Reusable
    statuses go in `Effects/*.tres` (`mechanic.py effect`), a new condition's name in `Glossary.TERMS`
    (`mechanic.py tag`).
 
