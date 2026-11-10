@@ -55,6 +55,12 @@ def import_project():
     subprocess.run(["godot", "--headless", "--path", ROOT, "--import"], capture_output=True)
 
 
+def readers(word):
+    """The scripts that ask about &"word": where the rules react to a tag."""
+    return sorted({rel(p) for top in ("Scripts", "Behaviours") for p in [os.path.join(ROOT, f) for f in files(top, ".gd")]
+                   if '&"%s"' % word in read(rel(p))})
+
+
 def files(top, ext):
     for d, dirs, fs in os.walk(os.path.join(ROOT, top)):
         dirs[:] = [x for x in dirs if not x.startswith(".")]
@@ -161,11 +167,14 @@ def literal(key, v):
     return '"%s"' % v
 
 
-def effect_props(spec):
-    """An Effect's properties from "stat=mitigate amount=0.5 tags=fire,water per_rank=true"."""
+def effect_props(spec, human=True):
+    """An Effect's properties from "stat=mitigate amount=0.5 tags=fire,water per_rank=true". human=False: an
+    AI made it, so a name= gets REVIEW (a name with spaces: name=Hot_Coals, underscores for spaces)."""
     out = []
     for kv in spec.split():
         k, _, v = kv.partition("=")
+        if k == "name":
+            v = '"%s"' % ai_name(v.replace("_", " ").strip('"'), human)
         out.append("%s = %s" % (k, literal(k, v) if k != "stat" else '"%s"' % v))
     return out
 
@@ -194,8 +203,8 @@ class Doc:
         self.subs.append("\n".join(['[sub_resource type="Resource" id="%s"]' % sid, "script = " + self.res("Script", script_path)] + props))
         return 'SubResource("%s")' % sid
 
-    def effect(self, sid, spec):
-        return self.sub(sid, "res://Scripts/Effect.gd", effect_props(spec))
+    def effect(self, sid, spec, human=True):
+        return self.sub(sid, "res://Scripts/Effect.gd", effect_props(spec, human))
 
     def text(self, tail="[resource]"):
         return "\n\n".join([self.head, "\n".join(self.ext)] + self.subs + [tail + "\n" + "\n".join(self.props)]) + "\n"

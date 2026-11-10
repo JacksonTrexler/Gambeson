@@ -4,6 +4,7 @@ extends Resource
 # One per kind of ground, stored in the TileSet's "terrain" custom data. Tiles left blank count
 # as plain ground: entering costs 1 unless a terrain says otherwise.
 @export var name := ""
+@export var look: Texture2D  # its own tile art (Tiles/<id>.png, a placeholder until art replaces the file): painted where no tile set source carries it (Battle.paint())
 @export var enter := 1  # movement to step onto it
 @export var exit := 0  # extra movement to step off it (sticky ground)
 @export var tags: Array[StringName] = []  # beneficial / detrimental, rough, sticky, trap, water, wet...

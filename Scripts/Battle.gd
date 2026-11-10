@@ -2794,16 +2794,30 @@ static func rift_difficulty(rank: int) -> float:
 	return clampf(0.5 * rank, 0.5, 1.5)
 
 
-# Paints terrain t onto c: a tile of the map's tile set that carries it, made at run time if there's none.
+# Paints terrain t onto c: a tile of the map's tile set that carries it, made at run time if there's
+# none - from its own art (Terrain.look), else the placeholder tinted.
 func paint(c: Vector2i, t: Terrain, tint := Color.WHITE) -> void:
-	var src := map.tile_set.get_source(0) as TileSetAtlasSource
-	for i in src.get_tiles_count():
-		var at := src.get_tile_id(i)
-		for k in src.get_alternative_tiles_count(at):
-			var alt := src.get_alternative_tile_id(at, k)
-			if src.get_tile_data(at, alt).get_custom_data("terrain") == t:
-				map.set_cell(c, 0, at, alt)
-				return
+	var ts := map.tile_set
+	for n in ts.get_source_count():
+		var id := ts.get_source_id(n)
+		var from := ts.get_source(id) as TileSetAtlasSource
+		for i in from.get_tiles_count() if from else 0:
+			var at := from.get_tile_id(i)
+			for k in from.get_alternative_tiles_count(at):
+				var alt := from.get_alternative_tile_id(at, k)
+				if from.get_tile_data(at, alt).get_custom_data("terrain") == t:
+					map.set_cell(c, id, at, alt)
+					return
+	if t.look:
+		var own := TileSetAtlasSource.new()
+		own.texture = t.look
+		own.texture_region_size = ts.tile_size
+		var id := ts.add_source(own)  # in the set first: only then do its tiles carry its custom data layer
+		own.create_tile(Vector2i.ZERO)
+		own.get_tile_data(Vector2i.ZERO, 0).set_custom_data("terrain", t)
+		map.set_cell(c, id, Vector2i.ZERO, 0)
+		return
+	var src := ts.get_source(0) as TileSetAtlasSource
 	var alt := src.create_alternative_tile(Vector2i.ZERO)
 	src.get_tile_data(Vector2i.ZERO, alt).set_custom_data("terrain", t)
 	src.get_tile_data(Vector2i.ZERO, alt).modulate = tint

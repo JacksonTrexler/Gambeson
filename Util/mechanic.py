@@ -78,7 +78,7 @@ def property_(a):
     if a.tags:
         d.props.append("tags = " + names(a.tags))
     if a.effect:
-        refs = [d.effect("Effect_%d" % (i + 1), s) for i, s in enumerate(a.effect)]
+        refs = [d.effect("Effect_%d" % (i + 1), s, a.human) for i, s in enumerate(a.effect)]
         d.props.append("effects = " + tres.typed("res://Scripts/Effect.gd", d, refs))
     if a.text:
         d.props.append('text = "%s"' % a.text.replace('"', '\\"'))
@@ -93,7 +93,7 @@ def effect(a):
     exists("Effects/%s.tres" % eid) and die("Effects/%s.tres exists" % eid)
     len(a.effect) == 1 or die("one --effect: an Effects/ file is a single effect")
     d = Doc('[gd_resource type="Resource" script_class="Effect" format=3]')
-    d.props = ["script = " + d.res("Script", "res://Scripts/Effect.gd")] + tres.effect_props(a.effect[0])
+    d.props = ["script = " + d.res("Script", "res://Scripts/Effect.gd")] + tres.effect_props(a.effect[0], a.human)
     if not any(x.startswith("name = ") for x in d.props):
         d.props.append('name = "%s"' % ai_name(a.name or eid.replace("_", " ").title(), a.human))
     write("Effects/%s.tres" % eid, d.text(), a.dry_run)
