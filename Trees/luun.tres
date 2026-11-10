@@ -6,6 +6,7 @@
 [ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
 [ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
 [ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
+[ext_resource type="Resource" path="res://Skills/clairvoyance.tres" id="s_clairvoyance"]
 
 [sub_resource type="Resource" id="Branch_level_down"]
 script = ExtResource("7_branch")
@@ -17,8 +18,13 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_death")
 after = Array[ExtResource("5_skill")]([ExtResource("s_level_down")])
 
+[sub_resource type="Resource" id="Branch_clairvoyance"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_clairvoyance")
+after = Array[ExtResource("5_skill")]([ExtResource("s_pray")])
+
 [resource]
 script = ExtResource("6_root")
 name = "Luun"
 tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_down"), SubResource("Branch_death")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_level_down"), SubResource("Branch_death"), SubResource("Branch_clairvoyance")])

@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="Role" format=3]
 
 [ext_resource type="Resource" path="res://Skills/discipline.tres" id="s_discipline"]
+[ext_resource type="Resource" path="res://Skills/clairvoyance.tres" id="s_clairvoyance"]
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/RedMage.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
@@ -79,11 +80,15 @@ script = ExtResource("9_branch")
 skill = ExtResource("s_magic_slot")
 needs = 3
 
+[sub_resource type="Resource" id="Branch_clairvoyance"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_clairvoyance")
+
 [sub_resource type="Resource" id="Root_Refinement"]
 script = ExtResource("8_root")
 name = "Refinement"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_precise_casting"), SubResource("Branch_extend_spell"), SubResource("Branch_reach_spell"), SubResource("Branch_quicken"), SubResource("Branch_magic_slot")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_precise_casting"), SubResource("Branch_extend_spell"), SubResource("Branch_reach_spell"), SubResource("Branch_quicken"), SubResource("Branch_clairvoyance"), SubResource("Branch_magic_slot")])
 
 [sub_resource type="Resource" id="Branch_focus"]
 script = ExtResource("9_branch")

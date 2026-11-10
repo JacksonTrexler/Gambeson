@@ -55,6 +55,7 @@ const TERMS := {
 	&"wound": ["Wound", &"condition", "A lasting hurt with a rank; a heal clearing at least that rank takes it off."],
 	&"enraptured": ["Enraptured", &"condition", "Fooled by a unit's persona, with no suspicion of it."],
 	&"suspicion": ["Suspicion", &"condition", "Stacks of doubt about a unit's persona: each makes it harder to fool."],
+	&"pinged": ["Pinged", &"condition", "Sensed by a channeled Clairvoyance: a foe out of sight shown as a black shape where it was last sensed. Only where, not who or what side; gone once the channel ends."],
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
 	&"exhaustion": ["Exhaustion", &"condition", "Each use of a skill a unit hasn't got over adds half that skill's AP and cost to its next use, and counts half against its other skills of the same kind (martial, specialist, magical). A turn's end takes one use off each; resting takes off the con mod more, or below 1 a part of one: 1 / (1 - con mod)."],

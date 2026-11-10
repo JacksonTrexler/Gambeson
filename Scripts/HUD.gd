@@ -736,7 +736,12 @@ func view(u: Unit) -> Read:
 		var none := Read.new()
 		none.net = -4
 		return none if o == null else battle.read(o, u)
-	return battle.read(o, u)
+	var r := battle.read(o, u)
+	var pings := battle.pinged(o.faction)
+	if not r.located() and pings.has(u):
+		r.cell = pings[u]  # sensed there, though it's since moved on (Clairvoyance): drawn where it was
+		r.concealed = true
+	return r
 
 
 func tile_view(c: Vector2i) -> Read:
@@ -760,7 +765,7 @@ func ground(c: Vector2i, r: Read = null) -> StringName:
 # The unit at c, if the player's side can make out that something's there.
 func unit_seen(c: Vector2i) -> Unit:
 	var u := battle.unit_at(c)
-	return u if u and (known(u) or view(u).located()) else null
+	return u if u and (known(u) or view(u).cell == c) else null
 
 
 # Asleep, as far as the player can tell (another side's sleep shows only to a close look).
@@ -1365,7 +1370,10 @@ func _show_units() -> void:
 			continue
 		var r := view(u)
 		u.appear(r)
+		u.position = battle.map.map_to_local(r.cell if r.located() else u.cell)  # a stale ping: where it was sensed
 		u.set_saturation(1.0)  # its colour isn't the player's to drain (a unit that changed sides)
+		if r.located() and r.silhouette() and battle.pinged(command.faction()).has(u):
+			dubious[r.cell] = "sensed"  # Clairvoyance marks the tile
 		for c in r.area:
 			if battle.on_map(c):
 				dubious[c] = r.hint
