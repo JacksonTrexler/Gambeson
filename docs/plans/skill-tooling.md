@@ -43,3 +43,19 @@ beside it, never a new `Skill.gd` flag; use `Util/skill.py new` and `check`; whe
 
 1 and 2 first (no rule changes), then 3 with Kick as its first user, then 4 and CLAUDE.md. ?88 holds
 the calls made.
+
+## Built
+
+- `Util/skill.py new` writes the skill, a behaviour stub, a test stub, the tree branch (ext_resource,
+  Branch, `branches` entry; `--after` or `--root`, `--prereq`, `--branch-tier`) and `--role` options, then
+  imports and checks. `check` (about 0.1 s; `skills_test.test_wiring` runs it): ids resolve, paths exist,
+  every skill reachable, tags known to the scripts (or shared by 2+ skills), `.gd.uid` present and
+  committed, behaviours have both halves and a user, `Skill.gd` flags under a ceiling, no `STUB(skill.py)`
+  left, the Adventurer wheel count in `hud_test` matches the data. `skills_test.test_flags_described`:
+  every field a skill sets changes its description (legacy gaps listed in `UNSAID`, to shrink).
+- Seam: `Scripts/Behaviour.gd` (`apply(Cast)`, `describe(rank)`, `Cast.put()`), `Skill.behaviours`,
+  run by `Battle._behave()` once a skill lands (not on the early-return paths: Strike's chain, contests).
+- Kick: General Martial tier 1; range rank, 4 AP, 1 Energy, 1d4 + str; the tile at the kicker's feet on
+  the line: trap springs on the foe, water Soaked (movement -rank), leaves/sand/debris Blinded (offensive
+  checks -rank), off-map or hole/edge/pit tags push rank; adjacent push 1. `Effects/blinded.tres`, `soaked.tres`.
+- Agent skill `.claude/skills/new-skill/SKILL.md`; `CLAUDE.md`.
