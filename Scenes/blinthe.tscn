@@ -1,0 +1,64 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Resource" path="res://Factions/unaligned.tres" id="2_unaligned"]
+[ext_resource type="Resource" path="res://Roles/bard.tres" id="3_bard"]
+[ext_resource type="Texture2D" path="res://Units/Blinthe.png" id="4_blinthe"]
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="5_faction"]
+[ext_resource type="Resource" path="res://Factions/lancin.tres" id="6_lancin"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="7_nemes"]
+[ext_resource type="Script" path="res://Scripts/Bio.gd" id="8_bio"]
+[ext_resource type="Resource" path="res://Skills/persona.tres" id="9_persona"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="10_slot"]
+[ext_resource type="Resource" path="res://Skills/bandwagon.tres" id="11_bandwagon"]
+[ext_resource type="Resource" path="res://Skills/molothrus.tres" id="12_molothrus"]
+[ext_resource type="Resource" path="res://Skills/embellish.tres" id="13_embellish"]
+[ext_resource type="Resource" path="res://Skills/tonefoolery.tres" id="14_tonefoolery"]
+
+[sub_resource type="Resource" id="Bio_blinthe"]
+script = ExtResource("8_bio")
+behaviour = &"timid"
+appearance = "Minstrel"
+adjectives = Array[String](["Beloved"])
+clout = Dictionary[ExtResource("5_faction"), int]({ExtResource("6_lancin"): 3, ExtResource("7_nemes"): 2})
+text = "While he seemed an indisputably rotten person, the bard had surrounded himself with enamored friends and community members in such a way that stating the obvious seemed ill advised."
+
+[sub_resource type="Resource" id="Slot_persona"]
+script = ExtResource("10_slot")
+skill = ExtResource("9_persona")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_bandwagon"]
+script = ExtResource("10_slot")
+skill = ExtResource("11_bandwagon")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_molothrus"]
+script = ExtResource("10_slot")
+skill = ExtResource("12_molothrus")
+rank = 3
+
+[sub_resource type="Resource" id="Slot_embellish"]
+script = ExtResource("10_slot")
+skill = ExtResource("13_embellish")
+rank = 2
+
+[sub_resource type="Resource" id="Slot_tonefoolery"]
+script = ExtResource("10_slot")
+skill = ExtResource("14_tonefoolery")
+rank = 2
+
+[node name="Blinthe" instance=ExtResource("1_unit")]
+faction = ExtResource("2_unaligned")
+role = ExtResource("3_bard")
+level = 16
+look = ExtResource("4_blinthe")
+bio = SubResource("Bio_blinthe")
+learned = Array[ExtResource("10_slot")]([SubResource("Slot_persona"), SubResource("Slot_bandwagon"), SubResource("Slot_molothrus"), SubResource("Slot_embellish"), SubResource("Slot_tonefoolery")])
+strength = 8
+dexterity = 13
+constitution = 10
+intelligence = 12
+wisdom = 12
+charisma = 18
+shows_nouns = Dictionary[String, String]({"Friend": ""})

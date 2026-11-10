@@ -30,6 +30,8 @@
 [ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [ext_resource type="Resource" path="res://Trees/song.tres" id="r_song"]
+[ext_resource type="Resource" path="res://Skills/bandwagon.tres" id="s_bandwagon"]
+[ext_resource type="Resource" path="res://Skills/molothrus.tres" id="s_molothrus"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -66,16 +68,26 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_brood")
 after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
 
+[sub_resource type="Resource" id="Branch_molothrus"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_molothrus")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
 [sub_resource type="Resource" id="Branch_conspire"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_conspire")
 after = Array[ExtResource("5_skill")]([ExtResource("s_embellish"), ExtResource("s_brood")])
 
+[sub_resource type="Resource" id="Branch_bandwagon"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_bandwagon")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
 [sub_resource type="Resource" id="Root_Performance"]
 script = ExtResource("6_root")
 name = "Performance"
 tag = &"specialist"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_tonefoolery"), SubResource("Branch_glamour"), SubResource("Branch_manifest"), SubResource("Branch_personify"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_conspire")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_tonefoolery"), SubResource("Branch_glamour"), SubResource("Branch_manifest"), SubResource("Branch_personify"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_molothrus"), SubResource("Branch_conspire"), SubResource("Branch_bandwagon")])
 
 [sub_resource type="Resource" id="Tab_Freedom"]
 script = ExtResource("8_tab")
