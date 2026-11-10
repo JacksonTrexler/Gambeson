@@ -715,6 +715,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		investigate(target, skill, eyes, guise)
 		if skill.effects.any(func(e: Effect): return e.stat == "concealment"):
 			_scatter(target, guise)
+	if not skill.behaviours.is_empty():
+		_behave(caster, skill, target, r, foe)
 	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * r)
 	if foe and skill.push:
@@ -774,6 +776,19 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		cast(caster, skill, target, true)
 		_recasts -= 1
 	return true
+
+
+# Runs a landing skill's behaviours in order (Skill.behaviours: Kick), sharing one Cast between them.
+func _behave(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> void:
+	var c := Behaviour.Cast.new()
+	c.battle = self
+	c.caster = caster
+	c.target = target
+	c.skill = skill
+	c.rank = r
+	c.foe = foe
+	for bh in skill.behaviours:
+		bh.apply(c)
 
 
 # The tags a skill's damage carries for its caster: its own, plus its weapon's blows (Skill.weapon_tag:

@@ -17,6 +17,7 @@ extends Resource
 @export var rank_cost := 0  # skill points for rank II, times rank_growth for each rank after (Clever Disguise: 4, 8, 16...); 0: the usual 1 + r^2
 @export var rank_growth := 2.0
 @export var downed: Downed  # passive: on its last life, its holder lingers Downed at 0 HP rather than dying, by this rule x rank (Tenacity, Grudge; Scripts/Downed.gd)
+@export var behaviours: Array[Behaviour] = []  # what it does beyond these flags, each saying so itself: run in order as it lands (Kick; Scripts/Behaviour.gd, Behaviours/)
 
 @export_group("Active")
 @export var ap := 0.0
@@ -569,6 +570,9 @@ func markup(rank := 1, with_spec := true) -> String:
 		lines.append(ally + e.markup(rank) + ("" if passive else _lasting(rank)))
 	if downed:
 		lines.append(downed.markup(rank))
+	for bh in behaviours:
+		if bh.describe(rank):
+			lines.append(bh.describe(rank))
 	if has_look():
 		var look := ([stance] if stance else []) + [", ".join(shows_vibe)] + [", ".join(shows_tags)]
 		lines.append("Puts forward a look: %s. Its holder's dissonance counts {r:%d} less against its own checks"
