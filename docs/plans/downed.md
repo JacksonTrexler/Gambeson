@@ -48,4 +48,13 @@ Branch `r-downed`. One mechanism any skill configures by data; Tenacity and Grud
 - [x] `Scripts/Downed.gd` + Unit/Battle/Skill/Glossary/Command hooks (and the AI's gate: a helpless unit takes no turn)
 - [x] `Skills/tenacity.tres`, `Skills/grudge.tres`, wired into the roles and Fury
 - [x] `Tests/downed_test.gd` (10 tests); full suite green (454 tests); first commit. `hud_test`'s Adventurer wheel count went 36 -> 37
-- [ ] HUD (chip, log lines, reasons) and AI (helpless gate, Grudge melee, finishing last); second commit
+- [x] HUD: log lines (Downed / saved / dies of it, with the reason), card chips (rounds left; under Grudge the skill uses left and the melee attack owed), "Downed" as the reason it takes no orders; floats "Downed" / "Saved" over the unit
+- [x] AI: a helpless unit takes no turn and scares no craven; a helpless foe is struck and approached last (`FINISH`, `LAST`); a unit Downed under Grudge closes in and strikes a foe beside it within its allowance, spending itself in its last round (`AI._last_blows`)
+- [x] Full suite green: 457 tests, 0 failed. `downed_test.test_hud` added to `Tests/slow.txt`
+
+Not done (left for a later pass):
+
+- No drawing of a Downed unit on the map itself (unit drawing is being reworked in another branch): only the card chip, the log and the float text say so.
+- A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before.
+- The AI doesn't keep away from a unit under Grudge to let it die of a round without a melee attack, and a unit under Grudge doesn't try to heal itself back up.
+- Noticed, not changed: a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again - with three or more sides one is skipped.

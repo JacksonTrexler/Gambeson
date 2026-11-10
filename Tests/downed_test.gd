@@ -210,3 +210,64 @@ func test_skills() -> void:
 	var g := grudge.describe(3)
 	ok("for 3 rounds: it goes on acting" in g and "more than 3 skills" in g and "without a melee attack" in g, "Grudge III described: %s" % g)
 	ok(Glossary.name_of(&"downed") == "Downed", "a glossary term")
+
+
+func test_ai_finishes_last() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(4, 4)})
+	give(v(3), tenacity, 3)
+	v(3).damage(999)
+	var log := AI.act(b, v(1))
+	ok(not log.is_empty() and "on Villager4" in log[0], "a helpless foe and a standing one beside it: it strikes the one standing (%s)" % [log])
+	stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(5, 3)})
+	log = AI.act(b, v(1))
+	ok(v(3).dbno != null and log.any(func(l: String): return "on Villager3" in l) or not v(3).is_alive(), "only the helpless one left: it goes over and finishes it (%s)" % [log])
+
+
+func test_ai_grudge() -> void:
+	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(1, 1), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
+	give(v(3), grudge, 2)
+	give(v(4), grudge, 1)
+	v(1).armor = bulwark()
+	v(3).damage(999)
+	b.end_turn()
+	var log := AI.act(b, v(3))
+	ok(Battle.next_to(v(3).cell, v(1).cell) and v(3).dbno != null and v(3).dbno.meleed and v(3).dbno.acted in [1, 2], "Downed under Grudge, on its own: it closes in and strikes, within its allowance (%s)" % [log])
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(1, 1), v(4): Vector2i(5, 3)})
+	v(4).damage(999)
+	b.end_turn()
+	v(4).ap[0].amount = 6.0
+	log = AI.act(b, v(4))
+	ok(log.size() == 2 and not v(4).is_alive(), "in its last round it spends itself: one blow more than its allowance (%s)" % [log])
+
+
+func test_hud() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3)})
+	give(v(2), tenacity, 2)
+	give(v(1), first_aid, 1)
+	b.player = v(1)
+	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
+	h.battle = b
+	h.auto = false
+	h.pace = 0.0
+	tree.root.add_child(h)
+	await tree.process_frame
+	v(2).hit(999.0, [], v(3))
+	await tree.process_frame
+	ok("Villager2 is Downed: 2 rounds to get it above 0 HP" in h.log_box.get_parsed_text(), "the log says it's Downed: %s" % h.log_box.get_parsed_text())
+	ok(h._info(v(2)).chips.any(func(c): return c[0] == "Downed: 2 rounds left"), "so does its card (%s)" % [h._info(v(2)).chips])
+	ok(h._why_no_orders(v(2)).begins_with("Downed"), "it takes no orders: %s" % h._why_no_orders(v(2)))
+	ok(b.cast(v(1), first_aid, v(2)), "First Aid")
+	await tree.process_frame
+	var text: String = h.log_box.get_parsed_text()
+	ok("Villager2 is saved" in text and "XP for saving" in text and not h._info(v(2)).chips.any(func(c): return c[0].begins_with("Downed")), "saved, with the XP for it: %s" % text)
+	v(2).learned.clear()
+	give(v(2), grudge, 2)
+	v(2).hit(999.0, [], v(3))
+	v(2).dbno.fresh = false
+	var chips: Array = h._info(v(2)).chips.map(func(c): return c[0])
+	ok("Downed: 2 rounds left" in chips and "2 skill uses left" in chips and "Owes a melee attack" in chips, "under Grudge: what it has left, and owes (%s)" % [chips])
+	v(2).damage(999)
+	await tree.process_frame
+	text = h.log_box.get_parsed_text()
+	ok("fights on" in text and "Villager2, Downed, dies of it: its HP past its limit" in text and "Villager2 falls" in text, "dying of it: %s" % text)
+	h.free()
