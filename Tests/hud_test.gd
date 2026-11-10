@@ -635,7 +635,7 @@ func test_adventurer_skills_screen() -> void:
 	var w: SkillWheel = h.get_node("%Wheel")
 	ok(w.is_visible_in_tree() and not h.get_node("%TreeScroll").visible and h.get_node("%DetailCol").visible,
 			"the Adventurer's own tab: a wheel")
-	ok(w.skills().size() == 36 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
+	ok(w.skills().size() == 37 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
 	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER"],
 			"its own tab, its species', then all three general trees and the base one, on the far right")

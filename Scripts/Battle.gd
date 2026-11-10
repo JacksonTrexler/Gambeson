@@ -29,6 +29,7 @@ signal refused(u: Unit, leader: Unit)  # a traitor in leader's party won't do as
 signal doubted(by: Unit, of: Unit, total: int, against: int)  # doubt(): by grows suspicious of `of` when total >= against
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
+signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
 signal revived(u: Unit, summoned: Unit)  # u got up, a heart spent; summoned: what came with it (a Regeneration Probe), or null
 signal dropped(u: Unit, item: Item)  # u fell, leaving an item (its loot)
 signal pulsed(u: Unit, healed: Dictionary)  # a Regeneration Pulse: unit -> HP it got back
@@ -276,6 +277,7 @@ class Layer:
 
 
 func _ready() -> void:
+	used.connect(func(caster: Unit, skill: Skill, at: Variant, _dealt: int): Downed.acted(caster, skill, at))  # a Downed unit's uses count (Grudge)
 	for c in starpower:
 		charge[c] = roundi(clampf(starpower[c], 0.0, 1.0) * STAR_CAPACITY)
 		lay_layer(c, STARTILE, true)  # an overlay: the ground beneath still counts
@@ -299,6 +301,7 @@ func _ready() -> void:
 			continue
 		u.died.connect(_on_died)
 		u.downed.connect(_on_downed)
+		u.dbno_changed.connect(_on_dbno)
 	for u: Unit in units.values():
 		for t: Unit in units.values():
 			if u.faction and t.faction and not Faction.friends(u.faction, t.faction) and Perception.cover(self, t) == 0:
@@ -655,7 +658,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_expose(target)
 		_expose(caster)
-		if before > 0 and not target.is_alive():
+		if not target.is_alive():  # (downing one that lingers Downed is no kill; its death is)
 			caster.gain(&"kill", 1)
 		caster.heading = Vector2i.ZERO
 		_tidy_debris()
@@ -723,6 +726,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if skill.links:
 		_link(caster, skill, r)
 	if not foe and skill.heals():
+		target.healed_by = caster
 		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(r), skill.per_wound * r)
 		target.regain(skill.restores * r)
 	if not foe:
@@ -758,7 +762,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_expose(target)
 		_expose(caster)
-		if before > 0 and not target.is_alive():
+		if not target.is_alive():
 			caster.gain(&"kill", 1)  # Sweet Nothings
 	caster.heading = Vector2i.ZERO
 	_tidy_debris()
@@ -798,7 +802,8 @@ func _smite(caster: Unit, t: Unit, r: int, gross: int) -> void:
 		&"luun":
 			if t.is_alive() and t.hp <= t.max_hp * 0.05 * r:
 				t.slain_from = t.hp
-				t.hp = 0
+				if not Downed.finish(t):  # one already Downed dies of it
+					t.hp = 0
 		&"sol":
 			if t.is_alive():
 				var burn := Effect.new()
@@ -831,6 +836,7 @@ func _smite_heal(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	var over := maxi(n - room, 0)
 	var extra := roundi(over * 0.2 * r)
 	t.over_max = maxi(t.hp + mini(n, room) + extra - t.max_hp, t.over_max)
+	t.healed_by = caster
 	t.heal(mini(n, room) + extra)
 
 
@@ -1517,7 +1523,7 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 		o.hit(power * (1.0 + caster.stat(&"damage", skill.tags)), skill.tags, caster)
 		hit[o] = was - o.hp
 		_expose(o)
-		if was > 0 and not o.is_alive() and o.faction != caster.faction:
+		if not o.is_alive() and o.faction != caster.faction:
 			caster.gain(&"kill", 1)
 	_expose(caster)
 	for at in map.get_used_cells():
@@ -2313,7 +2319,7 @@ func _mend(u: Unit) -> void:
 	if SICKNESS in u.timed:  # gone if it starts the turn whole; else it takes its toll, never the last HP
 		if u.hp >= u.max_hp:
 			u.timed.erase(SICKNESS)
-		else:
+		elif u.hp > 0:  # (it never lifts one Downed)
 			u.hp = maxi(u.hp - maxi(roundi(SICKNESS.amount * u.max_hp), 1), 1)
 	var regen := u.stat(&"regen")
 	var flat := u.stat(&"regen_hp")  # Rejuvinate's cha mod
@@ -2353,6 +2359,7 @@ func _pulse(u: Unit) -> void:
 	for o in members(u.faction):
 		if Command.tiles(o.cell, u.cell) <= PULSE_REACH:
 			var was := o.hp
+			o.healed_by = u
 			o.heal(k * (roll(Vector2i(1, 4)) + Luck.settle(0.05 * o.max_hp, o.luck, true)))
 			healed[o] = o.hp - was
 	pulsed.emit(u, healed)
@@ -2384,6 +2391,12 @@ func _on_downed(u: Unit) -> void:
 	if u not in fallen:
 		fallen.append(u)
 	downed.emit(u)
+
+
+# u went Downed (down but not out), was saved from it, or died of it: the rules are Downed's.
+func _on_dbno(u: Unit, how: StringName) -> void:
+	Downed.changed(self, u, how)
+	dbno_changed.emit(u, how)
 
 
 # The fallen get up at full HP as the turn ends, each bringing what it summons (a Regeneration Probe)
@@ -2419,6 +2432,7 @@ func summon(scene: PackedScene, f: Faction, c: Vector2i) -> Unit:
 	move(u, spot)
 	u.died.connect(_on_died)
 	u.downed.connect(_on_downed)
+	u.dbno_changed.connect(_on_dbno)
 	if f == turn:
 		u.refresh()
 	return u
@@ -2503,6 +2517,7 @@ func end_turn() -> void:
 			if earthworks[c].turns <= 0:
 				earthworks.erase(c)
 	_tidy_debris()
+	Downed.end_round(members(turn))  # a round passes for the Downed
 	_revive()
 	_check_stall()
 	if phase != Phase.TURNS:
@@ -3128,7 +3143,7 @@ static func persona_rank(u: Unit, s: Skill) -> int:
 
 
 func _acting(u: Unit) -> bool:
-	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.asleep()
+	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.asleep() and not u.helpless()
 
 
 # Touching, diagonals included.
@@ -3725,6 +3740,7 @@ static func passion(caster: Unit, target: Unit) -> int:
 func _lovely(caster: Unit, skill: Skill, t: Unit) -> void:
 	var share := caster.stat(&"lovely")
 	if share > 0.0 and t != caster and t.is_alive() and next_to(caster.cell, t.cell) and &"love" in hit_tags(caster, skill):
+		t.healed_by = caster
 		mend(t, maxi(roundi(share * t.max_hp), 1), 0)
 
 
@@ -3752,8 +3768,9 @@ func _death(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	if not roll.hit:
 		return
 	t.slain_from = t.hp
-	t.damage(1)
-	t.hp = 0
+	if not Downed.finish(t):  # one already Downed dies of it
+		t.damage(1)
+		t.hp = 0
 	caster.gain(&"kill", 1)
 
 

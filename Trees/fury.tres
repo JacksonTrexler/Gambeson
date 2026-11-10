@@ -5,10 +5,15 @@
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
 [ext_resource type="Resource" path="res://Skills/second_wind.tres" id="s_second_wind"]
 [ext_resource type="Resource" path="res://Skills/frenzy.tres" id="s_frenzy"]
+[ext_resource type="Resource" path="res://Skills/grudge.tres" id="s_grudge"]
 
 [sub_resource type="Resource" id="Branch_second_wind"]
 script = ExtResource("branch")
 skill = ExtResource("s_second_wind")
+
+[sub_resource type="Resource" id="Branch_grudge"]
+script = ExtResource("branch")
+skill = ExtResource("s_grudge")
 
 [sub_resource type="Resource" id="Branch_frenzy"]
 script = ExtResource("branch")
@@ -19,5 +24,5 @@ after = Array[ExtResource("skill")]([ExtResource("s_second_wind")])
 script = ExtResource("root")
 name = "Fury"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_second_wind"), SubResource("Branch_frenzy")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_second_wind"), SubResource("Branch_grudge"), SubResource("Branch_frenzy")])
 gods = Array[StringName]([&"ramut", &"sol", &"urlo"])

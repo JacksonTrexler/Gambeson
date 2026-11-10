@@ -57,6 +57,7 @@ const TERMS := {
 	&"suspicion": ["Suspicion", &"condition", "Stacks of doubt about a unit's persona: each makes it harder to fool."],
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
+	&"downed": ["Downed", &"condition", "Down but not out, on its last life: at 0 HP or below it lingers for a few of its side's turns. Healed above 0 it is saved. It dies when its HP passes its limit below 0, or its rounds run out."],
 	&"asleep": ["Asleep", &"condition", "Can't act. An ally ending the turn beside it wakes it for the next one."],
 	&"self_knowledge": ["Self-knowledge", &"condition", "How well a unit knows itself, in levels: a Meditation shifts its stats no further than it knew itself before."],
 	&"aura": ["Aura", &"condition", "Used on itself, it goes on allies within range too."],

@@ -6,6 +6,7 @@ signal energy_changed(was: int, now: int)
 signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
+signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
@@ -176,7 +177,7 @@ var picked: Array[String] = []  # the trees it has picked on its class's own tab
 # Starts at 0 and fills in _ready, so bars get an initial hp_changed(0, max_hp).
 var hp := 0:
 	set(v):
-		v = clampi(v, 0, max_hp + over_max)
+		v = clampi(v, Downed.floor_hp(self), max_hp + over_max)  # below 0 only while Downed
 		if v == hp:
 			return
 		var was := hp
@@ -184,7 +185,9 @@ var hp := 0:
 		if v <= max_hp:
 			over_max = 0
 		hp_changed.emit(was, v)
-		if v == 0 and not reviving and lives_left() > 0:  # local v, not hp: a listener may have changed hp re-entrantly
+		if Downed.takes(self, was, v):  # Downed: on its last life it lingers at 0 or below, is saved, or dies past its limit
+			pass
+		elif v == 0 and not reviving and lives_left() > 0:  # local v, not hp: a listener may have changed hp re-entrantly
 			hearts_used += 1
 			reviving = true
 			downed.emit(self)
@@ -233,6 +236,8 @@ var _walk_ap: Array[float] = []  # of each AP pool, what walking took this turn 
 var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arranged for (_arrange())
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
+var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
+var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
 var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
 var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
 var _hp_bonus := 0  # what its level, items and passives add to its max HP now (refit())
@@ -1748,6 +1753,8 @@ func pay_for(s: Skill) -> bool:
 		set_store(fund, store(fund) - cost_from(s, fund))
 	else:
 		energy -= cost_from(s, fund)
+	if dbno:
+		dbno.acted += 1  # Downed: a skill use against its allowance (Grudge)
 	return true
 
 
@@ -1763,6 +1770,8 @@ func pay_strike(s: Skill) -> bool:
 		return false
 	pay(s.strike_ap, &"skill")
 	energy -= s.strike_cost
+	if dbno:
+		dbno.acted += 1
 	return true
 
 
@@ -2090,8 +2099,14 @@ func tick() -> void:
 	refit()  # or Asphyxia fallen a stack
 
 
+# On the field: standing, or Downed (down but not out, at 0 HP or below).
 func is_alive() -> bool:
-	return hp > 0
+	return hp > 0 or dbno != null
+
+
+# Downed and unable to act for it (Tenacity; Downed.acts): it can't act, move or take orders.
+func helpless() -> bool:
+	return dbno != null and not dbno.rule.acts
 
 
 func asleep() -> bool:

@@ -16,6 +16,7 @@ extends Resource
 @export var classes: Array[StringName] = []  # a class feature: only units of these classes learn it (Paladin: Smite), tagged with them; anyone else meeting it on a tree it borrows (a Cleric's or Wizard's Eros) sees it locked (Unit.missing())
 @export var rank_cost := 0  # skill points for rank II, times rank_growth for each rank after (Clever Disguise: 4, 8, 16...); 0: the usual 1 + r^2
 @export var rank_growth := 2.0
+@export var downed: Downed  # passive: on its last life, its holder lingers Downed at 0 HP rather than dying, by this rule x rank (Tenacity, Grudge; Scripts/Downed.gd)
 
 @export_group("Active")
 @export var ap := 0.0
@@ -566,6 +567,8 @@ func markup(rank := 1, with_spec := true) -> String:
 			lines.append("Used at once: lands on the nearest {r:%d} unit%s in range, allies and foes alike" % [rank, "" if rank == 1 else "s"])
 	for e in effects:
 		lines.append(ally + e.markup(rank) + ("" if passive else _lasting(rank)))
+	if downed:
+		lines.append(downed.markup(rank))
 	if has_look():
 		var look := ([stance] if stance else []) + [", ".join(shows_vibe)] + [", ".join(shows_tags)]
 		lines.append("Puts forward a look: %s. Its holder's dissonance counts {r:%d} less against its own checks"

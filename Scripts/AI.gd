@@ -36,7 +36,7 @@ const STRONG := 0.5  # per level it reads, how much a unit going for the stronge
 # only, &"defensive" a self-protective skill only. The default (&"") is a full, self-directed turn.
 static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	var log: Array[String] = []
-	if not u.is_alive() or u.asleep():
+	if not u.is_alive() or u.asleep() or u.helpless():
 		return log
 	var reads := {}
 	for o in b.units.values():
