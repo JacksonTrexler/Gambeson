@@ -2433,7 +2433,8 @@ func free_near(c: Vector2i) -> Variant:
 	return best
 
 
-# The turn passes. Units that rested get energy back (Unit.recover()), and every unit awake looks
+# The turn passes. Units that rested get energy back (Unit.recover()); each gets over a use of every
+# skill, more if it rested (Exhaustion.recover()); and every unit awake looks
 # around (_watch()); a traitor in another side's party that didn't rest gives
 # itself away (_refuse()); held ones take their holder's grip (_grip()), and wounds bleed (_bleed());
 # Ramut's Ire looks for a stall (_check_stall()); ground puts its turn-end
@@ -2452,6 +2453,7 @@ func end_turn() -> void:
 			if u.devotions().any(func(vow: SkillTab): return vow.satisfied_by == &"rest_whole") and u.hp >= u.max_hp:
 				u.gain(&"patron", 1)  # Hogel: resting whole
 		u.recover()
+		u.exhaustion.recover(rested, u.mod(&"constitution"))
 		_starlight(u)
 		u.rested_turns = u.rested_turns + 1 if rested else 0
 		if not u.asleep():

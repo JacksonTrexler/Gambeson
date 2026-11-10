@@ -28,6 +28,7 @@ func fight(seed: int) -> Dictionary:
 	scene.get_node("Battle").rng.seed = seed
 	tree.root.add_child(scene)
 	b = scene.get_node("Battle")
+	Exhaustion.on = true  # a whole battle, as it's played (Test.calm() turns it off for staged tests)
 	var log: Array[String] = []
 	var turns := 0
 	while b.phase == Battle.Phase.TURNS and turns < MAX_TURNS:

@@ -134,7 +134,7 @@ func open(u: Unit, s: Skill, p: int) -> void:
 	head.add_child(title)
 	head.add_child(GuideLink.new(&"persona"))
 	_column.add_child(head)
-	_column.add_child(_muted("%s · Persona %s · %s AP" % [u.nick if u.nick else String(u.name), Skill.roman(p), Skill.num(s.ap)]))
+	_column.add_child(_muted("%s · Persona %s · %s AP" % [u.nick if u.nick else String(u.name), Skill.roman(p), Skill.num(u.ap_cost(s, u.funding(s)))]))
 	_unit = u
 	_skill = s
 	_cleared = false
