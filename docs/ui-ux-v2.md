@@ -14,7 +14,8 @@ and numbers appear only when the unit actually knows them. This is a plan; nothi
 5. **The tooltip gives instructions and sums**: "Click: walk 3, then Strike II / 3 AP · 65% to hit ·
    4-9 damage", "Ctrl-click to strike at whatever may be here", "?%" when Defense isn't known.
 6. **Refusals are sentences** on the hint line (`_say()`, `_nag()`), read after the fact.
-7. **Nothing is selected** until the player clicks a unit.
+7. **Focus can be lost.** The leader is selected as the turn opens, but a right click or a click on
+   empty ground selects nothing, and no slot is ever selected by default.
 
 ## The model
 
