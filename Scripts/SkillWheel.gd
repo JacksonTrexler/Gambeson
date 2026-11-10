@@ -251,9 +251,13 @@ func _node(s: Skill, at: Vector2, tone: Color, font: Font) -> void:
 		draw_arc(at, R + 2.5, 0.0, TAU, 24, Color.WHITE, 1.0)
 	elif s == _hover:
 		draw_arc(at, R + 2.5, 0.0, TAU, 24, Color(1, 1, 1, 0.45), 1.0)
-	var text := s.mark()
-	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
-	draw_string(font, at + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, ink)
+	var tex := s.icon()
+	if tex:
+		draw_texture_rect(tex, Rect2(at - Vector2(R - 1.0, R - 1.0), Vector2(R - 1.0, R - 1.0) * 2.0), false, ink)
+	else:
+		var text := s.mark()
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
+		draw_string(font, at + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, ink)
 	var r := unit.base_rank(s)
 	if r > 0:
 		draw_string(font, at + Vector2(R - 1.0, R + 2.5), Skill.roman(r), HORIZONTAL_ALIGNMENT_LEFT, -1, 4, GOLD)

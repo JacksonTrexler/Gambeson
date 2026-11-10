@@ -255,9 +255,13 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 		draw_rect(box.grow(2.5), Color.WHITE, false, 1.0)
 	elif s == _hover:
 		draw_rect(box.grow(2.5), Color(1, 1, 1, 0.45), false, 1.0)
-	var text := s.mark()
-	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x
-	draw_string(font, box.get_center() + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, ink)
+	var tex := s.icon()
+	if tex:
+		draw_texture_rect(tex, box.grow(-2.0), false, ink)
+	else:
+		var text := s.mark()
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x
+		draw_string(font, box.get_center() + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, ink)
 	var r := unit.base_rank(s)
 	var numeral := Skill.roman(r) if r > 0 else ("?" if s.stub else "")
 	if numeral:  # its rank in the corner (a stub's question mark)

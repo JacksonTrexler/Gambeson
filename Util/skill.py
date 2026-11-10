@@ -14,109 +14,18 @@ missing. Stubs carry STUB: check fails until they're filled in. Plain python3, n
 """
 import argparse, os, re, subprocess, sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
+                  literal, effect_section)
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 125  # @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 # 125 counts `pings` (Clairvoyance), built beside the seam; lower it to 124 when that moves to a behaviour.
-FLOATS = {"ap", "radius", "radius_per_rank", "amount", "decays", "carry", "blast", "strike_ap", "restores", "rank_growth", "cone"}
-
-
-def rel(p):
-    return os.path.relpath(p, ROOT)
-
-
-def read(p):
-    with open(os.path.join(ROOT, p), encoding="utf-8") as f:
-        return f.read()
-
-
-def write(p, text, dry):
-    if dry:
-        print("--- would write %s ---\n%s" % (p, text))
-        return
-    with open(os.path.join(ROOT, p), "w", encoding="utf-8") as f:
-        f.write(text)
-    print("wrote", p)
-
-
-def die(msg):
-    sys.exit("skill.py: " + msg)
-
-
-# --- .tres as text: [sections] of key = value, values possibly spanning lines
-
-HEADER = re.compile(r'^\[(\w+)(.*)\]\s*$')
-ATTR = re.compile(r'(\w+)=("(?:[^"\\]|\\.)*"|\S+)')
-REF = re.compile(r'\b(Ext|Sub)Resource\("([^"]+)"\)')
-
-
-def _open(s):  # string still open, bracket depth after s
-    depth, q, esc = 0, False, False
-    for ch in s:
-        if q:
-            esc = ch == "\\" and not esc
-            if ch == '"' and not esc:
-                q = False
-            continue
-        if ch == '"':
-            q = True
-        elif ch in "([{":
-            depth += 1
-        elif ch in ")]}":
-            depth -= 1
-    return q or depth > 0
-
-
-def sections(text):
-    out, lines, i = [], text.split("\n"), 0
-    while i < len(lines):
-        m = HEADER.match(lines[i])
-        if not m:
-            i += 1
-            continue
-        sec = {"kind": m.group(1), "attrs": {k: v.strip('"') for k, v in ATTR.findall(m.group(2))}, "props": {}, "line": i}
-        i += 1
-        while i < len(lines) and not HEADER.match(lines[i]):
-            if " = " in lines[i]:
-                key, val = lines[i].split(" = ", 1)
-                while _open(val) and i + 1 < len(lines):
-                    i += 1
-                    val += "\n" + lines[i]
-                sec["props"][key] = val
-            i += 1
-        out.append(sec)
-    return out
-
-
-def ext_ids(secs):
-    return {s["attrs"].get("id"): s["attrs"].get("path") for s in secs if s["kind"] == "ext_resource"}
-
-
-def ext_id_for(secs, path):
-    for i, p in ext_ids(secs).items():
-        if p == path:
-            return i
-    return None
-
-
-def items(val):  # the ids in a value, past a typed array's type: Array[ExtResource("7_branch")]([SubResource("Branch_a"), ...])
-    return [i for _, i in REF.findall(re.sub(r"^Array\[[^\]]*\]\(", "", val))]
-
-
+HOOKS = ("lets_word", "hurt", "healing")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
 
 
 # --- check
-
-def files(top, ext):
-    for d, dirs, fs in os.walk(os.path.join(ROOT, top)):
-        dirs[:] = [x for x in dirs if not x.startswith(".")]
-        for f in fs:
-            if f.endswith(ext):
-                yield rel(os.path.join(d, f))
-
 
 def check_refs(problems):
     for p in files(".", ".tres"):
@@ -197,9 +106,10 @@ def check_behaviours(problems):
     used = "\n".join(read(p) for p in files("Skills", ".tres"))
     for p in files("Behaviours", ".gd"):
         text = read(p)
-        for f in ("apply", "describe"):
-            if "func %s(" % f not in text:
-                problems.append("%s: no %s() - a behaviour does and says, side by side" % (p, f))
+        if "func describe(" not in text:
+            problems.append("%s: no describe() - a behaviour does and says, side by side" % p)
+        if not any("func %s(" % f in text for f in ("apply",) + HOOKS):
+            problems.append("%s: no apply() or hook (%s) - it does nothing" % (p, ", ".join(HOOKS)))
         if "res://" + p not in used:
             problems.append("%s: no skill uses it" % p)
 
@@ -215,8 +125,9 @@ def check_stubs(problems):
     for top, ext in (("Tests", ".gd"), ("Behaviours", ".gd"), ("Skills", ".tres")):
         for p in files(top, ext):
             for k, line in enumerate(read(p).split("\n")):
-                if STUB in line:
-                    problems.append("%s:%d: a stub skill.py wrote, still to fill in" % (p, k + 1))
+                m = re.search(r"STUB\((\w+\.py)\)", line)  # any tool's stub: skill.py, unit.py...
+                if m:
+                    problems.append("%s:%d: a stub %s wrote, still to fill in" % (p, k + 1, m.group(1)))
 
 
 def wheel_count(role):  # the skills on a radial class's own tab (Role.trees(), SkillWheel): centre, core, options, roots,
@@ -251,9 +162,18 @@ def check_counts(problems):
             problems.append("%s:%d: says %s skills on %s, the data has %d" % (p, read(p)[:m.start()].count("\n") + 1, m.group(1), what, want()))
 
 
+def check_icons(problems):
+    import icon
+    for sid in icon.missing_skill_icons():
+        problems.append("Skills/%s.tres: no %s/%s.png (python3 Util/icon.py skill %s)" % (sid, icon.SKILL_ICONS, sid, sid))
+    for f in os.listdir(os.path.join(ROOT, icon.SKILL_ICONS)):
+        if f.endswith(".png") and not os.path.exists(os.path.join(ROOT, "Skills", f[:-4] + ".tres")):
+            problems.append("%s/%s: an icon for no skill (renamed? move it with the skill)" % (icon.SKILL_ICONS, f))
+
+
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_flags, check_stubs, check_counts):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_flags, check_stubs, check_counts, check_icons):
         f(problems)
     for p in problems:
         print(p)
@@ -262,16 +182,6 @@ def check(_args=None):
 
 
 # --- new
-
-def literal(key, v):
-    if v in ("true", "false") or re.fullmatch(r"-?\d+", v) and key not in FLOATS:
-        return v
-    if re.fullmatch(r"-?\d+(\.\d+)?", v):
-        return v if "." in v else v + ".0"
-    if re.fullmatch(r"\w+\(.*\)|&\".*\"|\".*\"|\[.*\]", v):
-        return v  # already a literal: Vector2i(1, 4), &"str", "text"
-    return '"%s"' % v
-
 
 def tier_section(i, spec, ext):
     m = re.fullmatch(r"(\d+):(.*)", spec) or die('--tier "%s": want RANK:PARTS, e.g. 1:1d4+strength or 3:2+1d6' % spec)
@@ -289,17 +199,13 @@ def tier_section(i, spec, ext):
     return "\n".join(lines)
 
 
-def effect_section(i, spec, ext):
-    lines = ['[sub_resource type="Resource" id="Effect_%d"]' % i, 'script = ExtResource("%s")' % ext]
-    for kv in spec.split():
-        k, _, v = kv.partition("=")
-        lines.append("%s = %s" % (k, literal(k, v) if k != "stat" else '"%s"' % v))
-    return "\n".join(lines)
-
-
 def skill_tres(a):
     ext = ['[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]']
     subs, props = [], ['script = ExtResource("1_skill")', 'name = "%s"' % a.title]
+    if not a.human:
+        props.append("ai = true")  # an AI's design: shown "Name ??" until a human reviews it (CLAUDE.md)
+    if a.glyph:
+        props.append('glyph = "%s"' % a.glyph)
     if a.passive:
         props.append("passive = true")
     if a.tags:
@@ -334,6 +240,8 @@ BEHAVIOUR_STUB = '''extends Behaviour
 # %(title)s: what it does, in a line or two. %(stub)s
 
 
+# An active skill's: runs as it lands. A passive's works through Behaviour's hooks instead (lets_word,
+# hurt, healing: Scripts/Behaviour.gd) - replace this with those it needs, or add a hook there.
 func apply(c: Cast) -> void:
 	pass  # %(stub)s: c.battle, c.caster, c.target, c.rank; c.put(effect, turns) puts one on the target
 
@@ -356,21 +264,6 @@ func test_%(id)s() -> void:
 '''
 
 
-def add_ext(text, line):  # after the last ext_resource
-    at = list(re.finditer(r"^\[ext_resource .*\]$", text, re.M))
-    at or die("no [ext_resource] lines to add beside")
-    end = at[-1].end()
-    return text[:end] + "\n" + line + text[end:]
-
-
-def free_id(secs, want):
-    ids = {s["attrs"].get("id") for s in secs}
-    i, n = want, 2
-    while i in ids:
-        i, n = "%s_%d" % (want, n), n + 1
-    return i
-
-
 def put_on_tree(a, sid):
     p = next((x for x in ("Trees/%s.tres" % a.tree, "Roles/%s.tres" % a.tree) if os.path.exists(os.path.join(ROOT, x))), None)
     p or die("--tree %s: no Trees/%s.tres or Roles/%s.tres" % (a.tree, a.tree, a.tree))
@@ -389,7 +282,7 @@ def put_on_tree(a, sid):
         root = next((r for r in roots if 'SubResource("%s")' % anchor in r["props"]["branches"]), None) or die("%s: %s is on no root" % (p, a.after))
     else:
         root = next((r for r in roots if a.root in (None, r["props"].get("name", "").strip('"'))), None) or die("%s: no root %s" % (p, a.root))
-        anchor = items(root["props"]["branches"])[-1]
+        anchor = (items(root["props"]["branches"]) or [None])[-1]  # None: a new tree's first skill (role.py --tree)
     lines = ['[sub_resource type="Resource" id="%s"]' % bid, 'script = ExtResource("%s")' % branch, 'skill = ExtResource("%s")' % sk]
     if a.prereq:
         skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd") or die("%s: no Skill.gd ext_resource for --prereq" % p)
@@ -397,6 +290,13 @@ def put_on_tree(a, sid):
         lines.append('after = Array[ExtResource("%s")]([%s])' % (skill_ext, ", ".join('ExtResource("%s")' % x for x in pre)))
     if a.branch_tier:
         lines.append("tier = %d" % a.branch_tier)
+    if anchor is None:  # the first branch: before the [resource] (or the root's own section), alone in its list
+        at = re.search(r"^\[resource\]$", text, re.M) if root["kind"] == "resource" else \
+            re.search(r'^\[sub_resource type="Resource" id="%s"\]$' % re.escape(root["attrs"]["id"]), text, re.M)
+        text = text[:at.start()] + "\n".join(lines) + "\n\n" + text[at.start():]
+        text, n = re.subn(r"^(branches = Array\[[^\]]*\]\(\[)\]\)", lambda mm: mm.group(1) + 'SubResource("%s")])' % bid, text, count=1, flags=re.M)
+        n == 1 or die("%s: no empty branches list to start" % p)
+        return p, add_ext(text, '[ext_resource type="Resource" path="%s" id="%s"]' % (path, sk))
     # the new Branch section goes right after the anchor's section
     m = re.search(r'^\[sub_resource type="Resource" id="%s"\]$' % re.escape(anchor), text, re.M) or die("no section %s" % anchor)
     nxt = re.compile(r"^\[", re.M).search(text, m.end())
@@ -445,6 +345,9 @@ def new(a):
     os.makedirs(os.path.join(ROOT, "Behaviours"), exist_ok=True)
     for p, text in out:
         write(p, text, a.dry_run)
+    if not a.dry_run:
+        import icon
+        icon.skill_icon(sid, a.glyph)  # a placeholder of its mark: replace the PNG with art any time
     if a.dry_run:
         return 0
     if not a.no_import:
@@ -460,6 +363,8 @@ def main():
     n = sub.add_parser("new", help="write a skill and wire it in")
     n.add_argument("id", help="file name: kick -> Skills/kick.tres")
     n.add_argument("--title", help="shown name (default: from the id)")
+    n.add_argument("--human", action="store_true", help="a person named and designed it: no ai = true (no ?? on its name)")
+    n.add_argument("--glyph", help="up to 2 characters for its placeholder icon (default: its initials)")
     n.add_argument("--tags", help="comma separated: physical,blunt,str,martial")
     n.add_argument("--passive", action="store_true")
     n.add_argument("--ap")

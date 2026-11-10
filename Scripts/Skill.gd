@@ -149,6 +149,9 @@ extends Resource
 const STAT_TAGS := {&"str": &"strength", &"dex": &"dexterity", &"con": &"constitution",
 		&"int": &"intelligence", &"wis": &"wisdom", &"cha": &"charisma"}
 const CATEGORIES := {&"magical": "Magic", &"martial": "Martial", &"specialist": "Specialist"}
+const ICONS := "res://Icons/Skills/"  # <skill file>.png each: icon()
+
+static var _icons := {}  # skill file -> its icon, or null
 
 
 func tier(rank: int) -> Tier:
@@ -287,6 +290,17 @@ func query() -> Array[StringName]:
 # Its name as the skills screen and hotbar show it: an AI's placeholder design ends with ?? (ai).
 func title() -> String:
 	return name + " ??" if ai else name
+
+
+# Its icon: Icons/Skills/<its file>.png, white on clear so the skills screen tints it by state. Until
+# art replaces the file it's a placeholder of its mark (Util/icon.py draws one); null: none, the mark's
+# drawn as text instead.
+func icon() -> Texture2D:
+	var id := resource_path.get_file().get_basename()
+	if id not in _icons:
+		var p := ICONS + id + ".png"
+		_icons[id] = load(p) if id and ResourceLoader.exists(p) else null
+	return _icons[id]
 
 
 # Up to 2 characters for it on skill trees, its placeholder icon: its glyph, or its initials (a stub's

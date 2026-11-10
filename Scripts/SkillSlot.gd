@@ -163,7 +163,13 @@ func _draw() -> void:
 	if skill.passive:
 		draw_circle(Vector2(right - 2, size.y / 2.0), 1.6, ON if on else Color(1, 1, 1, 0.25))
 		right -= 6
-	draw_string(font, Vector2(16, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - 16, 7,
+	var left := 16.0
+	var tex := skill.icon()
+	if tex:  # its icon before its name
+		var side := size.y - 4.0
+		draw_texture_rect(tex, Rect2(15, 2, side, side), false, Color(0.92, 0.93, 0.96, dim))
+		left += side + 1.0
+	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
 			Color(0.92, 0.93, 0.96, dim))
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
