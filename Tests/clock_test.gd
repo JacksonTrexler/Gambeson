@@ -33,7 +33,13 @@ func test_runs_out() -> void:
 	var h := hud()
 	await tree.process_frame
 	h._end_intro()
+	ok(h.clock_on and h.clock > 10.0, "the player's turn arms its clock")
+	h.clock_on = false
+	h.clock = 0.0
+	h._tick_clock(1.0)
+	ok(h.my_turn(), "a turn the clock wasn't set for (the turn changes deferred): it doesn't end on 0")
 	h.clock = 3.0
+	h.clock_on = true
 	ok(h.my_turn(), "the player's turn")
 	h.settings.show()
 	h._tick_clock(5.0)

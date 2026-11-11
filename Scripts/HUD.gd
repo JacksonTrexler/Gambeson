@@ -76,6 +76,7 @@ var _spinning: Array[Label] = []  # initiative dice still rolling
 var _intro: Tween  # the initiative roll on screen
 var _turn_show: Tween  # the turn change on screen
 var clock := 0.0  # seconds the player has left this turn (turn_clock)
+var clock_on := false  # the clock was set for this turn of the player's (_on_turn()); off once it ends
 var clock_label: Label  # the clock, top middle
 
 signal intro_done
@@ -725,6 +726,7 @@ func _study(c: Vector2i) -> void:
 func end_turn() -> void:
 	if not my_turn():
 		return
+	clock_on = false
 	spellbook.hide()
 	_act_alone(command.faction(), command.idle())
 
@@ -737,7 +739,7 @@ func turn_seconds() -> float:
 # The turn clock ticks while it's the player's turn - but not while Settings is open, nor unwatched
 # (pace 0: tests) - and ends the turn when it runs out. Shown top middle, red in its last 5 seconds.
 func _tick_clock(delta: float) -> void:
-	var on := turn_clock and pace > 0.0 and my_turn()
+	var on := turn_clock and pace > 0.0 and clock_on and my_turn()  # not before _on_turn() sets it: turns change deferred
 	clock_label.visible = on
 	if not on:
 		return
@@ -1186,6 +1188,7 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 		command.new_turn()
 		select(command.leader)
 		clock = turn_seconds() + (TRANSITION if pace > 0.0 else 0.0)  # its clock starts once the turn change has shown
+		clock_on = true
 	elif auto or now == command.faction():  # the player's down: its side fights on (autopilot())
 		if now == command.faction() and autopilot():
 			_log("[color=#6b7180]You're down: your side fights on without you[/color]")
