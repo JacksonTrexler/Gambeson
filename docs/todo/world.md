@@ -85,7 +85,7 @@ Plan: `docs/plans/command-skills.md`.
 - [ ] **Nothing ranks items up yet**, so nothing calls `Item.worth()` (rank x 4 for a legendary).
 - [ ] No screenshot taken of the Specialist tree with three skills at tier 3.
 
-86. **Command skills and trinkets - built on judgement, open for review (2026-11-09).**
+86. **Command skills and trinkets - settled (2026-11-10):** "that's fine for now"; the calls stand.
     - **The bonus applies above the floor of 1**, not inside it: a cha -1 leader with Strategist II commands 3 allies. Inside the floor, rank I would do nothing at low charisma.
     - **Tree placement:** Strategist and Tactician sit on the Specialist general tree at tier 3, beside Discipline, on the usual point curve with no rank cap. Only Adventurer, Bard, Rogue and Ranger have that tree natively; a Fighter or Paladin needs Journeyman IV. The base General tree would open them to every class.
     - **Loot:** the trinkets drop from the Astral Princess, the only table with a trinket: Heart Up 21%, Heart 62%, Strategy Guide 8%, Tactician's Playbook 8%, Grand Design 1% (hearts were 25% / 75%).

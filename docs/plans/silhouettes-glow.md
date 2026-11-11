@@ -61,3 +61,20 @@ walk and "Click: walk N, then use: ...".
 - Area skills give no glow; tiles in range are still the overlay's job.
 - Command glow follows the leader only; a party member with its own reach isn't walked.
 - The reach map is now computed while a skill is armed (it was skipped); watch the cost on big maps.
+
+## Revised 2026-11-10: suspicion in plain view
+
+Branch `v-suspicion`; tests `hud_test.test_silhouette`, `hud_test.test_suspicion_marks`. Replaces call 1 above.
+
+- Suspicion no longer counts as concealment (`Read.concealed`). A black shape is a concealed unit (dark,
+  fog, hiding, too far) whose side can't be told, or whose shown side the viewer suspects is a lie.
+- A **trick** (`Read.trick`) is one that would fool the viewer but for its suspicion (trickery, a front,
+  Conspire). Suspected (`Read.doubted`) in plain view, `Read.mark()` gives:
+  - DOUBT, still fooled or side unreadable: a white "?" pops and fades (~1 s, `Unit.MARK_TIME`); it shows as
+    if unaffiliated (own colours, neutral glow and bar trim; card chip "Suspected");
+  - CAUGHT, the suspicion has seen through it (the read no longer deceived, its true side shows): a "!" in
+    its true side's primary pops and fades; it wears that side again.
+- Discovery uses the existing mechanic (each stack takes a rank off trickery) rather than a new threshold.
+- `HUD._pop` remembers the last mark per unit (`HUD.marks`): a pop plays only on a change, from the
+  observer's read (the leader's, as `view()`), so only suspicion the player's side holds shows.
+- A plain unit merely suspected (no trick) gets no mark and keeps the ordinary look.

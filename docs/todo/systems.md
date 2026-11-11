@@ -92,11 +92,13 @@ Build roughly in this order; the content below depends on them.
 
 Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Exhaustion** (`Scripts/Exhaustion.gd`, `Unit.exhaustion`): built (`docs/done/rules.md`, `docs/done/systems.md`). (?87)
+- [ ] **Stamina** (2026-11-10, in progress, branch `v-stamina`): a passive and a resource. Base property: it cuts exhaustion by rank + 1. Yellow-tinted green. More fit specialists get it: the Rogue and Ranger general class trees, and agile Prowesses and Berserkers. Most caster skills can't use it. An adventurer needs no Stamina to use a skill's added effect through its tag (move rank extra tiles if paid with it), but not Stamina's own benefits, which come from the passive and the resource. (?87)
+- [ ] **Universal channel rule** (2026-11-10, in progress, branch `v-channel`): channeling has the same requirements as resting, but a unit isn't resting while it channels; what resting would give is the channel's continuity instead. Most units must hold still; those that can move and rest gain an edge. Replaces Clairvoyance's "moving doesn't end it". (?85, ?89)
 - [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. (?87)
 - [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
 - [ ] **Static skill descriptions** (skills screen, spellbook) show base costs only.
 
-87. **Exhaustion - built on judgement, open for review (2026-11-09).**
+87. **Exhaustion - answered (2026-11-10), work in progress (branch `v-stamina`).** A task from a caster, martial or specialist tree inherits that as a tag; truly general skills apply less exhaustion on everything. Stamina, above, is new. The rest stands as built:
     - **Broad kinds** (your physical / technical / mental, for the half share) are read as the existing martial / specialist / magical category tags. **Twenty of the 65 active skills carry none** (Smite, Solar, Renew, Sing, Drown, Rake, Energy Missile, Flamecharm...) and wear on themselves only. A skill with two kinds shares with both, half once.
     - **Con mod 0 rests like +1** (one extra use), as Energy recovery does; read literally ("adds con mod") it would add nothing. Below 1, 1 / (1 - mod) of a use: -1 half, -3 a quarter. Fractions are continuous.
     - **The museum sims flip** from Lancin 8 / Nemes 22 (3-14 turns) to Lancin 29 / Nemes 1 (8-20 turns); Nemes won by casting Hex over and over (437 casts to 293), and at a step of 0.25 it is still 25 to 5.
@@ -116,7 +118,7 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
 - [ ] **Shrink `UNSAID`**: 11 existing `Skill` fields that no description mentions are exempted in `skills_test`.
 - [ ] **Lift `pings` into a behaviour and lower `FLAG_CEILING`** (raised from 124 to 125 because Clairvoyance's `pings` flag was built in parallel, beside the seam).
 
-88. **Skill tooling, Kick, CLAUDE.md - built on judgement, open for review (2026-11-09).**
+88. **Skill tooling, Kick, CLAUDE.md - settled (2026-11-10):** "that's fine for now"; the calls stand.
     - **"g-action skill/ tool"** was read as a Claude Code agent skill (`.claude/skills/new-skill`) plus a script (`Util/skill.py`). Say if you meant something else.
     - It paid: Kick took 9 files with no hand wiring, against 17 files and about 12 hand-edited .tres for Tenacity and Grudge.
     - **Kick:** General Martial tier 1, 4 AP, 1 Energy, 1d4 + str, range = rank, effects last rank turns. "The tile between" is the tile at the kicker's feet toward the target. Checks run trap, water, loose ground, hole/edge, bare; the first match wins. A trap springs on the target but stays where it is, revealed. Water leaves **Soaked** (movement -rank), loose ground (leaves, sand, debris) **Blinded** (offensive checks -rank), a hole, edge or off-map tile pushes rank tiles, bare ground is plain damage; adjacent targets take a 1-tile push. Soaked and Blinded are new reusable effects (`Effects/soaked.tres`, `blinded.tres`).
