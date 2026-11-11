@@ -1246,9 +1246,9 @@ func hooks() -> Array:
 	return out
 
 
-# Shields Up! is on it and c's centre lies within the 90 degree cone it faces.
+# Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard != Vector2.ZERO and stat(&"jammed") <= 0.0 and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -1854,21 +1854,37 @@ func refresh() -> void:
 	exposed = 0
 
 
-# How hard it worked this turn: &"rest" (it didn't move or spend AP), &"light" (it only spent its
-# dex move or wis skill AP, leaving the general pool whole) or &"busy". Walking while standing still
+# How hard it worked this turn: &"rest" (idle(), holding no channel), &"light" (it only spent its
+# dex move or wis skill AP, leaving the general pool whole - or it was idle holding a channel: keeping
+# the channel is what it gets instead of rest's benefits) or &"busy". Walking while standing still
 # (Meander) doesn't count.
 func activity() -> StringName:
-	var walking := still()
+	if idle():
+		return &"light" if channel else &"rest"
+	var spent := _spent()
 	var general := 0.0
-	var spent := 0.0
-	for i in mini(ap.size(), _ap_start.size()):
-		var used := _ap_start[i] - ap[i].amount - (_walk_ap[i] if walking and i < _walk_ap.size() else 0.0)
-		spent += used
+	for i in spent.size():
 		if ap[i].only == &"":
-			general += used
-	if spent < 0.0001 and (is_zero_approx(moved) or walking):
-		return &"rest"
+			general += spent[i]
 	return &"light" if general < 0.0001 else &"busy"
+
+
+# Whether this turn met rest's requirements: no AP spent and no tiles walked beyond standing still
+# (Meander). A channel holds through a turn only if it did (Battle.end_turn()).
+func idle() -> bool:
+	var spent := 0.0
+	for x in _spent():
+		spent += x
+	return spent < 0.0001 and (is_zero_approx(moved) or still())
+
+
+# AP spent from each pool this turn, less what walking took while standing still (Meander).
+func _spent() -> PackedFloat64Array:
+	var walking := still()
+	var out := PackedFloat64Array()
+	for i in mini(ap.size(), _ap_start.size()):
+		out.append(_ap_start[i] - ap[i].amount - (_walk_ap[i] if walking and i < _walk_ap.size() else 0.0))
+	return out
 
 
 # Whether it's still technically standing still this turn, `extra` tiles on: no tiles walked, or no

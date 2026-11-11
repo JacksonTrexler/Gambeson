@@ -69,6 +69,22 @@ func test_metea() -> void:
 	ok("Channels on a tile" in metea.describe(2) and "2d12" in metea.describe(2), metea.describe(2))
 
 
+# The channel rule: moving a turn after the cast loses Metea; holding still keeps it (Battle.end_turn()).
+func test_metea_held() -> void:
+	var p := her(Vector2i(9, 3))
+	stage(nemes, {p: Vector2i(9, 3), v(1): Vector2i(4, 3), v(3): Vector2i(1, 7)})
+	p.refresh()
+	b.cast_at(p, metea, Vector2i(4, 3))
+	b.end_turn()
+	b.end_turn()
+	b.end_turn()
+	b.end_turn()
+	ok(p.channel != null and p.channel.turns == 2, "held still: still channeling, two turns on")
+	b.travel(p, Vector2i(9, 4))
+	b.end_turn()
+	ok(p.channel == null, "a turn it moved: the channel's lost")
+
+
 func test_strategy() -> void:
 	var p := her(Vector2i(5, 3))
 	stage(nemes, {p: Vector2i(5, 3), v(1): Vector2i(3, 3), v(2): Vector2i(8, 3)})

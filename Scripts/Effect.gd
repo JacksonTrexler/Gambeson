@@ -116,6 +116,8 @@ extends Resource
 # Command.ally_cap(), Command.order_cap()).
 # command_mod: added to its cha mod wherever Command reads it - reach, party size, slots, both caps -
 # and nowhere else (Grand Design; Command.cha_of()).
+# jammed: above 0, it has lost its reactions: it can't dodge (Battle.evade()), guard
+# (Unit.guarding()) or obstruct (Battle.obstruction()) - Jam
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -126,7 +128,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "jammed") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -166,7 +168,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -187,6 +189,8 @@ func marked(rank := 1) -> String:
 		v = Glossary.term(&"held", "held")
 	elif stat == "sleep":
 		v = Glossary.term(&"asleep", "can't act")
+	elif stat == "jammed":
+		v = Glossary.term(&"jammed", "no reactions")
 	v = _MOD.sub(v, "{o:$1 mod}", true)
 	if per_rank:
 		v = _NUM.sub(v, "{r:$0}")
@@ -240,6 +244,8 @@ func value(rank := 1) -> String:
 		text = "%s%% each turn" % Skill.num(x * 100.0)
 	elif stat == "sleep":
 		text = "can't act till an ally ends the turn beside it"
+	elif stat == "jammed":
+		text = "no reactions: it can't dodge, guard or obstruct"
 	elif stat == "bleed":
 		text = "%dd%d%s HP as each of its turns ends" % [dice.x, dice.y, " + %s mod" % String(dice_mod).left(3) if dice_mod else ""] if dice != Vector2i.ZERO else "%s HP as each of its turns ends" % Skill.num(x)
 	elif stat == "grappled":

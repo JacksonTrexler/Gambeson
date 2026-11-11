@@ -16,8 +16,8 @@ class_name AI
 # on that side's turn it keeps up with its leader; on its own, it rests unless it can make a kill.
 # With no foe to go after, a unit with Observe searches where the clues point. A skittish unit (a
 # Regeneration Probe) only keeps away from its foes. A channeling unit (the Astral Princess's Metea)
-# strikes where the blast takes in the most foes, and begins channeling where they gather. A unit
-# with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it, and one that
+# strikes where the blast takes in the most foes, and begins channeling where they gather; with nothing
+# to strike yet, it holds still to keep the channel. A unit with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it, and one that
 # hunts a side (Unit.hunts: Starmen, the Stellar Order) goes after that side's units first. A
 # recovering unit (a Starmote) heads for the star lattice and holds there, fighting only when cornered.
 # Kept small on purpose: score() and the move choice are the places to grow it.
@@ -82,6 +82,9 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_recover(b, u, reads, log)
 			return log
 		_channel(b, u, reads, log)
+		if u.channel and u.channel.turns > 0:  # still holding one it began before: moving or acting would end it (Battle.end_turn())
+			log.append("%s holds still, channeling %s" % [u.name, u.channel.skill.name])
+			return log
 		if not rooted and _flee(b, u, reads, log):
 			reads = {}
 			for o in b.units.values():

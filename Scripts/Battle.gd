@@ -35,6 +35,7 @@ signal revived(u: Unit, summoned: Unit)  # u got up, a heart spent; summoned: wh
 signal dropped(u: Unit, item: Item)  # u fell, leaving an item (its loot)
 signal pulsed(u: Unit, healed: Dictionary)  # a Regeneration Pulse: unit -> HP it got back
 signal channeled(u: Unit, skill: Skill, at: Vector2i)  # u began channeling a skill on a tile (Metea)
+signal interrupted(u: Unit, ended: Array[StringName])  # what needed u's constant attention was broken off (interrupt(): Jam)
 signal exploded(u: Unit, skill: Skill, at: Vector2i, hit: Dictionary)  # a channeled skill struck: unit -> damage taken
 signal shattered(u: Unit, at: Vector2i)  # u broke a starpane, bludgeoning it
 signal sapped(u: Unit, drained: Dictionary)  # Starsap: unit -> Energy (or HP) u drained from it
@@ -586,7 +587,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags_to else null
 	if foe and skill.drags_to and spot == null:
 		return false
-	if skill.opening and caster.activity() != &"rest":
+	if skill.opening and not caster.idle():
 		return false  # only as its turn opens (Flamedance)
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
 		return false  # a mist only Coalesces (Vaporize)
@@ -2064,6 +2065,7 @@ func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
 
 # Obstruct: what entering c costs u on top, for each foe of u beside c with Obstruct: the larger of half
 # the size penalty of moving through that foe (pass_cost()) and half its con mod / 10, + 25% a rank.
+# A Jammed foe doesn't obstruct.
 # Its allies pass freely. `expected`: only foes u can locate count (walk()).
 func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
 	if not u:
@@ -2073,7 +2075,7 @@ func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
 		if o == u or not next_to(o.cell, c) or not o.is_alive() or Faction.friends(o.faction, u.faction):
 			continue
 		var n := o.stat(&"obstruct")
-		if n <= 0.0 or (expected and not read(u, o).located()):
+		if n <= 0.0 or o.stat(&"jammed") > 0.0 or (expected and not read(u, o).located()):
 			continue
 		extra += maxf(0.5 * maxf(pass_cost(u, o), 0.0), 0.5 * o.mod(&"constitution") / 10.0) * (1.0 + 0.25 * n)
 	return extra
@@ -2515,8 +2517,10 @@ func free_near(c: Vector2i) -> Variant:
 	return best
 
 
-# The turn passes. Units that rested get energy back (Unit.recover()); each gets over a use of every
-# skill, more if it rested (Exhaustion.recover()); and every unit awake looks
+# The turn passes. A channel held since an earlier turn holds through this one only if its unit met
+# rest's requirements (Unit.idle(): no AP spent, no move past Meander); otherwise it ends - one that
+# met them keeps its channel instead of resting (Unit.activity()). Units that rested get energy back
+# (Unit.recover()); each gets over a use of every skill, more if it rested (Exhaustion.recover()); and every unit awake looks
 # around (_watch()); a traitor in another side's party that didn't rest gives
 # itself away (_refuse()); held ones take their holder's grip (_grip()), and wounds bleed (_bleed());
 # Ramut's Ire looks for a stall (_check_stall()); ground puts its turn-end
@@ -2526,14 +2530,15 @@ func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
 	var side := members(turn)
-	var rests := {}
+	for u in side:
+		if u.channel and u.channel.turns > 0 and not u.idle():
+			end_channel(u)  # it moved or acted: the channel's lost
 	for u in side:
 		if u.channel and u.channel.skill.pings:
 			clairvoy(u)  # the pings move to where the foes are now...
 			u.channel.rank += 1  # ...then it ranks up
 	for u in side:
 		var rested := u.activity() == &"rest"
-		rests[u] = rested
 		if rested:
 			_chant(u)
 			if u.devotions().any(func(vow: SkillTab): return vow.satisfied_by == &"rest_whole") and u.hp >= u.max_hp:
@@ -2544,7 +2549,7 @@ func end_turn() -> void:
 		u.rested_turns = u.rested_turns + 1 if rested else 0
 		if not u.asleep():
 			_watch(u)
-		if not rested and posing(u):
+		if not u.idle() and posing(u):
 			_refuse(u)
 	for u in side:
 		_grip(u)
@@ -2553,7 +2558,7 @@ func end_turn() -> void:
 			_flame(u, flames[u.cell], "ends its turn in fire")
 	side = members(turn)  # a grip can drown one, a wound bleed one out
 	for u in side:
-		_teeter(u, rests.get(u, false))
+		_teeter(u, u.idle())
 		u.blind_on = null
 	side = members(turn)  # a drop can land one on something deadly
 	for u in side:
@@ -2889,6 +2894,37 @@ func end_channel(u: Unit) -> void:
 	if u.channel and u.channel.skill.rifts:
 		close_rift(u)
 	u.channel = null
+
+
+# u is interrupted (Jam): everything it keeps up by constant attention ends - its channel (a Rift's
+# count starts), hiding (what lasts until it moves: Hide), Shields Up!'s guard, a primed Chant, and the
+# watch it builds resting turns in a row (survey()). What ended, by name: &"channel", &"hiding",
+# &"guard", &"chant", &"watch".
+func interrupt(u: Unit) -> Array[StringName]:
+	var ended: Array[StringName] = []
+	if u.channel:
+		end_channel(u)
+		ended.append(&"channel")
+	for e in u.timed.keys():
+		var a: Unit.Applied = u.timed[e]
+		if a.until_move:
+			u.timed.erase(e)
+			if &"hiding" not in ended:
+				ended.append(&"hiding")
+		elif a.skill and a.skill.guards:
+			u.timed.erase(e)
+	if u.guard != Vector2.ZERO:
+		u.guard = Vector2.ZERO
+		ended.append(&"guard")
+	if u.chant_up or u.chant_gains > 0:
+		u.chant_up = false
+		u.chant_gains = 0
+		ended.append(&"chant")
+	if u.rested_turns > 0:
+		u.rested_turns = 0
+		ended.append(&"watch")
+	interrupted.emit(u, ended)
+	return ended
 
 
 # Clairvoyance: u, channeling it, senses every foe its side can't see (none of it has it located,
@@ -3649,8 +3685,11 @@ func in_cone(from: Vector2i, at: Vector2i, aim: float, half: float, long: float)
 
 
 # Evading (Glossary: Evadable): a dex check against dc. Passing, none of it lands (0); failing by a
-# quarter of the dc or less, half (0.5); otherwise all of it (1).
+# quarter of the dc or less, half (0.5); otherwise all of it (1). Jammed, it can't try: all of it.
 func evade(u: Unit, dc: int) -> float:
+	if u.stat(&"jammed") > 0.0:
+		evaded.emit(u, 0, dc, 1.0)
+		return 1.0
 	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc))
 	var share := 0.0 if roll.hit else (0.5 if roll.total >= ceili(dc * 0.75) else 1.0)
 	evaded.emit(u, roll.total, dc, share)

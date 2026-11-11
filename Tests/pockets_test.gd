@@ -44,6 +44,24 @@ func test_rift() -> void:
 	ok(b.members(demons).is_empty() or not b.members(demons)[0].is_inside_tree() or b.members(demons)[0].is_queued_for_deletion(), "its demons with it")
 
 
+# The channel rule: a turn the Wizard walks off ends its Rift's channel, and the count starts.
+func test_rift_moved() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 6)})
+	var w := wizard(rift)
+	b.cast_at(w, rift, Vector2i(3, 3))
+	var p: Battle.Pocket = b.pockets[0]
+	b.end_turn()
+	while b.turn != w.faction:  # the demons take turns too
+		b.end_turn()
+	b.end_turn()
+	while b.turn != w.faction:
+		b.end_turn()
+	ok(w.channel != null and p.turns == -1, "a turn held still: still open for as long as it's kept")
+	ok(not b.travel(w, w.cell + Vector2i(0, 1)).is_empty(), "it walks a tile")
+	b.end_turn()
+	ok(w.channel == null and p.turns == 1, "it walked: the channel ends and its count (2) starts, this turn's end the first off it, as when it stops by a recast (%d)" % p.turns)
+
+
 func test_rift_unchanneled() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 6)})
 	var w := wizard(rift)

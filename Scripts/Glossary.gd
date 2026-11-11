@@ -58,7 +58,7 @@ const TERMS := {
 	&"pinged": ["Pinged", &"condition", "Sensed by a channeled Clairvoyance: a foe out of sight shown as a black shape where it was last sensed. Only where, not who or what side; gone once the channel ends."],
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
-	&"exhaustion": ["Exhaustion", &"condition", "Each use of a skill a unit hasn't got over adds half that skill's AP and cost to its next use, and counts half against its other skills of the same kind (martial, specialist, magical). A turn's end takes one use off each; resting takes off the con mod more, or below 1 a part of one: 1 / (1 - con mod)."],
+	&"exhaustion": ["Exhaustion", &"condition", "Each use of a skill a unit hasn't got over adds half that skill's AP and cost to its next use, and counts half against its other skills of the same kind (martial, specialist, magical). A turn's end takes one use off each; resting (not holding a channel) takes off the con mod more, or below 1 a part of one: 1 / (1 - con mod)."],
 	&"downed": ["Downed", &"condition", "Down but not out, on its last life: at 0 HP or below it lingers for a few of its side's turns. Healed above 0 it is saved. It dies when its HP passes its limit below 0, or its rounds run out."],
 	&"blinded": ["Blinded", &"condition", "Grit in the eyes: its attacks and offensive checks come at a minus."],
 	&"soaked": ["Soaked", &"condition", "Drenched and heavy: it moves less."],
@@ -96,6 +96,8 @@ const TERMS := {
 	&"area": ["Area", &"target", "Aimed at a tile, working on the ground around it."],
 	&"nearest": ["Nearest", &"target", "Used at once, landing on the nearest units in range."],
 	&"range": ["Range", &"target", "How many tiles away it reaches, before reach and size. Gold parts grow with rank; orange ones are the user's mods."],
+	&"channeled": ["Channeled", &"condition", "Held by its caster from turn to turn. As each of its turns after the one it was cast in ends, it holds only if the caster met resting's requirements, no AP spent and no move past Meander; otherwise it ends. A channeling unit isn't resting: keeping the channel is what it gets instead of rest's benefits. Cast again to stop it, free."],
+	&"jammed": ["Jammed ??", &"condition", "Interrupted, it has lost its reactions until its next turn is over: it can't dodge, so all of an evadable attack lands, it can't guard behind its shield, and it doesn't obstruct its foes."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")
