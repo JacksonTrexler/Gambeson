@@ -63,4 +63,54 @@ Builds on `docs/plans/exhaustion.md`.
 
 ## As built
 
-(filled in after building)
+As planned, except where noted.
+
+- `Skill.kinds()` / `Skill.tagged()` / `Skill.general()` (Skill.gd): kinds found once from `Trees/` (general
+  tabs by category, shared roots by tag) and every role's `all_roots()`. It's duck-typed: naming SkillTab
+  or Role in Skill.gd made Unit's preloaded general trees fail to load. `Exhaustion.kinds()` reads it.
+  `Unit.funding()` (`Reserve.only`) and `Unit.pays_as()` (`energy_as`) ask `tagged()`.
+- `Exhaustion.GENERAL` 0.25. `Exhaustion.ease` is a callable that Unit sets in `_init()`:
+  1 + `stat(&"stamina")`. `of()` divides by it, so the tooltip's "exhausted xN" shows the eased count.
+- `Reserves/stamina.tres`: `Color(0.8, 0.88, 0.3)`, `only` martial, specialist, general, physical, and
+  `base` 2 (a new `Reserve` field, read in `Unit.pools()`). `Skills/stamina.tres` (`--human`): passive,
+  tagged martial and specialist so it fits either typed slot, `reserve_mod` constitution, Effect stat
+  `stamina` 1 a rank (`mechanic.py stat`; it describes itself as "its exhaustion counts / N").
+  Wired by `skill.py new` onto the Rogue's Blade root. `skill.put_on_tree()` then added it to the
+  Ranger's Scout root and to `Trees/fury.tres` and `Trees/slayer.tres`; it's open from the start of each.
+  A passive giving a reserve now gets a description line: "Gives its holder Stamina: (con mod + 2) x
+  rank...". Before, it had none.
+- The magical skills Stamina can pay for: no skill carries both `magical` and `physical` in its own tags.
+  The only one that qualifies is Waterstrike, tagged physical and magical by its tree (Thalassic).
+  Terestera, which I named before building, is physical only in a tier.
+- `Unit.paid_for` / `paid_with`, set by `pay_for()`, and `Unit.paid_as(r, s)`. `Unit.stride(n)` adds n move
+  AP and takes n off `moved`, as a Relay boost can.
+- **Move ??** (`Skills/move.tres`, `ai`), on the base General root at branch tier 1: 2 AP, 1 cost, on
+  itself, tagged `stamina` and `dex`. `Behaviours/move.gd` gives rank tiles, or 2 x rank when
+  `paid_as(Stamina)`. The `stamina` tag went in through `mechanic.py tag` (`--human`).
+- Side effects: mana now pays for skills that are magical only by their tree. Stonegift is one, and
+  `champions_test` now says so. Strike no longer shares with martial skills. It is general.
+- Tests: `Tests/stamina_test.gd`, `Tests/move_test.gd`; `exhaustion_test.test_counts` rewritten for the
+  new sharing; `hud_test` (the Rogue's own tab now holds Wary and Stamina), `champions_test` (above).
+
+## Museum sims
+
+`probe.gd` (30 seeded AI museum battles, the `used` signal counted), run on the base commit and on this
+branch:
+
+| | exhaustion off | exhaustion on |
+|---|---|---|
+| base (4aed68d) | Lancin 13, Nemes 17 (3-12 turns) | Lancin 27, Nemes 3 (9-20 turns), Hex 314 |
+| this branch | Lancin 13, Nemes 17 (3-12 turns) | Lancin 27, Nemes 3 (9-20 turns), Hex 293 |
+
+The base no longer gives the exhaustion plan's 8/22 and 29/1, because the museum has changed since that
+plan was written. No museum unit holds Stamina or Move. These rules change only how often Hex is cast
+(Strike's uses now wear on it), and the result stays the same.
+
+## Left open
+
+- Nothing refills Stamina during a battle. A rule for recovering it (resting, as with exhaustion) is open.
+- The player can't choose how to pay. Stamina is spent first whenever it can pay. If a player wants to
+  save it, a toggle such as Sweet Nothings' would be the next step.
+- An Adventurer can't learn Stamina, because none of its trees offers it.
+- A Fighter's Slayer root offers Stamina too, because the root is shared.
+- The AI has no idea of the extra effect a `stamina` skill gets.
