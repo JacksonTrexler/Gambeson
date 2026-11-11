@@ -64,3 +64,39 @@ resists energy), not a skill. Neither Energize nor Power Transfer exists anywher
    reserve, no Mana skill); a robe and a staff like the Mage and Wizard, an Energy Potion for their Mana
    Potion; god Urlo (magic, energy); its tab colour a pale starlight blue.
 6. **Open:** Energize and Power Transfer, named but not defined - not built (see below).
+
+## As built
+
+- **Siphon** (`Glossary.TERMS` `siphon`, kind damage; `Unit.siphon()`, `Unit.siphon_order()`,
+  `Unit.POWER_SIPHON` 1.5): read in `Battle.cast()` ahead of the energy rule; what it took is
+  `Behaviour.Cast.siphoned` for the skill's `dealt()`. As planned: Overcharge, then the last-paid fund,
+  Energy, other spendable reserves fullest first; never HP.
+- **Overcharge** (`Effects/overcharge.tres` "Overcharge", Effect stat `overcharge`, Glossary term
+  `overcharge`; `Unit.overcharge` with `overcharge_changed`, `add_overcharge(n, turns, spare)`, decay in
+  `tick()`). Payment: `funding()` is unchanged in order - it runs as before (`_funding(s, false)`), and only
+  when nothing pays does it look again counting Overcharge (`covers(fund, n, true)`); `pay_for()` and
+  `pay_strike()` take the cost from Overcharge first (`_spend_overcharge()`). *Call made while building:*
+  Focus (`Reserve.aims`) and whole-cost reserves (Sweet Nothings) are left out of both - Focus pays its
+  own to its last point, or its bonus would never fire. HUD: an `OC +n` row in the unit card under
+  EN/PW (`HUD._info()`), only while it holds any.
+- **Energy Transfer** (`Skills/energy_transfer.tres`, `Behaviours/energy_transfer.gd`, its `dealt()`):
+  as planned, on `Trees/general_caster.tres` at tier 2. `Util/skill.py check` now counts `dealt` as a
+  behaviour's hook (it is one, on `Behaviour.gd`), since this behaviour has no `apply()`.
+- **Powerful**: `Unit.grant_energy()` is the one place; Starblade (`Battle._refill()`), an Energy Potion
+  (`Battle.restore()`), starlight (`_starlight()`) and Starsap (`_sap()`) go through it. `powered`'s
+  description: "...and what grants Energy grants Power". Nothing more: `powered()` already marks them.
+- **Sorcerer** (`Roles/sorcerer.tres`, `Trees/stellar_soul.tres`, `Units/Sorcerer.png` placeholder, on the
+  starting screen): Powerful (root) -> Energy Missile -> Starsap, the existing resources. Powerful is the
+  tree's root, learned first - not innate (*call*: "Root" read as where its tree starts; a starter has
+  plain Energy until it takes it). Neither `SkillRoot` nor `SkillTab` has a description field: the
+  tree's description ("Beings with a heart that originated from and yearns for the Astral.") is in
+  `Tests/sorcerer_test.gd`'s header and here only - showing it needs a field, left to review.
+  A consequence of the shared resources: Energy Missile and Powerful now sit on a magical tree, so they are
+  magical by kind (`Skill.kinds()`) everywhere - exhaustion sharing, Mana may pay for Energy Missile.
+  `exhaustion_test` used Energy Missile as its "skill of no kind": it now uses a copy on no tree.
+- **Open, not built:**
+  - *Energize* - not in the code ("Energized" is only the unit property). Guess: a Mana user's active or
+    toggle turning Mana into plain Energy at some rate, "regular energy without toggling" - for Starmen and
+    Sorcerers, perhaps topping Power up from the star lattice.
+  - *Power Transfer* - not in the code. Guess: the Sorcerer's counterpart to Energy Transfer, giving its
+    own Power to an ally (as Energy, or as Power to a powered one) - or siphoning Power at a better rate.
