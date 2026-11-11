@@ -1,6 +1,7 @@
 extends Control
 
-# Start screen: pick a side, a starter class, a scenario and a name; Play (or Enter) opens the battle
+# Start screen: pick a side, a starter class, a scenario, a name and the level it starts at (a skill
+# point a level past the first, Battle.starter()); Play (or Enter) opens the battle
 # with that starter. It starts on the demo's defaults, so Enter alone starts the demo: the name box shows the
 # default name muted (its placeholder) and uses it until something else is typed.
 
@@ -20,6 +21,7 @@ const RING := preload("res://Items/red_spinel_ring.tres")  # every player starts
 @onready var role: Choice = %Role
 @onready var scenario: Choice = %Scenario
 @onready var starter_name: LineEdit = %Name
+@onready var level: SpinBox = %Level
 @onready var play: Button = %Play
 
 
@@ -68,7 +70,7 @@ func _play() -> void:
 	Game.starter = {faction = side.value, role = role.value, name = chosen_name()}
 	Game.outfit = role.value.outfit()  # a new starter, in its class's starting items
 	Game.hearts = 0
-	Game.level = 1  # a new starter starts over
+	Game.level = clampi(roundi(level.value), 1, Unit.MAX_LEVEL)  # a new starter starts over, at the level picked
 	Game.xp = 0
 	if not Game.stash.any(func(it: Item): return it == RING):
 		Game.stash.append(RING)  # the player's own trinket: a life once a battle

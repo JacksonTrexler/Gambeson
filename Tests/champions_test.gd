@@ -209,6 +209,13 @@ func test_entry() -> void:
 	enter.pressed = true
 	e._unhandled_input(enter)
 	ok(Game.starter.faction == lancin and Game.starter.role.name == "Adventurer" and Game.starter.name == "Shrike", "Enter starts the demo")
+	ok(Game.level == 1, "at level 1")
+	var lv: SpinBox = e.get_node("%Level")
+	lv.value = 8
+	e._unhandled_input(enter)
+	ok(Game.level == 8, "or the level picked (%d)" % Game.level)
+	lv.value = 1
+	Game.level = 1
 	Game.starter = {}
 	sides[1].button_pressed = true
 	roles[2].button_pressed = true

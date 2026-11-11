@@ -49,6 +49,8 @@ const SCROLL_EASE := 0.7  # how much faster than average the ends go, and slower
 @export var battle: Battle
 @export var auto := true  # sides the player doesn't run play themselves
 @export var pace := 0.45  # seconds between units acting on their own
+@export var together := true  # units acting on their own all move at once, their walks shown side by side, then the turn ends
+@export var turn_clock := true  # the player has turn_seconds() to act each turn (on screen, top middle), then the turn ends
 @export_file("*.tscn") var menu_scene := "res://Scenes/entry.tscn"
 
 var command: Command
@@ -73,6 +75,8 @@ var _scroll_t := 0.0  # seconds into the effect list's auto-scroll
 var _spinning: Array[Label] = []  # initiative dice still rolling
 var _intro: Tween  # the initiative roll on screen
 var _turn_show: Tween  # the turn change on screen
+var clock := 0.0  # seconds the player has left this turn (turn_clock)
+var clock_label: Label  # the clock, top middle
 
 signal intro_done
 var round_no := 0
@@ -125,6 +129,19 @@ static func shade(c: Color) -> Color:
 func _ready() -> void:
 	add_to_group(&"hud")  # the battle camera finds it (BattleCamera)
 	command = Command.new(battle, battle.player if battle.player else _stand_in())
+	clock_label = Label.new()
+	clock_label.name = &"Clock"
+	clock_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	clock_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	clock_label.position.y = 2
+	clock_label.add_theme_font_size_override(&"font_size", 10)
+	clock_label.add_theme_color_override(&"font_outline_color", Color(0, 0, 0, 0.85))
+	clock_label.add_theme_constant_override(&"outline_size", 3)
+	clock_label.tooltip_text = "Time left this turn: your wisdom plus half your intelligence, in seconds"
+	clock_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	clock_label.hide()
+	$Root.add_child(clock_label)
 	overlay = Overlay.new()
 	overlay.hud = self
 	battle.add_child(overlay)
@@ -278,6 +295,7 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	_tick_clock(delta)
 	for l in _spinning:
 		l.text = str(randi_range(1, 20))
 	if pane.visible:
@@ -654,6 +672,28 @@ func end_turn() -> void:
 		return
 	spellbook.hide()
 	_act_alone(command.faction(), command.idle())
+
+
+# The player's time to act a turn, in seconds: its wisdom plus half its intelligence.
+func turn_seconds() -> float:
+	return command.leader.stat(&"wisdom") + floorf(command.leader.stat(&"intelligence") / 2.0)
+
+
+# The turn clock ticks while it's the player's turn - but not while Settings is open, nor unwatched
+# (pace 0: tests) - and ends the turn when it runs out. Shown top middle, red in its last 5 seconds.
+func _tick_clock(delta: float) -> void:
+	var on := turn_clock and pace > 0.0 and my_turn()
+	clock_label.visible = on
+	if not on:
+		return
+	if not settings.visible:
+		clock = maxf(clock - delta, 0.0)
+	var shown := minf(clock, turn_seconds())
+	clock_label.text = "%d" % ceilf(shown)
+	clock_label.add_theme_color_override(&"font_color", FOE if shown <= 5.0 else Color.WHITE)
+	if clock <= 0.0:
+		_log("[color=#6b7180]Out of time[/color]")
+		end_turn()
 
 
 func my_turn() -> bool:
@@ -1057,15 +1097,16 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 			break
 		if not u.is_alive():
 			continue
-		if pace > 0.0:
+		if pace > 0.0 and not together:
 			await get_tree().create_timer(pace).timeout
 			if not is_inside_tree():
 				return
-		select(u if unit_seen(u.cell) == u else null)
+		if not together:
+			select(u if unit_seen(u.cell) == u else null)
 		AI.act(battle, u)
 		_mark()
 	if pace > 0.0 and battle.phase == Battle.Phase.TURNS:
-		await get_tree().create_timer(pace).timeout
+		await get_tree().create_timer(maxf(pace, overlay.walking_left())).timeout  # together: till the last walk is done
 		if not is_inside_tree():
 			return
 	busy = false
@@ -1089,6 +1130,7 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 	if mine:
 		command.new_turn()
 		select(command.leader)
+		clock = turn_seconds() + (TRANSITION if pace > 0.0 else 0.0)  # its clock starts once the turn change has shown
 	elif auto or now == command.faction():  # the player's down: its side fights on (autopilot())
 		if now == command.faction() and autopilot():
 			_log("[color=#6b7180]You're down: your side fights on without you[/color]")

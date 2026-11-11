@@ -28,6 +28,7 @@ var hud: HUD
 var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
+var _walks_end := 0.0  # when the last walk started finishes, in seconds (walking_left())
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
 
 
@@ -353,6 +354,12 @@ func walk(u: Unit, from: Vector2i, path: Array[Vector2i]) -> void:
 	for c in path:
 		tw.tween_property(u, "position", map.map_to_local(c), STEP_TIME)
 	_walks[u] = tw
+	_walks_end = maxf(_walks_end, Time.get_ticks_msec() / 1000.0 + path.size() * STEP_TIME)
+
+
+# Seconds till the last walk under way is done (HUD: units moving together).
+func walking_left() -> float:
+	return maxf(_walks_end - Time.get_ticks_msec() / 1000.0, 0.0)
 
 
 func fade(u: Unit) -> void:

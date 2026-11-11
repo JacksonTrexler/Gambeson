@@ -83,6 +83,17 @@ placeholder_text = "Shrike"
 alignment = 1
 max_length = 20
 
+[node name="Level" type="SpinBox" parent="Center/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "The level your starter begins at, with a skill point to spend for each level past the first"
+min_value = 1.0
+max_value = 20.0
+value = 1.0
+rounded = true
+alignment = 1
+prefix = "Level"
+
 [node name="Play" type="Button" parent="Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
