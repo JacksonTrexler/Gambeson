@@ -172,3 +172,16 @@ Plan, readings and what was built: `docs/plans/resources.md`; done in `docs/done
     - **The AI never toggles**; a Wizard or Mage under the AI just runs on Mana.
     - **Bars:** a unit shows what it runs on first, then its other reserves (a second 2px bar on demand); the Energy bar only when it holds Energy; the unit card lists each held reserve. Mana and Stamina sit on the hotbar as toggles.
     - Open: the hotbar marks no switch in progress, only the log line ("switching to Energy, channeled"); a Druid holds Mana from its Astral tab before learning the skill (with no toggle, both pay as before).
+
+## Vanishing, preparation, tooling (2026-11-11)
+
+102. **Vanishing before its eyes (!?) - built on judgement, open for review (2026-11-11).** "New effect for units vanishing / becoming harder to perceive before a unit's very eyes !?... a unit will assume a hostile / friendly unit that becomes obscured this way is on the same faction when concealed, sufficient trickery still applies." My calls:
+    - **What counts:** a skill putting concealment on a unit (Hide, Vanishing Act, Blur, Invisibility) or a unit walking into cover, watched by an awake unit - ally or foe - that made out its side and place just before and still has it within half its sight range (close enough to see how it looks). Stepping out of sight range isn't vanishing.
+    - **The assumption** (`Unit.assumed`) lasts the battle: while it can't make out the unit's side, it takes it for the side it seemed (the card and the AI read it so). A plain read shows the truth again. A lie that fools it still wins (Vanishing Act's own trickery does).
+    - **Not yet:** darkness or fog laid over a unit (Darkstone, Waltz of Vapors) doesn't count, only the unit's own concealment and the ground it steps on.
+105. **Preparation - built on judgement, open (2026-11-11).** "Before a fight starts, the player can review the map and may click on up to cha mod (min 0) friendly units to learn more about (one recon level); up to wis mod enemy units / tiles to scrutinize." My calls:
+    - **Only battles started from the entry screen** prepare (`Battle.prep`, `Game.starter.prep`); tests and the tower's later floors don't.
+    - **The leader's mods**; whether a unit counts as an ally is how it *seems* (a disguised foe that looks friendly is an ally study).
+    - **What a study gives:** its whole side reads that unit or tile a recon level better for the battle. **Scrutinizing** a foe also looks harder at it if it fools the leader (`doubt()`); a tile is inspected (`inspect()`). A plain tile can be studied, to no effect beyond the recon.
+    - **Begin** is the End Turn button (and Space) while preparing; the initiative roll comes after.
+111. **Tooling (2026-11-11).** `role.py tree` (an empty root) and `role.py tab` (a tab beside a class's own, a new choice with `--by`/`--affinity`, or `--into` an existing one), in the new-class process; `icon.py effect` for a status icon; a new behaviour hook, `affinity`. Fixed: `icon.py` lettered a skill by its *effect's* name when that came first in the file: Coalescing, Drown, Interdict, Judgement, Reckless Abandon and Snare had wrong placeholder letters, now redrawn.

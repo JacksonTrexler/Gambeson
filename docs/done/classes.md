@@ -201,3 +201,8 @@ The rule is in `docs/done/rules.md`.
 
 - [x] **Energy Transfer** (`Skills/energy_transfer.tres`, `Behaviours/energy_transfer.gd`; caster, int; 3 AP, 1 Energy, range 4; 1d4, 1d6 from III): a siphoning `energy` attack; the caster gains what it drained as Energy, the rest as Overcharge at rank x 20% for rank turns. General Caster tree, tier 2. (?117)
 - [x] **Sorcerer** (`Roles/sorcerer.tres`, `Trees/stellar_soul.tres`, `Units/Sorcerer.png` placeholder): Powerful (root, so energy grants arrive as Power), Energy Missile and Starsap; int 10, cha 15, no Mana, robe, staff, Energy Potion, god Urlo. Energy Missile and Powerful are now magical by kind. `sorcerer_test.gd`. (?117)
+
+## Trickster and Illusion (2026-11-11)
+
+- [x] **Trickster** (`Roles/rogue.tres` tab; `Trees/showmanship.tres`, `deception.tres`, `legerdemain.tres`): Flourish, Stage Presence, Showstopper; Vanishing Act, Double Bluff, Illusionist; Phantasm, Switcheroo (`Behaviours/switcheroo.gd`), Prestidigitation. `trickster_test.gd` and a test per skill. (?109)
+- [x] **Illusionist and the Illusion school** (`Behaviours/illusionist.gd`, `Trees/illusion.tres`; a choice on the Rogue, a school of the Mage's): Blur, Disguise Self, Mirror Image, Phantasmal Force, Invisibility; the first rank spells free of the guest penalty. `illusionist_test.gd`. (?110)

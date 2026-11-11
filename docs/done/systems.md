@@ -155,3 +155,9 @@
 
 - [x] **Mana and Stamina as toggles** (`Reserve.replaces`, `bars`, `rest_rank`, `steady`; `Skills/mana.tres`, `Skills/stamina.tres` as `toggle`; `Unit.runs_on()`, `replacer()`, `toggle()`, `switching()`, `carry()`, `channel_held()`): on when learned, the unit runs on that reserve and its Energy is emptied at battle start; Mana pays only magical skills, Stamina martial, specialist and general (no costed spells); Mana regen adds its rank resting and half that otherwise, Stamina's resting bonus is 2 x rank; switching is a channel carrying 10% of max x rank x turns held; one toggle on at a time; the AI never toggles. Two bars (`held_reserves()`, `second_bar`), hotbar toggles. `resources_test.gd`. (?116)
 - [x] **Siphon, Overcharge and one place for energy grants** (`Unit.siphon()`, `siphon_order()`, `POWER_SIPHON`; `Effects/overcharge.tres`, `Unit.overcharge`, `add_overcharge()`; `Unit.grant_energy()`): siphon damage comes off Overcharge, the last-paid fund, Energy, then other reserves, never HP, x1.5 on a powered target; Overcharge covers a cost only when nothing else can and decays over rank turns; Starblade, potions, starlight, Starsap and Energy Transfer grant through `grant_energy()`. (?117)
+
+## Vanishing and preparation (2026-11-11)
+
+- [x] **Vanishing before its eyes** (`Battle._sightings()`, `_vanish()`, `Unit.assumed`, `Read.assumed`): a unit whose concealment grows (a skill, or walking into cover) while watched leaves its watchers taking it for the side it seemed, unless a lie fools them. `vanish_test.gd`. (?102)
+- [x] **Studies in preparation** read a recon level better for the whole side (`Battle.studied`, `_read()`). (?105)
+- [x] **Tooling**: `role.py tree`, `role.py tab`; `icon.py effect`; the `affinity` behaviour hook (`Behaviour.affinity()`, `Unit.guest_affinity()`). (?110, ?111)
