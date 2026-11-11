@@ -96,7 +96,7 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Universal channel rule** (2026-11-10): built (`docs/done/rules.md`, `docs/plans/channels-jam.md`). (?85, ?89, ?97)
 - [x] **Stamina recovers in battle** (2026-11-11): answered "stamina recovers alongside energy, rank bonus if resting"; built (`docs/plans/stamina.md`, "Amended"). (?98, ?100)
 - [ ] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. (?100)
-- [ ] **A save-Stamina toggle**: it pays automatically before Energy whenever it can; a toggle like Sweet Nothings' would let a player hold it back. (?98)
+- [x] **A save-Stamina toggle**: Stamina and Mana are now toggles on the hotbar (2026-11-11, ?116); switching is a channel. (?98, ?116)
 - [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
 - [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
 - [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
@@ -153,3 +153,22 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
     - **Jam drains Focus** by the HP the target lost.
     - **Stamina recovers** on Energy's tick and rate (full resting, half light, none busy) plus its rank on a resting turn; it recovers even with Energy full, and Power doesn't stop it; an idle channeler gets half and no bonus.
     - Open: the HUD shows only a unit's largest reserve (a Ranger with Energy, Stamina and Focus sees one bar); the AI doesn't rest to build Focus.
+
+## Resources: Mana, Stamina, the toggle (2026-11-11)
+
+Plan, readings and what was built: `docs/plans/resources.md`; done in `docs/done/systems.md`. `Tests/resources_test.gd`.
+
+116. **Resource rules: Mana and Stamina as toggles - built on judgement, open for review (2026-11-11).** Your design (Mana and Stamina as toggle passives, on when learned; who pays what; Mana's even-keel regen, Stamina's rest bonus; switching as a channel that carries over up to 10% of max per rank per turn; two bars). Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
+    - **Replacement is literal:** a unit running on Mana or Stamina has its own Energy emptied as the battle starts and doesn't get it back. That is the lock-out from Energy-cost actives. Confirm?
+    - **Wizards and Mages now start every battle with no Energy** (they run on Mana). Strike costs nothing so still works; their non-magical costed skills need Energy Transfer, Overcharge or a switch. This is the intended result of the design; say if it bites.
+    - **Energy from Energy Transfer, a potion or Overcharge pays for anything**, non-caster skills included: the rule reads the toggle, not which reserves are held. Confirm?
+    - **Stamina also pays general skills**, and `physical` is dropped from its list (it pays martial, specialist, general), or a Stamina user couldn't pay for Move ??. Confirm?
+    - **Running on Stamina, no spell that costs anything can be paid** (Focus and Overcharge included); a free spell (Waterstrike) is still allowed. Confirm?
+    - **Focus** keeps its rules and sits beside either toggle, except for that spell ban.
+    - **Regen:** Mana as Energy does (full resting, half light, none busy) plus its rank on a resting turn and half that on any other turn, busy included; Stamina's resting bonus is 2 x rank. A reserve switched off doesn't recover. Confirm?
+    - **A unit with both toggles learned** keeps the first on its bar on, the other off. Confirm?
+    - **The switch is a channel** (`Unit.toggle()`): it takes effect at the channel's end, the unit running on the old resource meanwhile. Each turn held counts one; when it ends (toggled again, broken by acting, interrupted by Jam) the old reserve goes to 0 and floor(10% of its max x the toggle's rank x turns held), no more than it had, goes into the new one. Holding another channel, a unit can't switch. Confirm?
+    - **Learning a toggle mid-battle** makes the unit run on it at once, but the Energy it had stays until spent. Confirm?
+    - **The AI never toggles**; a Wizard or Mage under the AI just runs on Mana.
+    - **Bars:** a unit shows what it runs on first, then its other reserves (a second 2px bar on demand); the Energy bar only when it holds Energy; the unit card lists each held reserve. Mana and Stamina sit on the hotbar as toggles.
+    - Open: the hotbar marks no switch in progress, only the log line ("switching to Energy, channeled"); a Druid holds Mana from its Astral tab before learning the skill (with no toggle, both pay as before).

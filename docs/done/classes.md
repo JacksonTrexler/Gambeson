@@ -196,3 +196,8 @@ The rule is in `docs/done/rules.md`.
 - [x] **Bandwagon** (`Skills/bandwagon.tres`, `Behaviours/bandwagon.gd`; passive, specialist, cha): word of suspicion of its holder takes a cha check against the standard rung at its rank + the holder's cha mod, while no more than rank + 1 foes suspect it. (?94)
 - [x] **Molothrus** (`Skills/molothrus.tres`, `Behaviours/molothrus.gd`; passive, specialist, cha): those it fools within rank tiles give up rank x 10% of their heals to it and take rank x 20% of its hits, shared; its persona goes by Precious. (?94)
 - [x] **Blinthe** (`Scenes/blinthe.tscn`, `Factions/unaligned.tres`): a level 16 Bard, his own side, made with `Util/unit.py` as the example of a unit with a bio. `blinthe_test.gd`. (?94)
+
+## Energy Transfer and the Sorcerer ?? (2026-11-11)
+
+- [x] **Energy Transfer** (`Skills/energy_transfer.tres`, `Behaviours/energy_transfer.gd`; caster, int; 3 AP, 1 Energy, range 4; 1d4, 1d6 from III): a siphoning `energy` attack; the caster gains what it drained as Energy, the rest as Overcharge at rank x 20% for rank turns. General Caster tree, tier 2. (?117)
+- [x] **Sorcerer** (`Roles/sorcerer.tres`, `Trees/stellar_soul.tres`, `Units/Sorcerer.png` placeholder): Powerful (root, so energy grants arrive as Power), Energy Missile and Starsap; int 10, cha 15, no Mana, robe, staff, Energy Potion, god Urlo. Energy Missile and Powerful are now magical by kind. `sorcerer_test.gd`. (?117)
