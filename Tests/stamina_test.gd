@@ -58,3 +58,37 @@ func test_eases_exhaustion() -> void:
 	v(2).exhaustion.used(strike)
 	ok(is_equal_approx(v(2).exhaustion.of(strike), 1.0), "without it, whole")
 	Exhaustion.on = false
+
+
+# Stamina comes back as Energy does (Unit.recover(): (con mod + wis mod) / 2 a turn resting, at least 1;
+# half as fast with light activity; none busy), plus its rank on a resting turn - Energy full or not.
+func test_recovers() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	fit(v(1), 2)
+	v(1).set_store(pool, 0)
+	var k := v(1).rounded((v(1).mod(&"constitution") + v(1).mod(&"wisdom")) / 2.0)
+	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
+	ok(v(1).energy >= v(1).max_energy, "Energy full")
+	b.end_turn()
+	ok(v(1).store(pool) == floori(rate + 0.0001) + 2, "a rest: Energy's rate (%s) + rank II, Energy full or not: %d" % [rate, v(1).store(pool)])
+	b.end_turn()
+	v(1).set_store(pool, 0)
+	v(1).refresh()
+	ok(b.cast(v(1), strike, v(3)), "a Strike: busy")
+	v(1).set_store(pool, 0)
+	b.end_turn()
+	ok(v(1).store(pool) == 0, "busy: none back")
+
+
+func test_recovers_light() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	fit(v(1), 3)
+	v(1).set_store(pool, 0)
+	v(1).reserve_rest.clear()
+	v(1).refresh()
+	v(1).channel = Unit.Channel.new(load("res://Skills/metea.tres"), Vector2i(2, 2))
+	ok(v(1).activity() == &"light", "holding a channel: light")
+	var k := v(1).rounded((v(1).mod(&"constitution") + v(1).mod(&"wisdom")) / 2.0)
+	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
+	b.end_turn()
+	ok(v(1).store(pool) == floori(rate / 2.0 + 0.0001), "light: half Energy's rate, no rank bonus (%d)" % v(1).store(pool))

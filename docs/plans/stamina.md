@@ -114,3 +114,11 @@ plan was written. No museum unit holds Stamina or Move. These rules change only 
 - An Adventurer can't learn Stamina, because none of its trees offers it.
 - A Fighter's Slayer root offers Stamina too, because the root is shared.
 - The AI has no idea of the extra effect a `stamina` skill gets.
+
+## Amended 2026-11-11
+
+The user: "stamina recovers alongside energy, rank bonus if resting". Stamina now comes back during a
+battle (`Reserve.with_energy`, `Unit._recover_reserves()`): at Energy's rate by activity (rest, half
+with light activity, none busy), plus Stamina's rank on a resting turn. It recovers whether Energy is
+full or not, and Power doesn't stop it. That replaces "nothing refills it mid-battle" (call 4) and the
+first item under Left open. See `docs/plans/focus.md`.
