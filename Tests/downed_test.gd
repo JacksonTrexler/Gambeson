@@ -128,6 +128,19 @@ func test_tenacity_helpless() -> void:
 	ok(b.phase == Battle.Phase.TURNS and v(3) in b.members(nemes), "its side isn't beaten while it lingers")
 
 
+# Going Downed and helpless lets go of a channel (Downed.changed()); one that goes on acting keeps it.
+func test_channel() -> void:
+	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
+	var metea: Skill = load("res://Skills/metea.tres")
+	give(v(3), tenacity, 1)
+	give(v(4), grudge, 1)
+	for u in [v(3), v(4)]:
+		u.channel = Unit.Channel.new(metea, Vector2i(2, 2))
+		u.damage(999)
+	ok(v(3).helpless() and v(3).channel == null, "Tenacity: down and helpless, its channel ends")
+	ok(v(4).dbno != null and not v(4).helpless() and v(4).channel != null, "Grudge: down but still acting, it keeps it")
+
+
 func test_grudge_actions() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(1, 1), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
 	give(v(3), grudge, 2)

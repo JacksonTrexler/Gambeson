@@ -3,7 +3,9 @@ extends Test
 # Clairvoyance (Wizard and Mage, Luun): channeled on the caster, it pings the foes its side can't see
 # within its wisdom score + rank in tiles - walls or not - as black shapes at their tiles, location
 # only, each a stack of the caster's suspicion of the tile. Each of its turn ends while it holds, the
-# pings move to where the foes are, then its rank for the channel rises (Battle.clairvoy()).
+# pings move to where the foes are, then its rank for the channel rises (Battle.clairvoy()). The
+# channel rule (Battle.end_turn(), Unit.idle()): each turn after the cast it holds only if the caster
+# met rest's requirements - no AP, no move past Meander - and then it isn't resting.
 
 var clairvoyance: Skill = load("res://Skills/clairvoyance.tres")
 
@@ -89,6 +91,51 @@ func test_channel_ends() -> void:
 	var ap := v(1).ap_left()
 	ok(b.cast(v(1), clairvoyance, v(1)) and v(1).channel == null and b.pinged(lancin).is_empty(), "cast while channeling: it stops")
 	ok(is_equal_approx(v(1).ap_left(), ap), "stopping is free")
+
+
+# The channel rule, for every channel: the turn it's cast in doesn't count; after that a turn spent
+# moving or acting ends it, and one spent idle keeps it instead of resting.
+func test_rule() -> void:
+	setup(Vector2i(5, 2), Vector2i(8, 6))
+	var meander: Skill = load("res://Skills/meander.tres")
+	v(1).learned.append(slot(meander, 1))
+	v(1).exhaustion.uses[clairvoyance] = 5.0
+	ok(b.cast(v(1), clairvoyance, v(1)) and not v(1).idle(), "cast: AP spent")
+	b.end_turn()
+	ok(v(1).channel != null, "the turn it was cast in doesn't count")
+	b.end_turn()
+	ok(v(1).idle() and v(1).activity() == &"light", "next turn, idle: not resting while it channels")
+	var uses: float = v(1).exhaustion.uses[clairvoyance]
+	b.end_turn()
+	ok(v(1).channel != null and v(1).channel.rank == 3, "an idle turn: the channel holds, and ranks up")
+	ok(v(1).rested_turns == 0 and v(1).exhaustion.uses[clairvoyance] > uses - 1.5, "rest's benefits went to the channel: no resting turn, no extra recovery")
+	b.end_turn()
+	b.travel(v(1), Vector2i(1, 1))
+	ok(v(1).steps == 1 and v(1).idle(), "Meander I: a tile and still standing still")
+	b.end_turn()
+	ok(v(1).channel != null, "so it holds: one that can move and rest has the edge")
+	b.end_turn()
+	b.travel(v(1), Vector2i(1, 3))
+	ok(v(1).steps == 2 and not v(1).idle(), "two tiles: it moved")
+	b.end_turn()
+	ok(v(1).channel == null and b.pinged(lancin).is_empty(), "moving ends the channel at its turn's end")
+
+
+func test_rule_acting() -> void:
+	setup(Vector2i(5, 2), Vector2i(8, 6))
+	b.cast(v(1), clairvoyance, v(1))
+	b.end_turn()
+	b.end_turn()
+	v(1).pay(1.0, &"skill")  # AP spent on something else
+	b.end_turn()
+	ok(v(1).channel == null, "spending AP ends it")
+	b.end_turn()
+	ok(b.cast(v(1), clairvoyance, v(1)), "cast anew")
+	b.end_turn()
+	b.end_turn()
+	ok(b.cast(v(1), clairvoyance, v(1)) and v(1).channel == null and v(1).idle(), "stopped by casting it again: free, and no activity")
+	b.end_turn()
+	ok(v(1).rested_turns == 1, "so with no channel left, it rested")
 
 
 func test_hud() -> void:

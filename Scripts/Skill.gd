@@ -552,8 +552,8 @@ func markup(rank := 1, with_spec := true) -> String:
 				lines.append("Allies within its %s in tiles learn where it is" % Glossary.mod(&"cha"))
 		var t := tier(rank)
 		if channel:
-			lines.append("Channels on a tile. Cast again for %s AP and %d cost to strike: a tile within (its side's turns since) tiles of it explodes, hitting everyone within {r:%s} tiles but the caster"
-					% [num(strike_ap), strike_cost, num(blast * rank)])
+			lines.append("%s on a tile. Cast again for %s AP and %d cost to strike: a tile within (its side's turns since) tiles of it explodes, hitting everyone within {r:%s} tiles but the caster"
+					% [Glossary.term(&"channeled", "Channels"), num(strike_ap), strike_cost, num(blast * rank)])
 		if god_tag:
 			var n := rank
 			lines.append("Its damage takes its caster's god's tag, and on a hit its god adds:")
@@ -673,13 +673,13 @@ func markup(rank := 1, with_spec := true) -> String:
 	if mist_only:
 		lines.append("Only as a mist (Vaporize)")
 	if rifts:
-		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door both ways to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). Channeled, it stays open while the caster keeps channeling (shown as infinite); used again, the channel stops. Its {t:%d turns} start once the channel stops, or at once if it's cast unchanneled (Alt-click); then the caster's side comes back and the domain goes" % Battle.rift_turns(rank))
+		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door both ways to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). %s, it stays open while the caster keeps channeling (shown as infinite); used again, the channel stops. Its {t:%d turns} start once the channel stops, or at once if it's cast unchanneled (Alt-click); then the caster's side comes back and the domain goes" % [Glossary.term(&"channeled", "Channeled"), Battle.rift_turns(rank)])
 	if exits:
 		lines.append("An escape portal forming opens {r:%d} turns sooner. With none forming: warps the caster and allies within {r:%d} tiles to a pocket of stone, a door back and forth, for {t:%d turns}; then it returns them in a clump" % [rank, rank, rank])
 	if wells:
 		lines.append("Floods the tile {r:%d} deep and the tiles beside it {r:%d}, for {t:%d turns}" % [rank, maxi(rank - 1, 0), rank])
 	if pings:
-		lines.append("Channeled on the caster: foes its side can't see within its wisdom + {r:%d} tiles, walls or not, show where they are as black shapes, and nothing more (%s). Each adds a stack of %s of its tile. As each of its turns ends while it holds, they move to where the foes are now, and the rank rises by 1 for the channel. Cast again to stop" % [rank, Glossary.term(&"pinged", "pinged"), Glossary.term(&"suspicion", "suspicion")])
+		lines.append("%s on the caster: foes its side can't see within its wisdom + {r:%d} tiles, walls or not, show where they are as black shapes, and nothing more (%s). Each adds a stack of %s of its tile. As each of its turns ends while it holds, they move to where the foes are now, and the rank rises by 1 for the channel. Cast again to stop" % [Glossary.term(&"channeled", "Channeled"), rank, Glossary.term(&"pinged", "pinged"), Glossary.term(&"suspicion", "suspicion")])
 	if fog:
 		lines.append("Fog around the caster, radius {r:%d} + the better of its dex and cha mods, concealing at {r:%d}. Kept up only by using it again as each of its turns opens" % [rank, rank])
 	if studies:

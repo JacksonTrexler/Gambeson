@@ -28,6 +28,7 @@ const HP_COLOR := Color("#3fbf4f")
 const SHAPE_EDGE := Color("#8a8f9c")  # glow of a unit whose side can't be told
 const SHAPE := Color(0.03, 0.03, 0.03)  # what a silhouette is painted: one that might be a monster in the brush (Read.silhouette())
 const GLOW := 0.55  # how strongly a unit glows in its side's colour
+const MARK_TIME := 1.0  # seconds a mark (pop_mark(): ? suspected, ! seen through) takes to pop and fade
 const DESATURATE := preload("res://Scenes/UI/desaturate.gdshader")
 const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in high contrast
 # The four strengths a unit's glow takes when the HUD has something to say with it (set_glow();
@@ -242,6 +243,7 @@ var rested_turns := 0  # its side's turns in a row it has rested through: it loo
 var unwatched := 0  # its turns since it last looked around (Battle._watch(): wis mod 0 or less looks only every few)
 var guard := Vector2.ZERO  # the way it faces behind its shield while Shields Up! is on it (Battle._guard(); hit())
 var heading := Vector2i.ZERO  # the way its last move this turn went, if moving was the last thing it did (Eyes Forward)
+var mark: Label  # the mark that last popped over it (pop_mark()), while it fades
 var _face: Label  # draws a persona's stand-in sprite in place of its own (_show_face())
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 var _ap_start: Array[float] = []  # each AP pool as its turn started, to tell how hard it worked (activity())
@@ -1252,9 +1254,9 @@ func hooks() -> Array:
 	return out
 
 
-# Shields Up! is on it and c's centre lies within the 90 degree cone it faces.
+# Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard != Vector2.ZERO and stat(&"jammed") <= 0.0 and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -1871,21 +1873,37 @@ func refresh() -> void:
 	exposed = 0
 
 
-# How hard it worked this turn: &"rest" (it didn't move or spend AP), &"light" (it only spent its
-# dex move or wis skill AP, leaving the general pool whole) or &"busy". Walking while standing still
+# How hard it worked this turn: &"rest" (idle(), holding no channel), &"light" (it only spent its
+# dex move or wis skill AP, leaving the general pool whole - or it was idle holding a channel: keeping
+# the channel is what it gets instead of rest's benefits) or &"busy". Walking while standing still
 # (Meander) doesn't count.
 func activity() -> StringName:
-	var walking := still()
+	if idle():
+		return &"light" if channel else &"rest"
+	var spent := _spent()
 	var general := 0.0
-	var spent := 0.0
-	for i in mini(ap.size(), _ap_start.size()):
-		var used := _ap_start[i] - ap[i].amount - (_walk_ap[i] if walking and i < _walk_ap.size() else 0.0)
-		spent += used
+	for i in spent.size():
 		if ap[i].only == &"":
-			general += used
-	if spent < 0.0001 and (is_zero_approx(moved) or walking):
-		return &"rest"
+			general += spent[i]
 	return &"light" if general < 0.0001 else &"busy"
+
+
+# Whether this turn met rest's requirements: no AP spent and no tiles walked beyond standing still
+# (Meander). A channel holds through a turn only if it did (Battle.end_turn()).
+func idle() -> bool:
+	var spent := 0.0
+	for x in _spent():
+		spent += x
+	return spent < 0.0001 and (is_zero_approx(moved) or still())
+
+
+# AP spent from each pool this turn, less what walking took while standing still (Meander).
+func _spent() -> PackedFloat64Array:
+	var walking := still()
+	var out := PackedFloat64Array()
+	for i in mini(ap.size(), _ap_start.size()):
+		out.append(_ap_start[i] - ap[i].amount - (_walk_ap[i] if walking and i < _walk_ap.size() else 0.0))
+	return out
 
 
 # Whether it's still technically standing still this turn, `extra` tiles on: no tiles walked, or no
@@ -2349,7 +2367,8 @@ func _stack() -> void:
 
 # How the player's side sees it (the HUD calls this; until then it's drawn as it is). Not located:
 # not drawn at all. Located with its side unknown: in its own colours, but with no side colours and no bars -
-# or, when it hides, stands in concealment or is suspected, a black shape (Read.silhouette()).
+# or, when it hides or stands in concealment, a black shape (Read.silhouette()). A trick it suspects in
+# plain view shows as if unaffiliated - its own colours, a neutral glow - until seen through (Read.mark()).
 # Otherwise it wears the side it shows as - its own, or one a persona claims - with bars for
 # whatever of HP, energy and reserves can be made out. A persona posing as someone shows that
 # name's stand-in sprite instead of its own. null: as it is.
@@ -2373,7 +2392,11 @@ func set_glow(level: int, contrast := false) -> void:
 func appear(r: Read) -> void:
 	shown = r
 	visible = r == null or r.located()
-	_show_side(faction if r == null else r.faction, r != null and r.faction == null, r != null and r.silhouette())
+	var doubt := r != null and r.mark() == Read.Mark.DOUBT  # a trick it suspects: as if unaffiliated
+	if r == null:
+		_show_side(faction, false, false)
+	else:
+		_show_side(null if doubt else r.faction, r.faction == null or doubt, r.silhouette())
 	_show_face(r.face if r else "")
 	_show_bars()
 
@@ -2427,9 +2450,37 @@ func _show_side(f: Faction, shape: bool, dark: bool) -> void:
 	if glow.visible:
 		glow.modulate = Color(SHAPE_EDGE if shape else f.primary, GLOW)
 		glow.scale = Vector2.ONE
-	if f:
-		hp_bar.add_theme_stylebox_override("background", _flat(f.secondary))
-		(trim.get_theme_stylebox("panel") as StyleBoxFlat).border_color = f.primary.darkened(TRIM_DARKEN)
+	var edge := f.primary if f else SHAPE_EDGE  # no side to tell: neutral trim, so a lie's colours don't linger
+	hp_bar.add_theme_stylebox_override("background", _flat(f.secondary if f else SHAPE_EDGE.darkened(0.5)))
+	(trim.get_theme_stylebox("panel") as StyleBoxFlat).border_color = edge.darkened(TRIM_DARKEN)
+
+
+# A mark that pops over it and fades within about a second (MARK_TIME): what the player's side has
+# just come to think of it ("?" suspected, "!" seen through: HUD._show_units()). The latest is mark.
+func pop_mark(text: String, colour: Color) -> void:
+	if mark and is_instance_valid(mark):
+		mark.queue_free()
+	mark = Label.new()
+	mark.text = text
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.add_theme_font_size_override(&"font_size", 16)
+	mark.add_theme_color_override(&"font_color", colour)
+	mark.add_theme_constant_override(&"outline_size", 4)
+	mark.add_theme_color_override(&"font_outline_color", Color(0, 0, 0, 0.9))
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.z_index = 10
+	mark.size = Vector2(16, 18)
+	mark.pivot_offset = mark.size / 2.0
+	mark.position = Vector2(-8, -39)  # above its bars
+	add_child(mark)
+	mark.scale = Vector2.ONE * 0.4
+	var tw := mark.create_tween()
+	tw.tween_property(mark, ^"scale", Vector2.ONE * 1.25, MARK_TIME * 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mark, ^"scale", Vector2.ONE, MARK_TIME * 0.1)
+	tw.tween_interval(MARK_TIME * 0.35)
+	tw.tween_property(mark, ^"modulate:a", 0.0, MARK_TIME * 0.4)
+	tw.tween_callback(mark.queue_free)
 
 
 func _flat(c: Color) -> StyleBoxFlat:

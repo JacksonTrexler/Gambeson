@@ -224,7 +224,7 @@ func test_silhouette() -> void:
 	friends.allies = [lancin]
 	al.faction = friends
 	v(4).afflict(effect("concealment", 1), 9)
-	var dark: Dictionary[Vector2i, int] = {Vector2i(8, 1): 1, Vector2i(8, 2): 1}
+	var dark: Dictionary[Vector2i, int] = {Vector2i(8, 1): 2, Vector2i(8, 2): 1}  # Icor, deep enough that a stack of suspicion leaves it some
 	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))
 	var h := await start(v(1))
 	var black := func(u: Unit) -> bool: return u.sprite.modulate == Unit.SHAPE
@@ -244,7 +244,11 @@ func test_silhouette() -> void:
 	ok(grey.call(al) and not black.call(al), "an ally of another side it can't identify, the same: in colour")
 	v(1).suspicion[v(3)] = 1
 	h._refresh()
-	ok(grey.call(v(3)) and black.call(v(3)), "one it suspects and still can't make out: a black shape")
+	ok(grey.call(v(3)) and not black.call(v(3)), "one it suspects in plain view isn't a black shape: suspicion alone doesn't make one")
+	ok(not is_instance_valid(v(3).mark), "nor does it pop a mark: it's no trick")
+	v(1).suspicion[icor] = 1
+	h._refresh()
+	ok(black.call(icor) and not is_instance_valid(icor.mark), "one suspected in darkness stays a black shape, with no mark")
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(7, 2)})
 	b.zones.clear()
 	b.sight = true  # stage() calms, turning it off
@@ -252,6 +256,46 @@ func test_silhouette() -> void:
 	v(1).wisdom = 8
 	h._refresh()
 	ok(b.in_range(v(1), v(3)) == 1 and v(3).visible and black.call(v(3)), "where sight is limited, one too far to tell how it looks is a shape too")
+	h.free()
+
+
+# Suspicion on a trick in plain view (Read.mark()): when it lands a "?" pops and fades, and the trick
+# shows as if unaffiliated (its own colours, a neutral glow); once the suspicion sees through it a "!"
+# in its true side's colour, and it wears that side. Each pops once per change.
+func test_suspicion_marks() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(4, 2), v(4): Vector2i(9, 7)})
+	v(3).afflict(effect("persona", 3), 99)
+	v(3).afflict(effect("trickery", 3), 99)
+	v(3).stance = "Friendly"
+	var h := await start(v(1))
+	var glow := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0)
+	var r := h.view(v(3))
+	ok(r.faction == lancin and glow.call(v(3)) == lancin.primary and not is_instance_valid(v(3).mark),
+			"unsuspected, the trick passes as the player's side, with no mark")
+	v(1).suspicion[v(3)] = 1
+	h._refresh()
+	r = h.view(v(3))
+	ok(r.deceived and r.mark() == Read.Mark.DOUBT, "a stack of suspicion that doesn't see through it: doubt")
+	ok(is_instance_valid(v(3).mark) and v(3).mark.text == "?", "a ? pops over it")
+	ok(glow.call(v(3)) == Unit.SHAPE_EDGE and v(3).sprite.modulate == Color.WHITE, "and it shows as if unaffiliated: a neutral glow, its own colours")
+	ok(h._info(v(3)).shape and not h._info(v(3)).silhouette, "its card can't tell its side either")
+	v(3).mark.visible = false
+	h._refresh()
+	ok(not v(3).mark.visible, "redrawing doesn't pop it again")
+	v(1).suspicion[v(3)] = 9
+	h._refresh()
+	r = h.view(v(3))
+	ok(not r.deceived and r.faction == nemes and r.mark() == Read.Mark.CAUGHT, "enough suspicion sees through it: caught")
+	ok(v(3).mark.visible and v(3).mark.text == "!" and v(3).mark.get_theme_color(&"font_color") == nemes.primary.lightened(0.15),
+			"a ! pops, in its true side's colour")
+	ok(glow.call(v(3)) == nemes.primary, "and it wears its true side")
+	v(3).mark.visible = false
+	h._refresh()
+	ok(not v(3).mark.visible, "once")
+	var old := v(3).mark
+	await h.get_tree().create_timer(Unit.MARK_TIME + 0.2).timeout
+	ok(not is_instance_valid(old), "a mark fades and goes within about a second")
+	ok(b.read(v(4), v(3)).mark() == Read.Mark.NONE, "a unit that holds no suspicion of it makes nothing of it")
 	h.free()
 
 
@@ -928,7 +972,7 @@ func test_tabbed_skills_screen() -> void:
 	var tabs: HFlowContainer = h.get_node("%WheelTabs")
 	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
 			"browser tabs: a tab per part of its tree, its species', then the general trees a Rogue gets")
-	ok(h.skills.view() == g and g.skills().size() == 2 and load("res://Skills/wary.tres") in g.skills() and load("res://Skills/stamina.tres") in g.skills(), "its own: Wary and Stamina, growing from the bottom (Strike is on the General tab)")
+	ok(h.skills.view() == g and g.skills().size() == 3 and load("res://Skills/wary.tres") in g.skills() and load("res://Skills/stamina.tres") in g.skills() and load("res://Skills/jam.tres") in g.skills(), "its own: Wary, Stamina and Jam, growing from the bottom (Strike is on the General tab)")
 	(tabs.get_child(1) as Button).pressed.emit()
 	var snare: Skill = load("res://Skills/snare.tres")
 	var hazard: Skill = load("res://Skills/hazard_expert.tres")
