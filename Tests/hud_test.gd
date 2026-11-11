@@ -299,6 +299,48 @@ func test_suspicion_marks() -> void:
 	h.free()
 
 
+# The player sees through the unit it commands (HUD.eyes()): one of its side, selected, on its turn.
+# The same trick reads by that unit's suspicion - its look, card and marks - and by the leader's with
+# nothing commanded. Switching eyes pops nothing; a change within one viewer's eyes does.
+func test_sight_by_unit() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 4), v(3): Vector2i(4, 3), v(4): Vector2i(9, 7)})
+	v(3).afflict(effect("persona", 3), 99)
+	v(3).afflict(effect("trickery", 3), 99)
+	v(3).stance = "Friendly"
+	v(2).suspicion[v(3)] = 9
+	var h := await start(v(1))
+	var glow := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0)
+	ok(h.commanding() and h.eyes() == v(1), "the leader, selected on its turn, is the one the player sees through")
+	ok(h.view(v(3)).faction == lancin and glow.call(v(3)) == lancin.primary, "through the leader the trick passes as a friend")
+	h.select(v(2))
+	h._refresh()
+	ok(h.eyes() == v(2), "commanding an ally: through its eyes")
+	ok(h.view(v(3)).mark() == Read.Mark.CAUGHT and glow.call(v(3)) == nemes.primary, "it has seen through the trick: its true side shows")
+	ok(not is_instance_valid(v(3).mark), "a first look through new eyes pops nothing")
+	ok(h._info(v(2)).name == h.battle.read(v(1), v(2)).name, "the viewer's own card reads as the leader sees it")
+	h.select(v(1))
+	h._refresh()
+	ok(h.view(v(3)).faction == lancin and not is_instance_valid(v(3).mark), "back to the leader: a friend again, and no pop")
+	v(1).suspicion[v(3)] = 1
+	h._refresh()
+	ok(is_instance_valid(v(3).mark) and v(3).mark.text == "?", "a change within the leader's eyes pops a ?")
+	ok(h._info(v(3)).chips[0][0] == "?", "its card reads just ?")
+	v(3).mark.visible = false
+	h.select(v(2))
+	h._refresh()
+	ok(not v(3).mark.visible and glow.call(v(3)) == nemes.primary, "switching back to the ally pops nothing: its read hasn't changed")
+	h.select(v(1))
+	h._refresh()
+	ok(not v(3).mark.visible and glow.call(v(3)) == Unit.SHAPE_EDGE, "nor switching to the leader again")
+	h.select(v(4))
+	h._refresh()
+	ok(not h.commanding() and h.eyes() == v(1), "selecting another side's unit commands nothing: the leader's eyes")
+	h.select(v(2))
+	b.turn = nemes
+	h._refresh()
+	ok(not h.commanding() and h.eyes() == v(1) and glow.call(v(3)) != nemes.primary, "off the player's turn, the leader's eyes too")
+	h.free()
+
 func test_ctrl_click() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(9, 0)})
 	v(3).afflict(effect("concealment", 4), 9)
