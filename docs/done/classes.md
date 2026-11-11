@@ -186,8 +186,9 @@ The rule is in `docs/done/rules.md`.
 
 ## Jam, Stamina and Move ?? (2026-11-10)
 
-- [x] **Jam** (`Skills/jam.tres`, `Behaviours/jam.gd`; martial, dex; 3 AP, 1 Energy, reach 1; 1d4 + dex mod, 1d6 from rank III): a physical blunt hit that interrupts the foe, then leaves it **Jammed ??** until its next turn is over (`Effects/jammed.tres`, stat `jammed`): no dodge, no guard, no obstruction. On the Rogue's Blade root beside Wary and on the Slayer tree beside Jugular, so the Fighter and Berserker get it too. No focus meter exists, so it does plain damage. `jam_test.gd`. (?97)
+- [x] **Jam** (`Skills/jam.tres`, `Behaviours/jam.gd`; martial, dex; 3 AP, 1 Energy, reach 1; 1d4 + dex mod, 1d6 from rank III): a physical blunt hit that interrupts the foe, then leaves it **Jammed ??** until its next turn is over (`Effects/jammed.tres`, stat `jammed`): no dodge, no guard, no obstruction. On the Rogue's Blade root beside Wary and on the Slayer tree beside Jugular, so the Fighter and Berserker get it too. It also drains the target's Focus by the HP lost. `jam_test.gd`. (?97, ?100)
 - [x] **Stamina** (`Skills/stamina.tres`; passive, martial and specialist): the Stamina reserve and `stamina` 1 a rank, cutting its holder's exhaustion counts by rank + 1. Open from the start on the Rogue's Blade, the Ranger's Scout, Fury and Slayer roots (a Fighter can learn it through Slayer). (?98)
+- [x] **Focus** (2026-11-11; `Skills/focus.tres`, `Reserves/focus.tres`, `Unit.focus_bonus()`; passive, specialist and magical, human): a reserve of (wis mod + 2) x rank that starts empty, builds half its max on each resting turn, pays first for a ranged attack and gives + rank to that roll when it empties. On the Ranger's Bounty root and the Mage's Commitment root; the stub there is now Fixation ??. `focus_test.gd`. (?97, ?100)
 - [x] **Move ??** (`Skills/move.tres`, `Behaviours/move.gd`; base General tree, tier 1; 2 AP, 1 cost, on itself, tag `stamina`): rank more tiles this turn, 2 x rank if paid with Stamina. `move_test.gd`. (?98)
 
 ## Bandwagon, Molothrus and Blinthe (2026-11-10)

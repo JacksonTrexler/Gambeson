@@ -44,7 +44,8 @@ All built this pass except two bits of polish:
 - [ ] **The command glow follows the leader only**: a party member with its own reach isn't walked.
 - [ ] **Watch the cost of the reach map on big maps**: it is now computed while a skill is armed (it was skipped).
 - [x] **Suspicion marks** (2026-11-10): built (`docs/done/ui.md`; the plan's "Revised" section). (?84, ?96)
-- [ ] **Suspicion held only by allies other than the leader shows no mark**: the pop reads the leader's side's suspicion (as `view()`), so a side-mate's doubt is silent. (?96)
+- [x] **Suspicion held only by allies other than the leader shows no mark**: answered 2026-11-11, built; while a unit is commanded its own read shows (`HUD.eyes()`). (?96, ?99)
+- [x] **Sight by unit** (2026-11-11, `w-sight`): the card chip reads "?"; while the player commands a unit, the map, marks, glow and reads follow that unit's eyes; marks are kept per viewer. Plan: `docs/plans/silhouettes-glow.md`, end of "Revised"; `hud_test.test_sight_by_unit`. (?96, ?99)
 - [ ] **Battle UI v2** (`docs/ui-ux-v2.md`; planned, nothing built): one `Intent` for what a click means, a selected slot that never blocks walking, the hover table, cues in place of words, pace. Steps: Intent (M), focus and slot (S), hover rows (M), words-to-cues (S each), pace (S). (?90)
 
 84. **Silhouettes and glow - answered (2026-11-10), built (`v-suspicion`, ?96).** Suspicion on a concealed or hiding unit: a black shadow in the fog. Suspicion on unconcealed trickery: an immediate fading ? on the unit, neutral glow and faction colours, as if unaffiliated. High suspicion or discovery on unconcealed trickery: an immediate fading ! on the unit, coloured in its true faction, regular faction colours. The rest stands as built, except that suspicion alone no longer makes a black shape (first call below, replaced). Plan: `docs/plans/silhouettes-glow.md`, "Revised 2026-11-10".
@@ -54,14 +55,20 @@ All built this pass except two bits of polish:
     - **Clicking a "somewhat" target does not walk**: the note only says "Out of reach", because no sure walk gets there. Say if it should offer the unsure one.
     - **Glow strength is unreadable on a black shape**: the shape has no colour or edge for the glow to show on, so a silhouette says nothing about reach. Say if it should keep a faint rim.
     - Other calls: too far to make out counts as concealment; a spent unit glows barely and is grey; a far one in colour can also glow barely; the command glow judges one straight walk of the leader (cheap, and can under-report "mostly"); high contrast lifts the glow of the own side and any unit with a level; `Unit.command_look` is gone, `set_glow` and `set_saturation` replace it. Own units still drain with AP; one only out of command reach stays in colour (new command state `far`).
-96. **Suspicion marks - built on judgement, open for review (2026-11-10).** Your ruling on 84, built on `v-suspicion` (`docs/plans/silhouettes-glow.md`, "Revised"). My calls:
+96. **Suspicion marks - answered (2026-11-11), built (`w-sight`, ?99).** "Unit card should just read ? / suspicion tracked by unit not just leader, while commanding unit player sees through their eyes." The card now reads "?", and each unit holds its own suspicion; while a unit is commanded the view is its eyes (call below, ?99). Built on judgement before that, my calls: Your ruling on 84, built on `v-suspicion` (`docs/plans/silhouettes-glow.md`, "Revised"). My calls:
     - **The unit card reads "Suspected"** while a "?" stands.
     - **A merely suspected non-trick gets no mark** and keeps its ordinary look: a "?" is only for something that would fool the viewer but for its suspicion (trickery, a front, Conspire).
     - **Bar trim turns neutral** while the "?" stands, with the glow and colours, as if unaffiliated.
     - **The "!" uses the existing reveal** (each stack takes a rank off trickery, so it shows once the read is no longer deceived): no new threshold. Say if you wanted a separate "high suspicion" level.
     - **Suspicion held only by allies other than the leader shows no mark** (todo above). Say if a side-mate's doubt should show.
-90. **Battle UI v2 - planned, open (2026-11-09); asked 2026-11-10 what the four points are, not yet answered.** `docs/ui-ux-v2.md`; nothing built. Four points to settle before the hover table:
-    - Does resting by clicking yourself end the whole side's turn, or only that unit's?
-    - "First offensive skill from the selected slot": search rightward only, or wrap around?
-    - Odds as three bands (solid, broken, faint brackets), or keep the percentage when Defense is known?
-    - A self skill: confirm with a second key press, a click on yourself, or both?
+90. **Battle UI v2 - planned, open (2026-11-09); the four points asked 2026-11-10; best guesses given 2026-11-11, proposed and awaiting your "go".** `docs/ui-ux-v2.md`; nothing built. Four points to settle before the hover table:
+    - Does resting by clicking yourself end the whole side's turn, or only that unit's? **Proposed:** only that unit's turn.
+    - "First offensive skill from the selected slot": search rightward only, or wrap around? **Proposed:** the hover search wraps around the hotbar.
+    - Odds as three bands (solid, broken, faint brackets), or keep the percentage when Defense is known? **Proposed:** bands on the map; the exact % on a held modifier key or the expanded card once Defense is known.
+    - A self skill: confirm with a second key press, a click on yourself, or both? **Proposed:** either.
+
+99. **Sight by unit - built on judgement, open for review (2026-11-11).** Your ruling on 96, built on `w-sight` (`docs/plans/silhouettes-glow.md`, end of "Revised"). My calls:
+    - **A unit counts as commanded while selected on the player's turn even after its orders are spent**, so the view doesn't jump to the leader as the last order goes. Say if it should drop back.
+    - **The camera and the spellbook still follow the leader** (`observer()` is unchanged); only what is drawn and read follows the commanded unit.
+    - **Each viewer keeps its own memory of marks**, so switching units pops nothing, but returning to a viewer whose read of a unit changed while away pops once.
+

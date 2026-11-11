@@ -75,7 +75,7 @@ ships on its own and is checked with a capture.
 
 ## To settle (?90)
 
-- Does resting by clicking yourself end the whole side's turn, or only that unit's?
-- "First offensive skill from the selected slot": search rightward only, or wrap around?
-- Odds as three bands, or keep the percentage when Defense is known?
-- A self skill: confirm with a second key press, a click on yourself, or both?
+- Does resting by clicking yourself end the whole side's turn, or only that unit's? (Proposed: only that unit's.)
+- "First offensive skill from the selected slot": search rightward only, or wrap around? (Proposed: wrap.)
+- Odds as three bands, or keep the percentage when Defense is known? (Proposed: bands on the map, exact % on a held modifier or the expanded card once Defense is known.)
+- A self skill: confirm with a second key press, a click on yourself, or both? (Proposed: either.)

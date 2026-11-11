@@ -94,7 +94,8 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Exhaustion** (`Scripts/Exhaustion.gd`, `Unit.exhaustion`): built (`docs/done/rules.md`, `docs/done/systems.md`). (?87)
 - [x] **Stamina** (2026-11-10): built (`docs/done/systems.md`, `docs/done/classes.md`, `docs/plans/stamina.md`), `Tests/stamina_test.gd`. (?87, ?98)
 - [x] **Universal channel rule** (2026-11-10): built (`docs/done/rules.md`, `docs/plans/channels-jam.md`). (?85, ?89, ?97)
-- [ ] **Stamina doesn't refill in battle**: a rule for recovering it (resting, as exhaustion does) is open. (?98)
+- [x] **Stamina recovers in battle** (2026-11-11): answered "stamina recovers alongside energy, rank bonus if resting"; built (`docs/plans/stamina.md`, "Amended"). (?98, ?100)
+- [ ] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. (?100)
 - [ ] **A save-Stamina toggle**: it pays automatically before Energy whenever it can; a toggle like Sweet Nothings' would let a player hold it back. (?98)
 - [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
 - [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
@@ -108,12 +109,12 @@ Plan and rules: `docs/plans/exhaustion.md`.
     - **The AI is unchanged** and doesn't weigh exhaustion: it picks by score and stops when `can_afford()` says no.
     - Step 0.5 of base cost per use, linear (AP stays fractional, resource rounds up, 0 stays 0), tunable in three constants (`STEP`, `KIND` 0.5, `RECOVERY` 1). The half share is derived from the other skills' own counts, so it recovers as they do. Counts fall at the end of the unit's own side's turn (one use a turn is free for ever, two build up). A channeled skill is one use, paid at the rate the channel was. Strike III's three hits are one use; free recasts and toggles are none. Light activity gets no resting bonus. A reserve that pays whole costs still pays its 1 point. Staged tests run with exhaustion off (`Test.calm()`).
 
-98. **Exhaustion kinds by tree, Stamina, Move ?? - built on judgement, open for review (2026-11-10).** Your ruling on 87, built on `v-stamina` (`docs/plans/stamina.md`). My calls:
+98. **Exhaustion kinds by tree, Stamina, Move ?? - answered (2026-11-11), built (`w-focus`, ?100).** "Stamina recovers alongside energy, rank bonus if resting": built, so "never refilled in battle" below is replaced (`docs/plans/stamina.md`, "Amended"). Still open: Strike counting as general; mana paying for skills magical only by tree; the name "Move ??". Built on judgement before that, my calls: Your ruling on 87, built on `v-stamina` (`docs/plans/stamina.md`). My calls:
     - **Tree beats tag**: a skill's kind comes from the trees it sits on, so Strike (tagged martial, on the base General tree) is now general. A skill on trees of two kinds gets both.
     - **The general share is 0.25**: a general skill's use counts a quarter against every other skill, one way.
     - **Mana now pays for skills magical only by their tree** (Stonegift, the Sol and Eros skills a Wizard holds), since the rules read `tagged()`.
     - **Stamina is on Blade, Scout, Fury and Slayer**: the Rogue, the Ranger, the Berserker, and the Paladin's Fury and Slayer Prowesses (the agile ones); a Fighter can learn it through Slayer. An Adventurer can't (none of its trees offers it).
-    - **Reserve (con mod + 2) x rank**, never refilled in battle. It pays automatically, before Energy; there is no way to save it.
+    - **Reserve (con mod + 2) x rank**, ~~never refilled in battle~~ (now recovers with Energy, ?100). It pays automatically, before Energy; there is no way to save it.
     - **Waterstrike is the only magical skill Stamina covers** (physical and magical by its tree).
     - **Move ?? was added** since walking had no skill to carry the `stamina` tag: 2 AP, 1 cost, rank tiles, 2 x rank if paid with Stamina. **Move ?? is an AI-made name for you to review.**
     - **Adventurers' Field Experience and Everyman let Energy count as Stamina** for a `stamina` skill's bonus (a general skill counts as the kind they name); the exhaustion cut stays the passive's alone.
@@ -144,3 +145,11 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
 - [ ] More tempers as they're wanted (cowardly, vengeful...): each is a word in `Bio.BEHAVIOURS` and a branch in `AI.act()`. (?91)
 - [ ] Bio text on the character sheet and the Guide; appearance words beyond the Bio tables are flavour only. (?91)
 - [ ] Clout earned in play (helping a side, lying to it) rather than set by hand. (?93)
+
+100. **Focus, and Stamina's recovery - built on judgement, open for review (2026-11-11).** Your rulings on 97 and 98, built on `w-focus` (`docs/plans/focus.md`). Suite after both merged: 38408 checks, 535 tests, 0 failed. My calls:
+    - **Who:** the Ranger's Bounty root and the Mage's Commitment root. Commitment's earlier AI stub "Focus ??" is renamed **Fixation ??** (an AI-made name, for review).
+    - **Size** (wis mod + 2) x rank; starts each battle empty; builds half its max (rounded up) on each turn spent resting, none when light or busy, none while channeling.
+    - **Payment:** it pays first for a ranged attack (reach > 1.5), otherwise only once Energy can't. A ranged attack that leaves Focus at 0 gets + rank to its roll (the forecast counts it). Violet.
+    - **Jam drains Focus** by the HP the target lost.
+    - **Stamina recovers** on Energy's tick and rate (full resting, half light, none busy) plus its rank on a resting turn; it recovers even with Energy full, and Power doesn't stop it; an idle channeler gets half and no bonus.
+    - Open: the HUD shows only a unit's largest reserve (a Ranger with Energy, Stamina and Focus sees one bar); the AI doesn't rest to build Focus.

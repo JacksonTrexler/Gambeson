@@ -267,18 +267,21 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
     - **Going Downed and helpless ends a channel; a Grudge unit keeps it** (answered yes to both; `Downed.changed()` already did it, now pinned by a test).
 
 - [x] **Jam** (2026-11-10): built (`docs/done/classes.md`, `docs/plans/channels-jam.md`), `Tests/jam_test.gd`. (?97)
-- [ ] **Jam's damage doesn't hit focus**: no focus meter exists. (?97)
+- [x] **Jam's damage hits Focus** (2026-11-11): it takes as much off the target's Focus as the HP it lost. (?97, ?100)
 - [ ] **No screenshot check** of Jam, or of the Jammed ?? icon.
 
-97. **The channel rule, helpless, Jam - built on judgement, open for review (2026-11-10).** Your rulings on 85 and 89, built on `v-channel` (`docs/plans/channels-jam.md`). My calls:
+97. **The channel rule, helpless, Jam - answered (2026-11-11), built (`w-focus`, ?100).** "Slayer is a good call": Jam on Slayer, reaching the Fighter and Berserker, is settled. Focus: "yeah focus is a resource that rangers and mages can access. Focus: builds up quickly, only while resting. can be used in place of energy. if fully used to cast ranged attack skill, rank bonus to accuracy" (built, ?100; `docs/plans/focus.md`). Still open: the Jammed ?? reading of stun; the rank-cost curve (1 + r^2, 19 skills capped). My calls: Your rulings on 85 and 89, built on `v-channel` (`docs/plans/channels-jam.md`). My calls:
     - **An idle channeler still gets half-rate Energy** (the light rate): holding a channel is light work, not none. It gives up the rest rate, extra exhaustion recovery, the watch bonus, Chant and Hogel's rest.
     - **Free recasts, 0-AP actions and reactions on the foe's turn don't break a channel.** Anything that spends AP, a move or a strike does, at turn's end. The turn it was cast in is exempt.
     - **Flamedance, glass and a posing traitor read "held still", not "rested"**: standing still with a channel is not acting.
     - **The AI holds still to keep a channel** it began earlier, when it has nothing to strike.
-    - **Jam sits on the Rogue's Blade root and the Slayer tree** (the most offensive of the Paladin's six Prowesses: all four skills are attacks), so the Fighter and Berserker get it through Slayer. Say if Jam should be on another Prowess.
+    - **Settled (2026-11-11):** Jam on Slayer. **Jam sits on the Rogue's Blade root and the Slayer tree** (the most offensive of the Paladin's six Prowesses: all four skills are attacks), so the Fighter and Berserker get it through Slayer. Say if Jam should be on another Prowess.
     - **"Instant stun" is read as the interrupt plus Jammed ?? through its next turn**: no dodge, no guard, no obstruction. No stun condition existed. **Jammed ?? is an AI-made name for you to review.** The interrupt ends a channel, hiding, Shields Up!'s guard, a primed Chant and the watch bonus; a disguise, a grapple, a beast shape and sleep stay.
-    - **No focus meter exists**, so Jam does plain physical damage. Do you want a focus meter built, so Jam's damage and other physical damage count against it?
+    - **Answered (2026-11-11): built** (?100). Jam's damage counts against Focus.
     - **Found, not changed: the rank-up cost** is 1 + r^2 skill points (quadratic per rank: II 2, III 5, IV 10, V 17), and only Clever Disguise grows exponentially (`rank_cost` 4, `rank_growth` 2). 19 skills set a rank cap (12 at 1, 5 at 3, one at 5, one at 8). You said costs should grow exponentially with no cap. Shall I make the exponential curve the default and drop the caps?
+- [x] **Focus** (2026-11-11): the Ranger's Bounty root and the Mage's Commitment root; built (`docs/done/classes.md`, `docs/plans/focus.md`), `Tests/focus_test.gd`. The Commitment stub that was called "Focus ??" is now **Fixation ??** (an AI-made name, for review). (?97, ?100)
+- [ ] **The AI doesn't rest to build Focus** or save it for a shot. (?100)
+
 ## Clairvoyance (2026-11-09)
 
 An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.

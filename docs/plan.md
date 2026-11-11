@@ -23,7 +23,7 @@ Six pieces of work, each built in its own worktree and merged in turn. The first
 | E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
 | F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
 
-**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge). The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
+**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged). The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
 
 ## Built since the plan was written
 
@@ -88,6 +88,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Suspicion marks: a "?" and a "!" in plain view, black only for the concealed (?84, ?96) | `hud_test.gd` |
 | — | The universal channel rule, helpless ends a channel, Jam (?85, ?89, ?97) | `jam_test.gd`, `clairvoyance_test.gd`, `downed_test.gd` |
 | — | Exhaustion kinds by tree, the general share, Stamina, Move ?? (?87, ?98) | `stamina_test.gd`, `move_test.gd`, `exhaustion_test.gd` |
+| — | Sight by unit (?96, ?99) | `hud_test.gd` |
+| — | Focus, Stamina recovering, Jam draining Focus, Fixation ?? (?97, ?98, ?100) | `focus_test.gd`, `stamina_test.gd`, `jam_test.gd` |
 
 ## Questions to answer first
 
@@ -141,7 +143,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 
 ## Phase 4: Resources and items, the rest
 
-10. **More resources** (S each): Stamina, Rage, Focus, Hype, Clout, Gold, as `Reserve`s with the fields Sweet Nothings added. Unlocks Field Experience and Everyman. To be designed.
+10. **More resources** (S each): Stamina (built), Focus (built), Rage, Hype, Clout, Gold, as `Reserve`s with the fields Sweet Nothings added. Unlocks Field Experience and Everyman. To be designed.
 11. **Skills on items** (M): `Item.skills`, granted while equipped (added to the unit's slots, flagged so they can't be ranked); Urlo's enchantment then covers trinkets and item skills.
 12. **Equipping skills** (L): learned vs equipped; the hotbar becomes the equipped set, passives filling from the bottom (Brainfog's order already assumes it); auto-equip and a Settings toggle; drag-to-slot on the skills screen. Blocked by ?3.
 13. **Starting items** (S): built.
