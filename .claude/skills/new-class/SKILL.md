@@ -21,9 +21,20 @@ description: Add a class (Role) to Gambeson - writes Roles/<id>.tres, its own sk
    (`Units/<Name>.png` - replace it with art any time, same path), its tab colour (`SkillTab.CLASSES`,
    keyed by its shown name: rename both on review) and adds it to `Scenes/entry.tscn`. Its check names
    the empty tree until the first skill goes on - expected. `--help` shows each focus's stats.
-   An NPC-only class: `--no-entry`, and add it to `NPC_ONLY` in `Util/role.py`. Choices of trees (a
-   Paladin's Prowess, a Druid's biomes) and tabs are `TreeChoice`/`SkillTab` sub-resources: copy them from
-   `Roles/druid.tres` or `Roles/ranger.tres` by hand.
+   An NPC-only class: `--no-entry`, and add it to `NPC_ONLY` in `Util/role.py`.
+
+   **Growing a class that exists** (a new tab, a school, a choice of trees):
+   ```
+   python3 Util/role.py tree <id> --name <Name> --tag specialist|martial|magical [--human]   # an empty root, Trees/<id>.tres
+   python3 Util/role.py tab <class> --name <Tab> --roots a,b,c [--kind Calling] [--color "#c58fd0"] [--human]
+   python3 Util/role.py tab <class> --name <Tree> --kind School --roots x --choice <Box> --by <skill> --affinity -1
+   python3 Util/role.py tab mage --name <Tree> --kind School --roots x --into School   # into a choice it has
+   ```
+   `tab` alone is a tab of its own beside the class's (the Rogue's Trickster: left, middle, right roots);
+   `--choice` is a tree picked from a box on the class's own tab, opened by `--by`'s rank (Illusionist
+   opening the Illusion school), a guest tree at `--affinity`; `--into` adds to an existing choice. A
+   tab whose kind is its name shows as just its name. `--by` needs the skill first: write the roots and
+   their skills, then the tab.
 
 3. **Fill its tree:** each skill through `.claude/skills/new-skill`, with `--tree <tree file>`; the first
    goes in alone. `--after <skill>` only says where a skill sits in the file: what must be learned first

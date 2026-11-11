@@ -6,11 +6,18 @@ with skill.py), its placeholder sprite (Units/<Sprite>.png), and a place on the 
       [--tree "Open Palm:martial"] [--roots protector,brawn] [--general martial,specialist] [--god ramut] \\
       [--tends benevolent|pragmatic|loyal] [--stats "strength=12,dexterity=14,..."] [--items gambeson,dagger] \\
       [--race human] [--look Journeyer | --color "#a08060"] [--no-entry] [--dry-run]
+  python3 Util/role.py tree illusion --name Illusion --tag magical [--human]      # an empty tree root, Trees/<id>.tres
+  python3 Util/role.py tab rogue --name Trickster --roots showmanship,deception,legerdemain [--kind Calling] \
+      [--color "#c58fd0"] [--human] [--choice School --by illusionist --affinity -1 | --into School]
   python3 Util/role.py check
 
 Then give the tree its skills: python3 Util/skill.py new <id> ... --tree <tree file> [--root "Open Palm"]
 (.claude/skills/new-class has the whole process). --focus picks starting stats and general trees
 (martial, caster, specialist) where --stats/--general don't say. An AI-made name gets " ??" (CLAUDE.md).
+tree and tab grow an existing class: `tree` writes a root for skill.py to fill (a school, a wing of a tab);
+`tab` puts trees on a class as a tab of their own (SkillTab, Role.tabs), or as a tree picked from a choice
+on its own tab (--choice: a new TreeChoice, opened by --by's rank or picked outright; --into: a choice it
+already has, like the Mage's School).
 """
 import argparse, re, sys
 
@@ -146,6 +153,99 @@ def new(a):
     return check()
 
 
+def tree(a):
+    tid = a.id
+    re.fullmatch(r"[a-z][a-z0-9_]*", tid) or die("the id is a file name: lower_snake")
+    exists("Trees/%s.tres" % tid) and die("Trees/%s.tres exists" % tid)
+    write("Trees/%s.tres" % tid, tree_tres(a.name or tid.replace("_", " ").title(), a.tag, a.human), a.dry_run)
+    print("next: its skills, python3 Util/skill.py new <id> ... --tree %s (the first goes in alone), and a tab for it:"
+          " python3 Util/role.py tab <class> --roots %s" % (tid, tid))
+    return 0
+
+
+def _ext(text, kind, path):  # the id of path's ext_resource, added if missing
+    secs = sections(text)
+    for s in secs:
+        if s["kind"] == "ext_resource" and s["attrs"].get("path") == path:
+            return text, s["attrs"]["id"]
+    i = free_id(secs, snake(os.path.splitext(os.path.basename(path))[0]))
+    return add_ext(text, '[ext_resource type="%s" path="%s" id="%s"]' % (kind, path, i)), i
+
+
+def _append(text, section_start, key, script_id, ref):  # adds ref to a typed array property of the section starting at section_start
+    end = text.find("\n[", section_start + 1)
+    end = len(text) if end < 0 else end
+    body = text[section_start:end]
+    m = re.search(r"^%s = (Array\[ExtResource\(\"[^\"]+\"\)\]\(\[)(.*?)(\]\))$" % key, body, re.M | re.S)
+    if m:
+        inner = m.group(2).strip()
+        body = body[:m.start(2)] + (inner + ", " if inner else "") + ref + body[m.end(2):]
+    else:
+        body = body.rstrip("\n") + '\n%s = Array[ExtResource("%s")]([%s])\n' % (key, script_id, ref)
+    return text[:section_start] + body + text[end:]
+
+
+def tab(a):
+    p = "Roles/%s.tres" % a.role
+    exists(p) or die("no %s" % p)
+    roots = [r.strip() for r in a.roots.split(",") if r.strip()]
+    for r in roots:
+        exists("Trees/%s.tres" % r) or die("--roots %s: no Trees/%s.tres (role.py tree %s first)" % (r, r, r))
+    text = read(p)
+    text, tab_gd = _ext(text, "Script", "res://Scripts/SkillTab.gd")
+    text, root_gd = _ext(text, "Script", "res://Scripts/SkillRoot.gd")
+    refs = []
+    for r in roots:
+        text, rid = _ext(text, "Resource", "res://Trees/%s.tres" % r)
+        refs.append('ExtResource("%s")' % rid)
+    name = ai_name(a.name, a.human)
+    tab_id = free_id(sections(text), "Tab_" + snake(a.name))
+    lines = ['[sub_resource type="Resource" id="%s"]' % tab_id, 'script = ExtResource("%s")' % tab_gd, 'name = "%s"' % name]
+    if a.kind:
+        lines.append('kind = "%s"' % (a.kind if a.human or a.kind in ("Calling", "School", "Path", "Prowess") else ai_name(a.kind)))
+    if a.color:
+        c = icon.colour(a.color)
+        lines.append("color = Color(%.2f, %.2f, %.2f, 1)" % tuple(x / 255 for x in c[:3]))
+    lines.append('roots = Array[ExtResource("%s")]([%s])' % (root_gd, ", ".join(refs)))
+    blocks = "\n".join(lines) + "\n\n"
+    if a.choice:
+        text, choice_gd = _ext(text, "Script", "res://Scripts/TreeChoice.gd")
+        choice_id = free_id(sections(text), "Choice_" + snake(a.choice))
+        cl = ['[sub_resource type="Resource" id="%s"]' % choice_id, 'script = ExtResource("%s")' % choice_gd,
+              'name = "%s"' % (a.choice if a.human else ai_name(a.choice)), 'tabs = Array[ExtResource("%s")]([SubResource("%s")])' % (tab_gd, tab_id)]
+        if a.by:
+            exists("Skills/%s.tres" % a.by) or die("--by %s: no Skills/%s.tres (skill.py new it first)" % (a.by, a.by))
+            text, by = _ext(text, "Resource", "res://Skills/%s.tres" % a.by)
+            cl.append('by = ExtResource("%s")' % by)
+        if a.affinity:
+            cl.append("affinity = %d" % a.affinity)
+        blocks += "\n".join(cl) + "\n\n"
+    if a.into:  # the tab goes in just before the choice that holds it: Godot reads a sub resource before its use
+        m = None
+        for s in sections(text):
+            if s["kind"] == "sub_resource" and s["props"].get("name", "").strip('"') == a.into and "tabs" in s["props"] and "center" not in s["props"]:
+                m = s
+        if not m:
+            choices = [s["props"]["name"] for s in sections(text) if s["kind"] == "sub_resource" and "tabs" in s["props"]]
+            die("--into %s: %s has no such choice (%s)" % (a.into, p, ", ".join(choices) or "none"))
+        head = '[sub_resource type="Resource" id="%s"]' % m["attrs"]["id"]
+        text = text.replace(head, blocks + head, 1)
+        text = _append(text, text.index(head), "tabs", tab_gd, 'SubResource("%s")' % tab_id)
+    else:
+        text = text.replace("\n[resource]\n", "\n" + blocks + "[resource]\n", 1)
+    if a.into:
+        pass  # added to the choice above
+    elif a.choice:
+        text = _append(text, text.index("\n[resource]\n") + 1, "choices", choice_gd, 'SubResource("%s")' % choice_id)
+    else:
+        text = _append(text, text.index("\n[resource]\n") + 1, "tabs", tab_gd, 'SubResource("%s")' % tab_id)
+    write(p, text, a.dry_run)
+    if a.dry_run:
+        return 0
+    print("next: python3 Util/skill.py check and the class's tests; a tab of an AI's naming is noted for review (CLAUDE.md)")
+    return 0
+
+
 def check(_a=None):
     problems = []
     entry = read("Scenes/entry.tscn")
@@ -195,9 +295,26 @@ def main():
     n.add_argument("--color", default="#8899aa", help="its tab's colour and its placeholder sprite's")
     n.add_argument("--no-entry", action="store_true", help="an NPC-only class: not on the starting screen")
     n.add_argument("--dry-run", action="store_true")
+    tr = sub.add_parser("tree", help="an empty tree root, Trees/<id>.tres, for skill.py to fill")
+    tr.add_argument("id")
+    tr.add_argument("--name", help="shown name (default: from the id; gets ?? unless --human)")
+    tr.add_argument("--tag", default="specialist", help="its root's category: martial, specialist, magical")
+    tb = sub.add_parser("tab", help="trees on an existing class: a tab of their own, or a tree picked from a choice")
+    tb.add_argument("role", help="Roles/<role>.tres")
+    tb.add_argument("--name", required=True, help="the tab's name (gets ?? unless --human)")
+    tb.add_argument("--kind", help="the kind it is, shown before its name: Calling, School...")
+    tb.add_argument("--roots", required=True, help="Trees/ stems, comma separated, left to right")
+    tb.add_argument("--color", help='its colour, "#rrggbb" (default: by kind or class)')
+    tb.add_argument("--choice", help="a new choice on the class's own tab holding it (its box's heading)")
+    tb.add_argument("--by", help="with --choice: the skill whose rank opens it (TreeChoice.by)")
+    tb.add_argument("--affinity", type=int, default=0, help="with --choice: its skills' Affinity for the class (a guest tree: -1)")
+    tb.add_argument("--into", help="or: an existing choice of the class to add it to (the Mage's School)")
+    for x in (tr, tb):
+        x.add_argument("--human", action="store_true", help="a person named it: no ??")
+        x.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="every class has a sprite and is offered; no tree left empty")
     a = ap.parse_args()
-    sys.exit(new(a) if a.cmd == "new" else check(a))
+    sys.exit({"new": new, "tree": tree, "tab": tab, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":
