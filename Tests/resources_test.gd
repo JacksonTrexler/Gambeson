@@ -40,7 +40,10 @@ func test_runs_on() -> void:
 	ok(u.is_on(mana_skill) and u.runs_on() == mana and u.energy == 0, "on as learned: a Wizard runs on Mana, no Energy of its own")
 	u.learned.append(slot(crushing))
 	ok(fund(u, crushing) == "" and fund(u, hex) == "Mana", "Mana pays for its spells only; a martial skill has nothing to pay it")
-	u.energy = 4  # Energy got some other way (a transfer, an Overcharge)
+	u.add_overcharge(3, 2)
+	ok(fund(u, crushing) == "energy", "Overcharge, with no Energy at all, pays for a martial skill")
+	u.overcharge = 0
+	ok(u.grant_energy(4) == 4, "Energy Transfer's way in (grant_energy())")
 	ok(fund(u, crushing) == "energy", "Energy it got some other way pays for anything")
 	stage(nemes, {u: Vector2i(7, 3), v(1): Vector2i(3, 3)})
 	b.end_turn()

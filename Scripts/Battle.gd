@@ -781,7 +781,11 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
 			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
 			gross += power
-			if &"energy" in tags:
+			if &"siphon" in tags:
+				var got := target.siphon(power, tags, caster)  # off its resources, never its HP
+				if acts:
+					acts.siphoned += got
+			elif &"energy" in tags:
 				target.drain(power, tags, caster, skill.carry * (r - 1))
 			elif t.direct:
 				target.damage(power)
@@ -916,7 +920,7 @@ func disenchant(t: Unit, n: int) -> int:
 func _refill(u: Unit, t: Unit, gross: int) -> void:
 	if u.weapon and u.weapon.refills > 0.0:
 		var share := float(gross) / maxi(t.base_total(), 1) * u.weapon.refills * (1 + u.weapon.enchant)
-		u.energy += Luck.settle(share * u.max_energy, u.luck, true)
+		u.grant_energy(Luck.settle(share * u.max_energy, u.luck, true))
 
 
 # Whom an automatic skill (Sing) lands on: the nearest units in range the caster can place, allies
@@ -1748,9 +1752,7 @@ func restore(u: Unit, it: Item) -> int:
 			u.heal(n)
 			return u.hp - was
 		&"energy":
-			var was := u.energy
-			u.energy = mini(u.energy + n, u.max_energy)
-			return u.energy - was
+			return u.grant_energy(n)
 	if r:
 		var was := u.store(r)
 		u.set_store(r, was + n)
@@ -3388,7 +3390,7 @@ func _starlight(u: Unit) -> void:
 	if m <= 1.0:
 		return
 	var k := maxi(u.rounded((u.mod(&"constitution") + u.mod(&"wisdom")) / 2.0), 1)
-	u.energy += u.rounded(k * m) if u.powered() else u.rounded(k * (m - 1.0) * STAR_ENERGY)
+	u.grant_energy(u.rounded(k * m) if u.powered() else u.rounded(k * (m - 1.0) * STAR_ENERGY))
 
 
 # How far a unit's sap reaches another: a tile side-on, +0.25 a size step past Medium of each, so
@@ -3420,9 +3422,7 @@ func _sap(u: Unit) -> void:
 		got += n
 	if drained.is_empty():
 		return
-	var room := u.max_energy - u.energy
-	u.energy += got
-	got -= mini(got, room)
+	got -= u.grant_energy(got)
 	var sources := charge.keys()
 	sources.sort_custom(func(a: Vector2i, b: Vector2i): return charge[a] < charge[b])
 	for c: Vector2i in sources:

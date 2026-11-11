@@ -1233,6 +1233,7 @@ func _watch_unit(u: Unit) -> void:
 	u.hp_changed.connect(_on_hp.bind(u))
 	u.energy_changed.connect(_on_energy.bind(u))
 	u.reserve_changed.connect(_mark.unbind(3))
+	u.overcharge_changed.connect(_mark.unbind(2))
 	u.died.connect(_on_died)
 
 
@@ -1927,6 +1928,8 @@ func _info(u: Unit) -> Dictionary:
 			rows.append([r.name.left(2).to_upper(), u.store(r), u.pools()[r], r.color])
 		if u.holds_energy(u.energy):
 			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
+		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
+			rows.append(["OC", "+%d" % u.overcharge, null, Unit.OVERCHARGE_COLOR])
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])

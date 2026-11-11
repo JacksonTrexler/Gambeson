@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/energy_transfer.gd" id="b_energy_transfer"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+dice = Vector2i(1, 4)
+
+[sub_resource type="Resource" id="Tier_2"]
+script = ExtResource("3_tier")
+rank = 3
+dice = Vector2i(1, 6)
+
+[sub_resource type="Resource" id="Behaviour_energy_transfer"]
+script = ExtResource("b_energy_transfer")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Energy Transfer"
+glyph = "ET"
+tags = Array[StringName]([&"magical", &"energy", &"siphon", &"int", &"offensive"])
+ap = 3.0
+cost = 1
+radius = 4.0
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1"), SubResource("Tier_2")])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_energy_transfer")])

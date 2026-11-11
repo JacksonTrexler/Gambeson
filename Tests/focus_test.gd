@@ -84,7 +84,10 @@ func test_pays() -> void:
 	v(1).learned.append(slot(load("res://Skills/stamina.tres")))
 	v(1).set_store(stamina_pool, 5)
 	v(1).energy = 10
-	ok(fund(v(1), crushing) == "Stamina" and fund(v(1), missile) == "Focus", "with Stamina too: Stamina for Crushing Blow, Focus for the shot")
+	ok(fund(v(1), crushing) == "Stamina" and fund(v(1), missile) == "", "with Stamina too: Stamina for Crushing Blow; running on Stamina, nothing pays for a spell (Energy Missile), Focus neither")
+	v(1).learned.pop_back()
+	ok(fund(v(1), missile) == "Focus", "on Energy again: Focus for the shot")
+	v(1).learned.append(slot(load("res://Skills/stamina.tres")))
 
 
 # The roll's bonus over the d20 on v(1)'s next Energy Missile at v(3).
