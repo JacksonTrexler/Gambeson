@@ -83,3 +83,27 @@ IV 10, V 17): quadratic per rank, cubic in total. An Affinity bends it (`Unit.wo
 `rank_growth` 2). No cap by default (`max_rank` 0), but 19 skills set one (12 at 1, 5 at 3, one at 5,
 one at 8). The user wants exponential growth and no cap: `rank_cost`/`rank_growth` already exist per
 skill and could become the default.
+
+## As built
+
+- Helpless: already wired (`Downed.changed()`); `downed_test.test_channel` pins it (Tenacity drops a
+  channel, Grudge keeps it).
+- Channel rule: `Unit.idle()` (rest's requirements) split out of `Unit.activity()`, which now calls an
+  idle channeler `&"light"`. `Battle.end_turn()` ends any channel with `turns > 0` whose unit wasn't
+  idle, before Clairvoyance updates. Flamedance's opening, glass's teeter and a traitor's refusal read
+  `idle()`. `AI.gd`: a unit still channeling one begun earlier, with nothing to strike, holds still.
+  Glossary term `channeled` (the rule), used by Metea's, Clairvoyance's and Rift's descriptions; the
+  Exhaustion Glossary and Guide text say resting doesn't count while holding a channel. Tests:
+  `clairvoyance_test.test_rule`, `test_rule_acting`, `astral_test.test_metea_held`,
+  `test_metea_ai_holds`, `pockets_test.test_rift_moved`. A Rift whose channel breaks at turn's end
+  starts its count then, and that turn's end already takes one off it, as with a recast.
+- Jam: `Skills/jam.tres` (`--human`), `Behaviours/jam.gd`, on `Trees/slayer.tres` (beside Jugular, no
+  prerequisite) and `Roles/rogue.tres` (Blade, beside Wary). Physical, blunt, dex, martial; 3 AP, 1
+  Energy, reach 1; 1d4 + dex mod, 1d6 + dex mod from rank III. On a hit: `Battle.interrupt()` (new,
+  with signal `interrupted`) ends channel, hiding, guard, Chant, watch; then Jammed ?? for 1 turn
+  (`Effects/jammed.tres`, stat `jammed`, Glossary `jammed`), read by `Battle.evade()`,
+  `Unit.guarding()` and `Battle.obstruction()`. Tests: `Tests/jam_test.gd`; `hud_test` now expects
+  Jam on the Rogue's own tab.
+- Not done: no focus meter (none exists). The todo docs aren't updated (out of bounds here): the calls
+  above (Slayer as the Prowess pick, the stun reading, the attention list, light-rate Energy for idle
+  channelers, the AI holding still, `Jammed ??`) want a question number when merged.

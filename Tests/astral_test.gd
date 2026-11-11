@@ -85,6 +85,19 @@ func test_metea_held() -> void:
 	ok(p.channel == null, "a turn it moved: the channel's lost")
 
 
+func test_metea_ai_holds() -> void:
+	var p := her(Vector2i(9, 3))
+	stage(nemes, {p: Vector2i(9, 3), v(1): Vector2i(1, 7), v(3): Vector2i(9, 7)})
+	p.refresh()
+	b.cast_at(p, metea, Vector2i(4, 3))
+	b.end_turn()
+	b.end_turn()
+	var log := AI.act(b, p)
+	ok(p.cell == Vector2i(9, 3) and p.idle() and "holds still" in " ".join(log), "nothing in reach to strike: the AI holds still to keep it (%s)" % [log])
+	b.end_turn()
+	ok(p.channel != null, "and keeps it")
+
+
 func test_strategy() -> void:
 	var p := her(Vector2i(5, 3))
 	stage(nemes, {p: Vector2i(5, 3), v(1): Vector2i(3, 3), v(2): Vector2i(8, 3)})
