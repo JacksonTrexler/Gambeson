@@ -126,6 +126,15 @@ func test_spellbook_and_bar() -> void:
 	ok(actives.size() == 1 and actives[0].skill == hex and passives.size() == 2 and passives[0].skill == arcanist and passives[1].skill.name == "Mana",
 			"Hex under Active; Arcanist Perspective III, then the Wizard's Mana I, under Passive")
 	ok(actives[0].get_child(0).get_child(0).text == "III", "ranks in numerals")
+	ok(h.spellbook.detail.visible and h.spellbook.picked != null and not h.spellbook.detail.act.visible,
+			"the first skill shown in full below, as the skills screen shows it, with nothing to buy")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	actives[0]._gui_input(click)
+	ok(h.spellbook.picked == hex and h.spellbook.detail.title_label.text == "Hex III" and actives[0].lit
+			and h.spellbook.detail.state_label.text.begins_with("T") and h.spellbook.detail.spec.get_child_count() > 0,
+			"a click shows Hex in full: its rank, tier, spec (%s)" % h.spellbook.detail.title_label.text)
 	ok(passives[0].draggable and not passives[1].draggable, "a toggled passive can go on the bar")
 	var slot: SkillSlot = h.bar.get_child(3)
 	var data := {skill = arcanist, from = -1}
@@ -707,13 +716,13 @@ func test_skills_screen() -> void:
 	ok(grid._entries.keys().map(func(t: SkillTab): return t.name) == ["Protector", "Vanguard"] and grid._choice_boxes[0][1] == "PROWESS · PICK UP TO 1",
 			"its class tab: a box of the Prowess trees that suit Eros, pick up to 1 (%s)" % [grid._entries.keys().map(func(t: SkillTab): return t.name)])
 	h.skills.choose(u.role.choices[0], grid._entries.keys()[0])
-	ok(h.get_node("%DetailName").text == "Prowess: Protector" and not h.skills.act.disabled, "Protector in the footer, free to pick")
+	ok(h.skills.detail.title_label.text == "Prowess: Protector" and not h.skills.act.disabled, "Protector in the footer, free to pick")
 	h.skills.act.pressed.emit()
 	names = tabs.get_children().map(func(x: Button): return x.text)
 	ok(names[1] == "PROWESS · PROTECTOR" and u.taken("Prowess").name == "Protector", "picked: its tab opens beside the class's (%s)" % [names])
 	(tabs.get_child(2) as Button).pressed.emit()
 	ok(h.skills.view().skills() == [relay] and h.skills.picked == relay, "Relay on offer from its species")
-	var unlock: CostButton = h.get_node("%DetailButton")
+	var unlock: CostButton = h.skills.detail.act
 	ok(unlock.text == "Unlock" and unlock.cost == 1 and unlock.disabled, "but there's no point to spend: Unlock, 1 in its square, not lit")
 	h.skills.leveled.emit()
 	h._refresh()
@@ -870,17 +879,17 @@ func test_adventurer_skills_screen() -> void:
 	h.toggle_skills()
 	await tree.process_frame
 	var w: SkillWheel = h.get_node("%Wheel")
-	ok(w.is_visible_in_tree() and not h.get_node("%TreeScroll").visible and h.get_node("%DetailCol").visible,
+	ok(w.is_visible_in_tree() and not h.get_node("%TreeScroll").visible and h.skills.detail.visible,
 			"the Adventurer's own tab: a wheel")
 	ok(w.skills().size() == 37 and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
 	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER"],
 			"its own tab, its species', then all three general trees and the base one, on the far right")
-	ok(h.skills.picked == hex and h.get_node("%DetailName").text == "Hex" and h.get_node("%DetailState").text == "T1",
+	ok(h.skills.picked == hex and h.skills.detail.title_label.text == "Hex" and h.skills.detail.state_label.text == "T1",
 			"Hex shows first: the first it can learn")
-	var act: CostButton = h.get_node("%DetailButton")
+	var act: CostButton = h.skills.detail.act
 	ok(act.text == "Unlock" and act.cost == 1 and act.disabled and act.tooltip_text == "Needs 1 skill point", "no point yet (%s)" % act.text)
-	var spec: Array = h.get_node("%DetailSpec").get_children().map(func(c: Control): return (c.get_child(0) as RichTextLabel).get_parsed_text())
+	var spec: Array = h.skills.detail.spec.get_children().map(func(c: Control): return (c.get_child(0) as RichTextLabel).get_parsed_text())
 	ok(spec == ["Foe", "range 5", "4 AP", "2 cost"], "its spec as chips: target, range, AP, cost (%s)" % [spec])
 	u.skill_points = 3
 	h._refresh()
@@ -888,7 +897,7 @@ func test_adventurer_skills_screen() -> void:
 	act.pressed.emit()
 	h._refresh()
 	ok(u.rank(hex) == 1 and u.skill_points == 2 and "learns Hex" in h.log_box.get_parsed_text(), "unlocked from the detail column")
-	ok(h.get_node("%DetailName").text == "Hex I" and act.text == "Rank II" and act.cost == 2 and not act.disabled, "then it can go up a rank, for 2")
+	ok(h.skills.detail.title_label.text == "Hex I" and act.text == "Rank II" and act.cost == 2 and not act.disabled, "then it can go up a rank, for 2")
 	act.pressed.emit()
 	h._refresh()
 	ok(u.rank(hex) == 2 and u.skill_points == 0 and "raises Hex to rank II" in h.log_box.get_parsed_text(), "rank II")
@@ -897,16 +906,16 @@ func test_adventurer_skills_screen() -> void:
 	click.pressed = true
 	click.position = w.spot(sola)
 	w._gui_input(click)
-	ok(h.skills.picked == sola and w.selected == sola and h.get_node("%DetailName").text == "Sola", "clicking a skill on the wheel shows it")
-	ok("On an ally" in h.get_node("%DetailText").get_parsed_text() and "Ally or foe" not in h.get_node("%DetailText").get_parsed_text(),
+	ok(h.skills.picked == sola and w.selected == sola and h.skills.detail.title_label.text == "Sola", "clicking a skill on the wheel shows it")
+	ok("On an ally" in h.skills.detail.text_label.get_parsed_text() and "Ally or foe" not in h.skills.detail.text_label.get_parsed_text(),
 			"with what it does - its spec shown apart")
-	ok("[color=#eba25e]int mod[/color]" in h.get_node("%DetailText").text, "Sola's damage mod is the caster's: offense, orange")
+	ok("[color=#eba25e]int mod[/color]" in h.skills.detail.text_label.text, "Sola's damage mod is the caster's: offense, orange")
 	h.skills.pick(hazard)
-	ok(h.get_node("%DetailState").text == "T2 · Learn Snare first" and act.disabled, "Hazard Expert: tier 2, after Snare")
+	ok(h.skills.detail.state_label.text == "T2 · Learn Snare first" and act.disabled, "Hazard Expert: tier 2, after Snare")
 	var stub: Skill = load("res://Skills/trade_skills.tres")
 	h.skills.pick(stub)
-	ok(h.get_node("%DetailState").text == "T1 · Not built yet. Waits on open questions 2 and 11 (todo.md)" and not act.visible
-			and h.get_node("%DetailText").get_parsed_text() == stub.plan, "a stub: the question it waits on, and its plan (%s)" % h.get_node("%DetailState").text)
+	ok(h.skills.detail.state_label.text == "T1 · Not built yet. Waits on open questions 2 and 11 (todo.md)" and not act.visible
+			and h.skills.detail.text_label.get_parsed_text() == stub.plan, "a stub: the question it waits on, and its plan (%s)" % h.skills.detail.state_label.text)
 	ok(w._get_tooltip(w.spot(stub)).begins_with("Trade Skills · T1\n") and "Waits on open questions 2 and 11" in w._get_tooltip(w.spot(stub)) and w._get_tooltip(Vector2(-50, -50)) == "", "the wheel's tooltips")
 	ok(w.state_of(stub) == &"stub" and w.state_of(hex) == &"learned" and w.state_of(sola) == &"open" and w.state_of(hazard) == &"locked",
 			"how each is drawn")
@@ -1027,7 +1036,7 @@ func test_tabbed_skills_screen() -> void:
 	click.pressed = true
 	click.position = g.spot(snare)
 	g._gui_input(click)
-	ok(h.skills.picked == snare and h.get_node("%DetailName").text == "Snare", "clicking a skill shows it in the footer")
+	ok(h.skills.picked == snare and h.skills.detail.title_label.text == "Snare", "clicking a skill shows it in the footer")
 	ok(g._get_tooltip(g.spot(snare)).begins_with("Snare · T1"), "with a tooltip")
 	h._refresh()
 	ok(h.skills.tab == 1, "the tab holds through a refresh")

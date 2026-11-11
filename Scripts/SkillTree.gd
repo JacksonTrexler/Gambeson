@@ -6,9 +6,8 @@ extends PanelContainer
 # without a tree, its list of options), its species', what it's come to know, then on the far right the
 # general trees it gets (Unit.general_trees()). Each shows growing from the bottom, tier 0, toward the
 # top (SkillGrid), scrolling where it's tall - but the Adventurer's own, drawn as a wheel (SkillWheel).
-# The skill picked there shows in the footer: its spec (target, range, AP, cost - the same order on
-# every skill), what it does in Glossary markup (terms, offense and defense mods, rank in colour), what
-# it needs, and its Unlock or Rank up button with the cost in a square, lit when it can be bought.
+# The skill picked there shows in the footer (SkillDetail, as the spellbook shows it too): its spec,
+# what it does, what it needs, and its Unlock or Rank up button with the cost in a square.
 # Unlocking spends a point; raising a skill from rank r costs 1 + r^2 (the Guide explains; the "i").
 # Each tab takes its tree's colour (SkillTab.tone()): its text in it, its background and the tree's
 # behind it darker.
@@ -33,7 +32,8 @@ const DARK := 0.72  # how much darker than its tab's colour the shown tab and it
 @onready var wheel: SkillWheel = %Wheel
 @onready var grid: SkillGrid = %Grid
 @onready var scroll: ScrollContainer = %TreeScroll
-@onready var act: CostButton = %DetailButton
+@onready var detail: SkillDetail = %DetailCol
+@onready var act: CostButton = detail.act
 
 
 func _ready() -> void:
@@ -42,8 +42,7 @@ func _ready() -> void:
 	wheel.picked.connect(pick)
 	grid.picked.connect(pick)
 	grid.chose.connect(choose)
-	act.pressed.connect(_act)
-	%DetailText.meta_clicked.connect(_term)
+	detail.acted.connect(_act)
 
 
 func open(u: Unit, title: String, spend: bool) -> void:
@@ -214,98 +213,16 @@ static func opens(t: SkillTab) -> String:
 	return "Opens the %s tab: %s" % [t.title(), ", ".join(names)]
 
 
-func _show_tree() -> void:
-	var t := chosen
-	var c := chosen_in
-	%DetailCol.visible = true
-	%DetailName.text = t.title()
-	var why := unit.pick_missing(c, t)
-	%DetailState.text = "T0 · " + (why if why else "%s: pick up to %d" % [c.name, unit.pick_cap(c)])
-	for x in %DetailSpec.get_children():
-		x.queue_free()
-	var text := SkillTree.opens(t)
-	if c.affinity:
-		text += "\nA guest tree: its skills rank at %+d Affinity" % c.affinity
-	%DetailText.text = Glossary.rich(text)
-	act.visible = why != "Picked"
-	if not can_spend:
-		why = "Only your party's skills can be chosen"
-	act.set_offer("Pick", 0)
-	act.disabled = why != ""
-	act.tooltip_text = why if why else "Pick %s: its tab opens" % t.title()
-
-
 func _show_pick() -> void:
 	if chosen:
-		_show_tree()
-		return
-	var s := picked
-	%DetailCol.visible = s != null
-	if not s:
-		return
-	var r := unit.base_rank(s)
-	%DetailName.text = s.title() + (" " + Skill.roman(r) if r else "")
-	%DetailState.text = state(s)
-	_fill_spec(s)
-	%DetailText.text = Glossary.rich(s.plan if s.stub else s.markup(maxi(r, 1), false))
-	act.visible = not s.stub and (r == 0 or unit.can_raise(s))
-	var cost := unit.raise_cost(s)
-	var why := ""
-	if not can_spend:
-		why = "Only your party's skills can be chosen"
-	elif r == 0 and unit.missing(s) != "":
-		why = unit.missing(s)
-	elif unit.skill_points < cost:
-		why = "Needs %d skill point%s" % [cost, "" if cost == 1 else "s"]
-	act.set_offer("Unlock" if r == 0 else "Rank %s" % Skill.roman(r + 1), cost)
-	act.disabled = why != ""
-	act.tooltip_text = why if why else ("Learn %s for %d point%s" % [s.name, cost, "" if cost == 1 else "s"] if r == 0
-			else "Raise %s to rank %s for %d points" % [s.name, Skill.roman(r + 1), cost])
+		detail.show_tree(unit, chosen_in, chosen, can_spend)
+	else:
+		detail.show_skill(unit, picked, can_spend)
 
 
-# Its spec as chips, the same order on every skill: its target, range, AP and cost.
-func _fill_spec(s: Skill) -> void:
-	var box: HBoxContainer = %DetailSpec
-	for c in box.get_children():
-		box.remove_child(c)
-		c.queue_free()
-	for part in s.spec():
-		var l := RichTextLabel.new()
-		l.bbcode_enabled = true
-		l.fit_content = true
-		l.autowrap_mode = TextServer.AUTOWRAP_OFF
-		l.scroll_active = false
-		l.add_theme_font_size_override(&"normal_font_size", 6)
-		l.text = Glossary.rich(Skill.spec_part(part))
-		l.meta_clicked.connect(_term)
-		var chip := PanelContainer.new()
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color(1, 1, 1, 0.06)
-		style.set_corner_radius_all(2)
-		style.content_margin_left = 3
-		style.content_margin_right = 3
-		chip.add_theme_stylebox_override(&"panel", style)
-		chip.add_child(l)
-		box.add_child(chip)
-
-
-# A term clicked in the footer: the Guide's page for it.
-func _term(meta: Variant) -> void:
-	var id := StringName(String(meta).trim_prefix("term:"))
-	get_tree().call_group(&"guide", &"open_guide", Glossary.page(id), id)
-
-
-# Where s stands for this unit, in a line: its tier, then learned (or at its highest rank), or what it
-# needs. Nothing more when it can be learned now: the button says so.
+# Where s stands for this unit (SkillDetail.state()).
 func state(s: Skill) -> String:
-	var tier := "T%d" % unit.tier(s)
-	if s.stub:
-		return tier + " · Not built yet. " + s.waits()
-	var r := unit.base_rank(s)
-	if r > 0:
-		return tier + (" · Learned" if unit.can_raise(s) else " · Highest rank")
-	var why := unit.missing(s)
-	return tier + (" · " + why if why else "")
+	return SkillDetail.state(unit, s)
 
 
 func _act() -> void:

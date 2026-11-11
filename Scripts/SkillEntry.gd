@@ -2,12 +2,18 @@ class_name SkillEntry
 extends PanelContainer
 
 # A skill in the spellbook: rank numeral, name and a one-line summary (the full text is the
-# tooltip). Skills with an active part drag onto the hotbar; toggled passives switch from here.
+# tooltip; a click shows it in full below). Skills with an active part drag onto the hotbar;
+# toggled passives switch from here.
 
 signal switched(skill: Skill)
+signal picked(skill: Skill)  # clicked: shown in full (Spellbook.pick())
 
 var skill: Skill
 var draggable := false
+var lit := false:  # the one shown in full
+	set(v):
+		lit = v
+		self_modulate = Color(1.35, 1.3, 1.1) if v else Color.WHITE
 
 
 func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> void:
@@ -55,6 +61,11 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 		b.tooltip_text = "Switch %s on or off" % s.name if can_switch else "Only on your turn, for units taking orders, from a slot they'll use"
 		b.pressed.connect(func(): switched.emit(skill))
 		row.add_child(b)
+
+
+func _gui_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
+		picked.emit(skill)
 
 
 func _get_drag_data(_at: Vector2) -> Variant:
