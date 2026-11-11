@@ -23,6 +23,7 @@
 [ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
 [ext_resource type="Resource" path="res://Skills/wary.tres" id="s_wary"]
+[ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -62,11 +63,15 @@ script = ExtResource("8_branch")
 skill = ExtResource("s_wary")
 after = Array[ExtResource("5_skill")]([ExtResource("s_hide")])
 
+[sub_resource type="Resource" id="Branch_stamina"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_stamina")
+
 [sub_resource type="Resource" id="Root_Scout"]
 script = ExtResource("7_root")
 name = "Scout"
 tag = &"specialist"
-branches = Array[ExtResource("8_branch")]([SubResource("B_hide"), SubResource("B_eyes_forward"), SubResource("B_wary")])
+branches = Array[ExtResource("8_branch")]([SubResource("B_hide"), SubResource("B_eyes_forward"), SubResource("B_wary"), SubResource("Branch_stamina")])
 
 [sub_resource type="Resource" id="B_first_aid"]
 script = ExtResource("8_branch")

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/move.gd" id="b_move"]
+
+[sub_resource type="Resource" id="Behaviour_move"]
+script = ExtResource("b_move")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Move"
+ai = true
+glyph = "Mv"
+tags = Array[StringName]([&"stamina", &"dex"])
+ap = 2.0
+cost = 1
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_move")])
+hostile = false
+self_only = true

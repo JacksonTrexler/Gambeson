@@ -10,6 +10,7 @@
 [ext_resource type="Resource" path="res://Skills/thaumaturgist.tres" id="s_thaumaturgist"]
 [ext_resource type="Resource" path="res://Skills/journeyman.tres" id="s_journeyman"]
 [ext_resource type="Resource" path="res://Skills/strike_bang.tres" id="s_strike_bang"]
+[ext_resource type="Resource" path="res://Skills/move.tres" id="s_move"]
 
 [sub_resource type="Resource" id="Branch_generalist"]
 script = ExtResource("3_branch")
@@ -36,11 +37,16 @@ script = ExtResource("3_branch")
 skill = ExtResource("s_strike_bang")
 tier = 7
 
+[sub_resource type="Resource" id="Branch_move"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_move")
+tier = 1
+
 [sub_resource type="Resource" id="Root_main"]
 script = ExtResource("2_root")
 name = "General"
 tag = &""
-branches = Array[ExtResource("3_branch")]([SubResource("Branch_generalist"), SubResource("Branch_martialist"), SubResource("Branch_thaumaturgist"), SubResource("Branch_journeyman"), SubResource("Branch_strike_bang")])
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_generalist"), SubResource("Branch_martialist"), SubResource("Branch_thaumaturgist"), SubResource("Branch_journeyman"), SubResource("Branch_strike_bang"), SubResource("Branch_move")])
 
 [resource]
 script = ExtResource("1_tab")

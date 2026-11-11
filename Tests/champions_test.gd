@@ -84,8 +84,12 @@ func test_mana_rules() -> void:
 	ok(b.cast(icor(), hex, v(1)) and icor().energy == 2 and is_equal_approx(icor().ap_for(&"skill"), 6.0), "not enough mana: energy pays, full 4 AP")
 	icor().set_store(mana, 12)
 	icor().energy = 0
+	var crushing: Skill = load("res://Skills/crushing_blow.tres")
+	icor().learned.append(slot(crushing))
+	ok(icor().funding(crushing) == null, "mana can't pay for non-magical skills")
+	icor().learned.pop_back()
 	icor().learned.append(slot(stonegift))
-	ok(icor().funding(stonegift) == null, "mana can't pay for non-magical skills")
+	ok(icor().funding(stonegift) == mana, "Stonegift, with no category tag, is magical by its tree (Montane): mana pays")
 	icor().learned.pop_back()
 
 

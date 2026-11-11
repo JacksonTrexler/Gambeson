@@ -252,6 +252,8 @@ var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
 var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
+var paid_for: Skill  # the skill it last paid for (pay_for()), and what with: a Reserve or &"energy" (paid_as())
+var paid_with: Variant
 var exhaustion := Exhaustion.new()  # its uses of each skill lately, and what they add to its costs (price(), ap_cost())
 var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
 var _hp_bonus := 0  # what its level, items and passives add to its max HP now (refit())
@@ -315,6 +317,10 @@ var luck: int:
 @onready var hp_bar: ProgressBar = $HpBar
 @onready var energy_bar: ProgressBar = $EnergyBar
 @onready var reserve_bar: ProgressBar = $ReserveBar
+
+
+func _init() -> void:
+	exhaustion.ease = func() -> float: return 1.0 + maxf(stat(&"stamina"), 0.0)  # Stamina: its counts / (rank + 1)
 
 
 func _ready() -> void:
@@ -1537,7 +1543,8 @@ func heal(h: int, heard := true) -> void:
 
 # Every reserve it has, by max: its own (reserves), those the trees it picked bring (SkillTab.reserves:
 # a Druid's Astral), and those its passives give - each the holder's
-# mod in the passive's reserve_mod x its rank, no less than 0 (Sweet Nothings: cha mod x rank). A
+# mod in the passive's reserve_mod, plus the reserve's base, x its rank, no less than 0 (Sweet Nothings:
+# cha mod x rank; Stamina: (con mod + 2) x rank). A
 # passive switched off or disabled keeps its reserve, but nothing is spent from it (spends()).
 func pools() -> Dictionary[Reserve, int]:
 	var out: Dictionary[Reserve, int] = reserves.duplicate()
@@ -1548,7 +1555,7 @@ func pools() -> Dictionary[Reserve, int]:
 	for x in slots:
 		var r := x.skill.reserve
 		if r and x.skill.passive:
-			out[r] = out.get(r, 0) + maxi(mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1, 0) * x.rank
+			out[r] = out.get(r, 0) + maxi((mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1) + r.base, 0) * x.rank
 	return out
 
 
@@ -1722,11 +1729,12 @@ func skill_name(s: Skill) -> String:
 
 # What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else a
 # reserve that makes it cheaper (Hex: mana, for AP; the starter spells: mana, for cost; a Warlock's
-# dearer skills: a Sweet Nothing), then one dedicated to its tags (mana for magical skills, so Energy
-# is kept for generic skills), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
+# dearer skills: a Sweet Nothing), then one dedicated to its tags or kinds (Skill.tagged(): mana for
+# magical skills, stamina for martial, specialist, general and physical ones, so Energy is kept for the
+# rest), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
 # nothing can.
 func funding(s: Skill) -> Variant:
-	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return t in s.tags)))
+	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
 		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
 	for r: Reserve in allowed:
@@ -1754,13 +1762,20 @@ func energy_tags() -> Array[StringName]:
 
 
 # Whether paying for s with fund counts as paying with reserve r, for r's bonuses: r itself, or Energy
-# its passives let count as r for skills like s (Working Knowledge: Energy counts as Mana for Hex).
+# its passives let count as r for skills like s (Working Knowledge: Energy counts as Mana for Hex; Field
+# Experience as Stamina for martial skills) - a general skill (Move) counting as any kind they name.
 func pays_as(s: Skill, fund: Variant, r: Reserve) -> bool:
 	if fund is Reserve:
 		return fund == r
 	if fund != &"energy":
 		return false
-	return energy_tags().any(func(t): return t in s.tags and t in r.only)
+	return energy_tags().any(func(t): return (s.tagged(t) or s.general()) and t in r.only)
+
+
+# Whether its last payment for s counted as paying with r (pays_as()): a stamina skill paid with Stamina,
+# or by an Adventurer's Energy standing in for it, does more (Behaviours/move.gd).
+func paid_as(r: Reserve, s: Skill) -> bool:
+	return paid_for == s and pays_as(s, paid_with, r)
 
 
 # AP to use s paid from fund: its AP, times the best factor of any reserve that payment counts as,
@@ -1806,6 +1821,8 @@ func pay_for(s: Skill) -> bool:
 	else:
 		energy -= cost_from(s, fund)
 	exhaustion.used(s)
+	paid_for = s
+	paid_with = fund
 	if dbno:
 		dbno.acted += 1  # Downed: a skill use against its allowance (Grudge)
 	return true
@@ -2025,6 +2042,12 @@ func ap_left() -> float:
 func ap_share() -> float:
 	var start: float = _ap_start.reduce(func(sum: float, a: float): return sum + a, 0.0)
 	return clampf(ap_left() / start, 0.0, 1.0) if start > 0.0001 else 1.0
+
+
+# Gains n tiles of movement this turn: n move AP, and n further than its movement allows (Move).
+func stride(n: float) -> void:
+	ap.append(AP.new(n, &"move"))
+	moved -= n
 
 
 # Movement it can still make this turn: what's left of its movement, as far as its AP allows.

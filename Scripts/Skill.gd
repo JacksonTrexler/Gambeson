@@ -131,7 +131,7 @@ extends Resource
 
 @export_group("Energy")  # passive: what its holder's Energy counts as
 @export var energy_as: Array[StringName] = []  # Energy paid for skills with these tags gets the bonuses their own resources give (Working Knowledge: magical - Hex at half AP, as with Mana)
-@export var reserve: Reserve  # passive: gives its holder this reserve, its max the holder's mod in reserve_mod (at least 0) x rank (Sweet Nothings)
+@export var reserve: Reserve  # passive: gives its holder this reserve, its max the holder's mod in reserve_mod plus the reserve's base (at least 0) x rank (Sweet Nothings; Stamina)
 @export var reserve_mod := &""
 @export var opens: Reserve  # skills up to its rank in tier get their cost_with savings for this reserve (Mana: mana)
 
@@ -152,6 +152,66 @@ const CATEGORIES := {&"magical": "Magic", &"martial": "Martial", &"specialist": 
 const ICONS := "res://Icons/Skills/"  # <skill file>.png each: icon()
 
 static var _icons := {}  # skill file -> its icon, or null
+static var _kinds := {}  # skill -> the broad kinds its trees give it (kinds()), found on first ask
+static var _kinds_found := false
+
+
+# Its broad kinds, from the trees it sits on, so they can't drift from the .tres files: each class root's
+# tag (a Cleric's Sol: magical), each general tree's category, &"general" for the base General tree
+# (Strike, though tagged martial). On roots of two kinds (Snare: specialist, and a Druid's magical
+# Sylvan), both. On no tree (Hex, listed outright; a monster's Sing): its own category tags.
+func kinds() -> Array[StringName]:
+	if not _kinds_found:
+		_kinds_found = true
+		_find_kinds()
+	var out: Array[StringName] = []
+	if _kinds.has(self):
+		out.assign(_kinds[self])
+	else:
+		for t in tags:
+			if t in CATEGORIES:
+				out.append(t)
+	return out
+
+
+# Whether it carries t as a tag or as a kind its trees give it: what reserves (Reserve.only), Energy
+# standing in for them (energy_as) and exhaustion (Exhaustion.alike()) ask.
+func tagged(t: StringName) -> bool:
+	return t in tags or t in kinds()
+
+
+# A general skill: on the base General tree (Strike). Its uses wear a little on every skill.
+func general() -> bool:
+	return &"general" in kinds()
+
+
+# Duck-typed: naming SkillTab, SkillRoot or Role here would load them, and Unit's general trees, with Skill.gd.
+static func _find_kinds() -> void:
+	var note := func(s: Skill, k: StringName) -> void:
+		if s == null or k == &"":
+			return
+		if not _kinds.has(s):
+			_kinds[s] = [] as Array[StringName]
+		if k not in _kinds[s]:
+			_kinds[s].append(k)
+	for f in ResourceLoader.list_directory("res://Trees/"):
+		var t = load("res://Trees/" + f) if f.ends_with(".tres") else null
+		if t and t.has_method(&"general") and t.general():  # a general tree (SkillTab)
+			var k: StringName = t.category if t.category else &"general"
+			for s in ([t.center] if t.center else []) + t.core:
+				note.call(s, k)
+			for r in t.roots:
+				for s in r.skills() if r else []:
+					note.call(s, k)
+		elif t and t.has_method(&"branch"):  # a class root shared by classes (SkillRoot)
+			for s in t.skills():
+				note.call(s, t.tag)
+	for f in ResourceLoader.list_directory("res://Roles/"):
+		var role = load("res://Roles/" + f) if f.ends_with(".tres") else null
+		if role and role.has_method(&"all_roots"):
+			for r in role.all_roots():
+				for s in r.skills():
+					note.call(s, r.tag)
 
 
 func tier(rank: int) -> Tier:
@@ -598,6 +658,11 @@ func markup(rank := 1, with_spec := true) -> String:
 	if not energy_as.is_empty():
 		lines.append("Energy paid for %s skills counts as their own resources, with the bonuses those give" %
 				" or ".join(energy_as.map(func(t): return CATEGORIES.get(t, String(t)).to_lower())))
+	if reserve and passive:  # Stamina: (con mod + 2) x rank
+		var per := (Glossary.mod(reserve_mod) if reserve_mod else "1") + (" + %d" % reserve.base if reserve.base else "")
+		lines.append("Gives its holder %s: (%s) x {r:%d} at most, full as each battle starts" % [reserve.name, per, rank])
+		if reserve.only and reserve.whole == 0:
+			lines.append("%s pays before Energy for %s skills" % [reserve.name, ", ".join(reserve.only)])
 	if waives:
 		lines.append("Opens the %s tree's skills up to {r:T%d} without their usual needs (one tier lower where your class doesn't have the tree, which it then shows). Skills learned that way stop working without it"
 				% ["General" if waives == &"general" else ("Caster" if waives == &"magical" else String(waives).capitalize()), rank])

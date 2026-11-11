@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://Skills/sundering.tres" id="s_sundering"]
 [ext_resource type="Resource" path="res://Skills/silent_strike.tres" id="s_silent_strike"]
 [ext_resource type="Resource" path="res://Skills/gank.tres" id="s_gank"]
+[ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
 
 [sub_resource type="Resource" id="Branch_jugular"]
 script = ExtResource("branch")
@@ -27,9 +28,13 @@ script = ExtResource("branch")
 skill = ExtResource("s_gank")
 after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
 
+[sub_resource type="Resource" id="Branch_stamina"]
+script = ExtResource("branch")
+skill = ExtResource("s_stamina")
+
 [resource]
 script = ExtResource("root")
 name = "Slayer"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_gank")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_gank"), SubResource("Branch_stamina")])
 gods = Array[StringName]([&"luun", &"ramut", &"drael"])

@@ -96,6 +96,7 @@ const TERMS := {
 	&"area": ["Area", &"target", "Aimed at a tile, working on the ground around it."],
 	&"nearest": ["Nearest", &"target", "Used at once, landing on the nearest units in range."],
 	&"range": ["Range", &"target", "How many tiles away it reaches, before reach and size. Gold parts grow with rank; orange ones are the user's mods."],
+	&"stamina": ["Stamina", &"check", "A skill that does more when paid with Stamina (an Adventurer's Energy counts, for its martial, specialist and general skills)."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")

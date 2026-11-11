@@ -1,13 +1,16 @@
 extends Test
 
 # Exhaustion (Scripts/Exhaustion.gd): a unit's uses of each skill counted, whole against the skill
-# used and half against its others of the same broad kind; AP and cost both rising with the count; a
+# used, half against its others of the same broad kind (from its trees), a quarter against every
+# skill for a general one (Strike); divided by Stamina's rank + 1; AP and cost both rising with the count; a
 # channel and its strike one use; a use got over as each turn ends, more for a turn rested (by con
 # mod); a Strike of three hits against three Strikes; a raised cost a unit can't pay; and what the
 # HUD says of it. A villager has 11 AP for skills (10, and 1 from its wis mod) and 10 Energy.
 
 var crushing: Skill = load("res://Skills/crushing_blow.tres")  # martial, like Strike: 4 AP, 2 cost
 var missile: Skill = load("res://Skills/energy_missile.tres")  # of no broad kind: 3 AP, 1 cost
+var kick: Skill = load("res://Skills/kick.tres")  # martial, on the General Martial tree
+var solar: Skill = load("res://Skills/solar.tres")  # no category tag, on a Cleric's Sol
 var metea: Skill = load("res://Skills/metea.tres")  # magical, like Hex; channeled: 6 AP, 5 cost, then 2 AP, 1 cost to strike
 var mana: Reserve = load("res://Reserves/mana.tres")
 
@@ -34,23 +37,25 @@ func same(a: float, x: float) -> bool:
 
 
 func test_counts() -> void:
-	for s in [crushing, missile, hex]:
+	for s in [crushing, missile, hex, kick]:
 		v(1).learned.append(slot(s))
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).max_hp = 100
 	v(3).hp = 100
 	var e := v(1).exhaustion
-	ok(Exhaustion.kinds(strike) == [&"martial"] and Exhaustion.kinds(hex) == [&"magical"] and Exhaustion.kinds(missile).is_empty(), "a skill's broad kinds: its category tags")
+	ok(Exhaustion.kinds(crushing) == [&"martial"] and Exhaustion.kinds(hex) == [&"magical"] and Exhaustion.kinds(missile).is_empty(), "a skill's broad kinds: its trees', else its category tags")
+	ok(strike.kinds() == [&"general"] and strike.general() and Exhaustion.kinds(strike).is_empty(), "Strike, tagged martial, is on the base General tree: general")
+	ok(solar.kinds() == [&"magical"] and Exhaustion.kinds(solar) == [&"magical"], "Solar, untagged, is on Sol's magical roots: magical")
 	ok(same(e.of(strike), 0.0) and same(e.rate(strike), 1.0) and e.note(strike) == "", "fresh: nothing counted")
 	ok(b.cast(v(1), strike, v(3)), "a Strike")
-	ok(same(e.of(strike), 1.0) and same(e.of(crushing), 0.5), "a use counts whole against the skill used, half against another martial skill")
-	ok(same(e.of(hex), 0.0) and same(e.of(missile), 0.0), "and not against a magical skill, or one of no kind")
-	ok(same(v(1).ap_cost(crushing, &"energy"), 5.0) and v(1).cost_from(crushing, &"energy") == 3, "Crushing Blow after a Strike: 4 x 1.25 = 5 AP, 2 x 1.25 = 2.5 -> 3 Energy")
-	ok(b.cast(v(1), crushing, v(3)) and v(1).energy == 7 and same(v(1).ap_for(&"skill"), 3.0), "paid at that: 3 + 5 of 11 AP, 3 Energy")
-	ok(same(e.of(strike), 1.5) and same(e.of(crushing), 1.5), "each now wears on the other")
-	ok(e.note(strike) == "exhausted x1.5", e.note(strike))
-	ok(b.cast(v(1), missile, v(3)) and same(e.of(missile), 1.0) and v(1).energy == 6, "a skill of no kind, at its plain cost: it wears on itself alone")
-	ok(same(e.of(strike), 1.5) and same(e.of(hex), 0.0), "and on no other")
+	ok(same(e.of(strike), 1.0) and same(e.of(crushing), 0.25) and same(e.of(hex), 0.25) and same(e.of(missile), 0.25), "a general skill's use counts whole against itself, a quarter against every other skill")
+	ok(same(v(1).ap_cost(crushing, &"energy"), 4.5) and v(1).cost_from(crushing, &"energy") == 3, "Crushing Blow after a Strike: 4 x 1.125 = 4.5 AP, 2 x 1.125 = 2.25 -> 3 Energy")
+	ok(b.cast(v(1), crushing, v(3)) and v(1).energy == 7 and same(v(1).ap_for(&"skill"), 3.5), "paid at that: 3 + 4.5 of 11 AP, 3 Energy")
+	ok(same(e.of(crushing), 1.25) and same(e.of(kick), 0.75), "Crushing Blow: whole on itself, half on Kick, the other martial skill")
+	ok(same(e.of(strike), 1.0) and same(e.of(hex), 0.25), "and nothing on Strike, or on Hex")
+	ok(e.note(crushing) == "exhausted x1.25", e.note(crushing))
+	ok(b.cast(v(1), missile, v(3)) and same(e.of(missile), 1.25) and v(1).energy == 5, "a skill of no kind: 1 x 1.125 -> 2 Energy, and it wears on itself alone")
+	ok(same(e.of(crushing), 1.25) and same(e.of(hex), 0.25), "and on no other")
 	ok(same(v(3).exhaustion.of(strike), 0.0), "each unit keeps its own count")
 	Exhaustion.on = false
 	ok(same(e.of(strike), 0.0) and same(v(1).ap_cost(strike, &"energy"), 3.0), "switched off (staged tests), nothing costs more")

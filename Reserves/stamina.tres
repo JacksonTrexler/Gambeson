@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Reserve" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+name = "Stamina"
+color = Color(0.8, 0.88, 0.3, 1)
+only = Array[StringName]([&"martial", &"specialist", &"general", &"physical"])
+base = 2

@@ -4,8 +4,10 @@ extends RefCounted
 # How worn a unit is from using its skills, and what that adds to their costs (Unit.exhaustion): the
 # one place every cost reads it from (Unit.price(), Unit.ap_cost(), Unit.strike_ap(), Unit.strike_cost()).
 # It counts its uses of each skill. Every use counted against a skill makes its next one cost STEP of
-# its AP and of its cost more; a use counts whole against the skill used, and KIND as much against
-# the other skills of its broad kind (kinds(): martial, specialist, magical).
+# its AP and of its cost more; a use counts whole against the skill used, KIND as much against the
+# other skills of its broad kind (kinds(): martial, specialist, magical, from the trees it sits on), and
+# a general skill's (Strike) GENERAL as much against every other skill.
+# Stamina divides every count by 1 + its rank (the Effect stat stamina; ease).
 # A use is one payment (Unit.pay_for()): a Strike of three hits is one, a skill landing on several
 # (Sing) is one, a free recast (Jugular) none - and a channeled skill is one from its start to its
 # strike, the strike paid at the rate the channel began at (strike_rate()).
@@ -14,19 +16,22 @@ extends RefCounted
 
 const STEP := 0.5  # of a skill's AP and of its cost, more for each use counted against it
 const KIND := 0.5  # what a use counts against the other skills of its broad kind
+const GENERAL := 0.25  # what a general skill's use (Strike) counts against every other skill
 const RECOVERY := 1.0  # uses of each skill it gets over as each of its side's turns ends
 
 static var on := true  # off: nothing wears anyone out (staged tests: Test.calm())
 
 var uses: Dictionary[Skill, float] = {}  # its uses of each skill it hasn't got over yet
+var ease := func() -> float: return 1.0  # what the counts are divided by: 1 + its holder's Stamina rank (Unit sets it: the Effect stat stamina)
 var begun: Dictionary[Skill, float] = {}  # what each skill's last use multiplied its costs by (a channel's strike pays the same)
 
 
-# The broad kinds a skill is of: its category tags (Skill.CATEGORIES). One with none wears on no
-# other skill, and no other wears on it.
+# The broad kinds a skill is of, from the trees it sits on (Skill.kinds(): Strike general, a Cleric's
+# Solar magical); on none, its category tags. One with no kind wears on no other skill, and no other
+# wears on it, but a general skill's use wears a little on all of them (GENERAL).
 static func kinds(s: Skill) -> Array[StringName]:
 	var out: Array[StringName] = []
-	for t in s.tags:
+	for t in s.kinds():
 		if t in Skill.CATEGORIES:
 			out.append(t)
 	return out
@@ -52,7 +57,8 @@ func used(s: Skill) -> void:
 	uses[s] = uses.get(s, 0.0) + 1.0
 
 
-# The uses that count against s now: its own, and KIND of those of the other skills of its kind.
+# The uses that count against s now: its own, KIND of those of the other skills of its kind, GENERAL
+# of those of every general skill - divided by ease (Stamina).
 func of(s: Skill) -> float:
 	if not on:
 		return 0.0
@@ -62,7 +68,9 @@ func of(s: Skill) -> float:
 			n += uses[o]
 		elif alike(s, o):
 			n += KIND * uses[o]
-	return n
+		elif o.general():
+			n += GENERAL * uses[o]
+	return n / maxf(ease.call(), 1.0) if n > 0.0 else 0.0
 
 
 # What that multiplies s's AP and cost by: 1 fresh, STEP more a use.

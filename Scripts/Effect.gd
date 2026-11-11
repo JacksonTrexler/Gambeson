@@ -116,6 +116,8 @@ extends Resource
 # Command.ally_cap(), Command.order_cap()).
 # command_mod: added to its cha mod wherever Command reads it - reach, party size, slots, both caps -
 # and nowhere else (Grand Design; Command.cha_of()).
+# stamina: the holder's exhaustion counts are divided by 1 + this (Stamina: 1 a rank;
+# Exhaustion.of())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -126,7 +128,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -324,6 +326,8 @@ func value(rank := 1) -> String:
 		return "every (its side's lives left) turns, heals allies within %d tiles (1d4 + 5%% of their max HP) x %s" % [Battle.PULSE_REACH, Skill.num(x)]
 	elif stat == "coordinate":
 		return "linked: makes out what the best of the others linked do, up to %s level%s better" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
+	elif stat == "stamina":
+		return "its exhaustion counts / %s" % Skill.num(x + 1.0)
 	elif stat == "keen_eyes":
 		return "its checks on things not beside it lose only tiles away / %s" % Skill.num(x + 1.0)
 	elif stat == "trap_word":
