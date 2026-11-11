@@ -92,18 +92,32 @@ Build roughly in this order; the content below depends on them.
 
 Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Exhaustion** (`Scripts/Exhaustion.gd`, `Unit.exhaustion`): built (`docs/done/rules.md`, `docs/done/systems.md`). (?87)
-- [ ] **Stamina** (2026-11-10, in progress, branch `v-stamina`): a passive and a resource. Base property: it cuts exhaustion by rank + 1. Yellow-tinted green. More fit specialists get it: the Rogue and Ranger general class trees, and agile Prowesses and Berserkers. Most caster skills can't use it. An adventurer needs no Stamina to use a skill's added effect through its tag (move rank extra tiles if paid with it), but not Stamina's own benefits, which come from the passive and the resource. (?87)
-- [ ] **Universal channel rule** (2026-11-10, in progress, branch `v-channel`): channeling has the same requirements as resting, but a unit isn't resting while it channels; what resting would give is the channel's continuity instead. Most units must hold still; those that can move and rest gain an edge. Replaces Clairvoyance's "moving doesn't end it". (?85, ?89)
-- [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. (?87)
+- [x] **Stamina** (2026-11-10): built (`docs/done/systems.md`, `docs/done/classes.md`, `docs/plans/stamina.md`), `Tests/stamina_test.gd`. (?87, ?98)
+- [x] **Universal channel rule** (2026-11-10): built (`docs/done/rules.md`, `docs/plans/channels-jam.md`). (?85, ?89, ?97)
+- [ ] **Stamina doesn't refill in battle**: a rule for recovering it (resting, as exhaustion does) is open. (?98)
+- [ ] **A save-Stamina toggle**: it pays automatically before Energy whenever it can; a toggle like Sweet Nothings' would let a player hold it back. (?98)
+- [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
+- [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
 - [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
 - [ ] **Static skill descriptions** (skills screen, spellbook) show base costs only.
 
-87. **Exhaustion - answered (2026-11-10), work in progress (branch `v-stamina`).** A task from a caster, martial or specialist tree inherits that as a tag; truly general skills apply less exhaustion on everything. Stamina, above, is new. The rest stands as built:
+87. **Exhaustion - answered (2026-11-10), built (`v-stamina`, ?98).** A task from a caster, martial or specialist tree inherits that as a tag; truly general skills apply less exhaustion on everything. Stamina, above, is new. The rest stands as built:
     - **Broad kinds** (your physical / technical / mental, for the half share) are read as the existing martial / specialist / magical category tags. **Twenty of the 65 active skills carry none** (Smite, Solar, Renew, Sing, Drown, Rake, Energy Missile, Flamecharm...) and wear on themselves only. A skill with two kinds shares with both, half once.
     - **Con mod 0 rests like +1** (one extra use), as Energy recovery does; read literally ("adds con mod") it would add nothing. Below 1, 1 / (1 - mod) of a use: -1 half, -3 a quarter. Fractions are continuous.
-    - **The museum sims flip** from Lancin 8 / Nemes 22 (3-14 turns) to Lancin 29 / Nemes 1 (8-20 turns); Nemes won by casting Hex over and over (437 casts to 293), and at a step of 0.25 it is still 25 to 5.
+    - **The museum sims flip** (now, with the museum changed since: Lancin 27 / Nemes 3, against 13 / 17 with exhaustion off) from Lancin 8 / Nemes 22 (3-14 turns) to Lancin 29 / Nemes 1 (8-20 turns); Nemes won by casting Hex over and over (437 casts to 293), and at a step of 0.25 it is still 25 to 5.
     - **The AI is unchanged** and doesn't weigh exhaustion: it picks by score and stops when `can_afford()` says no.
     - Step 0.5 of base cost per use, linear (AP stays fractional, resource rounds up, 0 stays 0), tunable in three constants (`STEP`, `KIND` 0.5, `RECOVERY` 1). The half share is derived from the other skills' own counts, so it recovers as they do. Counts fall at the end of the unit's own side's turn (one use a turn is free for ever, two build up). A channeled skill is one use, paid at the rate the channel was. Strike III's three hits are one use; free recasts and toggles are none. Light activity gets no resting bonus. A reserve that pays whole costs still pays its 1 point. Staged tests run with exhaustion off (`Test.calm()`).
+
+98. **Exhaustion kinds by tree, Stamina, Move ?? - built on judgement, open for review (2026-11-10).** Your ruling on 87, built on `v-stamina` (`docs/plans/stamina.md`). My calls:
+    - **Tree beats tag**: a skill's kind comes from the trees it sits on, so Strike (tagged martial, on the base General tree) is now general. A skill on trees of two kinds gets both.
+    - **The general share is 0.25**: a general skill's use counts a quarter against every other skill, one way.
+    - **Mana now pays for skills magical only by their tree** (Stonegift, the Sol and Eros skills a Wizard holds), since the rules read `tagged()`.
+    - **Stamina is on Blade, Scout, Fury and Slayer**: the Rogue, the Ranger, the Berserker, and the Paladin's Fury and Slayer Prowesses (the agile ones); a Fighter can learn it through Slayer. An Adventurer can't (none of its trees offers it).
+    - **Reserve (con mod + 2) x rank**, never refilled in battle. It pays automatically, before Energy; there is no way to save it.
+    - **Waterstrike is the only magical skill Stamina covers** (physical and magical by its tree).
+    - **Move ?? was added** since walking had no skill to carry the `stamina` tag: 2 AP, 1 cost, rank tiles, 2 x rank if paid with Stamina. **Move ?? is an AI-made name for you to review.**
+    - **Adventurers' Field Experience and Everyman let Energy count as Stamina** for a `stamina` skill's bonus (a general skill counts as the kind they name); the exhaustion cut stays the passive's alone.
+    - **Sims**: base now Lancin 27 / Nemes 3 with exhaustion on, and 13 / 17 with it off; unchanged by this (Hex casts 314 to 293).
 
 ## Skill tooling, Kick and CLAUDE.md (2026-11-09)
 

@@ -256,7 +256,7 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 - [ ] **Bug, noticed and not fixed:** a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
 - [ ] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before.
 
-85. **Downed, Tenacity, Grudge - answered (2026-11-10), work in progress (branch `v-channel`).** Going Downed and helpless ends a channel; a Grudge unit keeps its channel (both: yes). Jam, below, is new. The rest stands as built:
+85. **Downed, Tenacity, Grudge - answered (2026-11-10), built (`v-channel`, ?97).** Going Downed and helpless ends a channel; a Grudge unit keeps its channel (both: yes). Jam, below, is new. Built: `downed_test.test_channel` (the wiring was already there). The rest stands as built:
     - A round is one of the unit's own side's turns ending after it went down; if it went down on its own side's turn, the rest of that turn is free. Its last round ending at 0 HP or below, it dies. The blow that downs it leaves it at 0; at exactly the limit it lives. Overkill isn't carried into the negatives; a multi-hit Strike's later hits do land.
     - Hearts and a Red Spinel Ring are spent before a Downed skill does anything: Downed is only for the last life.
     - A Grudge action is each skill use it pays for (Strike counts once however many hits); walking, toggles and items don't. The use that goes over still resolves; then it dies. A melee attack is an attack, hit or miss, on a foe touching it.
@@ -264,10 +264,21 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
     - XP: fall XP is paid when it actually dies, not when it goes down; rescue XP when its HP rises above 0, two shares to whoever healed it last (if another unit), once. Downing gives no kill credit; the death does.
     - Executes (Death, Luun's Smite): a standing unit goes Downed as with a heart; one already Downed dies. With several Downed skills the highest rank counts, first listed on a tie, fixed as it goes down.
     - Placement: Tenacity beside Wary (Adventurer's Martial root, open from the start; among the Fighter's options). Grudge open from the start, `classes = [berserker]` (a Paladin borrowing Fury sees it locked).
-    - **Open: does going Downed end a channel?** It doesn't appear to: the death path calls `Battle.end_channel`, the Downed path doesn't, so a helpless Tenacity unit would keep Clairvoyance or any channel running. Unverified by a test. Suggested: becoming helpless ends a channel (Tenacity), a Grudge unit keeps its channel since it still acts. Say yes or no to each.
+    - **Going Downed and helpless ends a channel; a Grudge unit keeps it** (answered yes to both; `Downed.changed()` already did it, now pinned by a test).
 
-- [ ] **Jam** (2026-11-10, in progress, branch `v-channel`): a Rogue skill on the most offensive of its Prowesses. A low-damage attack that applies an instant stun, interrupting a channel or any behaviour that needs constant attention; its damage also hits focus, the same as physical damage received does. Waits on the universal channel rule (`docs/todo/systems.md`).
+- [x] **Jam** (2026-11-10): built (`docs/done/classes.md`, `docs/plans/channels-jam.md`), `Tests/jam_test.gd`. (?97)
+- [ ] **Jam's damage doesn't hit focus**: no focus meter exists. (?97)
+- [ ] **No screenshot check** of Jam, or of the Jammed ?? icon.
 
+97. **The channel rule, helpless, Jam - built on judgement, open for review (2026-11-10).** Your rulings on 85 and 89, built on `v-channel` (`docs/plans/channels-jam.md`). My calls:
+    - **An idle channeler still gets half-rate Energy** (the light rate): holding a channel is light work, not none. It gives up the rest rate, extra exhaustion recovery, the watch bonus, Chant and Hogel's rest.
+    - **Free recasts, 0-AP actions and reactions on the foe's turn don't break a channel.** Anything that spends AP, a move or a strike does, at turn's end. The turn it was cast in is exempt.
+    - **Flamedance, glass and a posing traitor read "held still", not "rested"**: standing still with a channel is not acting.
+    - **The AI holds still to keep a channel** it began earlier, when it has nothing to strike.
+    - **Jam sits on the Rogue's Blade root and the Slayer tree** (the most offensive of the Paladin's six Prowesses: all four skills are attacks), so the Fighter and Berserker get it through Slayer. Say if Jam should be on another Prowess.
+    - **"Instant stun" is read as the interrupt plus Jammed ?? through its next turn**: no dodge, no guard, no obstruction. No stun condition existed. **Jammed ?? is an AI-made name for you to review.** The interrupt ends a channel, hiding, Shields Up!'s guard, a primed Chant and the watch bonus; a disguise, a grapple, a beast shape and sleep stay.
+    - **No focus meter exists**, so Jam does plain physical damage. Do you want a focus meter built, so Jam's damage and other physical damage count against it?
+    - **Found, not changed: the rank-up cost** is 1 + r^2 skill points (quadratic per rank: II 2, III 5, IV 10, V 17), and only Clever Disguise grows exponentially (`rank_cost` 4, `rank_growth` 2). 19 skills set a rank cap (12 at 1, 5 at 3, one at 5, one at 8). You said costs should grow exponentially with no cap. Shall I make the exponential curve the default and drop the caps?
 ## Clairvoyance (2026-11-09)
 
 An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.
@@ -276,12 +287,13 @@ An arcane and Cleric spell, channeled: the caster senses where unseen foes are, 
 - [ ] **No screenshot check** of how pings look in the running game.
 - [ ] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`).
 
-89. **Clairvoyance - answered (2026-11-10), work in progress (branch `v-channel`).** There is never a rank cap, but the cost of ranking up rises exponentially, so it gets dear. "Moving does not end the channel" is overruled by the universal channel rule (`docs/todo/systems.md`): channeling has the same requirements as resting, so a unit that can't rest while moving ends the channel by moving. The rest stands as built:
+89. **Clairvoyance - answered (2026-11-10), built (`v-channel`, ?97).** There is never a rank cap, but the cost of ranking up rises exponentially, so it gets dear. "Moving does not end the channel" is overruled by the universal channel rule (`docs/todo/systems.md`): channeling has the same requirements as resting, so a unit that can't rest while moving ends the channel by moving. The rest stands as built:
     - A ping sees through walls (it is not sight).
     - The rank gained each turn has no cap while the channel holds.
     - AP and cost are paid once for the whole channel (3 AP, 3 cost), like Metea's; exhaustion counts it as one use.
     - Allies share the pings, as sight is shared across a side.
-    - **Moving does not end the channel**; casting it again stops it, free. Only `end_channel()` paths end it (a recast, another channel, death).
+    - **Moving ends the channel now** (the universal channel rule, `docs/done/rules.md`); casting it again still stops it, free.
+    - **Rank-up cost still isn't exponential** (?97): the rank-up cost is 1 + r^2, and 19 skills still set a rank cap.
     - Suspicion is added at the cast and at every update, so it builds each turn. Range is measured from the caster's current tile.
     - **Placement:** the Wizard's Arcane root; the Mage has no Arcane tree, so its Refinement root; for the Cleric, Luun's tree after Pray.
     - **Between updates a foe that moved is still drawn at its old pinged tile** ("Something may be here: sensed"), and only there until the next update.
