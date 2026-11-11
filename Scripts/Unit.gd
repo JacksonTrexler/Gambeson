@@ -3,6 +3,7 @@ extends Node2D
 
 signal hp_changed(was: int, now: int)
 signal energy_changed(was: int, now: int)
+signal overcharge_changed(was: int, now: int)  # its Overcharge buffer (overcharge) changed
 signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
 signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage (from blow.by, tagged blow.tags); listeners may change it (Battle: Molothrus)
@@ -23,6 +24,9 @@ const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy arm
 const CLASS_HP := 5  # a class unit's max HP before what its levels bring (Battle.from_role(); level_hp()) - its level 1 total is 5 + con mod + vigor, a Fighter 10
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
 const ENERGY_COLOR := Color("#e8c547")
+const POWER_SIPHON := 1.5  # a siphon takes this much more from a powered unit (siphon()): Power is easier to siphon
+const OVERCHARGE: Effect = preload("res://Effects/overcharge.tres")
+const OVERCHARGE_COLOR := Color("#6fd8e4")  # the unit card's Overcharge row: energy's own colour
 const POWER_COLOR := Color("#f2a93b")  # Energy that's Power (Powerful): yellow tinted orange, pulsing white above 75% and blue when full
 const HP_COLOR := Color("#3fbf4f")
 const SHAPE_EDGE := Color("#8a8f9c")  # glow of a unit whose side can't be told
@@ -217,6 +221,19 @@ var energy := 0:
 		var was := energy
 		energy = v
 		energy_changed.emit(was, v)
+
+# Overcharge: an extra buffer spent before its own Energy or reserve on a cost (pay_for()), while the
+# Overcharge status lasts (add_overcharge(); it decays in tick()). Spent to 0, the status ends.
+var overcharge := 0:
+	set(v):
+		v = maxi(v, 0)
+		if v == overcharge:
+			return
+		var was := overcharge
+		overcharge = v
+		if v == 0:
+			timed.erase(OVERCHARGE)
+		overcharge_changed.emit(was, v)
 
 var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
@@ -1534,6 +1551,66 @@ func drain(raw: float, tags: Array[StringName], by: Unit, carry: float) -> int:
 	return over
 
 
+# Siphon damage (Energy Transfer): what gets through mitigation (and luck, as drain()) comes off its
+# resources and never its HP - its Overcharge first, then what it currently spends (siphon_order()),
+# spilling from one to the next. A powered unit loses POWER_SIPHON times as much. Returns what it lost.
+func siphon(raw: float, tags: Array[StringName], by: Unit) -> int:
+	var net := luck - (by.luck if by else 0)
+	var left := Luck.settle(raw * (1.0 - mitigation(tags)) * (POWER_SIPHON if powered() else 1.0), net, false)
+	var got := 0
+	var off := mini(overcharge, left)
+	overcharge -= off
+	got += off
+	left -= off
+	for fund in siphon_order():
+		if left <= 0:
+			break
+		if fund is Reserve:
+			off = mini(store(fund), left)
+			set_store(fund, store(fund) - off)
+		else:
+			off = mini(energy, left)
+			energy -= off
+		got += off
+		left -= off
+	return got
+
+
+# What a siphon takes from, after Overcharge: the fund it last paid from (Energy, or a reserve it still
+# spends) if that holds any, then Energy, then its other reserves it spends, fullest first.
+func siphon_order() -> Array:
+	var all := pools()
+	var rest := all.keys().filter(func(r: Reserve): return spends(r))
+	rest.sort_custom(func(a: Reserve, b: Reserve): return store(a) > store(b))
+	var out: Array = [&"energy"]
+	out.append_array(rest)
+	if paid_with != null and paid_with in out:
+		out.erase(paid_with)
+		out.push_front(paid_with)
+	return out
+
+
+# Energy an effect gives it (Starblade, an Energy Potion, starlight, Starsap, Energy Transfer) - every
+# grant comes through here, not regen (recover()). A powered unit's Energy is its Power, so the grant
+# arrives as Power (Powerful). Up to its max; returns what it got.
+func grant_energy(n: int) -> int:
+	var was := energy
+	energy += maxi(n, 0)
+	return energy - was
+
+
+# Puts n points of Overcharge on it for `turns` of its turns, + `spare` that don't count (1 on its own
+# side's turn, as Behaviour.Cast.put() gives). More while it lasts adds up, and the timer starts again.
+# It decays to nothing over the turns that count (tick()).
+func add_overcharge(n: int, turns: int, spare := 0) -> void:
+	if n <= 0 or turns <= 0:
+		return
+	var a := Applied.new(turns + spare, 1)
+	a.total = turns
+	timed[OVERCHARGE] = a
+	overcharge += n
+
+
 # Dead units stay dead. heard: told first (being_healed), so others' passives may take a cut (Molothrus).
 func heal(h: int, heard := true) -> void:
 	if not is_alive():
@@ -1731,30 +1808,54 @@ func skill_name(s: Skill) -> String:
 	return s.name
 
 
+# Whether it holds n points in fund (a Reserve or &"energy"); `buffered`, counting its Overcharge -
+# which tops up Energy or a point-for-point reserve, not one that pays whole costs (Sweet Nothings) or
+# one built to be spent to its last point (Focus: aims).
+func covers(fund: Variant, n: int, buffered := false) -> bool:
+	var have := store(fund) if fund is Reserve else energy
+	return have + (overcharge if buffered and not (fund is Reserve and (fund.whole > 0 or fund.aims)) else 0) >= n
+
+
+# Spends what it can of a cost of n from fund out of its Overcharge first (pay_for(), pay_strike());
+# returns that much. Not on the reserves covers() leaves out: Focus still pays its own, to its last point.
+func _spend_overcharge(fund: Variant, n: int) -> int:
+	if fund is Reserve and (fund.whole > 0 or fund.aims):
+		return 0
+	var off := clampi(n, 0, overcharge)
+	overcharge -= off
+	return off
+
+
 # What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else a
 # reserve that makes it cheaper (Hex: mana, for AP; the starter spells: mana, for cost; a Warlock's
 # dearer skills: a Sweet Nothing), then one dedicated to its tags or kinds (Skill.tagged(): mana for
 # magical skills, stamina for martial, specialist, general and physical ones, so Energy is kept for the
 # rest), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
-# nothing can.
+# nothing can. Overcharge doesn't change that order: only when nothing can pay without it does it
+# look again counting Overcharge (covers()); whatever pays, Overcharge is spent first (pay_for()).
 func funding(s: Skill) -> Variant:
+	var fund: Variant = _funding(s, false)
+	return fund if fund != null or overcharge <= 0 else _funding(s, true)
+
+
+func _funding(s: Skill, buffered: bool) -> Variant:
 	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
-		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
+		return s.needs if s.needs in allowed and covers(s.needs, cost_from(s, s.needs), buffered) else null
 	if ranged(s):
 		for r: Reserve in allowed:
-			if r.aims and store(r) >= cost_from(s, r):
+			if r.aims and covers(r, cost_from(s, r), buffered):
 				return r  # Focus: first for a ranged attack, what it's built for
 	for r: Reserve in allowed:
-		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and store(r) >= cost_from(s, r):
+		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and covers(r, cost_from(s, r), buffered):
 			return r
 	for r: Reserve in allowed:
-		if not r.only.is_empty() and r.whole == 0 and store(r) >= cost_from(s, r):
+		if not r.only.is_empty() and r.whole == 0 and covers(r, cost_from(s, r), buffered):
 			return r
-	if energy >= cost_from(s, &"energy"):
+	if covers(&"energy", cost_from(s, &"energy"), buffered):
 		return &"energy"
 	for r: Reserve in allowed:
-		if store(r) >= cost_from(s, r):
+		if covers(r, cost_from(s, r), buffered):
 			return r  # Focus, for anything but a ranged attack: only once Energy can't
 	return null
 
@@ -1842,10 +1943,11 @@ func pay_for(s: Skill) -> bool:
 	var fund: Variant = funding(s)
 	if fund == null or not pay(ap_cost(s, fund), s.pays_with if s.pays_with else &"skill"):
 		return false
+	var cost := cost_from(s, fund) - _spend_overcharge(fund, cost_from(s, fund))
 	if fund is Reserve:
-		set_store(fund, store(fund) - cost_from(s, fund))
+		set_store(fund, store(fund) - cost)
 	else:
-		energy -= cost_from(s, fund)
+		energy -= cost
 	emptied = fund is Reserve and store(fund) == 0
 	exhaustion.used(s)
 	paid_for = s
@@ -1867,7 +1969,7 @@ func strike_cost(s: Skill) -> int:
 
 # Whether it could pay a channeled skill's strike now.
 func can_strike(s: Skill) -> bool:
-	return energy >= strike_cost(s) and ap_for(&"skill") >= strike_ap(s) - 0.0001
+	return covers(&"energy", strike_cost(s), true) and ap_for(&"skill") >= strike_ap(s) - 0.0001
 
 
 # Pays a channeled skill's strike (Metea): its strike AP, and its strike cost in Energy. False (and
@@ -1876,7 +1978,7 @@ func pay_strike(s: Skill) -> bool:
 	if not can_strike(s):
 		return false
 	pay(strike_ap(s), &"skill")
-	energy -= strike_cost(s)
+	energy -= strike_cost(s) - _spend_overcharge(&"energy", strike_cost(s))
 	if dbno:
 		dbno.acted += 1
 	return true
@@ -2243,6 +2345,9 @@ func tick() -> void:
 		if disabled[s] <= 0:
 			disabled.erase(s)
 			cursed.erase(s)
+	var oc: Applied = timed.get(OVERCHARGE)
+	if oc and oc.turns <= oc.total:  # Overcharge: what's left / turns left, rounded up - none on a turn that doesn't count
+		overcharge -= ceili(overcharge / float(maxi(oc.turns, 1)))
 	for e in timed.keys():
 		var a := timed[e]
 		if a.lasting or (a.until_move and a.turns == 0):
@@ -2255,6 +2360,8 @@ func tick() -> void:
 			a.turns = 1
 		else:
 			timed.erase(e)
+	if OVERCHARGE not in timed:
+		overcharge = 0
 	_arrange()  # a level effect may have ended
 	refit()  # or Asphyxia fallen a stack
 

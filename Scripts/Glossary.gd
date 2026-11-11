@@ -99,6 +99,8 @@ const TERMS := {
 	&"stamina": ["Stamina", &"check", "A skill that does more when paid with Stamina (an Adventurer's Energy counts, for its martial, specialist and general skills)."],
 	&"channeled": ["Channeled", &"condition", "Held by its caster from turn to turn. As each of its turns after the one it was cast in ends, it holds only if the caster met resting's requirements, no AP spent and no move past Meander; otherwise it ends. A channeling unit isn't resting: keeping the channel is what it gets instead of rest's benefits. Cast again to stop it, free."],
 	&"jammed": ["Jammed ??", &"condition", "Interrupted, it has lost its reactions until its next turn is over: it can't dodge, so all of an evadable attack lands, it can't guard behind its shield, and it doesn't obstruct its foes."],
+	&"siphon": ["Siphon", &"damage", "Its damage comes off the target's resources instead of its HP: its Overcharge first, then what it last paid from, then Energy, then its other reserves. Power is easier to siphon: half again as much."],
+	&"overcharge": ["Overcharge", &"condition", "An extra buffer of Energy, spent before any of its own on a cost - and counted toward what it can afford. It decays to nothing over the turns it was given for, the turn it came not counting."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")
