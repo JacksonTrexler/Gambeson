@@ -256,7 +256,7 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 - [ ] **Bug, noticed and not fixed:** a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
 - [ ] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before.
 
-85. **Downed, Tenacity, Grudge - built on judgement, open for review (2026-11-09).**
+85. **Downed, Tenacity, Grudge - answered (2026-11-10), work in progress (branch `v-channel`).** Going Downed and helpless ends a channel; a Grudge unit keeps its channel (both: yes). Jam, below, is new. The rest stands as built:
     - A round is one of the unit's own side's turns ending after it went down; if it went down on its own side's turn, the rest of that turn is free. Its last round ending at 0 HP or below, it dies. The blow that downs it leaves it at 0; at exactly the limit it lives. Overkill isn't carried into the negatives; a multi-hit Strike's later hits do land.
     - Hearts and a Red Spinel Ring are spent before a Downed skill does anything: Downed is only for the last life.
     - A Grudge action is each skill use it pays for (Strike counts once however many hits); walking, toggles and items don't. The use that goes over still resolves; then it dies. A melee attack is an attack, hit or miss, on a foe touching it.
@@ -266,6 +266,8 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
     - Placement: Tenacity beside Wary (Adventurer's Martial root, open from the start; among the Fighter's options). Grudge open from the start, `classes = [berserker]` (a Paladin borrowing Fury sees it locked).
     - **Open: does going Downed end a channel?** It doesn't appear to: the death path calls `Battle.end_channel`, the Downed path doesn't, so a helpless Tenacity unit would keep Clairvoyance or any channel running. Unverified by a test. Suggested: becoming helpless ends a channel (Tenacity), a Grudge unit keeps its channel since it still acts. Say yes or no to each.
 
+- [ ] **Jam** (2026-11-10, in progress, branch `v-channel`): a Rogue skill on the most offensive of its Prowesses. A low-damage attack that applies an instant stun, interrupting a channel or any behaviour that needs constant attention; its damage also hits focus, the same as physical damage received does. Waits on the universal channel rule (`docs/todo/systems.md`).
+
 ## Clairvoyance (2026-11-09)
 
 An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.
@@ -274,7 +276,7 @@ An arcane and Cleric spell, channeled: the caster senses where unseen foes are, 
 - [ ] **No screenshot check** of how pings look in the running game.
 - [ ] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`).
 
-89. **Clairvoyance - built on judgement, open for review (2026-11-09).** The plan's four assumptions, as built, and my calls:
+89. **Clairvoyance - answered (2026-11-10), work in progress (branch `v-channel`).** There is never a rank cap, but the cost of ranking up rises exponentially, so it gets dear. "Moving does not end the channel" is overruled by the universal channel rule (`docs/todo/systems.md`): channeling has the same requirements as resting, so a unit that can't rest while moving ends the channel by moving. The rest stands as built:
     - A ping sees through walls (it is not sight).
     - The rank gained each turn has no cap while the channel holds.
     - AP and cost are paid once for the whole channel (3 AP, 3 cost), like Metea's; exhaustion counts it as one use.
