@@ -52,7 +52,7 @@ signal shaped(u: Unit, form: StringName, element: StringName)  # u took a beast'
 signal disciplined(u: Unit, burned: int)  # u burned AP into an attack (Discipline)
 signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
 
-enum Phase { INITIATIVE, TURNS, OVER }
+enum Phase { INITIATIVE, TURNS, OVER, PREP }  # PREP: before the initiative roll, the player looks the field over (study()), then begin()s
 
 # Terrain loaded when the class first runs, not preloaded: a Terrain's effects reach back to Battle
 # (Effect's text), so a compile-time preload here can catch Terrain.gd mid-compile.
@@ -101,6 +101,9 @@ var fallen: Array[Unit] = []  # down with a heart spent, getting up as the turn 
 var panes: Dictionary[Vector2i, bool] = {}  # starpanes still whole: a bludgeoning skill used on one with no target breaks it (attempt())
 var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up to STAR_CAPACITY (Starsap fills them)
 
+@export var prep := false  # the battle opens in Phase.PREP (as one started from the entry screen does: Game.starter.prep)
+var studied: Dictionary[Faction, Dictionary] = {}  # what each side studied in preparation (study()): unit or tile -> recon levels more it reads it at
+var studied_allies: Dictionary[Faction, Array] = {}  # which of those it studied as allies (studies_left())
 var phase := Phase.INITIATIVE:
 	set(v):
 		if v == phase:
@@ -295,6 +298,7 @@ func _ready() -> void:
 		for c in st.cells:
 			lay_layer(c, st.terrain, st.passes())
 	if Game.starter:
+		prep = prep or Game.starter.get("prep", false)
 		player = starter(Game.starter)
 		$Units.add_child(player, true)
 		_join_companions(Game.starter.role)
@@ -312,7 +316,54 @@ func _ready() -> void:
 		for t: Unit in units.values():
 			if u.faction and t.faction and not Faction.friends(u.faction, t.faction) and Perception.cover(self, t) == 0:
 				sighted(u.faction, t, t.cell)  # each side knows where the others drew up in the open
-	_enter(phase)
+	if prep:
+		phase = Phase.PREP  # held there till begin()
+	else:
+		_enter(phase)
+
+
+# Preparation over: the initiative roll, and the first turn.
+func begin() -> void:
+	if phase == Phase.PREP:
+		phase = Phase.INITIATIVE
+
+
+# Studies o may still make in preparation: allies up to its cha mod, foes and tiles up to its wis mod
+# (none below 0). ally: which kind.
+func studies_left(o: Unit, ally: bool) -> int:
+	var cap := maxi(o.mod(&"charisma" if ally else &"wisdom"), 0)
+	var allies: int = studied_allies.get(o.faction, []).size()
+	var done: int = allies if ally else studied.get(o.faction, {}).size() - allies
+	return maxi(cap - done, 0)
+
+
+# Whether studying k is an ally's kind of study: a unit that seems to be o's side's friend.
+func _studies_ally(o: Unit, k: Variant) -> bool:
+	if not (k is Unit) or not is_instance_valid(k):
+		return false
+	var f: Faction = read(o, k).faction
+	return f != null and Faction.friends(f, o.faction)
+
+
+# In preparation, o (the player) studies an ally, a foe or a tile: its side reads it a recon level
+# better for the battle (_read()). A foe it scrutinizes besides, looking harder at one that fools it
+# (doubt()); a tile, inspecting it (inspect()). False once it has no studies of that kind left
+# (studies_left()), or for one already studied.
+func study(o: Unit, k: Variant) -> bool:
+	if phase != Phase.PREP or (k is Unit and k == o) or (k is Vector2i and not on_map(k)):
+		return false
+	var mine: Dictionary = studied.get_or_add(o.faction, {})
+	if k in mine or studies_left(o, _studies_ally(o, k)) <= 0:
+		return false
+	var ally := _studies_ally(o, k)
+	mine[k] = 1
+	if ally:
+		studied_allies.get_or_add(o.faction, []).append(k)
+	if k is Vector2i:
+		inspect(o, k)
+	elif not ally and read(o, k).deceived:
+		doubt(o, k)
+	return true
 
 
 # Hears what a unit on the field goes through: its falling, and the hits and heals its passives and
@@ -1869,6 +1920,8 @@ func read(o: Unit, target: Variant) -> Read:
 
 
 func _read(o: Unit, target: Variant, extra := 0.0) -> Read:
+	if o.faction in studied:
+		extra += studied[o.faction].get(target, 0)  # studied in preparation (study())
 	return Perception.unit(self, o, target, extra) if target is Unit else Perception.tile(self, o, target, extra)
 
 

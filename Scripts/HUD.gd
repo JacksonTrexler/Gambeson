@@ -79,6 +79,8 @@ var clock := 0.0  # seconds the player has left this turn (turn_clock)
 var clock_label: Label  # the clock, top middle
 
 signal intro_done
+signal prepared  # preparation's over: the battle begins (begin_battle())
+var _opening := false  # preparation and the opening roll under way: the first turn waits for _begin()
 var round_no := 0
 var overlay: Overlay
 var _last_turn := 999  # order index of the previous turn, for counting rounds
@@ -213,7 +215,7 @@ func _ready() -> void:
 	book_button.pressed.connect(toggle_spellbook)
 	hold_button.pressed.connect(hold)
 	party_button.pressed.connect(toggle_party)
-	end_button.pressed.connect(end_turn)
+	end_button.pressed.connect(_end_pressed)
 	spellbook.switched.connect(func(s: Skill): switch(spellbook.unit, s))
 	skills.unlocked.connect(_on_unlocked)
 	skills.raised.connect(_on_raised)
@@ -273,6 +275,19 @@ func _ready() -> void:
 # The battle opens: the initiative roll plays out (when the HUD is paced to be watched), then the
 # first turn starts.
 func _begin() -> void:
+	if battle.phase == Battle.Phase.PREP:
+		_opening = true
+		_log("[color=#6b7180]Preparation: look the field over. Click to study up to %d all%s (your cha mod) and %d foe%s or tile%s (your wis mod), a recon level better each; Begin when ready[/color]" % [
+				battle.studies_left(command.leader, true), "y" if battle.studies_left(command.leader, true) == 1 else "ies",
+				battle.studies_left(command.leader, false), "" if battle.studies_left(command.leader, false) == 1 else "s", "" if battle.studies_left(command.leader, false) == 1 else "s"])
+		_mark()
+		await prepared
+		if not is_inside_tree():
+			return
+		for i in 2:  # the turn the roll set lands (deferred) while _opening, ignored: it starts below
+			await get_tree().process_frame
+		_log("[color=#6b7180]Initiative: %s[/color]" % ", ".join(battle.order.map(
+				func(f: Faction): return "%s %d" % [f.name, battle.total(f)])))
 	if pace > 0.0 and battle.phase == Battle.Phase.TURNS and not battle.unit_rolls.is_empty():
 		busy = true
 		_mark()
@@ -281,6 +296,7 @@ func _begin() -> void:
 		if not is_inside_tree():
 			return
 		busy = false
+	_opening = false
 	if battle.phase == Battle.Phase.TURNS:
 		_on_turn(null, battle.turn)
 	elif battle.phase == Battle.Phase.OVER:
@@ -345,7 +361,7 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e.is_action_pressed(&"skills"):
 		toggle_skills()
 	elif e.is_action_pressed(&"end_turn"):
-		end_turn()
+		_end_pressed()
 	elif e.is_action_pressed(&"hold"):
 		hold()
 	elif e.is_action_pressed(&"party"):
@@ -390,6 +406,9 @@ func select(u: Unit) -> void:
 # select a foe rather than attack it.
 func click(c: Vector2i, force := false, inspect := false, alt := false) -> void:
 	if c == NOWHERE:
+		return
+	if battle.phase == Battle.Phase.PREP:
+		_study(c)
 		return
 	if armed:
 		_use_on(c, force, alt)
@@ -665,6 +684,42 @@ func _close_panels() -> void:
 	sheet.hide()
 	_mark()
 	_update_tip()
+
+
+# The end turn button (and Space): in preparation, Begin.
+func _end_pressed() -> void:
+	if battle.phase == Battle.Phase.PREP:
+		begin_battle()
+	else:
+		end_turn()
+
+
+# Preparation's over: the initiative roll, then the first turn (_begin()).
+func begin_battle() -> void:
+	if battle.phase != Battle.Phase.PREP:
+		return
+	battle.begin()
+	prepared.emit()
+	_mark()
+
+
+# In preparation, a click studies what's there for the battle (Battle.study()): an ally by cha, a foe
+# or the tile by wis.
+func _study(c: Vector2i) -> void:
+	var u := unit_seen(c)
+	var k: Variant = u if u else c
+	if u:
+		select(u)
+	if u == command.leader:
+		return
+	var ally := battle._studies_ally(command.leader, k)
+	if battle.study(command.leader, k):
+		_log("%s studies %s" % [_tag(command.leader), _tag(u) if u else _seen_as(command.leader, c)])
+	elif battle.studied.get(command.faction(), {}).has(k):
+		_say("Already studied")
+	else:
+		_say("No %s studies left (your %s mod)" % ["ally" if ally else "foe or tile", "cha" if ally else "wis"])
+	_mark()
 
 
 func end_turn() -> void:
@@ -1118,8 +1173,8 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 # --- Battle events
 
 func _on_turn(_was: Faction, now: Faction) -> void:
-	if battle.phase != Battle.Phase.TURNS or now != battle.turn:
-		return  # stale: the turn moved on before this ran
+	if battle.phase != Battle.Phase.TURNS or now != battle.turn or _opening:
+		return  # stale: the turn moved on before this ran (or the opening's still showing: _begin() starts it)
 	var i := battle.order.find(now)
 	if i <= _last_turn:
 		round_no += 1
@@ -1855,13 +1910,18 @@ func _refresh_buttons() -> void:
 	hint.text = _note if _note else _hint()
 	hint.visible = hint.text != ""
 	hint.add_theme_color_override(&"font_color", GOLD if _note else MUTED)
-	end_button.disabled = not my_turn()
+	var prepping := battle.phase == Battle.Phase.PREP
+	end_button.disabled = not (my_turn() or prepping)
+	end_button.text = "Begin  (Space)" if prepping else "End turn  (Space)"
 
 
 # What's going on that the screen doesn't already show; how to play is in the Guide (Settings).
 func _hint() -> String:
 	if battle.phase == Battle.Phase.OVER:
 		return "The battle is over."
+	if battle.phase == Battle.Phase.PREP:
+		return "Preparing: %d ally and %d foe or tile studies left. Begin when ready." % [
+				battle.studies_left(command.leader, true), battle.studies_left(command.leader, false)]
 	if not command.leader.is_alive():
 		return "Your leader has fallen; your allies fight on."
 	if %Initiative.visible:

@@ -67,7 +67,7 @@ func chosen_name() -> String:
 
 
 func _play() -> void:
-	Game.starter = {faction = side.value, role = role.value, name = chosen_name()}
+	Game.starter = {faction = side.value, role = role.value, name = chosen_name(), prep = true}  # it opens with a look round (Battle.prep)
 	Game.outfit = role.value.outfit()  # a new starter, in its class's starting items
 	Game.hearts = 0
 	Game.level = clampi(roundi(level.value), 1, Unit.MAX_LEVEL)  # a new starter starts over, at the level picked
