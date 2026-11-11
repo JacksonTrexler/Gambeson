@@ -2536,6 +2536,8 @@ func end_turn() -> void:
 	for u in side:
 		if u.channel and u.channel.turns > 0 and not u.idle():
 			end_channel(u)  # it moved or acted: the channel's lost
+		elif u.channel:
+			u.channel_held(u.idle())  # a switch of what it runs on carries more over (Unit.toggle())
 	for u in side:
 		if u.channel and u.channel.skill.pings:
 			clairvoy(u)  # the pings move to where the foes are now...

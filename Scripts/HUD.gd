@@ -457,7 +457,11 @@ func disarm() -> void:
 func switch(u: Unit, s: Skill) -> void:
 	if not _orders(u) or not command.may_use(u, s) or not u.toggle(s):
 		return
-	_log("%s: %s %s" % [_tag(u), s.name, "on" if u.is_on(s) else "off"])
+	var to: Variant = u.switching()
+	if to != null and u.channel.skill == s:  # Mana, Stamina: a channel switching what it runs on
+		_log("%s: switching to %s, channeled" % [_tag(u), "Energy" if to is StringName else to.name])
+	else:
+		_log("%s: %s %s" % [_tag(u), s.name, "on" if u.is_on(s) else "off"])
 	_mark()
 
 
@@ -1919,10 +1923,10 @@ func _info(u: Unit) -> Dictionary:
 				chips.append([String(u.bio.behaviour).capitalize(), MUTED])
 		_heart_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
-		var main := u.main_reserve()
-		if main:
-			rows.append([main.name.left(2).to_upper(), u.store(main), u.pools()[main], main.color])
-		rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
+		for r in u.held_reserves():  # what it runs on first, then a second it holds (Focus)
+			rows.append([r.name.left(2).to_upper(), u.store(r), u.pools()[r], r.color])
+		if u.holds_energy(u.energy):
+			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])

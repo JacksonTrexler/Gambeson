@@ -55,6 +55,9 @@ class Channel:
 	var turns := 0
 	var rank := 0  # Clairvoyance: its rank for this channel, rising each turn end it holds
 	var pings: Dictionary[Unit, Vector2i] = {}  # Clairvoyance: the foes it sensed -> where (Battle.clairvoy())
+	var switch: Variant  # a switch between what it runs on (Unit.toggle()): what it switches to, a Reserve or &"energy"; null: not a switch
+	var from: Variant  # ...and what it leaves
+	var held := 0  # ...and its side's turn ends it has held through idle (Unit.channel_held()): what it carries over
 
 	func _init(s: Skill, c: Vector2i) -> void:
 		skill = s
@@ -253,7 +256,12 @@ var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
-var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
+var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()), or a switch of what it runs on (toggle())
+	set(v):
+		var was := channel
+		channel = v
+		if was and was.switch != null and was != v:
+			_switched(was)  # however the channel ends (stopped, broken, interrupted, replaced), the switch completes
 var paid_for: Skill  # the skill it last paid for (pay_for()), and what with: a Reserve or &"energy" (paid_as())
 var paid_with: Variant
 var emptied := false  # that payment spent the last of the reserve it came from (focus_bonus())
@@ -321,6 +329,7 @@ var luck: int:
 @onready var hp_bar: ProgressBar = $HpBar
 @onready var energy_bar: ProgressBar = $EnergyBar
 @onready var reserve_bar: ProgressBar = $ReserveBar
+var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
 
 
 func _init() -> void:
@@ -355,11 +364,22 @@ func _ready() -> void:
 	energy_changed.connect(_show_bars.unbind(2))
 	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
-	energy = max_energy
+	_one_replacer()
+	energy = 0 if runs_on() is Reserve else max_energy  # running on Mana or Stamina: no Energy of its own
 	for r in pools():
 		set_store(r, 0 if r.empty else pools()[r])  # Focus starts empty
 	_show_bars()
 	set_process(powered())
+
+
+# A unit runs on one thing at a time: of the passives standing in for Energy it has on (replacer()), the
+# first on its bar stays on, the rest go off.
+func _one_replacer() -> void:
+	var found := false
+	for x in slots:
+		if replacer(x.skill) and x.on:
+			x.on = not found
+			found = true
 
 
 # Power (powered()) pulses its bar: white above 75%, blue when full.
@@ -561,12 +581,93 @@ func is_on(s: Skill) -> bool:
 
 
 # Switches a passive that has a toggle on or off. False if the unit has no such skill.
+# One that stands in for Energy (Mana, Stamina: replacer()) doesn't switch at once: it begins a channel
+# (Channel.switch) from what it runs on now to what it would run on after, completing as the channel
+# ends (_switched()); toggled again while switching, it completes now. False while it holds another
+# channel.
 func toggle(s: Skill) -> bool:
 	for x in slots:
 		if x.skill == s and s.passive and s.toggle:
-			x.on = not x.on
+			if replacer(s) == null:
+				x.on = not x.on
+				return true
+			if channel and channel.switch != null and channel.skill == s:
+				channel = null
+				return true
+			if channel:
+				return false
+			var ch := Channel.new(s, cell)
+			ch.from = runs_on()
+			ch.switch = &"energy" if x.on else replacer(s)
+			channel = ch
 			return true
 	return false
+
+
+# The reserve a toggle passive stands in for Energy with (Reserve.replaces): the one it gives (Stamina)
+# or opens (Mana); null for any other skill.
+static func replacer(s: Skill) -> Reserve:
+	if not (s.passive and s.toggle):
+		return null
+	for r: Reserve in [s.reserve, s.opens]:
+		if r and r.replaces:
+			return r
+	return null
+
+
+# What it runs on: the reserve of its replacer() passive that's on (and not disabled) - Mana, Stamina -
+# or &"energy". Running on a reserve, its own Energy is emptied and doesn't come back (recover()): what
+# Energy it holds came some other way, and pays as Energy does.
+func runs_on() -> Variant:
+	for x in on_passives:
+		var r := replacer(x.skill)
+		if r:
+			return r
+	return &"energy"
+
+
+# Whether it's switching what it runs on (toggle()): the channel's target, or null.
+func switching() -> Variant:
+	return channel.switch if channel else null
+
+
+# How much a switch held `held` turns carries over: 10% of the max of what it leaves, x the rank of
+# the passive switched, x the turns held, rounded down - no more than it has of it.
+func carry(from: Variant, s: Skill, held: int) -> int:
+	var most: int = max_energy if from is StringName else pools().get(from, 0)
+	var have: int = energy if from is StringName else store(from)
+	return mini(floori(most * 0.1 * maxi(rank(s), 1) * held + 0.0001), have)
+
+
+# A switch's channel ends: what it leaves goes, all but carry() of it, which comes into what it
+# switches to (up to its max); the passive switches, any other replacer it had on going off.
+func _switched(ch: Channel) -> void:
+	var kept := carry(ch.from, ch.skill, ch.held)
+	if ch.from is Reserve:
+		set_store(ch.from, 0)
+	else:
+		energy = 0
+	for x in slots:
+		var r := replacer(x.skill)
+		if r:
+			x.on = ch.switch is Reserve and r == ch.switch
+	if ch.switch is Reserve:
+		set_store(ch.switch, store(ch.switch) + kept)
+	else:
+		energy += kept
+	if is_node_ready():
+		_show_bars()
+
+
+# Its side's turn ends with its channel held (Battle.end_turn()): a switch held through an idle turn
+# counts one more turn of carry-over, and completes once it would carry all it has.
+func channel_held(was_idle: bool) -> void:
+	if not channel or channel.switch == null or not was_idle:
+		return
+	channel.held += 1
+	var have: int = energy if channel.from is StringName else store(channel.from)
+	if carry(channel.from, channel.skill, channel.held) >= have:
+		channel = null
 
 
 # Its sure skill slots: 4 + level / 4, rounded down, + any extra (NPCs and monsters) - by the higher of
@@ -1567,12 +1668,14 @@ func store(r: Reserve) -> int:
 	return stores.get(r, 0)
 
 
-# Whether it spends from r now: unless the passive that gives it is switched off (Sweet Nothings'
-# toggle) or disabled.
+# Whether it spends from r now: unless the passive that gives it, or stands in for Energy with it
+# (replacer(): Mana), is switched off (Sweet Nothings' toggle) or disabled.
 func spends(r: Reserve) -> bool:
 	for x in slots:
 		if x.skill.reserve == r and x.skill.passive and (not x.on or x.skill in disabled):
 			return false
+		if replacer(x.skill) == r and (not x.on or x.skill in disabled):
+			return false  # Mana switched off: mana it holds pays for nothing
 	return true
 
 
@@ -1736,8 +1839,13 @@ func skill_name(s: Skill) -> String:
 # dearer skills: a Sweet Nothing), then one dedicated to its tags or kinds (Skill.tagged(): mana for
 # magical skills, stamina for martial, specialist, general and physical ones, so Energy is kept for the
 # rest), then Energy, then any other reserve. Returns the Reserve, &"energy", or null if
-# nothing can.
+# nothing can. Running on a reserve (runs_on()), its own Energy is empty, so a skill no reserve of its
+# pays for needs Energy that came some other way; running on Stamina (Reserve.bars), no spell that
+# costs anything can be paid at all.
 func funding(s: Skill) -> Variant:
+	var on: Variant = runs_on()
+	if on is Reserve and on.bars.any(func(t): return s.tagged(t)) and (price(s) > 0 or s.needs):
+		return null  # running on Stamina: nothing pays for a spell
 	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
 		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
@@ -1977,8 +2085,8 @@ func recover() -> int:
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
 	var how := activity()
 	_recover_reserves(how, rate)
-	if powered():
-		return 0
+	if powered() or runs_on() is Reserve:
+		return 0  # running on Mana or Stamina: its own Energy doesn't come back
 	match how:
 		&"rest":
 			rest += rate
@@ -1996,30 +2104,33 @@ func recover() -> int:
 	return energy - was
 
 
-# Reserves that come back at turn's end, by activity `how`: one with_energy (Stamina) at Energy's rate
-# (light activity half), plus the rank of the passive giving it on a resting turn - whether or not
+# Reserves that come back at turn's end, by activity `how`: one with_energy (Stamina, Mana) at Energy's
+# rate (light activity half), plus its rest_rank x the rank of the passive giving or opening it on a
+# resting turn (Stamina 2 x rank), and its steady share of that on any other turn (Mana: half) - while
+# it spends from it (switched off, nothing) - whether or not
 # Energy is full or Power; one that builds (Focus) its share of its max, rounded up, only on a resting
 # turn (a channeler isn't resting: activity()).
 func _recover_reserves(how: StringName, rate: float) -> void:
 	var all := pools()
 	for r in all:
 		if r.with_energy:
-			if how == &"busy" or store(r) >= all[r]:
+			var bonus := r.rest_rank * giver_rank(r) * (1.0 if how == &"rest" else r.steady)
+			if not spends(r) or store(r) >= all[r] or (how == &"busy" and bonus <= 0.0):
 				reserve_rest[r] = 0.0
 				continue
-			var got: float = reserve_rest.get(r, 0.0) + (rate if how == &"rest" else rate / 2.0)
+			var got: float = reserve_rest.get(r, 0.0) + {&"rest": rate, &"light": rate / 2.0}.get(how, 0.0) + bonus
 			var whole := floori(got + 0.0001)
 			reserve_rest[r] = got - whole
-			set_store(r, store(r) + whole + (giver_rank(r) if how == &"rest" else 0))
+			set_store(r, store(r) + whole)
 		if r.builds > 0.0 and how == &"rest":
 			set_store(r, store(r) + ceili(r.builds * all[r] - 0.0001))
 
 
-# The highest rank of its passives giving reserve r (Stamina's rank), 0 if none.
+# The highest rank of its passives giving or opening reserve r (Stamina's rank, Mana's), 0 if none.
 func giver_rank(r: Reserve) -> int:
 	var best := 0
 	for x in slots:
-		if x.skill.reserve == r and x.skill.passive:
+		if (x.skill.reserve == r or x.skill.opens == r) and x.skill.passive:
 			best = maxi(best, x.rank)
 	return best
 
@@ -2333,14 +2444,29 @@ func _gather_effects(viewer: Unit) -> Array:
 	return out
 
 
-# The reserve with the largest pool: the one shown above Energy (Wizards: mana).
+# The reserve shown first above Energy: the one it runs on (runs_on(): Mana, Stamina), else the one it
+# spends from with the largest pool (Icor: mana); null if none.
 func main_reserve() -> Reserve:
-	var main: Reserve = null
+	var all := held_reserves()
+	return all[0] if not all.is_empty() else null
+
+
+# The reserves it holds to pay with, as its bars show them: the one it runs on first, then every other
+# it spends from (spends(): Mana switched off holds none), largest pool first (a Ranger on Stamina: then
+# Focus).
+func held_reserves() -> Array[Reserve]:
 	var all := pools()
-	for r in all:
-		if main == null or all[r] > all[main]:
-			main = r
-	return main
+	var out: Array[Reserve] = []
+	out.assign(all.keys().filter(spends))
+	var on: Reserve = runs_on() if runs_on() is Reserve else null
+	out.sort_custom(func(a: Reserve, b: Reserve): return a == on or (b != on and all[a] > all[b]))
+	return out
+
+
+# Whether it holds Energy to pay with, as its bars show it: always, unless it runs on a reserve - then
+# only Energy that came some other way (`now`: how much it has, or seems to).
+func holds_energy(now: int) -> bool:
+	return runs_on() is StringName or now > 0
 
 
 # Puts forward the look its skills carry (Alluring), on top of its own: a stance if it has none, and
@@ -2391,13 +2517,21 @@ func _show_look() -> void:
 # lesser pool - the main reserve (if any), then Energy (fading back when there's a reserve). Their
 # side trims the block (_show_side()).
 func _layout_bars() -> void:
-	var main := main_reserve()
+	var held := held_reserves()
+	var main: Reserve = held[0] if held.size() > 0 else null
 	energy_bar.add_theme_stylebox_override("fill", _flat(POWER_COLOR if powered() else ENERGY_COLOR))
 	energy_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	energy_bar.modulate.a = 0.45 if main else 1.0
 	if main:
 		reserve_bar.add_theme_stylebox_override("fill", _flat(main.color))
 		reserve_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
+	if held.size() > 1:  # a second reserve it holds (a Ranger's Focus beside its Stamina): a bar of its own
+		if not second_bar:
+			second_bar = reserve_bar.duplicate()
+			second_bar.name = &"SecondReserveBar"
+			reserve_bar.add_sibling(second_bar)
+		second_bar.add_theme_stylebox_override("fill", _flat(held[1].color))
+		second_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	hp_bar.add_theme_stylebox_override("fill", _flat(HP_COLOR))
 	hp_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	var box := StyleBoxFlat.new()
@@ -2410,9 +2544,9 @@ func _layout_bars() -> void:
 func _stack() -> void:
 	var bottom := -sprite.sprite_frames.get_frame_texture(&"default", 0).get_height() / 2.0 - 2.0
 	var y := bottom
-	for pair in [[energy_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]]:
+	for pair in [[energy_bar, 2.0], [second_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]]:
 		var bar: ProgressBar = pair[0]
-		if bar.visible:
+		if bar and bar.visible:
 			bar.size = Vector2(BAR_WIDTH, pair[1])
 			bar.position = Vector2(-BAR_WIDTH / 2.0, y - pair[1])
 			y -= pair[1]
@@ -2479,10 +2613,18 @@ func _show_face(text: String) -> void:
 
 func _show_bars() -> void:
 	var r := shown
-	var main := main_reserve()
+	var held := held_reserves()
+	var main: Reserve = held[0] if held.size() > 0 else null
+	var seen := r == null or r.energy != null  # what can be made out of its energy and reserves
+	_layout_bars()  # what it runs on and holds can change mid-battle (a switch)
 	hp_bar.visible = r == null or r.hp != null
-	energy_bar.visible = r == null or r.energy != null
-	reserve_bar.visible = main != null and energy_bar.visible
+	energy_bar.visible = seen and holds_energy(r.energy if r and r.energy != null else energy)
+	reserve_bar.visible = main != null and seen
+	if second_bar:
+		second_bar.visible = held.size() > 1 and seen
+		if second_bar.visible:
+			second_bar.max_value = maxi(pools()[held[1]], 1)
+			second_bar.value = r.stores.get(held[1], 0) if r else store(held[1])
 	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
 	hp_bar.value = r.hp if r and r.hp != null else hp
 	energy_bar.max_value = maxi(max_energy, 1)

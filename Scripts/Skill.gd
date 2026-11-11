@@ -160,6 +160,12 @@ static var _kinds_found := false
 # tag (a Cleric's Sol: magical), each general tree's category, &"general" for the base General tree
 # (Strike, though tagged martial). On roots of two kinds (Snare: specialist, and a Druid's magical
 # Sylvan), both. On no tree (Hex, listed outright; a monster's Sing): its own category tags.
+# How a with_energy reserve comes back, in a description: as Energy does, and its resting bonus.
+static func _comes_back(r: Reserve, rank: int) -> String:
+	var bonus := r.rest_rank * rank
+	return "It comes back as Energy does, {r:%s} more on a turn it rests%s" % [num(bonus), (", {r:%s} on any other" % num(bonus * r.steady)) if r.steady > 0.0 else ""]
+
+
 func kinds() -> Array[StringName]:
 	if not _kinds_found:
 		_kinds_found = true
@@ -664,7 +670,7 @@ func markup(rank := 1, with_spec := true) -> String:
 		if reserve.only and reserve.whole == 0:
 			lines.append("%s pays before Energy for %s skills" % [reserve.name, ", ".join(reserve.only)])
 		if reserve.with_energy:
-			lines.append("It comes back as Energy does, {r:%d} more on a turn it rests" % rank)
+			lines.append(_comes_back(reserve, rank))
 		if reserve.builds > 0.0:
 			lines.append("It builds %d%% of its max back on each turn it rests - no AP spent, no move - and only then (not while holding a %s)" % [roundi(reserve.builds * 100), Glossary.term(&"channeled", "channel")])
 		if reserve.aims:
@@ -692,6 +698,16 @@ func markup(rank := 1, with_spec := true) -> String:
 		lines.append("Dabblings: pick up to {r:%d} of the %s on your tree" % [rank, studies])
 	if opens:
 		lines.append("Cheaper casting with %s: skills up to {r:T%d} get the savings they list for it" % [opens.name, rank])
+	var stands: Reserve = reserve if reserve and reserve.replaces else (opens if opens and opens.replaces else null)
+	if stands and toggle and passive:  # Mana, Stamina: what its holder runs on (Unit.runs_on())
+		if opens == stands:
+			lines.append("%s pays only for %s skills" % [stands.name, ", ".join(stands.only)])
+			if stands.with_energy:
+				lines.append(_comes_back(stands, rank))
+		lines.append("On as it's learned: its holder runs on %s, its own Energy emptied and not coming back; Energy it gets some other way still pays%s"
+				% [stands.name, (", but nothing pays for a %s skill that costs anything" % " or ".join(stands.bars)) if stands.bars else ""])
+		lines.append("Switching it on or off is %s: of what it leaves, it keeps {r:%d}%% of that one's max a turn held, into what it runs on next; the rest is lost. Switch again to finish early"
+				% [Glossary.term(&"channeled", "channeled"), 10 * rank])
 	if stand_in:
 		lines.append("%s stands in for %s on %s skills" % [stand_in.capitalize(),
 				", ".join(replaces.map(func(x): return String(x).capitalize())), ", ".join(tags)])

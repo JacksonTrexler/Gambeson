@@ -8,3 +8,6 @@ script = ExtResource("1_script")
 name = "Mana"
 color = Color(0.25, 0.5, 0.95, 1)
 only = Array[StringName]([&"magical"])
+with_energy = true
+replaces = true
+steady = 0.5

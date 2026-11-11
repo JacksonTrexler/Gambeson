@@ -15,6 +15,7 @@ script = ExtResource("1_skill")
 name = "Stamina"
 glyph = "St"
 passive = true
+toggle = true
 tags = Array[StringName]([&"martial", &"specialist"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
 reserve = ExtResource("3_stamina")
