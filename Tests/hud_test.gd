@@ -75,10 +75,14 @@ func test_toggle_from_bar() -> void:
 	var icor := unit("Icor")
 	stage(nemes, {icor: Vector2i(7, 3), v(1): Vector2i(1, 2)})
 	var h := await start(icor)
-	h._unhandled_input(key(KEY_3))
-	ok(not icor.is_on(arcanist) and h.armed == null, "3 switches Arcanist Perspective off (Strike, then Hex, before it)")
-	h.use_slot(2)
+	h._unhandled_input(key(KEY_4))
+	ok(not icor.is_on(arcanist) and h.armed == null, "4 switches Arcanist Perspective off (Strike, Hex, then Mana, before it)")
+	h.use_slot(3)
 	ok(icor.is_on(arcanist), "and on again")
+	h._unhandled_input(key(KEY_3))
+	ok(icor.switching() == &"energy" and icor.is_on(load("res://Skills/mana.tres")), "3 begins switching off Mana: a channel, Mana still on meanwhile")
+	h.use_slot(2)
+	ok(icor.switching() == null and icor.runs_on() == &"energy" and icor.energy == 0, "again: done at once, no turn held, nothing carried")
 	h.free()
 
 
@@ -126,12 +130,12 @@ func test_spellbook_and_bar() -> void:
 	ok(actives.size() == 1 and actives[0].skill == hex and passives.size() == 2 and passives[0].skill == arcanist and passives[1].skill.name == "Mana",
 			"Hex under Active; Arcanist Perspective III, then the Wizard's Mana I, under Passive")
 	ok(actives[0].get_child(0).get_child(0).text == "III", "ranks in numerals")
-	ok(passives[0].draggable and not passives[1].draggable, "a toggled passive can go on the bar")
-	var slot: SkillSlot = h.bar.get_child(3)
+	ok(passives[0].draggable and passives[1].draggable, "toggled passives (Mana is one) can go on the bar")
+	var slot: SkillSlot = h.bar.get_child(4)
 	var data := {skill = arcanist, from = -1}
 	ok(slot._can_drop_data(Vector2.ZERO, data), "a hotbar slot takes it")
 	slot._drop_data(Vector2.ZERO, data)
-	ok(icor.hotbar[3] == arcanist and icor.hotbar[2] == null, "dropped in slot 4, it leaves slot 3")
+	ok(icor.hotbar[4] == arcanist and icor.hotbar[3] == null, "dropped in slot 5, it leaves slot 4")
 	var right := InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
 	right.pressed = true

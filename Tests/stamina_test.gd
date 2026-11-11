@@ -2,8 +2,8 @@ extends Test
 
 # Stamina (Skills/stamina.tres, Reserves/stamina.tres, the Effect stat stamina): a passive giving the
 # Stamina reserve, (con mod + 2) x rank, yellow tinted green; its holder's exhaustion counts / (rank + 1).
-# Stamina pays, before Energy, for martial, specialist, general and physical skills, by tag or by tree
-# (Skill.tagged()) - not for purely magical ones. Who offers it: the Rogue's Blade, the Ranger's Scout,
+# Stamina pays, before Energy, for martial, specialist and general skills, by tag or by tree
+# (Skill.tagged()); while its holder runs on it (a toggle, on as it's learned), nothing pays for a spell. Who offers it: the Rogue's Blade, the Ranger's Scout,
 # Fury (the Berserker's, a Paladin's Prowess) and Slayer (a Paladin's agile Prowess; a Fighter's too).
 
 var stamina: Skill = load("res://Skills/stamina.tres")
@@ -40,13 +40,14 @@ func test_pays() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	fit(v(1))
 	ok(fund(v(1), crushing) == "Stamina" and fund(v(1), strike) == "Stamina", "martial and general skills: Stamina, before Energy")
-	ok(fund(v(1), waterstrike) == "Stamina", "a physical magical skill (Waterstrike): Stamina too")
-	ok(fund(v(1), solar) == "energy" and fund(v(1), hex) == "energy", "purely magical ones, by tree (Solar) or tag (Hex): not Stamina: %s, %s" % [fund(v(1), solar), fund(v(1), hex)])
+	ok(v(1).runs_on() == pool, "it runs on Stamina")
+	ok(v(1).price(waterstrike) == 0 and fund(v(1), waterstrike) == "energy", "a spell that costs nothing (Waterstrike) is still used: there's no cost to pay")
+	ok(fund(v(1), solar) == "" and fund(v(1), hex) == "", "magical by tree (Solar) or tag (Hex): unpaid, though it has Energy: %s, %s" % [fund(v(1), solar), fund(v(1), hex)])
 	var was := v(1).store(pool)
 	ok(b.cast(v(1), crushing, v(3)) and v(1).store(pool) == was - 2 and v(1).energy == 10, "Crushing Blow paid 2 Stamina, no Energy")
 	ok(v(1).paid_as(pool, crushing), "and its payment counts as Stamina")
 	v(1).set_store(pool, 0)
-	ok(fund(v(1), crushing) == "energy", "Stamina gone: Energy pays")
+	ok(fund(v(1), crushing) == "energy", "Stamina gone: Energy it holds (learned mid-battle, it kept its Energy) pays")
 
 
 func test_eases_exhaustion() -> void:
@@ -61,7 +62,7 @@ func test_eases_exhaustion() -> void:
 
 
 # Stamina comes back as Energy does (Unit.recover(): (con mod + wis mod) / 2 a turn resting, at least 1;
-# half as fast with light activity; none busy), plus its rank on a resting turn - Energy full or not.
+# half as fast with light activity; none busy), plus twice its rank on a resting turn - Energy full or not.
 func test_recovers() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	fit(v(1), 2)
@@ -70,7 +71,7 @@ func test_recovers() -> void:
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
 	ok(v(1).energy >= v(1).max_energy, "Energy full")
 	b.end_turn()
-	ok(v(1).store(pool) == floori(rate + 0.0001) + 2, "a rest: Energy's rate (%s) + rank II, Energy full or not: %d" % [rate, v(1).store(pool)])
+	ok(v(1).store(pool) == floori(rate + 0.0001) + 4, "a rest: Energy's rate (%s) + 2 x rank II, Energy full or not: %d" % [rate, v(1).store(pool)])
 	b.end_turn()
 	v(1).set_store(pool, 0)
 	v(1).refresh()

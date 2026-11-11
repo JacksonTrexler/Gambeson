@@ -2517,6 +2517,18 @@ func _show_look() -> void:
 # lesser pool - the main reserve (if any), then Energy (fading back when there's a reserve). Their
 # side trims the block (_show_side()).
 func _layout_bars() -> void:
+	_colour_pools()
+	hp_bar.add_theme_stylebox_override("fill", _flat(HP_COLOR))
+	hp_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
+	var box := StyleBoxFlat.new()
+	box.draw_center = false
+	box.set_border_width_all(1)
+	trim.add_theme_stylebox_override("panel", box)
+
+
+# Colours the Energy and reserve bars for what it holds now (held_reserves()): it can change mid-battle
+# (a switch of what it runs on).
+func _colour_pools() -> void:
 	var held := held_reserves()
 	var main: Reserve = held[0] if held.size() > 0 else null
 	energy_bar.add_theme_stylebox_override("fill", _flat(POWER_COLOR if powered() else ENERGY_COLOR))
@@ -2532,12 +2544,6 @@ func _layout_bars() -> void:
 			reserve_bar.add_sibling(second_bar)
 		second_bar.add_theme_stylebox_override("fill", _flat(held[1].color))
 		second_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
-	hp_bar.add_theme_stylebox_override("fill", _flat(HP_COLOR))
-	hp_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
-	var box := StyleBoxFlat.new()
-	box.draw_center = false
-	box.set_border_width_all(1)
-	trim.add_theme_stylebox_override("panel", box)
 
 
 # Stacks the visible bars from the bottom up, with the trim one pixel out around them.
@@ -2616,7 +2622,7 @@ func _show_bars() -> void:
 	var held := held_reserves()
 	var main: Reserve = held[0] if held.size() > 0 else null
 	var seen := r == null or r.energy != null  # what can be made out of its energy and reserves
-	_layout_bars()  # what it runs on and holds can change mid-battle (a switch)
+	_colour_pools()
 	hp_bar.visible = r == null or r.hp != null
 	energy_bar.visible = seen and holds_energy(r.energy if r and r.energy != null else energy)
 	reserve_bar.visible = main != null and seen

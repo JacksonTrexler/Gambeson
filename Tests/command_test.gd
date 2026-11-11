@@ -230,7 +230,7 @@ func test_idle() -> void:
 
 func test_default_bar() -> void:
 	var siren := unit("Siren")
-	ok(same(unit("Icor").hotbar, [strike, hex, arcanist, null, null, null]), "Icor (level 5): 5 slots and a clover slot; Strike (every class's), Hex, then its toggled Arcanist Perspective")
+	ok(same(unit("Icor").hotbar, [strike, hex, load("res://Skills/mana.tres"), arcanist, null, null]), "Icor (level 5): 5 slots and a clover slot; Strike (every class's), Hex, then its toggled Mana (the Wizard's) and Arcanist Perspective")
 	ok(same(siren.hotbar, [load("res://Skills/rake.tres"), load("res://Skills/drown.tres"), load("res://Skills/sing.tres"), tonefoolery, null]),
 			"Siren: Rake, Drown and Sing, then a toggle; Oceanic has none, Personify is left for want of a slot (the last is its clover slot)")
 	ok(same(v(1).hotbar, [strike, null, null, null, null]) and v(1).slot_count() == Unit.SLOTS, "4 slots and a clover one; Favour stays off the bar")
@@ -238,13 +238,14 @@ func test_default_bar() -> void:
 
 func test_bar_place() -> void:
 	var u := unit("Icor")
-	ok(u.bar_place(arcanist, 3) and same(u.hotbar, [strike, hex, null, arcanist, null, null]), "a skill on the bar moves, swapping with the empty slot")
-	ok(u.bar_place(hex, 3) and same(u.hotbar, [strike, arcanist, null, hex, null, null]), "...or with the skill there")
+	var m: Skill = load("res://Skills/mana.tres")
+	ok(u.bar_place(arcanist, 4) and same(u.hotbar, [strike, hex, m, null, arcanist, null]), "a skill on the bar moves, swapping with the empty slot")
+	ok(u.bar_place(hex, 4) and same(u.hotbar, [strike, arcanist, m, null, hex, null]), "...or with the skill there")
 	ok(not u.bar_place(load("res://Skills/snare.tres"), 2), "not a skill it doesn't have")
 	ok(not v(1).bar_place(favour, 1), "not a passive without a toggle")
 	ok(u.bar_place(hex, 4) and not u.bar_place(hex, 5) and not u.bar_place(hex, 6), "a fifth slot at level 5; not the clover slot while unlucky, nor past it")
 	u.bar_clear(0)
-	ok(same(u.hotbar, [null, arcanist, null, null, hex, null]), "cleared")
+	ok(same(u.hotbar, [null, arcanist, m, null, hex, null]), "cleared")
 
 
 func test_toggle() -> void:
