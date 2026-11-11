@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="3_skill"]
+[ext_resource type="Resource" path="res://Skills/powerful.tres" id="s_powerful"]
+[ext_resource type="Resource" path="res://Skills/energy_missile.tres" id="s_energy_missile"]
+[ext_resource type="Resource" path="res://Skills/starsap.tres" id="s_starsap"]
+
+[sub_resource type="Resource" id="Branch_powerful"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_powerful")
+
+[sub_resource type="Resource" id="Branch_energy_missile"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_energy_missile")
+after = Array[ExtResource("3_skill")]([ExtResource("s_powerful")])
+
+[sub_resource type="Resource" id="Branch_starsap"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_starsap")
+after = Array[ExtResource("3_skill")]([ExtResource("s_energy_missile")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Stellar Soul"
+tag = &"magical"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_powerful"), SubResource("Branch_energy_missile"), SubResource("Branch_starsap")])

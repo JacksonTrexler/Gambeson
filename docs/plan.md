@@ -23,7 +23,7 @@ Six pieces of work, each built in its own worktree and merged in turn. The first
 | E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
 | F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
 
-**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged). The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
+**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged); then resources as toggles and the siphon, Overcharge and Sorcerer work (41663 checks, 565 tests, 0 failed after both merged). The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
 
 ## Built since the plan was written
 
@@ -90,6 +90,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Exhaustion kinds by tree, the general share, Stamina, Move ?? (?87, ?98) | `stamina_test.gd`, `move_test.gd`, `exhaustion_test.gd` |
 | — | Sight by unit (?96, ?99) | `hud_test.gd` |
 | — | Focus, Stamina recovering, Jam draining Focus, Fixation ?? (?97, ?98, ?100) | `focus_test.gd`, `stamina_test.gd`, `jam_test.gd` |
+| — | Mana and Stamina as toggles, two bars, switching as a channel (?116) | `resources_test.gd` |
+| — | Siphon, Overcharge, Energy Transfer, Powerful's grants, the Sorcerer (?117) | `siphon_test.gd`, `sorcerer_test.gd` |
 
 ## Questions to answer first
 

@@ -8,7 +8,7 @@ extends Test
 # HUD says of it. A villager has 11 AP for skills (10, and 1 from its wis mod) and 10 Energy.
 
 var crushing: Skill = load("res://Skills/crushing_blow.tres")  # martial, like Strike: 4 AP, 2 cost
-var missile: Skill = load("res://Skills/energy_missile.tres")  # of no broad kind: 3 AP, 1 cost
+var missile: Skill = load("res://Skills/energy_missile.tres").duplicate()  # of no broad kind: 3 AP, 1 cost - a copy on no tree (Energy Missile itself is magical now, on the Sorcerer's Stellar Soul)
 var kick: Skill = load("res://Skills/kick.tres")  # martial, on the General Martial tree
 var solar: Skill = load("res://Skills/solar.tres")  # no category tag, on a Cleric's Sol
 var metea: Skill = load("res://Skills/metea.tres")  # magical, like Hex; channeled: 6 AP, 5 cost, then 2 AP, 1 cost to strike

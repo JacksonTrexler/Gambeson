@@ -300,3 +300,18 @@ An arcane and Cleric spell, channeled: the caster senses where unseen foes are, 
     - Suspicion is added at the cast and at every update, so it builds each turn. Range is measured from the caster's current tile.
     - **Placement:** the Wizard's Arcane root; the Mage has no Arcane tree, so its Refinement root; for the Cleric, Luun's tree after Pray.
     - **Between updates a foe that moved is still drawn at its old pinged tile** ("Something may be here: sensed"), and only there until the next update.
+
+## Siphon, Overcharge, Energy Transfer and the Sorcerer (2026-11-11)
+
+Plan, readings and what was built: `docs/plans/siphon-sorcerer.md`; done in `docs/done/classes.md`. `Tests/siphon_test.gd` and `Tests/sorcerer_test.gd`.
+
+117. **Siphon, Overcharge, Energy Transfer, Powerful, the Sorcerer - built on judgement, open for review (2026-11-11).** Your design notes on Power, Energy Transfer, Overcharge and Stellar Soul. Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
+    - **Siphon order:** a siphon attack's damage comes off the target's Overcharge, then the fund its last skill was paid from, then Energy, then its other reserves, fullest first; never HP. It takes precedence over the energy rule (no carry to HP). Confirm?
+    - **A powered target loses x1.5** (`Unit.POWER_SIPHON`), since Power never comes back; doubling would let two Energy Transfers empty a Starmote. Confirm?
+    - **Overcharge** is an extra buffer spent before any fund on a point-for-point cost; it only covers a cost when nothing else can. Focus and Sweet Nothings never use it. It decays over the granting skill's rank in turns, each turn's end taking (left / turns left) rounded up (10 over 3 turns: 10, 6, 3, 0); granted again, the points add and the timer restarts. The unit card shows "OC +n". Confirm?
+    - **Energy Transfer:** `energy`, `siphon`, `magical`, int, 3 AP, 1 Energy, range 4; 1d4, 1d6 from rank III, no modifier. The caster gets what it drained as Energy up to its max; the rest (bar full, or no bar) as Overcharge at rank x 20%, rounded down, for rank turns. On the general Caster tree at tier 2, so every Mana user reaches it. Confirm?
+    - **All energy grants go through `Unit.grant_energy()`** (Starblade, an Energy Potion, starlight, Starsap, Energy Transfer): on a powered unit they arrive as Power. Regen is not a grant. No "degenerate bonus effects" were invented.
+    - **The Sorcerer:** caster focus, noun Caster, tree **Stellar Soul**: Powerful (root, learned first, not innate) then Energy Missile and Starsap, borrowed as they are; Energy Transfer from the general Caster tree. int 10, cha 15 (Mage's stats with the two swapped, since Energy Missile is a cha spell); no Mana; robe, staff, an Energy Potion; god Urlo (magic, energy); pale starlight blue tab. Confirm?
+    - **Stellar Soul's description** ("Beings with a heart that originated from and yearns for the Astral.") lives only in docs and the test header: trees have no description field. Show it? That needs a field.
+    - **Side effect:** Energy Missile and Powerful now sit on a magical tree, so they are magical by kind everywhere (exhaustion sharing; Mana may pay for Energy Missile). `exhaustion_test` now uses a copy on no tree as its skill of no kind.
+    - **Open, for you to define:** **Energize** and **Power Transfer** are named in your notes but not defined, so not built. Guesses: Energize turns a Mana user's Mana into plain Energy (an active or toggle, for Starmen and Sorcerers); Power Transfer is the Sorcerer's counterpart to Energy Transfer, giving its Power to an ally (or siphoning Power at a better rate). What should each do?

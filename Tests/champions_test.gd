@@ -21,7 +21,7 @@ func test_icor() -> void:
 	var u := icor()
 	ok(u.role.name == "Wizard" and u.title == "of Red" and u.level == 5 and u.race.name == "Human", "Wizard of Red, level 5")
 	ok(u.intelligence == 18 and u.constitution == 8, "high int, low con")
-	ok(u.store(mana) == 12 and u.energy == 4 and u.hp == 14, "12 mana, a little energy")
+	ok(u.store(mana) == 12 and u.energy == 0 and u.max_energy == 4 and u.hp == 14 and u.runs_on() == mana, "12 mana; it runs on Mana, so none of its (little) Energy")
 	ok(u.rank(hex) == 3 and u.rank(arcanist) == 3 and u.passives == [load("res://Skills/mana.tres"), arcanist], "Hex III, Arcanist Perspective III (on), and the Wizard's Mana I")
 	ok(u.sprite.sprite_frames.get_frame_texture(&"default", 0).resource_path == "res://Units/RedMage.png", "RedMage sprite from the Wizard role")
 
@@ -74,14 +74,16 @@ func test_hex_iii() -> void:
 	ok(seen.keys().all(func(d): return d >= 5 and d <= 10) and seen.size() == 6, "d6 + 4 (int for wis): 5-10, all seen (%s)" % [seen.keys()])
 	ok(not crits.is_empty() and crits.keys().all(func(d): return d % 2 == 0 and d >= 10 and d <= 20), "a natural 20 doubles it (%s)" % [crits.keys()])
 	ok(v(1).luck == -2 and v(1).timed[hex.effects[0]].rank == 3, "luck -3 (Favour's +1 -> -2)")
-	ok(icor().store(mana) == 10 and icor().energy == 4, "paid 2 mana, no energy")
+	ok(icor().store(mana) == 10 and icor().energy == 0, "paid 2 mana, no energy")
 	ok(is_equal_approx(icor().ap_for(&"skill"), 8.0), "fully paid with mana: AP halved to 2")
 
 
 func test_mana_rules() -> void:
 	stage(nemes, {icor(): Vector2i(7, 3), v(1): Vector2i(3, 3)})
 	icor().set_store(mana, 1)
-	ok(b.cast(icor(), hex, v(1)) and icor().energy == 2 and is_equal_approx(icor().ap_for(&"skill"), 6.0), "not enough mana: energy pays, full 4 AP")
+	ok(not b.cast(icor(), hex, v(1)), "not enough mana, and running on Mana it has no Energy: it can't")
+	icor().energy = 4  # Energy got some other way
+	ok(b.cast(icor(), hex, v(1)) and icor().energy == 2 and is_equal_approx(icor().ap_for(&"skill"), 6.0), "Energy it got some other way pays, full 4 AP")
 	icor().set_store(mana, 12)
 	icor().energy = 0
 	var crushing: Skill = load("res://Skills/crushing_blow.tres")
@@ -154,9 +156,11 @@ func test_bars() -> void:
 	ok((vil.energy_bar.get_theme_stylebox("fill") as StyleBoxFlat).bg_color == Unit.ENERGY_COLOR, "Energy is yellow")
 	ok(vil.energy_bar.size.y < vil.hp_bar.size.y and vil.energy_bar.position.y > vil.hp_bar.position.y, "slimmer, under HP")
 	ok(ic.reserve_bar.visible and (ic.reserve_bar.get_theme_stylebox("fill") as StyleBoxFlat).bg_color == mana.color, "Icor: blue Mana bar")
-	ok(ic.hp_bar.position.y + ic.hp_bar.size.y == ic.reserve_bar.position.y and ic.reserve_bar.position.y + ic.reserve_bar.size.y == ic.energy_bar.position.y, "HP, then 2px of Mana, then 2px of Energy, in one block")
-	ok(ic.energy_bar.modulate.a < 1.0, "Energy faded behind Mana")
-	ok(ic.reserve_bar.value == 12 and ic.energy_bar.value == 4, "values")
+	ok(ic.hp_bar.position.y + ic.hp_bar.size.y == ic.reserve_bar.position.y and not ic.energy_bar.visible, "HP, then 2px of Mana; running on Mana, no Energy bar")
+	ok(ic.reserve_bar.value == 12, "values")
+	ic.energy = 3  # Energy got some other way: it holds two resources, and shows both
+	ok(ic.energy_bar.visible and ic.reserve_bar.position.y + ic.reserve_bar.size.y == ic.energy_bar.position.y, "then 2px of Energy, in one block")
+	ok(ic.energy_bar.modulate.a < 1.0 and ic.energy_bar.value == 3, "Energy faded behind Mana")
 	var trim := vil.trim.get_theme_stylebox("panel") as StyleBoxFlat
 	ok(vil.trim.visible and trim.border_color == lancin.primary.darkened(Unit.TRIM_DARKEN) and not trim.draw_center,
 			"the block is trimmed in its side's colour, darkened")
@@ -199,9 +203,9 @@ func test_entry() -> void:
 	var roles := role.get_node("Options").get_children()
 	ok(sides.map(func(x): return x.text) == ["Lancin", "Nemes"], "sides")
 	ok(sides[0].icon.resource_path.ends_with("GolemClay.png") and sides[1].icon.resource_path.ends_with("RedMage.png"), "Alabaster stands for Lancin, Icor for Nemes")
-	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling", "Rogue", "Bard", "Warlock", "Cleric", "Berserker", "Ranger", "Druid"], "classes")
-	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png", "Elman.png", "Doebour.png", "Gaunt.png", "Cleric.png", "Mountaineer.png", "Journeyer.png", "Elmit.png"],
-			"class sprites (the Berserker borrows the Fighter's for now, the Ranger the Adventurer's, the Druid Elmit's)")
+	ok(roles.map(func(x): return x.text) == ["Adventurer", "Fighter", "Paladin\nHalfling", "Rogue", "Bard", "Warlock", "Cleric", "Berserker", "Ranger", "Druid", "Sorcerer"], "classes")
+	ok(roles.map(func(x): return x.icon.resource_path.get_file()) == ["Journeyer.png", "Mountaineer.png", "Pallas.png", "Elman.png", "Doebour.png", "Gaunt.png", "Cleric.png", "Mountaineer.png", "Journeyer.png", "Elmit.png", "Sorcerer.png"],
+			"class sprites (the Berserker borrows the Fighter's for now, the Ranger the Adventurer's, the Druid Elmit's; the Sorcerer a placeholder)")
 	ok(side.value == lancin and role.value.name == "Adventurer" and nm.text == "" and nm.placeholder_text == "Shrike" and not play.disabled,
 			"it starts on the demo's defaults: Shrike (muted, in the empty box), a Lancin Adventurer, ready to play")
 	var enter := InputEventKey.new()

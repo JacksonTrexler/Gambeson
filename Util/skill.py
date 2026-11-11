@@ -108,7 +108,7 @@ def check_behaviours(problems):
         text = read(p)
         if "func describe(" not in text:
             problems.append("%s: no describe() - a behaviour does and says, side by side" % p)
-        if not any("func %s(" % f in text for f in ("apply",) + HOOKS):
+        if not any("func %s(" % f in text for f in ("apply", "dealt") + HOOKS):  # dealt: after an active's damage lands (Energy Transfer)
             problems.append("%s: no apply() or hook (%s) - it does nothing" % (p, ", ".join(HOOKS)))
         if "res://" + p not in used:
             problems.append("%s: no skill uses it" % p)

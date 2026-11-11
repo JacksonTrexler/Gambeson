@@ -43,7 +43,8 @@ extends Resource
 # coordinate: linked with the others the same Coordinate linked, it makes out what the best of them do,
 # up to its rank in levels better (Battle.read()).
 # max_hp: added to max HP (Burning Blade: str mod; Unit.refit()).
-# powered: its Energy is Power, which never comes back on its own (Powerful; Unit.powered()).
+# powered: its Energy is Power, which never comes back on its own; what grants Energy grants it Power
+# (Powerful; Unit.powered(), Unit.grant_energy()).
 # pulse: as its side's turn starts, once every (its side's lives left, at least 1) turns, it heals
 # allies within PULSE_REACH tiles (1d4 + 5% of their max HP) x this (Regeneration Pulse; Battle._pulse()).
 # damage: that fraction more damage dealt with skills (wauaw; Battle.cast()).
@@ -122,6 +123,9 @@ extends Resource
 # (Unit.guarding()) or obstruct (Battle.obstruction()) - Jam
 # focus: added to a ranged attack's roll when paying for it spends the last of its holder's Focus
 # (Unit.focus_bonus(); Skills/focus.tres, 1 a rank)
+# overcharge: marks the Overcharge status: its holder's buffer, Unit.overcharge points, spent
+# before any of its own on a cost and decaying to nothing as the status runs out
+# (Unit.add_overcharge(), Unit.tick())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -132,7 +136,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -329,7 +333,9 @@ func value(rank := 1) -> String:
 	elif stat == "reforming":
 		return "%s stack%s toward reforming" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat == "powered":
-		return "its Energy is Power: it never comes back on its own"
+		return "its Energy is Power: it never comes back on its own, and what grants Energy grants Power"
+	elif stat == "overcharge":
+		return "an extra buffer of Energy, spent first"
 	elif stat == "pulse":
 		return "every (its side's lives left) turns, heals allies within %d tiles (1d4 + 5%% of their max HP) x %s" % [Battle.PULSE_REACH, Skill.num(x)]
 	elif stat == "coordinate":

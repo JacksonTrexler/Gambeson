@@ -18,6 +18,7 @@ class Cast:
 	var rank := 1
 	var foe := true
 	var bag := {}
+	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
 	# cast's, as a skill's own effects are.
@@ -35,7 +36,7 @@ func apply(_c: Cast) -> void:
 
 
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
-# (Jam drains as much of its Focus).
+# (Jam drains as much of its Focus); what a siphon took is c.siphoned (Energy Transfer).
 func dealt(_c: Cast, _n: int) -> void:
 	pass
 

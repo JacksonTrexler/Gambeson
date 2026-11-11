@@ -247,9 +247,12 @@ func test_mana_casting() -> void:
 	ok(u.funding(sola) == mana, "mana pays first")
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3)})
 	u.refresh()
-	ok(b.cast(u, sola, v(1)) and u.store(mana) == 8 and u.energy == u.max_energy, "cast: 2 mana, no energy")
+	ok(u.runs_on() == mana and u.energy == 0, "a Wizard runs on Mana: no Energy of its own")
+	ok(b.cast(u, sola, v(1)) and u.store(mana) == 8 and u.energy == 0, "cast: 2 mana, no energy")
 	u.set_store(mana, 1)
-	ok(u.funding(sola) == &"energy" and u.cost_from(sola, &"energy") == 4, "short of mana: 4 Energy")
+	ok(u.funding(sola) == null, "short of mana: no Energy to fall back on")
+	u.energy = 4  # Energy got some other way
+	ok(u.funding(sola) == &"energy" and u.cost_from(sola, &"energy") == 4, "...unless it got some: 4 Energy")
 	var deep := sola.duplicate()
 	var root := SkillRoot.new()
 	for pair in [[sola, []], [deep, [sola]]]:

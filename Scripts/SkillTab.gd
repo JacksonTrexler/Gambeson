@@ -27,7 +27,8 @@ const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a")}
 const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": Color("#a6c46a"), "Biome": Color("#7fb87a"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
 const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
 		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
-		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f"), "Ranger": Color("#8fae6a"), "Druid": Color("#6fae8c")}
+		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f"), "Ranger": Color("#8fae6a"), "Druid": Color("#6fae8c"),
+		"Sorcerer": Color("#9fc4f0")}
 
 
 # Its tier 0 root's placeholder icon in a choice's box.

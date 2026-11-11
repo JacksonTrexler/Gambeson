@@ -6,6 +6,9 @@
 script = ExtResource("1_script")
 name = "Stamina"
 color = Color(0.8, 0.88, 0.3, 1)
-only = Array[StringName]([&"martial", &"specialist", &"general", &"physical"])
+only = Array[StringName]([&"martial", &"specialist", &"general"])
 base = 2
 with_energy = true
+replaces = true
+bars = Array[StringName]([&"magical"])
+rest_rank = 2.0
