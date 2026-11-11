@@ -8,7 +8,7 @@ extends Behaviour
 @export var school := "Illusion"
 
 
-func affinity(holder: Unit, rank: int, s: Skill, t: SkillTab, a: int) -> int:
+func affinity(holder: Unit, rank: int, s: Skill, t: Resource, a: int) -> int:
 	if a >= 0 or t.name != school:
 		return a
 	var learned: Array = holder.slots.filter(func(x: Slot): return x.rank > 0 and t.offers(x.skill)).map(func(x: Slot): return x.skill)

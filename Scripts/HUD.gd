@@ -1920,8 +1920,10 @@ func _hint() -> String:
 	if battle.phase == Battle.Phase.OVER:
 		return "The battle is over."
 	if battle.phase == Battle.Phase.PREP:
-		return "Preparing: %d ally and %d foe or tile studies left. Begin when ready." % [
-				battle.studies_left(command.leader, true), battle.studies_left(command.leader, false)]
+		var allies := battle.studies_left(command.leader, true)
+		var others := battle.studies_left(command.leader, false)
+		return "Preparing. Studies left: %d all%s, %d foe%s or tile%s. Begin when ready." % [
+				allies, "y" if allies == 1 else "ies", others, "" if others == 1 else "s", "" if others == 1 else "s"]
 	if not command.leader.is_alive():
 		return "Your leader has fallen; your allies fight on."
 	if %Initiative.visible:

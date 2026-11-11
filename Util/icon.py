@@ -118,6 +118,7 @@ def skill_mark(sid):
     p = os.path.join(ROOT, "Skills/%s.tres" % sid)
     os.path.exists(p) or die("no Skills/%s.tres" % sid)
     text = open(p, encoding="utf-8").read()
+    text = text[text.find("\n[resource]"):]  # the skill's own glyph and name, not an effect's (Dazzled)
     g = re.search(r'^glyph = "(.*)"$', text, re.M)
     if g and g.group(1):
         return g.group(1)
