@@ -1,12 +1,21 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Resource" path="res://Reserves/focus.tres" id="3_focus"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "focus"
+amount = 1.0
+per_rank = true
 
 [resource]
 script = ExtResource("1_skill")
 name = "Focus"
-ai = true
+glyph = "Fo"
 passive = true
-tags = Array[StringName]([&"magical", &"offensive"])
-stub = "?70"
-plan = "Spells of the Mage's element (its school's) deal +rank damage and their effects +10% x rank. Spells of other elements cost 1 more Mana."
+tags = Array[StringName]([&"specialist", &"magical"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
+reserve = ExtResource("3_focus")
+reserve_mod = &"wisdom"

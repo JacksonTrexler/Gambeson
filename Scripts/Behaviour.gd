@@ -34,6 +34,12 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
+# (Jam drains as much of its Focus).
+func dealt(_c: Cast, _n: int) -> void:
+	pass
+
+
 # What apply() does at this rank, in Glossary markup: one or more lines of the skill's description.
 func describe(_rank: int) -> String:
 	return ""

@@ -660,9 +660,15 @@ func markup(rank := 1, with_spec := true) -> String:
 				" or ".join(energy_as.map(func(t): return CATEGORIES.get(t, String(t)).to_lower())))
 	if reserve and passive:  # Stamina: (con mod + 2) x rank
 		var per := (Glossary.mod(reserve_mod) if reserve_mod else "1") + (" + %d" % reserve.base if reserve.base else "")
-		lines.append("Gives its holder %s: (%s) x {r:%d} at most, full as each battle starts" % [reserve.name, per, rank])
+		lines.append("Gives its holder %s: (%s) x {r:%d} at most, %s as each battle starts" % [reserve.name, per, rank, "empty" if reserve.empty else "full"])
 		if reserve.only and reserve.whole == 0:
 			lines.append("%s pays before Energy for %s skills" % [reserve.name, ", ".join(reserve.only)])
+		if reserve.with_energy:
+			lines.append("It comes back as Energy does, {r:%d} more on a turn it rests" % rank)
+		if reserve.builds > 0.0:
+			lines.append("It builds %d%% of its max back on each turn it rests - no AP spent, no move - and only then (not while holding a %s)" % [roundi(reserve.builds * 100), Glossary.term(&"channeled", "channel")])
+		if reserve.aims:
+			lines.append("%s pays first for a ranged %s; for anything else only once Energy can't" % [reserve.name, Glossary.term(&"attack", "attack")])
 	if waives:
 		lines.append("Opens the %s tree's skills up to {r:T%d} without their usual needs (one tier lower where your class doesn't have the tree, which it then shows). Skills learned that way stop working without it"
 				% ["General" if waives == &"general" else ("Caster" if waives == &"magical" else String(waives).capitalize()), rank])

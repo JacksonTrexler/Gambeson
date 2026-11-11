@@ -32,7 +32,7 @@
 [ext_resource type="Resource" path="res://Skills/reach_spell.tres" id="s_reach_spell"]
 [ext_resource type="Resource" path="res://Skills/quicken.tres" id="s_quicken"]
 [ext_resource type="Resource" path="res://Skills/magic_slot.tres" id="s_magic_slot"]
-[ext_resource type="Resource" path="res://Skills/focus.tres" id="s_focus"]
+[ext_resource type="Resource" path="res://Skills/fixation.tres" id="s_fixation"]
 [ext_resource type="Resource" path="res://Skills/resonance.tres" id="s_resonance"]
 [ext_resource type="Resource" path="res://Skills/piercing_focus.tres" id="s_piercing_focus"]
 [ext_resource type="Resource" path="res://Skills/battle_casting.tres" id="s_battle_casting"]
@@ -49,6 +49,7 @@
 [ext_resource type="Resource" path="res://Trees/stone.tres" id="r_stone"]
 [ext_resource type="Resource" path="res://Trees/shadow.tres" id="r_shadow"]
 [ext_resource type="Resource" path="res://Trees/stars.tres" id="r_stars"]
+[ext_resource type="Resource" path="res://Skills/focus.tres" id="s_focus"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -90,25 +91,29 @@ name = "Refinement"
 tag = &"magical"
 branches = Array[ExtResource("9_branch")]([SubResource("Branch_precise_casting"), SubResource("Branch_extend_spell"), SubResource("Branch_reach_spell"), SubResource("Branch_quicken"), SubResource("Branch_clairvoyance"), SubResource("Branch_magic_slot")])
 
-[sub_resource type="Resource" id="Branch_focus"]
+[sub_resource type="Resource" id="Branch_fixation"]
 script = ExtResource("9_branch")
-skill = ExtResource("s_focus")
+skill = ExtResource("s_fixation")
 
 [sub_resource type="Resource" id="Branch_resonance"]
 script = ExtResource("9_branch")
 skill = ExtResource("s_resonance")
-after = Array[ExtResource("7_skill")]([ExtResource("s_focus")])
+after = Array[ExtResource("7_skill")]([ExtResource("s_fixation")])
 
 [sub_resource type="Resource" id="Branch_piercing_focus"]
 script = ExtResource("9_branch")
 skill = ExtResource("s_piercing_focus")
 after = Array[ExtResource("7_skill")]([ExtResource("s_resonance")])
 
+[sub_resource type="Resource" id="Branch_focus"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_focus")
+
 [sub_resource type="Resource" id="Root_Commitment"]
 script = ExtResource("8_root")
 name = "Commitment"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_focus"), SubResource("Branch_resonance"), SubResource("Branch_piercing_focus")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_fixation"), SubResource("Branch_resonance"), SubResource("Branch_piercing_focus"), SubResource("Branch_focus")])
 
 [sub_resource type="Resource" id="Tab_School_Radiance"]
 script = ExtResource("10_tab")

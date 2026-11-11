@@ -256,6 +256,8 @@ var healed_by: Unit  # who last healed it since it went Downed (Battle sets it):
 var channel: Channel  # a channeled skill it's holding (Metea; Battle.cast_at())
 var paid_for: Skill  # the skill it last paid for (pay_for()), and what with: a Reserve or &"energy" (paid_as())
 var paid_with: Variant
+var emptied := false  # that payment spent the last of the reserve it came from (focus_bonus())
+var reserve_rest: Dictionary[Reserve, float] = {}  # a with_energy reserve's recovery towards its next whole point (recover())
 var exhaustion := Exhaustion.new()  # its uses of each skill lately, and what they add to its costs (price(), ap_cost())
 var pulse_wait := 0  # its side's turns since it last pulsed (Regeneration Pulse; Battle._pulse())
 var _hp_bonus := 0  # what its level, items and passives add to its max HP now (refit())
@@ -355,7 +357,7 @@ func _ready() -> void:
 	hp = max_hp
 	energy = max_energy
 	for r in pools():
-		set_store(r, pools()[r])
+		set_store(r, 0 if r.empty else pools()[r])  # Focus starts empty
 	_show_bars()
 	set_process(powered())
 
@@ -948,7 +950,7 @@ func pick(c: TreeChoice, t: SkillTab) -> bool:
 	picked.append(c.key(t))
 	refit()
 	for r in t.reserves:  # a reserve it brings comes full (a Druid's Astral: mana)
-		set_store(r, pools()[r])
+		set_store(r, 0 if r.empty else pools()[r])
 	return true
 
 
@@ -1739,6 +1741,10 @@ func funding(s: Skill) -> Variant:
 	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
 		return s.needs if s.needs in allowed and store(s.needs) >= cost_from(s, s.needs) else null
+	if ranged(s):
+		for r: Reserve in allowed:
+			if r.aims and store(r) >= cost_from(s, r):
+				return r  # Focus: first for a ranged attack, what it's built for
 	for r: Reserve in allowed:
 		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and store(r) >= cost_from(s, r):
 			return r
@@ -1749,8 +1755,26 @@ func funding(s: Skill) -> Variant:
 		return &"energy"
 	for r: Reserve in allowed:
 		if store(r) >= cost_from(s, r):
-			return r
+			return r  # Focus, for anything but a ranged attack: only once Energy can't
 	return null
+
+
+# A ranged attack: one that rolls to hit a foe, reaching past the tiles beside it (Focus pays first for
+# these, and sharpens one that spends the last of it).
+func ranged(s: Skill) -> bool:
+	return s.attacks() and s.span(self) > 1.5
+
+
+# What its last payment adds to s's attack roll: its focus stat (Focus: its rank) when it paid for a
+# ranged attack with an aims reserve and spent the last of it (Battle.cast()).
+func focus_bonus(s: Skill) -> int:
+	return roundi(stat(&"focus")) if paid_for == s and emptied and paid_with is Reserve and paid_with.aims and ranged(s) else 0
+
+
+# What focus_bonus() would be if it used s now (Battle.hit_chance()'s forecast).
+func focus_forecast(s: Skill) -> int:
+	var fund: Variant = funding(s)
+	return roundi(stat(&"focus")) if fund is Reserve and fund.aims and ranged(s) and store(fund) == cost_from(s, fund) else 0
 
 
 # Tags its Energy counts as, from its passives (Working Knowledge: magical).
@@ -1822,6 +1846,7 @@ func pay_for(s: Skill) -> bool:
 		set_store(fund, store(fund) - cost_from(s, fund))
 	else:
 		energy -= cost_from(s, fund)
+	emptied = fund is Reserve and store(fund) == 0
 	exhaustion.used(s)
 	paid_for = s
 	paid_with = fund
@@ -1946,12 +1971,15 @@ func walked(n: int, cost: float) -> void:
 # Energy back as its side's turn ends, by activity() - but never Power (powered()). Resting: (con mod + wis mod) / 2 a turn,
 # rounded down (up while lucky), at least 1; below 0, a point every (1 - that) turns rested
 # instead (-2: one every 3). Light activity: half as fast. Busy: none. Returns what it got back.
+# Its reserves come back too (_recover_reserves()).
 func recover() -> int:
-	if powered():
-		return 0
 	var k := rounded((mod(&"constitution") + mod(&"wisdom")) / 2.0)
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
-	match activity():
+	var how := activity()
+	_recover_reserves(how, rate)
+	if powered():
+		return 0
+	match how:
 		&"rest":
 			rest += rate
 		&"light":
@@ -1966,6 +1994,34 @@ func recover() -> int:
 	var was := energy
 	energy += whole
 	return energy - was
+
+
+# Reserves that come back at turn's end, by activity `how`: one with_energy (Stamina) at Energy's rate
+# (light activity half), plus the rank of the passive giving it on a resting turn - whether or not
+# Energy is full or Power; one that builds (Focus) its share of its max, rounded up, only on a resting
+# turn (a channeler isn't resting: activity()).
+func _recover_reserves(how: StringName, rate: float) -> void:
+	var all := pools()
+	for r in all:
+		if r.with_energy:
+			if how == &"busy" or store(r) >= all[r]:
+				reserve_rest[r] = 0.0
+				continue
+			var got: float = reserve_rest.get(r, 0.0) + (rate if how == &"rest" else rate / 2.0)
+			var whole := floori(got + 0.0001)
+			reserve_rest[r] = got - whole
+			set_store(r, store(r) + whole + (giver_rank(r) if how == &"rest" else 0))
+		if r.builds > 0.0 and how == &"rest":
+			set_store(r, store(r) + ceili(r.builds * all[r] - 0.0001))
+
+
+# The highest rank of its passives giving reserve r (Stamina's rank), 0 if none.
+func giver_rank(r: Reserve) -> int:
+	var best := 0
+	for x in slots:
+		if x.skill.reserve == r and x.skill.passive:
+			best = maxi(best, x.rank)
+	return best
 
 
 # What refresh() hands out: every pool together.

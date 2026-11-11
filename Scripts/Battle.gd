@@ -708,7 +708,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var natural := false  # a natural 20 (Jugular recasts on one)
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
-				+ caster.disciplined * DISCIPLINE_HIT
+				+ caster.disciplined * DISCIPLINE_HIT + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
 		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(caster.disciplined))
 		overage = maxi(hit.margin(), 0)
 		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
@@ -753,8 +753,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		investigate(target, skill, eyes, guise)
 		if skill.effects.any(func(e: Effect): return e.stat == "concealment"):
 			_scatter(target, guise)
-	if not skill.behaviours.is_empty():
-		_behave(caster, skill, target, r, foe)
+	var acts: Behaviour.Cast = _behave(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
 	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * r)
 	if foe and skill.push:
@@ -792,6 +791,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			_refill(caster, target, gross)
 		if foe and skill.god_tag and gross > 0:
 			_smite(caster, target, r, gross)
+		if acts:
+			for bh in skill.behaviours:
+				bh.dealt(acts, before - target.hp)  # Jam: as much off its Focus
 		var glow := roundi(caster.stat(&"irradiate"))
 		if foe and glow > 0 and &"light" in tags and overage > 0 and target.is_alive():  # Irradiate
 			target.hit(mini(overage, glow + caster.mod(&"charisma")), [&"light"] as Array[StringName], caster)
@@ -817,7 +819,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 
 
 # Runs a landing skill's behaviours in order (Skill.behaviours: Kick), sharing one Cast between them.
-func _behave(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> void:
+func _behave(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Behaviour.Cast:
 	var c := Behaviour.Cast.new()
 	c.battle = self
 	c.caster = caster
@@ -827,6 +829,7 @@ func _behave(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> voi
 	c.foe = foe
 	for bh in skill.behaviours:
 		bh.apply(c)
+	return c
 
 
 # The tags a skill's damage carries for its caster: its own, plus its weapon's blows (Skill.weapon_tag:
@@ -1449,7 +1452,7 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 static func hit_chance(u: Unit, s: Skill, t: Unit) -> float:
 	if not s.attacks():
 		return 1.0
-	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - s.roll_bonus - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive")), 1, 20) / 20.0
+	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - s.roll_bonus - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
 	if s.disadvantage:
 		return p * p
 	return 1.0 - (1.0 - p) * (1.0 - p) if s.advantage else p
