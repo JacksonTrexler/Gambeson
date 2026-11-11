@@ -64,3 +64,10 @@ func hurt(_b: Battle, _holder: Unit, _rank: int, d: int) -> int:
 # (Molothrus siphons some).
 func healing(_b: Battle, _holder: Unit, _rank: int, _t: Unit, n: int) -> int:
 	return n
+
+
+# The Affinity a learned passive's holder has for s, a skill on tree t of a choice it picked, where
+# the choice alone gives it `a` (Unit.guest_affinity(); Illusionist: none of the guest penalty for
+# the first rank of its school's spells). Read off its slot, whether or not it's switched on.
+func affinity(_holder: Unit, _rank: int, _s: Skill, _t: SkillTab, a: int) -> int:
+	return a

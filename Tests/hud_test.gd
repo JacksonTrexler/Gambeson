@@ -1021,8 +1021,8 @@ func test_tabbed_skills_screen() -> void:
 	await tree.process_frame
 	var g: SkillGrid = h.get_node("%Grid")
 	var tabs: HFlowContainer = h.get_node("%WheelTabs")
-	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
-			"browser tabs: a tab per part of its tree, its species', then the general trees a Rogue gets")
+	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "TRICKSTER", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
+			"browser tabs: a tab per part of its tree (the Illusion school shut till picked), its species', then the general trees a Rogue gets")
 	ok(h.skills.view() == g and g.skills().size() == 3 and load("res://Skills/wary.tres") in g.skills() and load("res://Skills/stamina.tres") in g.skills() and load("res://Skills/jam.tres") in g.skills(), "its own: Wary, Stamina and Jam, growing from the bottom (Strike is on the General tab)")
 	(tabs.get_child(1) as Button).pressed.emit()
 	var snare: Skill = load("res://Skills/snare.tres")

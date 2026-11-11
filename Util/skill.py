@@ -19,7 +19,7 @@ from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ex
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 125  # @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 # 125 counts `pings` (Clairvoyance), built beside the seam; lower it to 124 when that moves to a behaviour.
-HOOKS = ("lets_word", "hurt", "healing")  # Behaviour's hooks: what a passive's behaviour does outside a cast
+HOOKS = ("lets_word", "hurt", "healing", "affinity")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
@@ -241,7 +241,7 @@ BEHAVIOUR_STUB = '''extends Behaviour
 
 
 # An active skill's: runs as it lands. A passive's works through Behaviour's hooks instead (lets_word,
-# hurt, healing: Scripts/Behaviour.gd) - replace this with those it needs, or add a hook there.
+# hurt, healing, affinity: Scripts/Behaviour.gd) - replace this with those it needs, or add a hook there.
 func apply(c: Cast) -> void:
 	pass  # %(stub)s: c.battle, c.caster, c.target, c.rank; c.put(effect, turns) puts one on the target
 

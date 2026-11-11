@@ -35,9 +35,9 @@ func mark() -> String:
 	return glyph if glyph else name.left(2)
 
 
-# "Calling: Freedom".
+# "Calling: Freedom"; one named for its kind, just "Trickster".
 func title() -> String:
-	return "%s: %s" % [kind, name] if kind else name
+	return "%s: %s" % [kind, name] if kind and kind != name else name
 
 
 func offers(s: Skill) -> bool:

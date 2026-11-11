@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/switcheroo.gd" id="b_switcheroo"]
+
+[sub_resource type="Resource" id="Behaviour_switcheroo"]
+script = ExtResource("b_switcheroo")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Switcheroo"
+ai = true
+tags = Array[StringName]([&"magical", &"cha"])
+ap = 3.0
+cost = 2
+radius = 1.0
+radius_per_rank = 1.0
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_switcheroo")])
+either = true
+save = &"dexterity"

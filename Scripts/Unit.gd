@@ -429,7 +429,7 @@ func affinity(s: Skill) -> int:
 # Discipline), and what the tree's choice says (a Wizard's guest trees: -1; Mage schools by Mastery:
 # 0) - a penalty lifted by enough magic learned (invest: a Ranger's Nature) or, sparing kin, for an
 # elemental skill or a tree kin to one it picked (a Druid's guests), and +1 by its talent up to the
-# tier it reads (Natural Talent).
+# tier it reads (Natural Talent); then its learned passives' behaviours have their say (Illusionist).
 func guest_affinity(s: Skill) -> int:
 	if not role:
 		return 0
@@ -444,6 +444,10 @@ func guest_affinity(s: Skill) -> int:
 				a = 0
 			if c.talent and role.tier(s) <= roundi(stat(c.talent)):
 				a += 1
+			for x in slots:  # its passives' say (Behaviour.affinity(): Illusionist)
+				if x.rank > 0 and x.skill.passive:
+					for h in x.skill.behaviours:
+						a = h.affinity(self, x.rank, s, t, a)
 			return out + a
 	return out
 

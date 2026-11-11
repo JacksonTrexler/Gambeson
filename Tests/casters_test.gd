@@ -36,7 +36,7 @@ func named(c: TreeChoice, n: String) -> SkillTab:
 
 func test_wizard_tree() -> void:
 	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Luun", "Divinity: Sol", "Divinity: Eros", "Genre: Song", "Patron: Elmon", "Patron: Hogel",
-			"School: Radiance", "School: Currents", "School: Stone", "School: Shadow", "School: Stars"], "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
+			"School: Radiance", "School: Currents", "School: Stone", "School: Shadow", "School: Stars", "School: Illusion"], "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
 	ok(wizard.choices.all(func(c: TreeChoice): return c.tabs.is_empty()) and wizard.choices.map(func(c: TreeChoice): return c.borrows) == [["Divinity"], ["Genre"], ["Patron"], ["School"]],
 			"no list of its own: each borrows a kind of tree")
 	ok(wizard.roots.map(func(r: SkillRoot): return r.name) == ["Arcane", "Transgression", "Dabblings"], "Arcane, Transgression and Dabblings on its own tab")
@@ -84,7 +84,7 @@ func test_wizard_dabblings() -> void:
 
 func test_mage_tree() -> void:
 	ok(titles(mage.trees()) == ["Mage", "School: Radiance", "School: Currents", "School: Stone", "School: Shadow", "School: Stars",
-			"College: Battle", "College: Wards", "College: Concord"], "its own tab, then five schools and three colleges to pick: %s" % [titles(mage.trees())])
+			"School: Illusion", "College: Battle", "College: Wards", "College: Concord"], "its own tab, then six schools and three colleges to pick: %s" % [titles(mage.trees())])
 	ok(mage.roots.map(func(r: SkillRoot): return r.name) == ["Refinement", "Commitment"], "Refinement and Commitment on its own tab")
 	ok(mage.choices.map(func(c: TreeChoice): return [c.name, c.picks, c.by, c.affinity]) == [["School", 1, null, 0], ["College", 1, null, 0]], "a school and a college, one each")
 	ok(mage.tier(sk("searing")) == 2 and mage.tier(sk("sunburst")) == 5 and mage.tier(sk("darkstone")) == 2,

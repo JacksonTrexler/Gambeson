@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/flourish.tres" id="s_flourish"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/stage_presence.tres" id="s_stage_presence"]
+[ext_resource type="Resource" path="res://Skills/showstopper.tres" id="s_showstopper"]
+
+[sub_resource type="Resource" id="Branch_flourish"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_flourish")
+
+[sub_resource type="Resource" id="Branch_showstopper"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_showstopper")
+after = Array[ExtResource("skill")]([ExtResource("s_flourish")])
+
+[sub_resource type="Resource" id="Branch_stage_presence"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_stage_presence")
+after = Array[ExtResource("skill")]([ExtResource("s_flourish")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Showmanship"
+tag = &"specialist"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_flourish"), SubResource("Branch_showstopper"), SubResource("Branch_stage_presence")])

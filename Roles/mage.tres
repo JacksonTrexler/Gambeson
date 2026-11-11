@@ -50,6 +50,7 @@
 [ext_resource type="Resource" path="res://Trees/shadow.tres" id="r_shadow"]
 [ext_resource type="Resource" path="res://Trees/stars.tres" id="r_stars"]
 [ext_resource type="Resource" path="res://Skills/focus.tres" id="s_focus"]
+[ext_resource type="Resource" path="res://Trees/illusion.tres" id="illusion"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -150,10 +151,17 @@ kind = "School"
 color = Color(0.78, 0.77, 0.94, 1)
 roots = Array[ExtResource("8_root")]([ExtResource("r_stars")])
 
+[sub_resource type="Resource" id="Tab_illusion"]
+script = ExtResource("10_tab")
+name = "Illusion"
+kind = "School"
+color = Color(0.72, 0.61, 0.91, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("illusion")])
+
 [sub_resource type="Resource" id="Choice_School"]
 script = ExtResource("11_choice")
 name = "School"
-tabs = Array[ExtResource("10_tab")]([SubResource("Tab_School_Radiance"), SubResource("Tab_School_Currents"), SubResource("Tab_School_Stone"), SubResource("Tab_School_Shadow"), SubResource("Tab_School_Stars")])
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_School_Radiance"), SubResource("Tab_School_Currents"), SubResource("Tab_School_Stone"), SubResource("Tab_School_Shadow"), SubResource("Tab_School_Stars"), SubResource("Tab_illusion")])
 
 [sub_resource type="Resource" id="Branch_battle_casting"]
 script = ExtResource("9_branch")

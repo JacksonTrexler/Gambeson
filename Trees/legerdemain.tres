@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/phantasm.tres" id="s_phantasm"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/switcheroo.tres" id="s_switcheroo"]
+[ext_resource type="Resource" path="res://Skills/prestidigitation.tres" id="s_prestidigitation"]
+
+[sub_resource type="Resource" id="Branch_phantasm"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_phantasm")
+
+[sub_resource type="Resource" id="Branch_prestidigitation"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_prestidigitation")
+
+[sub_resource type="Resource" id="Branch_switcheroo"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_switcheroo")
+after = Array[ExtResource("skill")]([ExtResource("s_phantasm")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Legerdemain ??"
+tag = &"magical"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_phantasm"), SubResource("Branch_prestidigitation"), SubResource("Branch_switcheroo")])

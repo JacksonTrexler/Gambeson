@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "persona"
+amount = 1.0
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Flourish"
+ai = true
+tags = Array[StringName]([&"specialist", &"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
+ap = 2.0
+cost = 1
+hostile = false
+self_only = true
+turns_per_rank = 1

@@ -220,8 +220,8 @@ func test_rogue_and_bard() -> void:
 	var bard: Role = load("res://Roles/bard.tres")
 	var wary: Skill = load("res://Skills/wary.tres")
 	ok(rogue.has_tree() and bard.has_tree(), "both have trees (stubs for now)")
-	ok(rogue.trees().map(func(t: SkillTab): return t.title()) == ["Rogue", "Calling: Freedom"] and bard.trees()[1].title() == "Calling: Freedom",
-			"each: its own tab, then Calling: Freedom")
+	ok(rogue.trees().map(func(t: SkillTab): return t.title()) == ["Rogue", "Calling: Freedom", "Trickster", "School: Illusion"] and bard.trees()[1].title() == "Calling: Freedom",
+			"each: its own tab, then Calling: Freedom (the Rogue's Trickster beside it, and the Illusion school Illusionist opens)")
 	var own := rogue.trees()[0]
 	var free := rogue.trees()[1]
 	ok(own.core.is_empty() and own.offers(wary) and not own.offers(move_plus_one) and not own.offers(snare),

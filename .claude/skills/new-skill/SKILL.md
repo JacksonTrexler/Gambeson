@@ -18,7 +18,8 @@ Follow the steps in order; each ends in something you can check.
    ceiling):
    - an active skill's verb: `apply(c: Cast)` (runs as it lands; see `Behaviours/kick.gd`);
    - a passive's: Behaviour's hooks - `lets_word` (word of suspicion: `bandwagon.gd`), `hurt` (hits it
-     takes), `healing` (heals others get: `molothrus.gd`). A new kind of moment gets a new hook in
+     takes), `healing` (heals others get: `molothrus.gd`), `affinity` (what a picked tree's skill costs to
+     rank: `illusionist.gd`). A new kind of moment gets a new hook in
      `Scripts/Behaviour.gd`, called by `Battle` from a signal (`Unit.taking_hit`, `Unit.being_healed`):
      units emit, Battle dispatches - no Battle reference in Unit.
    A new Effect stat, tag or status: `.claude/skills/new-mechanic` first. Don't read `Battle.gd`/`HUD.gd`/

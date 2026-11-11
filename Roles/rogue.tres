@@ -30,6 +30,12 @@
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
 [ext_resource type="Resource" path="res://Skills/jam.tres" id="s_jam"]
+[ext_resource type="Resource" path="res://Trees/showmanship.tres" id="showmanship"]
+[ext_resource type="Resource" path="res://Trees/deception.tres" id="deception"]
+[ext_resource type="Resource" path="res://Trees/legerdemain.tres" id="legerdemain"]
+[ext_resource type="Resource" path="res://Trees/illusion.tres" id="illusion"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="treechoice"]
+[ext_resource type="Resource" path="res://Skills/illusionist.tres" id="illusionist"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -119,6 +125,27 @@ center = ExtResource("s_hide")
 core = Array[ExtResource("5_skill")]([ExtResource("s_move_plus_one"), ExtResource("s_darkvision"), ExtResource("s_self_evaluation"), ExtResource("s_first_aid")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Shadow"), SubResource("Root_Traps"), SubResource("Root_Eyes")])
 
+[sub_resource type="Resource" id="Tab_trickster"]
+script = ExtResource("8_tab")
+name = "Trickster"
+kind = "Trickster"
+color = Color(0.77, 0.56, 0.82, 1)
+roots = Array[ExtResource("6_root")]([ExtResource("showmanship"), ExtResource("deception"), ExtResource("legerdemain")])
+
+[sub_resource type="Resource" id="Tab_illusion"]
+script = ExtResource("8_tab")
+name = "Illusion"
+kind = "School"
+color = Color(0.72, 0.61, 0.91, 1)
+roots = Array[ExtResource("6_root")]([ExtResource("illusion")])
+
+[sub_resource type="Resource" id="Choice_illusion"]
+script = ExtResource("treechoice")
+name = "Illusion"
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_illusion")])
+by = ExtResource("illusionist")
+affinity = -1
+
 [resource]
 script = ExtResource("1_script")
 noun = "Tradefolk"
@@ -128,6 +155,7 @@ race = ExtResource("3_race")
 innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_move_plus_one")])
 stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 15, &"constitution": 10, &"intelligence": 11, &"wisdom": 12, &"charisma": 11})
 roots = Array[ExtResource("6_root")]([SubResource("Root_Blade")])
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom")])
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom"), SubResource("Tab_trickster")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"specialist"])
+choices = Array[ExtResource("treechoice")]([SubResource("Choice_illusion")])

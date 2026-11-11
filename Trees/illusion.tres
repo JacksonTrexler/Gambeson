@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/blur.tres" id="s_blur"]
+[ext_resource type="Resource" path="res://Skills/disguise_self.tres" id="s_disguise_self"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/mirror_image.tres" id="s_mirror_image"]
+[ext_resource type="Resource" path="res://Skills/phantasmal_force.tres" id="s_phantasmal_force"]
+[ext_resource type="Resource" path="res://Skills/invisibility.tres" id="s_invisibility"]
+
+[sub_resource type="Resource" id="Branch_blur"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_blur")
+
+[sub_resource type="Resource" id="Branch_mirror_image"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_mirror_image")
+after = Array[ExtResource("skill")]([ExtResource("s_blur")])
+
+[sub_resource type="Resource" id="Branch_invisibility"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_invisibility")
+after = Array[ExtResource("skill")]([ExtResource("s_mirror_image")])
+
+[sub_resource type="Resource" id="Branch_disguise_self"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_disguise_self")
+
+[sub_resource type="Resource" id="Branch_phantasmal_force"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_phantasmal_force")
+after = Array[ExtResource("skill")]([ExtResource("s_disguise_self")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Illusion"
+tag = &"magical"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_blur"), SubResource("Branch_mirror_image"), SubResource("Branch_invisibility"), SubResource("Branch_disguise_self"), SubResource("Branch_phantasmal_force")])
