@@ -22,6 +22,7 @@ var aura: Variant = null  # -2 ominous .. +2 benevolent (-3 up)
 var name := ""  # unit name, tile name (or what the tile looks like)
 var face := ""  # text standing in for the sprite a persona's name claims (";)"); empty: its own
 var faction: Faction
+var assumed := false  # its side is only what it seemed before it vanished before the observer's eyes (Unit.assumed)
 var hp: Variant = null
 var max_hp: Variant = null
 var energy: Variant = null

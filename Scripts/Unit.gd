@@ -239,6 +239,7 @@ var alias_noun := ""  # that name's noun: "Lady"
 var follows: Unit  # the leader whose party it's in (Command.join())
 var suspicion := {}  # stacks against the units (and tiles: Vector2i) it's grown suspicious of: each sees through a rank of their trickery and concealment (Battle.suspect())
 var noticed := {}  # tiles where it has inspected something suspicious (Battle._first_look())
+var assumed := {}  # units that vanished before its eyes -> the side they seemed to be of: it goes on taking them for that (Battle._vanish(), Perception)
 var rested_turns := 0  # its side's turns in a row it has rested through: it looks further and better (Battle.survey())
 var unwatched := 0  # its turns since it last looked around (Battle._watch(): wis mod 0 or less looks only every few)
 var guard := Vector2.ZERO  # the way it faces behind its shield while Shields Up! is on it (Battle._guard(); hit())

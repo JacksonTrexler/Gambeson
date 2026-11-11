@@ -28,6 +28,9 @@ signal untangled(by: Unit, of: Unit, total: int, against: int)  # inspect(): by,
 signal refused(u: Unit, leader: Unit)  # a traitor in leader's party won't do as it's told, or acted on its own side's turn (_refuse())
 signal doubted(by: Unit, of: Unit, total: int, against: int)  # doubt(): by grows suspicious of `of` when total >= against
 signal told(by: Unit, to: Unit, of: Unit, heard: bool)  # spread(): by told an ally it suspects `of`; heard: the word got through
+signal discovered(by: Unit, of: Variant)  # suspect(): by's first stack of suspicion of a unit or tile: something odd about it ("?")
+signal unmasked(by: Unit, of: Variant, was: Read)  # suspect(): by now sees through what fooled or hid it; was: by's read before ("!")
+signal vanished(by: Unit, of: Unit, was: Read)  # of slipped from by's sight before its very eyes (_vanish()); was: by's read before ("!?")
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
@@ -723,6 +726,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		_bind(caster, skill, target, r)
 	var known := roundi(caster.stat(&"self_known"))  # what it knew of itself before this (Meditate)
 	var eyes := watchers(target) if skill.investigated else ([] as Array[Unit])
+	var sights := _sightings(target) if skill.effects.any(func(e: Effect): return e.stat == "concealment") else {}
 	var put: Array[Unit.Applied] = []
 	if not (skill.dual and foe):
 		for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
@@ -753,6 +757,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		investigate(target, skill, eyes, guise)
 		if skill.effects.any(func(e: Effect): return e.stat == "concealment"):
 			_scatter(target, guise)
+	if not sights.is_empty():
+		_vanish(target, sights)
 	var acts: Behaviour.Cast = _behave(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
 	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * r)
@@ -964,7 +970,9 @@ func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 	var who: Unit = t if t is Unit else unit_at(t)  # suspicion of a tile works on whoever hides there
 	var pleased := n > 0 and who != null and who.faction != o.faction and (o.stat(&"unmask_gain") > 0 or o.stat(&"uncover_gain") > 0)
 	var was: Read = read(o, who) if pleased else null
+	var before: Read = (read(o, t) if not pleased or t is Vector2i else was) if n > 0 else null
 	var hid := _hidden_from(o, who) if pleased else 0
+	var first := o.suspects(t) == 0
 	var k := o.suspects(t) + n
 	if k > 0:
 		o.suspicion[t] = k
@@ -972,6 +980,11 @@ func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 		o.suspicion.erase(t)
 	if pleased:
 		_dialysis(o, who, was, hid)
+	if n > 0:
+		if first:
+			discovered.emit(o, t)
+		if _sees_through(before, read(o, t)):
+			unmasked.emit(o, t, before)
 	if n > 0 and not told_of and t is Unit and o.faction and not Faction.friends(o.faction, t.faction):
 		spread(o, t)
 
@@ -1001,6 +1014,40 @@ func _dialysis(o: Unit, t: Unit, was: Read, hid: int) -> void:
 	var off := hid - _hidden_from(o, t)
 	if off > 0:
 		o.gain(&"patron", roundi(o.stat(&"uncover_gain")) * off)
+
+
+# Whether a read `now` sees through what `was` couldn't: a lie it took (deceived) that no longer
+# fools it, or something it couldn't make out (net below 0) now plain.
+static func _sees_through(was: Read, now: Read) -> bool:
+	return (was.deceived and not now.deceived) or (was.net < 0 and now.net >= 0)
+
+
+# Who makes out t's side and place right now (awake, it in their sight): unit -> its read, for
+# _vanish() to compare after something that may hide it.
+func _sightings(t: Unit) -> Dictionary:
+	var out := {}
+	for o: Unit in units.values():
+		if o != t and o.is_alive() and not o.asleep():
+			var r := read(o, t)
+			if r.located() and r.faction != null:
+				out[o] = r
+	return out
+
+
+# Those of `before` (_sightings()) that no longer make out t's side or place though it's still well
+# within their sight: it vanished before their very eyes. Each takes it to be of the side it seemed
+# to be until it sees otherwise (Unit.assumed: Perception), and its trickery still fools them as it
+# would (Perception._lie()).
+func _vanish(t: Unit, before: Dictionary) -> void:
+	if not t.is_alive():
+		return
+	for o: Unit in before:
+		if not o.is_alive() or o.asleep() or in_range(o, t) < 2:
+			continue
+		var r := read(o, t)
+		if not r.located() or r.faction == null:
+			o.assumed[t] = before[o].faction
+			vanished.emit(o, t, before[o])
 
 
 # The concealment levels t hides from o by, before o's senses.
@@ -1908,6 +1955,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	passed = w.path
 	if not passed.is_empty():
 		var from := u.cell
+		var sights := _sightings(u)  # those watching it step into cover (_vanish())
 		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
 		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
 		var blind := obscured(passed[-1])  # what's under the leaves it walks onto, it can't see
@@ -1924,6 +1972,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 				_flame(u, flames[c], "walks into fire")
 		if Perception.cover(self, u) > 0:
 			_scatter(u, _hide_roll(u), passed)
+			_vanish(u, sights)
 		_tidy_debris()
 		_contact(u, passed)
 		traveled.emit(u, from, passed)

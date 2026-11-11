@@ -47,7 +47,7 @@ description: Add a kind of ground (a tile) to Gambeson - writes Terrain/<id>.tre
    while you iterate).
 
 6. **Record the calls you made** that the user didn't, for review (CLAUDE.md). The next question number
-   N is one past the highest in use: `grep -oE '^- [0-9]+' todo.md | sort -k2 -n | tail -1` (questions are
+   N is one past the highest in use: `grep -rhoE '^- [0-9]+|\(\?[0-9]+\)' todo.md docs/todo | grep -oE '[0-9]+' | sort -n | tail -1` (questions are
    numbered across todo.md and docs/todo/*.md). Add to todo.md's "Built on judgement" list:
    `- N <Topic> (<date>): <each call, with the choice made>.` Put the item itself, ending `(?N)`, in the
    docs/todo file for its area (world.md), and add N to that file's row of the table at the bottom of todo.md.

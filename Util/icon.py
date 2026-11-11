@@ -5,8 +5,9 @@
   python3 Util/icon.py skills                      # every skill still missing one
   python3 Util/icon.py tile sand --color "#d8c48a" [--text Sa]   # Tiles/sand.png: 32x32 ground, flat colour
   python3 Util/icon.py unit Blinthe --color "#b07acc" [--text B]  # Units/Blinthe.png: a 20x25 figure
+  python3 Util/icon.py effect suspicion --shape eye [--text Su]  # Icons/Effects/suspicion.png: a status's icon on a unit card
 
-Skill icons are white on clear, so the skills screen tints them by state (learned, open, a stub); draw real
+Skill and effect icons are white on clear, so the skills screen tints them by state (learned, open, a stub); draw real
 ones the same way, or in colour where tinting doesn't matter. Godot imports a new PNG on the next
 `godot --headless --path . --import` (the tools run it); commit the .png.import beside it. Plain python3.
 """
@@ -138,6 +139,27 @@ def missing_skill_icons():
                   and not os.path.exists(os.path.join(ROOT, SKILL_ICONS, f[:-5] + ".png")))
 
 
+# --- effects: an icon on a unit card's row of what's on it, about a chip's height, white on clear (tinted there)
+
+SHAPES = {  # pixel art by rows, '#' set
+    "eye": "...#####... .##.....##. #...###...# #..#####..# #...###...# .##.....##. ...#####...",
+}
+EFFECT_ICONS = "Icons/Effects"
+
+
+def effect(eid, shape=None, text=None, dry=False):
+    if shape:
+        shape in SHAPES or die("--shape: one of %s" % ", ".join(SHAPES))
+        rows = SHAPES[shape].split(" ")
+        w, h = len(rows[0]), len(rows)
+        px = [[(255, 255, 255, 255) if ch == "#" else (0, 0, 0, 0) for ch in row] for row in rows]
+    else:
+        w, h = 13, 9
+        px = blank(w, h)
+        letters(px, (text or eid[:2])[:2], 1, (255, 255, 255, 255))
+    save("%s/%s.png" % (EFFECT_ICONS, eid), w, h, px, dry)
+
+
 # --- tiles and units
 
 def tile(tid, rgb, text=None, dry=False):
@@ -182,6 +204,10 @@ def main():
         k.add_argument("id")
         k.add_argument("--color", required=True, help='"#rrggbb"')
         k.add_argument("--text")
+    e = sub.add_parser("effect", help="Icons/Effects/<id>.png")
+    e.add_argument("id")
+    e.add_argument("--shape", help="drawn: %s" % ", ".join(SHAPES))
+    e.add_argument("--text", help="or up to 2 letters (default: the id's first two)")
     for k in sub.choices.values():
         k.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -190,6 +216,8 @@ def main():
     elif a.cmd == "skills":
         for sid in missing_skill_icons():
             skill_icon(sid, None, a.dry_run)
+    elif a.cmd == "effect":
+        effect(a.id, a.shape, a.text, a.dry_run)
     elif a.cmd == "tile":
         tile(a.id, colour(a.color), a.text, a.dry_run)
     else:

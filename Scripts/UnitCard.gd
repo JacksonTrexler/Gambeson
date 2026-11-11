@@ -9,6 +9,7 @@ var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 var face: Label  # a persona's stand-in sprite (";)"), over the portrait in place of its look
 var effects: HFlowContainer  # what's timed on it, an icon each, under the chips
 var note: Label  # an insightful read of how true its presentation is, under the rows
+var _shown: Variant = null  # the info last shown (set_info())
 
 @onready var portrait: TextureRect = $Head/Portrait
 @onready var title: Label = $Head/Names/Name
@@ -36,13 +37,17 @@ func _ready() -> void:
 
 
 # info: {name, sub, look: Texture2D, face: String, shape: bool, chips: [[text, Color]], effects:
-# [[mark, Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String}. face: text
+# [[mark (text, or a Texture2D drawn in the colour), Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String}. face: text
 # standing in for the look (a persona's claimed name). shape: its side can't be told (the card's
 # "Unknown" chip says so). silhouette: only a black shape of it shows (Read.silhouette()).
 # roll: the roll an effect was put on with, in its icon's top right ("" when unknown). A row whose
 # max is null shows its value as text alone. note: a line of prose under the rows (an insightful
-# read). No info: nothing selected.
+# read). No info: nothing selected. The same info again changes nothing, so a tooltip being hovered
+# isn't pulled out from under the pointer and its delay (1 s, project settings) isn't restarted.
 func set_info(info: Dictionary) -> void:
+	if _shown is Dictionary and info == _shown:
+		return
+	_shown = info.duplicate(true)
 	face.text = info.get("face", "")
 	portrait.texture = null if face.text else info.get("look")
 	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("silhouette", false) else Color.WHITE
@@ -68,7 +73,7 @@ func set_info(info: Dictionary) -> void:
 
 # An effect's icon: its mark in its colour, what it does as a tooltip, and the roll it was put on
 # with (Self-evaluation) small in the top right.
-func _effect(mark: String, color: Color, tip: String, roll: String) -> Control:
+func _effect(mark: Variant, color: Color, tip: String, roll: String) -> Control:
 	var icon := PanelContainer.new()
 	icon.add_theme_stylebox_override(&"panel", get_theme_stylebox(&"normal", &"Chip"))
 	icon.tooltip_text = tip
@@ -76,11 +81,19 @@ func _effect(mark: String, color: Color, tip: String, roll: String) -> Control:
 	h.add_theme_constant_override(&"separation", 1)
 	h.mouse_filter = MOUSE_FILTER_IGNORE
 	icon.add_child(h)
-	var l := Label.new()
-	l.text = mark
-	l.add_theme_font_size_override(&"font_size", 5)
-	l.add_theme_color_override(&"font_color", color)
-	h.add_child(l)
+	if mark is Texture2D:  # a status with art of its own (Suspicion's eye: Icons/Effects/)
+		var pic := TextureRect.new()
+		pic.texture = mark
+		pic.modulate = color
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		pic.mouse_filter = MOUSE_FILTER_IGNORE
+		h.add_child(pic)
+	else:
+		var l := Label.new()
+		l.text = mark
+		l.add_theme_font_size_override(&"font_size", 5)
+		l.add_theme_color_override(&"font_color", color)
+		h.add_child(l)
 	if roll:
 		var n := Label.new()
 		n.text = roll

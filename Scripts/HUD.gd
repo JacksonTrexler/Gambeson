@@ -32,6 +32,8 @@ const FRIEND := Color("#6fdc8c")
 const AP_COLOR := Color("#7cc4ff")
 const MOVE_COLOR := Color("#b8c0cc")
 const SLEEP := Color("#9db4ff")
+const SUSPICION := Color("#b07ae8")  # the suspicion eye (suspicion_icons())
+const SUSPICION_ICON := preload("res://Icons/Effects/suspicion.png")
 # What a Downed unit died of (Downed.succumb()), for the log.
 const DBNO_DEATHS := {&"limit": "its HP past its limit", &"rounds": "its rounds are up", &"actions": "one skill too many", &"melee": "a round without a melee attack", &"slain": "finished off"}
 const GROUND := {&"safe": Color("#7cc4ff"), &"unsure": Color("#f2c94c"), &"bad": Color("#a32424")}
@@ -233,8 +235,9 @@ func _ready() -> void:
 	battle.stalled.connect(_on_stalled)
 	battle.struggled.connect(_on_struggled)
 	battle.gripped.connect(_on_gripped)
-	battle.doubted.connect(_on_doubted)
-	battle.inspected.connect(_on_inspected)
+	battle.discovered.connect(_on_discovered)
+	battle.unmasked.connect(_on_unmasked)
+	battle.vanished.connect(_on_vanished)
 	battle.untangled.connect(_on_untangled)
 	battle.refused.connect(_on_refused)
 	%CharacterIcon.pressed.connect(toggle_sheet)
@@ -914,11 +917,37 @@ func _on_gripped(u: Unit, by: Unit, dealt: int) -> void:
 	_mark()
 
 
-# One of the player's units grows suspicious of a tile it inspected.
-func _on_inspected(by: Unit, at: Vector2i, total: int, against: int) -> void:
-	if known(by) and total >= against:
-		_log("%s suspects %d, %d%s" % [_tag(by), at.x, at.y, _rolls(total, null)])
+# Suspicion is logged at its turns, not stack by stack: one of the player's units finds something odd
+# about a unit or tile ("?": its first suspicion of it), sees through it ("!": what it took it for,
+# then what it is), or watches a unit vanish before its eyes ("!?": it goes on taking it for its side).
+func _on_discovered(by: Unit, of: Variant) -> void:
+	if known(by):
+		_log("%s [color=#%s]?[/color] %s" % [_tag(by), GOLD.to_html(false), _seen_as(by, of)])
 		_mark()
+
+
+func _on_unmasked(by: Unit, of: Variant, was: Read) -> void:
+	if known(by):
+		var then := (was.name if was.name else ("a %s" % was.looks if was.looks else "Something")) if of is Unit else \
+				"%s at %d, %d" % [was.name if was.name else "The ground", of.x, of.y]
+		var now := battle.read(by, of)
+		var is_now := (now.name if now.name else "Something") if of is Unit else (("a " + now.name) if now.name else "something")
+		_log("%s [color=#%s]![/color] %s is %s" % [_tag(by), FOE.to_html(false), then.replace("[", "[lb]"), is_now.replace("[", "[lb]")])
+		_mark()
+
+
+func _on_vanished(by: Unit, of: Unit, was: Read) -> void:
+	if known(by):
+		_log("%s [color=#%s]!?[/color] %s vanishes" % [_tag(by), SUSPICION.to_html(false), (was.name if was.name else "Something").replace("[", "[lb]")])
+		_mark()
+
+
+# A unit or tile as `by` knows it, for the log: "Precious Friend", "Grass at 3, 4".
+func _seen_as(by: Unit, of: Variant) -> String:
+	if of is Unit:
+		return known_name(by, of).replace("[", "[lb]")
+	var r := battle.read(by, of)
+	return "%s at %d, %d" % [(r.name if r.name else "The ground").replace("[", "[lb]"), of.x, of.y]
 
 
 # One of the player's units, under Haluca, sees an ally's tags straight again.
@@ -932,13 +961,6 @@ func _on_untangled(by: Unit, of: Unit, total: int, against: int) -> void:
 func _on_refused(u: Unit, leader: Unit) -> void:
 	if leader == command.leader:
 		_log("%s refuses %s" % [_tag(u), _tag(leader)])
-		_mark()
-
-
-# One of the player's units grows suspicious of a unit fooling it (its roll, but not the liar's).
-func _on_doubted(by: Unit, of: Unit, total: int, against: int) -> void:
-	if known(by) and total >= against:
-		_log("%s suspects %s%s" % [_tag(by), _tag(of), _rolls(total, null)])
 		_mark()
 
 
@@ -1928,7 +1950,7 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return u.stat(x))), null, MUTED])
 		info.rows = rows
-		info.effects = effect_icons(u) + suspicion_icons(u.suspicion)
+		info.effects = effect_icons(u) + suspicion_icons(u, u.suspicion)
 		info.chips = chips
 		return info
 	var r := view(u)
@@ -2001,7 +2023,7 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return r.stats[x])), null, MUTED])
 	info.rows = rows
 	if known(u):
-		info.effects = effect_icons(u, r.effects) + suspicion_icons(r.suspects)
+		info.effects = effect_icons(u, r.effects) + suspicion_icons(u, r.suspects)
 		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
 			info.effects = [["?", MUTED, "Something's affecting %s; your side can't make out what" % _name(u), ""]]
 	info.note = "" if known(u) and r.insight.ends_with("appear otherwise.") else r.insight  # an honest ally goes without saying
@@ -2054,16 +2076,28 @@ func effect_icons(u: Unit, only: Variant = null) -> Array:
 	return out
 
 
-# [mark, colour, tooltip, roll] for each unit one has grown suspicious of (Battle.suspect()): a buff
-# against that unit alone.
-func suspicion_icons(of: Dictionary) -> Array:
-	var out := []
+# Suspicion (Battle.suspect()) as one utility status, a purple eye, whatever u has grown suspicious of:
+# its tooltip names each unit and tile as u knows it - the name it goes by to u, or how it looks; the
+# ground it seems to be - with the ranks of trickery and concealment u sees through there, and the
+# eye's corner counts them. [] when it suspects nothing (still standing).
+func suspicion_icons(u: Unit, of: Dictionary) -> Array:
+	var lines: PackedStringArray = []
 	for t: Variant in of:
+		var ranks := "%d rank%s" % [of[t], "" if of[t] == 1 else "s"]
 		if t is Vector2i:
-			out.append(["Su", FRIEND, "Suspicious of the ground at %d, %d\nSees through %d rank%s of what hides there" % [t.x, t.y, of[t], "" if of[t] == 1 else "s"], ""])
+			var seen := battle.read(u, t)
+			lines.append("%s at %d, %d: sees through %s of what hides there" % [seen.name if seen.name else "The ground", t.x, t.y, ranks])
 		elif t.is_alive():
-			out.append(["Su", FRIEND, "Suspicious of %s\nSees through %d rank%s of its trickery and concealment" % [_name(t), of[t], "" if of[t] == 1 else "s"], ""])
-	return out
+			lines.append("%s: sees through %s of its trickery and concealment" % [known_name(u, t), ranks])
+	if lines.is_empty():
+		return []
+	return [[SUSPICION_ICON, SUSPICION, "Suspicious\n" + "\n".join(lines), str(lines.size()) if lines.size() > 1 else ""]]
+
+
+# What o calls t: the name it goes by to o, else how it looks ("a Beautiful Minstrel"), else "Something".
+func known_name(o: Unit, t: Unit) -> String:
+	var r := battle.read(o, t)
+	return r.name if r.name else ("A %s" % r.looks if r.looks else "Something")
 
 
 # " · 2 turns left", " · until it moves", " · until it breaks free", " · 1 turn left, then fading".

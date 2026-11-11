@@ -71,6 +71,9 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		r.max_hp = t.max_hp
 		r.energy = t.energy
 		r.stores = t.stores.duplicate()
+	elif o != t and o.assumed.has(t):  # it vanished before o's eyes: o takes it for what it seemed (a lie still fools it: _lie())
+		r.faction = o.assumed[t]
+		r.assumed = true
 	if shown.call(0, 1):
 		r.healthy = t.hp * 2 > t.max_hp
 	if shown.call(1, 1):
