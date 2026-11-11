@@ -62,7 +62,8 @@ var dubious: Dictionary[Vector2i, String] = {}  # tiles where something is only 
 var sleepers: Array[Unit] = []  # units the player can see are asleep, as of the last refresh
 var traps: Dictionary[Vector2i, bool] = {}  # traps the player's side knows of: true for ones it laid
 var grounds: Dictionary[Vector2i, StringName] = {}  # ground() for every tile, as of the last refresh
-var marks: Dictionary[Unit, int] = {}  # what the player's side last made of each trick in plain view (Read.mark()): a change pops a mark (_pop())
+var marks: Dictionary[Unit, Dictionary] = {}  # per viewer (eyes()), what it last made of each trick in plain view (Read.mark()): a change pops a mark (_pop())
+var _viewer: Unit  # whose eyes the last _show_units() drew through
 var suspect: Dictionary[Vector2i, String] = {}  # concealed tiles the player has a hint about (a disguised trap) -> the hint
 var _icons := {}  # [source id, atlas coords] -> AtlasTexture, for the tile pane
 var _pane_list := ""  # what the pane's effect list last showed (a new one scrolls from the start)
@@ -728,12 +729,26 @@ func observer() -> Unit:
 	return allies[0] if allies else null
 
 
-# What the player's side makes out about a unit: what the player sees - its leader, else whoever of
-# its side is still standing (observer()). Others' sight reaches it only through skills that share
-# what they make out (Coordinate: Battle.read()). The observer itself, and with no one left to look,
-# nothing.
+# The player is commanding a unit: one of its side, selected, on its side's turn (taking an order
+# right now or not, so the view holds steady as orders are spent).
+func commanding() -> bool:
+	return selected != null and is_instance_valid(selected) and selected.is_alive() and known(selected) \
+			and battle.phase == Battle.Phase.TURNS and battle.turn == command.faction() and not autopilot()
+
+
+# Whose eyes the player sees through: the unit it commands, else observer() (the leader if it can be).
+func eyes() -> Unit:
+	return selected if commanding() else observer()
+
+
+# What the player's side makes out about a unit: what the player sees - through the unit it commands,
+# else its leader, else whoever of its side is still standing (eyes()). The viewer's own card reads as
+# the leader sees it. Others' sight reaches it only through skills that share what they make out
+# (Coordinate: Battle.read()). The observer itself, and with no one left to look, nothing.
 func view(u: Unit) -> Read:
-	var o := observer()
+	var o := eyes()
+	if o == u:
+		o = observer()
 	if o == null or o == u:
 		var none := Read.new()
 		none.net = -4
@@ -747,7 +762,7 @@ func view(u: Unit) -> Read:
 
 
 func tile_view(c: Vector2i) -> Read:
-	var o := observer()
+	var o := eyes()
 	return battle.read(o, c) if o else Read.new()
 
 
@@ -1311,7 +1326,7 @@ func _shown_cells() -> Array[Vector2i]:
 		out[c] = true
 	for c in dubious:
 		out[c] = true
-	var o := observer()
+	var o := eyes()
 	if o:
 		for c in battle.maybe_suspicious(o):
 			out[c] = true
@@ -1363,6 +1378,11 @@ func _show_units() -> void:
 	dubious.clear()
 	if battle.phase == Battle.Phase.OVER:
 		return
+	var o := eyes()
+	var quiet := o != _viewer and _viewer != null and not marks.has(o)  # a first look through new eyes: noted, not popped
+	_viewer = o
+	if o and not marks.has(o):
+		marks[o] = {}
 	for u: Unit in battle.get_node("Units").get_children():
 		if not u.is_alive():
 			continue
@@ -1372,7 +1392,8 @@ func _show_units() -> void:
 			continue
 		var r := view(u)
 		u.appear(r)
-		_pop(u, r)
+		if o:
+			_pop(u, r, marks[o], quiet)
 		u.position = battle.map.map_to_local(r.cell if r.located() else u.cell)  # a stale ping: where it was sensed
 		u.set_saturation(1.0)  # its colour isn't the player's to drain (a unit that changed sides)
 		if r.located() and r.silhouette() and battle.pinged(command.faction()).has(u):
@@ -1386,14 +1407,17 @@ func _show_units() -> void:
 			u.set_glow(level, high_contrast and (known(u) or level >= 0))
 
 
-# Once per change in what the player's side makes of a trick in plain view (Read.mark()), a mark
-# pops over it and fades: "?" (neutral) when suspicion first lands on it, "!" in its true side's
-# colour when that suspicion sees through it.
-func _pop(u: Unit, r: Read) -> void:
+# Once per change in what one viewer makes of a trick in plain view (Read.mark()), a mark pops over
+# it and fades: "?" (neutral) when suspicion first lands on it, "!" in its true side's colour when
+# that suspicion sees through it. seen: that viewer's last marks (marks[eyes()]), so switching eyes
+# pops nothing by itself; quiet: only note them (a viewer's first look).
+func _pop(u: Unit, r: Read, seen: Dictionary, quiet := false) -> void:
 	var m := r.mark()
-	if m == marks.get(u, Read.Mark.NONE):
+	if m == seen.get(u, Read.Mark.NONE):
 		return
-	marks[u] = m
+	seen[u] = m
+	if quiet:
+		return
 	if m == Read.Mark.DOUBT:
 		u.pop_mark("?", Color.WHITE)
 	elif m == Read.Mark.CAUGHT:
@@ -1928,9 +1952,9 @@ func _info(u: Unit) -> Dictionary:
 	if r.faction == null:
 		chips.append(["Unknown", MUTED])
 	elif doubt:
-		chips.append(["Suspected", MUTED])
+		chips.append(["?", MUTED])
 	elif r.stance in [&"aggressive", &"passive", &"traitor"]:
-		chips.append([String(r.stance).capitalize(), FOE if r.attitude(observer()) == &"avoid" else MUTED])
+		chips.append([String(r.stance).capitalize(), FOE if r.attitude(eyes()) == &"avoid" else MUTED])
 	elif known(u) and r.faction == command.faction():
 		chips.append(["Party", GOLD] if u in command.party else ["Ally", shade(u.faction.primary)])
 	elif r.faction == command.faction():

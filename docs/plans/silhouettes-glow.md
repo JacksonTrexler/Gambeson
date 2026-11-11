@@ -78,3 +78,16 @@ Branch `v-suspicion`; tests `hud_test.test_silhouette`, `hud_test.test_suspicion
 - `HUD._pop` remembers the last mark per unit (`HUD.marks`): a pop plays only on a change, from the
   observer's read (the leader's, as `view()`), so only suspicion the player's side holds shows.
 - A plain unit merely suspected (no trick) gets no mark and keeps the ordinary look.
+- Ruled 2026-11-11 ("unit card should just read ? / suspicion tracked by unit not just leader, while
+  commanding unit player sees through their eyes"); branch `w-sight`, test `hud_test.test_sight_by_unit`:
+  - The card chip reads just "?" (was "Suspected").
+  - `HUD.eyes()`: while the player commands a unit (`HUD.commanding()`: selected, alive, of its side, in
+    the TURNS phase on its side's turn, not autopilot; whether it can take another order doesn't matter,
+    so the view holds as orders are spent) the map's units, shapes, marks, glow, card reads, suspect
+    tiles and tile reads follow that unit's read; otherwise `observer()` (the leader, else any ally).
+    The viewer's own card still reads as the leader sees it. `observer()` itself is unchanged (camera,
+    spellbook fallback).
+  - `HUD.marks` is kept per viewer. A viewer's first look (new eyes) notes its marks without popping;
+    after that a mark pops only when that viewer's read of the unit changes, so switching units pops
+    nothing by itself (returning to a viewer whose read changed while away does pop, once).
+  - Cost: a selection already redraws (`select()` -> `_mark()`); no per-frame work was added.
