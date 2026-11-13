@@ -5,7 +5,7 @@ class_name Difficulty
 # there's no rank, a flat one. Units expected to meet a kind of check regularly are assumed to bring
 # bonuses about equal to its rank: a fledgling rogue picks a rank I lock with an OK chance.
 #
-# Magnitudes do the same for how much: a share of rank (an intense cone runs 2.5 x rank tiles, extreme
+# Magnitudes do the same for how much: a share of rank (an intense cone runs 2.5 x rank tiles, severe
 # damage rolls 3 x rank dice).
 
 # tag -> [base, per, flat]: dc(rank) = (rank + base) + rank x per; trivial is always 1.
@@ -37,7 +37,7 @@ const MAGNITUDE := {
 	&"moderate": 1.5,
 	&"strong": 2.0,
 	&"intense": 2.5,
-	&"extreme": 3.0,
+	&"severe": 3.0,
 	&"overwhelming": 4.0,
 }
 

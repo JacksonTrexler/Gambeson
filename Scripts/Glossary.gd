@@ -47,7 +47,7 @@ const TERMS := {
 	&"unfair": ["Unfair", &"check", "DC (rank + 5) + rank x 3, or 20 without a rank. Prying apart shackles built not to break."],
 	&"impossible": ["Impossible", &"check", "DC (rank + 6) + rank x 3, or 30 without a rank."],
 	&"intense": ["Intense", &"check", "Scales with rank: 2.5 x rank, rounded up."],
-	&"extreme": ["Extreme", &"check", "Scales with rank: 3 x rank, rounded up."],
+	&"severe": ["Severe", &"check", "Scales with rank: 3 x rank, rounded up."],
 	&"true": ["True", &"damage", "Damage nothing reduces or redirects: it goes straight to HP."],
 	&"unblockable": ["Unblockable", &"damage", "Damage mitigation doesn't reduce."],
 	&"drain": ["Drain", &"damage", "Energy damage takes Energy (or Power) first; only what's past it reaches HP."],
