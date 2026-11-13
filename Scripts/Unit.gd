@@ -409,11 +409,11 @@ func _process(_delta: float) -> void:
 
 
 # Its rank in s as it uses it: what it has learned, plus what rank effects add or take (a Broadsword:
-# Strike; Record Striker's curse) and a primed Chant (a Warlock skill, once); 0 if it doesn't have s,
-# or it's cursed down to nothing.
+# Strike; Record Striker's curse), a primed Chant (a Warlock skill, once) and +1 if the skill is enchanted
+# or honed (Tags.quality_rank(): a capstone's weight); 0 if it doesn't have s, or it's cursed down to nothing.
 func rank(s: Skill) -> int:
 	var r: int = base_rank(s) - unranked().get(s, 0)
-	return maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags), 0) if r > 0 else 0
+	return maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags) + Tags.quality_rank(s.tags), 0) if r > 0 else 0
 
 
 # Levels a curse has taken off it (Level Down), from its timed level effects alone (its passives can't
@@ -719,7 +719,7 @@ func sealed(i: int) -> bool:
 # (magical, martial, specialist: it only holds skills carrying that tag), or &"" for an untyped one.
 func granted_slots() -> Array[StringName]:
 	var out: Array[StringName] = []
-	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank]) + items().map(func(it: Item): return [it.effects, it.rank])
+	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank]) + items().map(func(it: Item): return [it.effects, it.ranked()])
 	for pair in sources:
 		for e: Effect in pair[0]:
 			if e.stat == "slots":
@@ -740,9 +740,9 @@ func burning_slots() -> Dictionary:
 			var n := 0
 			for e in it.effects:
 				if e.stat == "slots":
-					n += roundi(e.amount * (it.rank if e.per_rank else 1))
+					n += roundi(e.amount * (it.ranked() if e.per_rank else 1))
 			for i in range(end - n, end):
-				out[i] = [maxi(rounded(0.1 * it.rank * max_hp), 1), null]
+				out[i] = [maxi(rounded(0.1 * it.ranked() * max_hp), 1), null]
 	for e in timed:
 		if e.stat == "cinders":
 			var a := timed[e]
@@ -1443,14 +1443,14 @@ func weapon_bonus(s: StringName) -> int:
 	return weapon.enchant if weapon and s == &"strength" else 0
 
 
-# Pray, to Urlo: enchants up to n of its unenchanted items, weapon first, then armor: what an item
+# Pray, to Urlo: enchants up to n of its unenchanted, unhoned items, weapon first, then armor: what an item
 # becomes enchanted (Item.enchanted_as), else a copy of its own at +1. Items with nothing to scale
 # would be skipped (none yet). How many it enchanted.
 func enchant(n: int) -> int:
 	var done := 0
 	for slot in [&"weapon", &"armor"]:
 		var item: Item = get(slot)
-		if done < n and item and not item.enchanted():
+		if done < n and item and not item.enchanted() and not item.honed():  # honed: already as good as it gets
 			if item.enchanted_as:
 				set(slot, item.enchanted_as)
 			else:
@@ -2274,7 +2274,7 @@ func armor_drag(pool: StringName) -> float:
 	var m := mod(&"constitution" if pool == &"move" else &"strength")
 	if armor.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
 		return 0.0
-	return maxf((armor.rank - m) / (2.0 if armor.weight_class() == &"medium" else 1.0), 0.0)
+	return maxf((armor.ranked() - m) / (2.0 if armor.weight_class() == &"medium" else 1.0), 0.0)
 
 
 # Wearing armor to some effect: armor that sets Defense, whose requirement it meets. Bracing passives
@@ -2305,7 +2305,7 @@ func check_bonus(s: StringName, kind: StringName) -> int:
 		if e.stat == "check":
 			total += roundi(e.amount * (pair[1] if e.per_rank else 1) * pair[2])
 		elif armored() and (e.tags.is_empty() or w in e.tags):
-			total += mini(floori(armor.rank * e.amount), pair[1])
+			total += mini(floori(armor.ranked() * e.amount), pair[1])
 	return total
 
 
@@ -2549,7 +2549,7 @@ func _gather_effects(viewer: Unit) -> Array:
 			out.append([e, 1, 1.0])
 	for it in items():
 		for e in it.effects:
-			out.append([e, it.rank, 1.0])
+			out.append([e, it.ranked(), 1.0])
 	if bio:
 		for p in bio.properties:
 			for e in p.effects:
