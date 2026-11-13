@@ -2418,8 +2418,9 @@ func issue_intent(u: Unit, intent: StringName) -> bool:
 	return true
 
 
-# After a Meditation: a small panel to shift u's six ability scores, each within `room` of where it was
-# born. Shift commits them (Battle.respec()); Keep closes it - either way the room is spent.
+# After a Meditation: a small panel to move up to `room` points between u's six ability scores, one
+# down for each one up. Shift (open once they balance) commits them (Battle.respec()); Keep closes it -
+# either way the room is spent.
 func _respec_window(u: Unit, room: int) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "Respec"
@@ -2431,14 +2432,22 @@ func _respec_window(u: Unit, room: int) -> void:
 	col.add_child(title)
 	var note := Label.new()
 	note.theme_type_variation = &"Muted"
-	note.text = "Shift each stat up to %d from birth" % room
+	note.text = "Move up to %d point%s: one down for each up" % [room, "" if room == 1 else "s"]
 	col.add_child(note)
 	var grid := GridContainer.new()
 	grid.columns = 4
 	var picked := {}
+	var shift := Button.new()
+	var balance := func() -> void:  # Shift opens once the points down pay for the points up, within room
+		var total := 0
+		var moved := 0
+		for t in picked:
+			total += picked[t] - int(u.get(t))
+			moved += maxi(picked[t] - int(u.get(t)), 0)
+		shift.disabled = total != 0 or moved == 0 or moved > room
 	for s: StringName in Skill.STAT_TAGS.values():
-		var born: int = u.get(s) - u.respec.get(s, 0)
-		picked[s] = int(u.get(s))
+		var now := int(u.get(s))
+		picked[s] = now
 		var name := Label.new()
 		name.text = String(s).left(3).capitalize()
 		name.custom_minimum_size.x = 22
@@ -2456,9 +2465,10 @@ func _respec_window(u: Unit, room: int) -> void:
 			btn.focus_mode = Control.FOCUS_NONE
 			btn.custom_minimum_size = Vector2(11, 0)
 			btn.pressed.connect(func() -> void:
-				picked[s] = clampi(picked[s] + step, born - room, born + room)
+				picked[s] = clampi(picked[s] + step, maxi(now - room, 1), now + room)
 				value.text = str(picked[s])
-				value.add_theme_color_override(&"font_color", GOLD if picked[s] != int(u.get(s)) else Color.WHITE))
+				value.add_theme_color_override(&"font_color", GOLD if picked[s] != now else Color.WHITE)
+				balance.call())
 		grid.add_child(name)
 		grid.add_child(less)
 		grid.add_child(value)
@@ -2467,8 +2477,8 @@ func _respec_window(u: Unit, room: int) -> void:
 	var row := HBoxContainer.new()
 	var keep := Button.new()
 	keep.text = "Keep"
-	var shift := Button.new()
 	shift.text = "Shift"
+	balance.call()
 	row.add_child(keep)
 	row.add_child(shift)
 	col.add_child(row)

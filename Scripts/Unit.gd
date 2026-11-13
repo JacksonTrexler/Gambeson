@@ -1619,14 +1619,21 @@ func level_hp() -> int:
 	return per * lv()
 
 
-# Shifts its base stats (Meditate): `changes` stat -> amount, each stat's total shift kept within
-# `limit` either way of what it was born with. All or nothing: false (and no change) if any would go
-# past it. Everything derived follows (refit()).
+# Shifts its base stats (Meditate): `changes` stat -> amount, points moved out of some core stats and
+# into others - the decreases pay for the increases exactly (the amounts sum to 0), at most `limit`
+# points moved (a point a rank a use), and no stat below 1. All or nothing: false (and no change)
+# otherwise. `respec` keeps the running shift from birth. Everything derived follows (refit()).
 func respec_by(changes: Dictionary, limit: int) -> bool:
+	var total := 0
+	var moved := 0
 	for s in changes:
 		assert(s in CORE, "%s isn't a core stat" % s)
-		if absi(respec.get(s, 0) + changes[s]) > limit:
+		total += changes[s]
+		moved += maxi(changes[s], 0)
+		if get(s) + changes[s] < 1:
 			return false
+	if total != 0 or moved > limit or moved == 0:
+		return false
 	for s in changes:
 		respec[s] = respec.get(s, 0) + changes[s]
 		set(s, get(s) + changes[s])

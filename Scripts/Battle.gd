@@ -1757,7 +1757,7 @@ func unequip(u: Unit, slot: String) -> Item:
 	return u.unequip(slot)
 
 
-# After a Meditation (respec_room), u shifts its stats: each within that room of where it was born
+# After a Meditation (respec_room), u moves up to that many points from some core stats into others
 # (Unit.respec_by()), all or nothing. The room is spent either way. True if they shifted.
 func respec(u: Unit, changes: Dictionary) -> bool:
 	if u.respec_room <= 0:
