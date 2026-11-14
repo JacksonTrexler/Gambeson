@@ -8,6 +8,7 @@ extends VBoxContainer
 var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 var face: Label  # a persona's stand-in sprite (";)"), over the portrait in place of its look
 var effects: HFlowContainer  # what's timed on it, an icon each, under the chips
+const ICON_SIZE := 20  # an item's icon beside its banner (trim_mark)
 var trims: HBoxContainer  # a little banner per item it wears with a trim (Item.trim()), over the portrait's foot
 var note: Label  # an insightful read of how true its presentation is, under the rows
 var _shown: Variant = null  # the info last shown (set_info())
@@ -70,7 +71,7 @@ func set_info(info: Dictionary) -> void:
 		l.add_theme_color_override(&"font_color", chip[1])
 		chips.add_child(l)
 	for t in info.get("trims", []):
-		trims.add_child(trim_mark(t[0], t[1]))
+		trims.add_child(trim_mark(t[0], t[1], t[2] if t.size() > 2 else null))
 	for e in info.get("effects", []):
 		effects.add_child(_effect(e[0], e[1], e[2], e[3]))
 	effects.visible = effects.get_child_count() > 0
@@ -82,7 +83,23 @@ func set_info(info: Dictionary) -> void:
 
 # An item's trim as a little banner (Item.draw_banner()), its tooltip the item: the unit card, the
 # character sheet. A clear colour: an empty space the same size, so rows line up.
-static func trim_mark(c: Color, tip: String) -> Control:
+# With an icon (Item.icon(), a 32x32 from Icons/Items/), the banner sits beside it, so what's worn reads at a glance.
+static func trim_mark(c: Color, tip: String, icon: Texture2D = null) -> Control:
+	if icon:
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override(&"separation", 1)
+		h.tooltip_text = tip
+		h.mouse_filter = MOUSE_FILTER_PASS
+		var pic := TextureRect.new()
+		pic.texture = icon
+		pic.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		pic.mouse_filter = MOUSE_FILTER_IGNORE
+		h.add_child(pic)
+		h.add_child(trim_mark(c, ""))
+		return h
 	var m := Control.new()
 	m.custom_minimum_size = Vector2(7, 10)
 	m.tooltip_text = tip
