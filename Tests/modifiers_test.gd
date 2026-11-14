@@ -203,6 +203,10 @@ func test_emblem_scopes() -> void:
 	ok(not v(1).mods(a).empty() and not v(1).mods(c).empty(), "a Crest: actives")
 	var made: Item = load("res://Items/fire_insignia.tres")
 	ok(made.emblem == &"fire" and made.scope == &"insignia" and made.slot == "trinket" and "Puts fire on every skill it fits" in made.describe(), made.describe())
+	ok(made.trim() == Tags.color(&"fire") and made.trim_tag() == &"fire", "its trim is fire's, not its form word's (Tags.PLAIN)")
+	for f in ["density_sigil", "diluted_sigil", "concentrated_crest", "dispersed_crest", "restrictive_badge", "unrestrictive_insignia", "execute_sigil"]:
+		var it: Item = load("res://Items/%s.tres" % f)
+		ok(it.trim_tag() == it.emblem and it.trim() == Tags.color(it.emblem) and it.emblem in Tags.COLOR, "%s: trimmed in its modifier's colour (%s)" % [it.name, it.trim_tag()])
 	var loot: Loot = load("res://Loot/alabaster.tres")
 	ok(loot.items.any(func(it: Item): return it.name == "Execute Sigil") and loot.items.filter(func(it: Item): return it.emblem in Modifiers.SYMBOLS).size() == 6, "in loot: every symbol, the Fire Insignia, the Execute Sigil")
 

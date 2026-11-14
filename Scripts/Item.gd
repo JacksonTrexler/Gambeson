@@ -248,8 +248,10 @@ func honed() -> bool:
 # The tag its trim shows (Tags.mark()): its first coloured tag that isn't a plain word, light, medium
 # and heavy read as its weight (WEIGHTS) rather than an element. &"" untrimmed. An emblem carrying a tag
 # or a symbol in its tags (a Fire Insignia) is trimmed in it.
+# An emblem's modifier (Item.emblem: a symbol or a tag) marks it first: the Fire Insignia is trimmed fire.
 func trim_tag() -> StringName:
-	return Tags.mark(tags, WEIGHTS.keys())
+	var marks: Array[StringName] = ([emblem] as Array[StringName]) + tags if emblem else tags
+	return Tags.mark(marks, WEIGHTS.keys())
 
 
 # Its trim colour (Tags.color() of trim_tag()), clear when it has none: drawn on the character sheet,

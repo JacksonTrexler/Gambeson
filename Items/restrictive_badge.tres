@@ -6,6 +6,7 @@
 script = ExtResource("1_item")
 name = "Restrictive Badge"
 slot = "trinket"
+tags = Array[StringName]([&"badge"])
 rarity = "rare"
 emblem = &"lambda_up"
 scope = &"badge"
