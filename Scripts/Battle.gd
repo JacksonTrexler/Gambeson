@@ -638,6 +638,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var mends := not foe and skill.god_tag and caster.deity() == &"eros"  # Eros's Smite heals allies
 	if not (skill.for_foes() if foe else (skill.for_allies() or mends)) or not in_reach(caster, skill, target):
 		return false
+	if not skill.behaviours.all(func(x: Behaviour): return x.fits(self, caster, target)):
+		return false  # not a target it can be used on (Resuscitate: only the Downed)
 	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags_to else null
 	if foe and skill.drags_to and spot == null:
 		return false

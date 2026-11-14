@@ -35,6 +35,12 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# Whether the skill can be used on target at all (Battle.cast() asks before it's paid for; Resuscitate:
+# only a Downed unit). Every behaviour on it must allow it.
+func fits(_b: Battle, _caster: Unit, _target: Unit) -> bool:
+	return true
+
+
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
 # (Jam drains as much of its Focus); what a siphon took is c.siphoned (Energy Transfer).
 func dealt(_c: Cast, _n: int) -> void:
