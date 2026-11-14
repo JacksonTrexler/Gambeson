@@ -10,20 +10,17 @@ class_name Glossary
 #   {t:3 turns}      how long
 #   {x:fire}         a damage tag
 # plain() reads it as plain text (tests, the spellbook's lines); rich() as BBCode for a RichTextLabel:
-# each kind in its colour, terms hoverable for their definition and clickable ("term:attack" meta: the
-# Guide's page for it).
+# each kind in its colour, terms and tags in their own (Tags.color()), terms hoverable for their
+# definition and clickable ("term:attack" meta: the Guide's page for it).
 
 const OFFENSE := Color("#eba25e")  # warm: what the user brings
 const DEFENSE := Color("#74b4e8")  # cool: what the target resists with
 const RANK := Color("#e8c547")
 const TIME := Color("#9fd6c8")
-const TAG := Color("#c9ccd4")
 const KINDS := {&"check": Color("#f0d48a"), &"damage": Color("#ff9e8a"), &"condition": Color("#d8a6e6"),
 		&"ground": Color("#b9cf8a"), &"target": Color("#c8d0dc")}
 const PAGES := {&"check": &"checks", &"damage": &"checks", &"condition": &"conditions", &"ground": &"ground", &"target": &"skills"}
-const ELEMENTS := {&"fire": Color("#f08a55"), &"light": Color("#f2e39a"), &"dark": Color("#9d8fe0"), &"water": Color("#68aee8"),
-		&"earth": Color("#c49a66"), &"energy": Color("#6fd8e4"), &"love": Color("#ee95c0"), &"magical": Color("#b49ae6"),
-		&"physical": Color("#d0d0d0"), &"slash": Color("#d0d0d0"), &"pierce": Color("#d0d0d0"), &"blunt": Color("#d0d0d0")}
+# Each term's and tag's colour is Tags.COLOR's (Tags.color()); KINDS is the palette generic terms take.
 
 # id -> [name, kind, definition]. Definitions keep clear of square brackets (BBCode).
 const TERMS := {
@@ -137,7 +134,7 @@ static func define(id: StringName) -> String:
 
 
 static func colour(id: StringName) -> Color:
-	return KINDS[TERMS[id][1]] if id in TERMS else TAG
+	return Tags.color(id)
 
 
 # The Guide page a term is explained on.
@@ -183,7 +180,7 @@ static func _bbcode(m: RegExMatch) -> String:
 			return "[color=#%s]%s[/color]" % [RANK.to_html(false), shown]
 		"t":
 			return "[color=#%s]%s[/color]" % [TIME.to_html(false), shown]
-	return "[color=#%s]%s[/color]" % [ELEMENTS.get(StringName(what), TAG).to_html(false), shown]
+	return "[color=#%s]%s[/color]" % [Tags.color(StringName(what)).to_html(false), shown]
 
 
 static func _escape(s: String) -> String:

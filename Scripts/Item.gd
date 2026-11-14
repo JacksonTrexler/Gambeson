@@ -235,3 +235,17 @@ func enchanted() -> bool:  # honed never counts: it's the other quality, and not
 
 func honed() -> bool:
 	return &"honed" in tags
+
+
+# The tag its trim shows (Tags.mark()): its first coloured tag that isn't a plain word, light, medium
+# and heavy read as its weight (WEIGHTS) rather than an element. &"" untrimmed. An emblem carrying a tag
+# or a symbol in its tags (a Fire Insignia) is trimmed in it.
+func trim_tag() -> StringName:
+	return Tags.mark(tags, WEIGHTS.keys())
+
+
+# Its trim colour (Tags.color() of trim_tag()), clear when it has none: drawn on the character sheet,
+# the unit card and, for a trinket, the banner its wearer carries (Unit).
+func trim() -> Color:
+	var t := trim_tag()
+	return Tags.color(t) if t else Color(0, 0, 0, 0)
