@@ -10,6 +10,7 @@ signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage
 signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp back; listeners may take a cut (Battle: Molothrus)
 signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
+signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
@@ -215,8 +216,10 @@ var hp := 0:
 # (Borrowed Time); on its last life a defer stat puts its death off before Downed has its say; Downed
 # lingers, is saved or dies past its limit; else a heart goes, or it dies.
 func _landed(was: int, v: int) -> void:
-	if deferred > 0:
+	if deferred > 0 or staying:
 		pass  # it can't die meanwhile
+	elif v <= 0 and was > 0 and dbno == null and not reviving and _held_up():
+		pass  # held up at 0 HP for now (Final Act); Battle has it fall() after
 	elif v == 0 and was > 0 and dbno == null and not reviving and lives_left() <= 0 and defer():
 		pass
 	elif Downed.takes(self, was, v):  # Downed: on its last life it lingers at 0 or below, is saved, or dies past its limit
@@ -227,6 +230,17 @@ func _landed(was: int, v: int) -> void:
 		downed.emit(self)
 	elif v == 0:
 		died.emit(self)
+
+
+var staying := false  # held up at 0 HP by a reaction to its fall, until it has acted (Battle.grant_interrupt(): Final Act); alive meanwhile
+
+
+# Asks its listeners whether it's held up at 0 HP for now (falling): true if it is.
+func _held_up() -> bool:
+	var hold := {stay = false}
+	falling.emit(self, hold)
+	staying = hold.stay
+	return staying
 
 
 # --- Deferred death (the defer stat: Borrowed Time)
@@ -2784,7 +2798,7 @@ func tick() -> void:
 
 # On the field: standing, or Downed (down but not out, at 0 HP or below).
 func is_alive() -> bool:
-	return hp > 0 or dbno != null or deferred > 0
+	return hp > 0 or dbno != null or deferred > 0 or staying
 
 
 # How whole an execute takes it to be: HP left / max HP - or 1, full, while something makes it hale

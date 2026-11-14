@@ -1,11 +1,15 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/interject.gd" id="b_interject"]
+
+[sub_resource type="Resource" id="Behaviour_interject"]
+script = ExtResource("b_interject")
 
 [resource]
 script = ExtResource("1_skill")
 name = "Interject"
 passive = true
-tags = Array[StringName]([&"martial", &"defensive"])
-stub = "?13"
-plan = "When an ally is hit, a dex check; passing, it becomes the target. -25% damage a rank taking a hit that wasn't aimed at it, no rank cap (past 100% it still blocks only 100%). Rank 5+: +25% x rank to Defense taking hits for allies. Needs Reactions; who it covers and how often wait on ?13."
+tags = Array[StringName]([&"martial", &"defensive", &"reaction"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_interject")])

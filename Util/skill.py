@@ -23,7 +23,7 @@ from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ex
                   literal, effect_section)
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 128  # (+5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
-HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "revives")  # Behaviour's hooks: what a passive's behaviour does outside a cast
+HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "revives", "react")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
@@ -115,6 +115,11 @@ def check_behaviours(problems):
             problems.append("%s: no apply() or hook (%s) - it does nothing" % (p, ", ".join(HOOKS)))
         if "res://" + p not in used:
             problems.append("%s: no skill uses it" % p)
+        if "func react(" in text:  # the reaction seam (Battle.react()): effects tagged reaction count on what reacts
+            for sp in files("Skills", ".tres"):
+                st = read(sp)
+                if "res://" + p in st and '&"reaction"' not in st:
+                    problems.append("%s: its behaviour reacts (%s) but it isn't tagged reaction" % (sp, p))
 
 
 TAPPING = ("helpless", "sleep")  # Effect stats that take a unit's actions away: a skill putting one on taps

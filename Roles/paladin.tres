@@ -20,13 +20,13 @@
 [ext_resource type="Resource" path="res://Skills/lovely_caster.tres" id="s_lovely_caster"]
 [ext_resource type="Resource" path="res://Skills/impassioned_fighter.tres" id="s_impassioned_fighter"]
 [ext_resource type="Resource" path="res://Skills/coordinate.tres" id="s_coordinate"]
-[ext_resource type="Resource" path="res://Skills/final_act.tres" id="s_final_act"]
-[ext_resource type="Resource" path="res://Skills/gallantry.tres" id="s_gallantry"]
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
 [ext_resource type="Resource" path="res://Items/half_plate.tres" id="i_half_plate"]
 [ext_resource type="Resource" path="res://Items/broadsword.tres" id="i_broadsword"]
 [ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
+[ext_resource type="Resource" path="res://Skills/final_act.tres" id="s_final_act"]
+[ext_resource type="Resource" path="res://Skills/gallantry.tres" id="s_gallantry"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")

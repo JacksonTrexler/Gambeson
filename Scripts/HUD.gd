@@ -198,6 +198,11 @@ func _ready() -> void:
 			overlay.float_text(u, "Borrowed Time", FRIEND)
 		_mark())
 	battle.revived.connect(_on_revived)
+	battle.reacted.connect(func(u: Unit, s: Skill, r: Behaviour.Reaction):
+		_log("%s %s%s" % [_tag(u), u.skill_name(s), " (%d vs %d)" % r.rolled if r.rolled.size() == 2 else ""])
+		overlay.float_text(u, u.skill_name(s), GOLD)
+		_mark())
+	battle.interrupt_began.connect(_on_interrupt, CONNECT_DEFERRED)
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
 	battle.exploded.connect(_on_exploded)
@@ -809,6 +814,11 @@ func _study(c: Vector2i) -> void:
 func end_turn() -> void:
 	if not my_turn():
 		return
+	if _my_interrupt():
+		battle.end_interrupt()  # passes the free action: the interrupted turn resumes
+		_say("")
+		_mark()
+		return
 	clock_on = false
 	spellbook.hide()
 	_act_alone(command.faction(), command.idle())
@@ -837,8 +847,34 @@ func _tick_clock(delta: float) -> void:
 
 
 func my_turn() -> bool:
+	if battle.interrupter and battle.phase == Battle.Phase.TURNS:
+		return _my_interrupt()  # only the interrupter acts: the player's turn while it's theirs
 	return not busy and battle.phase == Battle.Phase.TURNS and command.leader.is_alive() \
 			and battle.turn == command.faction() and not autopilot()
+
+
+# The unit acting out of turn (Battle.interrupter: Final Act) is the player's to direct: the leader or
+# its party, whoever's turn it is. Others' interrupts their AI takes (AI.interrupt()).
+func _my_interrupt() -> bool:
+	return battle.interrupter != null and command.ours(battle.interrupter) and not autopilot()
+
+
+# An interrupt opened (Battle.interrupt_began): the player picks the free action for its own unit (a
+# skill, or End turn to pass); the AI picks for the rest. The turn it interrupted resumes after.
+func _on_interrupt(u: Unit) -> void:
+	if battle.interrupter != u:
+		return  # stale: already done
+	_log("%s acts out of turn" % _tag(u))
+	if _my_interrupt():
+		select(u)
+		_say("%s: one free action, or End turn to pass" % _name(u))
+		return
+	if pace > 0.0:
+		await _wait(pace)
+		if not is_inside_tree() or battle.interrupter != u:
+			return
+	AI.interrupt(battle, u)
+	_mark()
 
 
 # Units on the player's side: everything about them is known.
@@ -1523,6 +1559,13 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 			select(u if unit_seen(u.cell) == u else null)
 		AI.act(battle, u)
 		_mark()
+		if battle.interrupter:  # its turn was interrupted (Final Act): wait it out, then it carries on
+			await _interrupted()
+			if not is_inside_tree():
+				return
+			if battle.phase == Battle.Phase.TURNS and battle.turn == f and u.is_alive():
+				AI.act(battle, u)
+				_mark()
 	if pace > 0.0 and battle.phase == Battle.Phase.TURNS:
 		await _wait(pace)
 		while is_inside_tree() and overlay.walking_left() > 0.0:  # together: till the last walk is done
@@ -1533,6 +1576,16 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 	_mark()
 	if battle.phase == Battle.Phase.TURNS and battle.turn == f:
 		battle.end_turn()
+
+
+# Waits while an interrupt is open (Battle.interrupter): the player's is theirs to act in (not busy).
+func _interrupted() -> void:
+	var was := busy
+	while is_inside_tree() and battle.interrupter:
+		busy = not _my_interrupt()
+		_mark()
+		await get_tree().process_frame
+	busy = was
 
 
 # Pace: how fast paced shows run - HURRY times while the hurry key is held, else 1.

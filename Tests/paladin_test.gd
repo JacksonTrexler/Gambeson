@@ -27,7 +27,8 @@ func test_tree() -> void:
 	ok(paladin.root_of(load("res://Skills/renew.tres")).tag == &"magical" and paladin.root_of(load("res://Skills/coordinate.tres")).tag == &"specialist",
 			"Renew on Divinity, Coordinate on Idealism")
 	ok(paladin.tier(rejuvinate) == 1 and paladin.tier(send_off) == 2 and paladin.tier(lovely) == 2 and paladin.tier(impassioned) == 2, "Rejuvinate opens Eros's path")
-	ok(load("res://Skills/final_act.tres").stub == "?12" and load("res://Skills/gallantry.tres").stub.begins_with("Reactions"), "Final Act and Gallantry wait")
+	ok(load("res://Skills/final_act.tres").stub == "" and load("res://Skills/gallantry.tres").stub == "" and paladin.tier(load("res://Skills/final_act.tres")) == 2
+			and paladin.tier(load("res://Skills/gallantry.tres")) == 2, "Final Act and Gallantry built (Reactions), after Coordinate")
 	for s in [rejuvinate, send_off, lovely, impassioned]:
 		ok(s.stub == "" and s.describe(2) != "", "%s is built: %s" % [s.name, s.describe(2)])
 

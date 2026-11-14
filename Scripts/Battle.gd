@@ -55,6 +55,9 @@ signal shaped(u: Unit, form: StringName, element: StringName)  # u took a beast'
 signal disciplined(u: Unit, burned: int)  # u burned AP into an attack (Discipline)
 signal neutralized(u: Unit, by: Unit, how: StringName)  # taken out of the fight (neutralize()): &"downed", &"down" (Downed), &"killed"; by: who last hit it
 signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
+signal reacted(u: Unit, skill: Skill, r: Behaviour.Reaction)  # u's passive reacted to a moment (react()): r.trigger, r.subject, r.by
+signal interrupt_began(u: Unit)  # u acts out of turn (grant_interrupt(): Final Act); the turn under way waits
+signal interrupt_ended(u: Unit)  # ...and the interrupted turn resumes
 
 enum Phase { INITIATIVE, TURNS, OVER, PREP }  # PREP: before the initiative roll, the player looks the field over (study()), then begin()s
 
@@ -75,6 +78,15 @@ const RECAST_LIMIT := 20  # recasts on a natural 20 in a row (Jugular: "without 
 var _recasts := 0
 var _resolving: Array[Behaviour.Cast] = []  # casts under way, innermost last: told when their target is neutralized (felled())
 var _aimed: Dictionary[Unit, Dictionary] = {}  # caster -> {target: times it used a skill on it} this battle (aimed())
+var _reacted: Dictionary[Unit, Dictionary] = {}  # holder -> {passive: times it reacted this battle} (times_reacted())
+var interrupter: Unit  # acting out of turn (grant_interrupt()): while set, only it acts (_acting())
+var _interrupts: Array = []  # [unit, actions] waiting their turn to interrupt, first first
+var _interrupt_left := 0  # actions the interrupter has left
+var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
+var _casting := 0  # cast() / cast_at() calls under way: an interrupt opens once the outermost is done
+var _reacting := 0  # react() calls under way: an interrupt granted in one opens after it
+var _settling: Unit  # falling after its interrupt (_settle())
+const INTERRUPT_AP := 99.0  # a free action: AP enough for any skill, for skill uses only
 const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to a source with any Power in it...
 const STAR_FAST := 5.0  # ...up to a full one (an empty source gives nothing)
 const STAR_ENERGY := 0.3  # regular Energy gets this share of what the boost adds (+10 for Power: +3)
@@ -384,6 +396,7 @@ func _listen(u: Unit) -> void:
 	u.downed.connect(_on_downed)
 	u.dbno_changed.connect(_on_dbno)
 	u.deferring.connect(_on_deferring)
+	u.falling.connect(_on_falling)
 	u.taking_hit.connect(_on_taking_hit)
 	u.being_healed.connect(_on_being_healed)
 	u.recovered.connect(_on_recovered)
@@ -631,9 +644,22 @@ func _flip(g: Array) -> Array:
 # with a positive cha mod misses on purpose - and either way its leader looks harder at it.
 func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var depth := _resolving.size()
+	_casting += 1
 	var done := _cast(caster, skill, target, spreading)
+	_casting -= 1
 	_resolving.resize(depth)
+	_done_casting(caster, done)
 	return done
+
+
+# The outermost cast() or cast_at() is over: one of an interrupter's actions spent, if it was its; an
+# interrupt granted meanwhile opens.
+func _done_casting(caster: Unit, done: bool) -> void:
+	if _casting > 0:
+		return
+	if done:
+		_spent_interrupt(caster)
+	_open_interrupt()
 
 
 func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
@@ -703,6 +729,17 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	_burn(caster, skill)
 	if not spreading:
 		_discipline(caster, skill, foe)
+	if foe and skill.hostile and target != caster:  # attacked: reactions before any roll (Gallantry)
+		if not acts:
+			acts = cast_of(caster, skill, target, r, foe)  # the moment's cast, whose target a reaction swaps
+			_resolving.append(acts)
+		if _swapped(acts, react(&"attacked", target, caster, acts)):
+			target = acts.target
+			if skill.drags_to:
+				spot = drag_spot(caster, skill, target)
+				if spot == null:
+					used.emit(caster, skill, target, 0)
+					return true
 	var before := target.hp
 	# Every path below that lands runs the behaviours' apply() (_land()); one that fails (a save or
 	# contest lost) is a miss, as a missed attack roll is, and runs none; so is a channel stopped by using
@@ -791,6 +828,10 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			target.disable(s, skill.lasts(r, caster) + int(req[3]) + (1 if target.faction == turn else 0), true)
 	if foe and skill.chain:  # Strike: a hit at a time (_chain()); its behaviours land with its first hit
 		var landed := _chain(caster, skill, target, ri, tags, 0, 0, acts, req)
+		if acts and acts.target != target:  # a reaction took the blows in its place (Interject)
+			target = acts.target
+			before = acts.bag.get(&"hp_before", target.hp)
+			tags = acts.tags
 		if landed > 0 and acts:
 			_land(acts)
 			for bh in skill.behaviours:
@@ -809,6 +850,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return true
 	var overage := 0  # what a roll beat Defense by (Irradiate)
 	var natural := false  # a natural 20 (Jugular recasts on one)
+	var rolled: Check.Roll = null
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * ri + skill.roll_bonus + int(req[0]) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
 				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
@@ -818,10 +860,22 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		natural = hit.crit
 		attacked.emit(caster, target, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
+		rolled = hit
 		if not hit.hit:
 			_expose(target)
 			used.emit(caster, skill, target, 0)
 			return true
+	if foe and skill.hostile and target != caster:  # hit: reactions before its damage (Interject)
+		var rh := react(&"hit", target, caster, acts)
+		if _swapped(acts, rh):
+			target = acts.target
+			before = target.hp
+			tags = acts.tags
+			if rolled and not rolled.crit and rolled.total < target.defense(tags) + guard_of(acts) + rh.guard:
+				attacked.emit(caster, target, rolled.d20, rolled.total, target.defense(tags) + guard_of(acts) + rh.guard)
+				_expose(target)
+				used.emit(caster, skill, target, 0)  # the roll that hit its first target misses its new one
+				return true
 	if acts:
 		acts.hit = true
 	if foe and skill.binds:  # landed (a miss returned above): Judgement's shackles
@@ -945,6 +999,15 @@ func _land(c: Behaviour.Cast) -> void:
 		bh.apply(c)
 
 
+# Whether reaction r swapped its cast's target: the cast's tags are taken afresh for the new one
+# (an ambush is against whom it lands on).
+func _swapped(c: Behaviour.Cast, r: Behaviour.Reaction) -> bool:
+	if c.target == r.subject:
+		return false
+	c.tags = hit_tags(c.caster, c.skill, c.target if c.foe else null, self)
+	return true
+
+
 # The one Cast a skill's behaviours share as it's used (Skill.behaviours: Kick), from its payment on:
 # aim(), edge(), guard(), apply(), bonus(), dealt(), felled(). Built by the HUD too, to ask edge() and guard().
 func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Behaviour.Cast:
@@ -952,6 +1015,7 @@ func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Beh
 	c.battle = self
 	c.caster = caster
 	c.target = target
+	c.meant = target
 	c.skill = skill
 	c.rank = r
 	c.foe = foe
@@ -1002,6 +1066,155 @@ func neutralize(u: Unit, how: StringName) -> void:
 		if c.target == u:
 			for bh in c.skill.behaviours:
 				bh.felled(c, how)
+
+
+# --- Reactions and interrupts (docs/plans/reactions.md)
+
+# A moment units may react to: every unit on the field whose switched-on passives' behaviours react
+# (Behaviour.react()) is asked, in a fixed order (reactors()), each passive at most once, and only while
+# its holder reacts() (not Jammed, not stopped). c is the cast under way (its target is what a reaction
+# swaps); null when there's none. Returns the moment as the reactions left it.
+func react(trigger: StringName, subject: Unit, by: Unit = null, c: Behaviour.Cast = null) -> Behaviour.Reaction:
+	var r := Behaviour.Reaction.new()
+	r.battle = self
+	r.trigger = trigger
+	r.subject = subject
+	r.by = by
+	r.cast = c
+	r.locked = c != null and c.locked
+	_reacting += 1
+	for o in reactors(subject, by):
+		for x in reactions_of(o):
+			react_with(r, o, x)
+	_reacting -= 1
+	if c:
+		c.locked = r.locked
+	return r
+
+
+# Asks one passive x of holder's about moment r, if it may: holder reacts() and x hasn't reacted to r.
+# True when it did (told by reacted, counted by times_reacted()).
+func react_with(r: Behaviour.Reaction, holder: Unit, x: Slot) -> bool:
+	if not holder.reacts() or r.done.any(func(d: Array): return d[0] == holder and d[1] == x.skill):
+		return false
+	r.skill = x.skill
+	r.rolled = []
+	var did := false
+	for bh in x.skill.behaviours:
+		did = bh.react(r, holder, x.rank) or did
+	if did:
+		r.done.append([holder, x.skill])
+		var n: Dictionary = _reacted.get_or_add(holder, {})
+		n[x.skill] = n.get(x.skill, 0) + 1
+		reacted.emit(holder, x.skill, r)
+	return did
+
+
+# The order units are asked about a moment: who brought it about, then whom it happens to, then the rest
+# by distance from that one (ties in the field's order).
+func reactors(subject: Unit, by: Unit = null) -> Array[Unit]:
+	var rest: Array[Unit] = []  # (whom it happens to is asked even at 0 HP: Final Act, as it falls)
+	for o: Unit in units.values():
+		if o != subject and o != by and o.is_alive() and o not in rest:
+			rest.append(o)
+	var at := subject.cell
+	rest.sort_custom(func(a: Unit, b: Unit): return Command.tiles(a.cell, at) < Command.tiles(b.cell, at))
+	var out: Array[Unit] = []
+	for o in [by, subject]:
+		if o and (o.is_alive() or o == subject) and o not in out:
+			out.append(o)
+	out.append_array(rest)
+	return out
+
+
+# u's switched-on passives that have behaviours (any may react), top to bottom of its hotbar, then the
+# rest in their order: the order its reactions resolve in, and Snapping Turtle's.
+static func reactions_of(u: Unit) -> Array[Slot]:
+	var out: Array[Slot] = []
+	out.assign(u.on_passives.filter(func(x: Slot): return not x.skill.behaviours.is_empty()))
+	var at := func(x: Slot) -> int:
+		var i := u.hotbar.find(x.skill)
+		return i if i >= 0 else 1000 + out.find(x)
+	out.sort_custom(func(a: Slot, b: Slot): return at.call(a) < at.call(b))
+	return out
+
+
+# How many times u's passive s has reacted this battle (Final Act: once).
+func times_reacted(u: Unit, s: Skill) -> int:
+	return _reacted.get(u, {}).get(s, 0)
+
+
+# The cast under way, innermost (what a hook given no cast asks about: Interject's "a hit not aimed at it").
+func resolving() -> Behaviour.Cast:
+	return _resolving.back() if not _resolving.is_empty() else null
+
+
+# u gets an interrupt: `actions` skill uses, free of AP, out of turn. It opens once nothing is being cast
+# (at once, if nothing is), after any granted before it; while open only u acts, and the interrupted turn
+# resumes when it's done (end_interrupt()).
+func grant_interrupt(u: Unit, actions := 1) -> void:
+	_interrupts.append([u, actions])
+	if _casting == 0 and _reacting == 0:
+		_open_interrupt()
+
+
+func _open_interrupt() -> void:
+	while interrupter == null and not _interrupts.is_empty() and phase == Phase.TURNS:
+		var next: Array = _interrupts.pop_front()
+		var u: Unit = next[0]
+		if not u.is_alive() or u.stopped():
+			_settle(u)
+			continue
+		interrupter = u
+		_interrupt_left = next[1]
+		_interrupt_ap = AP.new(INTERRUPT_AP, &"skill")
+		u.ap.push_front(_interrupt_ap)  # drawn before any skill-only AP of its own
+		interrupt_began.emit(u)
+
+
+# The interrupter is done, or passes (the HUD's End turn, the AI with nothing to do): its free AP goes,
+# a unit held up at 0 HP falls (Final Act), and the next interrupt opens, or the turn resumes.
+func end_interrupt() -> void:
+	var u := interrupter
+	if not u:
+		return
+	interrupter = null
+	u.ap.erase(_interrupt_ap)
+	_interrupt_ap = null
+	_interrupt_left = 0
+	interrupt_ended.emit(u)
+	_settle(u)
+	_open_interrupt()
+
+
+# A unit held up at 0 HP (Unit.staying) falls, as it would have, unless it got back above 0 meanwhile.
+func _settle(u: Unit) -> void:
+	if u.staying:
+		u.staying = false
+		if u.hp <= 0:
+			_settling = u  # the same fall, resumed: not a moment to react to again
+			u.fall()
+			_settling = null
+
+
+# u, at 0 HP, is about to fall (Unit.falling): its reactions (and others') have their say; one may hold
+# it up until its interrupt is done (Final Act).
+func _on_falling(u: Unit, hold: Dictionary) -> void:
+	if phase != Phase.TURNS or u == _settling:
+		return
+	var r := react(&"fallen", u, u.last_hit_by, resolving())
+	hold.stay = r.stay
+	u.staying = r.stay  # (Unit sets it too, once this returns: set now, so its interrupt can open at once)
+	if _casting == 0 and _reacting == 0:
+		_open_interrupt()
+
+
+# One of the interrupter's skill uses is done: the last of them ends its interrupt.
+func _spent_interrupt(u: Unit) -> void:
+	if u == interrupter:
+		_interrupt_left -= 1
+		if _interrupt_left <= 0:
+			end_interrupt()
 
 
 # The tags a skill's damage carries for its caster: its own and its modifiers' (Unit.skill_tags(): a Fire
@@ -1735,10 +1948,11 @@ func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
 	if Vector2(caster.cell).distance_to(Vector2(c)) > skill_range(caster, skill) + 0.0001 or not caster.pay_for(skill):
 		return &""
 	used.emit(caster, skill, c, 0)
-	if not t and expose(c, hit_tags(caster, skill), caster):
+	var broke := not t and expose(c, hit_tags(caster, skill), caster)
+	if broke:
 		shattered.emit(caster, c)
-		return &"shattered"
-	return &"miss"
+	_done_casting(caster, true)  # spent on thin air: an interrupter's action all the same
+	return &"shattered" if broke else &"miss"
 
 
 # Hitting a unit, or attacking, gives away where it is: a hidden one loses a level of concealment
@@ -1753,6 +1967,14 @@ func _expose(u: Unit) -> void:
 # channeled skills (Metea) begin channeling there, and once begun strike where they can (_detonate()).
 # A Rift is channeled unless `held` is false (Alt-click): then its count starts at once.
 func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
+	_casting += 1
+	var done := _cast_at(caster, skill, c, held)
+	_casting -= 1
+	_done_casting(caster, done)
+	return done
+
+
+func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	if not _acting(caster) or skill not in caster.actives or not skill.on_tile() or not on_map(c):
 		return false
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
@@ -2178,7 +2400,7 @@ func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
 # does nothing to it. Held, it must break free first (_break_free()). Returns the tiles passed.
 func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 	var passed: Array[Vector2i] = []
-	if not _acting(u) or dest == u.cell:
+	if not _acting(u) or dest == u.cell or u == interrupter:  # an interrupt is skill uses, no walking
 		return passed
 	if held_by(u) and not _break_free(u):
 		return passed
@@ -3055,6 +3277,8 @@ func free_near(c: Vector2i) -> Variant:
 func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
+	if interrupter:
+		end_interrupt()  # an interrupt still open passes as the turn ends
 	var ending := turn
 	var was_order := order.duplicate()  # a side can fall out of it below: its successor is still the next one standing
 	ending_turn = true  # so _on_died() doesn't pass the turn too: it's passed once, at the end
@@ -3848,6 +4072,8 @@ static func persona_rank(u: Unit, s: Skill) -> int:
 
 
 func _acting(u: Unit) -> bool:
+	if interrupter:
+		return u == interrupter and phase == Phase.TURNS and u.is_alive() and not u.stopped()  # only it, until it's done
 	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.stopped()
 
 
@@ -4064,6 +4290,19 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		var crit := hit.crit
 		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
+		if hit.hit and acts and skill.hostile and t != caster:  # hit: reactions before its damage (Interject)
+			var rh := react(&"hit", t, caster, acts)
+			if _swapped(acts, rh):
+				t = acts.target
+				acts.bag[&"hp_before"] = t.hp
+				blow = acts.tags.duplicate()
+				if (imbued or elemental) and element not in blow:
+					blow.append(element)
+				zeal = passion(caster, t)
+				hit.target = t.defense(blow) + guard_of(acts) + rh.guard
+				hit.hit = hit.crit or hit.total >= hit.target
+				if not hit.hit:
+					attacked.emit(caster, t, hit.d20, hit.total, hit.target)
 		if not hit.hit:
 			row = 0
 			if i < steady:

@@ -14,6 +14,8 @@ class Cast:
 	var battle: Battle
 	var caster: Unit
 	var target: Unit
+	var locked := false  # no reaction may swap its target any more (Gallantry; Interject snapped)
+	var meant: Unit  # the unit it was aimed at, before any reaction swapped its target (Interject's "a hit not aimed at it")
 	var skill: Skill
 	var rank := 1
 	var foe := true
@@ -231,3 +233,46 @@ func command_mod(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> int:
 # The holder, leading c, has just given u an order (Command.order(); Telepathy binds to it for the turn).
 func ordered(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> void:
 	pass
+
+
+# A moment others may react to (Battle.react()): who it happens to, who brought it about, and the cast
+# under way, if any. Reactions read and change it, in order (Battle.reactors()), each at most once:
+# swap the cast's target (retarget()), lock it, add Defense against a roll already made, hold a falling
+# unit up, or give the holder an interrupt (Battle.grant_interrupt()).
+class Reaction:
+	var battle: Battle
+	var trigger: StringName  # &"attacked" (a hostile skill aimed at subject, before its roll), &"hit" (it landed on subject, before damage), &"fallen" (subject reached 0 HP), &"snap" (Snapping Turtle: subject, its holder, uses an offensive skill on by)
+	var subject: Unit
+	var by: Unit  # who brought it about: the attacker (null: nobody, a flame)
+	var cast: Cast  # the cast under way (its target is what retarget() swaps), or null
+	var skill: Skill  # the passive being asked now (Battle.react() sets it before each)
+	var locked := false  # its cast's target can't be swapped again (Gallantry): kept on the cast, for the moments after
+	var guard := 0  # Defense its new target adds against the roll already made (Interject at rank 5+)
+	var stay := false  # a falling subject holds at 0 HP until its interrupt is done (Final Act)
+	var done: Array = []  # [holder, skill] that reacted, in order
+	var rolled: Array = []  # [total, against] of the check the reaction just made, for the log (empty: none)
+
+	# Makes `to` the cast's target in place of its own, unless the target is locked or it has no cast.
+	func retarget(to: Unit) -> bool:
+		if locked or cast == null or to == null or to == cast.target or not to.is_alive():
+			return false
+		cast.target = to
+		return true
+
+	# A reaction's check: holder's mod in stat (a defensive check, with the passive's tags: effects tagged
+	# reaction count on it) against `against`'s (an offensive one), holder winning ties. Kept for the log.
+	func contest(holder: Unit, stat: StringName, against: Unit) -> bool:
+		var vs := battle.beats(Check.side(holder.check_mod(stat, &"defensive", holder.skill_tags(skill))), Check.side(against.check_mod(stat, &"offensive")))
+		rolled = [vs.mine.total, vs.theirs.total]
+		return vs.won
+
+	# Whether holder already reacted to this moment with some passive.
+	func reacted(holder: Unit) -> bool:
+		return done.any(func(d: Array): return d[0] == holder)
+
+
+# The holder's passive meets a moment it may react to (Battle.react(); r.trigger says which, r.skill is
+# this passive): what it does, if anything, true when it reacted. Asked only while the holder reacts()
+# (not Jammed or stopped), and once per moment. A skill whose behaviour reacts carries the reaction tag.
+func react(_r: Reaction, _holder: Unit, _rank: int) -> bool:
+	return false

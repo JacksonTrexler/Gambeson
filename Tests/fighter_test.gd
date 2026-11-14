@@ -23,7 +23,8 @@ func test_tree() -> void:
 	ok([wary, shields_up, jugular].all(func(s): return s in offered) and interdict not in offered, "on offer: Wary, then the root openers")
 	u.skill_points = 5
 	ok(u.unlock(shields_up) and u.unlock(interdict) and u.unlock(turtle), "Shields Up! opens the rest of Protector")
-	ok(not u.unlock(load("res://Skills/interject.tres")), "a stub can't be learned")
+	ok(not u.unlock(load("res://Skills/sundering.tres")), "a stub can't be learned")
+	ok(u.unlock(load("res://Skills/interject.tres")), "Interject is built (Reactions): after Shields Up!")
 	ok(load("res://Skills/warcry.tres").describe().begins_with("Not built yet. Waits on Tile marks"), "a stub waiting on a system says which")
 	u.free()
 	for s in [shields_up, obstruct, interdict, turtle, jugular]:

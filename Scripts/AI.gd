@@ -142,6 +142,25 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	return log
 
 
+# u's interrupt (Battle.interrupter: Final Act), one free skill use, no walking: its best blow at a foe
+# in reach; with none, the heal it wants most (itself among those it weighs: back above 0 HP, it lives);
+# with neither, it passes. Reactions needing no choice the battle resolves itself (Battle.react()).
+static func interrupt(b: Battle, u: Unit) -> Array[String]:
+	var log: Array[String] = []
+	if b.interrupter != u:
+		return log
+	var reads := {}
+	for o in b.units.values():
+		if o != u:
+			reads[o] = b.read(u, o)
+	if not _strike(b, u, reads, log):
+		_heal(b, u, reads, log)
+	if b.interrupter == u:
+		log.append("%s passes" % u.name)
+		b.end_interrupt()
+	return log
+
+
 # Helpful (Bio): with no one to heal in reach, it goes to the ally it most wants to heal (want()) and
 # heals it. Other healers heal only whom they happen to reach.
 static func _tend(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
