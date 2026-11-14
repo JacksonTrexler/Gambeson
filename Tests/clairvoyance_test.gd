@@ -29,7 +29,7 @@ func test_range() -> void:
 	ok(not b.read(v(1), v(3)).located(), "hidden: not located before")
 	ok(b.cast(v(1), clairvoyance, v(1)), "cast on itself")
 	ok(v(1).channel != null and v(1).channel.skill == clairvoyance, "it channels")
-	ok(b.clairvoyance_reach(v(1)) == roundi(v(1).stat(&"wisdom")) + 1, "reach: wisdom + rank (%d)" % b.clairvoyance_reach(v(1)))
+	ok(clairvoyance.behaviours[0].reach(v(1)) == roundi(v(1).stat(&"wisdom")) + 1, "reach: wisdom + rank (%d)" % clairvoyance.behaviours[0].reach(v(1)))
 	var pings := b.pinged(lancin)
 	ok(pings.get(v(3)) == Vector2i(5, 2), "a foe within wisdom + rank: pinged")
 	ok(not pings.has(v(4)), "one beyond it: not")
@@ -61,7 +61,7 @@ func test_turns() -> void:
 	setup(Vector2i(5, 2), Vector2i(7, 2))  # 4 and 6 off: reach 4 at rank I
 	b.cast(v(1), clairvoyance, v(1))
 	b.end_turn()  # pings at rank I, then rank II: reach 5
-	ok(v(1).channel.rank == 2 and b.clairvoyance_reach(v(1)) == roundi(v(1).stat(&"wisdom")) + 2, "its turn end: a rank more")
+	ok(v(1).channel.rank == 2 and clairvoyance.behaviours[0].reach(v(1)) == roundi(v(1).stat(&"wisdom")) + 2, "its turn end: a rank more")
 	ok(b.turn == nemes and not b.pinged(lancin).has(v(4)), "the update came before the rank: the one 6 off still unpinged")
 	b.move(v(3), Vector2i(4, 3))
 	ok(not b.read(v(1), v(3)).located(), "moved off its ping: no longer located where it is")

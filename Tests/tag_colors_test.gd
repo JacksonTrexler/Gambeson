@@ -74,7 +74,7 @@ func test_trim_shows() -> void:
 	u.trinket = load("res://Items/burning_bag.tres")
 	ok(HUD.trims(u).any(func(t: Array) -> bool: return t[0] == Tags.color(&"fire") and t[1] == "Burning Bag"), "the card shows a fire banner for a Burning Bag")
 	u.trinket = load("res://Items/quartz_ring.tres")
-	ok(not HUD.trims(u).any(func(t: Array) -> bool: return t[1] == "Quartz Ring"), "an untrimmed ring shows nothing")
+	ok(HUD.trims(u).any(func(t: Array) -> bool: return t[1] == "Quartz Ring" and t[0].a == 0.0 and t[2] != null), "an untrimmed ring shows its icon and no banner")
 	u.trinket = null
 	var m := UnitCard.trim_mark(Color(0, 0, 0, 0), "")
 	ok(m.custom_minimum_size == Vector2(7, 10), "an untrimmed item's mark keeps the space, so sheet rows line up")

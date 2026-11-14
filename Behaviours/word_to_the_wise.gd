@@ -7,7 +7,16 @@ extends Behaviour
 
 
 func command_mod(_c: Command, holder: Unit, rank: int, u: Unit) -> int:
-	return mini(holder.mod(&"wisdom"), mini(holder.mod(&"wisdom"), u.mod(&"wisdom")) + rank)
+	var m := mods_on(holder)
+	var wis := m.stat(holder.mod(&"wisdom"), &"stat_impact")  # its own wis mod, through its modifiers
+	return mini(wis, mini(wis, u.mod(&"wisdom")) + m.irank(rank, &"rank_impact"))
+
+
+# Its terms: its wis mod is what it commands by (stat impact), capped by the ally's + rank (impact); tame.
+func terms(t: SkillTerms) -> void:
+	t.add(&"stat_impact", "commands by")
+	t.add(&"rank_impact", "cap over the ally's")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

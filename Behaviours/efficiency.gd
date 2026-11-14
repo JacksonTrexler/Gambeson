@@ -9,9 +9,15 @@ extends Behaviour
 
 
 func affinity(holder: Unit, rank: int, s: Skill, t: SkillTab, a: int) -> int:
-	if t and (t.kind in reaches or t.name in reaches) and holder.tier(s) <= rank:
+	if t and (t.kind in reaches or t.name in reaches) and holder.tier(s) <= holder_rank(holder, rank):  # through its modifiers
 		return a + 1
 	return a
+
+
+# Its terms: the tier it reaches grows with rank (impact, through its holder's modifiers); a tame effect.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "tiers reached")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

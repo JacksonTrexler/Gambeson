@@ -2573,12 +2573,13 @@ func _info(u: Unit) -> Dictionary:
 	return info
 
 
-# [colour, item name] for each item u wears with a trim (Item.trim()): the card's banners.
+# [colour, item name, icon] for each item u wears: the card's equipment, its icon (Item.icon()) with its
+# trim as a banner beside it (a clear colour when it has none).
 static func trims(u: Unit) -> Array:
 	var out := []
 	for it: Item in [u.weapon, u.armor, u.trinket]:
-		if it and it.trim().a > 0.0:
-			out.append([it.trim(), it.name])
+		if it:
+			out.append([it.trim(), it.name, it.icon()])
 	return out
 
 

@@ -95,7 +95,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_recover(b, u, reads, log)
 			return log
 		_channel(b, u, reads, log)
-		if u.channel and u.channel.turns > 0 and not u.channel.skill.pings:  # still holding one it began before (Clairvoyance isn't held: it acts on what it sensed): moving or acting would end it (Battle.end_turn())
+		if u.channel and u.channel.turns > 0 and not u.channel.skill.behaviours.any(func(x: Behaviour): return x.senses()):  # still holding one it began before (Clairvoyance isn't held: it acts on what it sensed): moving or acting would end it (Battle.end_turn())
 			log.append("%s holds still, channeling %s" % [u.name, u.channel.skill.name])
 			return log
 		if not rooted and _flee(b, u, reads, log):
@@ -796,11 +796,11 @@ static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 
 
 # With no foe in sight, no clue to search and nowhere its side last saw one to hunt, it casts a skill that
-# senses unseen foes (Clairvoyance: Skill.pings), unless it holds a channel already.
+# senses unseen foes (Clairvoyance: Behaviour.senses()), unless it holds a channel already.
 static func _scry(b: Battle, u: Unit, log: Array[String]) -> bool:
 	if u.channel or (u.faction and not b.last_seen(u.faction).is_empty()):
 		return false
-	for s in u.actives.filter(func(x: Skill): return x.pings and u.can_afford(x)):
+	for s in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.senses()) and u.can_afford(x)):
 		if b.cast(u, s, u):
 			log.append("%s uses %s" % [u.name, s.name])
 			return true

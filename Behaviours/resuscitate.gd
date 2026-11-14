@@ -18,19 +18,25 @@ func unfit() -> String:
 
 # What a Downed ally comes back up with: what it is below 0, and the share.
 func restores(c: Cast) -> Dictionary:
-	return {&"hp": maxi(-c.target.hp, 0) + amount(c.target.max_hp, c.rank)}
+	return {&"hp": maxi(-c.target.hp, 0) + amount(c.target.max_hp, c.impact_rank())}
 
 
 func apply(c: Cast) -> void:
 	if c.foe or c.target.dbno == null:
 		return
 	c.target.healed_by = c.caster
-	c.battle.mend(c.target, maxi(-c.target.hp, 0) + amount(c.target.max_hp, c.rank), 0)
+	c.battle.mend(c.target, maxi(-c.target.hp, 0) + amount(c.target.max_hp, c.impact_rank()), 0)
 
 
 # The HP it comes back up with, at least 1.
 static func amount(max_hp: int, rank: int) -> int:
 	return maxi(roundi(SHARE * rank * max_hp), 1)
+
+
+# Its terms: the share it comes back up with grows with rank (impact); a tame effect.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "HP share")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:
