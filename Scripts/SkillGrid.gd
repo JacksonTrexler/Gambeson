@@ -145,6 +145,7 @@ func _layout() -> void:
 		var offered: Array = unit.offered(c)  # a god slot: what its god offers (a Paladin sees only the Prowess its god suits)
 		var burn := unit.burnable(c)
 		if burn:
+			offered = offered.filter(func(t: SkillTab): return t.name != burn.name or t.kind != burn.kind)
 			offered.append(burn.duplicate())  # a Warlock's own patron, to burn a flex slot into (its own entry: drawn burned)
 		if c.slot():  # a slot leaves out what's open through another (an Eros Paladin's Domain, Eros, from its Flex)
 			offered = offered.filter(func(t: SkillTab): return not unit.open_tab(t) or unit.picks(c).has(t))
