@@ -2620,7 +2620,7 @@ const SAT_REDUCED := 0.5  # acting in a reduced capacity (Unit.reduced(): Mindle
 func command_sat(u: Unit, state := command_state(u)) -> float:
 	match state:
 		&"ready", &"far":
-			var used := float(command.ordered.get(u, 0)) / command.order_cap() if u != command.leader else 0.0
+			var used := float(command.ordered.get(u, 0)) / command.order_cap(u) if u != command.leader else 0.0
 			return 1.0 - (1.0 - SAT_LOW) * maxf(pow(1.0 - u.ap_share(), 2.0), minf(used, 1.0))
 		&"reduced":
 			return SAT_REDUCED
