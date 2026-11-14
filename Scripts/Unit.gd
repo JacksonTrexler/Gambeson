@@ -1532,7 +1532,7 @@ func hooks() -> Array:
 
 # Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and stat(&"jammed") <= 0.0 and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard != Vector2.ZERO and reacts() and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -2731,6 +2731,13 @@ func helpless() -> bool:
 # many skill uses a turn anyway; spent, it's stopped too. It can't act, move or take orders.
 func stopped() -> bool:
 	return helpless() and fury_acts >= roundi(stat(&"mindless"))
+
+
+# Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())
+# and obstruct (Battle.obstruction()). Lost to Jam (the jammed stat) and to being stopped(): helpless,
+# it does none of these. Watching isn't one of them: a helpless unit still sees (Battle._watch()).
+func reacts() -> bool:
+	return stat(&"jammed") <= 0.0 and not stopped()
 
 
 # Tapped, as far as the unit itself can tell: out of AP, or stopped(). Never stored or cleansed: it
