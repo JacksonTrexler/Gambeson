@@ -76,3 +76,12 @@ Plans: `docs/plans/hud-markers.md` (`hud_markers_test`), `docs/plans/pace.md` (`
 - [x] **Hurry** (`HUD.HURRY`, `speed()`, `_wait()`, `_hurry()`; the `hurry` action, F; `Overlay.hurry()`): hold for x4 on the turn change, waits between units and walks. (?129)
 - [x] **A collapsed log** (`log_open`, `show_log()`): the last whole entry, a click opens the whole. (?129)
 
+## Forecast (2026-11-14)
+
+Plan and calls: `docs/plans/forecast.md`. `hud_test` (forecast_fire_and_wounds, foresight_stat, help_order_reads_restores), `hud_markers_test.every_reserve`, `foresight_test`. (?132)
+
+- [x] **AP and movement pips on the map** (`Overlay._pips`, `PIP`, `PIPS`): a strip over the selected unit's bars, blue per AP and grey per movement, a muted ? for a cost it can't foresee; none without a plan.
+- [x] **Foresight stat** (`mechanic.py stat foresight`; `HUD.foresight_allowance()`): allowance is int mod + the stat.
+- [x] **Trap estimates** (`HUD.hazard()`): dice, a trap's first bleed, poison and winded tick, and fire on the tile; summed along the path by `drain()`.
+- [x] **The drain on every reserve bar** (`Overlay._bar_for`).
+- [x] **HELP reads restores** (`HUD.intent_skill()`, `AI.restoring()`; `AI.act(supportive)` ends with `_replenish()`).
