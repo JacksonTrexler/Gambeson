@@ -31,6 +31,7 @@ var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
 var _walk_len: Dictionary[Unit, float] = {}  # each walk's length, in seconds at speed 1 (walking_left())
+var _floats: Array[Tween] = []  # the floating numbers' tweens, hurried with the walks
 var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
 
@@ -425,7 +426,7 @@ func _badge(c: Vector2i, filled: bool) -> void:
 # A number (or word) that rises off a unit and fades. Ones that pop together stack upward.
 func float_text(u: Unit, text: String, col: Color) -> void:
 	var l := _float(u, text, col)
-	var tw := l.create_tween()
+	var tw := _paced(l)
 	tw.tween_property(l, "position:y", l.position.y - 10, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
 	tw.tween_callback(l.queue_free)
@@ -435,7 +436,7 @@ func float_text(u: Unit, text: String, col: Color) -> void:
 # spins, lands, then its mods take it to the total, which holds a moment and fades.
 func float_roll(u: Unit, d20: int, total: int) -> void:
 	var l := _float(u, "?", Color.WHITE)
-	var tw := l.create_tween()
+	var tw := _paced(l)
 	tw.tween_method(func(_i: int): l.text = str(_dice.randi_range(1, 20)), 0, 8, 0.36)
 	tw.tween_callback(func():
 		l.text = str(d20)
@@ -445,6 +446,15 @@ func float_roll(u: Unit, d20: int, total: int) -> void:
 	tw.tween_interval(0.9)
 	tw.tween_property(l, "modulate:a", 0.0, 0.35)
 	tw.tween_callback(l.queue_free)
+
+
+# A tween on l that runs at the hurry speed (hurry() keeps it so while the key is held).
+func _paced(l: Label) -> Tween:
+	var tw := l.create_tween()
+	tw.set_speed_scale(_speed)
+	_floats = _floats.filter(func(t: Tween) -> bool: return t.is_valid())
+	_floats.append(tw)
+	return tw
 
 
 func _float(u: Unit, text: String, col: Color) -> Label:
@@ -501,6 +511,9 @@ func hurry(s: float) -> void:
 	for tw in _walks.values():
 		if tw.is_valid():
 			tw.set_speed_scale(s)
+	_floats = _floats.filter(func(tw: Tween) -> bool: return tw.is_valid())
+	for tw in _floats:
+		tw.set_speed_scale(s)
 
 
 func fade(u: Unit) -> void:

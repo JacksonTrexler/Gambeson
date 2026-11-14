@@ -256,8 +256,12 @@ func _ready() -> void:
 	%BookIcon.pressed.connect(toggle_spellbook)
 	%CogIcon.pressed.connect(toggle_settings)
 	%SettingsClose.pressed.connect(_close_panels)
+	high_contrast = Prefs.get_pref("high_contrast", false)  # Settings persist (Prefs)
+	%HighContrast.set_pressed_no_signal(high_contrast)
+	_apply_contrast()
 	%HighContrast.toggled.connect(func(on: bool) -> void:
 		high_contrast = on
+		Prefs.put("high_contrast", on)
 		_apply_contrast()
 		_mark())
 	var picker := OptionButton.new()  # Settings: the allied glow's colour
@@ -266,8 +270,12 @@ func _ready() -> void:
 	picker.tooltip_text = "The glow of allies on another side"
 	for n: String in ALLY_GLOWS:
 		picker.add_item("Allied glow: " + n)
+	var kept: int = ALLY_GLOWS.keys().find(Prefs.get_pref("ally_glow", "Mint"))
+	picker.select(maxi(kept, 0))
+	ally_glow = ALLY_GLOWS.values()[maxi(kept, 0)]
 	picker.item_selected.connect(func(i: int) -> void:
 		ally_glow = ALLY_GLOWS.values()[i]
+		Prefs.put("ally_glow", ALLY_GLOWS.keys()[i])
 		_mark())
 	%HighContrast.get_parent().add_child(picker)
 	KeyBinds.load_saved()
@@ -275,12 +283,22 @@ func _ready() -> void:
 	keys.name = "KeyBinds"
 	%Settings.get_node("Column").add_child(keys)
 	%Settings.get_node("Column").move_child(keys, %Settings.get_node("Column/Options").get_index() + 1)
+	suspicious_marks = Prefs.get_pref("suspicious_marks", suspicious_marks)
+	%SuspiciousMarks.set_pressed_no_signal(suspicious_marks)
 	%SuspiciousMarks.toggled.connect(func(on: bool) -> void:
 		suspicious_marks = on
+		Prefs.put("suspicious_marks", on)
 		_mark())
-	%KeepSlot.toggled.connect(func(on: bool) -> void: keep_slot = on)
+	keep_slot = Prefs.get_pref("keep_slot", keep_slot)
+	%KeepSlot.set_pressed_no_signal(keep_slot)
+	%KeepSlot.toggled.connect(func(on: bool) -> void:
+		keep_slot = on
+		Prefs.put("keep_slot", on))
+	hand_over = Prefs.get_pref("hand_over", hand_over)
 	%HandOver.button_pressed = hand_over
-	%HandOver.toggled.connect(func(on: bool) -> void: hand_over = on)
+	%HandOver.toggled.connect(func(on: bool) -> void:
+		hand_over = on
+		Prefs.put("hand_over", on))
 	%LogTitle.gui_input.connect(func(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			show_log(not log_open))

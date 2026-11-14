@@ -19,6 +19,7 @@ func _initialize() -> void:
 	var times := "times" in args
 	var words: Array = Array(args).filter(func(a: String): return a not in ["quick", "all", "times"])
 	var slow := _slow() if quick else []
+	Prefs.SAVE = "user://settings_test.cfg"  # a test's toggles never reach (or come from) the player's own settings
 	var checks := 0
 	var failed := 0
 	var ran := 0
@@ -34,6 +35,7 @@ func _initialize() -> void:
 			if not words.is_empty() and not words.any(func(w: String): return w in id):
 				continue
 			var start := Time.get_ticks_msec()
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(Prefs.SAVE))
 			var t: Test = suite.new()
 			Game.level = 1  # a player's starter levelled by an earlier test's battle doesn't carry over
 			Game.xp = 0
