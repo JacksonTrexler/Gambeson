@@ -450,7 +450,7 @@ func use_slot(i: int) -> void:
 	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
 		_say("Your side can't make out what %s could do there" % _name(u))
 	elif not command.slot_open(u, i):
-		_say(_why_locked())
+		_say(_why_locked(u))
 	elif not u.slot_works(i):
 		_say(SkillSlot.NO_LUCK)
 	elif s in u.disabled:
@@ -1856,7 +1856,7 @@ func _refresh_bar() -> void:
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
 		if locked:
-			slot.tooltip_text += "\n" + _why_locked()
+			slot.tooltip_text += "\n" + _why_locked(u)
 		if u and s and sense == 2 and not s.passive and u.exhaustion.note(s):
 			slot.tooltip_text = "%s\n%s" % [_exhausted(u, s), slot.tooltip_text]
 
@@ -2106,7 +2106,7 @@ func _info(u: Unit) -> Dictionary:
 	elif known(u) and battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS:
 		var given: int = command.ordered.get(u, 0)
 		if command.can_order(u):
-			chips.append(["Takes orders" if given == 0 or u == command.leader else "Ordered %d/%d" % [given, command.order_cap()], FRIEND])
+			chips.append(["Takes orders" if given == 0 or u == command.leader else "Ordered %d/%d" % [given, command.order_cap(u)], FRIEND])
 		elif given > 0:
 			chips.append(["Ordered", MUTED])
 		elif not command.under_caps(u):
@@ -2358,10 +2358,10 @@ func _editable(u: Unit) -> bool:
 	return u != null and not busy and command.ours(u)
 
 
-func _why_locked() -> String:
-	var n := command.slots()
+func _why_locked(u: Unit = null) -> String:
+	var n := command.slots(u)
 	if n == 0:
-		return "Allies only take move orders from %s (%s)" % [_name(command.leader), command.basis()]
+		return "Allies only take move orders from %s (%s)" % [_name(command.leader), command.basis(0, u)]
 	return "Allies use only slot%s 1%s on %s's orders" % ["" if n == 1 else "s", "" if n == 1 else "-%d" % n, _name(command.leader)]
 
 
@@ -2379,7 +2379,7 @@ const INTENTS := {&"attack": &"offensive", &"defend": &"defensive", &"help": &"s
 # <= 0: no hotbar slot is open to orders) or it can't read what u can do (low wisdom). It commands by
 # intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (Unit.intent_skill()).
 func uses_intents(u: Unit) -> bool:
-	return _orders(u) and u != command.leader and (command.slots() <= 0 or command.leader.mod(&"wisdom") < 0)
+	return _orders(u) and u != command.leader and (command.slots(u) <= 0 or command.leader.mod(&"wisdom") < 0)
 
 
 # How well an order lands: the commander's clarity (wis mod) + how well u takes direction (cha mod). At
@@ -2630,7 +2630,7 @@ func _why_no_orders(u: Unit) -> String:
 		return "Downed: helpless until it's healed above 0 HP"
 	if not command.under_caps(u):
 		if u in command.ordered:  # what skills and items add to a cap is named beside the charisma (Command.basis())
-			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", command.basis(command.order_bonus())]
+			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(u), "" if command.order_cap(u) == 1 else "s", command.basis(command.order_bonus(), u)]
 		return "%s commands %d all%s a turn (%s)" % [_name(command.leader), command.ally_cap(), "y" if command.ally_cap() == 1 else "ies", command.basis(command.ally_bonus())]
 	return ""  # too far: no nag - its hotbar is grayed, and the units you can command are lit
 
