@@ -50,3 +50,34 @@ Branch `a-tap`. Baseline suite: 41775 checks, 0 failed (594 tests).
   execute checks already carry the skill's `execute` tag (reused instead of a new `executes`).
   A later Intervention: `check` effect, `tags = [taps, execute]`, per_rank; "executes assume full
   HP" would be one line in `Battle.executed()` reading a stat (not built).
+
+## As built
+
+- `Unit.helpless()` (source: helpless stat, sleep, Downed without `acts`), `Unit.stopped()` (helpless,
+  no Mindless Fury uses left; named so because `Unit.disabled` is Brainfog's skill table),
+  `Unit.tapped()` (out of AP or stopped), `Unit.reduced()`, `Unit.fury_acts`, `Unit.overdriven`;
+  `Unit.mod()` applies the reduced-capacity mental cost (`FURY_MOD` -5, a stat of 1; Drone `mini(mod,
+  rank)`). Both reset in `refresh()`.
+- `Command.tapped(u)`, `within_caps()`; `under_caps()` lets a Drone past; `order()` marks
+  `overdriven`; `could_order()` reads `tapped()`; `idle()` adds capped allies (autopilot).
+- Hold (`HUD.hold`) now locks the held ally (`Command.lock`), so it neither takes orders nor goes on
+  autopilot when the turn ends - otherwise a hold at a 1-order cap would autopilot.
+- Gates: `Battle._acting`, `AI.act`, the AI's craven fear read `stopped()`; the AI's finish-last
+  scoring stays on Downed foes only (a Stunned or sleeping foe isn't deprioritised). `Downed.changed`
+  drops a channel only if stopped (Mindless Fury keeps it).
+- HUD: `command_state` gains `&"reduced"` (glows as ready); `command_sat` 0 tapped, 0.5 reduced
+  (`SAT_REDUCED`), else drains to `SAT_LOW` 0.75 by the larger of AP spent squared and orders given
+  of the cap. Reasons: `_why_tapped()` (Mindless Fury spent, asleep, Downed, "Stunned: helpless till
+  healed or cleansed", out of AP).
+- Check seam: `check_bonus(s, kind, tags)`; Stun carries `taps` as a skill tag, so its save does.
+- Mechanics: stats `helpless` (harmful), `mindless`, `drone`; terms `tapped`, `helpless`, `taps`
+  (`--human`), `reduced` ("Reduced capacity ??"); `Effects/stunned.tres` (wound, ease 2).
+- Skills (`--human`): `stun` (4 AP, 2 Energy, reach 1, 1d6 + str, -5 to hit; on a failed difficult con
+  save, Stunned rank turns, and an interrupt if that stops it), `mindless_fury` (Fury, after Grudge
+  and Frenzy, needs 3, Berserker only), `drone` (Caster tier 4, magical tag).
+- Tests: `stun_test`, `mindless_fury_test`, `drone_test` (new). Changed to the new rule:
+  `command_test.test_idle` (a capped ally goes back on the autopilot list; a locked one doesn't),
+  `hud_test.test_command_colour` (last tenth of AP now below 0.8, SAT_LOW 0.75).
+- Suite: 41819 checks, 0 failed (602 tests).
+- Not done: no screenshot of the new saturation; 0-AP free actions still go (see calls); the
+  Intervention skill and "executes assume full HP"; a Merchant tree.
