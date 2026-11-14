@@ -127,9 +127,9 @@ extends Resource
 # before any of its own on a cost and decaying to nothing as the status runs out
 # (Unit.add_overcharge(), Unit.tick())
 # helpless: above 0, it can't act, move or take orders - tapped - unless something lets it act
-# anyway (mindless; Unit.helpless(), Unit.disabled()). Stunned
+# anyway (mindless; Unit.helpless(), Unit.stopped()). Stunned
 # mindless: helpless, it still takes this many skill uses a turn in a reduced capacity, its mental
-# stats counting as 1 (Mindless Fury: its rank; Unit.disabled(), Unit.reduced())
+# stats counting as 1 (Mindless Fury: its rank; Unit.stopped(), Unit.reduced())
 # drone: ordered past its leader's command caps, it still takes orders, in a reduced capacity, its
 # mental mods capped at + this (Drone: its rank; Command.tapped(), Unit.overdriven)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
@@ -178,7 +178,8 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"discipline": "Discipline", "natural_talent": "Natural Talent",
 		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
-		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding"}
+		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
+		"mindless": "Mindless Fury actions", "drone": "Drone"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -205,6 +206,8 @@ func marked(rank := 1) -> String:
 		v = Glossary.term(&"asleep", "can't act")
 	elif stat == "jammed":
 		v = Glossary.term(&"jammed", "no reactions")
+	elif stat == "helpless":
+		v = Glossary.term(&"helpless", "helpless")
 	v = _MOD.sub(v, "{o:$1 mod}", true)
 	if per_rank:
 		v = _NUM.sub(v, "{r:$0}")
@@ -260,6 +263,8 @@ func value(rank := 1) -> String:
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":
 		text = "no reactions: it can't dodge, guard or obstruct"
+	elif stat == "helpless":
+		text = "helpless: it can't act, move or take orders"
 	elif stat == "bleed":
 		text = "%dd%d%s HP as each of its turns ends" % [dice.x, dice.y, " + %s mod" % String(dice_mod).left(3) if dice_mod else ""] if dice != Vector2i.ZERO else "%s HP as each of its turns ends" % Skill.num(x)
 	elif stat == "grappled":

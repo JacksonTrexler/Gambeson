@@ -400,7 +400,7 @@ func test_command_colour() -> void:
 	for p in v(2).ap:
 		p.amount *= 0.2
 	h._refresh()
-	ok(sat.call(v(2)) > HUD.SAT_LOW and sat.call(v(2)) < 0.7, "its last tenth: noticeably drained, still in colour (%.2f)" % sat.call(v(2)))
+	ok(sat.call(v(2)) > HUD.SAT_LOW and sat.call(v(2)) < 0.8, "its last tenth: noticeably drained, still in colour (%.2f)" % sat.call(v(2)))
 	for p in v(2).ap:
 		p.amount = 0.0
 	h._refresh()

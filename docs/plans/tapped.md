@@ -9,8 +9,8 @@ Branch `a-tap`. Baseline suite: 41775 checks, 0 failed (594 tests).
   rest); helpless (Downed without `acts`, asleep, or any effect with the `helpless` stat) without a
   permit. Lift the source (heal the wound, cleanse Stunned, heal above 0 HP) and it is free at once.
 - Two queries, split by who knows what (Unit can't see Command):
-  - `Unit.tapped()`: out of AP, or `Unit.disabled()` (helpless and no permit left). Battle and the AI
-    use `disabled()` (an action's own cost already needs the AP).
+  - `Unit.tapped()`: out of AP, or `Unit.stopped()` (helpless and no permit left). Battle and the AI
+    use `stopped()` (an action's own cost already needs the AP).
   - `Command.tapped(u)`: `u.tapped()`, or at its order cap without a Drone permit. `could_order()` and
     the HUD read this one.
 - **helpless**: an Effect stat (`helpless`, a harmful one so it's a debuff) plus the Glossary term;

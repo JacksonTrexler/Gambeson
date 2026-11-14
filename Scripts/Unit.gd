@@ -18,6 +18,7 @@ const BASE_AP := 10.0
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
 		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
+const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
@@ -273,6 +274,8 @@ var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arrange
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
+var fury_acts := 0  # skill uses this turn while helpless, under a permit (Mindless Fury: its rank a turn; stopped())
+var overdriven := false  # ordered past its leader's command caps this turn, under a permit (Drone; Command.order())
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
 var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()), or a switch of what it runs on (toggle())
 	set(v):
@@ -1320,7 +1323,12 @@ func insightful() -> bool:
 # d20-style modifier: 10-11 -> 0, 12-13 -> +1, 8-9 -> -1. With a skill's tags, stand-in
 # passives may swap the stat (see scaling()).
 func mod(s: StringName, tags: Array[StringName] = []) -> int:
-	return floori((scaling(s, tags) - 10) / 2.0)
+	var m := floori((scaling(s, tags) - 10) / 2.0)
+	if s in MENTAL and reduced():
+		if helpless():
+			return FURY_MOD  # Mindless Fury: its mental stats count as 1
+		return mini(m, roundi(stat(&"drone")))  # Drone: capped at + its rank
+	return m
 
 
 # The stat value a skill with these tags scales on, after stand-in passives (Arcanist
@@ -2068,6 +2076,7 @@ func pay_for(s: Skill) -> bool:
 	paid_with = fund
 	if dbno:
 		dbno.acted += 1  # Downed: a skill use against its allowance (Grudge)
+	_count_fury()
 	return true
 
 
@@ -2095,6 +2104,7 @@ func pay_strike(s: Skill) -> bool:
 	energy -= strike_cost(s) - _spend_overcharge(&"energy", strike_cost(s))
 	if dbno:
 		dbno.acted += 1
+	_count_fury()
 	return true
 
 
@@ -2112,6 +2122,8 @@ func refresh() -> void:
 	moved = 0.0
 	steps = 0
 	exposed = 0
+	fury_acts = 0
+	overdriven = false
 
 
 # How hard it worked this turn: &"rest" (idle(), holding no channel), &"light" (it only spent its
@@ -2286,19 +2298,24 @@ func armored() -> bool:
 # What it adds to a check in stat s, as `kind` (offensive or defensive): its mod (stand-ins by `tags`)
 # plus what its bracing gives (check_bonus()). The usual bonus of one side of a Check.
 func check_mod(s: StringName, kind: StringName, tags: Array[StringName] = []) -> int:
-	return mod(s, tags) + check_bonus(s, kind)
+	return mod(s, tags) + check_bonus(s, kind, tags)
 
 
 # What its bracing passives add to a check in stat s (offensive or defensive; mental: int, wis, cha):
 # each that matches its armor's weight, stat and kind adds its armor's rank (x the passive's share),
 # up to the passive's rank (Agility, Balanced, Vanguard, Combat, Meditative, Invigorating Bracing).
 # Plain check effects (Turtle Tactics) add theirs, armor or not.
-func check_bonus(s: StringName, kind: StringName) -> int:
+# A `check` effect with tags counts only for checks carrying one (the check tag seam: a check that
+# taps carries `taps`, an execute's carries `execute`, so one effect can help with every such check).
+func check_bonus(s: StringName, kind: StringName, tags: Array[StringName] = []) -> int:
 	var w := armor.weight_class() if armored() else &""
 	var total := 0
+	var t := Tags.expand(tags) if not tags.is_empty() else ([] as Array[StringName])
 	for pair in _effects():
 		var e: Effect = pair[0]
 		if e.stat not in ["brace", "check"] or (e.kind and e.kind != kind):
+			continue
+		if e.stat == "check" and not e.tags.is_empty() and not e.tags.any(func(x): return x in t):
 			continue
 		if not (s in e.checks or (&"mental" in e.checks and s in MENTAL) or (e.stat == "check" and e.checks.is_empty())):
 			continue
@@ -2488,9 +2505,35 @@ func is_alive() -> bool:
 	return hp > 0 or dbno != null
 
 
-# Downed and unable to act for it (Tenacity; Downed.acts): it can't act, move or take orders.
+# Under something that takes away all its actions: a helpless effect (Stunned), sleep, or Downed
+# without the will to fight on (Tenacity; Downed.acts). The source; whether it stops it is stopped().
 func helpless() -> bool:
-	return dbno != null and not dbno.rule.acts
+	return stat(&"helpless") > 0.0 or asleep() or (dbno != null and not dbno.rule.acts)
+
+
+# Helpless with nothing letting it act: a permit (the mindless stat: Mindless Fury) lets it take that
+# many skill uses a turn anyway; spent, it's stopped too. It can't act, move or take orders.
+func stopped() -> bool:
+	return helpless() and fury_acts >= roundi(stat(&"mindless"))
+
+
+# Tapped, as far as the unit itself can tell: out of AP, or stopped(). Never stored or cleansed: it
+# lifts the moment its cause does (Stunned healed or cleansed, AP back). Command.tapped() adds the
+# leader's caps; that's the one the HUD and orders read.
+func tapped() -> bool:
+	return ap_left() <= 0.001 or stopped()
+
+
+# Acting in a reduced capacity: where it would be tapped, a permit lets it act - helpless under
+# Mindless Fury (its mental stats count as 1), or ordered past the caps as a Drone (its mental mods
+# capped at + its Drone rank). mod() applies the cost; the HUD drains it to half colour.
+func reduced() -> bool:
+	return overdriven or (helpless() and not stopped())
+
+
+func _count_fury() -> void:
+	if helpless():
+		fury_acts += 1  # a skill use under Mindless Fury
 
 
 func asleep() -> bool:

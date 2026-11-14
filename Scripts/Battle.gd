@@ -3413,7 +3413,7 @@ static func persona_rank(u: Unit, s: Skill) -> int:
 
 
 func _acting(u: Unit) -> bool:
-	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.asleep() and not u.helpless()
+	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.stopped()
 
 
 # Touching, diagonals included.

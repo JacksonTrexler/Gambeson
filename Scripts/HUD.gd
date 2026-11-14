@@ -519,7 +519,7 @@ func hold() -> void:
 	var u := selected
 	if not u or u == command.leader or not _orders(u) or u in command.ordered:
 		return
-	command.order(u)
+	command.lock(u)  # held: done for the turn, and no autopilot once it ends (Command.idle())
 	_log("%s holds" % _tag(u))
 	_mark()
 
@@ -1945,8 +1945,8 @@ func _hint() -> String:
 		return ""
 	if u.asleep():
 		return "Asleep."
-	if u.helpless():
-		return "Downed: helpless until it's healed above 0 HP."
+	if u.stopped():
+		return _why_tapped(u) + "."
 	return ""  # not commandable (too far): the grayed hotbar and the lit commandable units say so
 
 
@@ -2514,14 +2514,17 @@ func _apply_contrast() -> void:
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order
 # now, with AP to act on it: lit), &"far" (it would, but for standing out of reach of the leader's
-# orders: in colour, its glow weaker), &"spent" (on the player's turn, it can't take another - out of
-# AP, asleep, past the turn's command caps: grey) or &"idle" (not the player's turn, or not its side:
-# allies of another side and foes are drawn as they are).
+# orders: in colour, its glow weaker), &"reduced" (it takes orders, but only in a reduced capacity -
+# Mindless Fury, Drone: Unit.reduced()), &"spent" (on the player's turn it's tapped - Command.tapped():
+# out of AP, helpless, past the turn's command caps: grey) or &"idle" (not the player's turn, or not
+# its side: allies of another side and foes are drawn as they are).
 func command_state(u: Unit) -> StringName:
 	if not my_turn() or not known(u):
 		return &"idle"
-	if u.ap_left() <= 0.001 or not command.could_order(u):
+	if not command.could_order(u):
 		return &"spent"
+	if u.reduced():
+		return &"reduced"
 	return &"ready" if command.in_range(u) else &"far"
 
 
@@ -2557,7 +2560,7 @@ func skill_glow(u: Unit, s: Skill, t: Unit) -> int:
 # glows barely too. -1: not the player's turn, or not its side.
 func command_glow(u: Unit) -> int:
 	match command_state(u):
-		&"ready":
+		&"ready", &"reduced":
 			return Unit.Intensity.FULLY
 		&"spent":
 			return Unit.Intensity.BARELY
@@ -2588,16 +2591,21 @@ func _sure_walk(u: Unit, path: Array) -> bool:
 	return true
 
 
-const SAT_LOW := 0.55  # the colour a unit that can still be commanded keeps on its last AP
+const SAT_LOW := 0.75  # the colour a unit that can still be commanded keeps on its last AP, or its last order
+const SAT_REDUCED := 0.5  # acting in a reduced capacity (Unit.reduced(): Mindless Fury, Drone)
 
 
 # How much colour it draws with (Unit.set_saturation()): full, but for the player's own side on its
-# turn. One that can still be commanded - or could, were it in reach - drains only a little, and
-# mostly as its AP runs out (SAT_LOW with none left); one that can't be any more this turn is grey.
+# turn. One that can still be commanded - or could, were it in reach - drains only a little, as its
+# AP runs out or its orders toward the caps are used (SAT_LOW at the last); one acting in a reduced
+# capacity is half grey; one that's tapped this turn (Command.tapped()) is grey.
 func command_sat(u: Unit, state := command_state(u)) -> float:
 	match state:
 		&"ready", &"far":
-			return 1.0 - (1.0 - SAT_LOW) * pow(1.0 - u.ap_share(), 2.0)
+			var used := float(command.ordered.get(u, 0)) / command.order_cap() if u != command.leader else 0.0
+			return 1.0 - (1.0 - SAT_LOW) * maxf(pow(1.0 - u.ap_share(), 2.0), minf(used, 1.0))
+		&"reduced":
+			return SAT_REDUCED
 		&"spent":
 			return 0.0
 	return 1.0
@@ -2614,15 +2622,27 @@ func _why_no_orders(u: Unit) -> String:
 		return "Wait for your turn"
 	if not u.is_alive():
 		return "Fallen"
-	if u.asleep():
-		return "Asleep: an ally ending the turn beside it wakes it"
-	if u.helpless():
-		return "Downed: helpless until it's healed above 0 HP"
+	if u.stopped() or u.ap_left() <= 0.001:
+		return _why_tapped(u)
 	if not command.under_caps(u):
 		if u in command.ordered:  # what skills and items add to a cap is named beside the charisma (Command.basis())
 			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", command.basis(command.order_bonus())]
 		return "%s commands %d all%s a turn (%s)" % [_name(command.leader), command.ally_cap(), "y" if command.ally_cap() == 1 else "ies", command.basis(command.ally_bonus())]
 	return ""  # too far: no nag - its hotbar is grayed, and the units you can command are lit
+
+
+# What taps it, of its own sources (Unit.tapped()): each can be lifted, and the tap with it.
+func _why_tapped(u: Unit) -> String:
+	if u.helpless() and u.fury_acts > 0:
+		return "Tapped: its Mindless Fury is spent this turn"
+	if u.asleep():
+		return "Asleep: an ally ending the turn beside it wakes it"
+	if u.dbno != null and not u.dbno.rule.acts:
+		return "Downed: helpless until it's healed above 0 HP"
+	if u.stat(&"helpless") > 0.0:
+		var names := u.timed.keys().filter(func(e: Effect): return e.stat == "helpless").map(func(e: Effect): return e.label())
+		return "%s: helpless%s" % [", ".join(names), " till healed or cleansed" if u.timed.keys().any(func(e: Effect): return e.stat == "helpless" and e.wound) else ""]
+	return "Tapped: out of AP"
 
 
 func _why_no_join(u: Unit) -> String:
