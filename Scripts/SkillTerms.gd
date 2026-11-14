@@ -6,7 +6,7 @@ extends RefCounted
 # its own (Behaviour.terms()). docs/plans/skill-modifiers.md.
 #
 # Four channels of scaling, each a list of what scales that way:
-#   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast
+#   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast, aura, flamewall width, cone, sends, auto, exits, fog
 #   rank_impact  what rank adds to what it does: tiers by rank, roll_per_rank, dice_per_rank, dice_scale,
 #                turns_per_rank, push, pull, per_wound, restores, per-rank effects
 #   stat_range   what its user's stats add to its reach: radius_mod, radius_stat
@@ -64,10 +64,33 @@ func _init(s: Skill) -> void:
 			add(&"rank_impact", f)
 	if s.effects.any(func(e: Effect): return e.per_rank):
 		add(&"rank_impact", "effects")
+	# What Battle reads through the reader too (docs/plans/route.md): rank as reach or count reached...
+	for f in ["aura", "flamewall", "sends", "auto", "exits", "fog"]:
+		if s.get(f):
+			add(&"rank_range", f)
+	if s.cone > 0.0 and not s.evadable:  # Solar: + 15 degrees a rank
+		add(&"rank_range", "cone")
+	# ...and as what it does: + rank on a save, an execute's / rank, a DC it imposes, hits, rolls, turns.
+	for f in ["save", "hits_per_rank", "levels_down", "kills", "disables", "lays", "wells", "zone", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog", "flamewall"]:
+		if s.get(f):
+			add(&"rank_impact", f)
+	if not s.elements.is_empty():
+		add(&"rank_impact", "elements")
+	if s.evadable and s.difficulty:
+		add(&"rank_impact", "difficulty")
+	if s.heals() and not s.passive:
+		add(&"rank_impact", "clears")
+	if &"execute" in s.tags:
+		add(&"rank_impact", "execute")
 	if s.radius_mod:
 		add(&"stat_range", "radius_mod")
 	if s.radius_stat:
 		add(&"stat_range", "radius_stat")
+	if s.sends or s.fog:
+		add(&"stat_range", "sends" if s.sends else "fog")
+	if s.boost_mod:
+		add(&"stat_impact", "boost_mod")
+
 	if s.tiers.any(func(t: Tier): return t.stat != &""):
 		add(&"stat_impact", "tier stat")
 	if not s.heal_mods.is_empty():
