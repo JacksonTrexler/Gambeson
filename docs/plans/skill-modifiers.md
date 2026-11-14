@@ -155,3 +155,38 @@ the follow-up; none were rebalanced here. Another ~8 passives fit tag modifiers 
 Suggested colours for `Tags.COLOR`: rho_up #e0a040, rho_down #f0d890, sigma_down #c060d0, sigma_up
 #e0b0f0, lambda_up #4080d0, lambda_down #a0c8f0. The emblem form words sigil, insignia, crest, badge need
 `Tags.PLAIN` entries so trim comes from the emblem's tag or symbol. No new tags were added.
+
+## Merge with main and follow-ups (2026-11-14, second pass)
+- Merge: modifier tags reach the Slayer Cast (`cast_of` sets `c.mods` and `c.tags = hit_tags(...)`, and
+  `hit_tags` starts from `Unit.skill_tags()`), so ambush and execute checks see them. `hit_chance` keeps
+  the behaviours' guard and edge and reads roll_per_rank through the reader. The attack edge is
+  `edge_of()` + the requirement's edge, clamped. Behaviour.Cast keeps both sides' fields (`mods`, `tags`,
+  `hit`). `Glossary.ELEMENTS` is gone on main: `Glossary.DAMAGE_TAGS` (elements and blows) now says which
+  words are damage in kind.
+- Colours (`mechanic.py color`): rho_up #e0a040, rho_down #f0d890, sigma_down #c060d0, sigma_up
+  #e0b0f0, lambda_up #4080d0, lambda_down #a0c8f0; the forms sigil, insignia, crest, badge #c9b48a and in
+  `Tags.PLAIN`. Emblems carry their form word as a tag; `Item.trim_tag()` puts the emblem first, so the
+  Fire Insignia is trimmed fire and each symbol emblem its symbol's colour (modifiers_test).
+- Slayer terms through `terms()`: Gank (major penalty; its backing ally is a gate, not a payoff, so
+  lambda doesn't act), Poach (impactful; bloodied share 0.5 read through lambda; regain x impact rank),
+  Sutemi (lunge = rank range, routed; impactful; minor penalty), Spike (+rank damage, routed; major
+  penalty), Hitch and Slam Jam (+rank on the contest, routed, and their tags; impactful), Bludgeon
+  (Winded AP routed; tame), Peel (rank and wis reach routed through its holder's modifiers; tame).
+  Pricing now tapers by a behaviour's contingencies too.
+- Priced: only Poach, the one whose computed price lands within 1 AP and 1 Energy of its hand price
+  (call). poach_test now reads the price rather than 3/2.
+
+| Skill | Hand AP/cost | Computed AP/cost (rank I) | Points |
+|---|---|---|---|
+| Gank | 4/2 | 2/1 | 1.9 |
+| Peel | passive | - | - |
+| Poach | 3/2 | 4/3 (priced) | 5.5 |
+| Sutemi | 5/2 | 5/4 | 8 |
+| Spike | 6/2 | 3/2 | 4 |
+| Hitch | 3/1 | 5/4 | 7 |
+| Bludgeon | 5/2 | 3/2 | 4 |
+| Slam Jam | 6/3 | 6/5 | 9 |
+
+The gaps say where the table and the Slayer designs disagree: impactful effects (5 points) outweigh low
+damage (Hitch); a gate on the whole skill (Gank) and the target's Defense (Spike) count as cheap; "high
+damage" in the Slayer plan is 1d10, which the bands read as moderate.

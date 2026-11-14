@@ -9,7 +9,14 @@ func guard(c: Cast) -> int:
 
 
 func bonus(c: Cast) -> int:
-	return c.rank if c.foe else 0
+	return c.impact_rank() if c.foe else 0
+
+
+# Its terms: + rank damage; the foe's unspent AP on its Defense is a major penalty.
+func terms(t: SkillTerms) -> void:
+	t.damage_per_rank = 1.0
+	t.add(&"rank_impact", "damage")
+	t.penalty = &"major"
 
 
 func describe(rank: int) -> String:

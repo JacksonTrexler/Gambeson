@@ -13,7 +13,7 @@ func apply(c: Cast) -> void:
 	if not c.target.is_alive():
 		return
 	var b := c.battle
-	var vs := b.beats(Check.side(c.caster.check_mod(&"strength", &"offensive", c.skill.tags) + c.rank),
+	var vs := b.beats(Check.side(c.caster.check_mod(&"strength", &"offensive", c.tags) + c.impact_rank()),
 			Check.side(c.target.check_mod(&"constitution", &"defensive", c.skill.tags), Check.Kind.SAVE))
 	b.contested.emit(c.caster, c.target, vs.mine.total, vs.theirs.total)
 	c.bag[&"slammed"] = vs.won
@@ -23,6 +23,14 @@ func apply(c: Cast) -> void:
 
 func dealt(_c: Cast, _n: int) -> void:
 	pass
+
+
+# Its terms: + rank on its interrupting contest, the interrupt impactful.
+func terms(t: SkillTerms) -> void:
+	t.check = true
+	t.hit_per_rank += 1.0
+	t.add(&"rank_impact", "contest")
+	t.impact = &"impactful"
 
 
 func describe(rank: int) -> String:

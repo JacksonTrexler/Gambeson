@@ -9,7 +9,11 @@ extends Behaviour
 func step_cost(b: Battle, holder: Unit, rank: int, from: Vector2i, to: Vector2i, cost: float, bag: Dictionary) -> float:
 	if cost <= 0.0 or bag.get(&"peel", 0) + holder.tally.get(&"peel", 0) >= rank:
 		return cost
-	var near := float(rank + holder.mod(&"wisdom"))
+	var m := Modifiers.NONE
+	for s in holder.passives:  # its modifiers: rank and wis mod are both reach
+		if self in s.behaviours:
+			m = holder.mods(s)
+	var near := m.rank(rank, &"rank_range") + m.stat(holder.mod(&"wisdom"), &"stat_range")
 	var best := 0.0
 	for a: Unit in b.units.values():
 		if a == holder or a.hp <= 0 or not Faction.friends(a.faction, holder.faction) or Vector2(from).distance_to(Vector2(a.cell)) > near + 0.0001:
@@ -23,6 +27,13 @@ func step_cost(b: Battle, holder: Unit, rank: int, from: Vector2i, to: Vector2i,
 		return cost
 	bag[&"peel"] = bag.get(&"peel", 0) + 1
 	return cost - minf(best, cost / 2.0)
+
+
+# Its terms: reach by rank and wis mod (both through modifiers), a tame effect.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_range", "ally reach")
+	t.add(&"stat_range", "ally reach")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

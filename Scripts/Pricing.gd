@@ -59,6 +59,8 @@ static func points(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> float:
 		share = m.share(q.share) if q.beneficial() else q.share
 		if q.beneficial():
 			payoff = (maxf(m.pay(q.hit), 0) + maxf(m.pay(q.damage), 0) + 2.0 * maxi(q.edge, 0)) * TABLE[&"payoff"]
+	elif not t.contingencies.is_empty():  # a behaviour's (Poach's bloodied foe, Gank's backing ally): the hardest tapers
+		share = t.contingencies.map(func(x: Array): return m.share(x[1]) if x[2] else x[1]).min()
 	var taper: float = TABLE[&"taper"] + (1.0 - TABLE[&"taper"]) * share
 	p += (TABLE[&"impact"].get(t.impact, 0.0) + payoff) * taper
 	p -= TABLE[&"penalty"].get(t.penalty, 0.0)
