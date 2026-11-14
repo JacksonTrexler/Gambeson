@@ -23,7 +23,7 @@ const TABLE := {
 	&"rank_term": 0.25,  # each other thing rank adds to what it does (turns, push, per-rank effects...), a rank past I
 	&"stat": 0.5,  # a stat adding to what it does
 	&"impact": {&"": 0.0, &"tame": 2.0, &"impactful": 5.0},
-	&"payoff": 1.0,  # each + to hit or damage a contingency gives; advantage counts 2
+	&"payoff": 1.0,  # each + to hit or damage a contingency gives; advantage counts 2, a turn half, +100% strength 2
 	&"taper": 0.4,  # an effect behind a contingency costs (taper + (1 - taper) x share) of itself
 	&"penalty": {&"": 0.0, &"minor": 1.0, &"major": 2.0, &"severe": 3.0},
 	&"adjacent": 1.0,
@@ -58,7 +58,8 @@ static func points(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> float:
 		var q := s.requires
 		share = m.share(q.share) if q.beneficial() else q.share
 		if q.beneficial():
-			payoff = (maxf(m.pay(q.hit), 0) + maxf(m.pay(q.damage), 0) + 2.0 * maxi(q.edge, 0)) * TABLE[&"payoff"]
+			payoff = (maxf(m.pay(q.hit), 0) + maxf(m.pay(q.damage), 0) + 2.0 * maxi(q.edge, 0) + 0.5 * maxf(m.pay(q.turns), 0)
+					+ 2.0 * maxf(q.strength * m.potency, 0.0)) * TABLE[&"payoff"]  # a turn counts half; x2 strength counts 2
 	elif not t.contingencies.is_empty():  # a behaviour's (Poach's bloodied foe, Gank's backing ally): the hardest tapers
 		share = t.contingencies.map(func(x: Array): return m.share(x[1]) if x[2] else x[1]).min()
 	var taper: float = TABLE[&"taper"] + (1.0 - TABLE[&"taper"]) * share
@@ -99,7 +100,12 @@ static func energy(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> int:
 # What u pays in AP for s, before reserves and exhaustion (Unit.ap_cost()): computed if s is priced;
 # else its ap, x what u's modifiers do to its points.
 static func ap_for(u: Unit, s: Skill) -> float:
-	var r := maxi(u.rank(s), 1)
+	return ap_at(u, s, u.rank(s))
+
+
+# ...at rank r (a description of s at some rank, as u holds it: Skill.spec()).
+static func ap_at(u: Unit, s: Skill, rank: int) -> float:
+	var r := maxi(rank, 1)
 	var m := u.mods(s)
 	if s.priced:
 		return ap(s, r, m)
@@ -110,8 +116,13 @@ static func ap_for(u: Unit, s: Skill) -> float:
 
 # ...and in Energy (Unit.price()).
 static func cost_for(u: Unit, s: Skill) -> int:
-	var r := maxi(u.rank(s), 1)
+	return cost_at(u, s, u.rank(s))
+
+
+static func cost_at(u: Unit, s: Skill, rank: int) -> int:
+	var r := maxi(rank, 1)
 	var m := u.mods(s)
+
 	if s.priced:
 		return energy(s, r, m)
 	if m.empty():

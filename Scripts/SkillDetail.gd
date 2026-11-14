@@ -64,8 +64,8 @@ func show_skill(u: Unit, s: Skill, can_spend: bool, offers := true) -> void:
 	var r := u.base_rank(s)
 	title_label.text = s.title() + (" " + Skill.roman(r) if r else "")
 	state_label.text = SkillDetail.state(u, s)
-	_fill_spec(s)
-	text_label.text = Glossary.rich(s.plan if s.stub else s.markup(maxi(r, 1), false))
+	_fill_spec(s, null if offers else u, maxi(r, 1))  # the spellbook: as u has it; the skills screen: base
+	text_label.text = Glossary.rich(s.plan if s.stub else s.markup(maxi(r, 1), false, null if offers else u) + (Skill.base_note(u, s) if offers else ""))
 	act.visible = offers and not s.stub and (r == 0 or u.can_raise(s))
 	var cost := u.raise_cost(s)
 	var why := ""
@@ -115,11 +115,11 @@ static func state(u: Unit, s: Skill) -> String:
 	return tier + (" · " + why if why else "")
 
 
-func _fill_spec(s: Skill) -> void:
+func _fill_spec(s: Skill, u: Unit = null, r := 1) -> void:
 	for c in spec.get_children():
 		spec.remove_child(c)
 		c.queue_free()
-	for part in s.spec():
+	for part in s.spec(u, r):  # as u holds it: its modifiers, its price
 		var l := RichTextLabel.new()
 		l.bbcode_enabled = true
 		l.fit_content = true

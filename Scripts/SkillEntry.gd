@@ -16,11 +16,11 @@ var lit := false:  # the one shown in full
 		self_modulate = Color(1.35, 1.3, 1.1) if v else Color.WHITE
 
 
-func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> void:
+func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool, holder: Unit = null) -> void:
 	skill = s
 	draggable = can_drag and s.fits_bar()
 	theme_type_variation = &"Card"
-	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.markup(rank)]
+	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.markup(rank, true, holder)]  # as its holder has it: its modifiers, its price
 	if draggable:
 		tooltip_text += "\nDrag onto the hotbar."
 		mouse_default_cursor_shape = CURSOR_DRAG
@@ -47,7 +47,7 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 	text.add_child(title)
 	var line := Label.new()
 	line.theme_type_variation = &"Muted"
-	line.text = s.summary()
+	line.text = Glossary.plain(s.spec_line(holder, rank)) if holder else s.summary()
 	text.add_child(line)
 	if s.passive and s.toggle:
 		var b := Button.new()

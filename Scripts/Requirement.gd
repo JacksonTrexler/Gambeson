@@ -19,9 +19,11 @@ const SPAN := 12.0  # tiles a tile requirement's share is taken over, so lambda 
 @export var test := &"hp_below"
 @export var share := 0.5  # how permissive: the slice of the range that meets it
 @export var per_rank := false  # tiles: share x SPAN x rank (within rank tiles of an ally: share 1 / 12)
-@export var hit := 0  # met: + to its attack roll
-@export var damage := 0  # met: + to its damage
-@export var edge := 0  # met: advantage (1) or disadvantage (-1) on its attack roll
+@export var hit := 0  # met: + to its check, whichever it makes - attack roll, save, contest, Level Down's rolls
+@export var damage := 0  # met: + to what it does - its damage on each hit, the HP it heals, the AP it boosts
+@export var edge := 0  # met: advantage (1) or disadvantage (-1) on that check
+@export var turns := 0  # met: + to how long the effects it puts on last (and the slots it disables)
+@export var strength := 0.0  # met: the effects it puts on are this much stronger (0.5: x1.5; Applied.scale)
 
 
 # The test's measure in tiles at rank r, for a share p (tile tests).
@@ -31,7 +33,7 @@ func tiles(p: float, r: int) -> float:
 
 # Helps rather than hinders: what lambda modifiers act on.
 func beneficial() -> bool:
-	return hit + damage + edge > 0
+	return hit + damage + edge + turns + strength > 0
 
 
 # Whether it's met for caster on target at rank r, with permissive share p (Modifiers.share(share)).
@@ -59,7 +61,29 @@ func met(caster: Unit, target: Unit, r: int, p: float, allies: Array = [], conce
 	return false
 
 
+# Its line in its skill's description, at rank r, through the user's modifiers m (lambda: the share it's
+# met at, and the payoff, as Battle.requirement() reads them): "At or below 50% HP: +2 to its check,
+# advantage".
+func markup(r: int, m: Modifiers = Modifiers.NONE) -> String:
+	var mm := m if beneficial() else Modifiers.NONE
+	var gives: PackedStringArray = []
+	var signed := func(n: int) -> String: return ("+{r:%d}" % n) if n >= 0 else ("-{r:%d}" % -n)
+	if hit:
+		gives.append("%s to its %s" % [signed.call(mm.pay(hit)), Glossary.term(&"check", "check")])
+	if damage:
+		gives.append("%s to what it deals or heals" % signed.call(mm.pay(damage)))
+	if edge:
+		gives.append(Glossary.term(&"advantage") if edge > 0 else Glossary.term(&"disadvantage"))
+	if turns:
+		gives.append("its effects last %s turns" % signed.call(mm.pay(turns)))
+	if strength:
+		gives.append("its effects x{r:%s}" % Skill.num(snappedf(1.0 + (strength * mm.potency if strength > 0.0 else strength), 0.01)))
+	var test := said(r, mm.share(share))
+	return "%s: %s" % [test.left(1).to_upper() + test.substr(1), ", ".join(gives)]
+
+
 # "below half HP", "at least 80% Energy", "within 2 tiles of an ally": the test at rank r, share p.
+
 func said(r: int, p: float) -> String:
 	var pct := func(x: float) -> String: return "%d%%" % roundi(x * 100.0)
 	match test:

@@ -33,6 +33,7 @@ var sealed := false  # a level curse took the slot: it stays, unusable, till the
 var label := ""  # the name it goes by for its unit (Unit.skill_name(): Decisive Strike, Firestrike); empty: its own
 var exhausted := 0.0  # uses counted against its skill (Exhaustion.of()): a pip each, a half pip for a half - its raised cost without words
 var switching := false  # its passive is a switch of what the unit runs on (Mana, Stamina) in progress: a turning arc and a pulsing rim until the channel ends
+var holder: Unit  # whose slot it is: its tooltip describes the skill as this unit has it (Skill.markup())
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
@@ -62,8 +63,9 @@ func _init() -> void:
 
 
 func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: bool, can_edit: bool,
-		is_locked := false, knows := 2, mods := "") -> void:
+		is_locked := false, knows := 2, mods := "", who: Unit = null) -> void:
 	index = i
+	holder = who
 	skill = s
 	rank = r
 	armed = is_armed
@@ -79,7 +81,7 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	elif sense == 1:
 		tooltip_text = "[%s] %s\nYour side can't make out more of it" % [_key(), s.name]
 	else:
-		tooltip_text = "[%s] %s %s%s\n%s" % [_key(), s.title(), Skill.roman(r), "  " + mods if mods else "", s.markup(r)]  # its modifiers, as symbols (Modifiers.label())
+		tooltip_text = "[%s] %s %s%s\n%s" % [_key(), s.title(), Skill.roman(r), "  " + mods if mods else "", s.markup(r, true, holder)]  # its modifiers, as symbols (Modifiers.label())
 	queue_redraw()
 
 
