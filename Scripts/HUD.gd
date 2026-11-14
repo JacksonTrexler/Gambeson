@@ -2508,7 +2508,7 @@ func _info(u: Unit) -> Dictionary:
 		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
 			rows.append(["OC", "+%d" % u.overcharge, null, Unit.OVERCHARGE_COLOR])
 		rows.append(["RE", "%d/%d" % [u.endurance, u.endurance_max()], null, FOE if u.endurance <= 0 else MUTED])  # Recovery Endurance (Burnout)
-		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
+		rows.append(["AP", u.ap_left() - battle.free_ap(u), u.full_ap(), AP_COLOR])  # its own: not an interrupt's free pool
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return u.stat(x))), null, MUTED])
@@ -2581,7 +2581,7 @@ func _info(u: Unit) -> Dictionary:
 	if r.energy != null:
 		rows.append(["PW" if u.powered() else "EN", r.energy, null, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 	if known(u) and command.can_order(u):  # what it has left to follow orders with
-		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
+		rows.append(["AP", u.ap_left() - battle.free_ap(u), u.full_ap(), AP_COLOR])  # its own: not an interrupt's free pool
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 	if r.net >= 0:
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])

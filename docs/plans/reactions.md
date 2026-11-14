@@ -80,4 +80,38 @@ Branch `s-react`, Phase 3 item 9 of `docs/plan.md`. Baseline suite: 45524 checks
 
 ## As built
 
-(Below.)
+- **Behaviour.gd:** `Behaviour.Reaction` (trigger, subject, by, cast, skill, locked, guard, stay, done,
+  rolled; `retarget()`, `contest()`, `reacted()`), the hook `react(r, holder, rank)`; `Cast.meant`,
+  `Cast.locked`.
+- **Battle.gd:** `react()`, `react_with()`, `reactors()`, `reactions_of()`, `times_reacted()`,
+  `resolving()`; `grant_interrupt()`, `end_interrupt()`, `interrupter`, `free_ap()`; signals `reacted`,
+  `interrupt_began`, `interrupt_ended`. `cast()` and `cast_at()` count calls under way (`_casting`; the
+  body of `cast_at` moved to `_cast_at`); `_acting()` lets only the interrupter act; `travel()` refuses it;
+  `attempt()`'s miss counts as its action; `end_turn()` passes an open one. In `_cast()`: every hostile
+  cast on a foe now gets a Cast (it had one only with behaviours), the `attacked` and `hit` moments, and
+  the re-check of a roll after a swap; `_chain()` asks `hit` per blow. `_on_falling()` / `_settle()`.
+- **Unit.gd:** signal `falling(u, hold)`, `staying`, `_held_up()`; `is_alive()` counts `staying`.
+- **AI.gd:** `AI.interrupt(b, u)`.
+- **HUD.gd:** log line and gold float per reaction; `_on_interrupt()` (prompt, or the AI); `my_turn()` is
+  the player's while its own unit interrupts; End turn passes it; the AI turn loop waits interrupts out
+  (`_interrupted()`) and lets the interrupted unit carry on; the AP row leaves out the free pool.
+- **Mechanic:** tag `reaction` (Glossary, Tags colour). **Skills** (stubs removed and rewritten through
+  `skill.py new --human`, same places): Interject (Protector, after Shields Up!), Snapping Turtle (after
+  Turtle Tactics), Final Act and Gallantry (Chivalry, after Coordinate), with behaviours of the same names.
+- **Util/skill.py:** `react` joins HOOKS; `check` fails a skill whose behaviour reacts without the tag.
+- **Tests:** new `reaction_test` (hook joining, order, once, gating, Jam, keyed effects, interrupt, queue,
+  AI), `interject_test`, `gallantry_test`, `final_act_test`, `snapping_turtle_test`. Changed to the new
+  rule: `paladin_test.test_tree` (Final Act and Gallantry built, tier 2), `fighter_test.test_tree` (the
+  "stub can't be learned" check now uses Sundering; Interject is learnable).
+- **Visual check:** `S/shot_s-react/` (driver `S/driver_react.gd`): a foe's Final Act floats and logs, its
+  AI takes the action; the player's own interrupt on the foe's turn prompts, acts, and the turn resumes.
+
+## Not done
+
+- Snapped forms for Gallantry and Final Act (none designed); Turtle Tactics and other always-on defensive
+  passives have nothing to snap.
+- Reactions to area skills on tiles (`cast_at`: cones, zones) and to damage outside casts (flames, traps):
+  no `attacked`/`hit` moment there; `fallen` does fire for them.
+- The AI doesn't weigh enemies' reactions when picking targets (a Gallantry Paladin beside its mark), nor
+  hold a Final Act unit back.
+- Battle doesn't run the AI for interrupts: headless simulations must call `AI.interrupt()` themselves.

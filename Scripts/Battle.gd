@@ -1209,6 +1209,11 @@ func _on_falling(u: Unit, hold: Dictionary) -> void:
 		_open_interrupt()
 
 
+# The free AP an interrupt lent u (none unless it's the interrupter): the HUD shows its own AP without it.
+func free_ap(u: Unit) -> float:
+	return _interrupt_ap.amount if u == interrupter and _interrupt_ap else 0.0
+
+
 # One of the interrupter's skill uses is done: the last of them ends its interrupt.
 func _spent_interrupt(u: Unit) -> void:
 	if u == interrupter:
