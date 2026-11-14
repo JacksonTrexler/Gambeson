@@ -36,7 +36,7 @@ func test_select_and_move() -> void:
 	ok(h.selected == v(1) and h.my_turn(), "the leader is selected as its turn starts")
 	h.hover_cell(Vector2i(3, 2))
 	ok(h.plan.path.back() == Vector2i(3, 2), "hovering a tile plans the walk there")
-	ok("Walk here: 3 of 5" in h.tip_label.text and h.tip.visible, "the tip gives its cost (bramble 1, leaving it 1 + 1)")
+	ok(h.spend.get(&"move") == 3.0 and not h.tip.visible, "its cost drains off the bars, in no words (bramble 1, leaving it 1 + 1)")
 	h._refresh()
 	ok(Vector2i(3, 2) in h.reach and Vector2i(8, 7) not in h.reach, "reachable tiles are known")
 	h.click(Vector2i(3, 2))
@@ -56,7 +56,8 @@ func test_keys_and_targets() -> void:
 	ok(h.armed == strike and not h.aiming(), "1 selects it; a unit skill doesn't aim")
 	ok(h.targets().size() == 1 and h.targets()[0] == v(3), "the enemy in reach is its one target")
 	h.hover_cell(Vector2i(5, 3))
-	ok("3 AP · 100% to hit · 2 damage" in h.tip_label.text, "hovering it forecasts the cost, chance to hit and damage")
+	ok(h.spend.get(&"ap") == 3.0 and h.hurt.unit == v(3) and h.hurt.lo == 2 and h.hurt.hi == 2 and h.odds(h.hovered) == &"likely",
+			"hovering it drains 3 AP off the bars, 2 HP off the foe's, and its brackets are solid (%s %s)" % [h.spend, h.hurt])
 	h.click(Vector2i(5, 3))
 	ok(v(3).hp == 8 and h.armed == strike and v(1) in h.command.ordered, "clicking it strikes (1 + str mod 1); the slot stays")
 	ok(h.intent(Vector2i(6, 6)).kind == &"walk", "with Strike selected, an empty tile is still a walk")
@@ -368,7 +369,7 @@ func test_click_attacks() -> void:
 	var h := await start(v(1))
 	h.hover_cell(Vector2i(4, 3))
 	ok(h.charge == Vector2i(4, 3) and h.plan.path.back() == Vector2i(3, 3), "hovering a foe plans the walk into reach")
-	ok("Click: walk 2, then Strike I" in h.tip_label.text, "and the tip says what a click will do")
+	ok(h.spend.get(&"move") == 2.0 and h.spend.get(&"ap") == 3.0, "and the bars drain the walk and the Strike (%s)" % h.spend)
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(3, 3) and v(3).hp == 8 and v(1) in h.command.ordered, "clicking it walks up and strikes")
 	stage(lancin, {v(1): Vector2i(0, 7), v(3): Vector2i(9, 0), v(4): Vector2i(9, 1)})
@@ -446,7 +447,7 @@ func test_skill_glow() -> void:
 			"every way to it across ground it can't make out: somewhat")
 	ok(a.call(icor) < a.call(v(4)) and a.call(v(4)) < Unit.GLOW, "between barely and plain (%.2f)" % a.call(v(4)))
 	h.hover_cell(Vector2i(4, 3))
-	ok(h.plan.is_empty() and "no sure walk" in h.tip_label.text, "the tip says why a click won't do (%s)" % h.tip_label.text)
+	ok(h.plan.is_empty() and h.hovered.kind == &"refuse" and h.hovered.get("unsure", false), "a click won't do: only an unsure walk gets there")
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(1, 3) and h.armed == strike and v(4).hp == v(4).max_hp and h._note == "Out of reach", "and a click doesn't walk it there")
 	b.zones.clear()
@@ -454,7 +455,7 @@ func test_skill_glow() -> void:
 	h._refresh()
 	h.hover_cell(Vector2i(5, 5))
 	h.hover_cell(Vector2i(4, 3))
-	ok(h.plan.path.back() == Vector2i(3, 3) and "Click: walk 2, then Strike" in h.tip_label.text, "hovering a mostly-lit one plans the walk (%s)" % h.tip_label.text)
+	ok(h.plan.path.back() == Vector2i(3, 3) and h.hovered.kind == &"use" and h.hovered.dest == Vector2i(3, 3), "hovering a mostly-lit one plans the walk")
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(3, 3) and v(4).hp < v(4).max_hp and h.armed == strike and h.command.ordered.get(v(1), 0) == 1,
 			"clicking it walks into reach and strikes: one order")
@@ -568,7 +569,7 @@ func test_ground() -> void:
 			"the hidden trap is unsure ground; bramble and the shrine are safe")
 	ok(not h.dubious.is_empty() and h.dubious.keys().all(func(c): return h.grounds[c] == &"unsure"), "so is anywhere something may lurk")
 	h.hover_cell(Vector2i(6, 4))
-	ok(h.tip_label.text.begins_with("Walk here: 4? of 5"), "a walk across unsure ground gets a '?' on its cost")
+	ok(h.spend.get(&"move") == 4.0 and h.plan.path.any(func(c): return h.ground(c) == &"unsure"), "a walk across unsure ground (drawn dashed there): 4 off the bars")
 	ok(h.pane.visible and h.get_node("%TileName").text == "Grass" and h.get_node("%TileCost").text == "" and not h.get_node("%TileCost").visible, "the tile pane shows the hovered tile; a Move 1 cost isn't shown")
 	h.hover_cell(Vector2i(5, 4))
 	var susp: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
@@ -584,7 +585,8 @@ func test_ground() -> void:
 	h._refresh()
 	ok(h.grounds[Vector2i(5, 4)] == &"bad" and Vector2i(5, 4) not in h.suspect, "sprung, it's known bad ground - no longer suspect")
 	h.hover_cell(Vector2i(6, 4))
-	ok("Stops 1 short (3 move)" in h.tip_label.text and "Steps onto a known trap" in h.tip_label.text, "the plan stops on it, warns, and is sure of its cost")
+	ok(h.plan.path.back() == Vector2i(5, 4) and h.spend.get(&"move") == 3.0 and (h.spend.has(&"hp") or &"hp" in h.spend.get("unsure", [])) == (v(1).mod(&"intelligence") >= 0),
+			"the plan stops on it, and what it would do shows on HP as the unit's int lets it foresee (%s)" % h.spend)
 	h.hover_cell(Vector2i(2, 2))
 	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(h.get_node("%TileName").text == "Bramble" and h.get_node("%TileCost").text == "" and lines == ["Sticky: +1 to leave"], "bramble: neutral, sticky (Move 1 hidden)")
@@ -769,7 +771,7 @@ func test_snare_ui() -> void:
 	var h := await start(v(1))
 	h.use_slot(1)
 	h.hover_cell(Vector2i(3, 3))
-	ok(h.armed == snare and "Click to use" in h.tip_label.text, "armed, a tile in reach is a place for it")
+	ok(h.armed == snare and h.aiming() and h.hovered.kind == &"use" and h.tip_label.text == snare.name, "aimed, a tile in reach is a place for it")
 	h.click(Vector2i(3, 3))
 	h._refresh()
 	ok(Vector2i(3, 3) in b.snares and h.traps.get(Vector2i(3, 3)) == true, "laid, and marked as your own")
@@ -837,7 +839,11 @@ func test_attack_feedback() -> void:
 	ok(h._info(v(3)).rows.any(func(r): return r[0] == "DF" and r[1] == "20 · Bulwark"), "...and a foe's it can make out: Bulwark, 20")
 	h.use_slot(0)
 	h.hover_cell(Vector2i(5, 3))
-	ok("10% to hit" in h.tip_label.text, "the forecast: 10%% against Defense 20 (%s)" % h.tip_label.text)
+	ok(h.odds(h.hovered) == &"unlikely" and "to hit" not in h.tip_label.text, "faint brackets against Defense 20, no number")
+	h.show_odds = true
+	h._update_tip()
+	ok("10% to hit" in h.tip_label.text, "Alt held: the exact chance, 10%% (%s)" % h.tip_label.text)
+	h.show_odds = false
 	var rolled := []
 	b.attacked.connect(func(_c, _t, d20: int, _total, _def): rolled.append(d20))
 	h.click(Vector2i(5, 3))
@@ -858,7 +864,7 @@ func test_hidden_defense() -> void:
 	h.select(v(1))
 	h._refresh()
 	ok(h.view(v(3)).net < 0 and not h._info(v(3)).rows.any(func(r): return r[0] == "DF"), "a foe it can't identify: no Defense on the card")
-	ok("?% to hit" in h._forecast(v(1), strike, v(3)), "nor a chance to hit")
+	ok(h.odds({kind = &"use", unit = v(1), skill = strike, target = v(3)}) == &"unknown", "nor a chance to hit: its brackets waver")
 	h.free()
 
 
@@ -936,9 +942,9 @@ func test_dual_spell_ui() -> void:
 	h._refresh()
 	ok(h.armed == sola and v(1) in h.marked and v(3) in h.marked, "Sola armed: an ally and a foe in reach are both targets")
 	h.hover_cell(Vector2i(5, 3))
-	ok("3 AP, 2 energy · Persona: +1, 1 turn" in h.tip_label.text and "to hit" not in h.tip_label.text, "on the ally: its cost, and what it gets (%s)" % h.tip_label.text)
+	ok(h.spend.get(&"ap") == 3.0 and h.spend.get(&"energy") == 2.0 and h.hurt.is_empty() and h.odds(h.hovered) == &"", "on the ally: its cost drains, no odds or harm (%s)" % h.spend)
 	h.hover_cell(Vector2i(4, 4))
-	ok("to hit" in h.tip_label.text and "4-7 damage" in h.tip_label.text, "on the foe: the chance to hit, and damage (1d4 + int mod 3) (%s)" % h.tip_label.text)
+	ok(h.odds(h.hovered) != &"" and h.hurt.lo == 4 and h.hurt.hi == 7, "on the foe: odds brackets, and 4-7 off its HP (1d4 + int mod 3) (%s)" % h.hurt)
 	h.click(Vector2i(5, 3))
 	ok(v(1).stat(&"persona") == 1.0 and h.slot == 0, "clicked on the ally: it gets the persona")
 	h.free()
@@ -1144,4 +1150,32 @@ func test_allied_glow() -> void:
 	ok(look.tint == h.ally_glow and look.sat == 1.0, "an ally of another faction: green glow, full colour")
 	ok(Color(al.glow.modulate, 1.0).is_equal_approx(Color(HUD.FRIEND, 1.0)), "drawn green (%s)" % al.glow.modulate)
 	ok(h.look_of(v(3)).tint == null and h.look_of(v(1)).tint == null, "a foe and your own side keep their side's glow")
+	h.free()
+
+
+# "Will consume": a planned walk drains its movement off the bars and, for a known trap on the way, its
+# estimated damage off HP - while the unit has foresight left (int mod a turn, spent only by acting on an
+# estimate). Out of it, or at +0, HP gets a flashing "?" instead; below 0, nothing: it plans as if safe.
+func test_will_consume() -> void:
+	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
+	b.revealed[Vector2i(5, 4)] = true  # the trap there, known
+	v(1).intelligence = 12  # +1: one estimate a turn
+	var h := await start(v(1))
+	h._refresh()
+	h.hover_cell(Vector2i(6, 4))
+	var t := b.terrain(Vector2i(5, 4))
+	var avg := t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus
+	ok(h.spend.get(&"move") == 3.0 and is_equal_approx(h.spend.get(&"hp", 0.0), avg) and h.spend.get("estimated", false), "a trap on the way: its average damage drains off HP (%s)" % h.spend)
+	var card_hp: Array = h._card_info().rows.filter(func(r): return r[0] == "HP")[0]
+	ok(card_hp.size() == 5 and is_equal_approx(card_hp[4], avg), "the card's HP row drains too")
+	h.click(Vector2i(6, 4))
+	ok(h.foresight(v(1)) == 0 and v(1).cell == Vector2i(5, 4), "acting on it spends its one estimate")
+	var plain := h.drain({kind = &"walk", unit = v(1), walk = {path = [Vector2i(5, 4)], costs = [1.0]}})
+	ok(plain.get(&"move") == 1.0 and not plain.has(&"hp") and &"hp" in plain.get("unsure", []), "out of foresight: no estimate, a '?' on HP (%s)" % plain)
+	h.spend = plain
+	var info := h._card_info()
+	ok(info.rows.filter(func(r): return r[0] == "HP")[0][4] == "?", "the card's HP row: muted, a flashing ?")
+	v(1).intelligence = 8  # -1
+	plain = h.drain({kind = &"walk", unit = v(1), walk = {path = [Vector2i(5, 4)], costs = [1.0]}})
+	ok(not plain.has(&"hp") and not plain.has("unsure"), "below 0: not even a '?'; the walk looks safe")
 	h.free()

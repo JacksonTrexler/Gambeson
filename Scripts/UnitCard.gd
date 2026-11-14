@@ -66,7 +66,7 @@ func set_info(info: Dictionary) -> void:
 		effects.add_child(_effect(e[0], e[1], e[2], e[3]))
 	effects.visible = effects.get_child_count() > 0
 	for r in info.get("rows", []):
-		rows.add_child(_row(r[0], r[1], r[2], r[3]))
+		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null))
 	note.text = info.get("note", "")
 	note.visible = note.text != ""
 
@@ -104,7 +104,9 @@ func _effect(mark: Variant, color: Color, tip: String, roll: String) -> Control:
 	return icon
 
 
-func _row(label: String, value: Variant, top: Variant, color: Color) -> Control:
+# drain: what a planned action would consume of it (HUD.drain()): a pulsing segment at the end of its
+# bar; "?": it can't be foreseen - the row goes muted and a ? flashes after the number.
+func _row(label: String, value: Variant, top: Variant, color: Color, drain: Variant = null) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 3)
 	var k := Label.new()
@@ -135,7 +137,34 @@ func _row(label: String, value: Variant, top: Variant, color: Color) -> Control:
 	n.custom_minimum_size.x = 22
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	h.add_child(n)
+	if drain is float or drain is int:
+		var seg := ColorRect.new()  # the part about to be spent
+		seg.color = Color(1, 1, 1, 0.9)
+		seg.mouse_filter = MOUSE_FILTER_IGNORE
+		seg.anchor_left = clampf((value - drain) / maxf(top, 0.001), 0.0, 1.0)
+		seg.anchor_right = clampf(value / maxf(top, 0.001), 0.0, 1.0)
+		seg.anchor_bottom = 1.0
+		seg.name = &"Drain"
+		bar.add_child(seg)
+		_pulse(seg, 0.25)
+	elif drain == "?":
+		k.modulate = Color(1, 1, 1, 0.55)
+		bar.modulate = Color(1, 1, 1, 0.55)
+		n.modulate = Color(1, 1, 1, 0.55)
+		var q := Label.new()
+		q.theme_type_variation = &"Muted"
+		q.text = "?"
+		q.name = &"Unsure"
+		h.add_child(q)
+		_pulse(q, 0.1)
 	return h
+
+
+# Flashes a control between full and `low` opacity, for as long as it lives.
+func _pulse(c: CanvasItem, low: float) -> void:
+	var tw := c.create_tween().set_loops()
+	tw.tween_property(c, "modulate:a", low, 0.45)
+	tw.tween_property(c, "modulate:a", 1.0, 0.45)
 
 
 func _fill(c: Color) -> StyleBoxFlat:

@@ -182,8 +182,8 @@ func test_ai_and_hud() -> void:
 	tree.root.add_child(h)
 	await tree.process_frame
 	h._refresh()
-	ok("4.5 AP (exhausted x1)" in h._forecast(v(1), strike, v(3)), h._forecast(v(1), strike, v(3)))
-	var tip := Glossary.plain((h.bar.get_child(v(1).hotbar.find(strike)) as SkillSlot).tooltip_text)
-	ok(tip.begins_with("Exhausted x1: 4.5 AP now\n") and "3 AP" in tip, "its slot says why, and what it costs now (%s)" % tip)
+	ok(is_equal_approx(h.drain(h.intent(v(3).cell)).get(&"ap", 0.0), 4.5), "hovering the foe drains its raised cost off the AP bar: 4.5 (%s)" % h.drain(h.intent(v(3).cell)))
+	var sl := h.bar.get_child(v(1).hotbar.find(strike)) as SkillSlot
+	ok(is_equal_approx(sl.exhausted, 1.0) and not Glossary.plain(sl.tooltip_text).begins_with("Exhausted"), "its slot shows the use counted as a pip, not in words (%s)" % sl.tooltip_text)
 	ok(&"exhaustion" in Glossary.TERMS and "Exhaustion" in Guide.text(&"skills") and "Exhaustion" in Guide.text(&"conditions"), "and the Guide explains it")
 	h.free()

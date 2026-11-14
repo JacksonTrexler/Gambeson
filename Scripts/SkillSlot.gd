@@ -37,6 +37,7 @@ var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it
 var cursed := false  # a curse disabled it (Brainfog), or sealed the slot (a level curse: Unit.sealed()): it quivers gently
 var sealed := false  # a level curse took the slot: it stays, unusable, till the curse ends
 var label := ""  # the name it goes by for its unit (Unit.skill_name(): Decisive Strike, Firestrike); empty: its own
+var exhausted := 0.0  # uses counted against its skill (Exhaustion.of()): a pip each, a half pip for a half - its raised cost without words
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
@@ -171,8 +172,28 @@ func _draw() -> void:
 		left += side + 1.0
 	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
 			Color(0.92, 0.93, 0.96, dim))
+	if exhausted > 0.0001:
+		_pips()
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
+
+
+func set_exhausted(n: float) -> void:
+	if not is_equal_approx(n, exhausted):
+		exhausted = n
+		queue_redraw()
+
+
+# The exhausted skill's pips: a dot per use counted against it (a smaller one for a half), along the
+# slot's bottom edge from the left.
+func _pips() -> void:
+	var whole := floori(exhausted + 0.0001)
+	var x := 16.0
+	for i in mini(whole, 6):
+		draw_circle(Vector2(x, size.y - 1.5), 1.1, Color("#ff9a5e"))
+		x += 3.0
+	if exhausted - whole > 0.25:
+		draw_circle(Vector2(x, size.y - 1.5), 0.7, Color("#ff9a5e"))
 
 
 # A small padlock centred on at.
