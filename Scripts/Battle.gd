@@ -117,6 +117,8 @@ var phase := Phase.INITIATIVE:
 		phase_changed.emit(was, v)  # before _enter, so a chained change arrives in order
 		_enter(v)
 
+var ending_turn := false  # inside end_turn(): a side falling now doesn't pass the turn, end_turn() does
+
 # Whose turn it is. Its units get fresh AP and movement as it starts.
 var turn: Faction:
 	set(v):
@@ -921,7 +923,7 @@ static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
 		var blow: StringName = (caster.weapon.damage_tag if caster.weapon else &"blunt")
 		if blow and blow not in out:
 			out.append(blow)
-	var god: StringName = Unit.GOD_TAGS.get(caster.deity(), &"")
+	var god := God.tag_of(caster.deity())
 	if skill.god_tag and god and god not in out:
 		out.append(god)
 	return out
@@ -2210,7 +2212,7 @@ func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
 
 # Obstruct: what entering c costs u on top, for each foe of u beside c with Obstruct: the larger of half
 # the size penalty of moving through that foe (pass_cost()) and half its con mod / 10, + 25% a rank.
-# A Jammed foe doesn't obstruct.
+# A foe that has lost its reactions (Jammed, helpless: Unit.reacts()) doesn't obstruct.
 # Its allies pass freely. `expected`: only foes u can locate count (walk()).
 func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
 	if not u:
@@ -2220,7 +2222,7 @@ func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
 		if o == u or not next_to(o.cell, c) or not o.is_alive() or Faction.friends(o.faction, u.faction):
 			continue
 		var n := o.stat(&"obstruct")
-		if n <= 0.0 or o.stat(&"jammed") > 0.0 or (expected and not read(u, o).located()):
+		if n <= 0.0 or not o.reacts() or (expected and not read(u, o).located()):
 			continue
 		extra += maxf(0.5 * maxf(pass_cost(u, o), 0.0), 0.5 * o.mod(&"constitution") / 10.0) * (1.0 + 0.25 * n)
 	return extra
@@ -2730,6 +2732,9 @@ func free_near(c: Vector2i) -> Variant:
 func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
+	var ending := turn
+	var was_order := order.duplicate()  # a side can fall out of it below: its successor is still the next one standing
+	ending_turn = true  # so _on_died() doesn't pass the turn too: it's passed once, at the end
 	var side := members(turn)
 	for u in side:
 		if u.channel and u.channel.turns > 0 and not u.idle():
@@ -2803,9 +2808,15 @@ func end_turn() -> void:
 	Downed.end_round(members(turn))  # a round passes for the Downed
 	_revive()
 	_check_stall()
+	ending_turn = false
 	if phase != Phase.TURNS:
 		return
-	turn = order[(order.find(turn) + 1) % order.size()]
+	var at := was_order.find(ending)
+	for k in range(1, was_order.size() + 1):
+		var next: Faction = was_order[(at + k) % was_order.size()]
+		if next in order:
+			turn = next
+			return
 
 
 # A side's turn ends. If none of its units could make out a single foe it would fight while enemies
@@ -3700,7 +3711,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	var decisive := caster.stat(&"decisive") > 0.0
 	var brutal := roundi(caster.stat(&"brutal"))
 	var elemental := caster.stat(&"elemental") > 0.0
-	var element := caster.element if caster.element else (Unit.GOD_TAGS.get(caster.deity(), &"fire") as StringName)
+	var element := caster.element if caster.element else God.tag_of(caster.deity(), &"fire")
 	var imbued := caster.imbued > 0
 	var blow := tags.duplicate()
 	if (imbued or elemental) and element not in blow:
@@ -3889,9 +3900,10 @@ func in_cone(from: Vector2i, at: Vector2i, aim: float, half: float, long: float)
 
 
 # Evading (Glossary: Evadable): a dex check against dc. Passing, none of it lands (0); failing by a
-# quarter of the dc or less, half (0.5); otherwise all of it (1). Jammed, it can't try: all of it.
+# quarter of the dc or less, half (0.5); otherwise all of it (1). Without its reactions (Unit.reacts(): Jammed,
+# helpless), it can't try: all of it.
 func evade(u: Unit, dc: int) -> float:
-	if u.stat(&"jammed") > 0.0:
+	if not u.reacts():
 		evaded.emit(u, 0, dc, 1.0)
 		return 1.0
 	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc))
@@ -4300,8 +4312,8 @@ func _on_died(u: Unit) -> void:
 	zones.assign(zones.filter(func(z: Zone): return z.faction != u.faction))  # nothing left to tick them
 	if sides_left() < 2:
 		phase = Phase.OVER
-	elif turn == u.faction:
-		turn = order[i % order.size()]
+	elif turn == u.faction and not ending_turn:
+		turn = order[i % order.size()]  # (a turn that is ending passes itself: end_turn())
 
 
 func _enter(p: Phase) -> void:

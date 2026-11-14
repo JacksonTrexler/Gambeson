@@ -111,12 +111,7 @@ func test_costs_and_turns() -> void:
 
 
 func test_wiring() -> void:
-	var out := []
-	var code := OS.execute("python3", [ProjectSettings.globalize_path("res://Util/skill.py"), "check"], out, true)
-	if code == -1 or code == 127:
-		print("skills_test: no python3, Util/skill.py check skipped")
-		return
-	ok(code == 0, "Util/skill.py check: %s" % "".join(out).strip_edges())
+	tool_check("skill")
 
 
 func test_flags_described() -> void:

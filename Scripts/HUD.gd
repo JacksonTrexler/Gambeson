@@ -135,6 +135,8 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 @onready var settings: PanelContainer = %Settings
 var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
 const ALLY_GLOW := Color("#b4ffd2")  # default glow of allies of another faction: a pale mint, to read on grass
+const ALLY_GLOWS := {"Mint": ALLY_GLOW, "White": Color("#ffffff"), "Sky": Color("#8fe8ff"), "Gold": Color("#ffe27a")}  # Settings: the picker's choices
+const ALLY_BOOST := 1.7  # an ally's glow is this much stronger than plain: pale on green ground it was hard to find
 var ally_glow := ALLY_GLOW  # the glow of allies of another faction (look_of())
 var high_contrast := false  # accessibility: brighter allied glow, heavier borders, whiter text
 var suspicious_marks := false  # accessibility: every suspicious tile shows a plain ?
@@ -258,6 +260,16 @@ func _ready() -> void:
 		high_contrast = on
 		_apply_contrast()
 		_mark())
+	var picker := OptionButton.new()  # Settings: the allied glow's colour
+	picker.name = "AllyGlow"
+	picker.focus_mode = Control.FOCUS_NONE
+	picker.tooltip_text = "The glow of allies on another side"
+	for n: String in ALLY_GLOWS:
+		picker.add_item("Allied glow: " + n)
+	picker.item_selected.connect(func(i: int) -> void:
+		ally_glow = ALLY_GLOWS.values()[i]
+		_mark())
+	%HighContrast.get_parent().add_child(picker)
 	KeyBinds.load_saved()
 	var keys := KeyBinds.new()  # Settings: key rebinds
 	keys.name = "KeyBinds"
@@ -971,6 +983,9 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 			return "%s is for foes" % s.name
 		if not ally and not s.for_foes():
 			return "%s is for allies" % s.name
+		for b: Behaviour in s.behaviours:  # the same filter Battle.cast() makes (Resuscitate: only the Downed)
+			if not b.fits(battle, u, target):
+				return b.unfit()
 		if not battle.in_reach(u, s, target):
 			return "Out of reach"
 	elif target is Vector2i and s.channel and u.channel and u.channel.skill == s:
@@ -2190,6 +2205,8 @@ func _refresh_bar() -> void:
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
+		var to: Variant = u.switching() if u and s and u.channel and u.channel.skill == s else null
+		slot.set_switching("" if to == null else "Energy" if to is StringName else to.name)
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked(u)
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
@@ -2521,6 +2538,10 @@ func _heart_chips(u: Unit, chips: Array) -> void:
 			chips.append(["%d skill use%s left" % [u.dbno.spare(), "" if u.dbno.spare() == 1 else "s"], FOE if u.dbno.spare() == 0 else GOLD])
 		if u.dbno.rule.melee and not u.dbno.meleed and not u.dbno.fresh:
 			chips.append(["Owes a melee attack", GOLD])
+	if u.deferred > 0:  # Borrowed Time: death put off, the harms taken in the window waiting to be replayed
+		chips.append(["Borrowed time: %d round%s left" % [u.deferred, "" if u.deferred == 1 else "s"], FOE if u.deferred == 1 else GOLD])
+		if not u.harms.is_empty():
+			chips.append(["%d harm%s to replay" % [u.harms.size(), "" if u.harms.size() == 1 else "s"], FOE])
 	if u.lives() > 0:
 		chips.append(["%d heart%s left" % [u.lives_left(), "" if u.lives_left() == 1 else "s"], FOE if u.lives_left() == 0 else GOLD])
 
@@ -2834,7 +2855,7 @@ func _apply_look(u: Unit, look: Dictionary) -> void:
 	u.set_saturation(look.sat)
 	u.set_glow(look.glow, high_contrast and (known(u) or look.glow >= 0))
 	if look.tint != null and u.glow.visible:
-		u.glow.modulate = Color(look.tint, u.glow.modulate.a)
+		u.glow.modulate = Color(look.tint, clampf(u.glow.modulate.a * ALLY_BOOST, 0.0, 1.0))
 
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order

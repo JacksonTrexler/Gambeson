@@ -18,9 +18,10 @@ func make(role: String, god := &"") -> Unit:
 
 
 func test_gods() -> void:
-	for g in Unit.GODS:
-		ok(God.of(g) != null and not God.of(g).patron, "%s is a god" % g)
-		ok(God.of(g).offers(["Prowess"]).size() >= 2, "%s: at least two prowesses (?69)" % g)
+	ok(God.pantheon().size() == 7, "seven gods")
+	for g in God.pantheon():
+		ok(g.domains != "" and g.tag != &"", "%s has domains and a damage tag" % g.id)
+		ok(g.offers(["Prowess"]).size() >= 2, "%s: at least two prowesses (?69)" % g.id)
 	ok(God.of(&"elmon").patron and God.of(&"hogel").patron and God.of(&"hogel").own.satisfied_by == &"rest_whole", "patrons are gods too")
 	ok(titles(God.of(&"eros").offers(["Prowess"])) == ["Prowess: Protector", "Prowess: Vanguard"] and titles(God.of(&"sol").offers(["School"])) == ["School: Radiance"],
 			"Eros's prowesses as before; Sol's domain caster tree, Radiance")
