@@ -90,3 +90,19 @@ func bulwark() -> Item:
 	it.name = "Bulwark"
 	it.defense = 20
 	return it
+
+
+# Runs `python3 Util/<tool>.py check` (python3 on the PATH, else where a Mac or Linux puts it) and checks
+# it passed. A failed check, never a skip, if there's no python3 at all: the wiring checks guard the data.
+func tool_check(tool: String) -> void:
+	var out := []
+	var code := -1
+	for py in ["python3", "python", "/usr/bin/python3", "/opt/homebrew/bin/python3", "/usr/local/bin/python3"]:
+		out.clear()
+		code = OS.execute(py, [ProjectSettings.globalize_path("res://Util/%s.py" % tool), "check"], out, true)
+		if code != -1 and code != 127:
+			break
+	if code == -1 or code == 127:
+		ok(false, "Util/%s.py check couldn't run: no python3 found (PATH, /usr/bin, /opt/homebrew/bin, /usr/local/bin): install it - this check guards the data" % tool)
+		return
+	ok(code == 0, "Util/%s.py check: %s" % [tool, "".join(out).strip_edges()])
