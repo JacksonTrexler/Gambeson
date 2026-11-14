@@ -139,3 +139,35 @@ Calls:
 
 Tests updated: `nature_test.test_discipline` (burns all AP left, points from the curve, the Focus
 refill, the curve's values).
+
+## 82 Pike, Thalassic's beast
+
+User: "Pike, good at swimming".
+
+Read: Beastshape forms aren't units: they're entries in `Battle.FORMS` (ground it thrives on, biomes,
+traits), and the Druid keeps its own body with a beast's traits. There was no swimming rule; water
+had depth, submerged and drowning (`Battle.depth()`, `submerged()`, `_grip()`), and water costs 2-3
+movement to enter (a Flood drags 0.5).
+
+Built:
+- One shared rule on the existing `aquatic` tag (the Aquatic property already puts it on an Undine),
+  now a Glossary term (`mechanic.py tag aquatic --human`): a step into any water (depth > 0) costs an
+  aquatic unit 1 movement and nothing drags (`Battle._cost()`), and it can't be drowned
+  (`Battle._grip()`). Leaving water costs it what it costs anyone.
+- Form traits count as tags while shaped (`Unit.has_tag()`), so a form trait and a tag are one word.
+- `FORMS.pike`: thrives on water / wet ground, Thalassic, trait `aquatic`. Placed before the mote, so
+  an Astral + Thalassic Druid on water becomes a pike; Astral alone still gets a mote of water.
+- A Pike unit too (`Util/unit.py new pike --human`, `Scenes/pike.tscn`): level 2, unaligned,
+  aggressive, appearance Fish, Aquatic property, tags monster, beast, fish; Strike I; placeholder
+  sprite `Units/Pike.png`. It's in no battle yet.
+
+Calls:
+- "Good at swimming" is the aquatic rule above: cheap water and no drowning. Its rank shows only in
+  how long the shape lasts (rank + 1 turns), as for the other forms; no rank-scaled swim bonus.
+- Undines (and anything else Aquatic) swim the same way now: a deliberate side effect, so the rule
+  stays one rule.
+- The Pike unit's stats, level, temper and tags are mine; "Pike" is the user's name.
+- Still no sprite change while shaped.
+
+Tests: `aquatic_test` (cost, flood, no drowning), `pike_test`, `nature_test.test_beastshape` (Thalassic
+on water: a pike; aquatic while shaped).

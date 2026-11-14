@@ -101,6 +101,7 @@ const TERMS := {
 	&"jammed": ["Jammed ??", &"condition", "Interrupted, it has lost its reactions until its next turn is over: it can't dodge, so all of an evadable attack lands, it can't guard behind its shield, and it doesn't obstruct its foes."],
 	&"siphon": ["Siphon", &"damage", "Its damage comes off the target's resources instead of its HP: its Overcharge first, then what it last paid from, then Energy, then its other reserves. Power is easier to siphon: half again as much."],
 	&"overcharge": ["Overcharge", &"condition", "An extra buffer of Energy, spent before any of its own on a cost - and counted toward what it can afford. It decays to nothing over the turns it was given for, the turn it came not counting."],
+	&"aquatic": ["Aquatic", &"condition", "At home in water: a step into water costs it 1 movement, however deep, and nothing slows it there; it can't be drowned. The Aquatic property gives it; so does a Druid's Pike form."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")

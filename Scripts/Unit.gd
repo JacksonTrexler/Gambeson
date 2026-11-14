@@ -154,7 +154,7 @@ var paid_rise := false  # ...and once more for being brought back (Battle.rescue
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
 var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
-var form := &""  # the beast it's shaped into (Beastshape: rabbit, squirrel, mole, wisp, mote; Battle.FORMS), body and mind; "" itself
+var form := &""  # the beast it's shaped into (Beastshape: rabbit, squirrel, mole, wisp, mote, pike; Battle.FORMS), body and mind; "" itself
 var form_turns := 0  # its turns left as one
 var form_rank := 0  # the rank it was shaped at
 static var HASTE: Effect = _haste()
@@ -1583,11 +1583,12 @@ func refit() -> void:
 	_arrange()  # items can grant slots (the Burning Bag)
 
 
-# Whether it carries tag t, from what it is (its tags), what it wears, or what it knows (Wildfire's
-# bane: earth).
+# Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
+# bane: earth), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
 	return t in tags or items().any(func(it: Item): return t in it.tags) \
-			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags)
+			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags) \
+			or (form != &"" and t in Battle.FORMS[form][2])
 
 
 # Its shackles (a binding trinket) are locked: a Shackled effect is on it.

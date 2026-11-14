@@ -2214,7 +2214,8 @@ func wading(u: Unit, c: Vector2i) -> float:
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
-	var cost := maxf(from.exit + to.enter + to.drag + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
+	var swims := u != null and to.depth > 0 and u.has_tag(&"aquatic")  # water is plain going to the aquatic: 1 to enter, nothing dragging (a Pike)
+	var cost := maxf(from.exit + (1.0 if swims else to.enter + to.drag) + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
 	if u and u.form and &"tunneler" in FORMS[u.form][2] and to.tags.any(func(t: StringName): return t in TUNNELS):
 		cost = maxf(cost / maxi(u.form_rank, 1), minf(cost, 1.0))  # a mole: stone and dirt's cost cut by its rank, to 1
 	return cost
@@ -2804,7 +2805,7 @@ func _grip(u: Unit) -> void:
 	var before := u.hp
 	if s.grip != Vector2i.ZERO:
 		u.hit(roll(s.grip) + by.mod(s.stat(), s.tags), s.tags, by)
-	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u):
+	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u) and not u.has_tag(&"aquatic"):  # the aquatic breathe water
 		u.hit(roll(s.drowns) + by.mod(s.stat(), s.tags), s.tags, by)
 	gripped.emit(u, by, before - u.hp)
 	if u.is_alive() and u.hp < before and read(u, by).deceived:
@@ -3718,15 +3719,17 @@ func imbue(u: Unit, skill: Skill, r: int) -> void:
 # --- Beastshape
 
 # Beasts a Druid can take the form of (Beastshape): form -> [the ground it thrives on (tile tags), the
-# biomes it belongs to, its traits]. A mote thrives on any elemental ground (MOTES). Traits built:
-# haste (+rank movement), tunneler (stone and dirt cost rank times less, to 1) and elementstrike (its
-# Strikes carry the ground's element, rank uses: Elemental Strike's way). Climber, blindsense,
+# biomes it belongs to, its traits]. A mote thrives on any elemental ground (MOTES). Traits count as
+# its tags while shaped (Unit.has_tag()). Traits built: haste (+rank movement), tunneler (stone and dirt
+# cost rank times less, to 1), elementstrike (its Strikes carry the ground's element, rank uses:
+# Elemental Strike's way) and aquatic (a pike: water costs 1 to enter, never drowns - _cost(), _grip()). Climber, blindsense,
 # floating, siphon and coalesce wait (docs/todo/classes.md: Druid).
 const FORMS := {
 	&"rabbit": [[&"grass", &"dirt"], [&"sylvan", &"montane", &"xeric", &"nival"], [&"haste"]],
 	&"squirrel": [[&"wood", &"leaves", &"brush", &"shrubbery"], [&"sylvan", &"montane"], [&"climber"]],
 	&"mole": [[&"stone", &"dirt", &"rock"], [&"sylvan", &"montane", &"xeric"], [&"blindsense", &"tunneler"]],
 	&"wisp": [[&"star", &"void"], [&"astral"], [&"siphon", &"floating"]],
+	&"pike": [[&"water", &"wet"], [&"thalassic"], [&"aquatic"]],
 	&"mote": [[], [&"astral"], [&"elementstrike", &"coalesce"]],
 }
 # Elemental ground a mote thrives on: tile tag -> [the element its Strikes carry, the elemental it
