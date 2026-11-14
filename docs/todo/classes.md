@@ -146,8 +146,8 @@ Three roots in the class tab, each starting with an active skill: **Divinity** (
 
 **Idealism: Chivalry**
 - [x] **Coordinate**: built (`docs/done/classes.md`). *Now:* opens the Idealism root.
-  - [ ] **Final Act** (passive): once per battle, on reaching 0 HP, interrupt the current turn to take 1 free action; the interrupted turn then resumes. *Now:* a stub after Coordinate; needs Reactions. (?12)
-  - [ ] **Gallantry** (passive): cha check against a unit attacking an adjacent ally. On a pass you become its target, and that ally can't be retargeted. *Now:* a stub after Coordinate; needs Reactions.
+  - [x] **Final Act**: Built 2026-11-14 (?140): `Behaviours/final_act.gd`; `docs/done/classes.md`.
+  - [x] **Gallantry**: Built 2026-11-14 (?140): `Behaviours/gallantry.gd`; `docs/done/classes.md`.
 
 **Prowess** - any prowess somewhat aligned with its deity (2026-11-07).
 - [x] **Choice of Prowess**: a Prowess tab per tree (`SkillTab.one_of = prowess`), the same roots the Fighter and Berserker use (`Trees/*.tres`). Only those that suit its god (`SkillRoot.gods`) show and open; learning a skill on one takes it up and closes the rest ("Took up Prowess: Protector"). (`paladin_test.test_prowess`)
@@ -173,13 +173,11 @@ Three roots, each a flavour of Prowess of the player's choosing. Three exist so 
 
 **Protector:** defense of self and others.
 - [x] **Shields Up!**, **Obstruct**, **Interdict** and **Turtle Tactics**: built (`docs/done/classes.md`). (?67)
-- [ ] **Interject** (passive, `defensive`): when an ally is hit, dex check; on a pass you become the target. −25% damage per rank when taking a hit that wasn't aimed at you, with no rank cap (past 100% it still blocks only 100%). Rank 5+: +25% × rank to Defense when taking hits for allies. *Now:* a stub after Shields Up!; needs Reactions. (?13)
-- [ ] **Snapping Turtle** (passive): when the unit uses an `offensive` skill, it also triggers up to rank of its `defensive` passives, top to bottom. *Now:* a stub after Turtle Tactics; the defensive passives it would trigger (Interject) need Reactions.
+- [x] **Interject**: Built 2026-11-14 (?140): `Behaviours/interject.gd`; `docs/done/classes.md`.
+- [x] **Snapping Turtle**: Built 2026-11-14 (?140): `Behaviours/snapping_turtle.gd`; `docs/done/classes.md`.
 
 **Vanguard:** front-line offense and tactics.
-- [ ] **Warcry** (active; *Now:* a stub opening Vanguard, waiting on tile marks): pick up to rank enemies the unit can see. Rank tiles on the line to each get a one-use effect, triggered on entry, lasting a few turns:
-  - Nearer half, **Charge!** (expanding translucent hot-orange squares): allies regain rank dex AP and deal +10% × rank damage until their turn ends.
-  - Farther half, **Routed!** (collapsing translucent dark-blue squares): enemies pay +rank movement.
+- [x] **Warcry**: built 2026-11-14 (?139): `Behaviours/warcry.gd`, `Effects/charge.tres`, `charge_ap.tres`; `docs/done/classes.md`.
 - [ ] **Inspire** (passive): hitting an adjacent enemy with a skill gives allies within rank tiles +rank damage. Allies whose luck is below 1 also get **+1 Luck ltd.** (?13)
 
 **Slayer:** eliminating chosen targets.
