@@ -953,9 +953,8 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 			var a := _approach(me, s, c, true)
 			if a.ready:
 				return _walk_to(it, &"use", a.dest, true)
-			it.why = "Out of reach: no sure walk gets there" if _approach(me, s, c).ready else why
-			it.kind = &"refuse"
-			return it
+			it.unsure = _approach(me, s, c).ready  # only a walk it can't count on gets there
+			return _refusal(it, why)
 		if why == "Out of reach" or why == "Already fallen":
 			return _refusal(it, why)
 		it.kind = &"use"
@@ -2300,25 +2299,23 @@ func _update_tip() -> void:
 func _tip_text() -> String:
 	if hover == NOWHERE:
 		return ""
+	var it := hovered if not hovered.is_empty() else intent(hover)
 	var u := unit_seen(hover)
+	var s: Skill = it.skill
 	if armed and selected:
 		if not u and not armed.on_tile():
 			if not armed.for_foes():
 				return "%s\nPick a unit" % armed.name
 			var why_tile := why_not(selected, armed, hover)
 			return "%s\n%s" % [armed.name, why_tile if why_tile else "Ctrl-click to strike at whatever may be here"]
-		var target: Variant = hover if armed.on_tile() else u
-		var why := why_not(selected, armed, target)
 		var head := armed.name + (" on " + _name(u) if u and not armed.on_tile() else "")
-		if why == "Out of reach" and target is Unit and _orders(selected):
-			var a := _approach(selected, armed, hover, true)
-			if a.ready:
-				return "%s\nClick: walk %s, then use: %s" % [head, Skill.num(reach[a.dest]), _forecast(selected, armed, target)]
-			if _approach(selected, armed, hover).ready:
-				why = "Out of reach: no sure walk gets there"
-		return "%s\n%s" % [head, why if why else "Click to use: " + _forecast(selected, armed, target if target is Unit else null)]
+		if it.kind == &"use" and it.dest != selected.cell:
+			return "%s\nClick: walk %s, then use: %s" % [head, Skill.num(reach[it.dest]), _forecast(selected, armed, u)]
+		if it.kind == &"use":
+			return "%s\n%s" % [head, it.why if it.why else "Click to use: " + _forecast(selected, armed, u)]
+		return "%s\n%s" % [head, "Out of reach: no sure walk gets there" if it.get("unsure") else it.why]
 	if u:
-		return _unit_line(u) + ("\n" + _charge_line(selected, hover) if charge == hover else "")
+		return _unit_line(u) + ("\n" + _use_line(it) if it.kind == &"use" else "")
 	var lines: PackedStringArray = []
 	if not plan.is_empty():
 		var path: Array = plan.path
@@ -2361,16 +2358,16 @@ func _unit_line(u: Unit) -> String:
 	return text
 
 
-# What clicking the foe at c would do: walk up and use the primary skill, or only close in.
-func _charge_line(u: Unit, c: Vector2i) -> String:
-	var s := _primary(u)
-	var a := _approach(u, s, c)
-	if not a.ready:
-		if a.dest != u.cell:
+# What a use intent on a foe would do: walk up and use the skill, or only close in.
+func _use_line(it: Dictionary) -> String:
+	var u: Unit = it.unit
+	var s: Skill = it.skill
+	if not it.ready:
+		if it.dest != u.cell:
 			return "Click: walk closer (out of reach this turn)"
 		return _short(u, s) if not u.can_afford(s) else "Out of reach of %s" % s.name
-	var walk := "walk %s, then " % _cost_text(plan.get("path", []), reach[a.dest]) if a.dest != u.cell else ""
-	return "Click: %s%s %s\n%s" % [walk, s.name, Skill.roman(u.rank(s)), _forecast(u, s, unit_seen(c))]
+	var walk := "walk %s, then " % _cost_text(plan.get("path", []), reach[it.dest]) if it.dest != u.cell else ""
+	return "Click: %s%s %s\n%s" % [walk, s.name, Skill.roman(u.rank(s)), _forecast(u, s, it.target)]
 
 
 # What using s on target would cost and roughly do (before mitigation and luck): AP, cost, the
