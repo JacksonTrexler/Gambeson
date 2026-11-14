@@ -2034,6 +2034,13 @@ func _clear(box: Container) -> void:
 		c.queue_free()
 
 
+# What Burnout has taken off its maxes for good (Unit.burnt): "Burnt -3 HP", one chip a pool.
+func _burnt_chips(u: Unit, chips: Array) -> void:
+	for pool in u.burnt:
+		var what: String = pool.name.left(2).to_upper() if pool is Reserve else ("HP" if pool == &"hp" else ("PW" if u.powered() else "EN"))
+		chips.append(["Burnt -%d %s" % [u.burnt[pool], what], FOE])
+
+
 func _info(u: Unit) -> Dictionary:
 	var info := {look = u.sprite.sprite_frames.get_frame_texture(&"default", 0)}
 	var chips := []
@@ -2052,6 +2059,7 @@ func _info(u: Unit) -> Dictionary:
 			if u.bio.behaviour:
 				chips.append([String(u.bio.behaviour).capitalize(), MUTED])
 		_heart_chips(u, chips)
+		_burnt_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
 		for r in u.held_reserves():  # what it runs on first, then a second it holds (Focus)
 			rows.append([r.name.left(2).to_upper(), u.store(r), u.pools()[r], r.color])
@@ -2059,6 +2067,7 @@ func _info(u: Unit) -> Dictionary:
 			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
 			rows.append(["OC", "+%d" % u.overcharge, null, Unit.OVERCHARGE_COLOR])
+		rows.append(["RE", "%d/%d" % [u.endurance, u.endurance_max()], null, FOE if u.endurance <= 0 else MUTED])  # Recovery Endurance (Burnout)
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
@@ -2099,6 +2108,8 @@ func _info(u: Unit) -> Dictionary:
 		chips.append(["Enemy", FOE])
 	if command.ours(u) and u.skill_points > 0:
 		chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
+	if command.ours(u):
+		_burnt_chips(u, chips)
 	for word in r.traits:
 		chips.append([word, MUTED])
 	if sleeping(u):
