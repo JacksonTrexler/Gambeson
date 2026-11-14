@@ -96,7 +96,7 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Stamina** (2026-11-10): built (`docs/done/systems.md`, `docs/done/classes.md`, `docs/plans/stamina.md`), `Tests/stamina_test.gd`. (?87, ?98)
 - [x] **Universal channel rule** (2026-11-10): built (`docs/done/rules.md`, `docs/plans/channels-jam.md`). (?85, ?89, ?97)
 - [x] **Stamina recovers in battle** (2026-11-11): answered "stamina recovers alongside energy, rank bonus if resting"; built (`docs/plans/stamina.md`, "Amended"). (?98, ?100)
-- [ ] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. (?100)
+- [x] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. Built 2026-11-14: the map draws a sliver bar for each reserve beyond two (?128). (?100)
 - [x] **A save-Stamina toggle**: Stamina and Mana are now toggles on the hotbar (2026-11-11, ?116); switching is a channel. (?98, ?116)
 - [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
 - [x] **`tapped` and `helpless`** (2026-11-12, built 2026-11-14, ?119): `tapped` is a utility effect other effects may apply; a tapped unit can't act or take orders. It is not a debuff and can't be cleansed, but its sources can be addressed (healing off a stun, a wound), which removes it, and the unit is free to use AP and reactions on its turn. Tapped when: out of AP; it has received cha mod orders this turn (until the commander ends the command phase; afterward it may use remaining AP on autopilot); downed or stunned with no effect or skill letting it act (see Mindless Fury). `helpless` is for stun and other full action-disabling spells. (?65, ?90)
@@ -134,8 +134,8 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
 - [ ] **The HUD forecast and the AI don't know Kick's tile effects.**
 - [ ] **No map has a hole tile yet**, so Kick's hole push is only tested.
 - [ ] **The stale-count check covers only the Adventurer wheel** (`hud_test`).
-- [ ] **`skills_test.test_wiring` skips without python3.**
-- [ ] **Waterstrike's tag `bludgeon` probably should be `blunt`.**
+- [x] **`skills_test.test_wiring` skips without python3.** Built 2026-11-14: `Test.tool_check` fails, naming the problem (?127).
+- [x] **Waterstrike's tag `bludgeon` probably should be `blunt`.** Built 2026-11-14: `blunt`, so it breaks a starpane (?127).
 - [ ] **Shrink `UNSAID`**: 11 existing `Skill` fields that no description mentions are exempted in `skills_test`.
 - [ ] **Lift `pings` into a behaviour and lower `FLAG_CEILING`** (raised from 124 to 125 because Clairvoyance's `pings` flag was built in parallel, beside the seam).
 
@@ -158,7 +158,7 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
     - **Payment:** it pays first for a ranged attack (reach > 1.5), otherwise only once Energy can't. A ranged attack that leaves Focus at 0 gets + rank to its roll (the forecast counts it). Violet.
     - **Jam drains Focus** by the HP the target lost.
     - **Stamina recovers** on Energy's tick and rate (full resting, half light, none busy) plus its rank on a resting turn; it recovers even with Energy full, and Power doesn't stop it; an idle channeler gets half and no bonus.
-    - Open: the HUD shows only a unit's largest reserve (a Ranger with Energy, Stamina and Focus sees one bar); the AI doesn't rest to build Focus.
+    - Open: the HUD shows only a unit's largest reserve (a Ranger with Energy, Stamina and Focus sees one bar); the AI doesn't rest to build Focus. (Both built 2026-11-14: ?128, ?130.)
 
 ## Resources: Mana, Stamina, the toggle (2026-11-11)
 
@@ -179,9 +179,9 @@ Plan, readings and what was built: `docs/plans/resources.md`; done in `docs/done
     - **A unit with both toggles learned** keeps the first on its bar on, the other off. Confirm?
     - **The switch is a channel** (`Unit.toggle()`): it takes effect at the channel's end, the unit running on the old resource meanwhile. Each turn held counts one; when it ends (toggled again, broken by acting, interrupted by Jam) the old reserve goes to 0 and floor(10% of its max x the toggle's rank x turns held), no more than it had, goes into the new one. Holding another channel, a unit can't switch. Confirm?
     - **Learning a toggle mid-battle** makes the unit run on it at once, but the Energy it had stays until spent. Confirm?
-    - **The AI never toggles**; a Wizard or Mage under the AI just runs on Mana.
+    - **The AI never toggles**; a Wizard or Mage under the AI just runs on Mana. (Built 2026-11-14, ?130: it switches when it can strike and pay for nothing.)
     - **Bars:** a unit shows what it runs on first, then its other reserves (a second 2px bar on demand); the Energy bar only when it holds Energy; the unit card lists each held reserve. Mana and Stamina sit on the hotbar as toggles.
-    - Open: the hotbar marks no switch in progress, only the log line ("switching to Energy, channeled"); a Druid holds Mana from its Astral tab before learning the skill (with no toggle, both pay as before).
+    - Open: the hotbar marks no switch in progress, only the log line ("switching to Energy, channeled"); a Druid holds Mana from its Astral tab before learning the skill (with no toggle, both pay as before). (The switch mark is built, 2026-11-14, ?128.)
 
 ## Vanishing, preparation, tooling (2026-11-11)
 
@@ -230,8 +230,81 @@ Plan, readings and what was built: `docs/plans/recovery.md`; done in `docs/done/
     - **Energize** (general tier 4, 0 Energy, 2 AP for one pair, then every further pair it can, up to rank pairs, only as many as there is room): 1 Energy a pair, past a full bar the rest is Overcharge up to 20% x rank of total resource, for rank turns. No amount picker. If it has no room at all, its 2 AP are still spent. Being tier 4, it needs 3 T4+ skills first. Confirm?
     - **Heal and Megaheal** (Cleric): there is no life tree, so both sit on Eros, gated by depth since `Branch.tier` only sets depth on a class tree and a Paladin could take them at once: Heal after Rejuvinate, Megaheal after Heal, each needing 4 other Eros skills. One behaviour (`heal.gd`, exported `magnitude`): the dice x magnitude + wis mod + rank. Heal 1d8 x moderate (1.5 x rank), 4 AP, 4 Energy; Megaheal 1d8 x severe (3 x rank), 6 AP, 9 Energy; range 3. Confirm?
     - **New names to review:** none. Burnout and Recovery Endurance are glossary terms from your text.
-- [ ] **The AI doesn't use Heal, Megaheal or Energize**: `Skill.heals()` reads `heal_mods`, which they don't carry. (?121)
+- [x] **The AI doesn't use Heal, Megaheal or Energize**: `Skill.heals()` reads `heal_mods`, which they don't carry. Built 2026-11-14: `Behaviour.restores()` (?130). (?121)
 - [ ] **Other gains don't report**: Sweet Nothings on a kill, Focus building, Downed saves via `hp =`, post-battle refills. Which should count? (?121)
 - [ ] **Burnt max has nothing to restore it.** (?121)
 - [ ] **No burnout out of combat.** (?121)
 - [ ] **A Life tree** to hold Heal and Megaheal as domain-general skills. (?121, ?122)
+
+## Tag colours and trim (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/tag-colors.md`; done in `docs/done/systems.md`. Tests: `tag_colors_test` (new), `glossary_test` (reads fire's colour from Tags). Your request: "associate a color with each tag. Accessories associated with tag has trim color (eg banner with color insignia)".
+
+125. **Tag colours and trim - built on judgement, open for review (2026-11-14).** Built on `m-colors`. My calls, each for you to confirm or change:
+    - **One table in `Tags.gd`** (`Tags.COLOR`, keyed by word), not a field on `Glossary.TERMS` (most coloured words aren't terms). `Tags.color(word)`: its own entry, else its parent's, else neutral grey. `Glossary.ELEMENTS` and `SkillSlot.TINTS` are gone; `Glossary.KINDS` stays as the kind palette. Confirm?
+    - **Every existing word has an explicit colour** (about 200), except the children that inherit. Elements keep the colours they had; disciplines take their slot hues brightened; resources match their bars; conditions take their identity (burning fire, soaked water); the difficulty ladder runs green to red; materials take their material's colour. All AI-picked, for you to retune. Confirm?
+    - **`mechanic.py tag` requires `--color`** unless the tag has a `--parent`; `mechanic.py color <word> <hex>` sets or retunes any word; `check` fails a word with no colour of its own or through its parent. Not derived from the kind (grey mush). Confirm?
+    - **Trim** is the first tag, parents expanded, with a colour not in `Tags.PLAIN` (materials, forms, weights, qualities, stats, generic categories); a new coloured tag trims items out of the box, a new plain word must join PLAIN. light, medium and heavy are weights, never the element (a Dagger isn't trimmed pale yellow). No override field. Confirm?
+    - **Where it shows, with no new text:** term links, damage floaters (skipping the broad words: a fireball's number is orange, a sword's stays red), the hotbar stripe (now every skill: martial red, specialist green), a swatch on the character sheet rows, a pennant per trimmed item on the unit card (own units, and any unit whose Defense you can read), and a small banner on the sprite. Confirm?
+    - **The sprite's banner is the trinket's alone**, on dark cloth rather than its side's colours so it can't give a disguise away; it is on the sprite node, so a silhouette blacks it out and a persona's face hides it. Confirm?
+    - **For emblems** (see the skill modifiers section below): a Sigil, Insignia, Crest or Badge trims for free if its tag or symbol has a colour; its form word needs a colour and a place in PLAIN, or `check` fails it.
+    - **New names to review:** none (colours aren't names; they carry no ??).
+- [ ] **Retune the colours**: every entry in `Tags.COLOR` is mine; `mechanic.py color <word> "#rrggbb"` changes one. (?125)
+- [ ] **Equipment isn't composed on the sprite** (one PNG per unit), so trim is a drawn banner, not a recoloured part; real trim waits on layered art. (?125)
+- [ ] **Emblem forms** (sigil, insignia, crest, badge) need a colour and a PLAIN place when the m-core items land. (?125, ?131)
+
+## Fixes (2026-11-14)
+
+Plan and what was built: `docs/plans/fixes-11-14.md`. Tests: `turn_test` (three sides, off-turn death, two sides), `helpless_test` (new); `watch_test`, `gods_test`, `god_slots_test` read `God` instead of `Unit.GODS`, none weakened.
+
+127. **Fixes - built on judgement, open for review (2026-11-14).** Built on `n-fix`. My calls, each for you to confirm or change:
+    - **`end_turn` passes the turn once:** it sets `Battle.ending_turn`, `_on_died` doesn't pass the turn while it's set, and `end_turn` passes it at the end to the first side after the ending one that still stands. A side dying outside `end_turn` still passes at once. Confirm?
+    - **A leader that is `stopped()` (helpless, no permit) gives no orders and gathers no one.** Mindless Fury is a permit, so a berserker under it can still lead. Confirm?
+    - **One query, `Unit.reacts()`** (not jammed, not stopped), read by dodging, guarding and obstructing. Obstruct wasn't asked for but is a reaction by Jam's own definition, so a sleeping or Stunned Vanguard no longer holds a zone. Confirm?
+    - **The guard is suspended, not ended** by going helpless (`Unit.guard` stays), so a Stunned shield-bearer's stance returns with the Stun's cure; Jam still ends it. Confirm?
+    - **A helpless unit still watches** (seeing isn't acting), not changed. Confirm?
+    - **God constants:** `Unit.GODS` and `GOD_TAGS` live on `God` (`domains`, `tag`); patrons have neither; `role.py god` takes `--domains` and `--tag` and `check` fails a pantheon god without them. No behaviour change.
+    - **Waterstrike's tag is `blunt`:** a visible consequence is that it breaks a starpane and brittle terrain it's aimed at. Unrelated to the Slayer's Bludgeon. Confirm?
+    - **Wiring tests fail, not skip,** with no python (`Test.tool_check` tries python3, python, then the usual folders).
+    - **New names to review:** none.
+- [ ] **Should `Unit.guard` end (not just pause) on going helpless?** (?127)
+- [ ] **Other reactions** (opportunity-style) don't exist yet; they should read `reacts()` when they do. (?127)
+
+## AI support (2026-11-14)
+
+Plan and what was built: `docs/plans/ai-support.md`. Tests: `Tests/ai_support_test.gd` (11); the combat_test count notes changed, nothing else.
+
+130. **AI support - built on judgement, open for review (2026-11-14).** Built on `n-ai`. My calls, each for you to confirm or change:
+    - **One hook for restoring:** `Behaviour.restores(c) -> Dictionary` (pool to expected amount), declared by Heal, Energize and Resuscitate; the AI sums it with the old `heal_mods` / `heal_bonus` HP. Not a `Skill` field and `Skill.heals()` untouched (Battle would heal twice). A later healing behaviour declares its own and the AI picks it up. Confirm?
+    - **`_heal()` picks the best (skill, ally)** over all its healing skills by `want()` (the first on a tie), not the first skill with any target, and asks `fits()` per target. Confirm?
+    - **Non-HP pools are not healed on demand:** Energize is cast last in a self-directed turn once the pool is at half or less (Energy only if it runs on Energy, a reserve only if it spends from it). It never costs a blow, and a Mana user never wastes it. Confirm?
+    - **Support:** `_support()` also takes any non-hostile, not self-only, not dual skill with effects of its own (Intervention, Rally, Rejuvinate, Level Up, Blur, Invisibility, Embellish) on an ally in reach or itself last, that lacks the first effect. Self-only buffs (Bulwark, Hide) are still left alone: casting them every turn would reshape every sim. Confirm?
+    - **Switching:** on a self-directed turn with no channel, nothing to strike from here and nothing it can pay for that is worth something, it toggles to the other pool if that could pay; the switch ends the turn idle and `_finish_switch()` completes it next turn rather than waiting for the carry to fill. Confirm?
+    - **Focus:** holding an `aims` reserve below full, a ranged attack it would pay from it and nothing to strike from here, it rests (50% of max a rest); a strike's score gains `FOCUS` (1.0) x the Focus it would spend. It doesn't hold a shot back to build more (that needs a planner). Confirm?
+    - **Clairvoyance:** with no foe in sight, no clue, no last-seen place and no channel, it casts a `pings` skill and hunts on the pings the same turn; `act()` no longer holds still for a `pings` channel (else a scryer scrys forever). Confirm?
+    - **New names to review:** none.
+- [ ] **HUD "help" orders** (`Skill.serves(&"supportive")`) still don't count Heal: that is `Skill.heals()`. A Helpful order does heal, through the AI's own `_heal()`. (?130)
+- [ ] **The AI doesn't hold a shot back to build Focus**, and prefers Resuscitate over Heal on a Downed ally only by want or list order. (?130)
+- [ ] **Switching only goes to a pool that currently holds enough**: a unit with one toggle and no Energy has nowhere to switch to. (?130)
+
+## Skill terms, cost and modifiers (2026-11-14, in progress)
+
+Your request of 2026-11-14 (verbatim in the coordinator's `answers-2026-11-14.md`), being built on branch `m-core`; it gets question 131 when it lands. The martial skills in it (Slayer) are built (?126) and the tag colours (?125). The rest, in short:
+- **Make the skill tooling take parametrized, composable parts** ("adjust skill claude-skill") so skills can carry modifiers; tags such as `execute` and elements such as `fire` applicable to any skill as a modifier; new eligible tags should just work out of the box. A skill without the tags or mechanics the system needs is ineligible; one that is too concrete but could be compatible should be tagged, polymorphized, abstracted or parameterized until it is.
+- **A cost calculator for modified and ranked skills.** Base cost is the damage intensity (high / low); added for rank bonus to hit, rank bonus to damage, and a unique effect (tame / impactful), tapered by how easy or hard its activation requirement is; reduced for penalties; cheaper when adjacent; rank range neutral. Increase is exponential for extremes (extreme damage), reduction flat for extreme penalties.
+- **Modifiers as symbol passives:** rho up (density: nullifies rank range scaling, intensifies rank impact scaling) and rho down (diluted: the reverse); sigma down (concentrated: nullifies stat range scaling, intensifies stat impact) and sigma up (dispersed: the reverse); lambda up (restrictive: a beneficial contingent effect's restriction much stricter, the effect itself more potent) and lambda down (unrestrictive: restriction lessened, effect greatly lessened).
+- **Items carrying a symbol:** Sigil (the leftmost eligible skill), Insignia (all skills), Crest (active skills), Badge (passive skills); the equipment skill's rank sets the boost, with less loss when it boosts fewer skills; the boost follows the Rank Scaling Calculation (RSC: single skill r x (2 + r)/(3 + r), a subset r x (1 + r)/(2 + r), all skills r x r/(1 + r), approaching x2 or the square root of 2).
+
+The coordinator's readings of the unclear parts, **calls to confirm** (the builder may refine and must record them):
+- **"claude-skill"** is `.claude/skills/new-skill/` and `Util/skill.py`, which it drives.
+- **The lambda example** (80% needed becomes about 95%) matches squaring the permissive share (0.2 to 0.04, so 96%), not its square root (0.447, so 55%). Read lambda up as permissive share p to p squared, lambda down as p to its square root.
+- **RSC** is read as a factor 1 + f(r), f = (2 + r)/(3 + r) for one skill (Sigil), (1 + r)/(2 + r) for a subset (Crest, Badge) and r/(1 + r) for all (Insignia), r the emblem's rank: fewer skills boosted, less loss. "Intensify" or "boost" multiplies a scaling term by it (or raises to it, where the term is an exponent); "nullify" zeroes the term; lambda down's weakened effect is a square root. The exact reading is to be recorded.
+- **A symbol can also be a tag:** a "Fire Insignia" puts fire on every eligible skill, and its trim is fire's colour.
+
+- [ ] **Skill terms:** parametrized, composable skill parts and modifiers; any eligible tag or element applicable to any skill by a modifier, new eligible tags working out of the box (`Skill.gd` still gets no new flags: behaviours and data). (?131)
+- [ ] **Cost calculator** for modified and ranked skills, folding in the hand-set costs and the refunds of Poach and Slam Jam (?126). (?131)
+- [ ] **Modifiers:** the symbol passives as data. (?131)
+- [ ] **rho, sigma and lambda**, up and down, as the scaling and restriction rules above. (?131)
+- [ ] **The Rank Scaling Calculation** (RSC), once, shared by every emblem. (?131)
+- [ ] **Sigil, Insignia, Crest and Badge** items, trimmed through ?125. (?131)
+- [ ] **Authoring:** `Util/skill.py` and `.claude/skills/new-skill` taught the parametrized parts, with `check`. (?131)

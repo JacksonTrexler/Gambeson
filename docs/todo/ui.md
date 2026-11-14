@@ -102,8 +102,40 @@ Plan, readings and what was built: `docs/plans/ui-v2.md` (the plan itself `docs/
     - **Foresight by int mod:** a unit makes `int mod` hazard estimates a turn, kept in the HUD and cleared as the player's turn opens; spent only when an action whose plan showed one is taken. With none left, or at +0, a muted flashing ? follows the number; below 0 there is none, no trap line, and the walk counts as sure. Plain move points and a skill's own cost always show. "Plans as if safe" read as the display; pathing stays Battle's. Confirm?
     - **Wordless signals:** the tooltip is a name and a read (nothing for a walk) with no instructions; refusals shake the unit and float one word from a keyword table ("Too far", "Short", "Spent", "Held", "Wait", "Down", "Pick", else "No"), the hint line keeping the full reason; odds as a solid (65% up), broken (35-65%) or faint bracket, wavering while Defense is unknown, exact % on Alt once known; two rings for out of reach; exhaustion as pips on the slot; dashed unsure steps. Confirm?
     - **New names to review:** none.
-- [ ] **Pace**: a spent unit handing over to the next, hurrying the turn change and the AI with a held key, and collapsing the log to its last line. (?90, ?123)
-- [ ] **The allied glow is soft at plain strength on grass maps**, and has no Settings picker. (?123)
+- [x] **Pace**: a spent unit handing over to the next, hurrying the turn change and the AI with a held key, and collapsing the log to its last line. Built 2026-11-14 (`docs/plans/pace.md`, ?129). (?90, ?123)
+- [x] **The allied glow is soft at plain strength on grass maps**, and has no Settings picker. Built 2026-11-14: a x1.7 boost on a tinted glow and a picker (?128). (?123)
 - [ ] **The drain doesn't show on the map for AP and movement** (the map bars have none); it shows on the card. (?123)
 - [ ] **Foresight lives in the HUD** (`foresight_used`), not on Unit or as an Effect stat; a stat (via `mechanic.py`) would let skills raise it. (?123)
 - [ ] **Trap estimates** leave out fire on the path and a trap's effects on other resources. (?123)
+
+## HUD markers (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/hud-markers.md`; done in `docs/done/ui.md`. Tests: `Tests/hud_markers_test.gd` (5 tests, 23 checks); no existing test changed.
+
+128. **HUD markers - built on judgement, open for review (2026-11-14).** Six open HUD todos, built on `n-hud`. My calls, each for you to confirm or change:
+    - **Gating:** `HUD.why_not()` asks `Behaviour.fits()` before the reach check, as `Battle.cast()` does, so Resuscitate is offered only on the Downed; a new `Behaviour.unfit()` gives the reason ("Only the Downed", else "Not for that one"). It asks the true state of any visible unit; a future `fits()` reading hidden state would leak through the hover. Confirm?
+    - **Borrowed Time chip:** "Borrowed time: N rounds left" (gold, red at the last) and "N harms to replay" (red) while death is deferred, in the Downed chips' place. Confirm?
+    - **Switch marker:** a turning gold arc round the toggle's dot, a pulsing gold rim and a tooltip line ("Switching to Energy: takes effect as the channel ends") while that slot's switch channels. Confirm?
+    - **Downed on the map:** the sprite lies on its side (about 77 degrees, the side by the tile's parity so neighbours differ), 3px lower, at 55% of its colour on top of whatever the HUD asks, for every observer (how it looks, not what is known); bars stay. Borrowed time isn't drawn differently. Confirm?
+    - **Reserves:** a third reserve and further get a 1px sliver each between Energy and the second bar. The forecast's drain segments still only map the first two, so a spend from a third reserve shows on the card row only. Confirm?
+    - **Allied glow:** x1.7 alpha on a tinted (other-faction ally) glow, and a Settings picker "Allied glow: Mint / White / Sky / Gold", built in code beside the contrast toggle and not saved between runs. **Mint stays the default; on grass White and Sky read better at any strength. Change the default to Sky or White?**
+    - **New names to review:** none.
+- [ ] **The forecast's drain on a third reserve**: the Overlay maps only two bars; a spend shows on the card row only. (?128)
+- [ ] **The allied glow picker isn't saved between runs.** (?128)
+- [ ] **A `fits()` that reads hidden state would leak through the hover** (`why_not()` asks the true state); fix when one exists. (?128)
+- [ ] **The AI offers nothing new** from the markers; borrowed time isn't drawn differently on the map. (?128)
+
+## Pace (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/pace.md`; done in `docs/done/ui.md`. This finishes Battle UI v2 (`docs/plans/ui-v2.md`, ?123). Tests: `Tests/pace_test.gd` (hand_over, hurry, log); no existing test changed. Your standing note: the less actual text they have to read, the better.
+
+129. **Pace - built on judgement, open for review (2026-11-14).** The Pace section of `docs/ui-ux-v2.md`, built on `n-pace` beside the turn clock (?103) and moving together (?104). My calls, each for you to confirm or change:
+    - **"The same unit and slot stay selected"** left to your `keep_slot` toggle; Pace adds nothing there. If you meant it to override the toggle it is a one-line change in `_done()`. Confirm?
+    - **Spent** is "can no longer take an order this turn" (tapped by AP, the order caps, a lock - rest, hold, a wasted intent - or helpless); a unit that has walked but has AP left isn't spent. Confirm?
+    - **Handover:** to the next unit after the spent one in the side's order (the order Tab walks), wrapping; the first that hasn't acted this turn, else the first that can still act; the leader is in the rotation; none left, the focus stays. It runs after any order (a skill, a walk, resting or standing down, Hold), on the player's own turn, and only if the spent unit is the selected one. Settings: "Next unit when one is spent", on by default. Confirm?
+    - **Hurry:** a bindable action `hurry` (Settings > Keys, "Hurry (hold)"), default **F**, not Space (End Turn). Held, every paced wait runs x4 (`HUD.HURRY`): the turn-change band, the wait between units acting alone, the end of their turn and the walks they animate; read every frame, so letting go slows back down. The clock still keeps its full second for the band. Floating numbers, refusal shakes and the opening roll are not hurried. Confirm?
+    - **The log:** collapsed by default to its last whole entry (wrapped), at the foot of the right column above End Turn; clicking the line or the LOG title opens it, the title again collapses it; the whole log is kept while collapsed. The title shows a small arrow. Confirm?
+    - **The Guide** gets two sentences (handover; hold F to hurry, click LOG), naming F as a fixed word like its other keys, so a rebind leaves it stale. Confirm?
+    - **New names to review:** none.
+- [ ] **Floating numbers aren't hurried**; with many AI units hurried, they can stack more. (?129)
+- [ ] **The Guide names F as a fixed word**, so rebinding Hurry leaves it stale. (?129)
