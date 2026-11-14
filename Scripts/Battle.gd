@@ -34,6 +34,7 @@ signal vanished(by: Unit, of: Unit, was: Read)  # of slipped from by's sight bef
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
+signal held_fire(u: Unit, ally: Unit)  # u was about to attack an ally it couldn't tell for one, and caught itself (_holds_fire())
 signal borrowed(u: Unit, how: StringName)  # a deferred death (the defer stat: Borrowed Time): &"begin", &"replay", &"survived", &"executed" (_borrowed())
 signal revived(u: Unit, summoned: Unit)  # u got up, a heart spent; summoned: what came with it (a Regeneration Probe), or null
 signal dropped(u: Unit, item: Item)  # u fell, leaving an item (its loot)
@@ -637,6 +638,12 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var foe := not Faction.friends(target.faction, caster.faction)
 	if foe and not skill.for_foes() and read(caster, target).attitude(caster) == &"ally":
 		foe = false  # support for a foe it takes for an ally (a Friendly stance)
+	if not foe and target != caster and skill.for_foes() and not skill.for_allies() and read(caster, target).attitude(caster) != &"ally":
+		if not in_reach(caster, skill, target):
+			return false
+		if _holds_fire(caster, skill, target):
+			return true
+		foe = true  # friendly fire: it took its ally for something else, and it lands as on a foe
 	var mends := not foe and skill.god_tag and caster.deity() == &"eros"  # Eros's Smite heals allies
 	if not (skill.for_foes() if foe else (skill.for_allies() or mends)) or not in_reach(caster, skill, target):
 		return false
@@ -2577,6 +2584,27 @@ func _on_downed(u: Unit) -> void:
 
 
 # u went Downed (down but not out), was saved from it, or died of it: the rules are Downed's.
+# caster is about to use skill, one only for foes, on an ally it can't tell is one (hidden, or passing
+# for something else: Read.attitude()); a skill for allies and foes alike (dual) does by each what it
+# should, as before. First a hidden wis check - the player sees no roll, only what comes of it - at the
+# standard difficulty: passing, it holds its fire. The action is spent (AP and cost, as on a miss) but
+# cut off as an interrupt cuts it (interrupt(), Jam's: its own hiding, channel, guard end), nothing of
+# it reaching the ally, and its side reads that ally better for the rest of the battle - as many recon
+# levels as the ally hides from it by (studied, _read()), which normally shows its side. False: it
+# didn't catch itself (or can't pay), and the cast goes on.
+func _holds_fire(caster: Unit, skill: Skill, ally: Unit) -> bool:
+	if not resolve(Check.check(caster.check_mod(&"wisdom", &"offensive"), Difficulty.dc(&"standard"))).hit:
+		return false
+	if not caster.pay_for(skill):
+		return false
+	interrupt(caster)
+	var mine: Dictionary = studied.get_or_add(caster.faction, {})
+	mine[ally] = maxi(mine.get(ally, 0), maxi(_hidden_from(caster, ally), 1))
+	held_fire.emit(caster, ally)
+	used.emit(caster, skill, ally, 0)
+	return true
+
+
 # u put its death off (Unit.defer()): in its own side's turn, that turn's end doesn't count.
 func _on_deferring(u: Unit, how: StringName) -> void:
 	if how == &"begin":

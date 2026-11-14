@@ -166,6 +166,10 @@ func _ready() -> void:
 	battle.evaluated.connect(_on_evaluated)
 	battle.downed.connect(_on_downed)
 	battle.dbno_changed.connect(_on_dbno)
+	battle.held_fire.connect(func(u: Unit, ally: Unit):
+		_log("%s holds its fire: that's %s" % [_tag(u), _tag(ally)])
+		overlay.float_text(u, "Holds fire", FRIEND)
+		_mark())
 	battle.borrowed.connect(func(u: Unit, how: StringName):
 		_log({&"begin": "%s is on borrowed time: its death put off %d round%s" % [_tag(u), u.deferred, "" if u.deferred == 1 else "s"],
 				&"replay": "%s relives what harmed it" % _tag(u), &"survived": "%s's borrowed time runs out, and it lives" % _tag(u),

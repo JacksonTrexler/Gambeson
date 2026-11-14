@@ -67,3 +67,46 @@ Readings and calls:
   Downed (as an execute on a standing unit does), then Downed's own rules. A Downed unit dying is not
   deferred (Borrowed Time only catches the 0-HP moment, before Downed).
 - HUD: log lines and a float text on going on borrowed time (`Battle.borrowed` signal). No card chip.
+
+## Friendly fire
+
+Readings:
+- Before this, `Battle.cast()` decided friend or foe by the truth: a foe-only skill on any ally was
+  refused (the HUD said "doesn't take"; a Ctrl-click at its tile, `attempt()`, whiffed as thin air). So
+  no friendly fire happened, and the refusal leaked who it was.
+- Who can be an ally it can't tell: its own side knows where its teammates hide by their own
+  concealment (`Perception._levels()`), so it's an ally in a zone (fog, darkness not its side's own),
+  one of an allied but different side hiding, or an ally passing for something else (trickery, a front).
+
+Calls:
+- Any foe-only skill (`for_foes()` and not `for_allies()`) cast on a unit friendly to the caster that it
+  doesn't read as an ally (`Read.attitude() != ally`). Dual/either skills keep doing by the truth (a
+  starter spell on an unseen ally still helps it; `sol_test.test_igna` relies on it).
+- Hidden wis check: d20 + wis mod (check bonuses, offensive) against the standard flat DC 12; no
+  signal carries the roll, only `held_fire(u, ally)` on a pass (HUD: "X holds its fire: that's Y" and a
+  float). Leaders' experience/cha doesn't enter it (the text hints at it; left out).
+- Pass: the attacker **spends the skill's AP and cost** (as on a miss), `Battle.interrupt(caster)` -
+  Jam's path: its own channel, hiding, guard, primed Chant, watch end - and `used` is emitted with 0
+  damage. Recon: its side reads that ally better for the battle by as many levels as the ally hides
+  from it (at least 1), through `studied` (`_read()`), which shows its side unless trickery still lies.
+- Fail: the attack goes on as on a foe - friendly fire (Conspire's `ally_mitigate` still cuts it).
+- Range is checked first (an ally out of reach is refused as before, no check).
+
+## As built
+
+- Skills (`--human`): `resuscitate` (Specialist tier 4), `intervention` (Eros after Renew),
+  `borrowed_time` (Wizard Arcane after Blink, needs 3).
+- Mechanics: tags/terms `bless` (condition), `execute` (check; the tag Death already carried); Effect
+  stats `hale` ("Hale ??") and `defer` ("Borrowed Time").
+- Code: `Behaviour.fits()` (cast target filter); `Unit.execute_share()`, `state_tags()`, the deferred
+  death state (`defer()`, `harms`, `replay_harms()`, `age_harms()`, `fall()`, `_landed()` split out of
+  the hp setter, `is_alive()` counts it); `Battle._borrowed()` (before `Downed.end_round`),
+  `_holds_fire()`, signals `borrowed`, `held_fire`; `last_stand()` adds execute-tagged check effects;
+  the save contest passes skill tags; regen asked with `state_tags()`; Luun's threshold by
+  `execute_share()`. `Effect.marked()` describes hale and defer. HUD log lines for both signals.
+- `Util/skill.py check`: `check_check_tags` (tapping effects need `taps`, `kills` needs `execute`).
+- Tests (new): `resuscitate_test`, `intervention_test`, `hale_test`, `borrowed_time_test`,
+  `friendly_fire_test`. No existing test changed.
+- Suite: 41893 checks, 0 failed (619 tests).
+- Not done: AI use of Resuscitate / Intervention; HUD offering Resuscitate only on the Downed; a card
+  chip for borrowed time; no screenshots (only log lines and float texts were added).
