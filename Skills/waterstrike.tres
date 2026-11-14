@@ -12,7 +12,7 @@ stat = &"dexterity"
 [resource]
 script = ExtResource("1_skill")
 name = "Waterstrike"
-tags = Array[StringName]([&"water", &"physical", &"bludgeon", &"dex"])
+tags = Array[StringName]([&"water", &"physical", &"blunt", &"dex"])
 ap = 3.0
 radius = 1.0
 tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
