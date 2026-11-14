@@ -65,7 +65,7 @@ func test_hex_iii() -> void:
 	for seed in 60:
 		b.rng.seed = seed
 		v(1).max_hp = 50
-		v(1).heal(50)
+		v(1).hp = 50  # a reset, not a heal: no Burnout
 		v(1).timed.clear()
 		icor().set_store(mana, 12)
 		icor().refresh()
