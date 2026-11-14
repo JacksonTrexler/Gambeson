@@ -180,7 +180,11 @@ var picked: Array[String] = []  # the trees it has picked on its class's own tab
 @export_group("Equipment")
 @export var armor: Item  # sets its Defense (none: dex mod + con mod; see armor_defense())
 @export var weapon: Item  # can let its strength attacks use another stat (wielded())
-@export var trinket: Item  # Heart Up
+@export var trinket: Item:  # Heart Up
+	set(v):
+		trinket = v
+		if banner:
+			banner.queue_redraw()  # its trim shows as a banner
 
 @export_group("Stats")
 @export var strength := 5
@@ -432,6 +436,7 @@ var luck: int:
 @onready var reserve_bar: ProgressBar = $ReserveBar
 var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
 var more_bars: Array[ProgressBar] = []  # a third reserve's, and any further: 1px slivers (the map's bars, as few pixels as they need)
+var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over its shoulder; on the sprite, so a silhouette hides it
 
 
 func _init() -> void:
@@ -456,6 +461,11 @@ func _ready() -> void:
 	_pick_alias()
 	_fill_bar()
 	_show_look()
+	banner = Node2D.new()
+	banner.name = &"Banner"
+	banner.position = Vector2(6, -13)
+	banner.draw.connect(_draw_banner)
+	sprite.add_child(banner)
 	sprite.material = ShaderMaterial.new()
 	sprite.material.shader = DESATURATE
 	set_saturation(1.0)
@@ -1712,6 +1722,14 @@ func equip(it: Item) -> Item:
 	set(it.slot, it)
 	refit()
 	return old
+
+
+# Its trinket's banner: its trim on dark cloth (not its side's colours: a banner mustn't give away a
+# disguise); nothing for an untrimmed one.
+func _draw_banner() -> void:
+	var c := trinket.trim() if trinket else Color(0, 0, 0, 0)
+	if c.a > 0.0:
+		Item.draw_banner(banner, Vector2.ZERO, c, Color("#1d1a12"))
 
 
 # Takes off what's in a slot, returning it.

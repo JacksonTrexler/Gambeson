@@ -21,7 +21,7 @@ func test_markup() -> void:
 	var rich := Glossary.rich(text)
 	ok("[url=term:save]" in rich and "[color=#%s]wis mod[/color]" % Glossary.DEFENSE.to_html(false) in rich
 			and "[color=#%s]cha mod[/color]" % Glossary.OFFENSE.to_html(false) in rich, "rich: the term links to its page, the target's mod blue, the user's orange")
-	ok("[color=#%s]2[/color]" % Glossary.RANK.to_html(false) in rich and "[color=#%s]fire[/color]" % Glossary.ELEMENTS[&"fire"].to_html(false) in rich, "rank gold, fire in its colour")
+	ok("[color=#%s]2[/color]" % Glossary.RANK.to_html(false) in rich and "[color=#%s]fire[/color]" % Tags.color(&"fire").to_html(false) in rich, "rank gold, fire in its colour")
 	ok(Glossary.plain(Glossary.term(&"held", "Holds")) == "Holds" and Glossary.rich("[1] a").begins_with("[lb]1]"), "a term in other words; brackets in text kept as text")
 	ok(Glossary.page(&"save") == &"checks" and Glossary.page(&"burning") == &"ground" and Glossary.page(&"held") == &"conditions", "each term has its Guide page")
 

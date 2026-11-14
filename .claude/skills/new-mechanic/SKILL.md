@@ -19,11 +19,17 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
 
 2. **Write it:**
    ```
-   python3 Util/mechanic.py tag acid --kind damage --define "Eats through armor: Defense counts half." [--parent physical]
+   python3 Util/mechanic.py tag acid --kind damage --define "Eats through armor: Defense counts half." --color "#7fd04a" [--parent physical]
+   python3 Util/mechanic.py color acid "#7fd04a"   # set or retune any tag's colour
    python3 Util/mechanic.py property rotting --effect "stat=mitigate amount=-0.5 tags=fire" [--tags undead] [--text "..."]
    python3 Util/mechanic.py effect scorched --effect "stat=poison amount=0.05"
    python3 Util/mechanic.py stat word_reach --doc "tiles more its word carries (Battle.spread())"
    ```
+   Every tag has a colour (`Tags.COLOR`, read by `Tags.color()`): `--color` is required unless `--parent`
+   (a child takes its parent's). Pick it to sit with its family (elements by convention, the UI's
+   resource and faction colours; see the table's groups); it shows on Glossary links, damage numbers and
+   as trim on items carrying it (`Item.trim()`). A plain word (material, form, weight) also goes in
+   `Tags.PLAIN` so it never trims. `mechanic.py check` fails a tag with no colour.
    Definitions are plain sentences, no square brackets or double quotes (BBCode). Each writes a test stub,
    `Tests/<id>_test.gd` (`--no-test` to skip). A property's or unit's `--tags` are just words on it: they
    need a Glossary term only once a rule or description names them.

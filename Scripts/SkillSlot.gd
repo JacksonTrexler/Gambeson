@@ -8,12 +8,6 @@ extends Button
 signal dropped(index: int, skill: Skill, from: int)  # from: the slot it came from, -1 the spellbook
 signal cleared(index: int)
 
-# Stripe colour by a skill's first tag that has one.
-const TINTS := {
-	&"magical": Color("#a179f2"), &"dark": Color("#7b6fe0"), &"physical": Color("#c9ced8"),
-	&"earth": Color("#c8a165"), &"sound": Color("#4fc1b0"), &"sight": Color("#62b6e8"),
-	&"light": Color("#f3da72"),
-}
 const PLAIN_TINT := Color("#8a90a0")
 const GOLD := Color("#e8c547")
 const ON := Color("#3fbf4f")
@@ -43,11 +37,10 @@ var sense := 2  # how much of the skill the player's side makes out (HUD.skill_s
 var _dragging := false
 
 
+# Stripe colour: the tag that marks the skill (Tags.mark(), as an item's trim), else PLAIN_TINT.
 static func tint(s: Skill) -> Color:
-	for t in s.tags:
-		if t in TINTS:
-			return TINTS[t]
-	return PLAIN_TINT
+	var t := Tags.mark(s.tags)
+	return Tags.color(t) if t else PLAIN_TINT
 
 
 # A small label for dragging a skill around.

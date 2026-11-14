@@ -1694,18 +1694,35 @@ func _on_sprung(_c: Vector2i, by: Unit) -> void:
 	_log("Trap --> %s" % _tag(by))
 
 
+# The blow a unit is taking (Unit.taking_hit), for its damage number's colour: kept until the frame ends.
+var _blows := {}
+
+
+func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
+	_blows[u] = blow.tags
+	(func() -> void: _blows.erase(u)).call_deferred()
+
+
+# A damage number in the colour of what the blow was made of (Tags.mark() past the broad words: a
+# fireball's in fire's), else red.
+func _hurt_colour(u: Unit) -> Color:
+	var t := Tags.mark(_blows.get(u, []), Tags.BROAD)
+	return Tags.color(t) if t else FOE
+
+
 func _on_hp(was: int, now: int, u: Unit) -> void:
 	_mark()
 	if not _hp_shows(u):
 		return
 	if now < was:
-		overlay.float_text(u, "-%d" % (was - now), FOE)
+		overlay.float_text(u, "-%d" % (was - now), _hurt_colour(u))
 	elif now > was:
 		overlay.float_text(u, "+%d" % (now - was), FRIEND)
 
 
 func _watch_unit(u: Unit) -> void:
 	u.hp_changed.connect(_on_hp.bind(u))
+	u.taking_hit.connect(_on_taking_hit)
 	u.energy_changed.connect(_on_energy.bind(u))
 	u.reserve_changed.connect(_mark.unbind(3))
 	u.overcharge_changed.connect(_mark.unbind(2))
@@ -2415,6 +2432,7 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return u.stat(x))), null, MUTED])
 		info.rows = rows
 		info.effects = effect_icons(u) + suspicion_icons(u, u.suspicion)
+		info.trims = trims(u)
 		info.chips = chips
 		return info
 	var r := view(u)
@@ -2488,6 +2506,8 @@ func _info(u: Unit) -> Dictionary:
 	if not r.stats.is_empty():
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return r.stats[x])), null, MUTED])
 	info.rows = rows
+	if not info.silhouette and not info.face and _defense_shows(u):  # its gear can be made out
+		info.trims = trims(u)
 	if known(u):
 		info.effects = effect_icons(u, r.effects) + suspicion_icons(u, r.suspects)
 		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
@@ -2500,6 +2520,15 @@ func _info(u: Unit) -> Dictionary:
 				"; goes for the %s" % " and ".join(r.strategy) if not r.strategy.is_empty() else ""]
 	info.chips = chips
 	return info
+
+
+# [colour, item name] for each item u wears with a trim (Item.trim()): the card's banners.
+static func trims(u: Unit) -> Array:
+	var out := []
+	for it: Item in [u.weapon, u.armor, u.trinket]:
+		if it and it.trim().a > 0.0:
+			out.append([it.trim(), it.name])
+	return out
 
 
 # The selected unit's card, with what the hovered plan would consume (spend) on its rows: a number
