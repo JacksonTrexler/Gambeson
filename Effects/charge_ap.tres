@@ -7,5 +7,5 @@ script = ExtResource("1_effect")
 stat = "regain"
 amount = 1.0
 per_rank = true
-tags = Array[StringName]([&"move"])
+tags = Array[StringName]([&"dex"])
 name = "Charge!"

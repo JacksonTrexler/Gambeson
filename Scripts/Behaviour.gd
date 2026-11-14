@@ -170,6 +170,12 @@ func senses() -> bool:
 	return false
 
 
+# It lays tile marks (Battle.lay_mark()) that would do something now - foes in sight to lay them toward, and
+# none of its own still up: the AI casts it before it advances (AI._rally(); Warcry).
+func marks(_b: Battle, _u: Unit) -> bool:
+	return false
+
+
 # What apply() does at this rank, in Glossary markup: one or more lines of the skill's description.
 func describe(_rank: int) -> String:
 	return ""

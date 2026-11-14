@@ -77,3 +77,15 @@ func test_a_foe_it_cannot_see_isnt_picked() -> void:
 	v(1).wisdom = 4
 	b.cast(v(1), warcry, v(1))
 	ok(b.marks.is_empty() or not b.has_mark(Vector2i(2, 5), &"charge"), "with no foe in sight: nothing to mark toward (%d)" % b.marks.size())
+
+
+func test_the_ai_lays_its_marks_before_it_advances() -> void:
+	v(3).learned.append(slot(warcry, 2))
+	stage(nemes, {v(3): Vector2i(8, 3), v(1): Vector2i(1, 3)})
+	b.sight = false
+	v(3).refresh()
+	ok(warcry.behaviours[0].marks(b, v(3)), "a foe in sight and none of its marks up: worth casting")
+	var log := AI.act(b, v(3))
+	ok(b.marks.size() > 0 and b.marks.values().all(func(st: Array): return st.all(func(m: Battle.Mark): return m.by == v(3))), "it laid its marks as it set off (%s)" % [log])
+	ok(v(3).cell != Vector2i(8, 3), "and still moved")
+	ok(not warcry.behaviours[0].marks(b, v(3)), "with its marks up, not worth casting again")

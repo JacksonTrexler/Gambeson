@@ -31,6 +31,11 @@ static func tiles(b: Battle, caster: Unit, t: Unit, n: int) -> Array[Vector2i]:
 	return out.slice(0, n)
 
 
+# Worth casting: a foe in sight, and none of the caster's own marks are still up.
+func marks(b: Battle, u: Unit) -> bool:
+	return not picks(b, u, 1).is_empty() and not b.marks.values().any(func(st: Array): return st.any(func(m: Battle.Mark): return m.by == u))
+
+
 func fits(_b: Battle, caster: Unit, target: Unit) -> bool:
 	return target == caster
 
@@ -80,5 +85,14 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "Picks up to {r:%d} foe%s it can see, the nearest first, and marks the first {r:%d} tile%s of the line to each: the nearer half %s, the farther half %s. Each is used up by the first to enter it and lasts {t:%d turns}.\n%s: allies who enter regain {r:%d} dex AP and deal +{r:%d%%} damage until their turn ends.\n%s: foes who enter pay {r:%d} more movement" % [
-			rank, "" if rank == 1 else "s", rank, "" if rank == 1 else "s", "Charge!", "Routed!", 2 + rank, "Charge!", rank, rank * 10, "Routed!", rank]
+	return _say(rank, rank, rank, 2 + rank)
+
+
+# As its holder has it: its modifiers on how many foes and tiles, and the skill's turns.
+func describe_as(c: Cast) -> String:
+	return _say(c.rank, c.range_rank(), c.impact_rank(), c.skill.lasts(c.rank, c.caster))
+
+
+func _say(_rank: int, foes: int, tiles: int, turns: int) -> String:
+	return "Picks up to {r:%d} foe%s it can see, the nearest first, and marks the first {r:%d} tile%s of the line to each: the nearer half %s, the farther half %s. Each is used up by the first to enter it and lasts {t:%d turn%s}.\n%s: allies who enter regain {r:%d} dex AP and deal +{r:%d%%} damage until their turn ends.\n%s: foes who enter pay {r:%d} more movement" % [
+			foes, "" if foes == 1 else "s", tiles, "" if tiles == 1 else "s", "Charge!", "Routed!", turns, "" if turns == 1 else "s", "Charge!", tiles, tiles * 10, "Routed!", tiles]

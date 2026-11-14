@@ -126,6 +126,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
+			_rally(b, u, log)  # lay its marks first, then walk onto them
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
@@ -894,6 +895,16 @@ static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 		var gain := mini(u.store(f) + ceili(f.builds * pools[f]), pools[f])
 		if u.actives.any(func(x: Skill): return u.ranged(x) and u.cost_from(x, f) > 0 and (not weak or (u.store(f) < u.cost_from(x, f) and gain >= u.cost_from(x, f) and u.stat(&"focus") > 0.0))):
 			log.append("%s steadies itself, building %s" % [u.name, f.name])
+			return true
+	return false
+
+
+# About to advance on a foe, it casts a skill that lays tile marks (Behaviour.marks(): Warcry) that would
+# do something now, so its walk passes over them. True if it did.
+static func _rally(b: Battle, u: Unit, log: Array[String]) -> bool:
+	for s in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.marks(b, u)) and u.can_afford(x)):
+		if b.cast(u, s, u):
+			log.append("%s uses %s" % [u.name, s.name])
 			return true
 	return false
 

@@ -2623,7 +2623,7 @@ func bloodied() -> bool:
 
 # Gets n AP back into its general pool, up to what that pool started the turn with (Renew).
 # Returns what it got.
-# `pool` names another (&"move": its dex AP, &"skill": its wis AP; Charge!).
+# `pool` names another (&"move": its dex AP, &"skill": its wis AP; the regain stat's dex or wis tag; Charge!).
 func regain(n: float, pool := &"") -> float:
 	var i := ap.find_custom(func(p: AP): return p.only == pool)
 	if n <= 0.0 or i < 0 or i >= _ap_start.size():
@@ -2678,7 +2678,7 @@ func pay(n: float, use: StringName) -> bool:
 # (keeping the higher rank) rather than stacking.
 func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 	if e.stat == "regain":  # instant: AP back to the pool it's tagged with, and nothing stays on
-		regain(e.amount * (at_rank if e.per_rank else 1), e.tags[0] if not e.tags.is_empty() else &"")
+		regain(e.amount * (at_rank if e.per_rank else 1), {&"dex": &"move", &"wis": &"skill"}.get(e.tags[0] if not e.tags.is_empty() else &"", &""))
 		return Applied.new(0, at_rank)
 	if e.helps() < 0:
 		_log_harm({effect = e, turns = turns, rank = at_rank})

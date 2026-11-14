@@ -147,7 +147,7 @@ extends Resource
 # effect's rank (its level) passes by the first Meander-rank tiles of a turn (Battle.travel(),
 # Unit.wards())
 # regain: AP back to a pool the moment it is put on, up to what that pool started the turn with:
-# its tag names the pool (move: dex AP, skill: wis AP; none: the general pool). Never lasts
+# its tag names the pool (dex: dex AP, wis: wis AP; none: the general pool). Never lasts
 # (Unit.afflict(), Unit.regain(); Warcry's Charge!)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
