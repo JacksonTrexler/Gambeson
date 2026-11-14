@@ -19,6 +19,8 @@ class Cast:
 	var foe := true
 	var bag := {}
 	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
+	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()), ambush among them when it ambushes (Battle.ambushes())
+	var hit := false  # it landed: past its attack roll, if it makes one
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
 	# cast's, as a skill's own effects are.
@@ -32,6 +34,34 @@ class Cast:
 
 
 func apply(_c: Cast) -> void:
+	pass
+
+
+# Once the skill is paid for and aimed, before any roll (Battle.cast()): what comes first (Sutemi's
+# lunge, Poach's discount). The cast's target may still be missed.
+func aim(_c: Cast) -> void:
+	pass
+
+
+# Advantage (+1) or disadvantage (-1) it adds to the cast's attack roll, summed with the skill's own
+# and clamped (Gank: disadvantage unless it ambushes). Asked by the HUD's hit chance too: no side effects.
+func edge(_c: Cast) -> int:
+	return 0
+
+
+# Defense the target adds against this attack (Spike: its unspent AP). No side effects: the HUD asks too.
+func guard(_c: Cast) -> int:
+	return 0
+
+
+# Damage added to each of the cast's hits that lands (Spike: + rank).
+func bonus(_c: Cast) -> int:
+	return 0
+
+
+# The cast's own target was neutralized (Battle.neutralized: downed, Downed, killed...) as it resolved,
+# how saying which (Poach: regain).
+func felled(_c: Cast, _how: StringName) -> void:
 	pass
 
 
@@ -59,6 +89,12 @@ func describe(_rank: int) -> String:
 # teller's (Battle.spread(); Bandwagon: a cha check).
 func lets_word(_b: Battle, _holder: Unit, _rank: int, _teller: Unit, _listener: Unit) -> bool:
 	return true
+
+
+# What a step from `from` to `to` costs the holder, walking, where it costs `cost` so far (Battle.walk(),
+# which the HUD's reach and preview use too). `bag` is shared by one walk's steps (Peel counts its tiles).
+func step_cost(_b: Battle, _holder: Unit, _rank: int, _from: Vector2i, _to: Vector2i, cost: float, _bag: Dictionary) -> float:
+	return cost
 
 
 # The holder is about to take damage d from a hit (Unit.taking_hit, Battle._on_taking_hit()): how much it still takes

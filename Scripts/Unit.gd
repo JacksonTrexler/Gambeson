@@ -369,6 +369,7 @@ var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()
 			_switched(was)  # however the channel ends (stopped, broken, interrupted, replaced), the switch completes
 var paid_for: Skill  # the skill it last paid for (pay_for()), and what with: a Reserve or &"energy" (paid_as())
 var paid_with: Variant
+var paid_ap := 0.0  # and the AP it took (refund())
 var emptied := false  # that payment spent the last of the reserve it came from (focus_bonus())
 var reserve_rest: Dictionary[Reserve, float] = {}  # a with_energy reserve's recovery towards its next whole point (recover())
 var exhaustion := Exhaustion.new()  # its uses of each skill lately, and what they add to its costs (price(), ap_cost())
@@ -381,6 +382,8 @@ var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> i
 var cursed: Dictionary[Skill, bool] = {}  # of those, the ones a curse switched off (Brainfog): their slots quiver
 var chant_gains := 0  # Sweet Nothing gains a Chant will add one to (Battle._chant())
 var chant_up := false  # a Chant primed: its next Warlock skill is used a rank higher (rank())
+var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_turn(): Spike)
+var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
@@ -2260,6 +2263,7 @@ func pay_for(s: Skill) -> bool:
 	var fund: Variant = funding(s)
 	if fund == null or not pay(ap_cost(s, fund), s.pays_with if s.pays_with else &"skill"):
 		return false
+	paid_ap = ap_cost(s, fund)
 	var cost := cost_from(s, fund) - _spend_overcharge(fund, cost_from(s, fund))
 	if fund is Reserve:
 		set_store(fund, store(fund) - cost)
@@ -2319,6 +2323,16 @@ func refresh() -> void:
 	exposed = 0
 	fury_acts = 0
 	overdriven = false
+	tally.clear()
+	winded()
+
+
+# Winded (the winded stat: Bludgeon): it loses that much AP - at once, if it has AP to lose, as its turn
+# opens otherwise.
+func winded() -> void:
+	var n := stat(&"winded")
+	if n > 0.0:
+		pay(minf(n, ap_for(&"")), &"")
 
 
 # How hard it worked this turn: &"rest" (idle(), holding no channel), &"light" (it only spent its
@@ -2537,6 +2551,27 @@ func best_defensive_bonus() -> int:
 	for s in [&"strength", &"dexterity", &"constitution", &"intelligence", &"wisdom", &"charisma"]:
 		best = maxi(best, check_bonus(s, &"defensive"))
 	return best
+
+
+# Gives back `share` of its last payment for s (pay_for()): the AP to its general pool, the cost to what
+# paid it. A refund, not a recovery: no Burnout (Poach's and Slam Jam's discounts). Returns the cost back.
+func refund(s: Skill, share: float) -> int:
+	if share <= 0.0 or paid_for != s:
+		return 0
+	var fund: Variant = paid_with
+	if not ap.is_empty():
+		ap[0].amount += paid_ap * share
+	var n := floori(cost_from(s, fund) * share + 0.0001)
+	if fund is Reserve:
+		set_store(fund, store(fund) + n)
+	else:
+		energy += n
+	return n
+
+
+# Bloodied: half its HP or less, as an execute measures it (execute_share(): whole while hale). Poach.
+func bloodied() -> bool:
+	return execute_share() <= 0.5
 
 
 # Gets n AP back into its general pool, up to what that pool started the turn with (Renew).

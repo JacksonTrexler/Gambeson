@@ -53,6 +53,7 @@ signal chanted(u: Unit, rank: int)  # u waited its turn out and chanted (Chant)
 signal leveled(caster: Unit, target: Unit, levels: int)  # Level Down took levels off target (0: none)
 signal shaped(u: Unit, form: StringName, element: StringName)  # u took a beast's form (Beastshape), or its own back (form "")
 signal disciplined(u: Unit, burned: int)  # u burned AP into an attack (Discipline)
+signal neutralized(u: Unit, by: Unit, how: StringName)  # taken out of the fight (neutralize()): &"downed", &"down" (Downed), &"killed"; by: who last hit it
 signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
 
 enum Phase { INITIATIVE, TURNS, OVER, PREP }  # PREP: before the initiative roll, the player looks the field over (study()), then begin()s
@@ -72,6 +73,8 @@ const WORD := 4  # tiles (+ its cha mod) within which a unit tells its allies wh
 const XP_NEAR := 3.0  # tiles from a unit falling or brought back within which others get a share of its XP (_share())
 const RECAST_LIMIT := 20  # recasts on a natural 20 in a row (Jugular: "without limit for now"), a guard on a rigged rng
 var _recasts := 0
+var _resolving: Array[Behaviour.Cast] = []  # casts under way, innermost last: told when their target is neutralized (felled())
+var _aimed: Dictionary[Unit, Dictionary] = {}  # caster -> {target: times it used a skill on it} this battle (aimed())
 const STAR_SLOW := 2.0  # Power back on the star lattice, x its usual resting rate: linked to a source with any Power in it...
 const STAR_FAST := 5.0  # ...up to a full one (an empty source gives nothing)
 const STAR_ENERGY := 0.3  # regular Energy gets this share of what the boost adds (+10 for Power: +3)
@@ -623,6 +626,13 @@ func _flip(g: Array) -> Array:
 # (auto_targets()), paid once. A traitor told to turn a hostile skill on its real allies refuses, or
 # with a positive cha mod misses on purpose - and either way its leader looks harder at it.
 func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
+	var depth := _resolving.size()
+	var done := _cast(caster, skill, target, spreading)
+	_resolving.resize(depth)
+	return done
+
+
+func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if not _acting(caster) or skill not in caster.actives or skill.on_tile() or not target.is_alive():
 		return false
 	if (skill.on_self(caster) or (skill.auto and not spreading)) and target != caster:
@@ -674,6 +684,13 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if not spreading and not caster.pay_for(skill):
 		return false
 	var r := caster.rank(skill)
+	var acts: Behaviour.Cast = cast_of(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
+	if acts:
+		_resolving.append(acts)
+		for bh in skill.behaviours:
+			bh.aim(acts)  # before any roll (Sutemi's lunge)
+	if target != caster:
+		_aimed.get_or_add(caster, {})[target] = aimed(caster, target) + 1
 	if &"warlock" in skill.tags:
 		caster.chant_up = false  # a primed Chant goes into this one
 	_burn(caster, skill)
@@ -718,7 +735,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 		return true
 	var zeal := passion(caster, target)  # Impassioned Fighter: + to the skill's primary mod, beside its target
 	var crit := false
-	var tags := hit_tags(caster, skill)
+	var tags := acts.tags if acts else hit_tags(caster, skill, target if foe else null, self)
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
 		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + zeal - drag_penalty(skill, r, Command.tiles(target.cell, spot))),
@@ -783,7 +800,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
 				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
-		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(discipline_keen(caster)))
+		var hit := resolve(Check.attack(bonus, target.defense(tags) + guard_of(acts)).edge(edge_of(skill, acts)).keen(discipline_keen(caster)))
 		overage = maxi(hit.margin(), 0)
 		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
 		natural = hit.crit
@@ -793,6 +810,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			_expose(target)
 			used.emit(caster, skill, target, 0)
 			return true
+	if acts:
+		acts.hit = true
 	if foe and skill.binds:  # landed (a miss returned above): Judgement's shackles
 		_bind(caster, skill, target, r)
 	var known := roundi(caster.stat(&"self_known"))  # what it knew of itself before this (Meditate)
@@ -830,7 +849,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			_scatter(target, guise)
 	if not sights.is_empty():
 		_vanish(target, sights)
-	var acts: Behaviour.Cast = _behave(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
+	if acts:
+		for bh in skill.behaviours:
+			bh.apply(acts)
 	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * r)
 	if foe and skill.push:
@@ -856,6 +877,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			if not target.is_alive():
 				break
 			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
+			if acts:
+				for bh in skill.behaviours:
+					bonus += bh.bonus(acts)  # Spike: + rank
 			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
 			gross += power
 			if &"siphon" in tags:
@@ -899,8 +923,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	return true
 
 
-# Runs a landing skill's behaviours in order (Skill.behaviours: Kick), sharing one Cast between them.
-func _behave(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Behaviour.Cast:
+# The one Cast a skill's behaviours share as it's used (Skill.behaviours: Kick), from its payment on:
+# aim(), edge(), guard(), apply(), bonus(), dealt(), felled(). Built by the HUD too, to ask edge() and guard().
+func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Behaviour.Cast:
 	var c := Behaviour.Cast.new()
 	c.battle = self
 	c.caster = caster
@@ -908,15 +933,61 @@ func _behave(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Beh
 	c.skill = skill
 	c.rank = r
 	c.foe = foe
-	for bh in skill.behaviours:
-		bh.apply(c)
+	c.tags = hit_tags(caster, skill, target if foe else null, self)
 	return c
 
 
+# The edge on a skill's attack roll: its own advantage or disadvantage, plus its behaviours' (Gank),
+# no more than one either way.
+static func edge_of(skill: Skill, c: Behaviour.Cast) -> int:
+	var n := -1 if skill.disadvantage else (1 if skill.advantage else 0)
+	if c:
+		for bh in skill.behaviours:
+			n += bh.edge(c)
+	return clampi(n, -1, 1)
+
+
+# Defense a cast's behaviours give its target against it (Spike).
+static func guard_of(c: Behaviour.Cast) -> int:
+	var n := 0
+	if c:
+		for bh in c.skill.behaviours:
+			n += bh.guard(c)
+	return n
+
+
+# How many times o has used a skill on t this battle, hit or miss, ally or foe (itself aside): the
+# targeting memory (Poach: one it never has).
+func aimed(o: Unit, t: Unit) -> int:
+	return _aimed.get(o, {}).get(t, 0)
+
+
+# Whether caster's attack on target ambushes it: as it attacks, the target can't place it, or it's
+# concealed from the target or unseen (Read). An ambushing hit carries the ambush tag (hit_tags()), so
+# effects and rules tagged ambush count on it; Gank needs one.
+func ambushes(caster: Unit, target: Unit) -> bool:
+	var r := read(target, caster)
+	return not r.located() or r.concealed or not r.seen
+
+
+# Taken out of the fight: u was downed (a heart spent), went Downed, or was killed - the one place each
+# such moment is told (neutralized), how saying which; a forced end to a shape would come here too.
+# A cast under way whose target it was hears of it (Behaviour.felled(): Poach).
+func neutralize(u: Unit, how: StringName) -> void:
+	neutralized.emit(u, u.last_hit_by, how)
+	for c in _resolving.duplicate():
+		if c.target == u:
+			for bh in c.skill.behaviours:
+				bh.felled(c, how)
+
+
 # The tags a skill's damage carries for its caster: its own, plus its weapon's blows (Skill.weapon_tag:
-# Strike - blunt bare-handed) and its god's (Skill.god_tag: Smite - Eros's love, Urlo's energy).
-static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
+# Strike - blunt bare-handed) and its god's (Skill.god_tag: Smite - Eros's love, Urlo's energy). Given
+# the foe it's used on and the battle: ambush, if it ambushes (ambushes()).
+static func hit_tags(caster: Unit, skill: Skill, foe: Unit = null, b: Battle = null) -> Array[StringName]:
 	var out: Array[StringName] = skill.tags.duplicate()
+	if foe and b and b.ambushes(caster, foe) and &"ambush" not in out:
+		out.append(&"ambush")
 	if skill.weapon_tag:
 		var blow: StringName = (caster.weapon.damage_tag if caster.weapon else &"blunt")
 		if blow and blow not in out:
@@ -1570,14 +1641,16 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 
 
 # The chance (0-1) an attack with s by u hits t: the d20 rolls that reach t's Defense, a natural
-# 20 always among them.
-static func hit_chance(u: Unit, s: Skill, t: Unit) -> float:
+# 20 always among them. Given the battle, its behaviours' say on the roll too (edge(), guard(): Gank, Spike).
+static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null) -> float:
 	if not s.attacks():
 		return 1.0
-	var p := clampi(21 - (t.defense(s.tags) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - s.roll_bonus - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
-	if s.disadvantage:
+	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
+	var p := clampi(21 - (t.defense(s.tags) + guard_of(c) - u.attack_mod(s) - s.roll_per_rank * u.rank(s) - s.roll_bonus - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
+	var edge := edge_of(s, c)
+	if edge < 0:
 		return p * p
-	return 1.0 - (1.0 - p) * (1.0 - p) if s.advantage else p
+	return 1.0 - (1.0 - p) * (1.0 - p) if edge > 0 else p
 
 
 # A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
@@ -2046,8 +2119,11 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		var sights := _sightings(u)  # those watching it step into cover (_vanish())
 		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
 		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
+		for k: StringName in w.bag:
+			u.tally[k] = u.tally.get(k, 0) + w.bag[k]
 		var blind := obscured(passed[-1])  # what's under the leaves it walks onto, it can't see
 		move(u, passed[-1])
+		_tow(u, from, passed[-1])
 		u.blind_on = passed[-1] if blind else null
 		for i in touched:  # stepping in happens on the unit's own turn, which isn't one of those counted
 			for e in terrain(passed[i]).afflicts:
@@ -2070,6 +2146,32 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		if u.is_alive():
 			_first_look(u)
 	return passed
+
+
+# u, having moved from `from` to `to`, drags along whoever it holds by a grip with tow (Hitch): up to
+# that many tiles the same way, a tile at a time, stopping at anything in the way.
+func _tow(u: Unit, from: Vector2i, to: Vector2i) -> void:
+	var dir := Vector2(to - from).normalized()
+	for o: Unit in units.values().duplicate():
+		var a := held_by(o) if o != u else null
+		if a == null or a.by != u:
+			continue
+		var n := roundi(o.stat(&"tow"))
+		var start := Vector2(o.cell)
+		for k in range(1, n + 1):
+			var c := Vector2i((start + dir * k).round())
+			if c == o.cell:
+				continue
+			if not on_map(c) or not move(o, c):
+				break
+
+
+# A grip with tow lasts only its holder's turn: as u's side's turn ends, it lets go of those it holds so.
+func _release_tows(u: Unit) -> void:
+	for o: Unit in units.values().duplicate():
+		var a := held_by(o) if o != u else null
+		if a and a.by == u and o.stat(&"tow") > 0.0:
+			_let_go(o, a.skill)
 
 
 # The grip holding u (a grapple: Drown's effects), or null.
@@ -2133,6 +2235,8 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 	var path: Array[Vector2i] = []
 	var costs: Array[float] = []
 	var blocker: Unit = null
+	var hooks := u.hooks()
+	var bag := {}  # its steps' hooks' scratch (Behaviour.step_cost()); kept on the unit as it walks (Unit.tally)
 	var left := u.move_left() - escape_cost(u)
 	if held_by(u) and not expected:
 		left = 0.0  # held: travel() breaks it free first
@@ -2143,6 +2247,8 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 			break
 		var t: Terrain = ground.call(c)
 		var cost := _cost(u, from, t) * wading(u, c) + obstruction(u, c, expected)
+		for h in hooks:
+			cost = h[0].step_cost(self, u, h[1], path[-1] if not path.is_empty() else u.cell, c, cost, bag)  # Peel
 		var other: Unit = in_way.call(c)
 		if other:
 			cost += pass_cost(u, other)
@@ -2165,7 +2271,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		costs.pop_back()
 	if expected:
 		rng.state = state
-	return {line = ln, path = path, costs = costs, blocker = blocker}
+	return {line = ln, path = path, costs = costs, blocker = blocker, bag = bag}
 
 
 # Extra movement for u to move through o's tile: o's size, less a share per point of dex mod - u's,
@@ -2609,6 +2715,7 @@ func _on_downed(u: Unit) -> void:
 	if u not in fallen:
 		fallen.append(u)
 	downed.emit(u)
+	neutralize(u, &"downed")
 
 
 # u went Downed (down but not out), was saved from it, or died of it: the rules are Downed's.
@@ -2670,6 +2777,8 @@ func _borrowed(side: Array[Unit]) -> void:
 func _on_dbno(u: Unit, how: StringName) -> void:
 	Downed.changed(self, u, how)
 	dbno_changed.emit(u, how)
+	if how == &"down":
+		neutralize(u, &"down")
 
 
 # The fallen get up at full HP as the turn ends, each bringing what it summons (a Regeneration Probe)
@@ -2732,6 +2841,8 @@ func end_turn() -> void:
 		return
 	var side := members(turn)
 	for u in side:
+		u.unspent = u.ap_left()  # what it left unspent (Spike)
+		_release_tows(u)  # a towing grip lasts its holder's turn
 		if u.channel and u.channel.turns > 0 and not u.idle():
 			end_channel(u)  # it moved or acted: the channel's lost
 		elif u.channel:
@@ -3340,6 +3451,9 @@ func _drain(side: Faction) -> void:
 func _let_go(u: Unit, s: Skill) -> void:
 	for e in s.effects:
 		u.timed.erase(e)
+	for e in u.timed.keys():
+		if u.timed[e].lasting and u.timed[e].skill == s:
+			u.timed.erase(e)  # a grip its behaviour put on (Hitch)
 
 
 # Forced movement: t is drawn up to n tiles toward `to`, a step at a time, stopping beside it or at
@@ -4280,6 +4394,7 @@ func _on_died(u: Unit) -> void:
 		_vacated(u.cell)
 	u.timed.clear()  # nothing ticks for the dead
 	end_channel(u)
+	neutralize(u, &"killed")
 	_award(u)
 	var it := u.loot.roll(rng) if u.loot else null
 	if it:

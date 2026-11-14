@@ -1147,7 +1147,7 @@ func odds(it: Dictionary) -> StringName:
 		return &""
 	if not _defense_shows(t):
 		return &"unknown"
-	var p := Battle.hit_chance(it.unit, s, t)
+	var p := Battle.hit_chance(it.unit, s, t, battle)
 	return &"likely" if p >= 0.65 else (&"even" if p >= 0.35 else &"unlikely")
 
 
@@ -2552,7 +2552,7 @@ func _tip_text() -> String:
 		return ""
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
-		line += "\n%d%% to hit" % roundi(Battle.hit_chance(it.unit, it.skill, u) * 100.0)
+		line += "\n%d%% to hit" % roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0)
 	return line
 
 
