@@ -60,7 +60,8 @@ var hover := NOWHERE
 var busy := false  # units are acting on their own; the player waits
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
 var reach: Dictionary[Vector2i, float] = {}  # tiles the selected unit expects to reach, and the cost
-var charge := NOWHERE  # the hovered foe (or tile) a click would walk up to and attack
+var charge := NOWHERE  # the hovered foe a click would walk up to and use a skill on
+var hovered := {}  # what a click on the hovered tile means (intent())
 var marked: Array[Unit] = []  # what the armed skill could be used on
 var dubious: Dictionary[Vector2i, String] = {}  # tiles where something is only suspected, and the hint
 var sleepers: Array[Unit] = []  # units the player can see are asleep, as of the last refresh
@@ -403,32 +404,10 @@ func select(u: Unit) -> void:
 	_mark()
 
 
-# A click on the map. force (Ctrl): strike at the tile, whatever seems to be there. inspect (Shift):
-# select a foe rather than attack it.
+# A click on the map: does what intent() says it means. force (Ctrl): strike at the tile, whatever
+# seems to be there. inspect (Shift): select a foe rather than attack it. alt: a Rift cast unchanneled.
 func click(c: Vector2i, force := false, inspect := false, alt := false) -> void:
-	if c == NOWHERE:
-		return
-	if battle.phase == Battle.Phase.PREP:
-		_study(c)
-		return
-	if armed:
-		_use_on(c, force, alt)
-		return
-	var u := unit_seen(c)
-	var me := selected if _orders(selected) else null
-	if me and not inspect and ((force and not (u and known(u))) or foe(u)) and _primary(me):
-		_charge(me, c, force)
-	elif u:
-		select(u)
-		if not inspect and uses_intents(u) and not intent_options(u).is_empty():
-			_show_intents(u)  # a commander who can only direct it by intent: ATTACK / DEFEND / HELP
-	elif selected and hand(selected) and battle.turn == command.faction():
-		if _orders(selected):
-			_move(selected, c)
-		else:
-			_nag(_why_no_orders(selected))
-	else:
-		select(null)
+	_run(intent(c, force, inspect, alt))
 
 
 func hover_cell(c: Vector2i) -> void:
@@ -941,31 +920,126 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 
 # --- Acting
 
-# alt: a Rift cast unchanneled, its count starting at once.
-func _use_on(c: Vector2i, force := false, alt := false) -> void:
-	var u := selected
+# What a click on c means, worked out once: the overlay draws it (hovered, plan, charge), the tooltip
+# words it, click() runs it (_run()). {kind, cell, unit (who acts), skill, target (a Unit, or the cell
+# for an area skill), dest (where it walks first: its own cell if nowhere), walk (Battle.walk() there,
+# expected, or {}), ready (the skill should be usable from dest), why (a refusal's reason), alt}.
+# Kinds: none, study (preparation), walk, use (walk to dest, then use skill on target), strike_at
+# (walk, then strike at the tile whatever's there), select, let_go, refuse, disarm.
+func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dictionary:
+	var me := selected
+	var it := {kind = &"none", cell = c, unit = me, skill = null, target = null, dest = me.cell if me else NOWHERE, walk = {}, ready = false, why = "", alt = alt}
+	if c == NOWHERE:
+		return it
+	if battle.phase == Battle.Phase.PREP:
+		it.kind = &"study"
+		return it
+	var t := unit_seen(c)
 	var s := armed
-	if not _orders(u):
-		disarm()
-		return
-	if force and s.for_foes() and not s.on_tile():
-		_strike_at(u, s, c)
-		return
-	var target: Variant = c if s.on_tile() else unit_seen(c)
-	var why := why_not(u, s, target)
-	if why == "Pick a unit":
-		_say("Pick a unit, or Ctrl-click to strike at the tile" if s.for_foes() else why)
-		return
-	if why == "Out of reach" and target is Unit and _approach(u, s, c, true).ready:
-		_charge(u, c, false, s, true)  # a walk it can count on brings it into reach: it walks, then uses it
-		return
-	if why == "Out of reach" or why == "Already fallen":
-		_say(why)
-		return
-	if not (battle.cast_at(u, s, c, not alt) if s.on_tile() else battle.cast(u, s, target)):
-		_say(why if why else "%s doesn't take" % s.name)
-		return
-	_done(u)
+	if s:
+		if not _orders(me):
+			it.kind = &"disarm"
+			return it
+		it.skill = s
+		if force and s.for_foes() and not s.on_tile():
+			it.kind = &"strike_at"
+			it.target = c
+			return it
+		it.target = c if s.on_tile() else t
+		var why := why_not(me, s, it.target)
+		if why == "Pick a unit":
+			return _refusal(it, "Pick a unit, or Ctrl-click to strike at the tile" if s.for_foes() else why)
+		if why == "Out of reach" and t and not s.on_tile():
+			var a := _approach(me, s, c, true)
+			if a.ready:
+				return _walk_to(it, &"use", a.dest, true)
+			it.why = "Out of reach: no sure walk gets there" if _approach(me, s, c).ready else why
+			it.kind = &"refuse"
+			return it
+		if why == "Out of reach" or why == "Already fallen":
+			return _refusal(it, why)
+		it.kind = &"use"
+		it.ready = true
+		it.why = why
+		return it
+	var p := _primary(me) if _orders(me) else null
+	if p and not inspect and ((force and not (t and known(t))) or foe(t)):
+		it.skill = p
+		var a := _approach(me, p, c)
+		it.target = c if force or not t else t
+		return _walk_to(it, &"strike_at" if force or not t else &"use", a.dest, a.ready)
+	if t:
+		it.kind = &"select"
+		it.target = t
+		return it
+	if me and hand(me) and battle.turn == command.faction():
+		if not _orders(me):
+			return _refusal(it, _why_no_orders(me))
+		if c == me.cell:
+			return it
+		it.kind = &"walk"
+		it.dest = c
+		it.walk = battle.walk(me, c, true)
+		return it
+	it.kind = &"let_go"
+	return it
+
+
+func _refusal(it: Dictionary, why: String) -> Dictionary:
+	it.kind = &"refuse"
+	it.why = why
+	return it
+
+
+# The intent walks to dest first (none if it's already there), then does `kind`.
+func _walk_to(it: Dictionary, kind: StringName, dest: Vector2i, ready: bool) -> Dictionary:
+	it.kind = kind
+	it.dest = dest
+	it.ready = ready
+	if dest != it.unit.cell:
+		it.walk = battle.walk(it.unit, dest, true)
+	return it
+
+
+# Does what an intent says (click()).
+func _run(it: Dictionary) -> void:
+	var u: Unit = it.unit
+	var s: Skill = it.skill
+	match it.kind:
+		&"study":
+			_study(it.cell)
+		&"disarm":
+			disarm()
+		&"refuse":
+			_nag(it.why)
+		&"select":
+			var t: Unit = it.target
+			select(t)
+			if uses_intents(t) and not intent_options(t).is_empty():
+				_show_intents(t)  # a commander who can only direct it by intent: ATTACK / DEFEND / HELP
+		&"let_go":
+			select(null)
+		&"walk":
+			_move(u, it.cell)
+		&"use", &"strike_at":
+			var walked: bool = it.dest != u.cell
+			if walked:
+				battle.travel(u, it.dest)
+				command.order(u)
+			if it.kind == &"strike_at":
+				_strike_at(u, s, it.cell, walked)
+				return
+			var target: Variant = it.cell if s.on_tile() else unit_seen(it.cell)
+			var why := why_not(u, s, target)
+			var took := false
+			if why == "" or not walked:
+				took = battle.cast_at(u, s, it.cell, not it.alt) if s.on_tile() else (target != null and battle.cast(u, s, target))
+			if took:
+				_done(u, walked)
+				return
+			_say(why if why else "%s doesn't take" % s.name)
+			_replan()
+			_mark()
 
 
 # Strikes at a tile, whatever seems to be there (Battle.attempt).
@@ -1103,29 +1177,6 @@ func _approach(u: Unit, s: Skill, c: Vector2i, sure := false) -> Dictionary:
 		if d < Vector2(closest).distance_to(Vector2(c)) - 0.0001:
 			closest = at
 	return {dest = best, ready = true} if best_cost < INF else {dest = closest, ready = false}
-
-
-# A click on a foe (or a Ctrl-click on a tile): walk into reach and use the primary skill on it. If
-# it can't get there this turn, it walks as close as it can. The walk and the strike are one order.
-# With a skill armed, a click on a unit it's for that a sure walk reaches does the same with that
-# skill (s, sure: _use_on()).
-func _charge(u: Unit, c: Vector2i, force: bool, s := _primary(u), sure := false) -> void:
-	var a := _approach(u, s, c, sure)
-	var walked: bool = a.dest != u.cell
-	if walked:
-		battle.travel(u, a.dest)
-		command.order(u)
-	var t := unit_seen(c)
-	if force or not t:
-		_strike_at(u, s, c, walked)
-		return
-	var why := why_not(u, s, t)
-	if why == "" and battle.cast(u, s, t):
-		_done(u, walked)
-		return
-	_say(why if why else "%s doesn't take" % s.name)
-	_replan()
-	_mark()
 
 
 func _move(u: Unit, c: Vector2i) -> void:
@@ -2669,28 +2720,12 @@ func _find_reach() -> void:
 				_ways[c] = w.path
 
 
-# The hovered move, or the walk up to a hovered foe a click would attack - or, with a skill armed,
-# up to a hovered unit it's for that a sure walk reaches (_use_on()).
+# What hovering shows: the intent of a click on the hovered tile (intent()), its walk as `plan` and the
+# unit it would be used on as `charge`.
 func _replan() -> void:
-	plan = {}
-	charge = NOWHERE
-	var u := selected
-	if hover == NOWHERE or not u or not _orders(u) or hover == u.cell:
-		return
-	var t := unit_seen(hover)
-	if armed:
-		if t and not armed.on_tile() and why_not(u, armed, t) == "Out of reach":
-			var a := _approach(u, armed, hover, true)
-			if a.ready:
-				plan = battle.walk(u, a.dest, true)
-		return
-	if foe(t) and _primary(u):
-		charge = hover
-		var a := _approach(u, _primary(u), hover)
-		if a.dest != u.cell:
-			plan = battle.walk(u, a.dest, true)
-	elif not t:
-		plan = battle.walk(u, hover, true)
+	hovered = intent(hover) if hover != NOWHERE else {}
+	plan = hovered.get("walk", {})
+	charge = hovered.cell if not armed and hovered.get("kind") == &"use" and hovered.target is Unit else NOWHERE
 
 
 # Without a starter (the scene run on its own) the player leads the highest-level unit.
