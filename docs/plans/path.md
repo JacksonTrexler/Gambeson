@@ -51,3 +51,9 @@ is counted and ordinary ground's `afflicts` not at all. Tests: `Tests/path_test.
 
 - `Scripts/Battle.gd` (`route`, `stride`, `known_ground`, `hazard`, `dread`, `foresight_allowance`, `walk`),
   `Scripts/HUD.gd` (`hazard`, `foresight_allowance` delegate), tests.
+- Ties between equal-cost routes hug the straight line (a 0.00001 x deviation term in the search only).
+- Suite: baseline 44831 checks, 0 failed (718 tests); now 44710, 0 failed (727 tests). The 9 new tests add 19 checks;
+  `combat_test.test_battles` (simulated AI battles) counts 140 fewer (33858 to 33718) because the AIs now walk different
+  routes round known traps and fire, so battles play out differently; it still passes.
+- Frames: `scratchpad/shot_q-path/crop_bend.png` (a path bending round a known trap, same movement) and `crop_blind.png`
+  (the same walk by a unit with a negative int mod: straight through, stopping on the trap).
