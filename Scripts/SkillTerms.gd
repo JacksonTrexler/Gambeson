@@ -22,7 +22,7 @@ const BANDS := [[3.0, &"faint"], [4.5, &"mild"], [6.0, &"moderate"], [8.0, &"str
 const IMPACTS: Array[StringName] = [&"tame", &"impactful"]
 const PENALTIES: Array[StringName] = [&"minor", &"major", &"severe"]
 
-var skill: Skill
+var skill: Skill  # while it's read (behaviours' terms() may look at it)
 var channels := {}  # channel -> Array[String] of what scales so
 var intensity := &""  # a Difficulty.MAGNITUDE word, or "" for no damage
 var damage := false  # deals damage
@@ -35,21 +35,16 @@ var hit_per_rank := 0.0  # + to hit per rank
 var damage_per_rank := 0.0  # + damage per rank (a behaviour's +rank damage)
 var contingencies: Array = []  # [what (String), share, beneficial] - a requirement or an above_hp effect
 
-static var _cache := {}
-
-
+# Read once and kept on the skill itself (Skill.terms_read), freed with it.
 static func of(s: Skill) -> SkillTerms:
-	if s not in _cache:
-		_cache[s] = SkillTerms.new(s)
-	return _cache[s]
+	if s.terms_read == null:
+		s.terms_read = SkillTerms.new(s)
+	return s.terms_read
 
 
-# Forgets what it read (tests that change a skill's fields).
-static func forget(s: Skill = null) -> void:
-	if s:
-		_cache.erase(s)
-	else:
-		_cache.clear()
+# Forgets what it read (a test that changes a skill's fields after asking).
+static func forget(s: Skill) -> void:
+	s.terms_read = null
 
 
 func _init(s: Skill) -> void:
@@ -97,6 +92,7 @@ func _init(s: Skill) -> void:
 	for b in s.behaviours:
 		if b:
 			b.terms(self)
+	skill = null  # kept on the skill (of()): no cycle back to it
 
 
 # Notes that `what` scales by channel c (a behaviour's own: Kick's push).

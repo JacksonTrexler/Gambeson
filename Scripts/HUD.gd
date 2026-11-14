@@ -1129,11 +1129,12 @@ func _hurt(it: Dictionary) -> Dictionary:
 		return {}
 	if not known(t) and view(t).hp == null:
 		return {}
-	var tier := s.tier(u.rank(s))
+	var m := u.mods(s)  # its modifiers (Battle.cast() reads the same)
+	var tier := s.tier(m.irank(u.rank(s), &"rank_impact"))
 	if not tier:
 		return {}
 	var hits := u.rank(s) if s.hits_per_rank else 1
-	var bonus := u.mod(u.wielded(tier.stat, s.tags), s.tags) + u.weapon_bonus(tier.stat) if tier.stat else 0
+	var bonus := m.stat(u.mod(u.wielded(tier.stat, s.tags), s.tags), &"stat_impact") + u.weapon_bonus(tier.stat) if tier.stat else 0
 	return {unit = t, lo = maxi(tier.power + tier.dice.x + bonus, 1) * hits, hi = maxi(tier.power + tier.dice.x * tier.dice.y + bonus, 1) * hits}
 
 
@@ -2118,7 +2119,7 @@ func _refresh_bar() -> void:
 		var sense := skill_sense(u, s, r)
 		var off: int = u.disabled.get(s, 0) if u and s else 0
 		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
-		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense)
+		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense, u.mods(s).label() if s else "")
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())

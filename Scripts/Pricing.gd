@@ -5,7 +5,7 @@ class_name Pricing
 #
 # Points, then price:
 #   its damage: its intensity's points (exponential toward the extremes), x its dice count by rank
-#   + its rank bonus to hit (roll_per_rank) and to damage, x rank
+#   + its rank bonus to hit (roll_per_rank) and to damage, x rank; a little for anything else rank adds
 #   + its stat impact, x its stat_impact factor (stat range, like rank range, is neutral)
 #   + its unique effect (tame, impactful) and its contingency's payoff, tapered by how easy the
 #     contingency is to meet (its share: easy costs in full, hard less)
@@ -20,6 +20,7 @@ const TABLE := {
 	&"intensity": {&"faint": 1.5, &"mild": 2.5, &"moderate": 3.5, &"strong": 5.0, &"intense": 7.0, &"severe": 10.0, &"overwhelming": 16.0},
 	&"hit_rank": 1.0,  # each + to hit a rank brings
 	&"damage_rank": 1.0,  # each + damage a rank brings
+	&"rank_term": 0.25,  # each other thing rank adds to what it does (turns, push, per-rank effects...), a rank past I
 	&"stat": 0.5,  # a stat adding to what it does
 	&"impact": {&"": 0.0, &"tame": 2.0, &"impactful": 5.0},
 	&"payoff": 1.0,  # each + to hit or damage a contingency gives; advantage counts 2
@@ -47,6 +48,8 @@ static func points(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> float:
 			count = Difficulty.scaled(s.dice_scale, ri)
 		p += _intensity_points(s, s.tier(ri)) * count
 	p += (t.hit_per_rank * TABLE[&"hit_rank"] + t.damage_per_rank * TABLE[&"damage_rank"]) * ri
+	var others: Array = t.channels[&"rank_impact"].filter(func(x: String): return x not in ["tiers", "dice_per_rank", "dice_scale", "roll_per_rank"])  # priced above
+	p += TABLE[&"rank_term"] * others.size() * (ri - 1)  # whatever else rank adds to what it does
 	if t.has(&"stat_impact"):
 		p += TABLE[&"stat"] * m.k[&"stat_impact"]
 	var share := 1.0

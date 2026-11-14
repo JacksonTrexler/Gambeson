@@ -152,6 +152,8 @@ extends Resource
 @export var stub := ""  # the open question(s) in todo.md it waits on: "?3", "?2 ?11"
 @export_multiline var plan := ""  # what it's meant to do, until it's built
 
+var terms_read: RefCounted  # its SkillTerms, read on first ask (SkillTerms.of())
+
 const STAT_TAGS := {&"str": &"strength", &"dex": &"dexterity", &"con": &"constitution",
 		&"int": &"intelligence", &"wis": &"wisdom", &"cha": &"charisma"}
 const CATEGORIES := {&"magical": "Magic", &"martial": "Martial", &"specialist": "Specialist"}
