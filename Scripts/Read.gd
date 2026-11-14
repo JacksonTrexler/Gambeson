@@ -61,6 +61,7 @@ var effects: Array[Effect] = []  # unit: timed effects on it (3); tile: on whoev
 var suspects := {}  # unit: the units it's grown suspicious of -> stacks (3)
 var afflicts: Array[Effect] = []  # tile: put on whoever steps there (0)
 var at_end: Array[Effect] = []  # tile: put on whoever ends its turn there (0)
+var marks: Array = []  # tile: the Battle.Marks laid on it that this observer knows of (Battle.lay_mark(): told, plainly visible, or read well enough)
 
 
 # How observer o takes it: &"ally", &"foe", &"avoid" (aggressive), &"ignore" (passive), or &""

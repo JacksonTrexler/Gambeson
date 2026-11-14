@@ -142,6 +142,13 @@ extends Resource
 # winded: AP it loses at once if acting, else as its next turn opens (Unit.refresh(); Bludgeon)
 # foresight: hazard estimates more a turn it can make on top of its int mod (HUD.foresight(): the
 # Battle UI's will-consume forecast of known traps and fire)
+# per_tile: HP lost for each tile it walks while this lasts (x rank when per_rank; its tags are
+# the damage's, none: environmental), unless it is standing still: Meander of at least the
+# effect's rank (its level) passes by the first Meander-rank tiles of a turn (Battle.travel(),
+# Unit.wards())
+# regain: AP back to a pool the moment it is put on, up to what that pool started the turn with:
+# its tag names the pool (move: dex AP, skill: wis AP; none: the general pool). Never lasts
+# (Unit.afflict(), Unit.regain(); Warcry's Charge!)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -152,7 +159,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -189,11 +196,12 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
-		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time"}
+		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
+		"per_tile": "Damage per tile walked", "regain": "Regain ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -275,6 +283,10 @@ func value(rank := 1) -> String:
 		text = _signed(-x * 100.0) + "%"
 	elif stat in ["regen", "poison"]:
 		text = "%s%% each turn" % Skill.num(x * 100.0)
+	elif stat == "per_tile":
+		text = "%s damage for each tile it walks (Meander at least the effect's rank passes by the first tiles)" % Skill.num(x)
+	elif stat == "regain":
+		text = "%s AP back at once" % Skill.num(x)
 	elif stat == "sleep":
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":

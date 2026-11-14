@@ -181,6 +181,8 @@ func _ready() -> void:
 	battle.contested.connect(_on_contested)
 	battle.used.connect(_on_used)
 	battle.sprung.connect(_on_sprung)
+	battle.marked.connect(_on_marked)
+	battle.toll_paid.connect(_on_toll)
 	battle.investigated.connect(func(by: Unit, of: Unit, s: Skill, total: int, against: int, _close: bool):
 		_looks.append([by, total, against, roll_known(of, s)]))
 	battle.evaluated.connect(_on_evaluated)
@@ -1723,6 +1725,17 @@ func _on_sprung(_c: Vector2i, by: Unit) -> void:
 	_log("Trap --> %s" % _tag(by))
 
 
+func _on_marked(_c: Vector2i, u: Unit, m: Battle.Mark) -> void:
+	if unit_seen(u.cell) == u:
+		overlay.float_text(u, m.name, m.tint)
+	_log("%s --> %s" % [m.name, _tag(u)])
+
+
+func _on_toll(u: Unit, hp: int) -> void:
+	if unit_seen(u.cell) == u and hp > 0:
+		overlay.float_text(u, "-%d (walking)" % hp, FOE)
+
+
 # The blow a unit is taking (Unit.taking_hit), for its damage number's colour: kept until the frame ends.
 var _blows := {}
 
@@ -2066,10 +2079,13 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 				else Glossary.term(&"starpane")
 		var rate := "Power back x%s" % Skill.num(snappedf(battle.star_rate(c), 0.1)) if battle.star_source(c) != null else "linked to no source"
 		out.append(["%s: %s" % [what, rate], STARPOWER_TINT])
-	if c in battle.earthworks:
-		var ours := battle.earthworks[c].faction == command.faction()
-		var who := " (yours): your enemies pay" if ours else ": you pay"
-		out.append(["%s%s 50%% more to enter, {t:%d turns} left" % [Glossary.term(&"disturbed_earth"), who, battle.earthworks[c].turns], FRIEND if ours else FOE])
+	for m: Battle.Mark in r.marks:
+		var ours := m.faction == command.faction()
+		if m.kind == &"earthwork":
+			var who := " (yours): your enemies pay" if ours else ": you pay"
+			out.append(["%s%s 50%% more to enter, {t:%d turns} left" % [Glossary.term(&"disturbed_earth"), who, m.turns], FRIEND if ours else FOE])
+		else:
+			out.append([_mark_note(m, ours), FRIEND if ours else FOE])
 	var u := selected if selected and known(selected) else null
 	var there := unit_seen(c)
 	if u and there and there != u:
@@ -2084,6 +2100,18 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 		for skill in u.paused_on(t.tags):
 			out.append(["%s's %s stops working here" % [_name(u), skill.name], MUTED])
 	return out
+
+
+# What a mark on a tile says: its name, whom it's for, what it does when they come on (or end a turn there), and how long it has.
+func _mark_note(m: Battle.Mark, ours: bool) -> String:
+	var who: String = {&"allies": "allies of its side", &"foes": "its side's foes", &"any": "anyone"}[m.who]
+	var does: Array[String] = []
+	if m.cost > 0.0:
+		does.append("%s more movement to enter" % Skill.num(m.cost))
+	for e in m.effects:
+		does.append(e.describe(m.rank))
+	return "%s%s: %s, for %s %s, {t:%d turns} left" % [m.name, " (yours)" if ours else "", "; ".join(does) if not does.is_empty() else "marks the ground",
+			who, "entering" if m.on == &"enter" else "ending a turn there", m.turns]
 
 
 func _fill_lines(box: Container, lines: Array) -> void:

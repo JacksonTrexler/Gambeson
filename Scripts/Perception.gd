@@ -349,6 +349,9 @@ static func tile(b: Battle, o: Unit, c: Vector2i, extra := 0.0) -> Read:
 		r.at_end.assign(ter.at_end)
 	if r.net >= 1:
 		r.worth = ter.worth()
+	for m: Battle.Mark in b.marks_at(c):  # what's been laid on it: told of, plainly there, or read through its concealment
+		if m.told(o) or r.net >= 0:
+			r.marks.append(m)
 	var shrouded := b.zones.any(func(z): return c in z.levels and not z.allied)
 	if hidden and r.net < 0 and not shrouded:
 		r.name = ter.looks_like
@@ -429,6 +432,10 @@ static func _levels(b: Battle, c: Vector2i, t: Unit = null, trap := true, viewer
 	elif trap and b.hidden(c):
 		var ter := b.terrain(c)
 		lv[ter.kind] = maxi(lv.get(ter.kind, 0), ter.concealment - (viewer.suspects(c) if viewer else 0))
+	if t == null and viewer:
+		for m: Battle.Mark in b.marks_at(c):  # a mark hidden from it hides the tile's what's-there as a trap does
+			if not m.told(viewer):
+				lv[&""] = maxi(lv.get(&"", 0), m.concealment - viewer.suspects(c))
 	return lv
 
 
