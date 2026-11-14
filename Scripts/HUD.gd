@@ -41,6 +41,7 @@ const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it sc
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
 # (slowest in the middle), hold at the bottom, fade out, and round again from the top.
 const TRANSITION := 1.0  # seconds a turn change takes on screen (other sides wait it out)
+const HURRY := 4.0  # how much faster turn changes and units acting on their own go while the hurry key is held
 const SCROLL_HOLD := 2.0  # seconds
 const SCROLL_FADE := 0.35
 const SCROLL_SPEED := 10.0  # average px a second while scrolling
@@ -51,6 +52,8 @@ const SCROLL_EASE := 0.7  # how much faster than average the ends go, and slower
 @export var pace := 0.45  # seconds between units acting on their own
 @export var together := true  # units acting on their own all move at once, their walks shown side by side, then the turn ends
 @export var turn_clock := true  # the player has turn_seconds() to act each turn (on screen, top middle), then the turn ends
+var hand_over := true  # Settings: a unit that's spent (can't take another order this turn) hands the focus to the next that can
+var log_open := false  # the whole log shows; collapsed (the default), only its last entry
 @export_file("*.tscn") var menu_scene := "res://Scenes/entry.tscn"
 
 var command: Command
@@ -264,6 +267,15 @@ func _ready() -> void:
 		suspicious_marks = on
 		_mark())
 	%KeepSlot.toggled.connect(func(on: bool) -> void: keep_slot = on)
+	%HandOver.button_pressed = hand_over
+	%HandOver.toggled.connect(func(on: bool) -> void: hand_over = on)
+	%LogTitle.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			show_log(not log_open))
+	%LogLine.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			show_log(true))
+	show_log(log_open)
 	add_to_group(&"guide")
 	show_guide(guide_page)
 	settings.get_parent().add_child(persona)
@@ -341,6 +353,7 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	_tick_clock(delta)
+	_hurry()
 	for l in _spinning:
 		l.text = str(randi_range(1, 20))
 	if pane.visible:
@@ -557,6 +570,7 @@ func hold() -> void:
 	command.lock(u)  # held: done for the turn, and no autopilot once it ends (Command.idle())
 	_log("%s holds" % _tag(u))
 	_mark()
+	_hand_over(u)
 
 
 func toggle_party() -> void:
@@ -1352,6 +1366,34 @@ func _done(u: Unit, counted := false) -> void:
 	_note = ""
 	_replan()
 	_mark()
+	_hand_over(u)
+
+
+# Pace (hand_over): a spent unit - one that can't take another order this turn - hands the focus to
+# the next that can (next_able()). Only the selected one, on the player's turn; none left, it stays.
+func _hand_over(u: Unit) -> void:
+	if not hand_over or u != selected or not my_turn() or _orders(u):
+		return
+	var to := next_able(u)
+	if to:
+		select(to)
+
+
+# The next unit after u (the side's order, as Tab walks it, wrapping) that can take an order: the
+# first that hasn't had one this turn, else the first that can still act.
+func next_able(u: Unit) -> Unit:
+	var side := battle.members(command.faction())
+	var at := side.find(u)
+	var any: Unit = null
+	for k in range(1, side.size() + 1):
+		var v := side[(at + k) % side.size()]
+		if v == u or not _orders(v):
+			continue
+		if v not in command.ordered:
+			return v
+		if not any:
+			any = v
+	return any
 
 
 # The skill a click on a foe uses: the first attack from the selected slot rightward, wrapping around,
@@ -1411,6 +1453,7 @@ func _move(u: Unit, c: Vector2i) -> void:
 	_note = ""
 	_replan()
 	_mark()
+	_hand_over(u)
 
 
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
@@ -1420,7 +1463,7 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 	plan = {}
 	_mark()
 	if pace > 0.0 and wait > 0.0:
-		await get_tree().create_timer(wait).timeout
+		await _wait(wait)
 		if not is_inside_tree():
 			return
 	for u in units:
@@ -1429,7 +1472,7 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 		if not u.is_alive():
 			continue
 		if pace > 0.0 and not together:
-			await get_tree().create_timer(pace).timeout
+			await _wait(pace)
 			if not is_inside_tree():
 				return
 		if not together:
@@ -1437,13 +1480,37 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 		AI.act(battle, u)
 		_mark()
 	if pace > 0.0 and battle.phase == Battle.Phase.TURNS:
-		await get_tree().create_timer(maxf(pace, overlay.walking_left())).timeout  # together: till the last walk is done
+		await _wait(pace)
+		while is_inside_tree() and overlay.walking_left() > 0.0:  # together: till the last walk is done
+			await get_tree().process_frame
 		if not is_inside_tree():
 			return
 	busy = false
 	_mark()
 	if battle.phase == Battle.Phase.TURNS and battle.turn == f:
 		battle.end_turn()
+
+
+# Pace: how fast paced shows run - HURRY times while the hurry key is held, else 1.
+func speed() -> float:
+	return HURRY if Input.is_action_pressed(&"hurry") else 1.0
+
+
+# Waits `seconds` of paced time: hurried (speed()) for as long as the key is held, frame by frame.
+func _wait(seconds: float) -> void:
+	var t := 0.0
+	while t < seconds and is_inside_tree():
+		await get_tree().process_frame
+		t += get_process_delta_time() * speed()
+
+
+# The turn change and the walks under way run at speed() (read every frame: letting go slows them back).
+func _hurry() -> void:
+	var s := speed()
+	if _turn_show and _turn_show.is_valid():
+		_turn_show.set_speed_scale(s)
+	if is_instance_valid(overlay):
+		overlay.hurry(s)
 
 
 # --- Battle events
@@ -3015,6 +3082,17 @@ func _tag(u: Unit) -> String:
 
 func _log(text: String) -> void:
 	log_box.append_text(text + "\n")
+	%LogLine.text = text
+
+
+# The log: open, every line; collapsed, only the last entry, at the foot of the column (floating
+# numbers on the units carry the moment). A click on the line or the LOG title opens it; the title closes it.
+func show_log(open: bool) -> void:
+	log_open = open
+	log_box.visible = open
+	%LogLine.visible = not open
+	%LogGap.visible = not open
+	%LogTitle.text = "LOG ▾" if open else "LOG ▸"
 
 
 func _say(text: String) -> void:
