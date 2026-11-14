@@ -107,7 +107,7 @@ func test_every_reserve() -> void:
 	var held := u.held_reserves()
 	ok(held.size() == 3 and held[0] == stamina_pool, "holds three: %s" % [held.map(func(r): return r.name)])
 	ok(u.reserve_bar.visible and u.second_bar.visible and u.more_bars.size() == 1 and u.more_bars[0].visible, "a bar each: the third a sliver")
-	ok(u.more_bars[0].size.y == 1.0 and u.more_bars[0].value == u.store(sweet) and u.store(sweet) > 0, "1px, with its store")
+	ok(u.more_bars[0].size.y == 1.0 and u.more_bars[0].value == u.store(held[2]) and u.store(held[2]) > 0, "1px, with its store")
 	ok((u.more_bars[0].get_theme_stylebox("fill") as StyleBoxFlat).bg_color == held[2].color, "in its colour")
 	var bottom := u.more_bars[0].position.y + 1.0
 	ok(u.second_bar.position.y + 2.0 == u.more_bars[0].position.y or u.more_bars[0].position.y + 1.0 == u.second_bar.position.y, "stacked with the rest")

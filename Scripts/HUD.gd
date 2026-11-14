@@ -132,6 +132,8 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 @onready var settings: PanelContainer = %Settings
 var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
 const ALLY_GLOW := Color("#b4ffd2")  # default glow of allies of another faction: a pale mint, to read on grass
+const ALLY_GLOWS := {"Mint": ALLY_GLOW, "White": Color("#ffffff"), "Sky": Color("#8fe8ff"), "Gold": Color("#ffe27a")}  # Settings: the picker's choices
+const ALLY_BOOST := 1.7  # an ally's glow is this much stronger than plain: pale on green ground it was hard to find
 var ally_glow := ALLY_GLOW  # the glow of allies of another faction (look_of())
 var high_contrast := false  # accessibility: brighter allied glow, heavier borders, whiter text
 var suspicious_marks := false  # accessibility: every suspicious tile shows a plain ?
@@ -255,6 +257,16 @@ func _ready() -> void:
 		high_contrast = on
 		_apply_contrast()
 		_mark())
+	var picker := OptionButton.new()  # Settings: the allied glow's colour
+	picker.name = "AllyGlow"
+	picker.focus_mode = Control.FOCUS_NONE
+	picker.tooltip_text = "The glow of allies on another side"
+	for n: String in ALLY_GLOWS:
+		picker.add_item("Allied glow: " + n)
+	picker.item_selected.connect(func(i: int) -> void:
+		ally_glow = ALLY_GLOWS.values()[i]
+		_mark())
+	%HighContrast.get_parent().add_child(picker)
 	KeyBinds.load_saved()
 	var keys := KeyBinds.new()  # Settings: key rebinds
 	keys.name = "KeyBinds"
@@ -2776,7 +2788,7 @@ func _apply_look(u: Unit, look: Dictionary) -> void:
 	u.set_saturation(look.sat)
 	u.set_glow(look.glow, high_contrast and (known(u) or look.glow >= 0))
 	if look.tint != null and u.glow.visible:
-		u.glow.modulate = Color(look.tint, u.glow.modulate.a)
+		u.glow.modulate = Color(look.tint, clampf(u.glow.modulate.a * ALLY_BOOST, 0.0, 1.0))
 
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order
