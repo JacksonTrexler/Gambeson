@@ -97,3 +97,45 @@ Calls:
 - Only walks (`travel()`): pushes and teleports don't bump.
 
 Test: `moves_test.test_bump`.
+
+## 80 Discipline: a curve over AP burned
+
+User: "rather higher ranks do more with AP. Discipline should turn any amount of AP into some effect
+with depreciating returns flattening out into linear returns with more ranks used. try to keep most
+effects scalable with stats or rank. If a unit has focus, they recover a small amount as well as part
+of this skill".
+
+Was: a toggle burning up to rank AP into an attack; each AP +2 to hit, +25% damage, a crit face lower.
+
+Formula (`Battle.discipline_curve()`): points P = a ^ (r / (r + 1)), a = AP burned, r = rank. One AP is
+one point at every rank; past that returns diminish, less steeply each rank, the exponent climbing
+toward 1 (linear) as rank grows.
+
+| AP burned | rank 1 | rank 2 | rank 3 | rank 5 | rank 9 |
+|---|---|---|---|---|---|
+| 1 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| 2 | 1.41 | 1.59 | 1.68 | 1.78 | 1.87 |
+| 3 | 1.73 | 2.08 | 2.28 | 2.50 | 2.69 |
+| 4 | 2.00 | 2.52 | 2.83 | 3.17 | 3.48 |
+| 6 | 2.45 | 3.30 | 3.83 | 4.45 | 5.02 |
+| 10 | 3.16 | 4.64 | 5.62 | 6.81 | 7.94 |
+
+What a point buys (P as a fraction where it can be):
+- to hit: +2 x P, rounded (`discipline_hit()`);
+- damage: +10% x P x the attack's stat mod (at least 1) (`discipline_damage()`), so a str +3 fighter
+  gets +30% a point - near the old 25% - and it grows with the stat;
+- crits: a face lower per whole point (`discipline_keen()`);
+- Focus: holding a reserve that aims (Focus; any later `Reserve.aims` reserve too), half the points,
+  rounded up, come back into it after the attack has been paid for - so a shot that emptied Focus
+  keeps its Focus accuracy bonus and refills a little.
+
+Calls:
+- "any amount of AP": it now burns all the AP left (not dex move AP), not up to rank. The toggle stays,
+  for turns you'd rather keep the AP.
+- The power curve above is my pick of a "diminishing, flattening to linear with rank" shape.
+- Damage scales with the attack's stat mod; to-hit stays flat per point (rank already scales it).
+- Focus back: ceil(P / 2). "Small" is my reading: 4 AP at rank I gives 1.
+- Still deferred: the initiative half.
+
+Tests updated: `nature_test.test_discipline` (burns all AP left, points from the curve, the Focus
+refill, the curve's values).

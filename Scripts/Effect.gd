@@ -305,7 +305,7 @@ func value(rank := 1) -> String:
 	elif stat == "abandon":
 		return "may skip defensive and supportive skills on its trees"
 	elif stat == "discipline":
-		return "an attack burns up to %s of the AP you have left: each point +%d to hit, +%d%% damage and crits a face lower" % [Skill.num(x), Battle.DISCIPLINE_HIT, roundi(Battle.DISCIPLINE_DAMAGE * 100.0)]
+		return "an attack burns all the AP you have left into points: AP ^ (%s / %s), so 4 AP is %s points. Each point +%d to hit, +%d%% damage a point of its stat mod, and crits a face lower; with Focus, half the points come back to it" % [Skill.num(x), Skill.num(x + 1.0), Skill.num(snappedf(Battle.discipline_curve(4.0, x), 0.1)), Battle.DISCIPLINE_HIT, roundi(Battle.DISCIPLINE_DAMAGE * 100.0)]
 	elif stat == "natural_talent":
 		return "Nature magic up to tier %s is easier to learn: Affinity +1" % Skill.num(x)
 	elif stat == "shackled":

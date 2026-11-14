@@ -61,8 +61,8 @@ static var PLAIN: Terrain = load("res://Terrain/grass.tres")  # tiles with no te
 const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
-const DISCIPLINE_HIT := 2  # to hit, a point of AP burned (Discipline)
-const DISCIPLINE_DAMAGE := 0.25  # more damage, a point burned
+const DISCIPLINE_HIT := 2  # to hit, a point of Discipline (discipline_points())
+const DISCIPLINE_DAMAGE := 0.1  # more damage, a point of Discipline per point of the attack's stat mod (at least 1)
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
@@ -764,8 +764,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var natural := false  # a natural 20 (Jugular recasts on one)
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
-				+ caster.disciplined * DISCIPLINE_HIT + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
-		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(caster.disciplined))
+				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
+		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(discipline_keen(caster)))
 		overage = maxi(hit.margin(), 0)
 		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
 		natural = hit.crit
@@ -838,7 +838,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			if not target.is_alive():
 				break
 			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
-			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
+			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
 			gross += power
 			if &"siphon" in tags:
 				var got := target.siphon(power, tags, caster)  # off its resources, never its HP
@@ -3639,8 +3639,8 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty + caster.disciplined * DISCIPLINE_HIT
-		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure).keen(caster.disciplined))
+		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty + discipline_hit(caster)
+		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure).keen(discipline_keen(caster)))
 		var crit := hit.crit
 		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
@@ -3662,7 +3662,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if i == 0:
 			power += (brutal + (caster.weapon.rank if caster.weapon else 0)) if brutal > 0 else 0
 			power += mental * (int(imbued) + int(elemental))
-		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
+		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
 		t.hit(dealt, blow, caster)
 		gross += dealt
 		landed += 1
@@ -3879,22 +3879,52 @@ func _burn(u: Unit, s: Skill) -> void:
 		burned.emit(u, n, "its slot burns")
 
 
-# Discipline (a toggle): an attack on a foe burns the AP its user has left, up to the skill's rank, and
-# each point burned is DISCIPLINE_HIT to hit, DISCIPLINE_DAMAGE more damage and a face lower to crit on
-# (Unit.disciplined, for this attack). The less it has spent this turn, the more there is to burn.
+# Discipline (a toggle): an attack on a foe burns all the AP its user has left (not dex move AP) into
+# it (Unit.disciplined, for this attack). What that buys is its points, discipline_points(): each is
+# DISCIPLINE_HIT to hit, DISCIPLINE_DAMAGE x the attack's stat mod (at least 1) more damage, and a whole
+# one a face lower to crit on. Holding a reserve that aims (Focus), it gets half the points back into
+# it, rounded up. The less it has spent this turn, the more there is to burn.
 func _discipline(u: Unit, s: Skill, foe: bool) -> void:
 	u.disciplined = 0
-	var cap := roundi(u.stat(&"discipline"))
-	if cap <= 0 or not foe or not (s.attacks() or s.chain):
+	if u.stat(&"discipline") <= 0.0 or not foe or not (s.attacks() or s.chain):
 		return
 	var left := 0.0
 	for p in u.ap:
 		if p.only != &"move":
 			left += p.amount
-	var burn := mini(floori(left + 0.0001), cap)
+	var burn := floori(left + 0.0001)
 	if burn > 0 and u.pay(burn, &"skill"):
 		u.disciplined = burn
+		for r in u.pools():  # a steadied mind: Focus comes back a little
+			if r.aims and u.pools()[r] > 0:
+				u.set_store(r, u.store(r) + ceili(discipline_points(u) / 2.0 - 0.0001))
 		disciplined.emit(u, burn)
+
+
+# What a AP burned at Discipline rank r buys: a ^ (r / (r + 1)). One AP is one point at any rank; past
+# that returns diminish, less so each rank, flattening toward one point an AP (docs/plans/small-notes.md).
+static func discipline_curve(a: float, r: float) -> float:
+	return pow(a, r / (r + 1.0)) if a > 0.0 and r > 0.0 else 0.0
+
+
+# u's points of Discipline on the attack it's making (0 between attacks).
+static func discipline_points(u: Unit) -> float:
+	return discipline_curve(u.disciplined, u.stat(&"discipline"))
+
+
+static func discipline_hit(u: Unit) -> int:
+	return roundi(discipline_points(u) * DISCIPLINE_HIT)
+
+
+static func discipline_keen(u: Unit) -> int:
+	return floori(discipline_points(u) + 0.0001)
+
+
+# The damage share it adds to s's hits: DISCIPLINE_DAMAGE a point, times s's stat mod (at least 1).
+static func discipline_damage(u: Unit, s: Skill) -> float:
+	if u.disciplined <= 0:
+		return 0.0
+	return discipline_points(u) * DISCIPLINE_DAMAGE * maxi(u.mod(u.wielded(s.stat(), s.tags), s.tags), 1)
 
 
 # A skill on its user that spreads its effects to every ally within rank tiles (Flamecharm,
