@@ -184,3 +184,12 @@
 - [x] **Slayer hooks** (`Behaviour.aim`, `edge`, `guard`, `bonus`, `felled`, `step_cost`; `Battle.cast_of()`, `neutralize()`, `aimed()`, `ambushes()`; `Unit.unspent`, `tally`, `refund()`, `bloodied()`, `winded()`; Effect stats `tow`, `winded`; tag `ambush`): see `docs/done/classes.md`. `slayer_test.gd`. (?126)
 - [x] **AI support** (`Behaviour.restores()`; `AI._restores`, `_mends`, `_replenish`, `_finish_switch`, `_switch`, `_steady`, `_scry`): the AI heals with Heal, Megaheal and Resuscitate, feeds Energize, casts Intervention and other support on allies, switches Mana and Stamina, rests for Focus and casts Clairvoyance. `ai_support_test.gd`. (?130)
 
+## Skill terms, cost and modifiers (2026-11-14)
+
+Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?131)
+
+- [x] **Skill terms** (`SkillTerms`, `Skill.terms_read`; `Behaviour.terms()`; `Cast.impact_rank()`, `range_rank()`, `stat_mod()`): four channels (rank to range, rank to impact, stat to range, stat to impact) derived from existing fields; Kick's push and the Slayer skills routed.
+- [x] **Modifiers** (`Modifiers`, `Unit.mods()`, `emblems()`, `skill_tags()`; `Requirement`, `Skill.requires`): rho, sigma and lambda up and down as symbol passives, the Rank Scaling Calculation (`Modifiers.rsc()`), tag modifiers by Glossary kind (`Glossary.kind()`, `Glossary.added`), eligibility, the reader every per-rank and per-stat value goes through.
+- [x] **Cost calculator** (`Pricing.TABLE`; `Skill.priced`, `intensity`, `impact`, `penalty`): points to AP and Energy, tapered by requirements and behaviours' contingencies; hand-set costs kept unless `priced`; Poach priced.
+- [x] **Emblems** (`Item.emblem`, `scope`, `trim_tag()`): Density and Diluted Sigils, Concentrated and Dispersed Crests, Restrictive Badge, Unrestrictive Insignia, Fire Insignia, Execute Sigil; in Alabaster's loot.
+- [x] **Tooling** (`skill.py new --intensity --impact --penalty --requires --hand-priced`, `terms`, `modifiers`, `drift`; `Util/terms.gd`).

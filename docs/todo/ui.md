@@ -104,9 +104,9 @@ Plan, readings and what was built: `docs/plans/ui-v2.md` (the plan itself `docs/
     - **New names to review:** none.
 - [x] **Pace**: a spent unit handing over to the next, hurrying the turn change and the AI with a held key, and collapsing the log to its last line. Built 2026-11-14 (`docs/plans/pace.md`, ?129). (?90, ?123)
 - [x] **The allied glow is soft at plain strength on grass maps**, and has no Settings picker. Built 2026-11-14: a x1.7 boost on a tinted glow and a picker (?128). (?123)
-- [ ] **The drain doesn't show on the map for AP and movement** (the map bars have none); it shows on the card. (?123)
-- [ ] **Foresight lives in the HUD** (`foresight_used`), not on Unit or as an Effect stat; a stat (via `mechanic.py`) would let skills raise it. (?123)
-- [ ] **Trap estimates** leave out fire on the path and a trap's effects on other resources. (?123)
+- [x] **The drain doesn't show on the map for AP and movement.** Built 2026-11-14: pips over the unit's bars (?132). (?123)
+- [x] **Foresight as a stat.** Built 2026-11-14 (`foresight`, ?132); what a unit has used stays in the HUD (`foresight_used`). (?123)
+- [x] **Trap estimates** leave out fire and a trap's wounds. Built 2026-11-14 (`HUD.hazard`, ?132). (?123)
 
 ## HUD markers (2026-11-14)
 
@@ -120,7 +120,7 @@ Plan, readings and what was built: `docs/plans/hud-markers.md`; done in `docs/do
     - **Reserves:** a third reserve and further get a 1px sliver each between Energy and the second bar. The forecast's drain segments still only map the first two, so a spend from a third reserve shows on the card row only. Confirm?
     - **Allied glow:** x1.7 alpha on a tinted (other-faction ally) glow, and a Settings picker "Allied glow: Mint / White / Sky / Gold", built in code beside the contrast toggle and not saved between runs. **Mint stays the default; on grass White and Sky read better at any strength. Change the default to Sky or White?**
     - **New names to review:** none.
-- [ ] **The forecast's drain on a third reserve**: the Overlay maps only two bars; a spend shows on the card row only. (?128)
+- [x] **The forecast's drain on a third reserve.** Built 2026-11-14 (`Overlay._bar_for`, ?132). (?128)
 - [ ] **The allied glow picker isn't saved between runs.** (?128)
 - [ ] **A `fits()` that reads hidden state would leak through the hover** (`why_not()` asks the true state); fix when one exists. (?128)
 - [ ] **The AI offers nothing new** from the markers; borrowed time isn't drawn differently on the map. (?128)
@@ -139,3 +139,19 @@ Plan, readings and what was built: `docs/plans/pace.md`; done in `docs/done/ui.m
     - **New names to review:** none.
 - [ ] **Floating numbers aren't hurried**; with many AI units hurried, they can stack more. (?129)
 - [ ] **The Guide names F as a fixed word**, so rebinding Hurry leaves it stale. (?129)
+
+## Forecast (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/forecast.md`; done in `docs/done/ui.md`. Tests: `hud_test` (three new), `hud_markers_test.every_reserve`, `foresight_test`; no existing test changed.
+
+132. **Forecast - built on judgement, open for review (2026-11-14).** Built on `n-forecast`. My calls, each for you to confirm or change:
+    - **AP and movement on the map are pips, no bar, no text:** a strip over the selected unit's bars, a blue pip per AP and a grey one per movement point (the last short for a fraction, at most 8 each, AP the lower row), drawn only with a plan; a cost it can't foresee ends its row with the muted ?. Chosen over a number ("-3") for the less text the better, and over mini bars because the brief said add none. Confirm?
+    - **Foresight is a stat** (`mechanic.py stat foresight --human`, your word): allowance = int mod + `foresight`, so a bonus can lift a negative int mod to 0 and above. Used foresight stays in the HUD. No skill or item carries it yet. Confirm?
+    - **One estimate, `HUD.hazard()`**, a pool-by-pool dictionary: a known trap's dice and the first tick of its wounds (`bleed` on HP, `poison` as a share of max HP, `winded` on AP), and fire on the tile (1d8's average + the setter's wis mod, at least 1), all before mitigation. Fire is plainly visible to everyone and spends a foresight like a trap. Only trap wounds, not ordinary ground's `afflicts`. The walk path isn't steered round fire or traps. Confirm?
+    - **Every reserve draws its drain** (`Overlay._bar_for`): a third and further reserves' 1px slivers carry the segment and the ?.
+    - **HELP reads `restores()`:** `HUD.intent_skill()` finds any affordable restoring skill; that counts Energize, so `AI.act(supportive)` now ends with `_replenish()`. `Skill.serves()` itself still says Heal isn't supportive (Affinity postures read it); `Skill.gd` was off limits. Confirm?
+    - **New names to review:** none (`foresight` is your word).
+- [ ] **No skill or item raises foresight yet.** (?132)
+- [ ] **A route isn't steered round fire or traps**: the walk path is Battle's. (?132)
+- [ ] **Only the first tick of a bleed is counted**, and `afflicts` of ordinary known ground not at all. (?132)
+- [ ] **`Skill.serves()` still says Heal isn't supportive**; fold in when Skill is reworked (`r-route`, `r-param`). (?132)

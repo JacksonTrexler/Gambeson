@@ -23,7 +23,7 @@ Six pieces of work, each built in its own worktree and merged in turn. The first
 | E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
 | F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
 
-**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged); then resources as toggles and the siphon, Overcharge and Sorcerer work (41663 checks, 565 tests, 0 failed after both merged). Then the 2026-11-12 answers, built 2026-11-14: item ranks, tapped and Stun, the small notes, recovery, one god system, Battle UI v2 (as `docs/plans/ui-v2.md`), and rescue (42616 checks, 648 tests, 0 failed after all merged; ?118 to ?124). Then, the same day, six more: tag colours and trim, the Slayer skills, fixes, HUD markers, Pace (which finishes Battle UI v2) and AI support (?125 to ?130). Skill terms, the cost calculator and modifiers (`docs/todo/systems.md`) are being built on `m-core`.
+**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged); then resources as toggles and the siphon, Overcharge and Sorcerer work (41663 checks, 565 tests, 0 failed after both merged). Then the 2026-11-12 answers, built 2026-11-14: item ranks, tapped and Stun, the small notes, recovery, one god system, Battle UI v2 (as `docs/plans/ui-v2.md`), and rescue (42616 checks, 648 tests, 0 failed after all merged; ?118 to ?124). Then, the same day, six more: tag colours and trim, the Slayer skills, fixes, HUD markers, Pace (which finishes Battle UI v2) and AI support (?125 to ?130). Then two more: skill terms, the cost calculator and modifiers, and the forecast (?131, ?132); `r-route` and `r-param` follow on branches (in progress).
 
 ## Built since the plan was written
 
@@ -105,6 +105,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | HUD markers (?128) | `hud_markers_test.gd` |
 | — | Pace: handover, hurry, collapsed log (?129) | `pace_test.gd` |
 | — | AI support: restoring, support, switching, Focus, Clairvoyance (?130) | `ai_support_test.gd` |
+| — | Skill terms, cost calculator, modifiers and emblems (?131) | `modifiers_test.gd` |
+| — | Forecast: map pips, foresight, trap estimates, HELP reads restores (?132) | `foresight_test.gd`, `hud_test.gd` |
 
 ## Questions to answer first
 
