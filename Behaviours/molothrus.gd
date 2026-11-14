@@ -21,21 +21,30 @@ static func fooled(b: Battle, holder: Unit, rank: int) -> Array[Unit]:
 func hurt(b: Battle, holder: Unit, rank: int, d: int) -> int:
 	if d <= 0:
 		return d
-	var shields := fooled(b, holder, rank)
+	var m := mods_on(holder)
+	var shields := fooled(b, holder, m.irank(rank, &"rank_range"))
 	if shields.is_empty():
 		return d
-	var each := roundi(d * minf(SHIELD * rank, 1.0)) / shields.size()
+	var each := roundi(d * minf(SHIELD * m.irank(rank, &"rank_impact"), 1.0)) / shields.size()
 	for o in shields:
 		o.damage(each)
 	return d - each * shields.size()
 
 
 func healing(b: Battle, holder: Unit, rank: int, t: Unit, n: int) -> int:
-	if n <= 0 or t not in fooled(b, holder, rank):
+	var m := mods_on(holder)
+	if n <= 0 or t not in fooled(b, holder, m.irank(rank, &"rank_range")):
 		return n
-	var cut := roundi(n * SIPHON * rank)
+	var cut := roundi(n * SIPHON * m.irank(rank, &"rank_impact"))
 	holder.heal(cut, false)
 	return n - cut
+
+
+# Its terms: those it fools within rank tiles (range) give rank shares of heals and hits (impact); tame.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_range", "fooled within")
+	t.add(&"rank_impact", "siphon, shield")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

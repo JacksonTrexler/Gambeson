@@ -9,10 +9,7 @@ extends Behaviour
 func step_cost(b: Battle, holder: Unit, rank: int, from: Vector2i, to: Vector2i, cost: float, bag: Dictionary) -> float:
 	if cost <= 0.0 or bag.get(&"peel", 0) + holder.tally.get(&"peel", 0) >= rank:
 		return cost
-	var m := Modifiers.NONE
-	for s in holder.passives:  # its modifiers: rank and wis mod are both reach
-		if self in s.behaviours:
-			m = holder.mods(s)
+	var m := mods_on(holder)  # its modifiers: rank and wis mod are both reach
 	var near := m.rank(rank, &"rank_range") + m.stat(holder.mod(&"wisdom"), &"stat_range")
 	var best := 0.0
 	for a: Unit in b.units.values():

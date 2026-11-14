@@ -9,12 +9,18 @@ const STAMINA: Reserve = preload("res://Reserves/stamina.tres")
 
 # The tiles a cast gains: rank, doubled paid with Stamina.
 static func tiles(c: Cast) -> int:
-	return c.rank * (2 if c.caster.paid_as(STAMINA, c.skill) else 1)
+	return c.impact_rank() * (2 if c.caster.paid_as(STAMINA, c.skill) else 1)
 
 
 func apply(c: Cast) -> void:
 	c.bag[&"strode"] = tiles(c)
 	c.caster.stride(tiles(c))
+
+
+# Its terms: the tiles it gains grow with rank (impact); a tame effect.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "tiles")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

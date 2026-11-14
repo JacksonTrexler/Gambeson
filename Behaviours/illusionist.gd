@@ -13,7 +13,14 @@ func affinity(holder: Unit, rank: int, s: Skill, t: SkillTab, a: int) -> int:
 		return a
 	var learned: Array = holder.slots.filter(func(x: Slot): return x.rank > 0 and t.offers(x.skill)).map(func(x: Slot): return x.skill)
 	var i := learned.find(s)
-	return 0 if (i >= 0 and i < rank) or (i < 0 and learned.size() < rank) else a
+	var n := holder_rank(holder, rank)  # how many, through its modifiers
+	return 0 if (i >= 0 and i < n) or (i < 0 and learned.size() < n) else a
+
+
+# Its terms: how many spells rank as its own grows with rank (impact); a tame effect.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "spells without penalty")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

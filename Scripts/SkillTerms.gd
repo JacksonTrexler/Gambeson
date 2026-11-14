@@ -8,10 +8,11 @@ extends RefCounted
 # Four channels of scaling, each a list of what scales that way:
 #   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast
 #   rank_impact  what rank adds to what it does: tiers by rank, roll_per_rank, dice_per_rank, dice_scale,
-#                turns_per_rank, push, pull, per_wound, restores, per-rank effects
+#                turns_per_rank, push, pull, per_wound, restores, per-rank effects, a passive's reserve,
+#                opens and downed rule
 #   stat_range   what its user's stats add to its reach: radius_mod, radius_stat
 #   stat_impact  what its user's stats add to what it does: a tier's stat, heal_mods, turns_mod, an
-#                effect's per_mod (passives) or by_mod (put on)
+#                effect's per_mod or per_stat (passives) or by_mod (put on), a reserve's reserve_mod
 
 const CHANNELS: Array[StringName] = [&"rank_range", &"rank_impact", &"stat_range", &"stat_impact"]
 
@@ -64,6 +65,12 @@ func _init(s: Skill) -> void:
 			add(&"rank_impact", f)
 	if s.effects.any(func(e: Effect): return e.per_rank):
 		add(&"rank_impact", "effects")
+	if s.passive and s.reserve:  # Unit.pools(): (mod + base) x rank
+		add(&"rank_impact", "reserve")
+	if s.passive and s.opens:  # Unit.opened(): savings up to its rank in tier
+		add(&"rank_impact", "tiers opened")
+	if s.downed:  # Downed.gd: rounds, limit, actions x rank
+		add(&"rank_impact", "downed")
 	if s.radius_mod:
 		add(&"stat_range", "radius_mod")
 	if s.radius_stat:
@@ -74,7 +81,9 @@ func _init(s: Skill) -> void:
 		add(&"stat_impact", "heal_mods")
 	if s.turns_mod:
 		add(&"stat_impact", "turns_mod")
-	if s.effects.any(func(e: Effect): return (e.per_mod != &"" and s.passive) or e.by_mod != &""):
+	if s.passive and s.reserve and s.reserve_mod:
+		add(&"stat_impact", "reserve")
+	if s.effects.any(func(e: Effect): return ((e.per_mod != &"" or e.per_stat != &"") and s.passive) or e.by_mod != &""):
 		add(&"stat_impact", "effects")
 	hit_per_rank = s.roll_per_rank
 	damage = not s.tiers.is_empty()
