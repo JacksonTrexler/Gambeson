@@ -8,10 +8,11 @@ extends RefCounted
 # Four channels of scaling, each a list of what scales that way:
 #   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast, aura, flamewall width, cone, sends, auto, exits, fog
 #   rank_impact  what rank adds to what it does: tiers by rank, roll_per_rank, dice_per_rank, dice_scale,
-#                turns_per_rank, push, pull, per_wound, restores, per-rank effects
+#                turns_per_rank, push, pull, per_wound, restores, per-rank effects, a passive's reserve,
+#                opens and downed rule
 #   stat_range   what its user's stats add to its reach: radius_mod, radius_stat
 #   stat_impact  what its user's stats add to what it does: a tier's stat, heal_mods, turns_mod, an
-#                effect's per_mod (passives) or by_mod (put on)
+#                effect's per_mod or per_stat (passives) or by_mod (put on), a reserve's reserve_mod
 
 const CHANNELS: Array[StringName] = [&"rank_range", &"rank_impact", &"stat_range", &"stat_impact"]
 
@@ -71,7 +72,7 @@ func _init(s: Skill) -> void:
 	if s.cone > 0.0 and not s.evadable:  # Solar: + 15 degrees a rank
 		add(&"rank_range", "cone")
 	# ...and as what it does: + rank on a save, an execute's / rank, a DC it imposes, hits, rolls, turns.
-	for f in ["save", "hits_per_rank", "levels_down", "kills", "disables", "lays", "wells", "zone", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog", "flamewall"]:
+	for f in ["shapes", "retrieves", "links", "save", "hits_per_rank", "levels_down", "kills", "disables", "lays", "wells", "zone", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog", "flamewall"]:
 		if s.get(f):
 			add(&"rank_impact", f)
 	if not s.elements.is_empty():
@@ -82,10 +83,18 @@ func _init(s: Skill) -> void:
 		add(&"rank_impact", "clears")
 	if &"execute" in s.tags:
 		add(&"rank_impact", "execute")
+	if s.passive and s.reserve:  # Unit.pools(): (mod + base) x rank
+		add(&"rank_impact", "reserve")
+	if s.passive and s.opens:  # Unit.opened(): savings up to its rank in tier
+		add(&"rank_impact", "tiers opened")
+	if s.downed:  # Downed.gd: rounds, limit, actions x rank
+		add(&"rank_impact", "downed")
 	if s.radius_mod:
 		add(&"stat_range", "radius_mod")
 	if s.radius_stat:
 		add(&"stat_range", "radius_stat")
+	if s.links:  # Coordinate: teammates within its cha mod
+		add(&"stat_range", "links")
 	if s.sends or s.fog:
 		add(&"stat_range", "sends" if s.sends else "fog")
 	if s.boost_mod:
@@ -97,7 +106,9 @@ func _init(s: Skill) -> void:
 		add(&"stat_impact", "heal_mods")
 	if s.turns_mod:
 		add(&"stat_impact", "turns_mod")
-	if s.effects.any(func(e: Effect): return (e.per_mod != &"" and s.passive) or e.by_mod != &""):
+	if s.passive and s.reserve and s.reserve_mod:
+		add(&"stat_impact", "reserve")
+	if s.effects.any(func(e: Effect): return ((e.per_mod != &"" or e.per_stat != &"") and s.passive) or e.by_mod != &""):
 		add(&"stat_impact", "effects")
 	hit_per_rank = s.roll_per_rank
 	damage = not s.tiers.is_empty()

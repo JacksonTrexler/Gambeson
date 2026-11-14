@@ -265,3 +265,35 @@ func test_behaviours_everywhere() -> void:
 	learn(v(1), glow, 1)
 	b.cast(v(1), glow, v(1))
 	ok(spy2.landed == 1, "an aura's early return runs them too")
+
+
+func sk(id: String) -> Skill:
+	return load("res://Skills/%s.tres" % id)
+
+
+# r-param's six deferred skills, whose reads live in Battle.gd: each now fits a modifier, and its
+# description as held shows it.
+func test_deferred_six() -> void:
+	for id in ["beastshape", "burning_bag", "elemental_strike", "emergency_exit", "waltz_of_vapors", "relay"]:
+		ok(Modifiers.words().slice(0, 6).any(func(w: StringName): return Modifiers.eligible(w, sk(id))), "%s fits a symbol" % id)
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(6, 6)})
+	v(1).trinket = emblem(&"rho_up", &"insignia", 3)  # rank impact x1.75: rank 2 -> 4
+	for id in ["beastshape", "burning_bag", "elemental_strike", "emergency_exit"]:
+		learn(v(1), sk(id), 2)
+	ok("at rank 4, for 5 turns" in sk("beastshape").describe(2, v(1)) and "at rank 2, for 3 turns" in sk("beastshape").describe(2), sk("beastshape").describe(2, v(1)))
+	ok("puts it on, at rank 4" in sk("burning_bag").describe(2, v(1)), sk("burning_bag").describe(2, v(1)))
+	ok("your next 4 Strikes" in sk("elemental_strike").describe(2, v(1)), sk("elemental_strike").describe(2, v(1)))
+	ok("opens 4 turns sooner" in sk("emergency_exit").describe(2, v(1)) and "within 1 tiles" in sk("emergency_exit").describe(2, v(1)), sk("emergency_exit").describe(2, v(1)))
+	v(1).trinket = emblem(&"rho_down", &"insignia", 3)  # rank range x1.75
+	learn(v(1), sk("waltz_of_vapors"), 2)
+	ok("radius 4 +" in sk("waltz_of_vapors").describe(2, v(1)), sk("waltz_of_vapors").describe(2, v(1)))
+	v(1).trinket = null
+	v(1).strength = 16  # +3
+	learn(v(1), sk("relay"), 1)
+	var plain := v(1).stat(&"relay")
+	v(1).trinket = emblem(&"sigma_down", &"badge", 3)  # stat impact x(1 + 4/5)
+	ok(is_equal_approx(plain, 0.3) and v(1).stat(&"relay") > plain, "Relay: 0.1 per str mod, its mod through Concentrated (%s -> %s)" % [plain, v(1).stat(&"relay")])
+	var coordinate := sk("coordinate")
+	v(1).trinket = emblem(&"sigma_up", &"crest", 1)
+	learn(v(1), coordinate, 1)
+	ok("within its 1.67 x cha mod in tiles" in coordinate.describe(1, v(1)), coordinate.describe(1, v(1)))

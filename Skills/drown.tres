@@ -19,5 +19,4 @@ cost = 2
 radius = 1.0
 rolls = false
 drags_to = &"water"
-grapples = true
 drowns = Vector2i(1, 12)

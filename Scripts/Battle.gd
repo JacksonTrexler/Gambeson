@@ -153,7 +153,7 @@ var rng := RandomNumberGenerator.new()
 var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
 var revealed: Dictionary[Vector2i, bool] = {}  # sprung traps: no longer concealed
 var _seers: Array[Unit] = []  # units that began a Clairvoyance channel, while they hold it (pinged())
-var _blind_to_pings := false  # while clairvoy() asks what its side sees without them
+var _blind_to_pings := false  # while ping() asks what its side sees without them
 const IRE: Skill = preload("res://Skills/ramuts_ire.tres")
 
 # Ramut's Ire waits out this many stalled turns in a row, times the units still standing on the smallest
@@ -679,8 +679,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return false  # a mist only Coalesces (Vaporize)
 	if not caster.shaped_allows(skill) or (skill.shapes and not caster.form and form_for(caster).is_empty()):
 		return false  # a beast's mind (Beastshape); no beast thrives here
-	if skill.pings and caster.channel and caster.channel.skill == skill:
-		end_channel(caster)  # used again: it stops channeling, free
+	if caster.channel and caster.channel.skill == skill and skill.behaviours.any(func(x: Behaviour): return x.recast_stops()):
+		end_channel(caster)  # used again: it stops channeling, free (Clairvoyance)
 		return true
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill):
@@ -703,22 +703,11 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_discipline(caster, skill, foe)
 	var before := target.hp
 	# Every path below that lands runs the behaviours' apply() (_land()); one that fails (a save or
-	# contest lost) is a miss, as a missed attack roll is, and runs none. Clairvoyance's channel (pings)
-	# is the one landing path without it: it's being lifted into a behaviour (r-param), which then runs
-	# through apply() like any other. docs/plans/route.md.
+	# contest lost) is a miss, as a missed attack roll is, and runs none; so is a channel stopped by using
+	# it again (recast_stops(), above: nothing lands). docs/plans/route.md.
 	if skill.shapes:
-		beastshape(caster, r)
+		beastshape(caster, ri)  # its form's rank and turns: rank impact
 		_land(acts)
-		used.emit(caster, skill, target, 0)
-		return true
-	if skill.pings:
-		end_channel(caster)
-		caster.channel = Unit.Channel.new(skill, caster.cell)
-		caster.channel.rank = r
-		if caster not in _seers:
-			_seers.append(caster)
-		clairvoy(caster)
-		channeled.emit(caster, skill, caster.cell)
 		used.emit(caster, skill, target, 0)
 		return true
 	if skill.aura or skill.retrieves or skill.humbles or skill.fog or skill.exits or (skill.boost_pool and not foe) or not skill.elements.is_empty():
@@ -731,7 +720,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		elif skill.aura:
 			_aura(caster, skill, r)
 		elif skill.retrieves:
-			_retrieve(caster, skill, r)
+			_retrieve(caster, skill, ri)  # the item's rank: rank impact
 		elif skill.humbles:
 			_humble(caster, skill, target, ri)
 		else:
@@ -2113,7 +2102,7 @@ func linked(o: Unit) -> Array[Unit]:
 # leader, wherever it is, putting the skill's effects on each of them as on itself: they pool what they
 # make out (read()).
 func _link(caster: Unit, skill: Skill, r: int) -> void:
-	var near := maxi(caster.mod(&"charisma"), 1)
+	var near := maxi(caster.mods(skill).stat(caster.mod(&"charisma"), &"stat_range"), 1)  # its reach: stat range
 	for o: Unit in units.values():
 		if o == caster or not o.is_alive() or not teammates(caster, o):
 			continue
@@ -2352,7 +2341,7 @@ func pass_cost(u: Unit, o: Unit) -> float:
 
 
 func _relay(u: Unit) -> float:
-	return maxf(u.stat(&"relay") * u.mod(&"strength"), 0.0)
+	return maxf(u.stat(&"relay"), 0.0)  # its Effect is per str mod (Relay): through its holder's modifiers (Modifiers.effect())
 
 
 # A trap goes off: most are revealed for good (Terrain.reveals), and it hits whoever stepped on it
@@ -2917,9 +2906,9 @@ func end_turn() -> void:
 		elif u.channel:
 			u.channel_held(u.idle())  # a switch of what it runs on carries more over (Unit.toggle())
 	for u in side:
-		if u.channel and u.channel.skill.pings:
-			clairvoy(u)  # the pings move to where the foes are now...
-			u.channel.rank += 1  # ...then it ranks up
+		if u.channel:
+			for bh in u.channel.skill.behaviours:
+				bh.held(self, u)  # Clairvoyance: the pings move, then it ranks up
 	for u in side:
 		var rested := u.activity() == &"rest"
 		if rested:
@@ -3319,14 +3308,15 @@ func interrupt(u: Unit) -> Array[StringName]:
 	return ended
 
 
-# Clairvoyance: u, channeling it, senses every foe its side can't see (none of it has it located,
-# pings aside) within its wisdom score + the channel's rank in tiles of where it stands, walls or not.
-# Each is pinged at its tile - its side then knows where it is and nothing more (Perception.unit(),
-# HUD.view()) - and u grows a stack more suspicious of that tile. The pings before are dropped.
-func clairvoy(u: Unit) -> void:
+# u, channeling a skill that senses (Clairvoyance), senses every foe its side can't see (none of it has
+# it located, pings aside) within `reach` tiles of where it stands, walls or not. Each is pinged at its
+# tile - its side then knows where it is and nothing more (Perception.unit(), HUD.view()) - and u grows
+# a stack more suspicious of that tile. The channel's pings before are dropped.
+func ping(u: Unit, reach: int) -> void:
 	var ch := u.channel
 	ch.pings.clear()
-	var reach := clairvoyance_reach(u)
+	if u not in _seers:
+		_seers.append(u)
 	var side := members(u.faction)
 	_blind_to_pings = true
 	for t: Unit in units.values():
@@ -3338,18 +3328,13 @@ func clairvoy(u: Unit) -> void:
 		suspect(u, ch.pings[t])
 
 
-# How far u's Clairvoyance reaches now: its wisdom score + the channel's rank, in tiles.
-func clairvoyance_reach(u: Unit) -> int:
-	return roundi(u.stat(&"wisdom")) + (u.channel.rank if u.channel and u.channel.skill.pings else 0)
-
-
 # Where side f has sensed foes by Clairvoyance: foe -> the tile it was pinged at, over every channel of
-# it its units hold (none while clairvoy() looks).
+# it its units hold (none while ping() looks).
 func pinged(f: Faction) -> Dictionary[Unit, Vector2i]:
 	var out: Dictionary[Unit, Vector2i] = {}
 	if _blind_to_pings or _seers.is_empty():
 		return out
-	_seers.assign(_seers.filter(func(u: Unit): return is_instance_valid(u) and u.is_alive() and u.channel and u.channel.skill.pings))
+	_seers.assign(_seers.filter(func(u: Unit): return is_instance_valid(u) and u.is_alive() and u.channel))
 	for u in _seers:
 		if u.faction == f:
 			out.merge(u.channel.pings)

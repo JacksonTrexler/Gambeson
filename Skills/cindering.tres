@@ -18,5 +18,4 @@ cost = 4
 radius_per_rank = 1.0
 radius_mod = &"wisdom"
 turns_per_rank = 1
-cinders = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])

@@ -59,7 +59,6 @@ extends Resource
 @export var links := false  # on itself: links it with its teammates within its cha mod in tiles (at least 1) and its leader, to pool what they make out (Coordinate; Battle._link())
 @export var prays := false  # prays to the caster's god, an effect by god (Pray; Battle.pray())
 @export var observes := false  # cast on a tile: the caster inspects every tile around it as if it had rested rank turns (Observe; Battle.observe())
-@export var pings := false  # on itself, channeled: foes its side can't see within its wisdom + rank tiles show as black shapes, location only, each a stack of its suspicion of the tile; each turn end it holds, they move to where the foes are and its rank for the channel rises (Clairvoyance; Battle.clairvoy())
 @export var auto := false  # used at once, landing on the nearest units in range - allies and foes alike - no more than its rank (Sing; Battle.auto_targets())
 @export var save := &""  # used on a foe: in place of the attack roll, it saves - d20 + its mod in this beating d20 + the caster's mod in the skill's stat + rank; failing, it takes the effects, and that roll is what seeing through them must beat (Haluca: wisdom)
 @export var disables := false  # a curse: with its save, the caster's luck-rounded sqrt(rank) of the foe's skill slots are switched off, right to left, for its turns; the foe adds the ranks of the skills in them to its save (Brainfog; Unit.disable_order())
@@ -74,7 +73,6 @@ extends Resource
 @export var splits := false  # ...from rank V, on only the nearest rank of them, its strength split among them (Flamecharm)
 @export var opening := false  # only as its holder's turn opens: before it moves or spends AP (Flamedance)
 @export var retrieves: Item  # used on itself: takes this unique item from wherever it is and puts it on, at the skill's rank (Burning Bag; Battle._retrieve())
-@export var cinders := false  # used on a foe: rank of its rightmost hotbar slots burn for its turns (Cindering; Unit.burning_slots())
 @export var renames := ""  # learned, Strike goes by this name (Decisive Strike; Unit.skill_name())
 @export var exclusive := &""  # only one skill of this group can be learned (the low-tier Strike upgrades: strike_form)
 @export var waives := &""  # opens a general tree's skills up to its rank in tier without their usual needs - general (Generalist), martial (Martialist), magical (Thaumaturgist); a tree its class doesn't have, it shows, one tier lower (Unit.missing())
@@ -491,9 +489,12 @@ func spec(u: Unit = null, rank := 1) -> Array:
 	if stub:
 		return [["", "Not built yet"]]
 	if passive:
-		return [["", "Passive"], ["", "Toggle" if toggle else ("Inherent" if inherent else "Always on")]]
+		var how := [["", "Passive"], ["", "Toggle" if toggle else ("Inherent" if inherent else "Always on")]]
+		if hybrid:  # its active part costs AP (Personify: adjusting its persona)
+			how.append(["AP", num(Pricing.ap_at(u, self, rank) if u else ap)])
+		return how
 	var out := [["", Glossary.term(target())]]
-	if not self_only:
+	if not self_only or prays:  # a prayer to Drael lands on a unit in range
 		out.append(["range", reach_markup(u.mods(self) if u else Modifiers.NONE)])
 	if u:
 		var rate := u.exhaustion.rate(self) if u.exhaustion else 1.0
@@ -671,7 +672,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		if respecs:
 			lines.append("Then move up to {r:%d} point%s from its core stats into others, a point down for each point up - no more than it already knew itself (%s)" % [ri, "" if ri == 1 else "s", Glossary.term(&"self_knowledge", "self-knowledge")])
 		if retrieves:
-			lines.append("Takes the %s from wherever it is and puts it on, at rank {r:%d}" % [retrieves.name, rank])
+			lines.append("Takes the %s from wherever it is and puts it on, at rank {r:%d}" % [retrieves.name, ri])
 		if flamewall:
 			lines.append("Sets the tile and {r:%d} to either side of it, across the caster's line, %s for {t:%d turns}: 1d8 + %s {x:fire} to whoever enters or ends a turn there. One standing there makes a %s (%s) to get clear"
 					% [rr, Glossary.term(&"burning", "burning"), ri, Glossary.mod(&"wis"), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true)])
@@ -711,6 +712,11 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			lines.append("%s%s comes. On a suspicious one, a %s (%s vs %s) takes a stack of %s off"
 					% [foe, ("only one " if dual else "Only one ") + Glossary.term(&"enraptured", "enraptured"), Glossary.term(&"contest", "contest"),
 					me, Glossary.mod(resisted, true), Glossary.term(&"suspicion", "suspicion")])
+		if shapes:
+			lines.append("Takes the shape of the beast its ground suits (one of the biomes it picked), at rank {r:%d}, for {t:%d turns}: only Strike, beast skills and this until then. Used shaped, it turns back"
+					% [ri, ri + 1])
+		if links:
+			lines.append("Its effects go on its teammates within its %s in tiles (at least 1), and on its leader, too" % _mod(&"charisma", &"stat_range", m))
 		if auto:
 			lines.append("Used at once: lands on the nearest {r:%d} unit%s in range, allies and foes alike" % [rr, "" if rr == 1 else "s"])
 	for e in effects:
@@ -730,6 +736,13 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		var look := ([stance] if stance else []) + [", ".join(shows_vibe)] + [", ".join(shows_tags)]
 		lines.append("Puts forward a look: %s. Its holder's dissonance counts {r:%d} less against its own checks"
 				% ["; ".join(look.filter(func(x: String): return x != "")), rank])
+		if not (shows_adjectives.is_empty() and shows_nouns.is_empty()):  # what it may go by (Unit.alias: the persona panel)
+			var names: PackedStringArray = []
+			if not shows_adjectives.is_empty():
+				names.append(", ".join(shows_adjectives))
+			if not shows_nouns.is_empty():
+				names.append(", ".join(PackedStringArray(shows_nouns.keys())))
+			lines.append("It may go by %s" % "; ".join(names))
 	if investigated:
 		lines.append("A %s as it's used (%s + {r:%d}): enemies that can see it %s against that at once, with %s within their %s - {r:%d} tiles. Those who meet it aren't fooled by it"
 				% [Glossary.term(&"check", "check"), me, ri, Glossary.term(&"investigate", "investigate"), Glossary.term(&"advantage", "advantage"), Glossary.mod(&"wis", true), ri])
@@ -762,8 +775,6 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		lines.append("An escape portal forming opens {r:%d} turns sooner. With none forming: warps the caster and allies within {r:%d} tiles to a pocket of stone, a door back and forth, for {t:%d turns}; then it returns them in a clump" % [ri, rr, ri])
 	if wells:
 		lines.append("Floods the tile {r:%d} deep and the tiles beside it {r:%d}, for {t:%d turns}" % [ri, maxi(ri - 1, 0), ri])
-	if pings:
-		lines.append("%s on the caster: foes its side can't see within its wisdom + {r:%d} tiles, walls or not, show where they are as black shapes, and nothing more (%s). Each adds a stack of %s of its tile. As each of its turns ends while it holds, they move to where the foes are now, and the rank rises by 1 for the channel. Cast again to stop" % [Glossary.term(&"channeled", "Channeled"), rank, Glossary.term(&"pinged", "pinged"), Glossary.term(&"suspicion", "suspicion")])
 	if fog:
 		lines.append("Fog around the caster, radius {r:%d} + the better of its dex and cha mods%s, concealing at {r:%d}. Kept up only by using it again as each of its turns opens"
 				% [rr, "" if m.k[&"stat_range"] == 1.0 else " x %s" % num(snappedf(m.k[&"stat_range"], 0.01)), ri])

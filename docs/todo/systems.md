@@ -251,7 +251,7 @@ Plan, readings and what was built: `docs/plans/tag-colors.md`; done in `docs/don
     - **New names to review:** none (colours aren't names; they carry no ??).
 - [ ] **Retune the colours**: every entry in `Tags.COLOR` is mine; `mechanic.py color <word> "#rrggbb"` changes one. (?125)
 - [ ] **Equipment isn't composed on the sprite** (one PNG per unit), so trim is a drawn banner, not a recoloured part; real trim waits on layered art. (?125)
-- [ ] **Emblem forms** (sigil, insignia, crest, badge) need a colour and a PLAIN place when the m-core items land. (?125, ?131)
+- [x] **Emblem forms** (sigil, insignia, crest, badge) a colour and a PLAIN place. Built 2026-11-14 (?131). (?125)
 
 ## Fixes (2026-11-14)
 
@@ -287,24 +287,53 @@ Plan and what was built: `docs/plans/ai-support.md`. Tests: `Tests/ai_support_te
 - [ ] **The AI doesn't hold a shot back to build Focus**, and prefers Resuscitate over Heal on a Downed ally only by want or list order. (?130)
 - [ ] **Switching only goes to a pool that currently holds enough**: a unit with one toggle and no Energy has nowhere to switch to. (?130)
 
-## Skill terms, cost and modifiers (2026-11-14, in progress)
+## Skill terms, cost and modifiers (2026-11-14)
 
-Your request of 2026-11-14 (verbatim in the coordinator's `answers-2026-11-14.md`), being built on branch `m-core`; it gets question 131 when it lands. The martial skills in it (Slayer) are built (?126) and the tag colours (?125). The rest, in short:
-- **Make the skill tooling take parametrized, composable parts** ("adjust skill claude-skill") so skills can carry modifiers; tags such as `execute` and elements such as `fire` applicable to any skill as a modifier; new eligible tags should just work out of the box. A skill without the tags or mechanics the system needs is ineligible; one that is too concrete but could be compatible should be tagged, polymorphized, abstracted or parameterized until it is.
-- **A cost calculator for modified and ranked skills.** Base cost is the damage intensity (high / low); added for rank bonus to hit, rank bonus to damage, and a unique effect (tame / impactful), tapered by how easy or hard its activation requirement is; reduced for penalties; cheaper when adjacent; rank range neutral. Increase is exponential for extremes (extreme damage), reduction flat for extreme penalties.
-- **Modifiers as symbol passives:** rho up (density: nullifies rank range scaling, intensifies rank impact scaling) and rho down (diluted: the reverse); sigma down (concentrated: nullifies stat range scaling, intensifies stat impact) and sigma up (dispersed: the reverse); lambda up (restrictive: a beneficial contingent effect's restriction much stricter, the effect itself more potent) and lambda down (unrestrictive: restriction lessened, effect greatly lessened).
-- **Items carrying a symbol:** Sigil (the leftmost eligible skill), Insignia (all skills), Crest (active skills), Badge (passive skills); the equipment skill's rank sets the boost, with less loss when it boosts fewer skills; the boost follows the Rank Scaling Calculation (RSC: single skill r x (2 + r)/(3 + r), a subset r x (1 + r)/(2 + r), all skills r x r/(1 + r), approaching x2 or the square root of 2).
+Plan, readings and what was built: `docs/plans/skill-modifiers.md`; done in `docs/done/systems.md`. Built on `m-core`. Tests: `Tests/modifiers_test.gd` (10 tests); no existing test changed. Your request of 2026-11-14 (verbatim in the coordinator's `answers-2026-11-14.md`); the martial skills in it (Slayer) are built (?126) and the tag colours (?125). Two follow-ups are in progress: `r-route` and `r-param` (below).
 
-The coordinator's readings of the unclear parts, **calls to confirm** (the builder may refine and must record them):
-- **"claude-skill"** is `.claude/skills/new-skill/` and `Util/skill.py`, which it drives.
-- **The lambda example** (80% needed becomes about 95%) matches squaring the permissive share (0.2 to 0.04, so 96%), not its square root (0.447, so 55%). Read lambda up as permissive share p to p squared, lambda down as p to its square root.
-- **RSC** is read as a factor 1 + f(r), f = (2 + r)/(3 + r) for one skill (Sigil), (1 + r)/(2 + r) for a subset (Crest, Badge) and r/(1 + r) for all (Insignia), r the emblem's rank: fewer skills boosted, less loss. "Intensify" or "boost" multiplies a scaling term by it (or raises to it, where the term is an exponent); "nullify" zeroes the term; lambda down's weakened effect is a square root. The exact reading is to be recorded.
-- **A symbol can also be a tag:** a "Fire Insignia" puts fire on every eligible skill, and its trim is fire's colour.
+131. **Skill terms, cost and modifiers - built on judgement, open for review (2026-11-14).** My calls, each for you to confirm or change:
+    - **"claude-skill"** is `.claude/skills/new-skill/` and `Util/skill.py`, which it drives. Confirm?
+    - **One place for what a skill does:** `SkillTerms` reads four channels from existing fields (rank to range, rank to impact, stat to range, stat to impact); `Modifiers` is the one reader every per-rank and per-stat value goes through; `Pricing` the cost calculator. Behaviours declare their own channels with `Behaviour.terms()`.
+    - **Nullify = rank I or stat 0.** A nullified rank term reads as rank I (rank' = 1), not zero, so a skill whose whole effect is "x rank" still does its rank-I thing; a nullified stat term reads 0. Confirm?
+    - **RSC reading:** a factor 1 + f(r), r the emblem's rank: f = (2 + r)/(3 + r) for one skill (Sigil), (1 + r)/(2 + r) for a subset (Crest, Badge), r/(1 + r) for all (Insignia). Your "rank *" prefix is read as dropped (with it the factor passes x2, against "approaches x2"). Several emblems on one skill multiply. Confirm?
+    - **Lambda is p^(1+f), payoff x(1+f):** a requirement's permissive share p becomes p^(1+f) under lambda up (80% needed becomes 96% at f = 1; p to p squared) and p^(1/(1+f)) under lambda down (to its root). The contingent payoff is multiplied by 1 + f (lambda up) or divided by it (down), rounded, at least 1; a multiplying effect scales its distance from 1. Built as a multiplier, not your exponent or root, which misbehaves on shares like Stoneskin's 0.4 and on +1. Only beneficial contingencies; a penalty contingency makes a skill no more eligible. Confirm?
+    - **Intensity mapping:** low / moderate low / moderate / high / extreme map onto `Difficulty.MAGNITUDE` faint / mild / moderate / strong / severe (intense and overwhelming lie between and past); an existing skill's intensity is derived from its tier's average at rank I. Confirm?
+    - **Tag-kind eligibility:** a tag is a modifier by its Glossary kind: damage (and `DAMAGE_TAGS`) needs a damage tier, check needs a check, condition needs effects, ground needs a tile aim, target never; an unknown tag is ineligible. Added tags reach `has_tag`, `hit_tags`, executes, stun's check. Confirm?
+    - **Symbol eligibility:** each needs the channel it boosts (rho up rank impact, rho down rank range, sigma down stat impact, sigma up stat range; lambda a beneficial contingency), so an emblem never only takes away.
+    - **Emblems in the trinket slot:** one at a time, so they compete with Heart Up and rings; made by hand as `.tres` (no item tool), no icons yet, named "<Word> Sigil" etc. (so no ??). Scopes: Density and Diluted Sigils, Concentrated and Dispersed Crests, Restrictive Badge, Unrestrictive Insignia, Fire Insignia, Execute Sigil. Rarities uncommon to epic. Confirm?
+    - **Emblems in Alabaster's loot** (Heart 4, each emblem 1); the Astral Princess's and Icor's tables are pinned by `items_test`, so left alone. Confirm?
+    - **Five new declarative `Skill.gd` fields** (`intensity`, `impact`, `penalty`, `requires`, `priced`), raising `FLAG_CEILING` from 125 to 130. This is against CLAUDE.md's "never a new `Skill.gd` flag"; they are data every skill shares, and the task asked for it. **Please OK this, or say how else to carry them.**
+    - **Pricing** (`Pricing.TABLE`): intensity points exponential, per-rank hit and damage, effect impact (tame 2, impactful 5) tapered by its requirement, flat penalties, adjacent -1, AP = 1 + 0.5 p, Energy = 0.5 p. Existing skills keep hand-set costs unless `priced = true`; modifiers scale a price by computed(modded) / computed(base). Only Poach is priced (its computed price is within 1 AP and 1 Energy of its hand one). **Should I tune the price table, or adopt the computed prices?** 71 of 89 hand-priced actives drift from the computed price at rank I (`skill.py drift`).
+    - **Slayer skills, hand against computed (rank I):**
 
-- [ ] **Skill terms:** parametrized, composable skill parts and modifiers; any eligible tag or element applicable to any skill by a modifier, new eligible tags working out of the box (`Skill.gd` still gets no new flags: behaviours and data). (?131)
-- [ ] **Cost calculator** for modified and ranked skills, folding in the hand-set costs and the refunds of Poach and Slam Jam (?126). (?131)
-- [ ] **Modifiers:** the symbol passives as data. (?131)
-- [ ] **rho, sigma and lambda**, up and down, as the scaling and restriction rules above. (?131)
-- [ ] **The Rank Scaling Calculation** (RSC), once, shared by every emblem. (?131)
-- [ ] **Sigil, Insignia, Crest and Badge** items, trimmed through ?125. (?131)
-- [ ] **Authoring:** `Util/skill.py` and `.claude/skills/new-skill` taught the parametrized parts, with `check`. (?131)
+      | Skill | Hand AP/cost | Computed AP/cost | Points |
+      |---|---|---|---|
+      | Gank | 4/2 | 2/1 | 1.9 |
+      | Peel | passive | - | - |
+      | Poach | 3/2 | 4/3 (now priced) | 5.5 |
+      | Sutemi | 5/2 | 5/4 | 8 |
+      | Spike | 6/2 | 3/2 | 4 |
+      | Hitch | 3/1 | 5/4 | 7 |
+      | Bludgeon | 5/2 | 3/2 | 4 |
+      | Slam Jam | 6/3 | 6/5 | 9 |
+
+      The gaps: impactful effects outweigh low damage (Hitch); a gate on the whole skill (Gank) and the target's Defense (Spike) count as cheap; the Slayer plan's "high damage" is 1d10, which the bands read as moderate.
+    - **A symbol can also be a tag:** a Fire Insignia puts fire on every eligible skill, trimmed fire. Emblem forms (sigil, insignia, crest, badge) are `Tags.PLAIN`; the six symbols are coloured through `mechanic.py color`.
+    - **New names to review:** none (emblem names follow your pattern).
+- [x] **Skill terms:** `SkillTerms`, `Modifiers`, `Skill.requires`, the Terms fields; any eligible tag or element applicable to any skill by a modifier, new eligible tags working out of the box (the five fields are a call, above). Built 2026-11-14. (?131)
+- [x] **Cost calculator** (`Pricing`, `skill.py drift`), folding in the refunds of Poach and Slam Jam through their behaviours' contingencies. Built; the table is a first cut. (?126, ?131)
+- [x] **Modifiers:** the symbol passives as data (`Modifiers`, symbol ids `rho_up` ... `lambda_down`). Built. (?131)
+- [x] **rho, sigma and lambda**, up and down, as the scaling and restriction rules. Built. (?131)
+- [x] **The Rank Scaling Calculation** (`Modifiers.rsc()`), once, shared by every emblem. Built. (?131)
+- [x] **Sigil, Insignia, Crest and Badge** items, trimmed through ?125 (`Item.emblem`, `scope`, `trim_tag()`). Built. (?131)
+- [x] **Authoring:** `skill.py new --intensity --impact --penalty --requires --hand-priced`, `terms`, `modifiers`, `drift`, with `check`. `.claude/skills/new-skill` not edited (house rule: skills aren't edited without you). (?131)
+- [ ] **Tune the price table or adopt the computed prices**; 71 of 89 hand-priced actives drift. (?131)
+- [ ] **Ineligible for every modifier** (`skill.py modifiers`, 54 of about 240): mostly passives whose work is a behaviour hook or bespoke flag, and actives with flags and no scaling fields (Heal, Megaheal, Energize, Resuscitate, Move, Clairvoyance...). Parameterizing them is `r-param` (in progress). (?131)
+- [ ] **Not routed through the reader yet:** saves, executes' `/ r`, `Difficulty.dc(rank)`, reach, requirements outside the attack roll and damage, descriptions (`Skill.markup()`), AI estimates, behaviour hooks but Kick's push, and `Unit.mod()` outside `Battle.cast`. That is `r-route` (in progress). (?131)
+- [ ] **Behaviours on cast's early-return paths** don't run yet; `r-route` (in progress). (?131)
+- [ ] **Lift `pings` into a behaviour, and shrink UNSAID**: `r-param` (in progress). (?131)
+- [ ] **Emblems have no icons** (items have none yet), and no item tool writes them. (?131)
+
+**In progress, two follow-ups to ?131, each on its own branch:**
+- `r-route`: routes saves, executes, DCs, reach, requirements, descriptions and AI estimates through the reader, and runs behaviours on cast's early-return paths.
+- `r-param`: parameterizes the ineligible skills, lifts pings into a behaviour, and shrinks UNSAID.

@@ -71,7 +71,7 @@ static func takes(u: Unit, was: int, now: int) -> bool:
 		return false
 	s = State.new()
 	s.rule = x.skill.downed
-	s.rank = u.rank(x.skill)
+	s.rank = u.mods(x.skill).irank(u.rank(x.skill), &"rank_impact")  # its rank as its modifiers read it
 	s.left = maxi(s.rule.rounds * s.rank, 1)
 	s.limit = maxi(roundi(s.rule.limit * s.rank * u.max_hp), 0)
 	u.dbno = s

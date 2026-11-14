@@ -16,17 +16,26 @@ func dice(r: int) -> int:
 
 # What it gets back on average: the dice's mean + the caster's mod + rank.
 func restores(c: Cast) -> Dictionary:
-	return {&"hp": maxi(roundi(dice(c.rank) * (DIE + 1) / 2.0) + c.caster.mod(c.skill.stat(), c.skill.tags) + c.rank, 1)}
+	var r := c.impact_rank()
+	return {&"hp": maxi(roundi(dice(r) * (DIE + 1) / 2.0) + c.stat_mod(c.caster.mod(c.skill.stat(), c.skill.tags)) + r, 1)}
 
 
 func apply(c: Cast) -> void:
 	if c.foe or not c.target.is_alive():
 		return
-	var n := c.battle.roll(Vector2i(dice(c.rank), DIE)) + c.caster.mod(c.skill.stat(), c.skill.tags) + c.rank
+	var r := c.impact_rank()  # dice and + rank, and its stat mod, through its modifiers
+	var n := c.battle.roll(Vector2i(dice(r), DIE)) + c.stat_mod(c.caster.mod(c.skill.stat(), c.skill.tags)) + r
 	c.target.healed_by = c.caster
 	c.bag[&"healed"] = c.target.hp
 	c.battle.mend(c.target, maxi(n, 1), 0)
 	c.bag[&"healed"] = c.target.hp - c.bag[&"healed"]
+
+
+# Its terms: dice and + rank grow with rank (impact); the caster's mod adds to it (stat impact); tame.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "heal")
+	t.add(&"stat_impact", "heal")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:
