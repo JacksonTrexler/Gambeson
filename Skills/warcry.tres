@@ -1,11 +1,21 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/warcry.gd" id="b_warcry"]
+
+[sub_resource type="Resource" id="Behaviour_warcry"]
+script = ExtResource("b_warcry")
 
 [resource]
 script = ExtResource("1_skill")
 name = "Warcry"
-passive = false
 tags = Array[StringName]([&"martial", &"offensive"])
-stub = "Tile marks (docs/plan.md, phase 1)"
-plan = "Pick up to rank enemies the unit can see. Rank tiles on the line to each get a one-use effect, triggered on entry, lasting a few turns. Nearer half, Charge!: allies regain rank dex AP and deal +10% x rank damage until their turn ends. Farther half, Routed!: enemies pay +rank movement."
+impact = &"impactful"
+priced = true
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_warcry")])
+hostile = false
+self_only = true
+rolls = false
+turns = 2
+turns_per_rank = 1

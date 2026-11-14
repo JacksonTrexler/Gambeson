@@ -2441,7 +2441,14 @@ func evaluates() -> int:
 # Whether stepping onto ground t, `extra` tiles into a walk, leaves it untouched: standing still
 # (Meander) there, at a rank no lower than the ground's level.
 func passes_by(t: Terrain, extra: int) -> bool:
-	return still(extra) and t.level <= meander()
+	return wards(t.level, extra)
+
+
+# Whether standing still (Meander), `extra` tiles into a walk, wards off a tile effect of this level: the
+# ground's (passes_by()) or what a tile makes it pay for moving (per_tile; Battle.travel()). `began`: the
+# tiles it had walked before this walk, when it's already been paid for (steps).
+func wards(level: int, extra: int, began := -1) -> bool:
+	return (steps if began < 0 else began) + extra <= meander() and level <= meander()
 
 
 # Pays for walking n tiles that took `cost` movement (and as much move AP), counting them towards
@@ -2630,11 +2637,13 @@ func bloodied() -> bool:
 
 # Gets n AP back into its general pool, up to what that pool started the turn with (Renew).
 # Returns what it got.
-func regain(n: float) -> float:
-	if n <= 0.0 or ap.is_empty() or _ap_start.is_empty():
+# `pool` names another (&"move": its dex AP, &"skill": its wis AP; the regain stat's dex or wis tag; Charge!).
+func regain(n: float, pool := &"") -> float:
+	var i := ap.find_custom(func(p: AP): return p.only == pool)
+	if n <= 0.0 or i < 0 or i >= _ap_start.size():
 		return 0.0
-	var got := clampf(_ap_start[0] - ap[0].amount, 0.0, n)
-	ap[0].amount += got
+	var got := clampf(_ap_start[i] - ap[i].amount, 0.0, n)
+	ap[i].amount += got
 	return got
 
 
@@ -2682,6 +2691,9 @@ func pay(n: float, use: StringName) -> bool:
 # Puts an effect on this unit for some of its faction's turns. Re-applying refreshes the timer
 # (keeping the higher rank) rather than stacking.
 func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
+	if e.stat == "regain":  # instant: AP back to the pool it's tagged with, and nothing stays on
+		regain(e.amount * (at_rank if e.per_rank else 1), {&"dex": &"move", &"wis": &"skill"}.get(e.tags[0] if not e.tags.is_empty() else &"", &""))
+		return Applied.new(0, at_rank)
 	if e.helps() < 0:
 		_log_harm({effect = e, turns = turns, rank = at_rank})
 	var r := maxi(at_rank, timed[e].rank) if e in timed else at_rank

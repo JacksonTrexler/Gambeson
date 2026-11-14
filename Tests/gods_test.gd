@@ -99,10 +99,10 @@ func test_drael() -> void:
 func test_vetruvis() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	prayer(v(1), &"vetruvis", 1)
-	ok(b.cast(v(1), pray, v(1)) and Vector2i(2, 4) in b.earthworks and Vector2i(3, 4) not in b.earthworks and b.earthworks[Vector2i(2, 4)].turns == 1,
+	ok(b.cast(v(1), pray, v(1)) and b.has_mark(Vector2i(2, 4), &"earthwork") and not b.has_mark(Vector2i(3, 4), &"earthwork") and b.marks_at(Vector2i(2, 4))[0].turns == 1,
 			"the ground within 1 tile, for 1 turn")
 	ok(is_equal_approx(b.step(v(3), Vector2i(3, 4), Vector2i(2, 4)), 1.5) and is_equal_approx(b.step(v(1), Vector2i(1, 4), Vector2i(2, 4)), 1.0),
 			"its enemies pay 50% more to enter; its side, nothing")
 	ok(is_equal_approx(b.step(v(3), Vector2i(3, 4), Vector2i(4, 4)), 1.0), "outside it: as before")
 	b.end_turn()
-	ok(b.earthworks.is_empty(), "gone as its side's turn ends")
+	ok(b.marks.is_empty(), "gone as its side's turn ends")

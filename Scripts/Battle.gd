@@ -7,6 +7,8 @@ signal initiative_rolled(rolls: Dictionary[Faction, Array])
 signal traveled(u: Unit, from: Vector2i, path: Array[Vector2i])
 signal used(caster: Unit, skill: Skill, at: Variant, dealt: int)  # at: the target Unit, or a cell
 signal sprung(c: Vector2i, by: Unit)
+signal marked(c: Vector2i, u: Unit, mark: Mark)  # u triggered a mark on c (_trigger()): its effects went on
+signal toll_paid(u: Unit, hp: int)  # u lost hp walking (a per_tile effect, travel())
 signal attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int)  # an attack roll (cast())
 signal layer_broke(c: Vector2i, what: Terrain, by: Unit)  # a brittle layer broke (expose(), _teeter())
 signal layer_lifted(c: Vector2i, what: Terrain, why: StringName)  # a layer burned (fire) or blew (wind) away
@@ -182,7 +184,7 @@ var layers: Dictionary[Vector2i, Array] = {}  # cell -> the layers laid over its
 var _concealed_tiles: Array = []  # [source, atlas coords, alternative] of the map's concealed tiles, after a first entry marking them looked for (_maybe_hidden())
 var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, until its stack changes
 @export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
-var earthworks: Dictionary[Vector2i, Earthwork] = {}  # disturbed earth a side prayed up (Pray, to Vetruvis): its enemies wade through
+var marks: Dictionary[Vector2i, Array] = {}  # cell -> the Marks laid on it, oldest first (lay_mark()): one-use tile effects, disturbed earth
 @export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
 @export var sight := true  # units perceive only within their wisdom total in tiles, and make out appearances within half that, the range shared across their side (in_range(); Perception.unit()). Off: no limit
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
@@ -205,7 +207,7 @@ const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
 const HAZARD_TILES := 0.5  # steering: movement a point of foreseen HP loss weighs as (a 7 damage trap is a 3.5 tile detour); AP loss weighs 1 a point
 const STEER_MARGIN := 2  # tiles either side of its straight run that a steered route may wander (route())
-const EARTHWORK_COST := 1.5  # disturbed earth: what entering it costs its side's enemies, times the usual
+const EARTHWORK_COST := 1.5  # disturbed earth (earthwork()): what entering it costs its side's enemies, times the usual
 
 
 # Evidence a unit left hiding: whoever can make out the tile sees it (but not who left it).
@@ -223,14 +225,57 @@ class Debris:
 		since = t
 
 
-# Disturbed earth (Pray, to Vetruvis): its side's enemies wade through it, for some of that side's turns.
-class Earthwork:
+# A mark laid on a tile (lay_mark()): effects put on whoever triggers it, a trigger and a lifetime, so
+# later skills lay their own without a kind of their own (Warcry's Charge! and Routed!, disturbed earth
+# from Pray). `on`: &"enter" as a unit walks onto the tile (travel(), place()) or &"end" as its turn ends
+# there. `who` says whom it triggers on, from its side's view: &"allies", &"foes" or &"any". A trigger puts
+# each of `effects` on the unit (at `rank`, for the effect's own turns or `effect_turns`) and uses it up,
+# when `uses` runs out (0: it keeps going till its turns do). It lasts `turns` of its side's turns.
+# Entering costs those it triggers on `cost` more movement and `wade` times as much (stride()), and
+# hazard() counts what a known one would do to a walker. Who knows it's there: its side and those told
+# (`known`), everyone when its `concealment` is 0 (fire, Warcry's squares: plainly visible), else
+# whoever reads the tile well enough (Perception.tile(), like a trap).
+class Mark:
+	var kind: StringName  # what it is (&"charge", &"routed", &"earthwork"): its name's key and look
+	var name := ""
+	var by: Unit
 	var faction: Faction
-	var turns: int
+	var effects: Array[Effect] = []
+	var rank := 1
+	var who := &"any"
+	var on := &"enter"
+	var turns := 3
+	var uses := 1
+	var effect_turns := 1  # how many turn-ends its effects last on whoever triggers it: 1 is until its turn ends
+	var cost := 0.0
+	var wade := 1.0
+	var concealment := 0
+	var known: Dictionary[Unit, bool] = {}
+	var tint := Color.WHITE  # how it's drawn (Overlay): its colour and whether it swells (1), shrinks (-1) or stays (0)
+	var swell := 0
 
-	func _init(f: Faction, t: int) -> void:
-		faction = f
-		turns = t
+	func _init(k: StringName, u: Unit, f: Faction = null) -> void:
+		kind = k
+		name = String(k).capitalize()
+		by = u
+		faction = f if f else (u.faction if u else null)
+
+	# Whether it triggers on u: by `who`, as its side sees u.
+	func hits(u: Unit) -> bool:
+		match who:
+			&"allies":
+				return Faction.friends(u.faction, faction)
+			&"foes":
+				return not Faction.friends(u.faction, faction)
+		return true
+
+	# Whether o is simply told of it: its side, or someone it was passed word to. Everyone, if nothing hides it.
+	func told(o: Unit) -> bool:
+		return concealment <= 0 or Faction.friends(o.faction, faction) or o in known
+
+	# Whether it would hurt u to step onto it: it triggers on u, and costs it movement or puts a harmful effect on it.
+	func harms(u: Unit) -> bool:
+		return on == &"enter" and hits(u) and (cost > 0.0 or wade > 1.0 or effects.any(func(e: Effect): return e.helps() < 0))
 
 
 # A tile on fire (Flamewall): whoever enters it, or ends its turn on it, takes 1d8 + its setter's wis
@@ -1650,6 +1695,9 @@ func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
 	var hiding := Perception.cover(self, t) if t and t.faction != o.faction else 0
 	var snare: Snare = snares.get(c)
 	var trap := terrain(c).concealment if hidden(c) and not (snare and o in snare.known) else 0
+	for m in marks_at(c):  # what's laid on it that o wasn't told of
+		if not m.told(o):
+			trap = maxi(trap, m.concealment)
 	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
 	if hiding <= 0 and trap <= 0 and not mixed:
 		return false
@@ -1712,7 +1760,7 @@ func pray(u: Unit, r: int, target: Unit = null) -> void:
 		&"vetruvis":
 			for c in map.get_used_cells():
 				if Command.tiles(u.cell, c) <= r:
-					earthworks[c] = Earthwork.new(u.faction, r)
+					lay_mark(c, earthwork(u, r))
 	prayed.emit(u, u.deity(), r)
 
 
@@ -2418,6 +2466,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		var from := u.cell
 		var sights := _sightings(u)  # those watching it step into cover (_vanish())
 		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
+		var began := u.steps  # the tiles it had walked before this (_toll())
 		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
 		for k: StringName in w.bag:
 			u.tally[k] = u.tally.get(k, 0) + w.bag[k]
@@ -2431,9 +2480,12 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		u.heading = Vector2i(signi(passed[-1].x - from.x), signi(passed[-1].y - from.y))
 		for c in passed:  # trodden into the ground
 			debris.erase(c)
-		for c in passed:  # walking into fire
+		for c in passed:  # walking into fire, and onto marks
 			if c in flames and u.is_alive():
 				_flame(u, flames[c], "walks into fire")
+			if c in marks and u.is_alive():
+				_trigger(u, c, &"enter")
+		_toll(u, passed, began)  # what it costs to walk, tile by tile
 		if Perception.cover(self, u) > 0:
 			_scatter(u, _hide_roll(u), passed)
 			_vanish(u, sights)
@@ -2574,7 +2626,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 # can't disagree. Entering and leaving the ground, wading, obstruction, its passives' step_cost() hooks
 # (Peel; `bag` is their scratch for the walk so far) and moving through the unit in the way.
 func stride(u: Unit, prev: Vector2i, c: Vector2i, from: Terrain, t: Terrain, bag: Dictionary, other: Unit, expected := false) -> float:
-	var cost := _cost(u, from, t) * wading(u, c) + obstruction(u, c, expected)
+	var cost := _cost(u, from, t) * wading(u, c, expected) + mark_cost(u, c, expected) + obstruction(u, c, expected)
 	for h in u.hooks():
 		cost = h[0].step_cost(self, u, h[1], prev, c, cost, bag)  # Peel
 	return cost + (pass_cost(u, other) if other else 0.0)
@@ -2611,6 +2663,10 @@ func hazard(u: Unit, c: Vector2i, r: Read) -> Dictionary:
 			_owe_wound(out, u, e, maxi(t.wound_turns, 1), t.level, by)
 	for e in r.afflicts:  # what ordinary ground does to whoever steps on it, for its turns
 		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)  # (travel() puts them on at rank 1)
+	for m: Mark in r.marks:  # what the marks it knows of would put on it
+		if m.on == &"enter" and m.hits(u):
+			for e in m.effects:
+				_owe_wound(out, u, e, maxi(e.turns if e.turns else m.effect_turns, 1), m.rank, m.by if is_instance_valid(m.by) else null)
 	if c in flames:
 		_owe(out, &"hp", maxf(4.5 + flames[c].bonus, 1.0))
 	return out
@@ -2632,12 +2688,13 @@ func _owe(out: Dictionary, key: StringName, n: float) -> void:
 
 
 # What a hazard() weighs against the way round, in movement: HAZARD_TILES a point of HP, 1 a point of
-# anything else. A known trap or detrimental ground counts at least a tile, whatever the estimate says.
-func dread(owed: Dictionary, r: Read) -> float:
+# anything else. A known trap, detrimental ground or `bad` (a known mark that would harm the walker:
+# Mark.harms()) counts at least a tile, whatever the estimate says.
+func dread(owed: Dictionary, r: Read, bad := false) -> float:
 	var n := 0.0
 	for key in owed:
 		n += owed[key] * (HAZARD_TILES if key == &"hp" else 1.0)
-	return maxf(n, 1.0) if n > 0.0 or r.known_bad() else 0.0
+	return maxf(n, 1.0) if n > 0.0 or r.known_bad() or bad else 0.0
 
 
 # The walk's tiles: the straight line `ln` from u to dest, or - when it crosses ground u knows to be
@@ -2654,7 +2711,7 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 	var dread_of := func(c: Vector2i) -> float:
 		if c not in dreads:
 			var r := read(u, c)
-			dreads[c] = dread(hazard(u, c, r), r)
+			dreads[c] = dread(hazard(u, c, r), r, r.marks.any(func(m: Mark): return m.harms(u)))
 		return dreads[c]
 	var danger := 0.0
 	for c in ln:
@@ -2732,6 +2789,98 @@ func _relay(u: Unit) -> float:
 	return maxf(u.stat(&"relay"), 0.0)  # its Effect is per str mod (Relay): through its holder's modifiers (Modifiers.effect())
 
 
+# --- Tile marks
+# One-use tile effects laid by skills (Mark): a mark on a cell carries effects, a trigger and a lifetime.
+# docs/plans/tile-marks.md. Traps stay Snares (they are the ground), fire stays Flames (damage rolled
+# every time); disturbed earth is a Mark (earthwork()).
+
+# Lays m on c, over any already there, and tells its side's units it's there (Mark.known).
+func lay_mark(c: Vector2i, m: Mark) -> Mark:
+	var st: Array = marks.get_or_add(c, [] as Array[Mark])
+	for old: Mark in st.duplicate():
+		if old.kind == m.kind and old.faction == m.faction:
+			st.erase(old)  # laid again by its side: it's renewed, not doubled
+	st.append(m)
+	for o in members(m.faction):
+		m.known[o] = true
+	return m
+
+
+func marks_at(c: Vector2i) -> Array[Mark]:
+	var out: Array[Mark] = []
+	out.assign(marks.get(c, []))
+	return out
+
+
+func has_mark(c: Vector2i, kind: StringName) -> bool:
+	return marks_at(c).any(func(m: Mark): return m.kind == kind)
+
+
+# The marks on c that o knows of: what its read of the tile makes out (Read.marks).
+func known_marks(o: Unit, c: Vector2i) -> Array[Mark]:
+	var out: Array[Mark] = []
+	if c in marks:
+		out.assign(read(o, c).marks)
+	return out
+
+
+func _drop_mark(c: Vector2i, m: Mark) -> void:
+	var st: Array = marks.get(c, [])
+	st.erase(m)
+	if st.is_empty():
+		marks.erase(c)
+
+
+# Disturbed earth (Pray, to Vetruvis): its side's enemies wade through it, EARTHWORK_COST times the usual,
+# for r of its side's turns. Not used up by those who cross it.
+func earthwork(u: Unit, r: int) -> Mark:
+	var m := Mark.new(&"earthwork", u)
+	m.name = "Disturbed earth"
+	m.who = &"foes"
+	m.turns = r
+	m.uses = 0
+	m.wade = EARTHWORK_COST
+	m.tint = Color(0.55, 0.38, 0.2)
+	return m
+
+
+# u comes onto c (walking, travel(); placed, place()) or ends its turn there (end_turn()): each mark there
+# set for that trigger that fits it goes off, putting its effects on u, and is used up if it's a one-off.
+func _trigger(u: Unit, c: Vector2i, on: StringName) -> void:
+	for m in marks_at(c):
+		if m.on != on or not m.hits(u) or not u.is_alive() or (m.uses == 0 and m.effects.is_empty()):
+			continue  # (what only makes the ground dear to cross - disturbed earth - has nothing to trigger)
+		var from: Unit = m.by if is_instance_valid(m.by) else null
+		for e in m.effects:
+			var n := e.turns if e.turns else m.effect_turns
+			var a := u.afflict(e, n + (1 if on == &"end" else 0), m.rank)  # one turn is until its turn ends; as it ends, that tick doesn't count
+			a.total = n
+			a.by = from
+			a.since = turns_begun
+		if m.uses > 0:
+			m.uses -= 1
+			if m.uses == 0:
+				_drop_mark(c, m)
+		marked.emit(c, u, m)
+
+
+# What walking the tiles `passed` costs u for what hurts it by the tile: each of its per_tile effects
+# takes its HP (as its damage tags, environmental if none) for each tile past what Meander passes by
+# (Unit.wards(): the effect's rank is its level); `began` is the tiles it had walked before this walk.
+func _toll(u: Unit, passed: Array[Vector2i], began: int) -> void:
+	for e: Effect in u.timed.keys():
+		if e.stat != "per_tile" or e not in u.timed:
+			continue
+		var a: Unit.Applied = u.timed[e]
+		var each: float = e.amount * (a.rank if e.per_rank else 1.0) * a.scale
+		var tags: Array[StringName] = e.tags if not e.tags.is_empty() else ([&"environmental"] as Array[StringName])
+		for i in passed.size():
+			if not u.is_alive():
+				return
+			if not u.wards(a.rank, i + 1, began):
+				toll_paid.emit(u, u.hit(each, tags, a.by if is_instance_valid(a.by) else null))
+
+
 # A trap goes off: most are revealed for good (Terrain.reveals), and it hits whoever stepped on it
 # plus anyone in its blast, putting its wounds on them at its level (Snare: Bleeding). Units with Wary
 # V (trap_power) make the traps they set off hit their enemies harder.
@@ -2754,7 +2903,7 @@ func spring(c: Vector2i, by: Unit) -> void:
 # enter, plus the unit's move_cost effects for that ground (u may be null: terrain only), times
 # wading().
 func step(u: Unit, from: Vector2i, to: Vector2i) -> float:
-	return _cost(u, terrain(from), terrain(to)) * wading(u, to) + obstruction(u, to)
+	return _cost(u, terrain(from), terrain(to)) * wading(u, to) + mark_cost(u, to) + obstruction(u, to)
 
 
 # Obstruct: what entering c costs u on top, for each foe of u beside c with Obstruct: the larger of half
@@ -2775,10 +2924,32 @@ func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
 	return extra
 
 
-# Disturbed earth (Pray, to Vetruvis) costs its side's enemies EARTHWORK_COST times as much to enter,
-# on top of whatever the ground and their effects already make it cost.
-func wading(u: Unit, c: Vector2i) -> float:
-	return EARTHWORK_COST if u and c in earthworks and earthworks[c].faction != u.faction else 1.0
+# What the marks on c make entering it cost u, as a multiplier (wading(): disturbed earth, Pray to Vetruvis,
+# costs its side's enemies EARTHWORK_COST times as much) and as movement more (mark_cost(): Routed!), on
+# top of whatever the ground and u's effects already make it cost. `expected`: only the marks u knows.
+func wading(u: Unit, c: Vector2i, expected := false) -> float:
+	var n := 1.0
+	for m in _marks_for(u, c, expected):
+		n *= m.wade
+	return n
+
+
+func mark_cost(u: Unit, c: Vector2i, expected := false) -> float:
+	var n := 0.0
+	for m in _marks_for(u, c, expected):
+		n += m.cost
+	return n
+
+
+# The entry marks on c that trigger on u: all of them, or (expected) the ones it knows are there.
+func _marks_for(u: Unit, c: Vector2i, expected: bool) -> Array[Mark]:
+	var out: Array[Mark] = []
+	if not u or c not in marks:
+		return out
+	for m: Mark in (known_marks(u, c) if expected else marks_at(c)):
+		if m.on == &"enter" and m.hits(u):
+			out.append(m)
+	return out
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
@@ -3318,6 +3489,8 @@ func end_turn() -> void:
 		_bleed(u)
 		if u.is_alive() and u.cell in flames:
 			_flame(u, flames[u.cell], "ends its turn in fire")
+		if u.is_alive() and u.cell in marks:
+			_trigger(u, u.cell, &"end")
 	side = members(turn)  # a grip can drown one, a wound bleed one out
 	for u in side:
 		_teeter(u, u.idle())
@@ -3352,11 +3525,12 @@ func end_turn() -> void:
 	_tick_pockets(turn)
 	if not order.is_empty() and turn == order[-1]:
 		_repair_tiles()  # a round has passed
-	for c in earthworks.keys():
-		if earthworks[c].faction == turn:
-			earthworks[c].turns -= 1
-			if earthworks[c].turns <= 0:
-				earthworks.erase(c)
+	for c in marks.keys():
+		for m: Mark in marks[c].duplicate():
+			if m.faction == turn:
+				m.turns -= 1
+				if m.turns <= 0:
+					_drop_mark(c, m)
 	_tidy_debris()
 	_borrowed(members(turn))  # and for those on borrowed time
 	Downed.end_round(members(turn))  # a round passes for the Downed
@@ -3560,7 +3734,7 @@ func last_seen(f: Faction) -> Dictionary:
 # holds no earthwork.
 func clear_line(a: Vector2i, b: Vector2i) -> bool:
 	for c in line(a, b, 0):
-		if c != a and c != b and (not on_map(c) or c in earthworks):
+		if c != a and c != b and (not on_map(c) or has_mark(c, &"earthwork")):
 			return false
 	return true
 
@@ -3958,6 +4132,8 @@ func place(u: Unit, c: Vector2i) -> bool:
 		return false
 	if terrain(c).is_trap():
 		spring(c, u)
+	if c in marks and u.is_alive():
+		_trigger(u, c, &"enter")
 	if u.is_alive():
 		_first_look(u)
 	return true
@@ -4923,6 +5099,10 @@ func _on_died(u: Unit) -> void:
 	var i := order.find(u.faction)
 	order.erase(u.faction)
 	zones.assign(zones.filter(func(z: Zone): return z.faction != u.faction))  # nothing left to tick them
+	for c in marks.keys():
+		for m: Mark in marks[c].duplicate():
+			if m.faction == u.faction:
+				_drop_mark(c, m)
 	if sides_left() < 2:
 		phase = Phase.OVER
 	elif turn == u.faction and not ending_turn:

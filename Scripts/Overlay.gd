@@ -59,8 +59,10 @@ func _draw() -> void:
 		_suspect_mark(c, GOLD, pulse, loud)
 	_layers(b)
 	_lattice(b, pulse)
-	for c in b.earthworks:
-		_earth(c)
+	for c in b.marks:
+		for m: Battle.Mark in b.marks[c]:
+			if m in hud.tile_view(c).marks:  # only what the player's side makes out
+				_mark(c, m)
 	for c in b.debris:
 		if hud.tile_view(c).net >= 0:
 			_debris(c)
@@ -426,6 +428,23 @@ func _glass(c: Vector2i, l: Battle.Layer) -> void:
 			draw_polyline(PackedVector2Array([m, m + d * 0.5 + Vector2(d.y, -d.x) * 0.15, m + d]), Color(1, 1, 1, 0.55), 1.0)
 		if l.repair_goal > 0:
 			draw_arc(m, 5.0, -PI / 2, -PI / 2 + TAU * float(l.repairing) / l.repair_goal, 24, Color(STARPOWER, 0.9), 1.5)
+
+
+# A mark on a tile (Battle.marks): disturbed earth is furrowed; the rest are translucent squares in the
+# mark's colour that swell out (Charge!) or fall in (Routed!), over and over, inside a faint outline.
+func _mark(c: Vector2i, m: Battle.Mark) -> void:
+	if m.kind == &"earthwork":
+		_earth(c)
+		return
+	var k := fmod(Time.get_ticks_msec() / 1000.0 * 0.8, 1.0)
+	if m.swell < 0:
+		k = 1.0 - k
+	var r := _rect(c, 1)
+	draw_rect(r, Color(m.tint, 0.16))
+	draw_rect(r, Color(m.tint, 0.7), false, 1.0)
+	var half := (TILE / 2.0 - 1.0) * lerpf(0.2, 1.0, k)
+	var inner := Rect2(_center(c) - Vector2(half, half), Vector2(half, half) * 2.0)
+	draw_rect(inner, Color(m.tint, 0.5 * (1.0 - 0.6 * k) if m.swell >= 0 else 0.5 * (0.4 + 0.6 * k)))
 
 
 func _earth(c: Vector2i) -> void:

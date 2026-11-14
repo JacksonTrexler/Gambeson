@@ -25,7 +25,10 @@ func test_tree() -> void:
 	ok(u.unlock(shields_up) and u.unlock(interdict) and u.unlock(turtle), "Shields Up! opens the rest of Protector")
 	ok(not u.unlock(load("res://Skills/sundering.tres")), "a stub can't be learned")
 	ok(u.unlock(load("res://Skills/interject.tres")), "Interject is built (Reactions): after Shields Up!")
-	ok(load("res://Skills/warcry.tres").describe().begins_with("Not built yet. Waits on Tile marks"), "a stub waiting on a system says which")
+	var waiting := Skill.new()  # (Warcry was the example, till tile marks were built)
+	waiting.stub = "Tile marks (docs/plan.md, phase 1)"
+	ok(waiting.describe().begins_with("Not built yet. Waits on Tile marks"), "a stub waiting on a system says which")
+	ok(load("res://Skills/warcry.tres").stub == "", "Warcry is built: it opens Vanguard")
 	u.free()
 	for s in [shields_up, obstruct, interdict, turtle, jugular]:
 		ok(s.describe(3) != "" and s.stub == "", "%s describes itself" % s.name)
