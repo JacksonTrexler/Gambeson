@@ -100,4 +100,41 @@ vocabulary is for m-core's calculator.
 
 ## As built
 
-(filled in as stages land)
+As planned, plus:
+
+- **Hooks** (`Scripts/Behaviour.gd`): `aim`, `edge`, `guard`, `bonus`, `felled` on a cast; `step_cost`
+  for passives. `Battle.cast()` is now a wrapper over `_cast()` that keeps `_resolving` (casts under way)
+  for `felled()`; `Battle.cast_of()` builds the shared Cast (also for the HUD's `hit_chance(u, s, t, b)`),
+  `edge_of()`, `guard_of()`, `aimed()`, `ambushes()`, `neutralize()` + signal `neutralized`. `hit_tags()`
+  takes an optional foe and battle (ambush). `walk()` returns its hooks' `bag`; `travel()` adds it to
+  `Unit.tally` and tows (`_tow()`); `end_turn()` records `Unit.unspent` and lets towing grips go
+  (`_release_tows()`). `_let_go()` also ends grips a behaviour put on (Applied.skill, lasting).
+- **Unit**: `unspent`, `tally`, `paid_ap`, `refund()`, `bloodied()`, `winded()` (called by `refresh()`).
+- **Mechanics** (mechanic.py): tag `ambush` (`--human`, kind check); Effect stats `tow`, `winded`;
+  effects `Effects/winded.tres` (Winded), `Effects/off_balance.tres` (Off Balance), and
+  `Effects/hitched.tres`, named **Hitched ??** (my name: the held-and-towed status).
+- **Skills**: all eight `--human` via skill.py, on `Trees/slayer.tres`: Gank (the stub replaced: removed
+  and rewritten through the tool, same place, after Jugular), Poach (beside Gank), Sutemi and Spike
+  (after Jugular), Peel and Hitch (beside Jam, no prerequisite), Bludgeon (after Hitch), Slam Jam (after
+  Jam). Poach reaches Rangers through their Prowess choice (opened by Quarry), whose Slayer tab is this tree.
+- `Util/skill.py`: the new hooks join its HOOKS list (so check doesn't call such behaviours empty).
+- **AI**: `AI._strike()` skips a skill whose behaviours' `fits()` refuse the target (Gank with no ally
+  near, Sutemi blocked), so it picks something else rather than failing the cast. Otherwise the AI
+  uses all seven actives as ordinary attacks (scored by damage; it doesn't weigh Gank's ambush, Poach's
+  advantage, Spike's Defense or Sutemi's Off Balance). Peel works for AI walkers for free (walk()).
+- More calls made while building: Hitch's tow applies to every move the caster makes that turn, not
+  only the next; Sutemi's lunge emits no `traveled` (it's a forced move, like pull); Poach's regain
+  fires once per cast; an ambush is judged as the cast is paid for, before Sutemi's lunge.
+- Tests: `Tests/slayer_test.gd` (neutralized, targeting memory, ambush tag, refund, tow on any grip),
+  and one per skill: `gank_test` (incl. the AI), `poach_test` (incl. Rangers, RE), `peel_test` (walk
+  preview = real walk), `sutemi_test`, `spike_test`, `hitch_test`, `bludgeon_test`, `slam_jam_test`.
+  No existing test changed.
+
+## Left open
+
+- Winded's meaning (the user's sentence breaks off).
+- A forced unshape / polymorph break doesn't exist yet; it should call `Battle.neutralize(u, &"unshaped")`.
+- Poach's and Slam Jam's discounts are refunds after paying: the HUD shows the full price beforehand.
+  m-core's cost calculator could fold them in.
+- New tag `ambush` needs a colour (Tags.COLOR) at merge.
+- todo.md / docs/todo not updated (out of bounds): the calls above and Hitched ?? want question numbers.

@@ -261,6 +261,8 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			var r: Read = reads[t]
 			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not u.can_afford(s):
 				continue
+			if not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
+				continue  # not one it can be used on (Gank: no ally near it; Sutemi: no way through)
 			if s.drags_to and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
 			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)

@@ -46,3 +46,16 @@ func test_who() -> void:
 	ok(not gank.ai and gank.stub == "" and gank.name == "Gank", "the user's, built")
 	ok(&"martial" in gank.tags and &"physical" in gank.tags and gank.weapon_tag, "martial, physical, its weapon's blow")
 	ok("ambush" in gank.describe(1).to_lower(), gank.describe(1))
+
+
+func test_ai() -> void:
+	ganker()
+	v(1).learned.clear()
+	v(1).learned.append(slot(gank, 1))
+	v(1).refresh()
+	var log: Array[String] = []
+	var reads := {v(3): b.read(v(1), v(3))}
+	ok(not AI._strike(b, v(1), reads, log) or log.all(func(x: String): return "Gank" not in x), "the AI doesn't pick Gank where it can't be used (%s)" % [log])
+	b.move(v(2), Vector2i(6, 3))
+	log.clear()
+	ok(AI._strike(b, v(1), reads, log), "with an ally beside the foe it strikes (%s)" % [log])
