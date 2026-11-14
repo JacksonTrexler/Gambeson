@@ -33,12 +33,45 @@ static func kind(b: Battle, c: Vector2i) -> StringName:
 	return &""
 
 
+# What this kick would kick, from what lies between now: {what: &"trap" .. &"beside", at: its tile or null}.
+# apply() acts on it, foresee() reports it - the one reading of the ground.
+static func outcome(b: Battle, from: Unit, to: Unit) -> Dictionary:
+	var at: Variant = between(b, from, to)
+	return {what = kind(b, at) if at != null else &"beside", at = at}
+
+
+# For the forecast and the AI (Battle.foresee()): the tile's rider, as a hit would give it. A trap's
+# damage is its dice, before the target's mitigation; the note names the rest.
+func foresee(c: Cast) -> Dictionary:
+	if not c.foe:
+		return {}
+	var o := outcome(c.battle, c.caster, c.target)
+	var turns := "%d turn%s" % [c.rank, "" if c.rank == 1 else "s"]
+	var out := {lo = 0, hi = 0, notes = [] as Array[String]}
+	match o.what:
+		&"trap":
+			var t := c.battle.terrain(o.at)
+			out.lo = t.dice.x * t.times + t.bonus
+			out.hi = t.dice.x * t.dice.y * t.times + t.bonus
+			out.notes.append("Kicks the trap onto it: it springs")
+		&"water":
+			out.notes.append("Soaks it (%s)" % turns)
+		&"loose":
+			out.notes.append("Blinds it (%s)" % turns)
+		&"hole":
+			out.notes.append("Drives it %d tile%s back" % [c.impact_rank(), "" if c.impact_rank() == 1 else "s"])
+		&"beside":
+			out.notes.append("Drives it 1 tile back")
+	return out
+
+
 func apply(c: Cast) -> void:
 	if not c.foe:
 		return
 	var b := c.battle
-	var at: Variant = between(b, c.caster, c.target)
-	var what: StringName = kind(b, at) if at != null else &"beside"
+	var o := outcome(b, c.caster, c.target)
+	var at: Variant = o.at
+	var what: StringName = o.what
 	c.bag[&"kicked"] = what
 	match what:
 		&"trap":

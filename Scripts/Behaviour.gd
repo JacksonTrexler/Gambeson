@@ -98,6 +98,32 @@ func restores(_c: Cast) -> Dictionary:
 	return {}
 
 
+# The share of its AP price the cast gives back (0-1), expected, given p the chance it lands - what the
+# AI weighs as a saving (Poach's discount is sure before the roll, Slam Jam's comes with a hit). Pure:
+# asked before the cast; apply()/aim() still do the giving (Unit.refund()).
+func refunds(_c: Cast, _p: float) -> float:
+	return 0.0
+
+
+# Defense the cast costs its own caster, through its next turn (Sutemi's Off Balance: a point a tile
+# lunged) - what the AI prices against the blow. Pure.
+func unguarded(_c: Cast) -> int:
+	return 0
+
+
+# What a hit would do beyond its damage, foreseen as the cast is planned and as Battle.foresee() reads it
+# for the HUD's forecast and the AI: {lo, hi: more HP it takes off the target, notes: Array[String]: one
+# line for each rider it puts on it}. Pure (no rolls spent). Empty: nothing more.
+func foresee(_c: Cast) -> Dictionary:
+	return {}
+
+
+# Whether the cast brings a Downed target back up (Resuscitate): the AI prefers it to a plain heal on one
+# (AI._heal()), where the two would else tie by list order. Pure.
+func revives(_c: Cast) -> bool:
+	return false
+
+
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
 # (Jam drains as much of its Focus); what a siphon took is c.siphoned (Energy Transfer).
 func dealt(_c: Cast, _n: int) -> void:

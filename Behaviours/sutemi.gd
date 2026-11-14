@@ -51,6 +51,10 @@ func aim(c: Cast) -> void:
 		a.since = c.battle.turns_begun
 
 
+func unguarded(c: Cast) -> int:
+	return lunge(c.battle, c.caster, c.target, c.range_rank()).size() if c.foe else 0
+
+
 # Its terms: the lunge is rank range (with its radius_per_rank); a free move is impactful; Off Balance a
 # minor penalty.
 func terms(t: SkillTerms) -> void:

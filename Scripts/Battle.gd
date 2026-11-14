@@ -1704,6 +1704,22 @@ static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) ->
 	return {lo = lo, hi = hi, avg = (lo + hi) / 2.0}
 
 
+# What a hit with s by u on t would do beyond damage_range(), as its behaviours foresee it
+# (Behaviour.foresee(): Kick's tile): {lo, hi: more HP off t, notes: a line for each rider}. The HUD's
+# forecast (HUD._hurt()) and the AI's score (AI.score()) both read it. Empty: nothing more.
+func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
+	if s.behaviours.is_empty() or not t:
+		return {}
+	var c := cast_of(u, s, t, u.rank(s), t != u and not Faction.friends(t.faction, u.faction))
+	var out := {lo = 0, hi = 0, notes = [] as Array[String]}
+	for bh in s.behaviours:
+		var f := bh.foresee(c)
+		out.lo += int(f.get("lo", 0))
+		out.hi += int(f.get("hi", 0))
+		out.notes.append_array(f.get("notes", [] as Array[String]))
+	return out if out.hi > 0 or not out.notes.is_empty() else {}
+
+
 # A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
 # Ctrl-click): whoever is there takes it as an ordinary cast. If it doesn't land - nobody there, or
 # not quite in reach of what is - it's spent on thin air, as long as the tile itself was in reach

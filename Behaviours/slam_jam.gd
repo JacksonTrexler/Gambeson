@@ -21,6 +21,10 @@ func apply(c: Cast) -> void:
 		super.apply(c)
 
 
+func refunds(c: Cast, p: float) -> float:
+	return p / (c.rank + 2)
+
+
 func dealt(_c: Cast, _n: int) -> void:
 	pass
 

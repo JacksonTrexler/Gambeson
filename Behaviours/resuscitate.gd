@@ -21,6 +21,10 @@ func restores(c: Cast) -> Dictionary:
 	return {&"hp": maxi(-c.target.hp, 0) + amount(c.target.max_hp, c.impact_rank())}
 
 
+func revives(c: Cast) -> bool:
+	return not c.foe and c.target.dbno != null
+
+
 func apply(c: Cast) -> void:
 	if c.foe or c.target.dbno == null:
 		return

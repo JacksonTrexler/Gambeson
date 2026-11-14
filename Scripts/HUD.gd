@@ -73,7 +73,7 @@ var reach: Dictionary[Vector2i, float] = {}  # tiles the selected unit expects t
 var charge := NOWHERE  # the hovered foe a click would walk up to and use a skill on
 var hovered := {}  # what a click on the hovered tile means (intent())
 var spend := {}  # what the hovered plan would consume (drain()): drawn on the unit's own bars and card
-var hurt := {}  # what the hovered attack would take off its target, when its HP is known: {unit, lo, hi}
+var hurt := {}  # what the hovered attack would take off its target, when its HP is known: {unit, lo, hi, notes} (notes: what rides on a hit, Battle.foresee())
 var foresight_used: Dictionary[Unit, int] = {}  # hazard estimates each unit has acted on this turn (foresight())
 var show_odds := false  # Alt held: the exact chance to hit, in the tip (only when the target's Defense is known)
 var marked: Array[Unit] = []  # what the armed skill could be used on
@@ -1209,9 +1209,10 @@ func _hurt(it: Dictionary) -> Dictionary:
 	if not known(t) and view(t).hp == null:
 		return {}
 	var d := Battle.damage_range(u, s, t, battle)  # as Battle.cast() deals it: through its modifiers
-	if d.is_empty():
+	var more := battle.foresee(u, s, t)  # what its behaviours add (Kick's trap), and say of what rides on it
+	if d.is_empty() and more.is_empty():
 		return {}
-	return {unit = t, lo = d.lo, hi = d.hi}
+	return {unit = t, lo = d.get("lo", 0) + more.get("lo", 0), hi = d.get("hi", 0) + more.get("hi", 0), notes = more.get("notes", [] as Array[String])}
 
 
 
@@ -2720,6 +2721,9 @@ func _tip_text() -> String:
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
 		line += "\n%d%% to hit" % roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0)
+	if not hurt.is_empty() and hurt.unit == u:
+		for note: String in hurt.notes:
+			line += "\n" + note
 	return line
 
 

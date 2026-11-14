@@ -29,6 +29,10 @@ func edge(c: Cast) -> int:
 	return 1 if c.bag.get(&"poach", easy(c)) else 0
 
 
+func refunds(c: Cast, _p: float) -> float:
+	return 0.5 if easy(c) else 0.0
+
+
 func felled(c: Cast, _how: StringName) -> void:
 	if c.bag.get(&"regained", false) or not c.caster.is_alive():
 		return

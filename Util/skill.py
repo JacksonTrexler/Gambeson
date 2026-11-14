@@ -23,7 +23,7 @@ from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ex
                   literal, effect_section)
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 128  # (+5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
-HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held")  # Behaviour's hooks: what a passive's behaviour does outside a cast
+HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "revives")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
