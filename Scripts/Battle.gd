@@ -2384,7 +2384,8 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 		return grounds[c]
 	var cost_of := func(prev: Vector2i, c: Vector2i, bag: Dictionary) -> float:
 		var other := unit_at(c)
-		return stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c)
+		return stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c) \
+				+ 0.00001 * Geometry2D.get_closest_point_to_segment(Vector2(c), Vector2(u.cell), Vector2(dest)).distance_to(Vector2(c))  # ties hug the line
 	var bound := 0.0  # the line's own: movement and dread
 	var bag := {}
 	var prev := u.cell
@@ -2416,13 +2417,13 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 					continue
 				var b: Dictionary = bags[at].duplicate()
 				var g: float = best[at] + cost_of.call(at, c, b)
-				if g < bound - 0.0001 and g < best.get(c, INF) - 0.0001:
+				if g < bound - 0.001 and g < best.get(c, INF) - 0.000001:
 					best[c] = g
 					came[c] = at
 					bags[c] = b
 					if c not in open:
 						open.append(c)
-	if dest not in came or best[dest] >= bound - 0.0001:
+	if dest not in came or best[dest] >= bound - 0.001:
 		return ln
 	var out: Array[Vector2i] = []
 	var step := dest
