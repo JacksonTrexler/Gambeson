@@ -31,6 +31,8 @@ var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
 var _walk_len: Dictionary[Unit, float] = {}  # each walk's length, in seconds at speed 1 (walking_left())
+const NEAR := 1.0  # a miss by less than this many tiles shows its gap (_near_miss())
+const SIZE_SCALE := 0.17  # tiles a point of size draws as, in the near-miss circles
 var _floats: Array[Tween] = []  # the floating numbers' tweens, hurried with the walks
 var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
@@ -193,11 +195,32 @@ func _gap(sel: Unit) -> void:
 	if not sel or it.is_empty() or not it.skill or not (it.target is Unit) or it.target == sel:
 		return
 	var out: bool = (it.kind == &"use" and not it.ready and it.why == "Out of reach") or (it.kind == &"refuse" and it.why == "Out of reach")
-	if not out:
-		return
 	var reach_tiles := hud.battle.skill_range(sel, it.skill, it.target)
+	if not out:  # in reach, or a walk away from being: a near miss from where the unit stands still shows
+		_near_miss(sel, it.target, reach_tiles)
+		return
 	_ring(_center(sel.cell), reach_tiles * TILE, Color(FOE, 0.55), true)
 	_ring(_center(it.target.cell), TILE * 0.6, Color(FOE, 0.75), false)
+	_near_miss(sel, it.target, reach_tiles)
+
+
+# A miss by less than NEAR tiles: a small circle for each unit's size (drawn at SIZE_SCALE tiles a point of
+# size; the range itself counts 0.05 of the caster's and 0.02 of the target's), and the gap itself, a
+# short line from the reach ring's edge to the target's circle. A near miss isn't plain luck (Luck.MARGIN):
+# here is how far.
+func _near_miss(sel: Unit, target: Unit, reach_tiles: float) -> void:
+	var a := _center(sel.cell)
+	var b := _center(target.cell)
+	var gap := a.distance_to(b) / TILE - reach_tiles
+	if gap <= 0.0 or gap >= NEAR:
+		return
+	var col := Color(FOE, 0.6)
+	var rs := sel.stat(&"size") * SIZE_SCALE * TILE
+	var rt := target.stat(&"size") * SIZE_SCALE * TILE
+	_ring(a, rs, col, false)
+	_ring(b, rt, col, false)
+	var dir := (b - a).normalized()
+	draw_dashed_line(a + dir * reach_tiles * TILE, b - dir * rt, Color(FOE, 0.5), 1.0, 2.0)
 
 
 # The tile's centre in this node's space (the map sits at the battle's origin, as this does).
