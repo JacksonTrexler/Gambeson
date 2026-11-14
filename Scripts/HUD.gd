@@ -2104,14 +2104,14 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 
 # What a mark on a tile says: its name, whom it's for, what it does when they come on (or end a turn there), and how long it has.
 func _mark_note(m: Battle.Mark, ours: bool) -> String:
-	var who: String = {&"allies": "allies of its side", &"foes": "its side's foes", &"any": "anyone"}[m.who]
+	var who: String = {&"allies": "allies", &"foes": "foes", &"any": "anyone"}[m.who]
 	var does: Array[String] = []
 	if m.cost > 0.0:
-		does.append("%s more movement to enter" % Skill.num(m.cost))
+		does.append("%s more movement" % Skill.num(m.cost))
 	for e in m.effects:
 		does.append(e.describe(m.rank))
-	return "%s%s: %s, for %s %s, {t:%d turns} left" % [m.name, " (yours)" if ours else "", "; ".join(does) if not does.is_empty() else "marks the ground",
-			who, "entering" if m.on == &"enter" else "ending a turn there", m.turns]
+	return "%s%s, for %s %s: %s, {t:%d turns} left" % [m.name, " (yours)" if ours else "", who, "entering" if m.on == &"enter" else "ending a turn there",
+			"; ".join(does) if not does.is_empty() else "marks the ground", m.turns]
 
 
 func _fill_lines(box: Container, lines: Array) -> void:
