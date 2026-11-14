@@ -196,6 +196,7 @@ def check_icons(problems):
     for f in os.listdir(os.path.join(ROOT, icon.SKILL_ICONS)):
         if f.endswith(".png") and not os.path.exists(os.path.join(ROOT, "Skills", f[:-4] + ".tres")):
             problems.append("%s/%s: an icon for no skill (renamed? move it with the skill)" % (icon.SKILL_ICONS, f))
+    problems.extend(icon.check_items())
 
 
 def check(_args=None):

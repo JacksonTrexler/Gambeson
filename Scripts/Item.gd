@@ -51,6 +51,9 @@ extends Resource
 @export var emblem := &""  # a symbol (rho_up, rho_down, sigma_up, sigma_down, lambda_up, lambda_down) or a tag (fire, execute)
 @export var scope := &""  # sigil: the leftmost eligible skill on the hotbar; insignia: every skill; crest: actives; badge: passives
 
+const ICONS := "res://Icons/Items/"  # <item file>.png each: icon()
+static var _icons := {}
+
 # Armor by weight (its tag: light, medium, heavy) shares its basic piece's scaling: Defense the higher of
 # a floor and level x a share, + dex mod x a share (Unit.armor_defense()). Heavy armor also drags at
 # its wearer's dex and wis AP (Unit.armor_drag()).
@@ -259,6 +262,18 @@ func trim_tag() -> StringName:
 func trim() -> Color:
 	var t := trim_tag()
 	return Tags.color(t) if t else Color(0, 0, 0, 0)
+
+
+# Its icon: Icons/Items/<its file>.png, 32x32 in colour (Util/icon.py draws a placeholder by slot and kind; real
+# art replaces the file). A copy made at run time has no file: its name's slug finds it. null: none.
+func icon() -> Texture2D:
+	var id := resource_path.get_file().get_basename()
+	if id == "":
+		id = name.to_lower().replace("'", "").replace(" ", "_")
+	if id not in _icons:
+		var p := ICONS + id + ".png"
+		_icons[id] = load(p) if ResourceLoader.exists(p) else null
+	return _icons[id]
 
 
 # Its trim drawn as a little banner (placeholder art): a pole at `at`, a swallowtail of `cloth` edged in

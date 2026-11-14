@@ -23,6 +23,8 @@ description: Add a class (Role) to Gambeson - writes Roles/<id>.tres, its own sk
    the empty tree until the first skill goes on - expected. `--help` shows each focus's stats.
    An NPC-only class: `--no-entry`, and add it to `NPC_ONLY` in `Util/role.py`.
 
+   **A god or patron** (`Gods/<id>.tres`, its own tree; `docs/plans/gods.md`): `python3 Util/role.py god <id> [--patron] [--tree luun --kind Divinity] [--offers a,b] [--human]` (`--help` for the rest).
+
    **Growing a class that exists** (a new tab, a school, a choice of trees):
    ```
    python3 Util/role.py tree <id> --name <Name> --tag specialist|martial|magical [--human]   # an empty root, Trees/<id>.tres
