@@ -958,8 +958,10 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 # words it, click() runs it (_run()). {kind, cell, unit (who acts), skill, target (a Unit, or the cell
 # for an area skill), dest (where it walks first: its own cell if nowhere), walk (Battle.walk() there,
 # expected, or {}), ready (the skill should be usable from dest), why (a refusal's reason), alt}.
-# Kinds: none, study (preparation), walk, use (walk to dest, then use skill on target), strike_at
-# (walk, then strike at the tile whatever's there), select, let_go, refuse, disarm.
+# Kinds: none, study (preparation), walk, use (walk to dest, then use skill on target: on itself for a
+# self skill), strike_at (walk, then strike at the tile whatever's there), command_walk (the leader walks
+# into order range of an ally), rest / continue (a channel) / done (it already acted): itself, ending
+# only its own turn; select, let_go, refuse.
 func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dictionary:
 	var me := selected
 	var it := {kind = &"none", cell = c, unit = me, skill = null, target = null, dest = me.cell if me else NOWHERE, walk = {}, ready = false, why = "", alt = alt}
@@ -1002,6 +1004,15 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 		var p := _primary(me)
 		if p:
 			return _use_intent(it, p, t)
+	if mine and t == me:  # itself: rest, keep a channel going, or (having acted) stand down for the turn
+		it.target = me
+		it.kind = (&"continue" if me.channel else &"rest") if me.idle() else &"done"
+		return it
+	if mine and t and me == command.leader and known(t) and command.could_order(t) and not command.in_range(t):
+		var w := _into_command(t)  # an ally out of reach of orders: the leader's walk into range of it
+		if w.dest != me.cell and w.sure:
+			it.target = t
+			return _walk_to(it, &"command_walk", w.dest, true)
 	if t:
 		it.kind = &"select"
 		it.target = t
@@ -1078,6 +1089,12 @@ func _run(it: Dictionary) -> void:
 			select(null)
 		&"walk":
 			_move(u, it.cell)
+		&"command_walk":
+			_move(u, it.dest)
+		&"rest", &"continue", &"done":
+			command.lock(u)  # only this unit's turn ends
+			_log("%s %s" % [_tag(u), {&"rest": "rests", &"continue": "keeps channeling", &"done": "stands down"}[it.kind]])
+			_done(u, true)
 		&"use", &"strike_at":
 			var walked: bool = it.dest != u.cell
 			if walked:
@@ -2696,15 +2713,24 @@ func command_glow(u: Unit) -> int:
 		&"spent":
 			return Unit.Intensity.BARELY
 		&"far":
-			var lead := command.leader
-			var span := command.party_reach() if u in command.party else float(command.reach())
-			var path: Array[Vector2i] = []
-			for c in battle.walk(lead, u.cell, true).path:
-				path.append(c)
-				if Command.tiles(c, u.cell) <= span and not unit_seen(c):
-					return Unit.Intensity.MOSTLY if _sure_walk(lead, path) else Unit.Intensity.SOMEWHAT
-			return Unit.Intensity.BARELY
+			var w := _into_command(u)
+			if w.dest == command.leader.cell:
+				return Unit.Intensity.BARELY
+			return Unit.Intensity.MOSTLY if w.sure else Unit.Intensity.SOMEWHAT
 	return -1
+
+
+# Where the leader's walk straight toward u first brings u into reach of its orders, and whether that
+# walk is one it can count on (_sure_walk()); {dest = the leader's own cell} if none does this turn.
+func _into_command(u: Unit) -> Dictionary:
+	var lead := command.leader
+	var span := command.party_reach() if u in command.party else float(command.reach())
+	var path: Array[Vector2i] = []
+	for c in battle.walk(lead, u.cell, true).path:
+		path.append(c)
+		if Command.tiles(c, u.cell) <= span and not unit_seen(c):
+			return {dest = c, sure = _sure_walk(lead, path)}
+	return {dest = lead.cell, sure = false}
 
 
 # Whether u's walk across `path` is one the player can count on: nothing holds u (breaking free is a

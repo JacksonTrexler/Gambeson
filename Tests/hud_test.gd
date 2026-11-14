@@ -1092,3 +1092,37 @@ func test_layer_pane() -> void:
 	lines = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(lines.has("Repairing: 1/3") and lines[0].begins_with("Cracked Startile: Lets through, Brittle, Unstable"), "a cracked startile mending (%s)" % [lines])
 	h.free()
+
+
+# The hover table: a tile walks, a foe is attacked with the first attack from the selected slot
+# (wrapping), an ally out of order range plans the leader's walk into range, a support skill selected
+# walks up to an ally and uses it, and clicking yourself rests (only that unit's turn) or keeps a channel.
+func test_hover_rows() -> void:
+	var al := unit("Alabaster")
+	var aid: Skill = load("res://Skills/first_aid.tres")
+	v(1).learned.append(slot(aid))
+	v(1).hotbar[1] = aid
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(2, 3), al: Vector2i(6, 3), v(3): Vector2i(4, 5), v(4): Vector2i(9, 0)})
+	v(1).charisma = 14  # orders reach 2 tiles
+	var h := await start(v(1))
+	ok(h.intent(Vector2i(1, 5)).kind == &"walk", "a tile: walk")
+	h.use_slot(1)
+	var it := h.intent(Vector2i(4, 5))
+	ok(it.kind == &"use" and it.skill == strike, "First Aid selected, a foe: the first attack from the slot, wrapping round to Strike")
+	ok(h.support_view() and h.glow_of(v(3)) == Unit.Intensity.BARELY, "the support view: foes fall back")
+	al.hp = 3
+	it = h.intent(Vector2i(6, 3))
+	ok(it.kind == &"use" and it.skill == aid and it.dest != v(1).cell and not it.walk.is_empty(), "an ally hurt and out of reach: walk up and use First Aid")
+	h.use_slot(0)
+	it = h.intent(Vector2i(6, 3))
+	ok(h.command_state(al) == &"far" and it.kind == &"command_walk" and Command.tiles(it.dest, al.cell) <= 2, "Strike selected: the leader's walk into order range of it")
+	h.click(Vector2i(6, 3))
+	ok(h.command.in_range(al) and h.selected == v(1), "clicking it walks there")
+	ok(h.intent(Vector2i(6, 3)).kind == &"select", "now in range: a click selects it for orders")
+	h.select(v(2))
+	ok(h.intent(v(2).cell).kind == &"rest", "an ally yet to act, clicking itself: rest")
+	h.click(v(2).cell)
+	ok(v(2) in h.command.locked and v(2).activity() == &"rest" and h.command.can_order(v(1)), "it rests: only its own turn ends")
+	h.select(v(1))
+	ok(h.intent(v(1).cell).kind == &"done", "the leader, having walked: standing down")
+	h.free()
