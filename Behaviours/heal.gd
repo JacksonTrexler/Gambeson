@@ -1,12 +1,12 @@
 extends Behaviour
 
-# A heal by magnitude (Heal, Megaheal): the ally gets back d8s as many as its `magnitude` of its rank (Difficulty.MAGNITUDE: Heal moderate, 1.5 x rank; Megaheal extreme, 3 x rank),
+# A heal by magnitude (Heal, Megaheal): the ally gets back d8s as many as its `magnitude` of its rank (Difficulty.MAGNITUDE: Heal moderate, 1.5 x rank; Megaheal severe, 3 x rank),
 # + the caster's mod in the skill's stat (Skill.stat()) + rank, at least 1 - through Battle.mend(), so
 # Molothrus and Burnout hear it as any heal.
 
 const DIE := 8
 
-@export var magnitude := &"moderate"  # Difficulty.MAGNITUDE: how many d8 a rank (Heal moderate, Megaheal extreme)
+@export var magnitude := &"moderate"  # Difficulty.MAGNITUDE: how many d8 a rank (Heal moderate, Megaheal severe)
 
 
 # How many d8 it rolls at rank r.

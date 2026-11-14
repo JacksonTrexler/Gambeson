@@ -1,7 +1,7 @@
 extends Test
 
 # Heal and Megaheal (Skills/heal.tres, Skills/megaheal.tres; Behaviours/heal.gd): Eros, tier 8. An ally
-# gets back d8s by magnitude of rank (Heal moderate: 1.5 x rank, Megaheal extreme: 3 x rank), + the
+# gets back d8s by magnitude of rank (Heal moderate: 1.5 x rank, Megaheal severe: 3 x rank), + the
 # caster's wis mod + rank. Megaheal costs more. Both reach Burnout like any heal.
 
 var heal: Skill = load("res://Skills/heal.tres")

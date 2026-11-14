@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="Behaviour_heal"]
 script = ExtResource("b_heal")
-magnitude = &"extreme"
+magnitude = &"severe"
 
 [resource]
 script = ExtResource("1_skill")
