@@ -66,7 +66,7 @@ func test_category_gate() -> void:
 	ok("Specialist" in names(f) and f.missing(sk("synergy")) == "" and f.missing(sk("striking_features")) != "", "a Fighter's Journeyman III: the Specialist tree, up to tier 2")
 	var c := unit_of("cleric")
 	c.skill_points = 5
-	c.pick(c.role.choices[0], c.role.choices[0].tabs[0])
+	c.pick(c.role.choices[0], God.of(&"luun").own)
 	c.unlock(sk("level_down"))
 	ok(c.missing(sk("elemental_strike")) == "", "a Cleric's Luun skill (tier 2) opens Caster tier 2")
 

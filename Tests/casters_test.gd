@@ -35,7 +35,7 @@ func named(c: TreeChoice, n: String) -> SkillTab:
 
 
 func test_wizard_tree() -> void:
-	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Luun", "Divinity: Sol", "Divinity: Eros", "Genre: Song", "Patron: Elmon", "Patron: Hogel",
+	ok(titles(wizard.trees()) == ["Wizard", "World: Nature", "Divinity: Eros", "Divinity: Luun", "Divinity: Sol", "Genre: Song", "Patron: Elmon", "Patron: Hogel",
 			"School: Radiance", "School: Currents", "School: Stone", "School: Shadow", "School: Stars", "School: Illusion"], "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
 	ok(wizard.choices.all(func(c: TreeChoice): return c.tabs.is_empty()) and wizard.choices.map(func(c: TreeChoice): return c.borrows) == [["Divinity"], ["Genre"], ["Patron"], ["School"]],
 			"no list of its own: each borrows a kind of tree")
@@ -43,15 +43,15 @@ func test_wizard_tree() -> void:
 	ok(wizard.choices.map(func(c: TreeChoice): return c.name) == ["Domain", "Genre", "Pact", "School"]
 			and wizard.choices.map(func(c: TreeChoice): return c.by) == [sk("divinity"), sk("symphony"), sk("witchery"), sk("mastery")]
 			and wizard.choices.map(func(c: TreeChoice): return c.affinity) == [-1, -1, -1, 0], "each opened by its study; guest trees at -1, a Mage's school at none")
-	ok(named(choice(wizard, "Domain"), "Luun").roots[0] == load("res://Roles/cleric.tres").choices[0].tabs[0].roots[0]
-			and named(choice(wizard, "Pact"), "Elmon").roots[0] == load("res://Roles/warlock.tres").choices[0].tabs[0].roots[0]
+	ok(named(choice(wizard, "Domain"), "Luun").roots[0] == God.of(&"luun").own.roots[0]
+			and named(choice(wizard, "Pact"), "Elmon").roots[0] == God.of(&"elmon").own.roots[0]
 			and named(choice(wizard, "Genre"), "Song").roots[0] == load("res://Roles/bard.tres").tabs[0].roots[0]
 			and named(choice(wizard, "School"), "Shadow").roots[0] == named(choice(mage, "School"), "Shadow").roots[0], "the other classes' own trees, shared")
 	ok(named(choice(wizard, "Domain"), "Luun").core == [sk("pray"), sk("renew")] and named(choice(wizard, "Pact"), "Hogel").core == [sk("hex"), sk("sweet_nothings"), sk("chant")],
 			"each with its class's shared row first: a Cleric's Pray and Renew, a Warlock's Hex, Sweet Nothings and Chant")
 	var callings := TreeChoice.new()
 	callings.borrows = ["Calling", "Prowess", "Divinity"]
-	ok(titles(callings.all()) == ["Divinity: Luun", "Divinity: Sol", "Divinity: Eros"],
+	ok(titles(callings.all()) == ["Divinity: Eros", "Divinity: Luun", "Divinity: Sol"],
 			"caster trees of the kinds it borrows, from any class, each once; no martial Prowess, no specialist Calling: %s" % [titles(callings.all())])
 	ok(sk("igna") in wizard.options and sk("aetha") in wizard.options and sk("darkstone") in wizard.options, "every starter spell, and Darkstone, on its core ring")
 	ok(wizard.tier(sk("sola")) == 1 and wizard.tier(sk("igna")) == 1 and wizard.tier(sk("mana")) == 0 and wizard.tier(sk("spellweave")) == 2 and wizard.tier(sk("unbound")) == 5,

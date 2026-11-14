@@ -293,6 +293,8 @@ def put_on_tree(a, sid):
         lines.append('after = Array[ExtResource("%s")]([%s])' % (skill_ext, ", ".join('ExtResource("%s")' % x for x in pre)))
     if a.branch_tier:
         lines.append("tier = %d" % a.branch_tier)
+    if a.needs:
+        lines.append("needs = %d" % a.needs)
     if anchor is None:  # the first branch: before the [resource] (or the root's own section), alone in its list
         at = re.search(r"^\[resource\]$", text, re.M) if root["kind"] == "resource" else \
             re.search(r'^\[sub_resource type="Resource" id="%s"\]$' % re.escape(root["attrs"]["id"]), text, re.M)
@@ -324,7 +326,8 @@ def put_in_options(role, sid):
     else:
         text = re.sub(r"^(\[resource\]\n(?:.+\n)*?)(roots = )", lambda m: m.group(1) + 'options = Array[ExtResource("%s")]([%s])\n' % (skill_ext, item) + m.group(2),
                       text, count=1, flags=re.M)
-        "options = " in text or die("%s: no roots = line to put options before" % p)
+        if "options = " not in text:  # a class with no roots of its own (the Warlock): at the end of its resource
+            text = text.rstrip("\n") + '\noptions = Array[ExtResource("%s")]([%s])\n' % (skill_ext, item)
     return p, add_ext(text, '[ext_resource type="Resource" path="res://Skills/%s.tres" id="%s"]' % (sid, oid))
 
 
@@ -382,6 +385,7 @@ def main():
     n.add_argument("--after", help="the skill whose branch it goes beside (and whose root)")
     n.add_argument("--root", help="or: the root (by name) it goes at the end of")
     n.add_argument("--prereq", help="skills to learn first, comma separated (Branch.after)")
+    n.add_argument("--needs", type=int, help="a capstone: how many of its root's other skills it needs (Branch.needs)")
     n.add_argument("--branch-tier", type=int, help="its tier on a general tree (Branch.tier)")
     n.add_argument("--role", help="Roles/<x>.tres it's offered by outright (Role.options)")
     n.add_argument("--no-import", action="store_true")

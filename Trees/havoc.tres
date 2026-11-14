@@ -20,4 +20,3 @@ script = ExtResource("root")
 name = "Havoc"
 tag = &"martial"
 branches = Array[ExtResource("branch")]([SubResource("Branch_rally"), SubResource("Branch_savage_swing")])
-gods = Array[StringName]([&"ramut", &"luun", &"drael", &"urlo"])

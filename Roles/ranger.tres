@@ -25,6 +25,12 @@
 [ext_resource type="Resource" path="res://Skills/wary.tres" id="s_wary"]
 [ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
 [ext_resource type="Resource" path="res://Skills/focus.tres" id="s_focus"]
+[ext_resource type="Resource" path="res://Skills/quarry.tres" id="s_quarry"]
+[ext_resource type="Resource" path="res://Skills/survivalist.tres" id="s_survivalist"]
+[ext_resource type="Resource" path="res://Skills/wildcaller.tres" id="s_wildcaller"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="skilltab"]
+[ext_resource type="Resource" path="res://Trees/survival.tres" id="survival"]
+[ext_resource type="Resource" path="res://Trees/slayer.tres" id="slayer"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -48,11 +54,16 @@ script = ExtResource("8_branch")
 skill = ExtResource("s_special_eyes")
 after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
 
+[sub_resource type="Resource" id="Branch_quarry"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_quarry")
+needs = 2
+
 [sub_resource type="Resource" id="Root_Bounty"]
 script = ExtResource("7_root")
 name = "Bounty"
 tag = &"specialist"
-branches = Array[ExtResource("8_branch")]([SubResource("B_observe"), SubResource("Branch_focus"), SubResource("B_snare"), SubResource("B_special_eyes")])
+branches = Array[ExtResource("8_branch")]([SubResource("B_observe"), SubResource("Branch_focus"), SubResource("B_snare"), SubResource("B_special_eyes"), SubResource("Branch_quarry")])
 
 [sub_resource type="Resource" id="B_hide"]
 script = ExtResource("8_branch")
@@ -72,11 +83,16 @@ after = Array[ExtResource("5_skill")]([ExtResource("s_hide")])
 script = ExtResource("8_branch")
 skill = ExtResource("s_stamina")
 
+[sub_resource type="Resource" id="Branch_survivalist"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_survivalist")
+needs = 2
+
 [sub_resource type="Resource" id="Root_Scout"]
 script = ExtResource("7_root")
 name = "Scout"
 tag = &"specialist"
-branches = Array[ExtResource("8_branch")]([SubResource("B_hide"), SubResource("B_eyes_forward"), SubResource("B_wary"), SubResource("Branch_stamina")])
+branches = Array[ExtResource("8_branch")]([SubResource("B_hide"), SubResource("B_eyes_forward"), SubResource("B_wary"), SubResource("Branch_stamina"), SubResource("Branch_survivalist")])
 
 [sub_resource type="Resource" id="B_first_aid"]
 script = ExtResource("8_branch")
@@ -87,19 +103,51 @@ script = ExtResource("8_branch")
 skill = ExtResource("s_field_experience")
 after = Array[ExtResource("5_skill")]([ExtResource("s_first_aid")])
 
+[sub_resource type="Resource" id="Branch_wildcaller"]
+script = ExtResource("8_branch")
+skill = ExtResource("s_wildcaller")
+needs = 1
+
 [sub_resource type="Resource" id="Root_Forester"]
 script = ExtResource("7_root")
 name = "Forester"
 tag = &"specialist"
-branches = Array[ExtResource("8_branch")]([SubResource("B_first_aid"), SubResource("B_field_experience")])
+branches = Array[ExtResource("8_branch")]([SubResource("B_first_aid"), SubResource("B_field_experience"), SubResource("Branch_wildcaller")])
 
 [sub_resource type="Resource" id="Choice_Nature"]
 script = ExtResource("6_choice")
 name = "Nature"
+by = ExtResource("s_wildcaller")
 affinity = -1
 invest = 4
 talent = &"natural_talent"
 borrows = Array[String](["Biome"])
+
+[sub_resource type="Resource" id="Tab_survival"]
+script = ExtResource("skilltab")
+name = "Survival ??"
+kind = "Path"
+roots = Array[ExtResource("7_root")]([ExtResource("survival")])
+
+[sub_resource type="Resource" id="Choice_survival"]
+script = ExtResource("6_choice")
+name = "Survival ??"
+tabs = Array[ExtResource("skilltab")]([SubResource("Tab_survival")])
+by = ExtResource("s_survivalist")
+affinity = -1
+
+[sub_resource type="Resource" id="Tab_slayer"]
+script = ExtResource("skilltab")
+name = "Slayer"
+kind = "Prowess"
+roots = Array[ExtResource("7_root")]([ExtResource("slayer")])
+
+[sub_resource type="Resource" id="Choice_prowess"]
+script = ExtResource("6_choice")
+name = "Prowess"
+tabs = Array[ExtResource("skilltab")]([SubResource("Tab_slayer")])
+by = ExtResource("s_quarry")
+affinity = -1
 
 [resource]
 script = ExtResource("1_script")
@@ -114,4 +162,4 @@ stats = Dictionary[StringName, int]({&"strength": 11, &"dexterity": 14, &"consti
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_rapier"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"specialist", &"martial"])
 roots = Array[ExtResource("7_root")]([SubResource("Root_Bounty"), SubResource("Root_Scout"), SubResource("Root_Forester")])
-choices = Array[ExtResource("6_choice")]([SubResource("Choice_Nature")])
+choices = Array[ExtResource("6_choice")]([SubResource("Choice_prowess"), SubResource("Choice_survival"), SubResource("Choice_Nature")])

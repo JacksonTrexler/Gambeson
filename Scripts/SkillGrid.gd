@@ -142,15 +142,26 @@ func _layout() -> void:
 		var cap := unit.pick_cap(c)
 		var heading := "%s · %s" % [c.name.to_upper(), "LEARN " + c.by.name.to_upper() if c.by and unit.rank(c.by) == 0 else "PICK UP TO %d" % cap]
 		var start := x + 3.0
-		var offered: Array = c.all().filter(func(t: SkillTab): return t and unit.suits(t))  # a Paladin sees only the Prowess its god suits
+		var offered: Array = unit.offered(c)  # a god slot: what its god offers (a Paladin sees only the Prowess its god suits)
+		var burn := unit.burnable(c)
+		if burn:
+			offered.append(burn.duplicate())  # a Warlock's own patron, to burn a flex slot into (its own entry: drawn burned)
+		if c.slot():  # a slot leaves out what's open through another (an Eros Paladin's Domain, Eros, from its Flex)
+			offered = offered.filter(func(t: SkillTab): return not unit.open_tab(t) or unit.picks(c).has(t))
 		for i in offered.size():
-			_entries[offered[i]] = [Rect2(Vector2(start + i * (BOX.x + GAP.x), row_y(row)), BOX), c]
+			var t: SkillTab = offered[i] if offered[i] not in _entries else offered[i].duplicate()  # a tree in two boxes: an entry in each
+			_entries[t] = [Rect2(Vector2(start + i * (BOX.x + GAP.x), row_y(row)), BOX), c]
 		var inner := offered.size() * (BOX.x + GAP.x) - GAP.x
 		var heading_w := get_theme_font(&"font").get_string_size(heading, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x
 		var tone: Color = offered[0].tone() if not offered.is_empty() else CORE
 		_choice_boxes.append([Rect2(Vector2(x, row_y(row) - HEAD), Vector2(maxf(inner, heading_w) + 6.0, BOX.y + 13.0)), heading, tone, c.by])
 		x += maxf(inner, heading_w) + 6.0 + GAP.x * 2.0
 	custom_minimum_size = Vector2(x + PAD, row_y(0) + BOX.y + BASE + PAD)
+	set_process(_entries.keys().any(func(t: SkillTab): return burn_entry(t) and unit.burned(t) > 0))  # a burned tree quivers
+
+
+func _process(_delta: float) -> void:
+	queue_redraw()
 
 
 # The tier a choice's box sits on: 0, or just above the skill that opens it (a Wizard's Divinity).
@@ -203,10 +214,26 @@ func _draw() -> void:
 		_entry(t, _entries[t][0], font)
 
 
-# A tree's tier 0 root in a choice's box: its glyph in its tree's colour, filled once picked.
+# Whether entry t is the tree its unit took up, offered in a burning choice (TreeChoice.burns): drawn
+# darkened, with the cursed look of a disabled skill (SkillSlot: dimmed, a gentle quiver).
+func burn_entry(t: SkillTab) -> bool:
+	var b := unit.burnable(_entries[t][1]) if t in _entries else null
+	return b != null and b.name == t.name and b.kind == t.kind
+
+
+# A tree's tier 0 root in a choice's box: its glyph in its tree's colour, filled once picked; a burn's
+# darkened, quivering once a slot is burned into it, its count in the corner.
 func _entry(t: SkillTab, box: Rect2, font: Font) -> void:
 	var tone := t.tone()
 	var state := entry_state(t)
+	var burns := burn_entry(t)
+	var n := unit.burned(t) if burns else 0
+	if burns:
+		tone = tone.darkened(0.6)
+		if n > 0:
+			state = &"learned"
+			var at := Time.get_ticks_msec() / 1000.0
+			draw_set_transform(Vector2(sin(at * 23.0) * 0.6, sin(at * 17.0 + 1.3) * 0.35))
 	var fill := tone.darkened(0.25) if state == &"learned" else FILL
 	var edge := tone.lightened(0.35) if state == &"learned" else (tone if state == &"open" else Color(tone, 0.35))
 	var ink := Color(0.95, 0.96, 0.98) if state == &"learned" else (tone.lightened(0.45) if state == &"open" else Color(tone.lightened(0.2), 0.5))
@@ -220,7 +247,12 @@ func _entry(t: SkillTab, box: Rect2, font: Font) -> void:
 		draw_rect(box.grow(2.5), Color(1, 1, 1, 0.45), false, 1.0)
 	var text := t.mark()
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x
-	draw_string(font, box.get_center() + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, ink)
+	draw_string(font, box.get_center() + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6, ink * Color(1, 1, 1, 0.25 if burns else 1.0))
+	if n > 0:
+		var count := "x%d" % n
+		var cw := font.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, 4).x
+		draw_string(font, box.end + Vector2(-cw - 1.0, -1.5), count, HORIZONTAL_ALIGNMENT_LEFT, -1, 4, Color(1, 1, 1, 0.5))
+	draw_set_transform(Vector2.ZERO)
 
 
 func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
@@ -302,6 +334,9 @@ func _get_tooltip(at: Vector2) -> String:
 	var t := entry_at(at) if unit else null
 	if t:
 		var why := unit.pick_missing(_entries[t][1], t)
+		if burn_entry(t):
+			return "%s, burned · %d\nBurn a slot into your patron: an efficiency stack on its tree (+1 Affinity, every tier)%s" % [
+					t.title(), unit.burned(t), "\n" + why if why else ""]
 		return "%s · T0\n%s%s" % [t.title(), SkillTree.opens(t), "\n" + why if why else ""]
 	var s := skill_at(at) if unit else null
 	if not s:

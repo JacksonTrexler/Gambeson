@@ -466,27 +466,35 @@ func affinity(s: Skill) -> int:
 # Discipline), and what the tree's choice says (a Wizard's guest trees: -1; Mage schools by Mastery:
 # 0) - a penalty lifted by enough magic learned (invest: a Ranger's Nature) or, sparing kin, for an
 # elemental skill or a tree kin to one it picked (a Druid's guests), and +1 by its talent up to the
-# tier it reads (Natural Talent); then its learned passives' behaviours have their say (Illusionist).
+# tier it reads (Natural Talent); then its efficiency stacks on the tree (efficiency()).
 func guest_affinity(s: Skill) -> int:
 	if not role:
 		return 0
 	var out := 1 if s in role.knack else 0
-	if not role.choices.any(func(c: TreeChoice): return c and (c.affinity != 0 or c.talent)):
-		return out
 	for t in role.tabs_of(s):
-		var c := role.choice_of(t)
-		if c and open_tab(t):
+		for c in role.choices_of(t):
+			if not picks(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind):
+				continue
 			var a := c.affinity
 			if a < 0 and ((c.invest > 0 and magic_learned() >= c.invest) or (c.spares_kin and _kin(s, t))):
 				a = 0
 			if c.talent and role.tier(s) <= roundi(stat(c.talent)):
 				a += 1
-			for x in slots:  # its passives' say (Behaviour.affinity(): Illusionist)
-				if x.rank > 0 and x.skill.passive:
-					for h in x.skill.behaviours:
-						a = h.affinity(self, x.rank, s, t, a)
-			return out + a
+			return out + efficiency(s, t, a)
 	return out
+
+
+# An efficiency stack is +1 Affinity on a tree's skills - cheaper rank-ups - up to a tier: one for
+# each flex slot burned into tree t (burned(): a Warlock's patron, every tier), and whatever its learned
+# passives' behaviours say, given the choice's own `a` (Behaviour.affinity(): Efficiency, a stack up to
+# its rank's tier - Bargaining, Acceptance, a Ranger's capstones; Illusionist).
+func efficiency(s: Skill, t: SkillTab, a := 0) -> int:
+	a += burned(t)
+	for x in slots:
+		if x.rank > 0 and x.skill.passive:
+			for h in x.skill.behaviours:
+				a = h.affinity(self, x.rank, s, t, a)
+	return a
 
 
 # The biomes it has picked (a Druid's: astral, sylvan, montane, xeric, nival, thalassic), by name.
@@ -1004,9 +1012,10 @@ func devotions() -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
 	if role:
 		for c in role.choices:
-			for t in picks(c):
-				if t.devotes:
-					out.append(t)
+			if c and not c.slot():  # a god slot's trees come from whom it serves: they don't decide it
+				for t in picks(c):
+					if t.devotes and t not in out:
+						out.append(t)
 		for t in role.tabs:
 			if t and t.devotes and _learned_on(t):
 				out.append(t)
@@ -1026,24 +1035,45 @@ func _learned_on(t: SkillTab) -> bool:
 	return t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return x in held))
 
 
-# The trees of choice c it has picked (Unit.pick()); with none picked, those it has learned a skill on
-# (units authored with their skills, no picks).
+# The trees of choice c it has picked (Unit.pick()), and those a god slot opens without a pick (grants,
+# or no more on offer than it may pick: "if there's choice at all"); with none, those it has learned a
+# skill on (units authored with their skills, no picks).
 func picks(c: TreeChoice) -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
-	for t in c.all():
+	var offer := offered(c)
+	for t in offer:
 		if t and c.key(t) in picked:
 			out.append(t)
+	if c.slot() and not offer.is_empty() and (c.grants or (not c.by and offer.size() <= c.picks)):
+		for t in offer:
+			if t not in out:
+				out.append(t)
 	if out.is_empty():
-		for t in c.all():
+		for t in offer:
 			if t and _learned_on(t):
+				out.append(t)
+	return out
+
+
+# The trees of choice c open to it to pick: a god slot's, what its god offers of the slot's kinds
+# (God.pool); a burning choice's, the tree it took up in a choice of god as well (to burn a slot into).
+func offered(c: TreeChoice) -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	if not c.slot():
+		out.assign(c.all().filter(func(t: SkillTab): return t != null and suits(t)))
+		return out
+	var g := God.of(deity())
+	if g:
+		for t in c.all():
+			if t and g.has(t, c.kinds):
 				out.append(t)
 	return out
 
 
 # Whether tab t of its class is open to it: a tab beside its own, or a tree of a choice it has picked.
 func open_tab(t: SkillTab) -> bool:
-	var c := role.choice_of(t)
-	return not c or picks(c).any(func(x: SkillTab): return x.name == t.name)
+	var cs := role.choices_of(t)
+	return cs.is_empty() or cs.any(func(c: TreeChoice): return picks(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind))
 
 
 # How many trees of c it may pick: the choice's count, or the rank of the skill that opens it.
@@ -1051,22 +1081,52 @@ func pick_cap(c: TreeChoice) -> int:
 	return base_rank(c.by) if c.by else c.picks
 
 
+# The tree it took up in another choice of god of c's kinds, if c burns (a Warlock's patron, for its
+# Flex), else null.
+func burnable(c: TreeChoice) -> SkillTab:
+	if not c.burns or not role:
+		return null
+	for o in role.choices:
+		if o and o != c and o.gods:
+			for t in picks(o):
+				if c.kinds.is_empty() or t.kind in c.kinds:
+					return t
+	return null
+
+
+# Flex slots burned into tree t (TreeChoice.burns): each an efficiency stack on it (efficiency()).
+func burned(t: SkillTab) -> int:
+	var n := 0
+	if role and t:
+		for c in role.choices:
+			var b := burnable(c) if c and c.burns else null
+			if b and b.name == t.name and b.kind == t.kind:
+				n += picked.count(c.key(b))
+	return n
+
+
 # What stands between it and picking tree t of choice c: "" if nothing. Picking is free.
 func pick_missing(c: TreeChoice, t: SkillTab) -> String:
+	if c.after and rank(c.after) == 0:
+		return "Learn %s first" % c.after.name
 	var mine := picks(c)
-	if mine.any(func(x: SkillTab): return x.name == t.name):
+	var b := burnable(c)
+	var burning := b != null and b.name == t.name and b.kind == t.kind
+	var used := picked.filter(func(k: String): return k.begins_with(c.name + "/")).size()
+	if not burning and (mine.any(func(x: SkillTab): return x.name == t.name) or (c.slot() and open_tab(t))):
 		return "Picked"
 	if c.by and rank(c.by) == 0:
 		return "Learn %s first" % c.by.name
-	if not suits(t):
+	if not offered(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind) and not burning:
 		return "Not %s's way" % deity().capitalize() if deity() else "Needs a god"
 	var cap := pick_cap(c)
-	if mine.size() >= cap:
-		return "Took up %s" % mine[0].title() if cap == 1 else "Picked %d of %d" % [mine.size(), cap]
+	if maxi(used, mine.size()) >= cap:
+		return "Took up %s" % mine[0].title() if cap == 1 and not mine.is_empty() else "Picked %d of %d" % [maxi(used, mine.size()), cap]
 	return ""
 
 
-# Picks tree t of choice c, opening its tab. False if it can't (pick_missing()).
+# Picks tree t of choice c, opening its tab (or burning a slot into it: burned()). False if it can't
+# (pick_missing()).
 func pick(c: TreeChoice, t: SkillTab) -> bool:
 	if pick_missing(c, t) != "":
 		return false
@@ -1227,11 +1287,14 @@ func taken(choice: String) -> SkillTab:
 	return null
 
 
-# Whether a tab of a choice suits its god: none of its roots names gods (SkillRoot.gods), or each
-# names its own.
+# Whether a tab of its class suits its god: no god slot holds it (TreeChoice.kinds), or its god offers
+# it (God.pool: a Paladin's Prowess).
 func suits(t: SkillTab) -> bool:
-	var g := deity()
-	return t.roots.all(func(r: SkillRoot): return not r or r.gods.is_empty() or g in r.gods)
+	var cs := role.choices_of(t) if role else ([] as Array[TreeChoice])
+	if not cs.any(func(c: TreeChoice): return c.slot()) or cs.any(func(c: TreeChoice): return not c.slot()):
+		return true
+	var g := God.of(deity())
+	return g != null and g.has(t)
 
 
 # Its class's tabs (Role.trees()), less the trees of its choices it hasn't picked.
@@ -1240,8 +1303,7 @@ func class_trees() -> Array[SkillTab]:
 	if not role:
 		return out
 	for t in role.trees():
-		var c := role.choice_of(t) if t.kind else null
-		if not c or picks(c).any(func(x: SkillTab): return x.name == t.name):
+		if not t.kind or open_tab(t):
 			out.append(t)
 	return out
 

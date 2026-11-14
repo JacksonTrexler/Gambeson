@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="God" format=3]
+
+[ext_resource type="Script" path="res://Scripts/God.gd" id="god"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="rs"]
+[ext_resource type="Resource" path="res://Gods/tabs/havoc.tres" id="t_havoc"]
+[ext_resource type="Resource" path="res://Gods/tabs/slayer.tres" id="t_slayer"]
+[ext_resource type="Resource" path="res://Gods/tabs/shadow.tres" id="t_shadow"]
+[ext_resource type="Resource" path="res://Trees/luun.tres" id="r_own"]
+
+[sub_resource type="Resource" id="Tab_own"]
+script = ExtResource("tab")
+name = "Luun"
+kind = "Divinity"
+god = &"luun"
+devotes = true
+roots = Array[ExtResource("rs")]([ExtResource("r_own")])
+
+[resource]
+script = ExtResource("god")
+id = &"luun"
+own = SubResource("Tab_own")
+pool = Array[ExtResource("tab")]([ExtResource("t_havoc"), ExtResource("t_slayer"), ExtResource("t_shadow")])
