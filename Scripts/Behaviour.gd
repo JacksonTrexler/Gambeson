@@ -19,7 +19,21 @@ class Cast:
 	var foe := true
 	var bag := {}
 	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
-	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()), ambush among them when it ambushes (Battle.ambushes())
+	var mods: Modifiers  # its caster's modifiers on it (Unit.mods()): read scaled values through them
+	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()): modifier tags among them (Unit.skill_tags()), ambush when it ambushes (Battle.ambushes())
+
+	# Its rank for what rank adds to what it does (rank_impact) or to its reach (rank_range), through
+	# its caster's modifiers: a whole number, at least 1 (Kick's push).
+	func impact_rank() -> int:
+		return mods.irank(rank, &"rank_impact") if mods else rank
+
+	func range_rank() -> int:
+		return mods.irank(rank, &"rank_range") if mods else rank
+
+	# A stat mod m its caster adds to what it does (stat_impact) or to its reach (stat_range), through
+	# its modifiers.
+	func stat_mod(m: int, channel := &"stat_impact") -> int:
+		return mods.stat(m, channel) if mods else m
 	var hit := false  # it landed: past its attack roll, if it makes one
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
@@ -87,6 +101,12 @@ func restores(_c: Cast) -> Dictionary:
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
 # (Jam drains as much of its Focus); what a siphon took is c.siphoned (Energy Transfer).
 func dealt(_c: Cast, _n: int) -> void:
+	pass
+
+
+# The terms it adds to its skill's (SkillTerms: what scales how, a check, damage, its impact), so the
+# cost calculator prices it and modifiers find it eligible: t.add(&"rank_impact", "push"), t.check = true.
+func terms(_t: SkillTerms) -> void:
 	pass
 
 

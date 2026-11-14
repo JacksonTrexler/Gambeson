@@ -112,6 +112,29 @@ const TERMS := {
 	&"ambush": ["Ambush", &"check", "An attack made from concealment, or by one its target cannot see or place. Effects and skills tagged ambush count on it."],
 }
 
+# Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],
+# read wherever a term's kind is asked (kind()), so a rule keyed on kinds takes them with no code change.
+static var added := {}
+
+
+# What a blow is made of, damage in kind though they have no Glossary term: elements and blows (Tags.COLOR's
+# first group).
+const DAMAGE_TAGS: Array[StringName] = [&"fire", &"water", &"earth", &"light", &"dark", &"energy", &"love", &"ice",
+		&"wind", &"air", &"nature", &"sound", &"star", &"astral", &"magical", &"physical", &"slash", &"pierce", &"blunt", &"bludgeon"]
+
+
+# A term's kind (check, damage, condition, ground, target): TERMS first, then added; a blow's stuff
+# (DAMAGE_TAGS) is damage; "" for a word it doesn't know.
+static func kind(id: StringName) -> StringName:
+	if id in TERMS:
+		return TERMS[id][1]
+	if id in added:
+		return added[id][1]
+	if id in DAMAGE_TAGS:
+		return &"damage"
+	return &""
+
+
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")
 
 

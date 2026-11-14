@@ -173,3 +173,14 @@
 - [x] **Rarity rank costs, `enchanted`, `honed`** (`Item.RANK_COST`, `rank_cost()`, `ranked()`, `Tags.quality_rank()`, `Tags.exclusive()`): common 1 to mythic 5; both tags rank +1 and exclusive. `quality_test.gd`. (?97, ?118)
 - [x] **Borrowed Time's deferred death** (`Unit.defer()`, `harms`, `replay_harms()`, `fall()`, `Battle._borrowed()`, `last_stand()` with execute-tagged checks, `Unit.execute_share()`). (?85, ?124)
 - [x] **Friendly fire** (`Battle._holds_fire()`, signal `held_fire`): a foe-only skill on an ally it can't tell asks a hidden d20 + wis check against DC 12; passing, it spends the cost, is interrupted and reads the ally better. `friendly_fire_test.gd`. (?84, ?124)
+
+## Tag colours, fixes, AI support (2026-11-14)
+
+- [x] **Tag colours and trim** (`Tags.COLOR`, `Tags.color()`, `coloured()`, `mark()`, `PLAIN`, `BROAD`; `Item.trim()`, `draw_banner()`; `mechanic.py tag --color`, `color`, `check_colours()`): one colour per word, inherited through its parent; trim is the first tag not plain; Glossary and the hotbar read it. Plan: `docs/plans/tag-colors.md`. `tag_colors_test.gd`. (?125)
+- [x] **`end_turn` passes once** (`Battle.ending_turn`): a side dying inside it no longer skips another. `turn_test.gd`. (?127)
+- [x] **Helpless leaders and reactions** (`Unit.reacts()`, `Command.could_order`, `can_join`): a stopped leader gives no orders; dodge, guard and obstruct need `reacts()`; the guard is suspended, not ended. `helpless_test.gd`. (?127)
+- [x] **God constants on `God`** (`domains`, `tag`, `pantheon()`, `tag_of()`; `role.py god --domains --tag`). (?127)
+- [x] **Waterstrike is `blunt`**; `Test.tool_check` fails, not skips, with no python. (?127)
+- [x] **Slayer hooks** (`Behaviour.aim`, `edge`, `guard`, `bonus`, `felled`, `step_cost`; `Battle.cast_of()`, `neutralize()`, `aimed()`, `ambushes()`; `Unit.unspent`, `tally`, `refund()`, `bloodied()`, `winded()`; Effect stats `tow`, `winded`; tag `ambush`): see `docs/done/classes.md`. `slayer_test.gd`. (?126)
+- [x] **AI support** (`Behaviour.restores()`; `AI._restores`, `_mends`, `_replenish`, `_finish_switch`, `_switch`, `_steady`, `_scry`): the AI heals with Heal, Megaheal and Resuscitate, feeds Energize, casts Intervention and other support on allies, switches Mana and Stamina, rests for Focus and casts Clairvoyance. `ai_support_test.gd`. (?130)
+

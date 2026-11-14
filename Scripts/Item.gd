@@ -47,6 +47,10 @@ extends Resource
 @export var picks := &""  # it can be lockpicked off: a dex check at this difficulty, at its rank (Shackles: approachable)
 @export var prised := &""  # it can be pried apart: a str check at this difficulty, at its rank (Shackles: unfair - built not to break)
 
+@export_group("Emblem")  # a modifier it puts on its wearer's skills (Modifiers.of()): its rank feeds !RSC (Modifiers.rsc())
+@export var emblem := &""  # a symbol (rho_up, rho_down, sigma_up, sigma_down, lambda_up, lambda_down) or a tag (fire, execute)
+@export var scope := &""  # sigil: the leftmost eligible skill on the hotbar; insignia: every skill; crest: actives; badge: passives
+
 # Armor by weight (its tag: light, medium, heavy) shares its basic piece's scaling: Defense the higher of
 # a floor and level x a share, + dex mod x a share (Unit.armor_defense()). Heavy armor also drags at
 # its wearer's dex and wis AP (Unit.armor_drag()).
@@ -104,6 +108,10 @@ func describe() -> String:
 		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * ranked()))
 	if requires:
 		lines.append("Needs a positive %s mod" % String(requires).left(3))
+	if emblem:
+		var word: String = Modifiers.SYMBOLS[emblem][0] if emblem in Modifiers.SYMBOLS else String(emblem)
+		var reach: String = {"sigil": "the leftmost skill on the hotbar it fits", "insignia": "every skill it fits", "crest": "every active skill it fits", "badge": "every passive skill it fits"}.get(String(scope), "every skill it fits")
+		lines.append("Puts %s on %s: x%s" % [word, reach, Skill.num(snappedf(1.0 + Modifiers.rsc(ranked(), Modifiers.SCOPES.get(scope, &"all")), 0.01))])
 	for e in effects:
 		lines.append(e.describe(ranked()))
 	lines.append(("%d - dex mod AP to put on in battle" % ARMOR_AP) if slot == "armor" else "%s AP to put on or use in battle" % Skill.num(ap_cost()))
@@ -240,8 +248,10 @@ func honed() -> bool:
 # The tag its trim shows (Tags.mark()): its first coloured tag that isn't a plain word, light, medium
 # and heavy read as its weight (WEIGHTS) rather than an element. &"" untrimmed. An emblem carrying a tag
 # or a symbol in its tags (a Fire Insignia) is trimmed in it.
+# An emblem's modifier (Item.emblem: a symbol or a tag) marks it first: the Fire Insignia is trimmed fire.
 func trim_tag() -> StringName:
-	return Tags.mark(tags, WEIGHTS.keys())
+	var marks: Array[StringName] = ([emblem] as Array[StringName]) + tags if emblem else tags
+	return Tags.mark(marks, WEIGHTS.keys())
 
 
 # Its trim colour (Tags.color() of trim_tag()), clear when it has none: drawn on the character sheet,

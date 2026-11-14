@@ -13,12 +13,20 @@ func apply(c: Cast) -> void:
 		return
 	var b := c.battle
 	var t := c.target
-	var vs := b.beats(Check.side(c.caster.check_mod(&"strength", &"offensive", c.skill.tags) + c.rank),
+	var vs := b.beats(Check.side(c.caster.check_mod(&"strength", &"offensive", c.tags) + c.impact_rank()),
 			Check.side(maxi(t.check_mod(&"strength", &"defensive", c.skill.tags), t.check_mod(&"dexterity", &"defensive", c.skill.tags))), false)
 	b.contested.emit(c.caster, t, vs.mine.total, vs.theirs.total)
 	c.bag[&"hitched"] = vs.won
 	if vs.won:
 		c.put(HITCHED, 1).lasting = true
+
+
+# Its terms: + rank on its grapple contest (a check), the tow an impactful effect.
+func terms(t: SkillTerms) -> void:
+	t.check = true
+	t.hit_per_rank += 1.0
+	t.add(&"rank_impact", "grapple")
+	t.impact = &"impactful"
 
 
 func describe(rank: int) -> String:

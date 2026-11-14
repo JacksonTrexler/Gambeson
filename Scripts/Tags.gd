@@ -77,6 +77,16 @@ const COLOR := {
 	# whom a skill is used on (Glossary kind target: #c8d0dc; foe and ally as the HUD draws them)
 	&"foe": Color("#ff6b5e"), &"ally": Color("#6fdc8c"), &"ally_or_foe": Color("#c8d0dc"), &"self": Color("#c8d0dc"),
 	&"tile": Color("#c8d0dc"), &"area": Color("#c8d0dc"), &"nearest": Color("#c8d0dc"), &"range": Color("#c8d0dc"),
+	&"rho_up": Color("#e0a040"),
+	&"rho_down": Color("#f0d890"),
+	&"sigma_down": Color("#c060d0"),
+	&"sigma_up": Color("#e0b0f0"),
+	&"lambda_up": Color("#4080d0"),
+	&"lambda_down": Color("#a0c8f0"),
+	&"sigil": Color("#c9b48a"),
+	&"insignia": Color("#c9b48a"),
+	&"crest": Color("#c9b48a"),
+	&"badge": Color("#c9b48a"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
@@ -85,7 +95,7 @@ const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with on
 const PLAIN: Array[StringName] = [&"metal", &"iron", &"cloth", &"padded", &"mail", &"wood", &"stone", &"rock", &"glass",
 		&"gem", &"blade", &"book", &"potion", &"ring", &"shackles", &"treat", &"stew", &"heavy", &"medium", &"enchanted",
 		&"honed", &"str", &"dex", &"con", &"int", &"wis", &"cha", &"offensive", &"defensive", &"supportive", &"beneficial",
-		&"detrimental", &"damage", &"unique", &"finesse", &"bracing", &"tall"]
+		&"detrimental", &"damage", &"unique", &"finesse", &"bracing", &"tall", &"sigil", &"insignia", &"crest", &"badge"]
 # Words too broad to say what a blow is made of: a damage floater (HUD) passes over them too.
 const BROAD: Array[StringName] = [&"martial", &"magical", &"specialist", &"physical"]
 

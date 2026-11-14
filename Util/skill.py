@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Gambeson skill authoring: write a skill and wire it in (`new`), and catch the wiring pitfalls (`check`).
 
-  python3 Util/skill.py new kick --tags physical,blunt,str,martial,offensive --ap 4 --cost 1 \\
-      --range-per-rank 1 --tier 1:1d4+strength --behaviour kick --tree general_martial --after brutal_strike \\
+  python3 Util/skill.py new kick --tags physical,blunt,str,martial,offensive --intensity low --stat strength \\
+      [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--hand-priced --ap 4 --cost 1] \\
+      --range-per-rank 1 --behaviour kick --tree general_martial --after brutal_strike \\
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
       [--set rolls=false] [--passive] [--no-import] [--dry-run]
   python3 Util/skill.py check       # cheap, plain text: run before every commit (Tests/skills_test.gd runs it too)
+  python3 Util/skill.py drift       # information: hand-set AP / cost against the cost calculator's (Scripts/Pricing.gd)
+  python3 Util/skill.py modifiers   # information: skills no modifier fits, and why - to parameterize (Scripts/Modifiers.gd)
+  python3 Util/skill.py terms kick  # one skill's terms: channels, intensity, impact, contingencies, price, modifiers
 
-`new` writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist, a test
+`new` writes a skill in terms (intensity, impact, penalty, a requirement: Scripts/SkillTerms.gd), priced by the cost
+calculator (Scripts/Pricing.gd) unless --hand-priced, then shows its terms and the modifiers it fits. It writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist, a test
 stub (Tests/<id>_test.gd), puts the skill on a tree (Trees/ or Roles/ <file>, beside --after's branch or at the
 end of --root's) and in --role's options, imports, then checks. It edits text by anchors and stops if one is
 missing. Stubs carry STUB: check fails until they're filled in. Plain python3, no dependencies.
@@ -17,7 +22,7 @@ import argparse, os, re, subprocess, sys
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
                   literal, effect_section)
 STUB = "STUB(skill.py)"
-FLAG_CEILING = 125  # @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
+FLAG_CEILING = 130  # (+5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 # 125 counts `pings` (Clairvoyance), built beside the seam; lower it to 124 when that moves to a behaviour.
 HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
@@ -222,6 +227,41 @@ def tier_section(i, spec, ext):
     return "\n".join(lines)
 
 
+# The user's damage intensities -> (Difficulty.MAGNITUDE word, the dice a new skill's rank I tier rolls).
+INTENSITY = {"low": ("faint", "1d4"), "moderate_low": ("mild", "1d6"), "moderate": ("moderate", "1d10"),
+             "high": ("strong", "2d6"), "extreme": ("severe", "2d12")}
+REQUIRES = ("hp_below", "hp_above", "energy_above", "energy_below", "target_hp_below", "target_hp_above", "ally_within", "concealed")
+
+
+def terms_props(a, ext, subs, props):
+    """The skill's terms (Scripts/SkillTerms.gd): intensity, impact, penalty, requirement, and priced unless
+    hand-priced. Written so the cost calculator prices it and modifiers find it eligible."""
+    if a.intensity:
+        a.intensity in INTENSITY or die("--intensity: one of %s" % ", ".join(INTENSITY))
+        word, dice = INTENSITY[a.intensity]
+        props.append('intensity = &"%s"' % word)
+        if not a.tier:  # its rank I tier from the intensity, + its stat mod if --stat
+            a.tier = ["1:%s%s" % (dice, "+" + a.stat if a.stat else "")]
+    if a.impact:
+        a.impact in ("tame", "impactful") or die("--impact: tame or impactful")
+        props.append('impact = &"%s"' % a.impact)
+    if a.penalty:
+        a.penalty in ("minor", "major", "severe") or die("--penalty: minor, major or severe")
+        props.append('penalty = &"%s"' % a.penalty)
+    if a.requires:
+        kv = dict(x.partition("=")[::2] for x in a.requires.split())
+        kv.get("test") in REQUIRES or die('--requires "test=<%s> share=0.2 hit=2 damage=0 edge=1 per_rank=false"' % "|".join(REQUIRES))
+        ext.append('[ext_resource type="Script" path="res://Scripts/Requirement.gd" id="5_requirement"]')
+        lines = ['[sub_resource type="Resource" id="Requirement_1"]', 'script = ExtResource("5_requirement")', 'test = &"%s"' % kv.pop("test")]
+        for k, v in kv.items():
+            k in ("share", "hit", "damage", "edge", "per_rank") or die("--requires: no field %s" % k)
+            lines.append("%s = %s" % (k, literal(k, v) if k != "share" else (v if "." in v else v + ".0")))
+        subs.append("\n".join(lines))
+        props.append('requires = SubResource("Requirement_1")')
+    if not a.passive and not a.hand_priced:
+        props.append("priced = true")  # its AP and cost from the cost calculator (Scripts/Pricing.gd)
+
+
 def skill_tres(a):
     ext = ['[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]']
     subs, props = [], ['script = ExtResource("1_skill")', 'name = "%s"' % a.title]
@@ -237,6 +277,7 @@ def skill_tres(a):
         ext.append('[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]')
         subs += [effect_section(i + 1, e, "2_effect") for i, e in enumerate(a.effect)]
         props.append('effects = Array[ExtResource("2_effect")]([%s])' % ", ".join('SubResource("Effect_%d")' % (i + 1) for i in range(len(a.effect))))
+    terms_props(a, ext, subs, props)
     for key in ("ap", "cost", "radius", "radius_per_rank"):
         v = getattr(a, key)
         if v is not None:
@@ -357,6 +398,8 @@ def put_in_options(role, sid):
 def new(a):
     sid = a.id
     re.fullmatch(r"[a-z][a-z0-9_]*", sid) or die("the id is a file name: lower_snake (kick, second_wind)")
+    if (a.ap or a.cost) and not a.passive and not a.hand_priced:
+        die("--ap/--cost set a hand price: add --hand-priced (and say why), or leave them to the cost calculator")
     a.title = a.title or sid.replace("_", " ").title()
     if os.path.exists(os.path.join(ROOT, "Skills/%s.tres" % sid)):
         die("Skills/%s.tres exists" % sid)
@@ -382,8 +425,16 @@ def new(a):
     if not a.no_import:
         print("importing (writes the .gd.uid files)...")
         subprocess.run(["godot", "--headless", "--path", ROOT, "--import"], capture_output=True)
+    report("terms", sid)  # its channels, price and the modifiers it fits: none listed means too concrete
     print("\nnext: fill in the stubs, then `python3 Util/skill.py check` and the tests (CLAUDE.md)")
     return check()
+
+
+def report(mode, *args):  # Util/terms.gd, headless: reads the skills as the game does
+    r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", mode] + list(args), capture_output=True, text=True)
+    out = [l for l in r.stdout.split("\n") if l.strip() and not l.startswith("Godot Engine")]
+    print("\n".join(out))
+    return 0
 
 
 def main():
@@ -396,8 +447,14 @@ def main():
     n.add_argument("--glyph", help="up to 2 characters for its placeholder icon (default: its initials)")
     n.add_argument("--tags", help="comma separated: physical,blunt,str,martial")
     n.add_argument("--passive", action="store_true")
-    n.add_argument("--ap")
+    n.add_argument("--ap", help="a hand price, with --hand-priced (default: the cost calculator's)")
     n.add_argument("--cost")
+    n.add_argument("--hand-priced", action="store_true", help="keep --ap/--cost rather than the cost calculator's price")
+    n.add_argument("--intensity", help="its damage: low, moderate_low, moderate, high, extreme (writes its rank I tier unless --tier)")
+    n.add_argument("--stat", help="with --intensity: the stat whose mod its damage adds (strength...)")
+    n.add_argument("--impact", help="its unique effect beyond damage: tame or impactful (default: from its fields)")
+    n.add_argument("--penalty", help="what it costs its user: minor, major, severe (default: from its fields)")
+    n.add_argument("--requires", help='a contingency: "test=energy_above share=0.2 hit=2" (Scripts/Requirement.gd)')
     n.add_argument("--radius", help="range before rank")
     n.add_argument("--range-per-rank", dest="radius_per_rank")
     n.add_argument("--tier", action="append", default=[], help="damage by rank: 1:1d4+strength, 3:2+1d6+direct")
@@ -414,7 +471,15 @@ def main():
     n.add_argument("--no-import", action="store_true")
     n.add_argument("--dry-run", action="store_true", help="print what it would write")
     sub.add_parser("check", help="catch the wiring pitfalls")
+    sub.add_parser("drift", help="hand-set prices against the cost calculator's (information)")
+    sub.add_parser("modifiers", help="skills no modifier fits, and why (information)")
+    t = sub.add_parser("terms", help="one skill's terms")
+    t.add_argument("id")
     a = ap.parse_args()
+    if a.cmd in ("drift", "modifiers"):
+        sys.exit(report(a.cmd))
+    if a.cmd == "terms":
+        sys.exit(report("terms", a.id))
     sys.exit(new(a) if a.cmd == "new" else check(a))
 
 

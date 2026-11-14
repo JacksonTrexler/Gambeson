@@ -26,13 +26,16 @@ func test_easy() -> void:
 	ok(v(3).bloodied() and Battle.edge_of(poach, b.cast_of(v(1), poach, v(3), 1, true)) == 1, "bloodied, never aimed at: advantage")
 	v(1).energy = 10
 	var ap := v(1).ap_left()
+	var cost := v(1).price(poach)  # priced (Pricing): 4 AP, 3 Energy at rank I
+	var aps := v(1).ap_cost(poach, null)
+	ok(cost == 3 and aps == 4.0, "the cost calculator's price: %s AP, %d Energy" % [aps, cost])
 	ok(b.cast(v(1), poach, v(3)), "used")
-	ok(v(1).energy == 9 and is_equal_approx(ap - v(1).ap_left(), 1.5), "half its cost back: 1 Energy, 1.5 AP spent (%d, %s)" % [v(1).energy, ap - v(1).ap_left()])
+	ok(v(1).energy == 10 - cost + floori(cost * 0.5) and is_equal_approx(ap - v(1).ap_left(), aps / 2.0), "half its cost back: 1 Energy, 2 AP spent (%d, %s)" % [v(1).energy, ap - v(1).ap_left()])
 	ok(b.aimed(v(1), v(3)) == 1, "remembered")
 	ok(Battle.edge_of(poach, b.cast_of(v(1), poach, v(3), 1, true)) == 0, "aimed at before: no advantage now")
 	v(1).energy = 10
 	b.cast(v(1), poach, v(3))
-	ok(v(1).energy == 8, "and full price")
+	ok(v(1).energy == 10 - cost, "and full price")
 
 
 func test_regain() -> void:
@@ -49,7 +52,8 @@ func test_regain() -> void:
 	b.neutralized.connect(func(u: Unit, by: Unit, how: StringName): got.append([u, by, how]))
 	ok(b.cast(v(1), poach, v(3)), "used")
 	ok(got.size() == 1 and got[0][0] == v(3) and got[0][1] == v(1), "neutralized: %s" % [got])
-	ok(v(1).energy == 10 - 1 + 4, "10%% of 40 Energy back at rank II, after paying (%d)" % v(1).energy)
+	var paid := v(1).price(poach) - floori(v(1).price(poach) * 0.5)  # bloodied and new: half back
+	ok(v(1).energy == 10 - paid + 4, "10%% of 40 Energy back at rank II, after paying (%d)" % v(1).energy)
 	ok(v(1).store(stamina_r) == mini(v(1).rounded(0.2 * pools[stamina_r]), pools[stamina_r]), "20%% of its Stamina back (%d of %d)" % [v(1).store(stamina_r), pools[stamina_r]])
 	ok(v(1).endurance == 3, "each a recovery: 2 RE spent (%d)" % v(1).endurance)
 

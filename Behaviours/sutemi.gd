@@ -26,7 +26,7 @@ static func lunge(b: Battle, u: Unit, to: Unit, n: int) -> Array[Vector2i]:
 func _rank(caster: Unit) -> int:
 	for s in caster.actives:
 		if self in s.behaviours:
-			return caster.rank(s)
+			return caster.mods(s).irank(caster.rank(s), &"rank_range")  # its lunge is reach: rank_range
 	return 1
 
 
@@ -39,7 +39,7 @@ func fits(b: Battle, caster: Unit, target: Unit) -> bool:
 func aim(c: Cast) -> void:
 	if not c.foe:
 		return
-	var path := lunge(c.battle, c.caster, c.target, c.rank)
+	var path := lunge(c.battle, c.caster, c.target, c.range_rank())
 	for cell in path:
 		c.battle.move(c.caster, cell)
 	c.bag[&"lunged"] = path.size()
@@ -49,6 +49,14 @@ func aim(c: Cast) -> void:
 		a.skill = c.skill
 		a.by = c.caster
 		a.since = c.battle.turns_begun
+
+
+# Its terms: the lunge is rank range (with its radius_per_rank); a free move is impactful; Off Balance a
+# minor penalty.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_range", "lunge")
+	t.impact = &"impactful"
+	t.penalty = &"minor"
 
 
 func describe(rank: int) -> String:

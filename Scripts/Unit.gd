@@ -699,7 +699,30 @@ static func rank_for(points: int, a: int, cap := 0) -> int:
 # An attribute of s for it (range, rank): what its effects add, asked with s's tags (Skill.query()),
 # and only effects that list s when they list skills.
 func skill_stat(attr: StringName, s: Skill) -> float:
-	return stat(attr, s.query(), null, s)
+	return stat(attr, s.query() + (mods(s).tags if emblems() else ([] as Array[StringName])), null, s)
+
+
+# Whether it wears anything putting modifiers on its skills (Item.emblem): the fast way past mods().
+func emblems() -> bool:
+	return items().any(func(it: Item): return it.emblem != &"")
+
+
+# The modifiers on its use of s (Modifiers.of(): its emblems'): s as it uses it is s plus these.
+# Everything that reads a per-rank or per-stat value of s for it goes through them.
+func mods(s: Skill) -> Modifiers:
+	return Modifiers.of(self, s) if s and emblems() else Modifiers.NONE
+
+
+# s's tags as it uses s: its own, plus the tags its modifiers add (a Fire Insignia: fire).
+func skill_tags(s: Skill) -> Array[StringName]:
+	var m := mods(s)
+	if m.tags.is_empty():
+		return s.tags
+	var out: Array[StringName] = s.tags.duplicate()
+	for t in m.tags:
+		if t not in out:
+			out.append(t)
+	return out
 
 
 func is_on(s: Skill) -> bool:
@@ -1763,7 +1786,7 @@ func refit() -> void:
 # bane: earth), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
 	return t in tags or items().any(func(it: Item): return t in it.tags) \
-			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags) \
+			or slots.any(func(x: Slot): return x.rank > 0 and (t in x.skill.tags or (emblems() and t in mods(x.skill).tags))) \
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 
@@ -2005,10 +2028,10 @@ func set_store(r: Reserve, v: int) -> void:
 	reserve_changed.emit(r, was, v)
 
 
-# What s costs it, at its rank (starter spells: cost x rank), before any savings (cost_from()): more
+# What s costs it, at its rank (starter spells: cost x rank; Pricing.cost_for()), before any savings (cost_from()): more
 # the more it has used it lately (Exhaustion.rate()), rounded up.
 func price(s: Skill) -> int:
-	return ceili(s.price(rank(s)) * exhaustion.rate(s) - 0.0001)
+	return ceili(Pricing.cost_for(self, s) * exhaustion.rate(s) - 0.0001)  # priced, or hand-set under its modifiers
 
 
 # What s costs it paid from fund: a reserve that pays whole costs takes its few points for any cost
@@ -2248,7 +2271,7 @@ func ap_cost(s: Skill, fund: Variant) -> float:
 	for r in s.ap_with:
 		if pays_as(s, fund, r):
 			factor = minf(factor, s.ap_with[r])
-	return s.ap * factor * exhaustion.rate(s)
+	return Pricing.ap_for(self, s) * factor * exhaustion.rate(s)  # priced, or hand-set under its modifiers
 
 
 func can_afford(s: Skill) -> bool:
@@ -2860,9 +2883,11 @@ static func end_read() -> void:
 func _gather_effects(viewer: Unit) -> Array:
 	var out := []
 	var own := {}
+	var modded := emblems()
 	for x in on_passives:
+		var m := mods(x.skill) if modded else Modifiers.NONE
 		for e in x.skill.effects:
-			out.append([e, x.rank, 1.0])
+			out.append([e, x.rank, 1.0] if m.empty() else m.effect(e, x.rank))  # its modifiers (Modifiers.effect())
 			own[e] = true
 	for e in timed:
 		if e not in own and not (viewer and viewer in timed[e].known_to):

@@ -21,9 +21,15 @@ func apply(c: Cast) -> void:
 	if not c.foe or not c.target.is_alive():
 		return
 	if c.target.faction == c.battle.turn:
-		c.target.pay(minf(c.rank, c.target.ap_for(&"")), &"")  # acting: at once
+		c.target.pay(minf(c.impact_rank(), c.target.ap_for(&"")), &"")  # acting: at once
 	else:
 		c.put(WINDED, 1)
+
+
+# Its terms: Winded (rank AP) is a tame effect that grows with rank.
+func terms(t: SkillTerms) -> void:
+	t.impact = &"tame"
+	t.add(&"rank_impact", "winded")
 
 
 func describe(rank: int) -> String:

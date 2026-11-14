@@ -186,7 +186,7 @@ Three roots, each a flavour of Prowess of the player's choosing. Three exist so 
 - [x] **Jugular**: built (`docs/done/classes.md`). (?67)
 - [ ] **Sundering** (passive): an attack rolling higher than the target's dex mod applies stacking **Sundered**: −1 Defense for rank turns. (?13)
 - [ ] **Silent Strike** (active): disables rank of the target's `magical` skills, actives and passives, for rank turns, starting from the bottom of its hotbar. Disabled skills are greyed out. (?13)
-- [ ] **Gank** (hybrid): not designed yet. *Now:* Sundering, Silent Strike and Gank are stubs after Jugular.
+- [x] **Gank** (hybrid): built 2026-11-14 with the Slayer skills (`docs/done/classes.md`). (?126) *Now:* Sundering and Silent Strike are stubs after Jugular.
 
 13. Fighter:
     - Interject: who can it trigger for (adjacent allies? any ally in sight?), and how often (once a round? every hit)?
@@ -258,10 +258,10 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 - [x] **Tenacity** (Adventurer, Fighter; passive; beside Wary): lingers downed for rank rounds, 20% x rank limit, helpless. (?85)
 - [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`; passive): downed, it keeps acting for rank rounds, 20% x rank limit; more than rank skill uses in all, or a round ending without a melee attack, and it dies. (?85)
 - [x] The card chip, log lines and floats ("Downed", "Saved") say so; the AI takes no turn for a helpless unit, strikes a helpless foe last, and closes in with a Grudge unit's last blows.
-- [ ] **Draw a Downed unit differently on the map.** Nothing does: only the card chip, the log and the float text say so (unit drawing was being reworked elsewhere).
+- [x] **Draw a Downed unit differently on the map.** Built 2026-11-14: it lies on its side (?128). Before, nothing did: only the card chip, the log and the float text say so (unit drawing was being reworked elsewhere).
 - [ ] **The AI doesn't try to starve Grudge of melee**: it won't keep away from a Grudge unit to let it die of a round without a melee attack, and a Grudge unit doesn't try to heal itself back up.
-- [ ] **Bug, noticed and not fixed:** a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
-- [ ] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before.
+- [x] **Bug, noticed and not fixed:** (fixed 2026-11-14, ?127) a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
+- [x] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before. Built 2026-11-14 (?127): a stopped leader gives no orders and a helpless unit loses its reactions (`Unit.reacts()`); it still watches.
 
 85. **Downed, Tenacity, Grudge - answered (2026-11-10), built (`v-channel`, ?97); your notes of 2026-11-12 on Stun, Borrowed Time, Resuscitate and Intervention built (2026-11-14, ?119, ?124).** Going Downed and helpless ends a channel; a Grudge unit keeps its channel (both: yes). Jam, below, is new. Built: `downed_test.test_channel` (the wiring was already there). The rest stands as built:
     - A round is one of the unit's own side's turns ending after it went down; if it went down on its own side's turn, the rest of that turn is free. Its last round ending at 0 HP or below, it dies. The blow that downs it leaves it at 0; at exactly the limit it lives. Overkill isn't carried into the negatives; a multi-hit Strike's later hits do land.
@@ -289,13 +289,13 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
     - **Answered (2026-11-11): built** (?100). Jam's damage counts against Focus.
     - **Found, not changed: the rank-up cost** is 1 + r^2 skill points (quadratic per rank: II 2, III 5, IV 10, V 17), and only Clever Disguise grows exponentially (`rank_cost` 4, `rank_growth` 2). 19 skills set a rank cap (12 at 1, 5 at 3, one at 5, one at 8). You said costs should grow exponentially with no cap. Shall I make the exponential curve the default and drop the caps?
 - [x] **Focus** (2026-11-11): the Ranger's Bounty root and the Mage's Commitment root; built (`docs/done/classes.md`, `docs/plans/focus.md`), `Tests/focus_test.gd`. The Commitment stub that was called "Focus ??" is now **Fixation ??** (an AI-made name, for review). (?97, ?100)
-- [ ] **The AI doesn't rest to build Focus** or save it for a shot. (?100)
+- [x] **The AI doesn't rest to build Focus** or save it for a shot. Built 2026-11-14 (?130): it rests, and a shot scores up by the Focus it would spend; it doesn't hold a shot back. (?100)
 
 ## Clairvoyance (2026-11-09)
 
 An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.
 - [x] `Skills/clairvoyance.tres`: 3 AP, 3 cost, wisdom + rank range, location only, suspicion added, pings updated and the rank raised at each turn end held. (?89)
-- [ ] **The AI never casts it.**
+- [x] **The AI never casts it.** Built 2026-11-14: a scryer with nothing to hunt casts it, then acts on the pings (?130).
 - [ ] **No screenshot check** of how pings look in the running game.
 - [ ] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`).
 
@@ -377,7 +377,7 @@ Plan, readings and what was built: `docs/plans/gods.md`; done in `docs/done/clas
     - **Heal and Megaheal** sit on the Cleric's Eros tab for now ("domain general": a Life tree would hold them); see ?121.
 - [ ] **Survival ?? needs real skills** (only Forage, a stub; waits on ?81). (?122)
 - [ ] **No Paladin leadership Flex tree**: none exists, so Flex offers prowess, divinity and school trees only; Idealism stays on its own tab. (?122)
-- [ ] **`Unit.GODS` and `GOD_TAGS` not moved into the God files.** (?122)
+- [x] **`Unit.GODS` and `GOD_TAGS` not moved into the God files.** Built 2026-11-14 (?127). (?122)
 - [ ] **A burn's tier cap**: read as none; say if a burn should reach only up to a tier. (?122)
 - [ ] **Ramut, Urlo, Drael and Vetruvis have no own Divinity tree**, so a Cleric can't pick them. (?122)
 - [ ] **`.claude/skills/new-class` should mention `role.py god`** (house rule: skills aren't edited without you). (?122)
@@ -393,7 +393,30 @@ Plan, readings and what was built: `docs/plans/rescue.md`; done in `docs/done/cl
     - **Borrowed Time:** no time branch exists, so it sits on the Wizard's Arcane root after Blink, needing 3 of the root's others (as a capstone). A passive, `defer` +rank (new, generic stat). On its last life (hearts first), HP taken to 0 defers death rank rounds, once a battle: HP holds at 0, it acts, is targeted and healed. Every hit and debuff is logged, replayed in order at each of its rounds' end (each harm once per round it stays in the window, up to rank times; `taking_hit` hooks don't, being already counted). At expiry a check against an `execute`, d20 + rank, the execute winning ties; from 0 HP it is certain death unless healed or hale; passing leaves it at 1 HP; failing is the death put off (Downed first, if it has one). A Downed unit dying is not deferred. Confirm?
     - **Friendly fire:** a foe-only skill cast on a friendly unit the caster doesn't read as an ally (fog, darkness, an allied side hiding, an ally in a front) asks a hidden check: d20 + wis mod, offensive, against the standard DC 12; leaders' experience and cha don't enter. Passing: the attacker spends the skill's AP and cost, is interrupted as if Jammed, and its side reads that ally better (as many recon levels as the ally hides, at least 1), logged "X holds its fire". Failing: it lands as on a foe. Dual-use skills keep going by the truth. Range is checked first. Before this the cast was refused outright, which leaked who the unit was. Confirm?
     - **New names to review:** Hale ?? (the stat). Resuscitate, Intervention and Borrowed Time are your names.
-- [ ] **The AI doesn't use Resuscitate or Intervention** (not `heals()` skills). (?124)
-- [ ] **The HUD offers Resuscitate on any ally in reach**; the cast is refused. It should offer it only on the Downed. (?124)
-- [ ] **No card chip for Borrowed Time**: only log lines and a float text. (?124)
+- [x] **The AI doesn't use Resuscitate or Intervention** (not `heals()` skills). Built 2026-11-14 (?130). (?124)
+- [x] **The HUD offers Resuscitate on any ally in reach**; the cast is refused. It should offer it only on the Downed. Built 2026-11-14 (?128).
+- [x] **No card chip for Borrowed Time**: only log lines and a float text. Built 2026-11-14 (?128). (?124)
 - [ ] **Intervention and Borrowed Time may need a better home** once a Life tree and a time branch exist. (?124)
+
+## Slayer skills (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/slayer.md`; done in `docs/done/classes.md`. Tests: `slayer_test` (neutralized, targeting memory, ambush, refund, tow) and one per skill (`gank_test`, `poach_test`, `peel_test`, `sutemi_test`, `spike_test`, `hitch_test`, `bludgeon_test`, `slam_jam_test`); no existing test changed. Your request: martial / slayer, in `docs/todo/systems.md` ("Skill terms, cost and modifiers").
+
+126. **Slayer skills - built on judgement, open for review (2026-11-14).** Built on `m-slayer`. Your names as given (Gank, Peel, Poach, Sutemi, Spike, Hitch, Bludgeon, Slam Jam, Off Balance, Winded, neutralized, ambush); hand-set costs, the cost vocabulary left for the calculator. My calls, each for you to confirm or change:
+    - **Gank** (4 AP, 2 Energy, reach 1, 1d10 + str, its weapon's blow): needs an ally, not the caster, within rank tiles of the target; disadvantage unless it ambushes. Confirm?
+    - **Ambush:** the target can't locate the caster, or the caster is concealed from it or unseen, judged as the attack is paid for, before it exposes the caster (and before Sutemi's lunge); the hit's tags gain `ambush`, so any effect or rule asking for the tag reads it. Confirm?
+    - **Peel** (passive): an ally within rank + wis mod and a foe within rank of that ally (only foes the walker can locate): each step toward that foe costs (tiles closer, Euclidean) / 2 less, at most half that step, for rank steps a turn; the HUD's reach and will-consume preview agree. Confirm?
+    - **Poach** (3 AP, 2 Energy, 1d6 + dex, reach 1): "low health" is bloodied (half HP or less, through the execute measure, so Hale counts as whole); "hasn't targeted" is never this battle, ally or foe, hit or miss; the cost reduction is half the AP and Energy refunded after paying; "double regain for focus and stamina" is 10% x rank of each reserve's max against Energy's 5% x rank, only when its own blow neutralizes its target, once a cast, through the recovery rules (burnout applies). Rangers get it through their Slayer tab. A Downed unit then killed is neutralized twice, so a Poach that downs and a later one that kills both regain. Confirm?
+    - **Neutralized** is one call, `Battle.neutralize(u, by, how)` with `downed` (a heart spent), `down` or `killed`; a forced unshape or polymorph break should call it with `unshaped`, none exists yet. Confirm?
+    - **Sutemi** (5 AP, 2 Energy, 1d10 + str): a target within rank + 1, so it lunges up to rank tiles to stand beside it; a forced step-by-step move like Sing's pull, no movement spent, ground underfoot does nothing; Off Balance is Defense -1 per tile lunged, lasting through its next turn; unusable if the lunge can't end beside the target. Confirm?
+    - **Spike** (6 AP, 2 Energy, 1d10 + str): the target adds the AP it had left as its side's last turn ended, rounded down, to its Defense, and a hit deals +rank. Confirm?
+    - **Hitch** (3 AP, 1 Energy, 1d4 + str): a hit starts a contest, d20 + str + rank against the target's str or dex check (its better); won, it is Hitched ?? with `tow` rank, dragged rank tiles in the caster's move direction, stopping at anything in the way, until its turn ends. The tow applies to every move that turn, not only the next. Confirm?
+    - **Bludgeon** (5 AP, 2 Energy, 1d8 + str, blunt): +1d4 when its weapon is blunt or it is bare-handed; a hit applies Winded for rank AP. **Open (the Winded sentence broke off at "enemy loses"):** read as losing rank AP at once, or as its next turn opens if it isn't acting. What did you mean?
+    - **Slam Jam** (after Jam, 6 AP, 3 Energy, 1d10 + str): a hit asks a contest, d20 + str + rank against d20 + con save, to interrupt as Jam does (Jammed, not its Focus drain); a hit refunds 1/(rank + 2) of the cost, "cost x (rank + 1)/(rank + 2)". Confirm?
+    - **Tiers:** Gank, Poach, Hitch and Peel beside Jugular and Jam; Sutemi and Spike after Jugular; Bludgeon after Hitch; Slam Jam after Jam. The Gank stub was removed and rewritten through the tool. Confirm?
+    - **AI:** `AI._strike()` skips a skill whose behaviours' `fits()` refuse the target (Gank with no ally near); the AI uses all seven actives as ordinary attacks and doesn't weigh Gank's ambush, Poach's advantage, Spike's Defense or Sutemi's Off Balance. Peel works for AI walkers free.
+    - **New names to review:** Hitched ?? (the held-and-towed status, `Effects/hitched.tres`). The rest are yours.
+- [ ] **Winded's meaning**: the sentence broke off. (?126)
+- [ ] **A forced unshape or polymorph break** doesn't exist yet; it should call `Battle.neutralize(u, &"unshaped")`. (?126)
+- [ ] **Poach's and Slam Jam's discounts are refunds after paying**, so the HUD shows the full price beforehand; the cost calculator could fold them in. (?126, ?131)
+- [ ] **The AI doesn't weigh** Gank's ambush, Poach's advantage and cost cut, Spike's Defense or Sutemi's Off Balance. (?126)

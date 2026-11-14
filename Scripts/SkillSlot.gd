@@ -62,7 +62,7 @@ func _init() -> void:
 
 
 func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: bool, can_edit: bool,
-		is_locked := false, knows := 2) -> void:
+		is_locked := false, knows := 2, mods := "") -> void:
 	index = i
 	skill = s
 	rank = r
@@ -79,7 +79,7 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 	elif sense == 1:
 		tooltip_text = "[%s] %s\nYour side can't make out more of it" % [_key(), s.name]
 	else:
-		tooltip_text = "[%s] %s %s\n%s" % [_key(), s.title(), Skill.roman(r), s.markup(r)]
+		tooltip_text = "[%s] %s %s%s\n%s" % [_key(), s.title(), Skill.roman(r), "  " + mods if mods else "", s.markup(r)]  # its modifiers, as symbols (Modifiers.label())
 	queue_redraw()
 
 
