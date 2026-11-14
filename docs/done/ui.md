@@ -53,3 +53,14 @@
 - [x] **Starting level** on the entry screen (`%Level`, `Entry._play()`). (?106)
 - [x] **Spellbook detail** (`SkillDetail`, shared with the skills screen's footer; `SkillEntry.picked`, `Spellbook.pick()`). (?107)
 - [x] **Steadier tooltips** (`UnitCard.set_info()` skips identical info). (?108)
+
+## Battle UI v2 (2026-11-14)
+
+Plan and calls: `docs/plans/ui-v2.md`. `hud_test` (changed, plus hover_rows, allied_glow, will_consume). (?90, ?123)
+
+- [x] **One intent** (`HUD.intent()`, `_run()`): the click, the overlay and the tooltip read the same thing; the selected slot (`slot`, `keep_slot`) never blocks walking; area skills still `aim`.
+- [x] **Clicking yourself** rests, continues or marks done, locking only that unit; a self skill confirms on a second press or a click on yourself.
+- [x] **Hover rows**: foes take the first offensive skill from the slot rightward, wrapping; allies are selected, walked to, or used on with a support skill.
+- [x] **Glow and saturation in one place** (`HUD.look_of()`); allied factions glow pale mint (`HUD.ally_glow`). (?83)
+- [x] **Will-consume bars** (`HUD.drain()`; `Overlay`, `UnitCard`): walk, known trap and skill costs on the map bars and the card; foresight by int mod (`HUD.foresight()`) with a muted flashing ? past it.
+- [x] **Cues in place of words**: tooltip down to name and read, one-word shaking refusals (`_refuse()`), odds as bracket bands with the exact % on Alt, two rings for out of reach, exhaustion pips on the slot (`SkillSlot`), dashed unsure steps.

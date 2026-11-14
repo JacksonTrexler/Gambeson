@@ -50,7 +50,7 @@ The user's design (verbatim):
    Eros"); there's no life tree. Both on Eros at branch tier 8. One shared behaviour
    (`Behaviours/heal.gd`): heals the skill's tier dice x its `dice_scale` magnitude + its tier stat's mod
    + rank. Heal: 1d8 x moderate (1.5 x rank, rounded up) + wis mod + rank, 4 AP, 4 Energy. Megaheal:
-   1d8 x extreme (3 x rank) + wis mod + rank, 6 AP, 9 Energy. Range 3 (*calls*). wis: the Cleric's
+   1d8 x severe (3 x rank) + wis mod + rank, 6 AP, 9 Energy. Range 3 (*calls*). wis: the Cleric's
    swaps put cha/int on wis.
 
 ## As built

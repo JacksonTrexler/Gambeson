@@ -161,3 +161,15 @@
 - [x] **Vanishing before its eyes** (`Battle._sightings()`, `_vanish()`, `Unit.assumed`, `Read.assumed`): a unit whose concealment grows (a skill, or walking into cover) while watched leaves its watchers taking it for the side it seemed, unless a lie fools them. `vanish_test.gd`. (?102)
 - [x] **Studies in preparation** read a recon level better for the whole side (`Battle.studied`, `_read()`). (?105)
 - [x] **Tooling**: `role.py tree`, `role.py tab`; `icon.py effect`; the `affinity` behaviour hook (`Behaviour.affinity()`, `Unit.guest_affinity()`). (?110, ?111)
+
+## Tapped, recovery, rescue, items (2026-11-14)
+
+- [x] **Tapped and helpless** (`Unit.helpless()`, `stopped()`, `tapped()`, `reduced()`, `fury_acts`, `overdriven`; `Command.tapped()`, `within_caps()`; stats `helpless`, `mindless`, `drone`; terms `tapped`, `helpless`, `taps`, `reduced`): derived from sources, never cleansed; autopilot for capped allies; the HUD's saturation 0 tapped, 0.5 reduced, 0.75 low. `command_test`, `hud_test`. (?119)
+- [x] **Check tag seam** (`Unit.check_mod(s, kind, tags)`, `check_bonus(s, kind, tags)`): a `check` effect with `tags` counts only for checks carrying one; the save contest passes the skill's tags. `skill.py check` demands `taps` on a helpless or sleep effect and `execute` on `kills`. (?119, ?124)
+- [x] **Burnout and Recovery Endurance** (`Scripts/Burnout.gd`, `Unit.recovered`, `note_recovery()`, `endurance`, `burnt`, `burn()`; terms `burnout`, `recovery_endurance`): every heal and Energy grant reports; a depleted unit's con save cuts max HP or resource; a big single heal asks a con save; lost max lasts. `burnout_test.gd`. (?116, ?121)
+- [x] **Per-ally command mods** (`Command.cha_for()`; Behaviour hooks `command_mod`, `ordered`): reach, orders a turn and slots by ally; the HUD's grey-out reads each ally's own cap. (?60, ?120)
+- [x] **Bump recon** (`Battle.walk()` returns `blocker`; `Battle.noticed`, `note()`, signal `bumped`): a walk stopped by a concealed unit gives 1 recon on it. `moves_test.test_bump`. (?68, ?120)
+- [x] **Aquatic** (`Battle._cost()`, `_grip()`): a step into water costs 1 and nothing drags or drowns an aquatic unit; form traits count as tags while shaped. `aquatic_test.gd`. (?82, ?120)
+- [x] **Rarity rank costs, `enchanted`, `honed`** (`Item.RANK_COST`, `rank_cost()`, `ranked()`, `Tags.quality_rank()`, `Tags.exclusive()`): common 1 to mythic 5; both tags rank +1 and exclusive. `quality_test.gd`. (?97, ?118)
+- [x] **Borrowed Time's deferred death** (`Unit.defer()`, `harms`, `replay_harms()`, `fall()`, `Battle._borrowed()`, `last_stand()` with execute-tagged checks, `Unit.execute_share()`). (?85, ?124)
+- [x] **Friendly fire** (`Battle._holds_fire()`, signal `held_fire`): a foe-only skill on an ally it can't tell asks a hidden d20 + wis check against DC 12; passing, it spends the cost, is interrupted and reads the ally better. `friendly_fire_test.gd`. (?84, ?124)

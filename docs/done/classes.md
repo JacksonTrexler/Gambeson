@@ -154,7 +154,7 @@ The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped arm
 - [x] The **Adventurer** starts at 16 in every stat - a sandbox for the attribute-driven Actualization abilities (respec, Hardy, Self-reflection) to come.
 - [x] **Hardy** (Actualization passive; `Skills/hardy.tres`): con mod counts (1 + rank) times in the HP each level brings. Alabaster borrows it at I: 30 + 25 = 55 max HP. Its home tree waits on the Actualization tree (?57).
 - [x] **Judgement** (Paladin; Cleric, Sol): an attack within rank tiles, 1d4 + wis mod. On a hit, **Shackles** of the rank's weight replace the target's trinket (kept till they come off), locked for rank turns by a Shackled debuff (cleansing unlocks them). Locked: pick (approachable, dex) or pry (unfair, str), each try their rank in AP. Unlocked: off for their rank in AP. (?65 ?66)
-- [x] **Wildfire** (Cleric, Sol, after Solar): evadable at difficult; a 60 degree cone, intense (2.5 x rank) tiles long; extreme ((3 x rank)d6 + wis) fire to every unit in it but the caster; units carrying earth (`Unit.has_tag()`) dodge at impossible and are hit as a crit; it burns leaves in its path. (?64)
+- [x] **Wildfire** (Cleric, Sol, after Solar): evadable at difficult; a 60 degree cone, intense (2.5 x rank) tiles long; severe ((3 x rank)d6 + wis) fire to every unit in it but the caster; units carrying earth (`Unit.has_tag()`) dodge at impossible and are hit as a crit; it burns leaves in its path. (?64)
 - [x] **The Paladin's tree** (`Roles/paladin.tres`): **Divinity: Eros** (magical: Rejuvinate, Pray, Renew and Smite open, Send Off, Lovely Caster and Impassioned Fighter after Rejuvinate), **Idealism: Chivalry** (specialist: Coordinate, then Final Act and Gallantry, stubs waiting on Reactions) and **Prowess: Protector** (the Fighter's root, `Trees/protector.tres`). Favour, Lightvision and Judgement stay on its core ring. (?12 ?67)
 - [x] **Rejuvinate** (Divinity root; also the Adventurer's core ring · 3 AP · 5 Energy · range rank · `divine`, `cha`, `love`, `magical`; `Skills/rejuvinate.tres`): regeneration for 3 turns of 10% + 5% × rank of the recipient's max HP, + the caster's cha mod in HP (`regen`, `regen_hp`). Its strength falls 5% a tile past the first between caster and target, set as it's cast (`Skill.decays`, `Battle.decay()`, `Unit.Applied.scale`), none when paid wholly with mana; the cha mod is fixed then too (`Effect.by_mod`). (?12)
 - [x] **Send Off** (after Rejuvinate · 3 AP · 3 Energy · adjacent, ally or foe; `Skills/send_off.tres`): teleports the unit cha mod + rank tiles straight away from the caster, to the furthest free tile on that line (`Skill.sends`, `Battle.send()`, `Battle.place()`). A foe gets an attack roll first. (?12)
@@ -206,3 +206,31 @@ The rule is in `docs/done/rules.md`.
 
 - [x] **Trickster** (`Roles/rogue.tres` tab; `Trees/showmanship.tres`, `deception.tres`, `legerdemain.tres`): Flourish, Stage Presence, Showstopper; Vanishing Act, Double Bluff, Illusionist; Phantasm, Switcheroo (`Behaviours/switcheroo.gd`), Prestidigitation. `trickster_test.gd` and a test per skill. (?109)
 - [x] **Illusionist and the Illusion school** (`Behaviours/illusionist.gd`, `Trees/illusion.tres`; a choice on the Rogue, a school of the Mage's): Blur, Disguise Self, Mirror Image, Phantasmal Force, Invisibility; the first rank spells free of the guest penalty. `illusionist_test.gd`. (?110)
+
+## Tapped, Stun, Mindless Fury, Drone (2026-11-14)
+
+- [x] **Stun** (`Skills/stun.tres`; Brawn tree after Crushing Blow, Paladin and Berserker; 4 AP, 2 Energy, reach 1, 1d6 + str, -5 to hit): on a failed difficult con save, Stunned (`Effects/stunned.tres`: stat `helpless`, a wound, `ease` 2) for rank turns, interrupting what it stops. `stun_test.gd`. (?119)
+- [x] **Mindless Fury** (`Skills/mindless_fury.tres`; Fury, after Grudge and Frenzy, Berserker only): rank skill uses a turn while helpless, mental mods as 1. `mindless_fury_test.gd`. (?119)
+- [x] **Drone** (`Skills/drone.tres`; general Caster tier 4): past both command caps without tapping, mental mods capped at its rank. `drone_test.gd`. (?119)
+
+## Telepathy, Word to the Wise, Pike, Meditate, Discipline (2026-11-14)
+
+- [x] **Telepathy** (`Skills/telepathy.tres`; general Caster tier 3, passive): within rank tiles an ally counts rank in place of the leader's cha; the first one ordered while rank beats cha mod is bound for the turn. `telepathy_test.gd`. (?120)
+- [x] **Word to the Wise** (`Skills/word_to_the_wise.tres`; general Specialist tier 3, passive): commanding by wis, bounded by min(leader wis mod, ally wis mod + rank). `word_to_the_wise_test.gd`. (?120)
+- [x] **Meditate**: a zero-sum trade of up to rank stat points a use, nothing below 1 (`Unit.respec_by()`). (?57, ?120)
+- [x] **Discipline**: burns all AP left on a curve, P = AP ^ (rank / (rank + 1)): to hit, damage by stat mod, crit faces, Focus back (`Battle.discipline_curve()`). (?80, ?120)
+- [x] **Pike** (`Scenes/pike.tscn`, `Units/Pike.png` placeholder; `Battle.FORMS.pike`): Thalassic's beast and a level 2 unit; swims by the `aquatic` rule. `pike_test.gd`, `aquatic_test.gd`. (?82, ?120)
+
+## Gods and the Ranger's capstones (2026-11-14)
+
+- [x] **One god system** (`Scripts/God.gd`, `Gods/<id>.tres`, `Gods/tabs/`; `TreeChoice` kinds, gods, grants, burns, after; `Unit.offered()`, `picks()`, `burnable()`, `burned()`): a god or patron offers its own tree and a pool of tabs; Cleric (God, then Domain granted), Paladin (Prowess, Domain, Flex), Warlock (Patron, then 2 Flex after Bargaining, with burns). `god_slots_test.gd`. (?65, ?122)
+- [x] **Efficiency stacks** (`Unit.efficiency()`, `Behaviours/efficiency.gd`): +1 Affinity on a tree up to a tier; **Bargaining** (t5) and **Acceptance** (t10) on the Warlock, max rank 5, stacking. `bargaining_test.gd`, `acceptance_test.gd`. (?65, ?122)
+- [x] **Ranger capstones** Quarry (opens Prowess: Slayer), Survivalist (Survival ??, one stub, Forage) and Wildcaller (opens Nature): each a passive efficiency stack on its tree. `quarry_test.gd`, `survivalist_test.gd`, `wildcaller_test.gd`, `forage_test.gd`. (?81, ?122)
+
+## Recovery and rescue (2026-11-14)
+
+- [x] **Energize** (`Skills/energize.tres`, `Behaviours/energize.gd`; general tier 4, 0 Energy, 2 AP a pair, up to rank pairs): 1 Energy a pair, the rest Overcharge. `energize_test.gd`. (?117, ?121)
+- [x] **Heal** and **Megaheal** (`Skills/heal.tres`, `megaheal.tres`, `Behaviours/heal.gd`; Eros, after Rejuvinate / Heal; wis): the dice x moderate / severe + wis mod + rank. `megaheal_test.gd`. (?117, ?121)
+- [x] **Resuscitate** (`Skills/resuscitate.tres`; general Specialist tier 4; 3 AP, 2 Energy, reach 1): a Downed ally comes back with rank x 5% of its max HP; `Behaviour.fits()` filters its target. `resuscitate_test.gd`. (?85, ?124)
+- [x] **Intervention** (`Skills/intervention.tres`; Eros after Renew; 3 AP, 2 Energy): Bless for rank turns: regen while Downed, `hale` (executes read full HP), a check bonus tagged `taps` and `execute`. `intervention_test.gd`, `hale_test.gd`. (?85, ?124)
+- [x] **Borrowed Time** (`Skills/borrowed_time.tres`; Wizard Arcane after Blink; passive `defer`): death put off rank rounds, harms replayed, an execute check at the end. `borrowed_time_test.gd`. (?85, ?124)

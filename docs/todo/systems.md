@@ -74,7 +74,7 @@ Build roughly in this order; the content below depends on them.
 21. Evidence:  "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
 
 68. **Moving units and checks - built on judgement, open for review (2026-11-06).**
-    - **Earlier inline notes being built (2026-11-12, branch `a-small`).**
+    - **Built (2026-11-14, ?120):** a bump into a concealed unit gives the walker 1 recon on it (`docs/plans/small-notes.md`).
     - Pushes go straight away from the pusher and stop short of the first blocked tile; hitting something does no damage. Nothing pushes yet (a Shove, when designed).
     - Teleports (Send Off) spring a trap where they land and leave no debris trail; they don't count as moving.
     - On contact: a unit walking past a hidden foe (any tile of its walk beside it), or a hider ending its walk beside a foe, has the foe investigate against the hider's own roll, each time they come into contact, until it's seen through. Only hiding (concealment) is felt this way, not disguises.
@@ -99,11 +99,11 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [ ] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. (?100)
 - [x] **A save-Stamina toggle**: Stamina and Mana are now toggles on the hotbar (2026-11-11, ?116); switching is a channel. (?98, ?116)
 - [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
-- [ ] **`tapped` and `helpless`** (2026-11-12, branch `a-tap`): `tapped` is a utility effect other effects may apply; a tapped unit can't act or take orders. It is not a debuff and can't be cleansed, but its sources can be addressed (healing off a stun, a wound), which removes it, and the unit is free to use AP and reactions on its turn. Tapped when: out of AP; it has received cha mod orders this turn (until the commander ends the command phase; afterward it may use remaining AP on autopilot); downed or stunned with no effect or skill letting it act (see Mindless Fury). `helpless` is for stun and other full action-disabling spells. (?65, ?90)
-- [ ] **Tapped saturation** (2026-11-12, `a-tap`): a unit acting in a reduced capacity is drawn at 50% saturation, instead of 0% for tapped or 75% for low AP / command limit.
-- [ ] **Stun** (2026-11-12, `a-tap`): a wound-type cause of `tapped`/`helpless`; healing it off removes the tap.
-- [ ] **Mindless Fury** (2026-11-12, `a-tap`): Berserker passive, tier 5. A unit may take rank actions in a reduced capacity when it would otherwise be interrupted or incapacitated; its effective mental stats are 1 while acting this way. It can't power through `tapped` to take unlimited actions in a turn, and needs blanket mitigation of unit-inflicted disabling effects.
-- [ ] **Drone** (2026-11-12, `a-tap`): tier 4, Mage general / Specialist Merchant. The unit does not tap when the command limit is exceeded; its mental stat mods are capped at +rank when acting this way.
+- [x] **`tapped` and `helpless`** (2026-11-12, built 2026-11-14, ?119): `tapped` is a utility effect other effects may apply; a tapped unit can't act or take orders. It is not a debuff and can't be cleansed, but its sources can be addressed (healing off a stun, a wound), which removes it, and the unit is free to use AP and reactions on its turn. Tapped when: out of AP; it has received cha mod orders this turn (until the commander ends the command phase; afterward it may use remaining AP on autopilot); downed or stunned with no effect or skill letting it act (see Mindless Fury). `helpless` is for stun and other full action-disabling spells. (?65, ?90)
+- [x] **Tapped saturation** (2026-11-12, built 2026-11-14, ?119): a unit acting in a reduced capacity is drawn at 50% saturation, instead of 0% for tapped or 75% for low AP / command limit.
+- [x] **Stun** (2026-11-12, built 2026-11-14, ?119): a wound-type cause of `tapped`/`helpless`; healing it off removes the tap.
+- [x] **Mindless Fury** (2026-11-12, built 2026-11-14, ?119): Berserker passive, tier 5. A unit may take rank actions in a reduced capacity when it would otherwise be interrupted or incapacitated; its effective mental stats are 1 while acting this way. It can't power through `tapped` to take unlimited actions in a turn, and needs blanket mitigation of unit-inflicted disabling effects.
+- [x] **Drone** (2026-11-12, built 2026-11-14, ?119): tier 4, Mage general / Specialist Merchant. The unit does not tap when the command limit is exceeded; its mental stat mods are capped at +rank when acting this way.
 - [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
 - [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
 - [ ] **Static skill descriptions** (skills screen, spellbook) show base costs only.
@@ -164,8 +164,8 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
 
 Plan, readings and what was built: `docs/plans/resources.md`; done in `docs/done/systems.md`. `Tests/resources_test.gd`.
 
-116. **Resource rules: Mana and Stamina as toggles - built on judgement, answered (2026-11-12) for the recovery rules, in progress (`a-recover`).** Your design (Mana and Stamina as toggle passives, on when learned; who pays what; Mana's even-keel regen, Stamina's rest bonus; switching as a channel that carries over up to 10% of max per rank per turn; two bars). Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
-    - **Answered (2026-11-12), being built on branch `a-recover`:** Energize and Recovery Endurance (RE) below, with burnout. See ?117 in `docs/todo/classes.md` for the text of both.
+116. **Resource rules: Mana and Stamina as toggles - built on judgement, answered (2026-11-12) for the recovery rules, built (2026-11-14, ?121).** Your design (Mana and Stamina as toggle passives, on when learned; who pays what; Mana's even-keel regen, Stamina's rest bonus; switching as a channel that carries over up to 10% of max per rank per turn; two bars). Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
+    - **Answered (2026-11-12), built (2026-11-14, ?121):** Energize and Recovery Endurance (RE) below, with burnout. See ?117 in `docs/todo/classes.md` for the text of both.
     - **General mechanic, burnout:** a unit recovering Energy by means other than waiting or resting eventually burns out. Con mod worth of recoveries are deferred; that deferral is **Recovery Endurance (RE)**, and it only comes back mid-combat if the unit rests at full resource. Reenergizing always consumes RE.
     - A unit that recovers Energy or health with no RE left, and fails a con check, loses max HP / resource: 10% x (1 + abs(RE)) x the amount recovered (for HP, the amount over the RE threshold; RE goes negative). A unit that abuses recovery without the con to bear it gradually loses maximum HP / resource.
     - **Single heals:** a unit healed above con mod x 20% of its health by one skill use makes a con check against the difference; -1 RE on a failure.
@@ -195,3 +195,43 @@ Plan, readings and what was built: `docs/plans/resources.md`; done in `docs/done
     - **What a study gives:** its whole side reads that unit or tile a recon level better for the battle. **Scrutinizing** a foe also looks harder at it if it fools the leader (`doubt()`); a tile is inspected (`inspect()`). A plain tile can be studied, to no effect beyond the recon.
     - **Begin** is the End Turn button (and Space) while preparing; the initiative roll comes after.
 111. **Tooling (2026-11-11).** `role.py tree` (an empty root) and `role.py tab` (a tab beside a class's own, a new choice with `--by`/`--affinity`, or `--into` an existing one), in the new-class process; `icon.py effect` for a status icon; a new behaviour hook, `affinity`. Fixed: `icon.py` lettered a skill by its *effect's* name when that came first in the file: Coalescing, Drown, Interdict, Judgement, Reckless Abandon and Snare had wrong placeholder letters, now redrawn.
+
+## Tapped, helpless, Stun, Mindless Fury, Drone (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/tapped.md`; done in `docs/done/systems.md` and `docs/done/classes.md`. Tests: `stun_test`, `mindless_fury_test`, `drone_test`; `command_test.test_idle` and `hud_test.test_command_colour` changed to the new rule.
+
+119. **Tapped, helpless, Stun, Mindless Fury, Drone - built on judgement, open for review (2026-11-14).** Your answers of 2026-11-12, built on `a-tap`. Suite after all merged: 42616 checks, 0 failed (648 tests). My calls, each for you to confirm or change:
+    - **Tapped is derived, never stored, never cleansed:** a unit is tapped while out of AP, or ordered to its cap this turn (until the command phase wraps; then autopilot may spend the rest), or helpless (the `helpless` stat, asleep, Downed without `acts`) with no permit. Lift the source (heal the wound, cleanse Stunned, heal above 0) and it is free at once. `Unit.tapped()` and `stopped()` serve Battle and the AI; `Command.tapped(u)` serves orders and the HUD. Confirm?
+    - **Free (0 AP) actions still go** while out of AP: the AP pay check would pass anyway. Sleep counts as helpless, so Mindless Fury acts through it too. Confirm?
+    - **Autopilot:** allies ordered up to their cap with AP left act on their own when the turn ends; allies given fewer orders don't (unchanged); a held ally (`Command.lock`) doesn't, so a hold at a 1-order cap stays a hold. Confirm?
+    - **Reduced capacity** (Reduced capacity ??, a Glossary term): acting under a permit, drawn at 0.5 saturation. Tapped is 0; low AP or orders toward the cap drain to 0.75 (it was 0.55). Confirm?
+    - **Stun** (Brawn, after Crushing Blow; Paladin and Berserker): prowess trees have no tiers, so depth stands in for high tier. 4 AP, 2 Energy, reach 1, 1d6 + str, -5 to hit ("very difficult"); a failed difficult con save at its rank leaves Stunned (`Effects/stunned.tres`, stat `helpless`, a `wound`, `ease` 2 so cleansing halves its rank) for rank turns, interrupting what it stops. The save carries a `taps` tag. Confirm?
+    - **Mindless Fury** (Fury, after Grudge and Frenzy, needing 3 of the root's others, Berserker only; standing in for tier 5): rank skill uses per own turn while helpless, counted as Grudge counts them; mental mods count as 1. Past that it is tapped: no infinite actions. Confirm?
+    - **Drone** (general Caster tier 4, magical): ignores both command caps (orders per ally, allies a turn); an order past either makes it reduced for the turn, mental mods capped at its rank. Its tap from running out of AP still holds. Confirm?
+    - **Jam's Jammed ?? stays** (the interrupt plus lost reactions): a short Stunned would make the low-tier Jam a full lockout and step on Stun. Confirm?
+    - **Check tag seam:** `check_bonus(s, kind, tags)`; a `check` effect with `tags` counts only for checks carrying one. After merging, the HUD grey-out reads each ally's own order cap. Confirm?
+    - **New names to review:** Reduced capacity ?? (the term).
+- [ ] **No Merchant tree exists for Drone**: it sits on the general Caster tree at tier 4; the Specialist "Merchant" half waits for the tree. (?119)
+- [ ] **No screenshot of the new saturation.** (?119)
+- [ ] **0-AP free actions still go while tapped**; say if they should not. (?119)
+
+## Recovery: burnout, Energize, Heal, Megaheal (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/recovery.md`; done in `docs/done/systems.md` and `docs/done/classes.md`. Tests: `burnout_test`, `energize_test`, `megaheal_test`; `champions_test.test_hex_iii` resets with `hp = 50`, not `heal(50)`.
+
+121. **Burnout, Recovery Endurance, Energize, Heal, Megaheal - built on judgement, open for review (2026-11-14).** Your design under 116 and 117, built on `a-recover`. Suite after all merged: 42616 checks, 0 failed (648 tests). My calls, each for you to confirm or change:
+    - **One place:** every non-regen recovery already passes `Unit.heal()` or `Unit.grant_energy()`; both report what actually came back through `Unit.recovered`, and `Scripts/Burnout.gd` is the rule's one home. Regen never reports; out of combat nothing listens. Confirm?
+    - **RE** (`Unit.endurance`) starts each battle at max(con mod, 0): a con 10 unit has none to spare, and negative con doesn't start in debt. The card shows "RE n". Confirm?
+    - **Energy grants spend 1 RE each**, even at 0 or below (it runs negative); a reserve restore (Mana potion) and Overcharge count as Energy; a grant that gives nothing spends nothing. Confirm?
+    - **Depleted** (RE 0 or below as a recovery starts): a con save, d20 + con check mod against the standard DC 12 (my pick). A fail cuts that pool's max by 10% x (1 + |RE|) x the amount recovered, rounded, at least 1; an HP recovery also takes 1 RE. Your "(recovered hp over RE threshold)" is read loosely: HP loss reckons on all the HP recovered, as Energy's does, so small heals still burn a depleted unit. Confirm?
+    - **Big single heal:** more than max(con mod, 0) x 20% of max HP in one heal asks a con save against the excess (the raw HP number, no 10 +); a fail is -1 RE. Confirm?
+    - **Refill:** a resting turn ended with Energy (or the reserve it runs on) full resets RE to its starting value, all of it, not +1. Confirm?
+    - **Lost max lasts** past the battle (`Unit.burnt`; cut in `refit()`, `max_energy` or `pools()`): "gradually lose maximum" read literally. The card shows "-n burnt". Nothing restores it yet. Confirm?
+    - **Energize** (general tier 4, 0 Energy, 2 AP for one pair, then every further pair it can, up to rank pairs, only as many as there is room): 1 Energy a pair, past a full bar the rest is Overcharge up to 20% x rank of total resource, for rank turns. No amount picker. If it has no room at all, its 2 AP are still spent. Being tier 4, it needs 3 T4+ skills first. Confirm?
+    - **Heal and Megaheal** (Cleric): there is no life tree, so both sit on Eros, gated by depth since `Branch.tier` only sets depth on a class tree and a Paladin could take them at once: Heal after Rejuvinate, Megaheal after Heal, each needing 4 other Eros skills. One behaviour (`heal.gd`, exported `magnitude`): the dice x magnitude + wis mod + rank. Heal 1d8 x moderate (1.5 x rank), 4 AP, 4 Energy; Megaheal 1d8 x severe (3 x rank), 6 AP, 9 Energy; range 3. Confirm?
+    - **New names to review:** none. Burnout and Recovery Endurance are glossary terms from your text.
+- [ ] **The AI doesn't use Heal, Megaheal or Energize**: `Skill.heals()` reads `heal_mods`, which they don't carry. (?121)
+- [ ] **Other gains don't report**: Sweet Nothings on a kill, Focus building, Downed saves via `hp =`, post-battle refills. Which should count? (?121)
+- [ ] **Burnt max has nothing to restore it.** (?121)
+- [ ] **No burnout out of combat.** (?121)
+- [ ] **A Life tree** to hold Heal and Megaheal as domain-general skills. (?121, ?122)

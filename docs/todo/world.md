@@ -75,15 +75,15 @@
     - Her persona: Personify III (a name from her pools, "Gleaming Heroine"), no stance or trickery. Insight reads her intention and strategy at net 2. "Strongest" weighs each level it reads as half a tile of distance.
     - Physical Intelligence: kept as built (the Arcanist Perspective cap).
 
-63. **Magnitudes - built on judgement.** Your "extreme fire damage" and "intense rank cone range" read as tags that scale a number by rank: faint 0.5, mild 1, moderate 1.5, strong 2, intense 2.5, extreme 3, overwhelming 4 x rank, rounded up (`Difficulty.MAGNITUDE`). Open for review.
-    - **Earlier inline notes being built (2026-11-12, branch `a-small`).**
+63. **Magnitudes - built on judgement.** Your "extreme fire damage" and "intense rank cone range" read as tags that scale a number by rank: faint 0.5, mild 1, moderate 1.5, strong 2, intense 2.5, severe 3, overwhelming 4 x rank, rounded up (`Difficulty.MAGNITUDE`). Open for review.
+    - **Built (2026-11-14):** `severe` (3 x rank) replaces `extreme`, ?120.
 66. **Shackles - built on judgement.** *Choices:* each pick (approachable, dex) or pry (unfair, str) try costs the shackles' rank in AP, the same as taking them off unlocked; once off they fall away rather than going to the stash, and the stowed trinket goes back on; an AI unit works at them before anything else. Open for review.
 
 ## Command skills and trinkets (2026-11-09)
 
 Plan: `docs/plans/command-skills.md`.
 - [x] **Strategist, Tactician, Strategy Guide, Tactician's Playbook, Grand Design, Legendary rarity** built (`docs/done/classes.md`, `docs/done/world.md`, `docs/done/rules.md`). (?86)
-- [ ] **Item rarity cost curve, `enchanted`, `honed`** (2026-11-12, ?97, branch `a-items`): see ?97 in `docs/todo/classes.md`; ranking an equipment item up costs its rarity's multiple of a skill rank-up (legendary 4, uncommon 1.5, rare 2, epic 3, mythic 5; a Grand Design ranked once costs as much as four skill ranks).
+- [x] **Item rarity cost curve, `enchanted`, `honed`** (2026-11-12, built 2026-11-14, ?118): see ?97 in `docs/todo/classes.md`; ranking an equipment item up costs its rarity's multiple of a skill rank-up (legendary 4, uncommon 1.5, rare 2, epic 3, mythic 5; a Grand Design ranked once costs as much as four skill ranks).
 - [ ] **Nothing ranks items up yet**, so nothing calls `Item.worth()` (rank x 4 for a legendary).
 - [ ] No screenshot taken of the Specialist tree with three skills at tier 3.
 
@@ -93,3 +93,19 @@ Plan: `docs/plans/command-skills.md`.
     - **Loot:** the trinkets drop from the Astral Princess, the only table with a trinket: Heart Up 21%, Heart 62%, Strategy Guide 8%, Tactician's Playbook 8%, Grand Design 1% (hearts were 25% / 75%).
     - **Grand Design is a trinket** (my reading of your wording): the first legendary, +1 to the leader's cha mod per rank wherever Command reads it (reach, party reach and size, slots, both limits, Synergy's range); the charisma stat is untouched, so checks don't change. Being a trinket, it can't be worn with a Guide or Playbook; it stacks with both skills. Say if it should be something else.
     - Strategy Guide and Tactician's Playbook: uncommon trinkets, the same as the skills by item rank. Legendary: drop pull 0.05 (rare 0.15), each rank worth four of a common item's. A refused order says where the limit comes from ("charisma -1, +2 from skills and items").
+
+## Item ranks: rarity costs, enchanted, honed (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/item-ranks.md`; done in `docs/done/world.md`. `Tests/quality_test.gd` (new); `items_test` (a rare's worth is now 2, was 1).
+
+118. **Item ranks - built on judgement, open for review (2026-11-14).** Your answers under 97, built on `a-items`. Suite after all merged: 42616 checks, 0 failed (648 tests). My calls, each for you to confirm or change:
+    - **One table:** `Item.RANK_COST` (common 1, uncommon 1.5, rare 2, epic 3, legendary 4, mythic 5), read by `rank_cost()`; `Item.worth()` (rank x rank cost) is now a float. Nothing ranks items up in play yet. Confirm?
+    - **Epic and mythic** added to the rarity enum; loot pull epic 0.08 (between rare 0.15 and legendary 0.05), mythic 0.02. No item uses either yet. Confirm?
+    - **`enchanted` and `honed`** are Glossary tags (kind condition, your names), each rank +1 through `Tags.quality_rank()`: `Item.ranked()` for items, `Unit.rank()` for skills. Everything that scaled by an item's rank (effects, potions, heat, burning, revive, shackles, drag, Brutal) reads `ranked()`; `rank` stays the bought rank that `worth()` charges. Confirm?
+    - **Exclusive:** `Tags.exclusive()`, checked by `mechanic.py check` over Items and Skills and by `quality_test`. `honed` never reads as `enchanted()`, and Pray skips honed items (call: already perfect). Confirm?
+    - **Pray's numeric `Item.enchant`** (+1 Defense or damage) does not raise rank; the tag does. Making Pray's result raise rank would change heavy-armor drag and existing tests, so I left it. Should it?
+    - **Burning Blade** carries `enchanted`, so it is rank 2; its one effect isn't per rank, so nothing changes. No skill is tagged: no capstone clearly needs it. Confirm?
+    - **New names to review:** none.
+- [ ] **Nothing ranks items up in play**, so the cost curve is unused outside `worth()`. (?118)
+- [ ] **No skill carries `enchanted` or `honed`**, and no item is epic or mythic. (?118)
+- [ ] **Pray's enchant and rank**: whether it should also add rank +1. (?118)

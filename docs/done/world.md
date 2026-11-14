@@ -71,7 +71,7 @@ Acts serene and stands still until unmasked. It tries to get units close by enra
 - [x] **Powerful** (`pillar`): her Energy is Power.
 - [x] **Physical Intelligence** V (`magical`, `pillar`): str mod can stand in for int mod on magical skills, with a max mod difference of 20% × rank. *Now:* `Skills/physical_intelligence.tres`, capped like Arcanist Perspective; she has it at rank III.
 - [x] **Metea II** (tier 3 magical spell, `earth`, `fire`; channeled): cast on a tile in range, then strike a tile within (turns since) tiles of it: rank d12 + int mod to everyone within rank tiles but her.
-- [x] **Smite V** (Paladin; `divine`): extreme damage to an adjacent unit (4d12 + cha mod at V), carrying her god's tag: Urlo's energy, so it drains Energy first, 80% of what's left once it's gone carrying to HP, and takes five enchantments off (enchanting her own items with what's left over).
+- [x] **Smite V** (Paladin; `divine`): severe damage to an adjacent unit (4d12 + cha mod at V), carrying her god's tag: Urlo's energy, so it drains Energy first, 80% of what's left once it's gone carrying to HP, and takes five enchantments off (enchanting her own items with what's left over).
 
 ### Regeneration Probe
 
@@ -121,3 +121,8 @@ Jimhe Deyn runs competing gangs out of Center, each a mix of species shoehorned 
 - [x] **Sight and conditions** (`Battle.sight`, `Battle.in_range()`, `Battle.conditions`, `Perception._range()`): in every battle, units perceive within their wisdom total in tiles and make out appearances within half, the range shared across their side; fog halves both. Sides remember where they last made out foes (`Battle.sightings`, starting with where the others drew up) and hunt there when none is in sight (`AI._hunt()`). `sight_test.gd`. (?74 ?77)
 - [x] **Area difficulty** (`Battle.difficulty`, `Difficulty.AREA`, `Difficulty.area()`): 0.5, 1, 1.5, sitting on the approachable, standard and difficult rungs. (?74)
 - [x] **Battle camera** (`BattleCamera`): follows the player's unit, or the selected one once it's far off; Home toggles between them (the `camera_home` action). (?74)
+
+## Items and monsters (2026-11-14)
+
+- [x] **Epic and mythic rarities** (`Item.RANK_COST`; loot pull 0.08 and 0.02): rank-up costs multiply by rarity, common 1 to mythic 5. No item uses them yet. (?97, ?118)
+- [x] **Pike** (`Scenes/pike.tscn`, level 2, unaligned, aggressive, Fish, Aquatic, Strike I; placeholder sprite): in no battle yet. (?82, ?120)

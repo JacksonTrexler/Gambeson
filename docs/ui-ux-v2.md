@@ -1,7 +1,7 @@
 # Battle UI v2: hover to plan, click to do
 
 Combat should read at a glance and move at the player's pace. The map shows what will happen; text
-and numbers appear only when the unit actually knows them. This is a plan; nothing here is built.
+and numbers appear only when the unit actually knows them. This was the plan; it is built (2026-11-14), apart from Pace: what was built, with the calls, is in `docs/plans/ui-v2.md` (?123).
 
 ## What's in the way today (`Scripts/HUD.gd`, `Scripts/Overlay.gd`)
 

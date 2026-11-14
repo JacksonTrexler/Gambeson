@@ -23,7 +23,7 @@ Six pieces of work, each built in its own worktree and merged in turn. The first
 | E | **Skill tooling, Kick, CLAUDE.md** | Once Downed is in: a tool (and an agent skill for using it) that takes the repeated, high-friction steps out of adding a skill. Tried on *Kick*: an attack at rank range whose effects depend on the tile between kicker and target. Then CLAUDE.md gets under four lines on how skills are composed. | B | `kick_test.gd` | 88 |
 | F | **Clairvoyance** | An arcane and Cleric spell, channeled: it pings the silhouettes of unseen foes within the caster's wisdom + rank, building suspicion over the area but telling no more than where they are. Each turn end it's held it updates the places and gains a rank. | A | `clairvoyance_test.gd` | 89 |
 
-**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged); then resources as toggles and the siphon, Overcharge and Sorcerer work (41663 checks, 565 tests, 0 failed after both merged). The Battle UI v2 plan (`docs/ui-ux-v2.md`, ?90) is planned only; it builds on A's glow.
+**Status.** A to D are built (rows under "Built since"; the pieces' own notes in `docs/plans/`). E and F are built too (487 tests, 0 failed after the merge). Suspicion marks, channels with Jam, and Stamina are built too (38360 checks, 525 tests, 0 failed after the merge); then sight by unit, Focus and Stamina's recovery (38408 checks, 535 tests, 0 failed after both merged); then resources as toggles and the siphon, Overcharge and Sorcerer work (41663 checks, 565 tests, 0 failed after both merged). Then the 2026-11-12 answers, built 2026-11-14: item ranks, tapped and Stun, the small notes, recovery, one god system, Battle UI v2 (as `docs/plans/ui-v2.md`; its Pace section not built), and rescue (42616 checks, 648 tests, 0 failed after all merged; ?118 to ?124).
 
 ## Built since the plan was written
 
@@ -92,6 +92,13 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Focus, Stamina recovering, Jam draining Focus, Fixation ?? (?97, ?98, ?100) | `focus_test.gd`, `stamina_test.gd`, `jam_test.gd` |
 | — | Mana and Stamina as toggles, two bars, switching as a channel (?116) | `resources_test.gd` |
 | — | Siphon, Overcharge, Energy Transfer, Powerful's grants, the Sorcerer (?117) | `siphon_test.gd`, `sorcerer_test.gd` |
+| — | Rarity rank costs, `enchanted`, `honed` (?97, ?118) | `quality_test.gd`, `items_test.gd` |
+| — | Tapped, helpless, Stun, Mindless Fury, Drone (?119) | `stun_test.gd`, `mindless_fury_test.gd`, `drone_test.gd` |
+| — | Meditate, Telepathy, Word to the Wise, severe, bump recon, Discipline, Pike (?120) | `telepathy_test.gd`, `word_to_the_wise_test.gd`, `pike_test.gd`, `aquatic_test.gd` |
+| — | Burnout, Recovery Endurance, Energize, Heal, Megaheal (?121) | `burnout_test.gd`, `energize_test.gd`, `megaheal_test.gd` |
+| — | One god system, Warlock pacts and burns, efficiency stacks, Ranger capstones (?122) | `god_slots_test.gd`, `bargaining_test.gd`, `quarry_test.gd` |
+| — | Battle UI v2: intent, slot, hover rows, glow, will-consume bars, foresight, wordless signals (?123) | `hud_test.gd` |
+| — | Resuscitate, Intervention, Borrowed Time, friendly fire (?124) | `resuscitate_test.gd`, `intervention_test.gd`, `borrowed_time_test.gd`, `friendly_fire_test.gd` |
 
 ## Questions to answer first
 
