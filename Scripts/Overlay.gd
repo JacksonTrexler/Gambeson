@@ -278,8 +278,8 @@ func _pips(u: Unit) -> void:
 	var row := 0
 	var unsure: Array = hud.spend.get("unsure", [])
 	var left := u.position.x - Unit.BAR_WIDTH / 2.0
-	var y := u.position.y + u.trim.position.y - 3.0
-	var a := 0.55 + 0.35 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
+	var y := u.position.y + u.trim.position.y - 1.0
+	var a := 0.8 + 0.2 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
 	for pair in [[&"ap", HUD.AP_COLOR], [&"move", HUD.MOVE_COLOR]]:
 		var n := float(hud.spend.get(pair[0], 0.0))
 		if n <= 0.0 and pair[0] not in unsure:
@@ -287,10 +287,12 @@ func _pips(u: Unit) -> void:
 		var x := left
 		for i in mini(ceili(n), PIPS):
 			var w := PIP * clampf(n - i, 0.0, 1.0)
-			top.draw_rect(Rect2(x, y - row * (PIP + 1.0) - PIP, maxf(w, 1.0), PIP), Color(pair[1], a))
+			var r := Rect2(x, y - row * (PIP + 2.0) - PIP, maxf(w, 1.0), PIP)
+			top.draw_rect(r.grow(0.75), Color(0, 0, 0, 0.6))
+			top.draw_rect(r, Color(pair[1], a))
 			x += PIP + 1.0
 		if pair[0] in unsure:
-			var q := Vector2(x + 0.5, y - row * (PIP + 1.0))
+			var q := Vector2(x + 0.5, y - row * (PIP + 2.0))
 			top.draw_string_outline(ThemeDB.fallback_font, q, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, 2, Color(0, 0, 0, 0.6 * a))
 			top.draw_string(ThemeDB.fallback_font, q, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(HUD.MUTED, a))
 		row += 1
