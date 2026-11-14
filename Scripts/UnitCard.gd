@@ -8,6 +8,7 @@ extends VBoxContainer
 var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 var face: Label  # a persona's stand-in sprite (";)"), over the portrait in place of its look
 var effects: HFlowContainer  # what's timed on it, an icon each, under the chips
+var trims: HBoxContainer  # a little banner per item it wears with a trim (Item.trim()), over the portrait's foot
 var note: Label  # an insightful read of how true its presentation is, under the rows
 var _shown: Variant = null  # the info last shown (set_info())
 
@@ -25,6 +26,11 @@ func _ready() -> void:
 	face.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	face.add_theme_font_size_override(&"font_size", 12)
 	portrait.add_child(face)
+	trims = HBoxContainer.new()
+	trims.add_theme_constant_override(&"separation", 1)
+	trims.set_anchors_and_offsets_preset(PRESET_BOTTOM_LEFT)
+	trims.grow_vertical = GROW_DIRECTION_BEGIN
+	portrait.add_child(trims)
 	effects = HFlowContainer.new()
 	effects.add_theme_constant_override(&"h_separation", 2)
 	effects.add_theme_constant_override(&"v_separation", 2)
@@ -37,7 +43,8 @@ func _ready() -> void:
 
 
 # info: {name, sub, look: Texture2D, face: String, shape: bool, chips: [[text, Color]], effects:
-# [[mark (text, or a Texture2D drawn in the colour), Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String}. face: text
+# [[mark (text, or a Texture2D drawn in the colour), Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String,
+# trims: [[Color, tooltip]] (the items it's seen wearing with a trim: a banner each)}. face: text
 # standing in for the look (a persona's claimed name). shape: its side can't be told (the card's
 # "Unknown" chip says so). silhouette: only a black shape of it shows (Read.silhouette()).
 # roll: the roll an effect was put on with, in its icon's top right ("" when unknown). A row whose
@@ -53,7 +60,7 @@ func set_info(info: Dictionary) -> void:
 	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("silhouette", false) else Color.WHITE
 	title.text = info.get("name", "")
 	sub.text = info.get("sub", "Nothing selected")
-	for c in chips.get_children() + effects.get_children() + rows.get_children():
+	for c in chips.get_children() + effects.get_children() + rows.get_children() + trims.get_children():
 		c.get_parent().remove_child(c)
 		c.queue_free()
 	for chip in info.get("chips", []):
@@ -62,6 +69,8 @@ func set_info(info: Dictionary) -> void:
 		l.text = chip[0]
 		l.add_theme_color_override(&"font_color", chip[1])
 		chips.add_child(l)
+	for t in info.get("trims", []):
+		trims.add_child(trim_mark(t[0], t[1]))
 	for e in info.get("effects", []):
 		effects.add_child(_effect(e[0], e[1], e[2], e[3]))
 	effects.visible = effects.get_child_count() > 0
@@ -69,6 +78,18 @@ func set_info(info: Dictionary) -> void:
 		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null))
 	note.text = info.get("note", "")
 	note.visible = note.text != ""
+
+
+# An item's trim as a little banner (Item.draw_banner()), its tooltip the item: the unit card, the
+# character sheet. A clear colour: an empty space the same size, so rows line up.
+static func trim_mark(c: Color, tip: String) -> Control:
+	var m := Control.new()
+	m.custom_minimum_size = Vector2(7, 10)
+	m.tooltip_text = tip
+	m.mouse_filter = MOUSE_FILTER_PASS
+	if c.a > 0.0:
+		m.draw.connect(func() -> void: Item.draw_banner(m, Vector2(0.5, 0.5), c, Color("#1d1a12")))
+	return m
 
 
 # An effect's icon: its mark in its colour, what it does as a tooltip, and the roll it was put on

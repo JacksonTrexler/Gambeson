@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/poach.gd" id="b_poach"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+dice = Vector2i(1, 6)
+stat = &"dexterity"
+
+[sub_resource type="Resource" id="Behaviour_poach"]
+script = ExtResource("b_poach")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Poach"
+glyph = "Po"
+tags = Array[StringName]([&"physical", &"pierce", &"dex", &"martial", &"offensive"])
+ap = 3.0
+cost = 2
+radius = 1.0
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_poach")])

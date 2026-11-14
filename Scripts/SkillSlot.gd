@@ -8,12 +8,6 @@ extends Button
 signal dropped(index: int, skill: Skill, from: int)  # from: the slot it came from, -1 the spellbook
 signal cleared(index: int)
 
-# Stripe colour by a skill's first tag that has one.
-const TINTS := {
-	&"magical": Color("#a179f2"), &"dark": Color("#7b6fe0"), &"physical": Color("#c9ced8"),
-	&"earth": Color("#c8a165"), &"sound": Color("#4fc1b0"), &"sight": Color("#62b6e8"),
-	&"light": Color("#f3da72"),
-}
 const PLAIN_TINT := Color("#8a90a0")
 const GOLD := Color("#e8c547")
 const ON := Color("#3fbf4f")
@@ -38,15 +32,15 @@ var cursed := false  # a curse disabled it (Brainfog), or sealed the slot (a lev
 var sealed := false  # a level curse took the slot: it stays, unusable, till the curse ends
 var label := ""  # the name it goes by for its unit (Unit.skill_name(): Decisive Strike, Firestrike); empty: its own
 var exhausted := 0.0  # uses counted against its skill (Exhaustion.of()): a pip each, a half pip for a half - its raised cost without words
+var switching := false  # its passive is a switch of what the unit runs on (Mana, Stamina) in progress: a turning arc and a pulsing rim until the channel ends
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
 
+# Stripe colour: the tag that marks the skill (Tags.mark(), as an item's trim), else PLAIN_TINT.
 static func tint(s: Skill) -> Color:
-	for t in s.tags:
-		if t in TINTS:
-			return TINTS[t]
-	return PLAIN_TINT
+	var t := Tags.mark(s.tags)
+	return Tags.color(t) if t else PLAIN_TINT
 
 
 # A small label for dragging a skill around.
@@ -112,12 +106,22 @@ func set_off(n: int, by_curse := false, is_sealed := false) -> void:
 		tooltip_text = "%s for %d more turn%s\n%s" % ["Cursed" if by_curse else "Disabled", n, "" if n == 1 else "s", tooltip_text]
 	if sealed:
 		tooltip_text = "Sealed by a curse on its level: it comes back as the curse ends\n" + tooltip_text
-	set_process(cursed)
+	set_process(cursed or switching)
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
-	queue_redraw()  # quivering
+	queue_redraw()  # quivering, or a switch turning
+
+
+# Marks (or clears) the slot of a Mana / Stamina toggle while its switch channels; to: what it
+# switches to, as named in the tooltip.
+func set_switching(to: String) -> void:
+	switching = to != ""
+	if switching:
+		tooltip_text = "Switching to %s: takes effect as the channel ends\n%s" % [to, tooltip_text]
+	set_process(cursed or switching)
+	queue_redraw()
 
 
 # The colour that marks its kind, or null for a plain slot.
@@ -162,7 +166,11 @@ func _draw() -> void:
 	draw_string(font, Vector2(right - nw, mid), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, GOLD * Color(1, 1, 1, dim))
 	right -= nw + 2
 	if skill.passive:
-		draw_circle(Vector2(right - 2, size.y / 2.0), 1.6, ON if on else Color(1, 1, 1, 0.25))
+		var dot := Vector2(right - 2, size.y / 2.0)
+		draw_circle(dot, 1.6, ON if on else Color(1, 1, 1, 0.25))
+		if switching:  # the switch turns: a ring round the dot, with an arc running round it
+			var t := Time.get_ticks_msec() / 1000.0
+			draw_arc(dot, 3.2, t * 5.0, t * 5.0 + PI * 1.3, 10, GOLD, 1.0)
 		right -= 6
 	var left := 16.0
 	var tex := skill.icon()
@@ -174,6 +182,8 @@ func _draw() -> void:
 			Color(0.92, 0.93, 0.96, dim))
 	if exhausted > 0.0001:
 		_pips()
+	if switching:
+		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(GOLD, 0.35 + 0.25 * sin(Time.get_ticks_msec() / 220.0)), false, 1.0)
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
 

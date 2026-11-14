@@ -20,6 +20,13 @@ class_name AI
 # to strike yet, it holds still to keep the channel. A unit with a strategy (Unit.strategy: closest, strongest, weakest) goes after targets by it, and one that
 # hunts a side (Unit.hunts: Starmen, the Stellar Order) goes after that side's units first. A
 # recovering unit (a Starmote) heads for the star lattice and holds there, fighting only when cornered.
+# What a skill restores it reads from the skill's behaviours (Behaviour.restores(), _restores()): the
+# wounded get what restores HP (Heal, Resuscitate on the Downed), and what is left of a turn goes to
+# refilling a pool it runs low on (Energize). A unit running on a reserve that can't pay for anything it
+# means to use, with another that can, switches to it (_switch(), a channel it finishes next turn).
+# One holding Focus rests to build it when there's nothing to shoot (_steady()), and a ranged attack that
+# would empty it is worth a little more (FOCUS). With no foe in sight, no clue and nowhere to hunt, it
+# casts Clairvoyance (_scry()); an ally in reach lacking a buff skill's effects (Intervention) gets it (_support()).
 # Kept small on purpose: score() and the move choice are the places to grow it.
 
 const KILL := 5.0  # bonus for a hit that should finish the target
@@ -34,6 +41,7 @@ const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (
 const BOLD: Array[StringName] = [&"brave", &"aggressive"]  # tempers that walk up to the aggressive regardless
 const LAST := 1000.0  # how much less a unit wants to go after a helpless, Downed foe: the standing come first
 const FINISH := 0.5  # the most a blow at a helpless, Downed foe is worth: only when no standing foe is worth one
+const FOCUS := 1.0  # per point of attack bonus the Focus a shot would spend the last of gives it (Unit.focus_forecast()), what it is worth over another blow
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -64,6 +72,10 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	if posture == &"defensive":
 		_defend(b, u, log)
 		return log
+	if posture == &"":
+		_finish_switch(u, log)
+		if _switch(b, u, reads, log):  # begun: the turn goes to it, idle
+			return log
 	var temper := u.temper() if posture == &"" else &""  # a self-directed turn goes by its temper (Bio)
 	if posture != &"offensive" and temper != &"aggressive":  # a full turn, or HELP: heal and support (the aggressive strike first)
 		var healed := log.size()
@@ -82,7 +94,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_recover(b, u, reads, log)
 			return log
 		_channel(b, u, reads, log)
-		if u.channel and u.channel.turns > 0:  # still holding one it began before: moving or acting would end it (Battle.end_turn())
+		if u.channel and u.channel.turns > 0 and not u.channel.skill.pings:  # still holding one it began before (Clairvoyance isn't held: it acts on what it sensed): moving or acting would end it (Battle.end_turn())
 			log.append("%s holds still, channeling %s" % [u.name, u.channel.skill.name])
 			return log
 		if not rooted and _flee(b, u, reads, log):
@@ -103,26 +115,31 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 							return log
 				_sing(b, u, reads, log)
 			return log
+	if posture == &"" and _steady(b, u, reads, log):
+		return log
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
-		elif not target and not _search(b, u, log) and not rooted and _emboldened(u, reads):
-			_hunt(b, u, reads, log)
+		elif not target and not _search(b, u, log):
+			if not _scry(b, u, log) and not rooted and _emboldened(u, reads):
+				_hunt(b, u, reads, log)
 	while _strike(b, u, reads, log):
 		pass
 	if temper == &"aggressive":  # what it has left, it spends on its side
 		_heal(b, u, reads, log)
 		_support(b, u, reads, log)
+	if posture == &"":
+		_replenish(b, u, log)
 	return log
 
 
 # Helpful (Bio): with no one to heal in reach, it goes to the ally it most wants to heal (want()) and
 # heals it. Other healers heal only whom they happen to reach.
 static func _tend(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
-	var heals := u.actives.filter(func(x: Skill): return x.heals() and not x.hostile and u.can_afford(x))
+	var heals := u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x))
 	if heals.is_empty() or _rooted(b, u):
 		return
 	var best: Unit = null
@@ -261,9 +278,11 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			var r: Read = reads[t]
 			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not u.can_afford(s):
 				continue
+			if not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
+				continue  # not one it can be used on (Gank: no ally near it; Sutemi: no way through)
 			if s.drags_to and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
-			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
+			var v := score(u, s, r) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -345,12 +364,16 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 	return false
 
 
-# Support skills (Stonegift) on allies it reads as allies and that don't have the effect yet.
+# Support skills on allies it reads as allies (itself too, for one that reaches itself) that don't have
+# the effect yet: one that grants an effect (Stonegift), or a buff for allies with effects of its own
+# (Intervention, Rally; not self_only or dual ones).
 static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
-	for s in u.actives.filter(func(x: Skill): return not x.hostile and x.grants):
-		for t in reads:
-			var r: Read = reads[t]
-			if r.attitude(u) == &"ally" and s.grants.effects[0] not in r.effects and b.cast(u, s, t):
+	for s in u.actives.filter(func(x: Skill): return not x.hostile and (x.grants or (not x.for_foes() and not x.self_only and not x.effects.is_empty())) and u.can_afford(x)):
+		var e: Effect = s.grants.effects[0] if s.grants else s.effects[0]
+		for t: Unit in reads.keys() + [u]:
+			var r: Read = b.read(u, u) if t == u else reads[t]
+			if t.is_alive() and (t == u or r.attitude(u) == &"ally") and e not in r.effects and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)) \
+					and b.cast(u, s, t):
 				log.append("%s gives %s to %s" % [u.name, s.name, t.name])
 				return
 
@@ -430,24 +453,53 @@ static func _ambush(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 
 # Heals the ally it most wants to (itself included), from what it reads of them, by how it tends
 # (Unit.tends, else its class's: Role.tends; benevolent with neither). Only those it reads as hurt
-# (HP short, or bloodied) or carrying a wound it can see and clear.
+# (HP short, or bloodied) or carrying a wound it can see and clear. Among all it can use that restore HP
+# (_mends()), the best (skill, ally) by want(), the first skill on a tie; a skill only works where its
+# behaviours say it fits (Resuscitate: the Downed).
 static func _heal(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
-	for s in u.actives.filter(func(x: Skill): return x.heals() and not x.hostile and u.can_afford(x)):
-		var best: Unit = null
-		var best_score := 0.0
+	var best: Unit = null
+	var how: Skill = null
+	var best_score := 0.0
+	for s in u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x)):
 		for t: Unit in [u] + reads.keys():
 			var r: Read = b.read(u, u) if t == u else reads[t]
-			if not t.is_alive() or (t != u and r.attitude(u) != &"ally") or not b.in_reach(u, s, t):
+			if not t.is_alive() or (t != u and r.attitude(u) != &"ally") or not b.in_reach(u, s, t) \
+					or not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
 				continue
 			var v := want(b, u, s, t, r)
 			if v > best_score:
 				best = t
+				how = s
 				best_score = v
-		if best and b.cast(u, s, best):
-			log.append("%s heals %s" % [u.name, best.name])
-			if best != u:
-				reads[best] = b.read(u, best)
-			return
+	if best and b.cast(u, how, best):
+		log.append("%s heals %s" % [u.name, best.name])
+		if best != u:
+			reads[best] = b.read(u, best)
+
+
+# What u using s on t would give back, by pool (&"hp", &"energy", a Reserve): what its behaviours declare
+# (Behaviour.restores()), and the HP of a heal's own fields (Skill.healing()). Empty: nothing.
+static func _restores(b: Battle, u: Unit, s: Skill, t: Unit) -> Dictionary:
+	var out := {}
+	if s.heal_mods or s.heal_bonus:
+		out[&"hp"] = s.healing(u)
+	var c := Behaviour.Cast.new()
+	c.battle = b
+	c.caster = u
+	c.target = t
+	c.skill = s
+	c.rank = u.rank(s)
+	c.foe = false
+	for x in s.behaviours:
+		var more := x.restores(c)
+		for k in more:
+			out[k] = out.get(k, 0) + more[k]
+	return out
+
+
+# A skill for an ally that mends HP: a heal, or whatever declares it restores some (_restores()).
+static func _mends(b: Battle, u: Unit, s: Skill) -> bool:
+	return not s.hostile and (s.heals() or _restores(b, u, s, u).has(&"hp"))
 
 
 # How much u wants to heal t (read as r) with s; 0: not at all.
@@ -471,7 +523,7 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 			wounds += 1
 	if share <= 0.0 and wounds == 0:
 		return 0.0
-	var heal := s.healing(u) if s.heal_mods or s.heal_bonus else 0
+	var heal: int = _restores(b, u, s, t).get(&"hp", 0)
 	var v := share
 	match u.tends if u.tends else (u.role.tends if u.role and u.role.tends else &"benevolent"):
 		&"pragmatic":
@@ -657,3 +709,92 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 				best_cost = v
 	b.rng.state = state
 	return best
+
+
+# What it has left, after its blows, it spends on refilling a pool it runs low on: a skill that restores
+# Energy or a reserve (Behaviour.restores(): Energize), on itself, once that pool is at half or less -
+# Energy only if it runs on Energy, a reserve only if it spends from it. After its strikes, so it never
+# costs it a blow.
+static func _replenish(b: Battle, u: Unit, log: Array[String]) -> void:
+	for s in u.actives.filter(func(x: Skill): return not x.hostile and not x.for_foes() and u.can_afford(x)):
+		var got := _restores(b, u, s, u)
+		for pool in got:
+			if pool != &"hp" and got[pool] > 0 and _low(u, pool) and b.cast(u, s, u):
+				log.append("%s uses %s" % [u.name, s.name])
+				return
+
+
+# Whether pool (&"energy" or a Reserve) is a pool u draws on that is at half or less.
+static func _low(u: Unit, pool: Variant) -> bool:
+	if pool is Reserve:
+		var most: int = u.pools().get(pool, 0)
+		return most > 0 and u.spends(pool) and u.store(pool) * 2 <= most
+	return pool == &"energy" and u.runs_on() == &"energy" and u.max_energy > 0 and u.energy * 2 <= u.max_energy
+
+
+# A switch of what it runs on that it began on an earlier turn (Unit.toggle()), it finishes as this one
+# opens: held a turn idle, it carries over what it can.
+static func _finish_switch(u: Unit, log: Array[String]) -> void:
+	if u.channel and u.channel.switch != null and u.toggle(u.channel.skill):
+		log.append("%s finishes switching" % u.name)
+
+
+# Running on a reserve (Mana, Stamina) or Energy that can't pay for any skill worth its cost that it has -
+# a blow or a heal - while another it could run on could (_pays()), and nothing it can strike now: it
+# begins the switch (channeled: it holds the turn idle, and finishes next turn). True if it did.
+static func _switch(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	if u.channel or _could_strike(b, u, reads):
+		return false
+	var worth := u.actives.filter(func(x: Skill): return u.price(x) > 0 and (x.for_foes() or _mends(b, u, x)))
+	if worth.any(func(x: Skill): return u.can_afford(x)):
+		return false
+	for x in u.slots:
+		var to: Variant = &"energy" if x.on else Unit.replacer(x.skill)
+		if Unit.replacer(x.skill) and x.skill not in u.disabled and worth.any(func(w: Skill): return _pays(u, to, w)) and u.toggle(x.skill):
+			log.append("%s switches to %s" % [u.name, to.name if to is Reserve else "Energy"])
+			return true
+	return false
+
+
+# Whether a unit running on pool (a Reserve, or &"energy") could pay for s with what it holds in it now
+# (Reserve.only, Reserve.bars, Unit.cost_from()).
+static func _pays(u: Unit, pool: Variant, s: Skill) -> bool:
+	if pool is Reserve and (not (pool.only.is_empty() or pool.only.any(func(t): return s.tagged(t))) \
+			or (pool.bars.any(func(t): return s.tagged(t)) and u.price(s) > 0)):
+		return false
+	return u.covers(pool, u.cost_from(s, pool))
+
+
+# Whether it could strike a foe it reads from where it stands, with a skill it can pay for.
+static func _could_strike(b: Battle, u: Unit, reads: Dictionary) -> bool:
+	for s in u.actives.filter(func(x: Skill): return x.for_foes() and not x.on_tile() and not x.auto and u.can_afford(x)):
+		for t: Unit in reads:
+			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t):
+				return true
+	return false
+
+
+# Holding Focus (Reserve.aims, which builds only on a turn it rests) short of full, with a ranged attack it
+# would pay for from it, and nothing to strike: it rests rather than walk up, building it for the shot
+# (a ranged attack that empties it gets + rank to hit). Bounded: a rest or two fills it. True if it rested.
+static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	if not u.idle() or _could_strike(b, u, reads):
+		return false
+	var pools := u.pools()
+	for f: Reserve in pools:
+		if f.aims and u.spends(f) and u.store(f) < pools[f] and u.actives.any(func(x: Skill): return u.ranged(x) and u.cost_from(x, f) > 0):
+			log.append("%s steadies itself, building %s" % [u.name, f.name])
+			return true
+	return false
+
+
+# With no foe in sight, no clue to search and nowhere its side last saw one to hunt, it casts a skill that
+# senses unseen foes (Clairvoyance: Skill.pings), unless it holds a channel already.
+static func _scry(b: Battle, u: Unit, log: Array[String]) -> bool:
+	if u.channel or (u.faction and not b.last_seen(u.faction).is_empty()):
+		return false
+	for s in u.actives.filter(func(x: Skill): return x.pings and u.can_afford(x)):
+		if b.cast(u, s, u):
+			log.append("%s uses %s" % [u.name, s.name])
+			return true
+	return false

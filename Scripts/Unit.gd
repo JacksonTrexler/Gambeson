@@ -43,13 +43,9 @@ const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in 
 enum Intensity { BARELY, SOMEWHAT, MOSTLY, FULLY }
 const INTENSITY: Array[float] = [0.3, 0.65, 1.25, PROMINENCE]  # each strength's glow, times GLOW: the plain glow (1) sits between somewhat and mostly
 const INTENSITY_SIZE: Array[float] = [0.8, 0.9, 1.15, 1.3]  # ...and how large it spreads
+const DOWN_TILT := 1.35  # radians: a Downed unit lies over on its side (_lie())
+const DOWN_SAT := 0.55  # ...and keeps this share of its colour, however the HUD sets it
 const CONTRAST_GLOW := 1.6  # high contrast: glows this much stronger again
-# The gods units pray to (god; Pray: Battle.pray()), by domain.
-const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
-		&"drael": "water, air", &"vetruvis": "earth, music"}
-# The damage tag of each god's domain, carried by skills of their worshippers that take it (Smite: Skill.god_tag).
-const GOD_TAGS := {&"ramut": &"physical", &"eros": &"love", &"sol": &"fire", &"urlo": &"energy", &"luun": &"dark",
-		&"drael": &"water", &"vetruvis": &"earth"}
 const TRIM_DARKEN := 0.45  # bar trim: the side's primary, this much darker
 const BAR_WIDTH := 24.0
 
@@ -118,7 +114,7 @@ class Applied:
 # Whom it heals first (AI._heal()): benevolent (the default: those most in need), pragmatic (its MVPs,
 # by the level it reads, when a heal wouldn't go to waste) or loyal (its party first).
 @export var tends := &""
-@export var god := &""  # whom it prays to (Pray), one of GODS; empty: its class's (Role.god)
+@export var god := &""  # whom it prays to (Pray), one of God.pantheon(); empty: its class's (Role.god)
 @export var uncontrolled := false  # on the player's side, but it takes no orders and joins no party: it acts on its own (the Astral Envoy's shades)
 @export var with_player := false  # joins whichever side the player's starter is on (Battle._ready(): the Astral Envoy's villagers and shades)
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())
@@ -184,7 +180,11 @@ var picked: Array[String] = []  # the trees it has picked on its class's own tab
 @export_group("Equipment")
 @export var armor: Item  # sets its Defense (none: dex mod + con mod; see armor_defense())
 @export var weapon: Item  # can let its strength attacks use another stat (wielded())
-@export var trinket: Item  # Heart Up
+@export var trinket: Item:  # Heart Up
+	set(v):
+		trinket = v
+		if banner:
+			banner.queue_redraw()  # its trim shows as a banner
 
 @export_group("Stats")
 @export var strength := 5
@@ -369,6 +369,7 @@ var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()
 			_switched(was)  # however the channel ends (stopped, broken, interrupted, replaced), the switch completes
 var paid_for: Skill  # the skill it last paid for (pay_for()), and what with: a Reserve or &"energy" (paid_as())
 var paid_with: Variant
+var paid_ap := 0.0  # and the AP it took (refund())
 var emptied := false  # that payment spent the last of the reserve it came from (focus_bonus())
 var reserve_rest: Dictionary[Reserve, float] = {}  # a with_energy reserve's recovery towards its next whole point (recover())
 var exhaustion := Exhaustion.new()  # its uses of each skill lately, and what they add to its costs (price(), ap_cost())
@@ -381,6 +382,8 @@ var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> i
 var cursed: Dictionary[Skill, bool] = {}  # of those, the ones a curse switched off (Brainfog): their slots quiver
 var chant_gains := 0  # Sweet Nothing gains a Chant will add one to (Battle._chant())
 var chant_up := false  # a Chant primed: its next Warlock skill is used a rank higher (rank())
+var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_turn(): Spike)
+var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 
 # Every skill entry, the role's first; a skill listed twice keeps its highest rank.
@@ -435,6 +438,8 @@ var luck: int:
 @onready var energy_bar: ProgressBar = $EnergyBar
 @onready var reserve_bar: ProgressBar = $ReserveBar
 var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
+var more_bars: Array[ProgressBar] = []  # a third reserve's, and any further: 1px slivers (the map's bars, as few pixels as they need)
+var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over its shoulder; on the sprite, so a silhouette hides it
 
 
 func _init() -> void:
@@ -459,6 +464,11 @@ func _ready() -> void:
 	_pick_alias()
 	_fill_bar()
 	_show_look()
+	banner = Node2D.new()
+	banner.name = &"Banner"
+	banner.position = Vector2(6, -13)
+	banner.draw.connect(_draw_banner)
+	sprite.add_child(banner)
 	sprite.material = ShaderMaterial.new()
 	sprite.material.shader = DESATURATE
 	set_saturation(1.0)
@@ -466,6 +476,7 @@ func _ready() -> void:
 	_show_faction()
 	refit()
 	hp_changed.connect(_show_bars.unbind(2))
+	dbno_changed.connect(_lie.unbind(2))
 	energy_changed.connect(_show_bars.unbind(2))
 	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
@@ -1561,7 +1572,7 @@ func hooks() -> Array:
 
 # Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and stat(&"jammed") <= 0.0 and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard != Vector2.ZERO and reacts() and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -1737,6 +1748,14 @@ func equip(it: Item) -> Item:
 	set(it.slot, it)
 	refit()
 	return old
+
+
+# Its trinket's banner: its trim on dark cloth (not its side's colours: a banner mustn't give away a
+# disguise); nothing for an untrimmed one.
+func _draw_banner() -> void:
+	var c := trinket.trim() if trinket else Color(0, 0, 0, 0)
+	if c.a > 0.0:
+		Item.draw_banner(banner, Vector2.ZERO, c, Color("#1d1a12"))
 
 
 # Takes off what's in a slot, returning it.
@@ -2283,6 +2302,7 @@ func pay_for(s: Skill) -> bool:
 	var fund: Variant = funding(s)
 	if fund == null or not pay(ap_cost(s, fund), s.pays_with if s.pays_with else &"skill"):
 		return false
+	paid_ap = ap_cost(s, fund)
 	var cost := cost_from(s, fund) - _spend_overcharge(fund, cost_from(s, fund))
 	if fund is Reserve:
 		set_store(fund, store(fund) - cost)
@@ -2342,6 +2362,16 @@ func refresh() -> void:
 	exposed = 0
 	fury_acts = 0
 	overdriven = false
+	tally.clear()
+	winded()
+
+
+# Winded (the winded stat: Bludgeon): it loses that much AP - at once, if it has AP to lose, as its turn
+# opens otherwise.
+func winded() -> void:
+	var n := stat(&"winded")
+	if n > 0.0:
+		pay(minf(n, ap_for(&"")), &"")
 
 
 # How hard it worked this turn: &"rest" (idle(), holding no channel), &"light" (it only spent its
@@ -2562,6 +2592,27 @@ func best_defensive_bonus() -> int:
 	return best
 
 
+# Gives back `share` of its last payment for s (pay_for()): the AP to its general pool, the cost to what
+# paid it. A refund, not a recovery: no Burnout (Poach's and Slam Jam's discounts). Returns the cost back.
+func refund(s: Skill, share: float) -> int:
+	if share <= 0.0 or paid_for != s:
+		return 0
+	var fund: Variant = paid_with
+	if not ap.is_empty():
+		ap[0].amount += paid_ap * share
+	var n := floori(cost_from(s, fund) * share + 0.0001)
+	if fund is Reserve:
+		set_store(fund, store(fund) + n)
+	else:
+		energy += n
+	return n
+
+
+# Bloodied: half its HP or less, as an execute measures it (execute_share(): whole while hale). Poach.
+func bloodied() -> bool:
+	return execute_share() <= 0.5
+
+
 # Gets n AP back into its general pool, up to what that pool started the turn with (Renew).
 # Returns what it got.
 func regain(n: float) -> float:
@@ -2762,6 +2813,13 @@ func stopped() -> bool:
 	return helpless() and fury_acts >= roundi(stat(&"mindless"))
 
 
+# Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())
+# and obstruct (Battle.obstruction()). Lost to Jam (the jammed stat) and to being stopped(): helpless,
+# it does none of these. Watching isn't one of them: a helpless unit still sees (Battle._watch()).
+func reacts() -> bool:
+	return stat(&"jammed") <= 0.0 and not stopped()
+
+
 # Tapped, as far as the unit itself can tell: out of AP, or stopped(). Never stored or cleansed: it
 # lifts the moment its cause does (Stunned healed or cleansed, AP back). Command.tapped() adds the
 # leader's caps; that's the one the HUD and orders read.
@@ -2947,13 +3005,25 @@ func _colour_pools() -> void:
 			reserve_bar.add_sibling(second_bar)
 		second_bar.add_theme_stylebox_override("fill", _flat(held[1].color))
 		second_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
+	for i in range(2, held.size()):  # and one more sliver for each further reserve
+		if more_bars.size() < i - 1:
+			var bar: ProgressBar = reserve_bar.duplicate()
+			bar.name = "ReserveBar%d" % (i + 1)
+			reserve_bar.add_sibling(bar)
+			more_bars.append(bar)
+		more_bars[i - 2].add_theme_stylebox_override("fill", _flat(held[i].color))
+		more_bars[i - 2].add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 
 
 # Stacks the visible bars from the bottom up, with the trim one pixel out around them.
 func _stack() -> void:
 	var bottom := -sprite.sprite_frames.get_frame_texture(&"default", 0).get_height() / 2.0 - 2.0
 	var y := bottom
-	for pair in [[energy_bar, 2.0], [second_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]]:
+	var stack := [[energy_bar, 2.0]]
+	for bar in more_bars:
+		stack.append([bar, 1.0])
+	stack.append_array([[second_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]])
+	for pair in stack:
 		var bar: ProgressBar = pair[0]
 		if bar and bar.visible:
 			bar.size = Vector2(BAR_WIDTH, pair[1])
@@ -2974,8 +3044,21 @@ func _stack() -> void:
 # How saturated its sprite is (1 full colour .. 0 greyscale): the HUD drains it on the player's units
 # as their AP runs low, and all the way once they can't be commanded this turn (HUD.command_sat()).
 func set_saturation(v: float) -> void:
+	_sat = v
 	if sprite and sprite.material:
-		sprite.material.set_shader_parameter(&"saturation", v)
+		sprite.material.set_shader_parameter(&"saturation", v * (DOWN_SAT if dbno else 1.0))
+
+
+var _sat := 1.0  # the saturation the HUD last asked for (set_saturation())
+
+
+# Downed (down but not out): the sprite lies over on its side, lowered a little, and drains of colour;
+# standing again, upright. Every observer sees it: it's what the unit looks like, not what's known of it.
+func _lie() -> void:
+	var down := dbno != null
+	sprite.rotation = DOWN_TILT * (1.0 if (cell.x + cell.y) % 2 == 0 else -1.0) if down else 0.0  # which way, by its cell
+	sprite.position.y = 3.0 if down else 0.0
+	set_saturation(_sat)
 
 
 # How strongly it glows: at one of the four strengths (`level`, an Intensity: brighter and larger
@@ -3034,6 +3117,12 @@ func _show_bars() -> void:
 		if second_bar.visible:
 			second_bar.max_value = maxi(pools()[held[1]], 1)
 			second_bar.value = r.stores.get(held[1], 0) if r else store(held[1])
+	for i in more_bars.size():
+		var more := more_bars[i]
+		more.visible = held.size() > i + 2 and seen
+		if more.visible:
+			more.max_value = maxi(pools()[held[i + 2]], 1)
+			more.value = r.stores.get(held[i + 2], 0) if r else store(held[i + 2])
 	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
 	hp_bar.value = r.hp if r and r.hp != null else hp
 	energy_bar.max_value = maxi(max_energy, 1)

@@ -23,6 +23,13 @@ static func room(u: Unit, r: int) -> int:
 	return maxi(u.max_energy - u.energy, 0) + maxi(over_cap(u, r) - u.overcharge, 0)
 
 
+# The Energy it can give now: its own pair, and every further pair of AP it can spend, within room().
+func restores(c: Cast) -> Dictionary:
+	var u := c.caster
+	var more := mini(c.rank - 1, floori((u.ap_for(&"skill") - PAIR) / PAIR + 0.0001))
+	return {&"energy": mini(1 + maxi(more, 0), room(u, c.rank))}
+
+
 func apply(c: Cast) -> void:
 	var u := c.caster
 	var more := mini(mini(c.rank - 1, floori(u.ap_for(&"skill") / PAIR + 0.0001)), room(u, c.rank) - 1)

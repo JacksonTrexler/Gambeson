@@ -170,7 +170,7 @@ func label() -> String:
 	return " ".join(out)
 
 
-# A tag's kind as the Glossary has it: its term's kind, or damage for an element (fire, light...); ""
+# A tag's kind as the Glossary has it: its term's kind, or damage for a blow's stuff (fire, light...: Glossary.DAMAGE_TAGS); ""
 # for a word the Glossary doesn't know.
 static func kind(t: StringName) -> StringName:
 	return Glossary.kind(t)
@@ -226,7 +226,7 @@ static func words() -> Array[StringName]:
 	for t in Glossary.added:
 		if Glossary.added[t][1] != &"target":
 			out.append(t)
-	for t in Glossary.ELEMENTS:
+	for t in Glossary.DAMAGE_TAGS:
 		if t not in out:
 			out.append(t)
 	return out

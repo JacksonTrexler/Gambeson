@@ -24,7 +24,7 @@ from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ex
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 130  # (+5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 # 125 counts `pings` (Clairvoyance), built beside the seam; lower it to 124 when that moves to a behaviour.
-HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered")  # Behaviour's hooks: what a passive's behaviour does outside a cast
+HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
@@ -66,8 +66,7 @@ def check_reachable(problems):
             problems.append("%s: on no tree, role or item, and granted by nothing - nobody can get it" % p)
 
 
-FLAVOUR = {"idealism", "lawful",  # tags only lore reads, for now (Coordinate, Judgement)
-           "bludgeon"}  # Waterstrike: likely meant blunt (what breaks starpanes) - left as it was
+FLAVOUR = {"idealism", "lawful"}  # tags only lore reads, for now (Coordinate, Judgement)
 
 
 def known_tags():  # what the rules can ask about: any &"tag" in the scripts, class names, tags 2+ skills share, FLAVOUR

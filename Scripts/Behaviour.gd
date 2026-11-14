@@ -20,7 +20,7 @@ class Cast:
 	var bag := {}
 	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
 	var mods: Modifiers  # its caster's modifiers on it (Unit.mods()): read scaled values through them
-	var tags: Array[StringName] = []  # its tags as its caster uses it, modifier tags among them (Unit.skill_tags())
+	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()): modifier tags among them (Unit.skill_tags()), ambush when it ambushes (Battle.ambushes())
 
 	# Its rank for what rank adds to what it does (rank_impact) or to its reach (rank_range), through
 	# its caster's modifiers: a whole number, at least 1 (Kick's push).
@@ -34,6 +34,7 @@ class Cast:
 	# its modifiers.
 	func stat_mod(m: int, channel := &"stat_impact") -> int:
 		return mods.stat(m, channel) if mods else m
+	var hit := false  # it landed: past its attack roll, if it makes one
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
 	# cast's, as a skill's own effects are.
@@ -50,10 +51,51 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# Once the skill is paid for and aimed, before any roll (Battle.cast()): what comes first (Sutemi's
+# lunge, Poach's discount). The cast's target may still be missed.
+func aim(_c: Cast) -> void:
+	pass
+
+
+# Advantage (+1) or disadvantage (-1) it adds to the cast's attack roll, summed with the skill's own
+# and clamped (Gank: disadvantage unless it ambushes). Asked by the HUD's hit chance too: no side effects.
+func edge(_c: Cast) -> int:
+	return 0
+
+
+# Defense the target adds against this attack (Spike: its unspent AP). No side effects: the HUD asks too.
+func guard(_c: Cast) -> int:
+	return 0
+
+
+# Damage added to each of the cast's hits that lands (Spike: + rank).
+func bonus(_c: Cast) -> int:
+	return 0
+
+
+# The cast's own target was neutralized (Battle.neutralized: downed, Downed, killed...) as it resolved,
+# how saying which (Poach: regain).
+func felled(_c: Cast, _how: StringName) -> void:
+	pass
+
+
 # Whether the skill can be used on target at all (Battle.cast() asks before it's paid for; Resuscitate:
 # only a Downed unit). Every behaviour on it must allow it.
 func fits(_b: Battle, _caster: Unit, _target: Unit) -> bool:
 	return true
+
+
+# The reason shown when fits() says no.
+func unfit() -> String:
+	return "Not for that one"
+
+
+# What using the skill as `c` (caster, target, skill, rank set; not run) would give the target back, as
+# expected amounts by pool: &"hp", &"energy", or a Reserve. Only what the AI reads, to see what a skill
+# is for (AI._restores(): it casts a restorer on whoever is short of what it restores) - so a new
+# healing behaviour declares it here and the AI picks it up. Empty: it restores nothing.
+func restores(_c: Cast) -> Dictionary:
+	return {}
 
 
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
@@ -80,6 +122,12 @@ func describe(_rank: int) -> String:
 # teller's (Battle.spread(); Bandwagon: a cha check).
 func lets_word(_b: Battle, _holder: Unit, _rank: int, _teller: Unit, _listener: Unit) -> bool:
 	return true
+
+
+# What a step from `from` to `to` costs the holder, walking, where it costs `cost` so far (Battle.walk(),
+# which the HUD's reach and preview use too). `bag` is shared by one walk's steps (Peel counts its tiles).
+func step_cost(_b: Battle, _holder: Unit, _rank: int, _from: Vector2i, _to: Vector2i, cost: float, _bag: Dictionary) -> float:
+	return cost
 
 
 # The holder is about to take damage d from a hit (Unit.taking_hit, Battle._on_taking_hit()): how much it still takes

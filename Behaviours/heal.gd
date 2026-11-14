@@ -14,6 +14,11 @@ func dice(r: int) -> int:
 	return Difficulty.scaled(magnitude, r)
 
 
+# What it gets back on average: the dice's mean + the caster's mod + rank.
+func restores(c: Cast) -> Dictionary:
+	return {&"hp": maxi(roundi(dice(c.rank) * (DIE + 1) / 2.0) + c.caster.mod(c.skill.stat(), c.skill.tags) + c.rank, 1)}
+
+
 func apply(c: Cast) -> void:
 	if c.foe or not c.target.is_alive():
 		return

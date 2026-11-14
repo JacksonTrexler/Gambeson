@@ -10,20 +10,17 @@ class_name Glossary
 #   {t:3 turns}      how long
 #   {x:fire}         a damage tag
 # plain() reads it as plain text (tests, the spellbook's lines); rich() as BBCode for a RichTextLabel:
-# each kind in its colour, terms hoverable for their definition and clickable ("term:attack" meta: the
-# Guide's page for it).
+# each kind in its colour, terms and tags in their own (Tags.color()), terms hoverable for their
+# definition and clickable ("term:attack" meta: the Guide's page for it).
 
 const OFFENSE := Color("#eba25e")  # warm: what the user brings
 const DEFENSE := Color("#74b4e8")  # cool: what the target resists with
 const RANK := Color("#e8c547")
 const TIME := Color("#9fd6c8")
-const TAG := Color("#c9ccd4")
 const KINDS := {&"check": Color("#f0d48a"), &"damage": Color("#ff9e8a"), &"condition": Color("#d8a6e6"),
 		&"ground": Color("#b9cf8a"), &"target": Color("#c8d0dc")}
 const PAGES := {&"check": &"checks", &"damage": &"checks", &"condition": &"conditions", &"ground": &"ground", &"target": &"skills"}
-const ELEMENTS := {&"fire": Color("#f08a55"), &"light": Color("#f2e39a"), &"dark": Color("#9d8fe0"), &"water": Color("#68aee8"),
-		&"earth": Color("#c49a66"), &"energy": Color("#6fd8e4"), &"love": Color("#ee95c0"), &"magical": Color("#b49ae6"),
-		&"physical": Color("#d0d0d0"), &"slash": Color("#d0d0d0"), &"pierce": Color("#d0d0d0"), &"blunt": Color("#d0d0d0")}
+# Each term's and tag's colour is Tags.COLOR's (Tags.color()); KINDS is the palette generic terms take.
 
 # id -> [name, kind, definition]. Definitions keep clear of square brackets (BBCode).
 const TERMS := {
@@ -105,13 +102,14 @@ const TERMS := {
 	&"burnout": ["Burnout", &"condition", "Recovering Energy or HP by any means but resting wears a unit out. Each Energy grant spends 1 Recovery Endurance; with none left, every recovery asks a con check (DC 12), and failing cuts that pool's max by 10% x (1 + |RE|) of what came back, lasting. One heal of more than con mod x 20% of max HP asks a con check against the excess: failing costs 1 RE."],
 	&"recovery_endurance": ["Recovery Endurance", &"condition", "RE: how many recoveries a unit takes before Burnout bites - max(con mod, 0) as a battle starts, back in full after a resting turn ended at full Energy. It can run below 0."],
 	&"tapped": ["Tapped", &"condition", "Can't act and takes no orders: out of AP, ordered as far as its leader allows this turn, or helpless with nothing that lets it act. Not an effect: it lifts the moment its cause does."],
-	&"helpless": ["Helpless", &"condition", "Can't act, move or take orders: tapped while it lasts, unless something lets it act in a reduced capacity. Stunned, asleep, and Downed without a will to fight on are helpless."],
+	&"helpless": ["Helpless", &"condition", "Can't act, move, take or give orders, dodge, guard or obstruct: tapped while it lasts, unless something lets it act in a reduced capacity. Stunned, asleep, and Downed without a will to fight on are helpless."],
 	&"taps": ["Taps", &"check", "A check that can leave its loser tapped, such as resisting a stun. Whatever helps against such checks helps against every one of them."],
 	&"reduced": ["Reduced capacity ??", &"condition", "Acting where it would otherwise be tapped, by a permit such as Mindless Fury or Drone: fewer actions, or its mental stats held down."],
 	&"enchanted": ["Enchanted", &"condition", "Blessed gear (or a skill that is): rank +1. Pray makes it; honed is the material kind and never counts."],
 	&"honed": ["Honed", &"condition", "Material perfection: rank +1, and none of what enchanted does. Never both."],
 	&"bless": ["Bless", &"condition", "A divine buff: a Downed unit under it recovers HP each turn, executes against it go by its full HP, and checks that would tap or execute it get its rank. Intervention gives it."],
 	&"execute": ["Execute", &"check", "An instant death check, cut by how hurt its target is: HP left over max HP, over its rank. Whatever helps against such checks helps against every one of them."],
+	&"ambush": ["Ambush", &"check", "An attack made from concealment, or by one its target cannot see or place. Effects and skills tagged ambush count on it."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],
@@ -119,14 +117,20 @@ const TERMS := {
 static var added := {}
 
 
-# A term's kind (check, damage, condition, ground, target): TERMS first, then added; an element (ELEMENTS)
-# is damage; "" for a word it doesn't know.
+# What a blow is made of, damage in kind though they have no Glossary term: elements and blows (Tags.COLOR's
+# first group).
+const DAMAGE_TAGS: Array[StringName] = [&"fire", &"water", &"earth", &"light", &"dark", &"energy", &"love", &"ice",
+		&"wind", &"air", &"nature", &"sound", &"star", &"astral", &"magical", &"physical", &"slash", &"pierce", &"blunt", &"bludgeon"]
+
+
+# A term's kind (check, damage, condition, ground, target): TERMS first, then added; a blow's stuff
+# (DAMAGE_TAGS) is damage; "" for a word it doesn't know.
 static func kind(id: StringName) -> StringName:
 	if id in TERMS:
 		return TERMS[id][1]
 	if id in added:
 		return added[id][1]
-	if id in ELEMENTS:
+	if id in DAMAGE_TAGS:
 		return &"damage"
 	return &""
 
@@ -154,7 +158,7 @@ static func define(id: StringName) -> String:
 
 
 static func colour(id: StringName) -> Color:
-	return KINDS[TERMS[id][1]] if id in TERMS else TAG
+	return Tags.color(id)
 
 
 # The Guide page a term is explained on.
@@ -200,7 +204,7 @@ static func _bbcode(m: RegExMatch) -> String:
 			return "[color=#%s]%s[/color]" % [RANK.to_html(false), shown]
 		"t":
 			return "[color=#%s]%s[/color]" % [TIME.to_html(false), shown]
-	return "[color=#%s]%s[/color]" % [ELEMENTS.get(StringName(what), TAG).to_html(false), shown]
+	return "[color=#%s]%s[/color]" % [Tags.color(StringName(what)).to_html(false), shown]
 
 
 static func _escape(s: String) -> String:
