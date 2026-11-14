@@ -51,7 +51,7 @@ func test_hogel_rest() -> void:
 	b.get_node("Units").add_child(u)
 	stage(lancin, {u: Vector2i(2, 2), v(3): Vector2i(8, 8)})
 	u.skill_points = 1
-	ok(u.pick(warlock.choices[0], warlock.choices[0].tabs[1]) and u.devotion().name == "Hogel", "Hogel picked: devoted to him")
+	ok(u.pick(warlock.choices[0], God.of(&"hogel").own) and u.devotion().name == "Hogel", "Hogel picked: devoted to him")
 	ok(u.unlock(sk("humble")), "Humble, on his tab")
 	u.set_store(sn, 0)
 	u.refresh()

@@ -132,6 +132,10 @@ def check(_a=None):
         for s in re.findall(r'^stat = "(\w+)"', read(p), re.M):
             if '"%s"' % s not in stats:
                 problems.append('%s: stat "%s" isn\'t in Effect.gd (mechanic.py stat %s)' % (p, s, s))
+    for p in list(files("Items", ".tres")) + list(files("Skills", ".tres")):  # enchanted and honed never together (Tags.QUALITIES)
+        m = re.search(r"^tags = .*$", read(p), re.M)
+        if m and '&"enchanted"' in m.group(0) and '&"honed"' in m.group(0):
+            problems.append("%s: enchanted and honed together - pick one (they exclude each other)" % p)
     for p in problems:
         print(p)
     print("mechanic.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))

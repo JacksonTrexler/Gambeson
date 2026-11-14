@@ -13,6 +13,7 @@
 [ext_resource type="Resource" path="res://Skills/discipline.tres" id="s_discipline"]
 [ext_resource type="Resource" path="res://Skills/strategist.tres" id="s_strategist"]
 [ext_resource type="Resource" path="res://Skills/tactician.tres" id="s_tactician"]
+[ext_resource type="Resource" path="res://Skills/word_to_the_wise.tres" id="s_word_to_the_wise"]
 
 [sub_resource type="Resource" id="Branch_synergy"]
 script = ExtResource("3_branch")
@@ -59,11 +60,16 @@ script = ExtResource("3_branch")
 skill = ExtResource("s_tactician")
 tier = 3
 
+[sub_resource type="Resource" id="Branch_word_to_the_wise"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_word_to_the_wise")
+tier = 3
+
 [sub_resource type="Resource" id="Root_main"]
 script = ExtResource("2_root")
 name = "Specialist"
 tag = &"specialist"
-branches = Array[ExtResource("3_branch")]([SubResource("Branch_synergy"), SubResource("Branch_decisive_strike"), SubResource("Branch_striking_features"), SubResource("Branch_discipline"), SubResource("Branch_strategist"), SubResource("Branch_tactician"), SubResource("Branch_agility_bracing"), SubResource("Branch_balanced_bracing"), SubResource("Branch_decisive_mastery")])
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_synergy"), SubResource("Branch_decisive_strike"), SubResource("Branch_striking_features"), SubResource("Branch_discipline"), SubResource("Branch_strategist"), SubResource("Branch_tactician"), SubResource("Branch_word_to_the_wise"), SubResource("Branch_agility_bracing"), SubResource("Branch_balanced_bracing"), SubResource("Branch_decisive_mastery")])
 
 [resource]
 script = ExtResource("1_tab")

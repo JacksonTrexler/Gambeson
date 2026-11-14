@@ -15,7 +15,7 @@ extends Resource
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
 @export var rank := 1  # how good it is: what its effects scale by (per_rank)
 @export var weight := -1  # what it adds to its wearer's weight while equipped (heft()); -1: by its kind - armor by class (light 0, medium 1, heavy 2), a weapon medium (1) unless tagged light (0) or heavy (2), anything else 0
-@export_enum("common", "uncommon", "rare", "legendary") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare; legendary: rarer still, and RANK_COST times the resources a rank (worth())
+@export_enum("common", "uncommon", "rare", "epic", "legendary", "mythic") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare; epic, legendary, mythic: rarer still, and RANK_COST times a common item's resources a rank (worth())
 
 @export_group("Armor")  # sets its wearer's Defense (Unit.armor_defense())
 @export var defense := 0  # the least it gives (Gambeson: 10)
@@ -56,8 +56,8 @@ const WEIGHTS := {
 	&"heavy": [14, 1.0, 0.25],  # Brigandine: high level scaling, low dex scaling
 }
 const ARMOR_AP := 10  # armor takes this - its wearer's dex mod in AP to put on in battle: hardly worth it mid-fight
-const RARITY_WEIGHT := {"common": 1.0, "uncommon": 0.4, "rare": 0.15, "legendary": 0.05}  # a drop table's relative pull, before its own weights
-const RANK_COST := {"legendary": 4}  # the resources each of its ranks takes, against a common item's 1 (worth()); a rarity not here: 1
+const RARITY_WEIGHT := {"common": 1.0, "uncommon": 0.4, "rare": 0.15, "epic": 0.08, "legendary": 0.05, "mythic": 0.02}  # a drop table's relative pull, before its own weights
+const RANK_COST := {"common": 1.0, "uncommon": 1.5, "rare": 2.0, "epic": 3.0, "legendary": 4.0, "mythic": 5.0}  # the one table: the resources each of an item's ranks takes, against a common item's 1 (rank_cost(), worth()); the user's ruling - a legendary rank costs what four do
 
 
 # "Defense: the higher of 10 and level / 2, + dex mod".
@@ -75,8 +75,12 @@ func describe() -> String:
 			lines.append("Trinket" + plus)
 		"consumable":
 			lines.append("Used up")
-	if rarity == "legendary":
-		lines.append("Legendary: a rank takes %dx a common item's resources" % RANK_COST[rarity])
+	if rank_cost() != 1.0:
+		lines.append("%s: a rank takes %sx a common item's resources" % [rarity.capitalize(), Skill.num(rank_cost())])
+	if &"honed" in tags:
+		lines.append("Honed: rank +1")
+	elif &"enchanted" in tags:
+		lines.append("Enchanted: rank +1")
 	if restores:
 		lines.append(("Empty: it fills again as the battle ends" if empty else "Used from its slot: gives back %s; emptied, it fills again as the battle ends" % restoring()))
 	if hearts or hearts_mod:
@@ -86,22 +90,22 @@ func describe() -> String:
 		lines.append("+1 Defense for each heart its wearer has spent")
 	if revives > 0.0:
 		lines.append("Once a battle, falling: gets up at %d%% of max HP, with Resurrection Sickness for %d turn%s (-10%% HP as each turn starts, gone if one starts at full HP)"
-				% [roundi(revives * rank * 100.0), rank, "" if rank == 1 else "s"])
+				% [roundi(revives * ranked() * 100.0), ranked(), "" if ranked() == 1 else "s"])
 	if damage_tag:
 		lines.append("Deals %s blows" % damage_tag)
 	if binding:
-		lines.append("Bound on: locked while Shackled; unlocked, taking it off takes %d AP" % rank)
+		lines.append("Bound on: locked while Shackled; unlocked, taking it off takes %d AP" % ranked())
 		if picks:
-			lines.append("Lockpicked off: a %s dex check (DC %d)" % [Glossary.name_of(picks).to_lower(), Difficulty.dc(picks, rank)])
+			lines.append("Lockpicked off: a %s dex check (DC %d)" % [Glossary.name_of(picks).to_lower(), Difficulty.dc(picks, ranked())])
 		if prised:
-			lines.append("Pried apart: a %s str check (DC %d)" % [Glossary.name_of(prised).to_lower(), Difficulty.dc(prised, rank)])
+			lines.append("Pried apart: a %s str check (DC %d)" % [Glossary.name_of(prised).to_lower(), Difficulty.dc(prised, ranked())])
 		lines.append("Weight %d" % heft())
 	if burning:
-		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * rank))
+		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * ranked()))
 	if requires:
 		lines.append("Needs a positive %s mod" % String(requires).left(3))
 	for e in effects:
-		lines.append(e.describe(rank))
+		lines.append(e.describe(ranked()))
 	lines.append(("%d - dex mod AP to put on in battle" % ARMOR_AP) if slot == "armor" else "%s AP to put on or use in battle" % Skill.num(ap_cost()))
 	return "\n".join(lines)
 
@@ -123,7 +127,7 @@ func restoring() -> String:
 	var what: String = reserve.name if restores == &"reserve" and reserve else ("HP" if restores == &"hp" else String(restores).capitalize())
 	var parts: PackedStringArray = []
 	if restore_share > 0.0:
-		parts.append("%s%% x %d of max %s" % [Skill.num(restore_share * 100.0), rank, what])
+		parts.append("%s%% x %d of max %s" % [Skill.num(restore_share * 100.0), ranked(), what])
 	if restore_mod:
 		parts.append("%s mod" % String(restore_mod).left(3))
 	if restore_flat:
@@ -167,11 +171,21 @@ func rarity_pull() -> float:
 	return RARITY_WEIGHT.get(rarity, 1.0)
 
 
-# What it's worth, in ranks of a common item: its rank x what a rank of its rarity costs (RANK_COST) -
-# a rank 1 legendary is a rank 4 common, a rank 2 one a rank 8. What ranking an item up is to charge
-# and trade by.
-func worth() -> int:
-	return rank * int(RANK_COST.get(rarity, 1))
+# What one rank of it costs, in ranks of a common item (RANK_COST): 1.5 uncommon, 2 rare, 3 epic, 4 legendary, 5 mythic.
+func rank_cost() -> float:
+	return RANK_COST.get(rarity, 1.0)
+
+
+# What it's worth, in ranks of a common item: its rank x what a rank of its rarity costs - a rank 1
+# legendary is a rank 4 common, a rank 2 one a rank 8. What ranking an item up is to charge and trade by.
+# Its learned rank: the +1 of enchanted or honed is a quality, not bought.
+func worth() -> float:
+	return rank * rank_cost()
+
+
+# The rank its effects scale by: rank, +1 for enchanted or honed (Tags.quality_rank()), whatever its rarity.
+func ranked() -> int:
+	return rank + Tags.quality_rank(tags)
 
 
 func sets_defense() -> bool:
@@ -202,7 +216,7 @@ func _armor() -> String:
 					else "costs dex AP (less with con) and wis AP (less with str: none at str mod 2+ for this one)" if eases == &"wisdom"
 					else "costs dex AP (less with con) and wis AP (less with str)")
 		if heat:
-			text += "\nBurns its wearer for %d as each of its turns starts" % (heat * rank)
+			text += "\nBurns its wearer for %d as each of its turns starts" % (heat * ranked())
 		return text
 	var text := "Defense: %d" % defense
 	if per_level > 0.0:
@@ -215,5 +229,9 @@ func _armor() -> String:
 	return text + (", + dex mod" if plus_dex else "") + (", + dex / %s" % Skill.num(1.0 / dex_share) if dex_share > 0.0 else "")
 
 
-func enchanted() -> bool:
+func enchanted() -> bool:  # honed never counts: it's the other quality, and nothing keyed on enchanted fires for it
 	return enchant > 0 or &"enchanted" in tags
+
+
+func honed() -> bool:
+	return &"honed" in tags

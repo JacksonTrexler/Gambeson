@@ -50,10 +50,12 @@ func test_hardy() -> void:
 func test_respec() -> void:
 	var a := starter("adventurer")  # 16 across
 	var top := a.max_hp
-	ok(a.respec_by({&"constitution": 2, &"charisma": -2}, 2) and a.constitution == 18 and a.charisma == 14, "Meditate II: each stat shifts up to 2")
+	ok(a.respec_by({&"constitution": 2, &"charisma": -2}, 2) and a.constitution == 18 and a.charisma == 14, "Meditate II: 2 points moved from cha to con")
 	ok(a.max_hp == top + 1, "con 18 (+4): a point more HP from its one level")
-	ok(not a.respec_by({&"constitution": 1}, 2) and a.constitution == 18, "past its limit from where it was born: refused, unchanged")
-	ok(a.respec_by({&"constitution": -4}, 2) and a.constitution == 14 and a.respec[&"constitution"] == -2, "back down through 16 to 14: -2 from birth")
+	ok(not a.respec_by({&"constitution": 1}, 2) and a.constitution == 18, "nothing paid for it: refused, unchanged")
+	ok(not a.respec_by({&"constitution": 3, &"wisdom": -3}, 2) and a.constitution == 18, "3 points is past 2: refused, unchanged")
+	ok(a.respec_by({&"constitution": 2, &"wisdom": -2}, 2) and a.constitution == 20 and a.respec[&"constitution"] == 4, "a use's limit, not a lifetime's: +4 from birth now")
+	ok(not a.respec_by({&"strength": 1, &"charisma": -14}, 20) and a.charisma == 14, "no stat below 1")
 
 
 func test_asphyxia_takes_grown_hp() -> void:

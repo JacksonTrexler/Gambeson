@@ -32,7 +32,7 @@ func test_tree() -> void:
 	ok(u.rank(hex) == 1 and u.rank(sweet) == 1 and u.pools()[sn] == 2 and u.store(sn) == 2, "it starts with the row learned, its Sweet Nothings full (cha 15: 2)")
 	u.skill_points = 1
 	ok(u.missing(brainfog) == "Pick Patron: Elmon first", "Elmon's skills wait for Elmon")
-	ok(u.pick(warlock.choices[0], warlock.choices[0].tabs[0]) and brainfog in u.options()[&"class"] and u.unlock(brainfog), "Elmon picked: Brainfog, open once Hex is learned")
+	ok(u.pick(warlock.choices[0], God.of(&"elmon").own) and brainfog in u.options()[&"class"] and u.unlock(brainfog), "Elmon picked: Brainfog, open once Hex is learned")
 
 
 func test_sweet_nothings() -> void:
@@ -163,5 +163,6 @@ func test_one_patron() -> void:
 	ok(u.devotion() == null and tabs.all(func(t: SkillTab): return u.pick_missing(patron, t) == ""), "undevoted: either patron can be picked")
 	ok(u.pick(patron, tabs[0]) and u.devotion() == tabs[0] and u.unlock(learnt[0]), "Elmon picked: devoted to Elmon, his gift open")
 	ok(u.pick_missing(patron, tabs[1]) == "Took up Elmon" and u.missing(learnt[1]) == "Pick Hogel first" and not u.unlock(learnt[1]), "Hogel stays shut")
-	ok(warlock.choices[0].tabs.all(func(t: SkillTab): return t.devotes) and warlock.choices[0].picks == 1, "the Warlock picks one patron, who devotes it")
+	ok(warlock.choices[0].all().map(func(t: SkillTab): return t.name) == ["Elmon", "Hogel"] and warlock.choices[0].all().all(func(t: SkillTab): return t.devotes)
+			and warlock.choices[0].picks == 1 and warlock.choices[0].gods, "the Warlock picks one patron, who devotes it: each patron's own tree")
 	u.free()

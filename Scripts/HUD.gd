@@ -264,7 +264,7 @@ func _ready() -> void:
 	sheet.used_up.connect(_on_used_up)
 	sheet.unshackled.connect(func(u: Unit, how: StringName) -> void:
 		if _outfits(u) and not battle.unshackle(u, how):
-			_say("%s needs %d AP for that" % [_name(u), u.trinket.rank] if u.trinket else "Nothing to take off")
+			_say("%s needs %d AP for that" % [_name(u), u.trinket.ranked()] if u.trinket else "Nothing to take off")
 		sheet.open(u, _outfits(u))
 		_mark())
 	persona.done.connect(_on_personified)
@@ -274,6 +274,7 @@ func _ready() -> void:
 	battle.discovered.connect(_on_discovered)
 	battle.unmasked.connect(_on_unmasked)
 	battle.vanished.connect(_on_vanished)
+	battle.bumped.connect(_on_bumped)
 	battle.untangled.connect(_on_untangled)
 	battle.refused.connect(_on_refused)
 	%CharacterIcon.pressed.connect(toggle_sheet)
@@ -457,7 +458,7 @@ func use_slot(i: int) -> void:
 	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
 		_say("Your side can't make out what %s could do there" % _name(u))
 	elif not command.slot_open(u, i):
-		_refuse(u, _why_locked())
+		_refuse(u, _why_locked(u))
 	elif not u.slot_works(i):
 		_say(SkillSlot.NO_LUCK)
 	elif s in u.disabled:
@@ -542,7 +543,7 @@ func hold() -> void:
 	var u := selected
 	if not u or u == command.leader or not _orders(u) or u in command.ordered:
 		return
-	command.order(u)
+	command.lock(u)  # held: done for the turn, and no autopilot once it ends (Command.idle())
 	_log("%s holds" % _tag(u))
 	_mark()
 
@@ -1297,6 +1298,13 @@ func _on_unmasked(by: Unit, of: Variant, was: Read) -> void:
 func _on_vanished(by: Unit, of: Unit, was: Read) -> void:
 	if known(by):
 		_log("%s [color=#%s]!?[/color] %s vanishes" % [_tag(by), SUSPICION.to_html(false), (was.name if was.name else "Something").replace("[", "[lb]")])
+		_mark()
+
+
+# One of the player's units walked into something it couldn't see (Battle.bumped): a recon level on it.
+func _on_bumped(u: Unit, into: Unit) -> void:
+	if known(u):
+		_log("%s bumps into %s" % [_tag(u), _seen_as(u, into).to_lower() if battle.read(u, into).name else "something unseen"])
 		_mark()
 
 
@@ -2105,7 +2113,7 @@ func _refresh_bar() -> void:
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
 		if locked:
-			slot.tooltip_text += "\n" + _why_locked()
+			slot.tooltip_text += "\n" + _why_locked(u)
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
 
 
@@ -2183,8 +2191,8 @@ func _hint() -> String:
 		return ""
 	if u.asleep():
 		return "Asleep."
-	if u.helpless():
-		return "Downed: helpless until it's healed above 0 HP."
+	if u.stopped():
+		return _why_tapped(u) + "."
 	return ""  # not commandable (too far): the grayed hotbar and the lit commandable units say so
 
 
@@ -2272,6 +2280,13 @@ func _clear(box: Container) -> void:
 		c.queue_free()
 
 
+# What Burnout has taken off its maxes for good (Unit.burnt): "Burnt -3 HP", one chip a pool.
+func _burnt_chips(u: Unit, chips: Array) -> void:
+	for pool in u.burnt:
+		var what: String = pool.name.left(2).to_upper() if pool is Reserve else ("HP" if pool == &"hp" else ("PW" if u.powered() else "EN"))
+		chips.append(["Burnt -%d %s" % [u.burnt[pool], what], FOE])
+
+
 func _info(u: Unit) -> Dictionary:
 	var info := {look = u.sprite.sprite_frames.get_frame_texture(&"default", 0)}
 	var chips := []
@@ -2290,6 +2305,7 @@ func _info(u: Unit) -> Dictionary:
 			if u.bio.behaviour:
 				chips.append([String(u.bio.behaviour).capitalize(), MUTED])
 		_heart_chips(u, chips)
+		_burnt_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
 		for r in u.held_reserves():  # what it runs on first, then a second it holds (Focus)
 			rows.append([r.name.left(2).to_upper(), u.store(r), u.pools()[r], r.color])
@@ -2297,6 +2313,7 @@ func _info(u: Unit) -> Dictionary:
 			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
 			rows.append(["OC", "+%d" % u.overcharge, null, Unit.OVERCHARGE_COLOR])
+		rows.append(["RE", "%d/%d" % [u.endurance, u.endurance_max()], null, FOE if u.endurance <= 0 else MUTED])  # Recovery Endurance (Burnout)
 		rows.append(["AP", u.ap_left(), u.full_ap(), AP_COLOR])
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
@@ -2337,6 +2354,8 @@ func _info(u: Unit) -> Dictionary:
 		chips.append(["Enemy", FOE])
 	if command.ours(u) and u.skill_points > 0:
 		chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
+	if command.ours(u):
+		_burnt_chips(u, chips)
 	for word in r.traits:
 		chips.append([word, MUTED])
 	if sleeping(u):
@@ -2344,7 +2363,7 @@ func _info(u: Unit) -> Dictionary:
 	elif known(u) and battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS:
 		var given: int = command.ordered.get(u, 0)
 		if command.can_order(u):
-			chips.append(["Takes orders" if given == 0 or u == command.leader else "Ordered %d/%d" % [given, command.order_cap()], FRIEND])
+			chips.append(["Takes orders" if given == 0 or u == command.leader else "Ordered %d/%d" % [given, command.order_cap(u)], FRIEND])
 		elif given > 0:
 			chips.append(["Ordered", MUTED])
 		elif not command.under_caps(u):
@@ -2555,10 +2574,10 @@ func _editable(u: Unit) -> bool:
 	return u != null and not busy and command.ours(u)
 
 
-func _why_locked() -> String:
-	var n := command.slots()
+func _why_locked(u: Unit = null) -> String:
+	var n := command.slots(u)
 	if n == 0:
-		return "Allies only take move orders from %s (%s)" % [_name(command.leader), command.basis()]
+		return "Allies only take move orders from %s (%s)" % [_name(command.leader), command.basis(0, u)]
 	return "Allies use only slot%s 1%s on %s's orders" % ["" if n == 1 else "s", "" if n == 1 else "-%d" % n, _name(command.leader)]
 
 
@@ -2576,7 +2595,7 @@ const INTENTS := {&"attack": &"offensive", &"defend": &"defensive", &"help": &"s
 # <= 0: no hotbar slot is open to orders) or it can't read what u can do (low wisdom). It commands by
 # intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (Unit.intent_skill()).
 func uses_intents(u: Unit) -> bool:
-	return _orders(u) and u != command.leader and (command.slots() <= 0 or command.leader.mod(&"wisdom") < 0)
+	return _orders(u) and u != command.leader and (command.slots(u) <= 0 or command.leader.mod(&"wisdom") < 0)
 
 
 # How well an order lands: the commander's clarity (wis mod) + how well u takes direction (cha mod). At
@@ -2615,8 +2634,9 @@ func issue_intent(u: Unit, intent: StringName) -> bool:
 	return true
 
 
-# After a Meditation: a small panel to shift u's six ability scores, each within `room` of where it was
-# born. Shift commits them (Battle.respec()); Keep closes it - either way the room is spent.
+# After a Meditation: a small panel to move up to `room` points between u's six ability scores, one
+# down for each one up. Shift (open once they balance) commits them (Battle.respec()); Keep closes it -
+# either way the room is spent.
 func _respec_window(u: Unit, room: int) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "Respec"
@@ -2628,14 +2648,22 @@ func _respec_window(u: Unit, room: int) -> void:
 	col.add_child(title)
 	var note := Label.new()
 	note.theme_type_variation = &"Muted"
-	note.text = "Shift each stat up to %d from birth" % room
+	note.text = "Move up to %d point%s: one down for each up" % [room, "" if room == 1 else "s"]
 	col.add_child(note)
 	var grid := GridContainer.new()
 	grid.columns = 4
 	var picked := {}
+	var shift := Button.new()
+	var balance := func() -> void:  # Shift opens once the points down pay for the points up, within room
+		var total := 0
+		var moved := 0
+		for t in picked:
+			total += picked[t] - int(u.get(t))
+			moved += maxi(picked[t] - int(u.get(t)), 0)
+		shift.disabled = total != 0 or moved == 0 or moved > room
 	for s: StringName in Skill.STAT_TAGS.values():
-		var born: int = u.get(s) - u.respec.get(s, 0)
-		picked[s] = int(u.get(s))
+		var now := int(u.get(s))
+		picked[s] = now
 		var name := Label.new()
 		name.text = String(s).left(3).capitalize()
 		name.custom_minimum_size.x = 22
@@ -2653,9 +2681,10 @@ func _respec_window(u: Unit, room: int) -> void:
 			btn.focus_mode = Control.FOCUS_NONE
 			btn.custom_minimum_size = Vector2(11, 0)
 			btn.pressed.connect(func() -> void:
-				picked[s] = clampi(picked[s] + step, born - room, born + room)
+				picked[s] = clampi(picked[s] + step, maxi(now - room, 1), now + room)
 				value.text = str(picked[s])
-				value.add_theme_color_override(&"font_color", GOLD if picked[s] != int(u.get(s)) else Color.WHITE))
+				value.add_theme_color_override(&"font_color", GOLD if picked[s] != now else Color.WHITE)
+				balance.call())
 		grid.add_child(name)
 		grid.add_child(less)
 		grid.add_child(value)
@@ -2664,8 +2693,8 @@ func _respec_window(u: Unit, room: int) -> void:
 	var row := HBoxContainer.new()
 	var keep := Button.new()
 	keep.text = "Keep"
-	var shift := Button.new()
 	shift.text = "Shift"
+	balance.call()
 	row.add_child(keep)
 	row.add_child(shift)
 	col.add_child(row)
@@ -2732,14 +2761,17 @@ func _apply_look(u: Unit, look: Dictionary) -> void:
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order
 # now, with AP to act on it: lit), &"far" (it would, but for standing out of reach of the leader's
-# orders: in colour, its glow weaker), &"spent" (on the player's turn, it can't take another - out of
-# AP, asleep, past the turn's command caps: grey) or &"idle" (not the player's turn, or not its side:
-# allies of another side and foes are drawn as they are).
+# orders: in colour, its glow weaker), &"reduced" (it takes orders, but only in a reduced capacity -
+# Mindless Fury, Drone: Unit.reduced()), &"spent" (on the player's turn it's tapped - Command.tapped():
+# out of AP, helpless, past the turn's command caps: grey) or &"idle" (not the player's turn, or not
+# its side: allies of another side and foes are drawn as they are).
 func command_state(u: Unit) -> StringName:
 	if not my_turn() or not known(u):
 		return &"idle"
-	if u.ap_left() <= 0.001 or not command.could_order(u):
+	if not command.could_order(u):
 		return &"spent"
+	if u.reduced():
+		return &"reduced"
 	return &"ready" if command.in_range(u) else &"far"
 
 
@@ -2792,7 +2824,7 @@ func skill_glow(u: Unit, s: Skill, t: Unit) -> int:
 # glows barely too. -1: not the player's turn, or not its side.
 func command_glow(u: Unit) -> int:
 	match command_state(u):
-		&"ready":
+		&"ready", &"reduced":
 			return Unit.Intensity.FULLY
 		&"spent":
 			return Unit.Intensity.BARELY
@@ -2832,16 +2864,21 @@ func _sure_walk(u: Unit, path: Array) -> bool:
 	return true
 
 
-const SAT_LOW := 0.55  # the colour a unit that can still be commanded keeps on its last AP
+const SAT_LOW := 0.75  # the colour a unit that can still be commanded keeps on its last AP, or its last order
+const SAT_REDUCED := 0.5  # acting in a reduced capacity (Unit.reduced(): Mindless Fury, Drone)
 
 
 # How much colour it draws with (Unit.set_saturation()): full, but for the player's own side on its
-# turn. One that can still be commanded - or could, were it in reach - drains only a little, and
-# mostly as its AP runs out (SAT_LOW with none left); one that can't be any more this turn is grey.
+# turn. One that can still be commanded - or could, were it in reach - drains only a little, as its
+# AP runs out or its orders toward the caps are used (SAT_LOW at the last); one acting in a reduced
+# capacity is half grey; one that's tapped this turn (Command.tapped()) is grey.
 func command_sat(u: Unit, state := command_state(u)) -> float:
 	match state:
 		&"ready", &"far":
-			return 1.0 - (1.0 - SAT_LOW) * pow(1.0 - u.ap_share(), 2.0)
+			var used := float(command.ordered.get(u, 0)) / command.order_cap(u) if u != command.leader else 0.0
+			return 1.0 - (1.0 - SAT_LOW) * maxf(pow(1.0 - u.ap_share(), 2.0), minf(used, 1.0))
+		&"reduced":
+			return SAT_REDUCED
 		&"spent":
 			return 0.0
 	return 1.0
@@ -2858,15 +2895,27 @@ func _why_no_orders(u: Unit) -> String:
 		return "Wait for your turn"
 	if not u.is_alive():
 		return "Fallen"
-	if u.asleep():
-		return "Asleep: an ally ending the turn beside it wakes it"
-	if u.helpless():
-		return "Downed: helpless until it's healed above 0 HP"
+	if u.stopped() or u.ap_left() <= 0.001:
+		return _why_tapped(u)
 	if not command.under_caps(u):
 		if u in command.ordered:  # what skills and items add to a cap is named beside the charisma (Command.basis())
-			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(), "" if command.order_cap() == 1 else "s", command.basis(command.order_bonus())]
+			return "%s gives an ally %d order%s a turn (%s)" % [_name(command.leader), command.order_cap(u), "" if command.order_cap(u) == 1 else "s", command.basis(command.order_bonus(), u)]
 		return "%s commands %d all%s a turn (%s)" % [_name(command.leader), command.ally_cap(), "y" if command.ally_cap() == 1 else "ies", command.basis(command.ally_bonus())]
 	return ""  # too far: no nag - its hotbar is grayed, and the units you can command are lit
+
+
+# What taps it, of its own sources (Unit.tapped()): each can be lifted, and the tap with it.
+func _why_tapped(u: Unit) -> String:
+	if u.helpless() and u.fury_acts > 0:
+		return "Tapped: its Mindless Fury is spent this turn"
+	if u.asleep():
+		return "Asleep: an ally ending the turn beside it wakes it"
+	if u.dbno != null and not u.dbno.rule.acts:
+		return "Downed: helpless until it's healed above 0 HP"
+	if u.stat(&"helpless") > 0.0:
+		var names := u.timed.keys().filter(func(e: Effect): return e.stat == "helpless").map(func(e: Effect): return e.label())
+		return "%s: helpless%s" % [", ".join(names), " till healed or cleansed" if u.timed.keys().any(func(e: Effect): return e.stat == "helpless" and e.wound) else ""]
+	return "Tapped: out of AP"
 
 
 func _why_no_join(u: Unit) -> String:

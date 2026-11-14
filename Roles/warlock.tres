@@ -26,9 +26,9 @@
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/sweet_something.tres" id="i_sweet_something"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
-[ext_resource type="Resource" path="res://Trees/elmon.tres" id="r_elmon"]
-[ext_resource type="Resource" path="res://Trees/hogel.tres" id="r_hogel"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
+[ext_resource type="Resource" path="res://Skills/bargaining.tres" id="opt_bargaining"]
+[ext_resource type="Resource" path="res://Skills/acceptance.tres" id="opt_acceptance"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -42,26 +42,21 @@ skill = ExtResource("s_hex")
 script = ExtResource("4_slot")
 skill = ExtResource("s_sweet_nothings")
 
-[sub_resource type="Resource" id="Tab_Elmon"]
-script = ExtResource("8_tab")
-name = "Elmon"
-kind = "Patron"
-devotes = true
-roots = Array[ExtResource("6_root")]([ExtResource("r_elmon")])
-
-[sub_resource type="Resource" id="Tab_Hogel"]
-script = ExtResource("8_tab")
-name = "Hogel"
-kind = "Patron"
-devotes = true
-satisfied_by = &"rest_whole"
-roots = Array[ExtResource("6_root")]([ExtResource("r_hogel")])
-
 [sub_resource type="Resource" id="Choice_Patron"]
 script = ExtResource("c_choice")
 name = "Patron"
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Elmon"), SubResource("Tab_Hogel")])
 picks = 1
+kinds = Array[String](["Patron"])
+gods = true
+
+[sub_resource type="Resource" id="Choice_Flex"]
+script = ExtResource("c_choice")
+name = "Flex"
+picks = 2
+kinds = Array[String](["Patron"])
+gods = true
+burns = true
+after = ExtResource("opt_bargaining")
 
 [resource]
 script = ExtResource("1_script")
@@ -75,4 +70,5 @@ shared = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_swe
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_sweet_something")])
 swaps = Dictionary[StringName, StringName]({&"wisdom": &"charisma"})
 general = Array[StringName]([&"magical"])
-choices = Array[ExtResource("c_choice")]([SubResource("Choice_Patron")])
+choices = Array[ExtResource("c_choice")]([SubResource("Choice_Patron"), SubResource("Choice_Flex")])
+options = Array[ExtResource("5_skill")]([ExtResource("opt_bargaining"), ExtResource("opt_acceptance")])

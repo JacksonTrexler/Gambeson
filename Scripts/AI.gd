@@ -42,7 +42,7 @@ const STRONG := 0.5  # per level it reads, how much a unit going for the stronge
 # only, &"defensive" a self-protective skill only. The default (&"") is a full, self-directed turn.
 static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	var log: Array[String] = []
-	if not u.is_alive() or u.asleep() or u.helpless():
+	if not u.is_alive() or u.stopped():
 		return log
 	var reads := {}
 	for o in b.units.values():
@@ -163,7 +163,7 @@ static func _unshackle(b: Battle, u: Unit, log: Array[String]) -> void:
 	var it := u.trinket
 	if not it or not it.binding:
 		return
-	var odds := func(stat: StringName, diff: StringName) -> int: return u.mod(stat) - Difficulty.dc(diff, it.rank) if diff else -999
+	var odds := func(stat: StringName, diff: StringName) -> int: return u.mod(stat) - Difficulty.dc(diff, it.ranked()) if diff else -999
 	var how := &"unlock" if not u.shackled() else (&"pick" if odds.call(&"dexterity", it.picks) >= odds.call(&"strength", it.prised) else &"pry")
 	if b.unshackle(u, how):
 		log.append("%s gets its %s off" % [u.name, it.name])
@@ -241,7 +241,7 @@ static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 	var scary: Array[Vector2i] = []
 	for o: Unit in reads:
 		var r: Read = reads[o]
-		if o.is_alive() and not o.helpless() and r.located() and r.attitude(u) == &"avoid" and Command.tiles(r.cell, u.cell) <= CRAVEN_REACH:
+		if o.is_alive() and not o.stopped() and r.located() and r.attitude(u) == &"avoid" and Command.tiles(r.cell, u.cell) <= CRAVEN_REACH:
 			scary.append(r.cell)
 	if scary.is_empty() or not _away(b, u, scary):
 		return false
@@ -264,7 +264,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if s.drags_to and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
 			var v := score(u, s, r) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
-			if t.helpless():
+			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
 				best = [s, t]
@@ -615,7 +615,7 @@ static func _best_target(u: Unit, reads: Dictionary) -> Unit:
 		var guess: Variant = _level(u, reads[t])
 		var lv: float = guess if guess != null else 0.0
 		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, reads[t]) \
-				+ STRONG * lv * _leaning(u) - (LAST if t.helpless() else 0.0)
+				+ STRONG * lv * _leaning(u) - (LAST if t.dbno != null and t.stopped() else 0.0)
 		if v > best_score:
 			best = t
 			best_score = v
