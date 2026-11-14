@@ -105,8 +105,8 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Mindless Fury** (2026-11-12, built 2026-11-14, ?119): Berserker passive, tier 5. A unit may take rank actions in a reduced capacity when it would otherwise be interrupted or incapacitated; its effective mental stats are 1 while acting this way. It can't power through `tapped` to take unlimited actions in a turn, and needs blanket mitigation of unit-inflicted disabling effects.
 - [x] **Drone** (2026-11-12, built 2026-11-14, ?119): tier 4, Mage general / Specialist Merchant. The unit does not tap when the command limit is exceeded; its mental stat mods are capped at +rank when acting this way.
 - [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
-- [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
-- [ ] **Static skill descriptions** (skills screen, spellbook) show base costs only.
+- [x] **Nothing on the hotbar shows a worn skill until hovered.** Built 2026-11-14: a small gold diamond on the slot when the unit's worn emblem modifies that skill (`SkillSlot.modded`; `docs/plans/ui-small.md`, ?136).
+- [x] **Static skill descriptions** (skills screen, spellbook) show base costs only. Built 2026-11-14 (?134): the hotbar tooltip, spellbook and its detail read what the holder pays (`Skill.markup(rank, with_spec, u)`); the skills screen stays base on purpose, with a "Base values" note when modifiers change them.
 
 87. **Exhaustion - answered (2026-11-10), built (`v-stamina`, ?98).** A task from a caster, martial or specialist tree inherits that as a tag; truly general skills apply less exhaustion on everything. Stamina, above, is new. The rest stands as built:
     - **Broad kinds** (your physical / technical / mental, for the half share) are read as the existing martial / specialist / magical category tags. **Twenty of the 65 active skills carry none** (Smite, Solar, Renew, Sing, Drown, Rake, Energy Missile, Flamecharm...) and wear on themselves only. A skill with two kinds shares with both, half once.
@@ -130,14 +130,14 @@ Plan and rules: `docs/plans/exhaustion.md`.
 
 Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/systems.md`, `docs/done/classes.md`). Suite after the merge: 487 tests, 0 failed.
 - [x] `Util/skill.py new` and `check`, the behaviour seam (`Scripts/Behaviour.gd`, `Skill.behaviours`), Kick, the agent skill `.claude/skills/new-skill/SKILL.md` and `CLAUDE.md`. (?88)
-- [ ] **Behaviours don't run on the early-return paths in `Battle.cast()`** (Strike's chain, contests, saves).
+- [x] **Behaviours don't run on the early-return paths in `Battle.cast()`** (Strike's chain, contests, saves). Built 2026-11-14 (?134): `Battle._land()` runs them on every path that lands; a lost save or contest runs none, as a missed roll runs none.
 - [ ] **The HUD forecast and the AI don't know Kick's tile effects.**
 - [ ] **No map has a hole tile yet**, so Kick's hole push is only tested.
 - [ ] **The stale-count check covers only the Adventurer wheel** (`hud_test`).
 - [x] **`skills_test.test_wiring` skips without python3.** Built 2026-11-14: `Test.tool_check` fails, naming the problem (?127).
 - [x] **Waterstrike's tag `bludgeon` probably should be `blunt`.** Built 2026-11-14: `blunt`, so it breaks a starpane (?127).
-- [ ] **Shrink `UNSAID`**: 11 existing `Skill` fields that no description mentions are exempted in `skills_test`.
-- [ ] **Lift `pings` into a behaviour and lower `FLAG_CEILING`** (raised from 124 to 125 because Clairvoyance's `pings` flag was built in parallel, beside the seam).
+- [x] **Shrink `UNSAID`**: 11 existing `Skill` fields that no description mentions are exempted in `skills_test`. Built 2026-11-14: `UNSAID` is empty (?133, ?134).
+- [x] **Lift `pings` into a behaviour and lower `FLAG_CEILING`** (raised from 124 to 125 because Clairvoyance's `pings` flag was built in parallel, beside the seam). Built 2026-11-14: `Behaviours/clairvoyance.gd`; `FLAG_CEILING` is now 128 (?133, ?134).
 
 88. **Skill tooling, Kick, CLAUDE.md - settled (2026-11-10):** "that's fine for now"; the calls stand.
     - **"g-action skill/ tool"** was read as a Claude Code agent skill (`.claude/skills/new-skill`) plus a script (`Util/skill.py`). Say if you meant something else.
@@ -212,7 +212,7 @@ Plan, readings and what was built: `docs/plans/tapped.md`; done in `docs/done/sy
     - **Check tag seam:** `check_bonus(s, kind, tags)`; a `check` effect with `tags` counts only for checks carrying one. After merging, the HUD grey-out reads each ally's own order cap. Confirm?
     - **New names to review:** Reduced capacity ?? (the term).
 - [ ] **No Merchant tree exists for Drone**: it sits on the general Caster tree at tier 4; the Specialist "Merchant" half waits for the tree. (?119)
-- [ ] **No screenshot of the new saturation.** (?119)
+- [x] **No screenshot of the new saturation.** Taken 2026-11-14 (?136): 0% is clear grey, 50% plainly half faded, 75% only a faint dulling on a dark sprite. (?119)
 - [ ] **0-AP free actions still go while tapped**; say if they should not. (?119)
 
 ## Recovery: burnout, Energize, Heal, Megaheal (2026-11-14)
@@ -328,12 +328,46 @@ Plan, readings and what was built: `docs/plans/skill-modifiers.md`; done in `doc
 - [x] **Sigil, Insignia, Crest and Badge** items, trimmed through ?125 (`Item.emblem`, `scope`, `trim_tag()`). Built. (?131)
 - [x] **Authoring:** `skill.py new --intensity --impact --penalty --requires --hand-priced`, `terms`, `modifiers`, `drift`, with `check`. `.claude/skills/new-skill` not edited (house rule: skills aren't edited without you). (?131)
 - [ ] **Tune the price table or adopt the computed prices**; 71 of 89 hand-priced actives drift. (?131)
-- [ ] **Ineligible for every modifier** (`skill.py modifiers`, 54 of about 240): mostly passives whose work is a behaviour hook or bespoke flag, and actives with flags and no scaling fields (Heal, Megaheal, Energize, Resuscitate, Move, Clairvoyance...). Parameterizing them is `r-param` (in progress). (?131)
-- [ ] **Not routed through the reader yet:** saves, executes' `/ r`, `Difficulty.dc(rank)`, reach, requirements outside the attack roll and damage, descriptions (`Skill.markup()`), AI estimates, behaviour hooks but Kick's push, and `Unit.mod()` outside `Battle.cast`. That is `r-route` (in progress). (?131)
-- [ ] **Behaviours on cast's early-return paths** don't run yet; `r-route` (in progress). (?131)
-- [ ] **Lift `pings` into a behaviour, and shrink UNSAID**: `r-param` (in progress). (?131)
-- [ ] **Emblems have no icons** (items have none yet), and no item tool writes them. (?131)
+- [ ] **Ineligible for every modifier** (`skill.py modifiers`): 54 skills became 27 after ?133 and ?134 (`docs/plans/param.md` has each call); the 27 are left concrete (flat, binary or build-time gates). (?131, ?133)
+- [x] **Not routed through the reader yet:** saves, executes, DCs, reach, requirements on every outcome, descriptions, AI estimates, behaviour hooks and `Unit.mod()`. Built 2026-11-14 (?134).
+- [x] **Behaviours on cast's early-return paths** now run. Built 2026-11-14 (?134). (?131)
+- [x] **Lift `pings` into a behaviour, and shrink UNSAID**: built 2026-11-14, UNSAID empty (?133, ?134). (?131)
+- [x] **Emblems have no icons** (items have none yet), and no item tool writes them. Icons built 2026-11-14 (`icon.py item`, ?135); still no item tool. (?131)
 
-**In progress, two follow-ups to ?131, each on its own branch:**
-- `r-route`: routes saves, executes, DCs, reach, requirements, descriptions and AI estimates through the reader, and runs behaviours on cast's early-return paths.
-- `r-param`: parameterizes the ineligible skills, lifts pings into a behaviour, and shrinks UNSAID.
+**Built, the two follow-ups to ?131:** `r-param` (?133) and `r-route` (?134), below.
+
+## Parameterizing skills (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/param.md`; done in `docs/done/systems.md`. Built on `r-param`. Tests: `Tests/param_test.gd` (5 tests); `clairvoyance_test`, `water_test` and `skills_test` changed. Your request of 2026-11-14: a skill too concrete that could be compatible if tagged, polymorphized or parameterized should be.
+
+133. **Parameterizing skills - built on judgement, open for review (2026-11-14).** `skill.py modifiers` went from 54 ineligible to 33, and to 27 once ?134 took the deferred six. My calls, each for you to confirm or change:
+    - **"Parameterized"** means the skill declares its channels and every read of that rank or stat goes through its holder's modifiers; a channel is declared only where the read is routed, so no skill is eligible for a modifier that would do nothing. Confirm?
+    - **"Add the missing tags"** read as the terms' kind flags and channels a skill failed to declare (Manifest's per-stat effect). No `Skill.tags` added: none of these skills' checks or damage would read a tag modifier. Confirm?
+    - **Passive hooks** (affinity, lets_word, hurt, healing, command_mod, step_cost) get the holder and a rank, not a Cast: `Behaviour.mods_on(holder)` and `holder_rank()`. Peel uses it too.
+    - **Rank as a quantity of effect is rank impact** (Move's tiles, Energize's pairs, Telepathy's commands); **as a distance, rank range** (Molothrus, Telepathy, Clairvoyance); wisdom score in Clairvoyance's reach is stat range.
+    - **21 parameterized:** Efficiency's five (Acceptance, Bargaining, Quarry, Survivalist, Wildcaller), Bandwagon, Illusionist, Molothrus, Telepathy, Word to the Wise, Energize, Heal, Megaheal, Move, Resuscitate, Clairvoyance, Manifest, Sweet Nothings, Mana, Grudge and Tenacity (the Downed rule's rank).
+    - **27 left concrete, with the reason in the plan's table:** binary or max-rank-I traits (Arcanist, Everyman, Powerful, the slot passives...), flat ones (Favour, Hazard Expert), Oceanic (a penalty contingency only), and **build-time gates** (Dabblings' `studies`, the general-tree `waives`, Divinity, Mastery, Symphony, Witchery, Generalist...): an emblem coming off would strand picks. Hand prices kept; no per-rank added to flat passives (Favour). Confirm?
+    - **Clairvoyance's pings are a behaviour** (`Behaviours/clairvoyance.gd`), with three generic hooks, `recast_stops()`, `held(b, holder)` and `senses()` (the AI's scry); `Battle.ping(u, reach)` and `pinged()` stay as the perception side; reach is wisdom score + channel rank through the reader. `FLAG_CEILING` 130 to 129 (later 128).
+    - **UNSAID:** Sweet Nothings' two were already said; Coalescing's and Drown's `grapples` were dead (`holds()` is true by `drowns`) and are removed from their .tres, `water_test` asserting `holds()`. The other seven's markup went to ?134.
+    - **New names to review:** none.
+- [ ] **The 27 left concrete**: confirm the reading, or say which should scale (Favour per rank would rebalance). (?133)
+- [ ] **Strike's and the elemental reads** and any later passive hook still need a `terms()` when added. (?133)
+
+## Routing through the reader (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/route.md`; done in `docs/done/systems.md`. Built on `r-route`. Tests: new `Tests/route_test.gd` (10 tests); `modifiers_test.test_requirement` and `skills_test` changed.
+
+134. **Routing through the modifier reader - built on judgement, open for review (2026-11-14).** Finishes what ?131 listed as not routed. My calls, each for you to confirm or change:
+    - **Which channel each read is:** rank as a distance or how many it reaches is rank range (aura reach, Flamecharm's split, Flamewall's width, Solar's cone, Send Off, Sing's targets, Waltz's radius, Metea's blast); rank as what it does is rank impact (a save's + rank, an execute's `/ r`, hits per rank, DCs, turns, Beastshape's form rank, Pray, Smite's riders...); the full list is in the plan. Vetruvis's radius takes one rank in, a call. `skill.py modifiers` 51 to 27 with ?133.
+    - **Requirements on every outcome path:** one payoff set (`hit`, `edge`, `damage`, and new `turns` and `strength`) read wherever the skill has that outcome; lambda pays turns like hit. A requirement is described (`Requirement.markup()`).
+    - **Descriptions as held:** hotbar tooltip, spellbook and its detail read through `u.mods()` ("{o:1.75 x int mod}", AP and cost as the holder pays); **the skills screen stays base** (it is where ranks are bought) with a "Base values" note. Confirm?
+    - **`Behaviour.describe_as(c)`** added for modified numbers in behaviour text; none override it yet.
+    - **AI and HUD share `Battle.damage_range()`**; `hit_chance` counts the requirement's hit and edge and the hit's tags.
+    - **Behaviours on every path** (`Battle._land()`): Beastshape, aura/retrieve/humble/fog/exit/boost/imbue, Eros's heal, Level Down, Death, Strike's chain (once). **A lost save or contest is a miss and runs none; a channel stopped by recasting lands nothing; tile skills have no Cast.** Confirm?
+    - **UNSAID emptied** by markup lines for Beastshape, Coordinate's links, Alluring's adjectives and nouns, Personify's AP, Pray's range. **`Skill.cinders` was dead** (its Effect does the work) and is removed; `FLAG_CEILING` 129 to 128.
+    - **New names to review:** none.
+- [ ] **Behaviours' `describe()` lines** don't show modified numbers yet; override `describe_as`. (?134)
+- [ ] **Not routed:** Rift turns, the text of reserves, opens and Downed rules, Look's dissonance rank, and the build-time gates (Dabblings, waives). (?134)
+- [ ] **A lost save or contest runs no behaviours**; add a "missed" hook if one should. (?134)
+
+**In progress:** `q-ai`, the AI weighing Slayer conditions, holding a shot for Focus, preferring Resuscitate on the Downed, using Kick's tile effects, and Grudge.

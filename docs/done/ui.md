@@ -85,3 +85,16 @@ Plan and calls: `docs/plans/forecast.md`. `hud_test` (forecast_fire_and_wounds, 
 - [x] **Trap estimates** (`HUD.hazard()`): dice, a trap's first bleed, poison and winded tick, and fire on the tile; summed along the path by `drain()`.
 - [x] **The drain on every reserve bar** (`Overlay._bar_for`).
 - [x] **HELP reads restores** (`HUD.intent_skill()`, `AI.restoring()`; `AI.act(supportive)` ends with `_replenish()`).
+
+## Small UI items and hazard paths (2026-11-14)
+
+Plans and calls: `docs/plans/ui-small.md` (`ui_small_test`, 5 tests), `docs/plans/path.md` (`path_test`, 9 tests). (?136, ?137)
+
+- [x] **Saved settings** (`Prefs`, `user://settings.cfg`): allied glow, high contrast, suspicious marks, keep slot and hand over; tests use `Prefs.SAVE` at a throwaway file. (?136)
+- [x] **Hurried floaters** (`Overlay.hurry()`) and **the Guide's hurry key** (`{hurry}` from `KeyBinds.key_of`). (?136)
+- [x] **Near-miss circles** (`Overlay.NEAR`): a faint circle on each unit and a dashed line from the reach ring, one tile past reach. (?136)
+- [x] **High-contrast borders** (`Unit._heavy_trim`): a 2px trim stood out one pixel. (?136)
+- [x] **Worn-emblem mark** (`SkillSlot.modded`): a gold diamond on a slot the worn emblem modifies. (?136)
+- [x] **Screenshots** of tapped saturation and Jam's "Jm" chip taken. (?136)
+- [x] **Routes steer round known hazards** (`Battle.route()`, `stride()`, `dread()`, `HAZARD_TILES`, `STEER_MARGIN`; `walk()`): preview, reach overlay and AI share it; steering reads the walker's own knowledge. (?137)
+- [x] **The fuller hazard estimate** (`Battle.hazard()`, `foresight_allowance()`; `HUD.hazard()` delegates): every tick of a bleed or poison, winded's AP, ground's `afflicts`. (?137)

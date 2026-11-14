@@ -1165,13 +1165,13 @@ func test_will_consume() -> void:
 	v(1).intelligence = 12  # +1: one estimate a turn
 	var h := await start(v(1))
 	h._refresh()
-	h.hover_cell(Vector2i(6, 4))
+	h.hover_cell(Vector2i(5, 4))  # onto the trap itself: a route would steer round it on the way (path_test)
 	var t := b.terrain(Vector2i(5, 4))
 	var avg := t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus
 	ok(h.spend.get(&"move") == 3.0 and is_equal_approx(h.spend.get(&"hp", 0.0), avg) and h.spend.get("estimated", false), "a trap on the way: its average damage drains off HP (%s)" % h.spend)
 	var card_hp: Array = h._card_info().rows.filter(func(r): return r[0] == "HP")[0]
 	ok(card_hp.size() == 5 and is_equal_approx(card_hp[4], avg), "the card's HP row drains too")
-	h.click(Vector2i(6, 4))
+	h.click(Vector2i(5, 4))
 	ok(h.foresight(v(1)) == 0 and v(1).cell == Vector2i(5, 4), "acting on it spends its one estimate")
 	var plain := h.drain({kind = &"walk", unit = v(1), walk = {path = [Vector2i(5, 4)], costs = [1.0]}})
 	ok(plain.get(&"move") == 1.0 and not plain.has(&"hp") and &"hp" in plain.get("unsure", []), "out of foresight: no estimate, a '?' on HP (%s)" % plain)

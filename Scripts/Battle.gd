@@ -191,6 +191,8 @@ const CLEAN_HIDE := 15  # a hiding roll this high or more is a good job: little 
 const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
 const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
+const HAZARD_TILES := 0.5  # steering: movement a point of foreseen HP loss weighs as (a 7 damage trap is a 3.5 tile detour); AP loss weighs 1 a point
+const STEER_MARGIN := 2  # tiles either side of its straight run that a steered route may wander (route())
 const EARTHWORK_COST := 1.5  # disturbed earth: what entering it costs its side's enemies, times the usual
 
 
@@ -2306,23 +2308,18 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 	var path: Array[Vector2i] = []
 	var costs: Array[float] = []
 	var blocker: Unit = null
-	var hooks := u.hooks()
 	var bag := {}  # its steps' hooks' scratch (Behaviour.step_cost()); kept on the unit as it walks (Unit.tally)
 	var left := u.move_left() - escape_cost(u)
 	if held_by(u) and not expected:
 		left = 0.0  # held: travel() breaks it free first
-	var ln := line(u.cell, dest, u.luck, u)
+	var ln := route(u, dest, line(u.cell, dest, u.luck, u))  # the straight line, bent round what it knows is bad (route())
 	var from: Terrain = ground.call(u.cell)
 	for c in ln:
 		if not on_map(c) or left <= 0.0001:
 			break
 		var t: Terrain = ground.call(c)
-		var cost := _cost(u, from, t) * wading(u, c) + obstruction(u, c, expected)
-		for h in hooks:
-			cost = h[0].step_cost(self, u, h[1], path[-1] if not path.is_empty() else u.cell, c, cost, bag)  # Peel
 		var other: Unit = in_way.call(c)
-		if other:
-			cost += pass_cost(u, other)
+		var cost := stride(u, path[-1] if not path.is_empty() else u.cell, c, from, t, bag, other, expected)
 		if cost > left + 0.0001:
 			var unknown_bad := t.worth() < 0 and not read(u, c).known_bad()
 			if Luck.settle(left / cost, u.luck, not unknown_bad, false) < 1:
@@ -2343,6 +2340,154 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 	if expected:
 		rng.state = state
 	return {line = ln, path = path, costs = costs, blocker = blocker, bag = bag}
+
+
+# What one step of u's costs in movement, from tile `prev` (ground `from`) onto c (ground `t`) with `other`
+# in the way: the one price walk() pays, the HUD's reach and preview show and route() weighs, so they
+# can't disagree. Entering and leaving the ground, wading, obstruction, its passives' step_cost() hooks
+# (Peel; `bag` is their scratch for the walk so far) and moving through the unit in the way.
+func stride(u: Unit, prev: Vector2i, c: Vector2i, from: Terrain, t: Terrain, bag: Dictionary, other: Unit, expected := false) -> float:
+	var cost := _cost(u, from, t) * wading(u, c) + obstruction(u, c, expected)
+	for h in u.hooks():
+		cost = h[0].step_cost(self, u, h[1], prev, c, cost, bag)  # Peel
+	return cost + (pass_cost(u, other) if other else 0.0)
+
+
+# The ground u makes out on c: what's there, or plain where it can't make it out.
+func known_ground(u: Unit, c: Vector2i) -> Terrain:
+	return terrain(c) if read(u, c).net >= 0 else PLAIN
+
+
+# How many hazard estimates u can make a turn: its int mod and its foresight stat (Effect: skills and
+# items raise it). Below 0 it plans as if the way were safe: no "?" on the HUD's forecast (HUD.drain()),
+# and its route isn't steered round what it knows is bad (route()).
+func foresight_allowance(u: Unit) -> int:
+	return u.mod(&"intelligence") + roundi(u.stat(&"foresight"))
+
+
+# What stepping onto c would cost u that an observer reading it as `r` can foresee, by pool (&"hp",
+# &"ap"): the one estimate behind the HUD's forecast (HUD.hazard()) and what route() steers by. A known
+# trap's dice (times x the average + bonus) and its wounds; the effects ordinary ground it has read
+# puts on whoever steps there (afflicts); and fire on the tile (1d8 + its setter's wis mod, at least 1:
+# _flame(), plainly visible to everyone). Effects that last count each tick they take HP: a bleed (dice
+# average + the setter's mod, at least 1, else its amount: _bleed()) and poison (amount x max HP) every
+# turn of their length; winded takes AP once. All before mitigation, as a hit isn't rolled. {}: nothing
+# foreseen. Only what `r` makes out counts: an unseen trap or ground it can't read owes nothing.
+func hazard(u: Unit, c: Vector2i, r: Read) -> Dictionary:
+	var out := {}
+	var t := terrain(c)
+	var by: Unit = null
+	if r.trap == true:
+		_owe(out, &"hp", t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus)
+		by = snares[c].by if c in snares and is_instance_valid(snares[c].by) else null
+		for e in t.wounds:
+			_owe_wound(out, u, e, maxi(t.wound_turns, 1), t.level, by)
+	for e in r.afflicts:  # what ordinary ground does to whoever steps on it, for its turns
+		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)  # (travel() puts them on at rank 1)
+	if c in flames:
+		_owe(out, &"hp", maxf(4.5 + flames[c].bonus, 1.0))
+	return out
+
+
+func _owe_wound(out: Dictionary, u: Unit, e: Effect, ticks: int, level: int, by: Unit) -> void:
+	match e.stat:
+		"bleed":
+			_owe(out, &"hp", ticks * maxf(((e.dice.x * (e.dice.y + 1) / 2.0 + (by.mod(e.dice_mod) if by and e.dice_mod else 0)) if e.dice != Vector2i.ZERO else e.amount), 1.0))
+		"poison":
+			_owe(out, &"hp", ticks * e.amount * (level if e.per_rank else 1) * u.max_hp)
+		"winded":
+			_owe(out, &"ap", e.amount * (level if e.per_rank else 1))
+
+
+func _owe(out: Dictionary, key: StringName, n: float) -> void:
+	if n > 0.0:
+		out[key] = out.get(key, 0.0) + n
+
+
+# What a hazard() weighs against the way round, in movement: HAZARD_TILES a point of HP, 1 a point of
+# anything else. A known trap or detrimental ground counts at least a tile, whatever the estimate says.
+func dread(owed: Dictionary, r: Read) -> float:
+	var n := 0.0
+	for key in owed:
+		n += owed[key] * (HAZARD_TILES if key == &"hp" else 1.0)
+	return maxf(n, 1.0) if n > 0.0 or r.known_bad() else 0.0
+
+
+# The walk's tiles: the straight line `ln` from u to dest, or - when it crosses ground u knows to be
+# harmful (a known trap, fire, ground it has read as bad or that afflicts: dread() above 0) - the way
+# round it that's cheapest in movement plus dread, if that beats the line's own (a tie keeps the line:
+# it only goes round when the way round costs about the same). Only what u knows steers it (read(), never
+# the true map; unseen ground counts as plain, units it can't locate aren't in the way), and one with
+# a negative foresight allowance plans optimistically, regardless of hazards. Costs come from stride(),
+# which walk() pays too, so the plan and the walk can't disagree. Leaves the rng as it was.
+func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
+	if ln.size() < 2 or foresight_allowance(u) < 0:
+		return ln
+	var dreads := {}  # tile -> its dread, read once
+	var dread_of := func(c: Vector2i) -> float:
+		if c not in dreads:
+			var r := read(u, c)
+			dreads[c] = dread(hazard(u, c, r), r)
+		return dreads[c]
+	var danger := 0.0
+	for c in ln:
+		danger += dread_of.call(c) if on_map(c) else 0.0
+	if danger <= 0.0:
+		return ln
+	var grounds := {}
+	var ground_of_known := func(c: Vector2i) -> Terrain:
+		if c not in grounds:
+			grounds[c] = known_ground(u, c)
+		return grounds[c]
+	var cost_of := func(prev: Vector2i, c: Vector2i, bag: Dictionary) -> float:
+		var other := unit_at(c)
+		return stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c) \
+				+ 0.00001 * Geometry2D.get_closest_point_to_segment(Vector2(c), Vector2(u.cell), Vector2(dest)).distance_to(Vector2(c))  # ties hug the line
+	var bound := 0.0  # the line's own: movement and dread
+	var bag := {}
+	var prev := u.cell
+	for c in ln:
+		bound += cost_of.call(prev, c, bag) if on_map(c) else INF
+		prev = c
+	var lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
+	var hi := Vector2i(maxi(u.cell.x, dest.x), maxi(u.cell.y, dest.y)) + Vector2i(STEER_MARGIN, STEER_MARGIN)
+	var best := {u.cell: 0.0}
+	var came := {}
+	var bags := {u.cell: {}}
+	var open: Array[Vector2i] = [u.cell]
+	var done := {}
+	while not open.is_empty():
+		var at: Vector2i = open[0]
+		for c in open:
+			if best[c] < best[at]:
+				at = c
+		open.erase(at)
+		if at == dest:
+			break
+		if at in done:
+			continue
+		done[at] = true
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				var c := at + Vector2i(dx, dy)
+				if (dx == 0 and dy == 0) or c in done or not on_map(c) or c.x < lo.x or c.y < lo.y or c.x > hi.x or c.y > hi.y:
+					continue
+				var b: Dictionary = bags[at].duplicate()
+				var g: float = best[at] + cost_of.call(at, c, b)
+				if g < bound - 0.001 and g < best.get(c, INF) - 0.000001:
+					best[c] = g
+					came[c] = at
+					bags[c] = b
+					if c not in open:
+						open.append(c)
+	if dest not in came or best[dest] >= bound - 0.001:
+		return ln
+	var out: Array[Vector2i] = []
+	var step := dest
+	while step != u.cell:
+		out.push_front(step)
+		step = came[step]
+	return out
 
 
 # Extra movement for u to move through o's tile: o's size, less a share per point of dex mod - u's,

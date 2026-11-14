@@ -25,7 +25,7 @@
 
 ## Items
 
-- [ ] Item sprites and icons. *Now:* items are names and descriptions on the character sheet.
+- [x] Item sprites and icons. Built 2026-11-14: a placeholder PNG per item in `Icons/Items/` from `icon.py item`, on the sheet and the unit card (`docs/plans/item-icons.md`, ?135). *Before:* items were names and descriptions on the character sheet.
 - [ ] **Saving** the stash and outfit: later.
 - [ ] Sources for Habergeon, Brigandine, Aethendine and Ignauldron (drops, rewards, shops).
 
@@ -109,3 +109,21 @@ Plan, readings and what was built: `docs/plans/item-ranks.md`; done in `docs/don
 - [ ] **Nothing ranks items up in play**, so the cost curve is unused outside `worth()`. (?118)
 - [ ] **No skill carries `enchanted` or `honed`**, and no item is epic or mythic. (?118)
 - [ ] **Pray's enchant and rank**: whether it should also add rank +1. (?118)
+
+## Item icons (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/item-icons.md`; done in `docs/done/world.md`. Built on `q-icons`. Tests: new `Tests/item_icons_test.gd`; `tag_colors_test.test_trim_shows` changed (an untrimmed ring now shows an icon and no banner).
+
+135. **Item icons - built on judgement, open for review (2026-11-14).** Closes "Item sprites and icons" and the emblems' missing icons. My calls, each for you to confirm or change:
+    - **Colour, not white-on-clear:** items have no state to tint for, so each shape is drawn in a material colour with the trim colour as accent.
+    - **Shape by slot and kind:** armor a tunic (body colour by weight tag); weapon by `damage_tag` (sword, dagger, mace); ring, book, shackles, heart (`hearts > 0`), potion (liquid by `restores`); anything else a pouch.
+    - **Emblems are a plaque by scope** (sigil diamond, insignia disc, crest shield, badge square) in the trim colour, bearing the symbol (rho, sigma, lambda with arrows, added to the pixel font) or the tag's initial.
+    - **`icon.py` reads Tags.gd and the .tres by regex**, mirroring `Tags.mark()`; `icon.py check` (and `skill.py check`, one line) fails an item without an icon or an icon for no item.
+    - **`Item.icon()`** reads `Icons/Items/<file>.png`; a run-time copy falls back to the name's slug.
+    - **The card shows every worn item's icon**, not only trimmed ones (`HUD.trims()` returns colour, name and icon); 20px on the sheet's rows, 10px on the card with the banner over its corner; the third icon touches the word under the portrait by a pixel or two.
+    - **Process lines:** `.claude/skills/new-mechanic/SKILL.md` says a new item needs `icon.py item <id>` (new-unit has no item step); `.claude/skills/new-class/SKILL.md` got the one line about `role.py god` you authorised through the coordinator.
+    - **The stash lists items with icons; the post-battle "Spoils" stays a text line.**
+    - **New names to review:** none.
+- [ ] **The card's third icon** touches the word under the portrait. (?135)
+- [ ] **No item tool** writes `Items/*.tres`; `icon.py` only draws their art. (?135)
+- [ ] **Spoils** and any loot list are text, no icons. (?135)
