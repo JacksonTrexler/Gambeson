@@ -2009,10 +2009,10 @@ func set_store(r: Reserve, v: int) -> void:
 	reserve_changed.emit(r, was, v)
 
 
-# What s costs it, at its rank (starter spells: cost x rank), before any savings (cost_from()): more
+# What s costs it, at its rank (starter spells: cost x rank; Pricing.cost_for()), before any savings (cost_from()): more
 # the more it has used it lately (Exhaustion.rate()), rounded up.
 func price(s: Skill) -> int:
-	return ceili(s.price(rank(s)) * exhaustion.rate(s) - 0.0001)
+	return ceili(Pricing.cost_for(self, s) * exhaustion.rate(s) - 0.0001)  # priced, or hand-set under its modifiers
 
 
 # What s costs it paid from fund: a reserve that pays whole costs takes its few points for any cost
@@ -2252,7 +2252,7 @@ func ap_cost(s: Skill, fund: Variant) -> float:
 	for r in s.ap_with:
 		if pays_as(s, fund, r):
 			factor = minf(factor, s.ap_with[r])
-	return s.ap * factor * exhaustion.rate(s)
+	return Pricing.ap_for(self, s) * factor * exhaustion.rate(s)  # priced, or hand-set under its modifiers
 
 
 func can_afford(s: Skill) -> bool:

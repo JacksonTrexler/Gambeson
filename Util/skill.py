@@ -6,6 +6,9 @@
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
       [--set rolls=false] [--passive] [--no-import] [--dry-run]
   python3 Util/skill.py check       # cheap, plain text: run before every commit (Tests/skills_test.gd runs it too)
+  python3 Util/skill.py drift       # information: hand-set AP / cost against the cost calculator's (Scripts/Pricing.gd)
+  python3 Util/skill.py modifiers   # information: skills no modifier fits, and why - to parameterize (Scripts/Modifiers.gd)
+  python3 Util/skill.py terms kick  # one skill's terms: channels, intensity, impact, contingencies, price, modifiers
 
 `new` writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist, a test
 stub (Tests/<id>_test.gd), puts the skill on a tree (Trees/ or Roles/ <file>, beside --after's branch or at the
@@ -387,6 +390,13 @@ def new(a):
     return check()
 
 
+def report(mode, *args):  # Util/terms.gd, headless: reads the skills as the game does
+    r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", mode] + list(args), capture_output=True, text=True)
+    out = [l for l in r.stdout.split("\n") if l.strip() and not l.startswith("Godot Engine")]
+    print("\n".join(out))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -415,7 +425,15 @@ def main():
     n.add_argument("--no-import", action="store_true")
     n.add_argument("--dry-run", action="store_true", help="print what it would write")
     sub.add_parser("check", help="catch the wiring pitfalls")
+    sub.add_parser("drift", help="hand-set prices against the cost calculator's (information)")
+    sub.add_parser("modifiers", help="skills no modifier fits, and why (information)")
+    t = sub.add_parser("terms", help="one skill's terms")
+    t.add_argument("id")
     a = ap.parse_args()
+    if a.cmd in ("drift", "modifiers"):
+        sys.exit(report(a.cmd))
+    if a.cmd == "terms":
+        sys.exit(report("terms", a.id))
     sys.exit(new(a) if a.cmd == "new" else check(a))
 
 

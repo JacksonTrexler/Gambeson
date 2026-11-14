@@ -83,14 +83,14 @@ func _init(s: Skill) -> void:
 		add(&"stat_impact", "effects")
 	hit_per_rank = s.roll_per_rank
 	damage = not s.tiers.is_empty()
-	check = s.attacks() or s.contests() or s.evadable
-	conditions = not s.effects.is_empty() or s.grants != null
-	ground = s.on_tile()
+	check = not s.passive and (s.attacks() or s.contests() or s.evadable)
+	conditions = not s.passive and (not s.effects.is_empty() or s.grants != null)  # put on a target
+	ground = not s.passive and s.on_tile()
 	intensity = s.intensity if s.intensity else _derived_intensity()
 	impact = s.impact if s.impact else _derived_impact()
 	penalty = s.penalty if s.penalty else _derived_penalty()
 	for e in s.effects:
-		if e.above_hp > 0.0:
+		if e.above_hp > 0.0 and e.helps() > 0:  # one that hinders under the same test (Stoneskin's dex) rides along
 			contingencies.append(["above %d%% HP" % roundi(e.above_hp * 100.0), 1.0 - e.above_hp, e.helps() > 0])
 	if s.requires:
 		contingencies.append([s.requires.said(1, s.requires.share), s.requires.share, s.requires.beneficial()])

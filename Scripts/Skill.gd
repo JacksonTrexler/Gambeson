@@ -468,6 +468,11 @@ func spec() -> Array:
 	var out := [["", Glossary.term(target())]]
 	if not self_only:
 		out.append(["range", reach_markup()])
+	if priced:  # the cost calculator's, at rank I (Pricing)
+		out.append(["AP", num(Pricing.ap(self, 1))])
+		if Pricing.energy(self, 1):
+			out.append(["cost", str(Pricing.energy(self, 1))])
+		return out
 	out.append(["AP", num(ap)])
 	if cost:
 		out.append(["cost", "{r:%d x rank}" % cost if cost_per_rank else str(cost)])

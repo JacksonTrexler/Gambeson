@@ -200,6 +200,8 @@ static func why_not(word: StringName, s: Skill) -> String:
 			return "" if t.beneficial_contingency() else "no contingency"
 	if word in s.tags:
 		return "already %s" % word
+	if word in Difficulty.LADDER or word in Difficulty.MAGNITUDE:
+		return "a difficulty, not a tag"
 	match kind(word):
 		&"damage":
 			return "" if t.damage else "deals no damage"
@@ -219,7 +221,7 @@ static func words() -> Array[StringName]:
 	var out: Array[StringName] = []
 	out.assign(SYMBOLS.keys())
 	for t in Glossary.TERMS:
-		if Glossary.TERMS[t][1] != &"target":
+		if Glossary.TERMS[t][1] != &"target" and t not in Difficulty.LADDER and t not in Difficulty.MAGNITUDE:  # not the difficulty words
 			out.append(t)
 	for t in Glossary.added:
 		if Glossary.added[t][1] != &"target":
