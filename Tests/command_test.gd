@@ -222,8 +222,13 @@ func test_idle() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 3), al: Vector2i(5, 5), v(3): Vector2i(8, 2)})
 	var c := Command.new(b, v(1))
 	ok(same(c.idle(), [v(2), al]), "allies without orders, never the leader")
+	v(1).charisma = 14  # two orders an ally
 	c.order(v(2))
 	ok(same(c.idle(), [al]), "an order takes one off the list")
+	c.order(v(2))
+	ok(c.tapped(v(2)) and same(c.idle(), [v(2), al]), "given all the caps allow, it's tapped till the turn ends - then it spends what AP it has left on its own")
+	c.lock(al)
+	ok(same(c.idle(), [v(2)]), "a held or locked one doesn't")
 	c.new_turn()
 	ok(c.idle().size() == 2, "orders last a turn")
 

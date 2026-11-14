@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
 [ext_resource type="Resource" path="res://Skills/bulwark.tres" id="s_bulwark"]
 [ext_resource type="Resource" path="res://Skills/crushing_blow.tres" id="s_crushing_blow"]
+[ext_resource type="Resource" path="res://Skills/stun.tres" id="s_stun"]
 
 [sub_resource type="Resource" id="Branch_bulwark"]
 script = ExtResource("branch")
@@ -15,9 +16,14 @@ script = ExtResource("branch")
 skill = ExtResource("s_crushing_blow")
 after = Array[ExtResource("skill")]([ExtResource("s_bulwark")])
 
+[sub_resource type="Resource" id="Branch_stun"]
+script = ExtResource("branch")
+skill = ExtResource("s_stun")
+after = Array[ExtResource("skill")]([ExtResource("s_crushing_blow")])
+
 [resource]
 script = ExtResource("root")
 name = "Brawn"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_bulwark"), SubResource("Branch_crushing_blow")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_bulwark"), SubResource("Branch_crushing_blow"), SubResource("Branch_stun")])
 gods = Array[StringName]([&"ramut", &"vetruvis"])
