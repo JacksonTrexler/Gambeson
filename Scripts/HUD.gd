@@ -55,7 +55,14 @@ const SCROLL_EASE := 0.7  # how much faster than average the ends go, and slower
 
 var command: Command
 var selected: Unit
-var armed: Skill  # waiting for a target
+var slot := 0  # the selected hotbar slot of the selected unit: always set (the first, or with keep_slot the last used)
+var aim := false  # an area or trap skill in the slot is aimed: tile clicks cast it (its key again, or a right click, steps back)
+var keep_slot := false  # Settings: a unit keeps the slot it last used, rather than starting on the first
+var _last_slot: Dictionary[Unit, int] = {}  # keep_slot: each unit's last used slot
+var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing selected)
+	get:
+		var u := selected
+		return u.hotbar[slot] if u and hand(u) and slot >= 0 and slot < u.hotbar.size() else null
 var hover := NOWHERE
 var busy := false  # units are acting on their own; the player waits
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
@@ -238,6 +245,7 @@ func _ready() -> void:
 	%SuspiciousMarks.toggled.connect(func(on: bool) -> void:
 		suspicious_marks = on
 		_mark())
+	%KeepSlot.toggled.connect(func(on: bool) -> void: keep_slot = on)
 	add_to_group(&"guide")
 	show_guide(guide_page)
 	settings.get_parent().add_child(persona)
@@ -395,9 +403,16 @@ func _cell_at(p: Vector2) -> Vector2i:
 
 # --- What the player can do
 
+# Focus: u, or with none given the player's own unit (its leader, while it stands and the battle's on).
+# A new unit starts on its first slot, or with keep_slot the one it last used.
 func select(u: Unit) -> void:
+	if u == null and command and command.leader.is_alive() and battle.phase == Battle.Phase.TURNS:
+		u = command.leader
+	var was := selected
 	selected = u if u and u.is_alive() else null
-	armed = null
+	if selected != was or not keep_slot:
+		slot = _last_slot.get(selected, 0) if keep_slot else 0
+	aim = false
 	_note = ""
 	_rebuild_bar()
 	_replan()
@@ -418,12 +433,15 @@ func hover_cell(c: Vector2i) -> void:
 	_update_tip()
 
 
-# A hotbar slot's key or click: arms an active (again: disarms it), switches a toggled passive.
+# A hotbar slot's key or click: selects it. An area or trap skill aims as well (again: steps back); a
+# self or automatic skill is used on the second press (or a click on the unit itself); a toggled
+# passive switches; Personify opens its panel; a skill with elements asks which.
 func use_slot(i: int) -> void:
 	var u := selected
 	if not u or not hand(u) or i < 0 or i >= u.hotbar.size() or not u.hotbar[i]:
 		return
 	var s: Skill = u.hotbar[i]
+	var again := i == slot
 	if not _orders(u):
 		_nag(_why_no_orders(u))
 	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
@@ -450,26 +468,41 @@ func use_slot(i: int) -> void:
 			_say(_short(u, s))
 		else:
 			_pick_element(u, s)
-	elif s.on_self(u) or s.auto:
+	else:
+		_pick_slot(u, i)
 		if not u.can_afford(s):
 			_say(_short(u, s))
-		elif battle.cast(u, s, u):
-			_done(u)
-		else:
-			_say("%s doesn't take" % s.name)
-	elif armed == s:
-		disarm()
-	elif not u.can_afford(s):
-		_say(_short(u, s))
-	else:
-		armed = s
-		_note = ""
+		elif self_skill(u, s) and again:
+			_run(intent(u.cell))  # the second press: used
+		elif s.on_tile():
+			aim = not (again and aim)
 		_replan()
 		_mark()
 
 
+# Selects slot i of u's hotbar (remembered for keep_slot).
+func _pick_slot(u: Unit, i: int) -> void:
+	if i != slot:
+		aim = false
+	slot = i
+	_last_slot[u] = i
+	_note = ""
+
+
+# A skill used on oneself, or at once (automatic: Sing): its slot selected, it's previewed on the unit;
+# a second press or a click on the unit uses it.
+func self_skill(u: Unit, s: Skill) -> bool:
+	return s != null and not s.passive and (s.on_self(u) or s.auto)
+
+
+# Whether an area or trap skill is aimed: tile clicks cast it.
+func aiming() -> bool:
+	return aim and armed != null and armed.on_tile()
+
+
+# Steps back from aiming (the selected slot stays).
 func disarm() -> void:
-	armed = null
+	aim = false
 	_replan()
 	_mark()
 
@@ -485,10 +518,11 @@ func switch(u: Unit, s: Skill) -> void:
 	_mark()
 
 
+# Right click / Esc steps back once: a panel, then an aimed skill, then back to the player's own unit.
 func cancel() -> void:
 	if _panel_open():
 		_close_panels()
-	elif armed:
+	elif aiming():
 		disarm()
 	else:
 		select(null)
@@ -936,43 +970,44 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 		return it
 	var t := unit_seen(c)
 	var s := armed
-	if s:
-		if not _orders(me):
-			it.kind = &"disarm"
-			return it
+	var mine := _orders(me)
+	if mine and aiming() and _slot_usable(me, slot):  # an area or trap skill: the tile
 		it.skill = s
-		if force and s.for_foes() and not s.on_tile():
-			it.kind = &"strike_at"
-			it.target = c
-			return it
-		it.target = c if s.on_tile() else t
-		var why := why_not(me, s, it.target)
-		if why == "Pick a unit":
-			return _refusal(it, "Pick a unit, or Ctrl-click to strike at the tile" if s.for_foes() else why)
-		if why == "Out of reach" and t and not s.on_tile():
-			var a := _approach(me, s, c, true)
-			if a.ready:
-				return _walk_to(it, &"use", a.dest, true)
-			it.unsure = _approach(me, s, c).ready  # only a walk it can't count on gets there
-			return _refusal(it, why)
-		if why == "Out of reach" or why == "Already fallen":
-			return _refusal(it, why)
+		it.target = c
+		var why_tile := why_not(me, s, c)
+		if why_tile == "Out of reach":
+			return _refusal(it, why_tile)
 		it.kind = &"use"
 		it.ready = true
-		it.why = why
+		it.why = why_tile
 		return it
-	var p := _primary(me) if _orders(me) else null
-	if p and not inspect and ((force and not (t and known(t))) or foe(t)):
-		it.skill = p
-		var a := _approach(me, p, c)
-		it.target = c if force or not t else t
-		return _walk_to(it, &"strike_at" if force or not t else &"use", a.dest, a.ready)
+	if mine and t == me and self_skill(me, s) and _slot_usable(me, slot):  # a self skill selected: used on itself
+		it.kind = &"use"
+		it.skill = s
+		it.target = me
+		it.why = why_not(me, s, me)
+		it.ready = it.why == ""
+		return it
+	if mine and force and not (t and known(t)):  # Ctrl: strike at the tile, whatever seems to be there
+		var p := s if s and s.for_foes() and not s.on_tile() and not self_skill(me, s) else _primary(me)
+		if p:
+			it.skill = p
+			it.target = c
+			return _walk_to(it, &"strike_at", _approach(me, p, c).dest, true)
+	if mine and t and s and _slot_usable(me, slot) and not s.on_tile() and not self_skill(me, s) and t != me and not (inspect and foe(t)):
+		var why := why_not(me, s, t)
+		if why == "" or why == "Out of reach":  # the selected skill is for it
+			return _use_intent(it, s, t)
+	if mine and t and not inspect and foe(t):
+		var p := _primary(me)
+		if p:
+			return _use_intent(it, p, t)
 	if t:
 		it.kind = &"select"
 		it.target = t
 		return it
 	if me and hand(me) and battle.turn == command.faction():
-		if not _orders(me):
+		if not mine:
 			return _refusal(it, _why_no_orders(me))
 		if c == me.cell:
 			return it
@@ -982,6 +1017,29 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 		return it
 	it.kind = &"let_go"
 	return it
+
+
+# Using s on t: from here; after a walk it can count on into reach; refused when only a walk it can't
+# count on gets there (unsure); or, out of reach this turn, a walk as close as it gets (not ready).
+func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
+	var me: Unit = it.unit
+	it.skill = s
+	it.target = t
+	var why := why_not(me, s, t)
+	if why != "Out of reach":
+		it.kind = &"use"
+		it.ready = why == ""
+		it.why = why
+		return it
+	var a := _approach(me, s, t.cell, true)
+	if a.ready:
+		return _walk_to(it, &"use", a.dest, true)
+	a = _approach(me, s, t.cell)
+	if a.ready:
+		it.unsure = true  # only a walk it can't count on gets there: a click doesn't walk
+		return _refusal(it, why)
+	it.why = why
+	return _walk_to(it, &"use", a.dest, false)
 
 
 func _refusal(it: Dictionary, why: String) -> Dictionary:
@@ -1143,16 +1201,33 @@ func _on_refused(u: Unit, leader: Unit) -> void:
 func _done(u: Unit, counted := false) -> void:
 	if not counted:
 		command.order(u)
-	armed = null
+	aim = false
+	if not keep_slot:
+		slot = 0
 	_note = ""
 	_replan()
 	_mark()
 
 
-# The skill a click on a foe uses: slot 1, if it's an attack the unit may be told to use.
+# The skill a click on a foe uses: the first attack from the selected slot rightward, wrapping around,
+# that the unit may be told to use and can make out.
 func _primary(u: Unit) -> Skill:
-	var s: Skill = u.hotbar[0] if not u.hotbar.is_empty() else null
-	return s if s and not s.passive and s.for_foes() and not s.on_tile() and command.slot_open(u, 0) else null
+	var n := u.hotbar.size()
+	var from := slot if u == selected else 0
+	for k in n:
+		var i := (from + k) % n
+		var s: Skill = u.hotbar[i]
+		if s and s.for_foes() and not s.on_tile() and not self_skill(u, s) and _slot_usable(u, i):
+			return s
+	return null
+
+
+# Whether u may use the active skill in slot i now, as far as the bar goes: the slot's open to it (on
+# the leader's orders), works (clover), and the skill isn't disabled and can be made out.
+func _slot_usable(u: Unit, i: int) -> bool:
+	var s: Skill = u.hotbar[i] if i >= 0 and i < u.hotbar.size() else null
+	return s != null and not s.passive and command.slot_open(u, i) and u.slot_works(i) and s not in u.disabled \
+			and skill_sense(u, s, view(u) if u != command.leader else null) > 0
 
 
 # Where u would walk to use s on whatever is at c: the cheapest tile it expects to reach that has c
@@ -1196,7 +1271,7 @@ func _move(u: Unit, c: Vector2i) -> void:
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
 func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 	busy = true
-	armed = null
+	aim = false
 	plan = {}
 	_mark()
 	if pace > 0.0 and wait > 0.0:
@@ -1951,8 +2026,8 @@ func _on_dropped(i: int, s: Skill, _from: int) -> void:
 
 func _on_cleared(i: int) -> void:
 	if selected and _editable(selected):
-		if armed and selected.hotbar[i] == armed:
-			armed = null
+		if i == slot:
+			aim = false
 		selected.bar_clear(i)
 		_mark()
 
@@ -2301,21 +2376,15 @@ func _tip_text() -> String:
 		return ""
 	var it := hovered if not hovered.is_empty() else intent(hover)
 	var u := unit_seen(hover)
-	var s: Skill = it.skill
-	if armed and selected:
-		if not u and not armed.on_tile():
-			if not armed.for_foes():
-				return "%s\nPick a unit" % armed.name
-			var why_tile := why_not(selected, armed, hover)
-			return "%s\n%s" % [armed.name, why_tile if why_tile else "Ctrl-click to strike at whatever may be here"]
-		var head := armed.name + (" on " + _name(u) if u and not armed.on_tile() else "")
-		if it.kind == &"use" and it.dest != selected.cell:
-			return "%s\nClick: walk %s, then use: %s" % [head, Skill.num(reach[it.dest]), _forecast(selected, armed, u)]
-		if it.kind == &"use":
-			return "%s\n%s" % [head, it.why if it.why else "Click to use: " + _forecast(selected, armed, u)]
-		return "%s\n%s" % [head, "Out of reach: no sure walk gets there" if it.get("unsure") else it.why]
+	if aiming() and selected:
+		return "%s\n%s" % [armed.name, it.why if it.why else "Click to use: " + _forecast(selected, armed)]
 	if u:
-		return _unit_line(u) + ("\n" + _use_line(it) if it.kind == &"use" else "")
+		var line := _unit_line(u)
+		if it.kind == &"use":
+			line += "\n" + _use_line(it)
+		elif it.kind == &"refuse" and it.skill:
+			line += "\n" + ("Out of reach: no sure walk gets there" if it.get("unsure") else it.why)
+		return line
 	var lines: PackedStringArray = []
 	if not plan.is_empty():
 		var path: Array = plan.path
@@ -2578,9 +2647,26 @@ func command_state(u: Unit) -> StringName:
 # units it's for glow by how reachable they are (skill_glow()); with none, on the player's turn, its
 # own side glows by how ready each is for an order (command_glow()).
 func glow_of(u: Unit) -> int:
-	if armed and selected:
-		return skill_glow(selected, armed, u) if not armed.on_tile() and unit_seen(u.cell) == u else -1
+	var me := selected if _orders(selected) else null
+	var s := armed
+	if me and aiming():
+		return command_glow(u)
+	if me and s and support_view():  # the support view: the units it's for glow by reach, foes fall back
+		if unit_seen(u.cell) != u:
+			return -1
+		var g := skill_glow(me, s, u)
+		return g if g >= 0 else (Unit.Intensity.BARELY if foe(u) else command_glow(u))
+	if me and foe(u) and unit_seen(u.cell) == u:
+		var p := _primary(me)
+		return skill_glow(me, p, u) if p else -1
 	return command_glow(u)
+
+
+# The selected slot holds a skill for allies, not foes (support or defence), used on a unit: the map
+# turns to it - allies glow by how reachable they are, foes fall back, hovering an ally plans the walk.
+func support_view() -> bool:
+	var s := armed
+	return s != null and not s.on_tile() and not self_skill(selected, s) and s.for_allies() and not s.for_foes()
 
 
 # How reachable t is for u's s, as far as the player can tell: fully, in reach now; mostly, a walk it
@@ -2722,7 +2808,7 @@ func _find_reach() -> void:
 func _replan() -> void:
 	hovered = intent(hover) if hover != NOWHERE else {}
 	plan = hovered.get("walk", {})
-	charge = hovered.cell if not armed and hovered.get("kind") == &"use" and hovered.target is Unit else NOWHERE
+	charge = hovered.cell if hovered.get("kind") == &"use" and hovered.target is Unit and hovered.target != selected else NOWHERE
 
 
 # Without a starter (the scene run on its own) the player leads the highest-level unit.

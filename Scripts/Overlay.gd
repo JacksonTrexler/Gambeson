@@ -64,18 +64,18 @@ func _draw() -> void:
 		for u in b.members(cmd.faction()):
 			if u != cmd.leader and cmd.can_order(u) and u not in cmd.ordered:
 				draw_rect(_rect(u.cell, 2), Color(HUD.shade(cmd.faction().primary), 0.22))
-		if sel and sel.faction == cmd.faction() and not hud.armed:
+		if sel and sel.faction == cmd.faction() and not hud.aiming():
 			var at := _center(cmd.leader.cell)
 			_ring(at, (cmd.reach() + 0.5) * TILE, Color(1, 1, 1, 0.3), false)
 			_ring(at, (floorf(cmd.party_reach()) + 0.5) * TILE, Color(GOLD, 0.35), true)
-	if not hud.reach.is_empty() and not hud.armed:
+	if not hud.reach.is_empty() and not hud.aiming():
 		_draw_reach(sel)
 	if not hud.plan.is_empty():
 		_draw_plan(sel)
 	if hud.charge != HUD.NOWHERE:
 		_brackets(_rect(hud.charge, 1.5), Color(FOE, pulse), 6.0)
 		draw_rect(_rect(hud.charge, 1.5), Color(FOE, 0.15))
-	if sel and hud.armed:
+	if sel and hud.aiming():
 		_draw_targeting(sel, hud.armed, pulse)
 	for c in hud.traps:
 		_caltrop(c, GOLD if hud.traps[c] else FOE)
