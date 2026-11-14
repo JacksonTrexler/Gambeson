@@ -1148,7 +1148,7 @@ func test_allied_glow() -> void:
 	h._refresh()
 	var look := h.look_of(al)
 	ok(look.tint == h.ally_glow and look.sat == 1.0, "an ally of another faction: green glow, full colour")
-	ok(Color(al.glow.modulate, 1.0).is_equal_approx(Color(HUD.FRIEND, 1.0)), "drawn green (%s)" % al.glow.modulate)
+	ok(Color(al.glow.modulate, 1.0).is_equal_approx(Color(HUD.ALLY_GLOW, 1.0)), "drawn green (%s)" % al.glow.modulate)
 	ok(h.look_of(v(3)).tint == null and h.look_of(v(1)).tint == null, "a foe and your own side keep their side's glow")
 	h.free()
 

@@ -31,7 +31,8 @@ press or a click on yourself, either one.
 8. **Glow and saturation read through one function**, `HUD.look_of(u) -> {glow, sat, tint}`.
    `_show_units()` applies it. a-tap's `tapped` state and saturation tiers slot in there.
    In the support view, foes glow barely ("fall back").
-9. **Allied factions glow green** (`HUD.ally_glow`, default `FRIEND`, a Settings colour later). Their
+9. **Allied factions glow green** (`HUD.ally_glow`, default `HUD.ALLY_GLOW`, a pale mint `#b4ffd2`:
+   the darker `FRIEND` green was lost on grass in the capture. There's no Settings picker yet). Their
    bar trim keeps their faction's colour and their sprite keeps full colour. `Unit.set_glow()` takes
    an optional tint.
 10. **"Will consume" overlay**: `HUD.drain()` gives `{hp, energy, <Reserve>: n, ap, move, unsure: [keys]}`
@@ -56,3 +57,42 @@ press or a click on yourself, either one.
     a small ring at the target.
 15. **Exhausted cost as pips**: an exhausted skill's slot draws its multiplier as pips (one per extra
     use), and the slot tooltip no longer opens with "Exhausted x2: ...".
+
+16. **Refusal words** come from a keyword table in `_refuse()` ("Too far", "Short", "Spent", "Held",
+    "Wait", "Down", "Pick", else "No"). The full reason stays on the hint line. `HUD.refused` is emitted.
+17. **Trap estimate** = times x the dice average + bonus, before the target's mitigation and before any
+    wounds it puts on. Fire on the path and a trap's effects on other resources aren't estimated yet.
+
+## As built
+
+Commits on `a-ui`: 1ce9de7 (plan), db63b2f + f9a1817 (step 1: intent), ba92062 (step 2: focus and slot),
+56771cc (step 3: hover rows), c7c334f (step 4: look_of, allied glow, Guide), 356ebb1 (step 5: without words),
+plus this doc and the glow colour.
+
+- `Scripts/HUD.gd`: `intent()`, `_use_intent()`, `_walk_to()` and `_run()` replace `_use_on`, `_charge`,
+  `_charge_line` and the deciding inside `_replan()` and `_tip_text()`. Also new: `slot`, `aim`, `keep_slot`,
+  `armed` as a getter, `self_skill()`, `aiming()`, `support_view()`, `_slot_usable()`, `_into_command()`,
+  `look_of()` / `_apply_look()`, `foresight()`, `drain()`, `_hurt()`, `odds()`, `_refuse()` and `_card_info()`.
+  `_forecast`, `_use_line`, `_cost_text` and `_exhausted` are gone (the tip is just a name and a read).
+- `Scripts/Overlay.gd`: drain segments and a "?" on the map bars (`draw_top`), the target's HP span,
+  odds brackets, two rings for out of reach, dashed unsure steps.
+- `Scripts/UnitCard.gd`: rows take a 5th element, the drain (a pulsing segment, or "?" to mute the row and flash a ?).
+- `Scripts/SkillSlot.gd`: exhaustion pips. `Scenes/UI/hud.tscn`: the Keep-slot toggle. `Scripts/Guide.gd`: the click rules.
+- Unit.gd is untouched: a-tap's states slot into `look_of()` (glow, sat, tint).
+
+Tests changed to the new rules (none weakened): `hud_test` select_and_move, keys_and_targets,
+toggle_from_bar, what_shows, ctrl_click, click_attacks, skill_glow, command_glow, command_slots,
+ground, snare_ui, attack_feedback, hidden_defense, dual_spell_ui, hide_ui, self_evaluation_ui;
+`brainfog_test.test_hotbar`; `lure_test.test_ally_kit`; `exhaustion_test` (forecast to drain and pips).
+New: `hud_test` hover_rows, allied_glow, will_consume.
+
+Captures: `shot_a-ui/drain`, `shot_a-ui/unsure` and `shot_a-ui/ally` in the scratchpad (frame 180).
+
+## Left to do
+
+- Pace: a spent unit handing over to the next, hurrying the turn change and the AI with a held key, and
+  collapsing the log to its last line are not built.
+- The green allied glow is soft at the plain strength on grass maps.
+- The drain doesn't show on the map for AP and movement (the unit's map bars have none). It shows on the card.
+- Foresight lives in the HUD (`foresight_used`), not on Unit or as an Effect stat. An Effect stat
+  (via `mechanic.py`) would let skills raise it.
