@@ -58,3 +58,37 @@
   Until a Life tree exists, the Cleric's own tab (beside Pray and Renew) is the place; a-recover decides.
 
 ## As built
+- `Scripts/God.gd`, `Gods/<id>.tres` for the seven gods and the two patrons; shared pool tabs in
+  `Gods/tabs/` (the six prowesses, five Mage-school trees). Ramut, Urlo, Drael and Vetruvis have no own tree
+  yet (no Divinity tree exists for them), so a Cleric can't choose them yet - unchanged from before.
+- `TreeChoice`: `kinds`, `gods`, `grants`, `burns`, `after`; `all()` unions every god's offer for a slot;
+  `own()` is what a class lends the Wizard (god-slot trees aren't lent, so no School tab picks up the
+  Cleric's Pray and Renew). `Role.choices_of()`: a tree may sit in two slots.
+- `Unit.offered()`, `picks()` (no-choice and `grants` opening), `pick_missing()` (slots' "Picked" for a tree
+  open through another slot; burns count against the slots), `burnable()`, `burned()`, `efficiency()`;
+  `suits()` asks the god; `SkillRoot.gods` removed from the script and six trees.
+- Order changed: gods by file name, so the Cleric's box reads Eros, Luun, Sol (was Luun, Sol, Eros), and the
+  Paladin's Prowess box Havoc, Slayer, Protector... in god-file order, filtered by its god as before.
+- Skills screen: each slot a box; a slot leaves out trees already open through another; a tree in two boxes
+  gets an entry in each; the Warlock's Flex shows its own patron once, as the burn: darkened, glyph at a
+  quarter, quivering once burned (the hotbar's cursed look), "xN" burns in the corner, tooltip saying so.
+- Warlock: Bargaining (t5) and Acceptance (t10) as the user named them, `options` on its own tab, tier by
+  `min_tier` ("investment in the general warlock tree" read as skills learned: call), max rank 5 each,
+  passives with `Behaviours/efficiency.gd` reaching kind Patron. Their stack reaches every patron tree the
+  Warlock holds, pacts too ("patron trees", plural: call). Flex: 2 picks after Bargaining; picking its own
+  patron burns a slot (both may be burned).
+- Ranger: capstones Quarry ?? (Bounty, needs 2), Survivalist ?? (Scout, needs 2), Wildcaller ?? (Forester,
+  needs 1: half of each root), passives, max rank 5. Quarry opens Prowess: Slayer (a new Ranger choice, -1),
+  Survivalist the new Survival ?? tree (kind Path, -1, one stub skill Forage ?? waiting on ?81), Wildcaller the
+  existing Nature choice (no longer open from the start). Each is an efficiency stack on its tree up to its rank.
+- Tooling: `role.py god` (a god or patron, or more pool trees), `--god` reads `Gods/`, `check` checks gods;
+  `skill.py new --needs` (capstones) and options on a class with no roots. `.claude/skills/new-class` isn't
+  edited (house rule): it should mention `role.py god`.
+- Tests changed to the new rule: casters_test (Wizard's tree order, borrowed roots read off God files),
+  hogel_test (Cleric picks by God), general_test, sol_test, warlock_test (patrons by God), paladin_test
+  (slots, prowess order), hud_test (Domain tab, the boxes, species tab index), progress_test (Paladin offer
+  order), nature_test (Nature waits on Wildcaller; its stack). New: god_slots_test, bargaining_test,
+  acceptance_test, quarry_test, survivalist_test, wildcaller_test, forage_test.
+- Undone / open: Paladin "specialist leadership" flex trees (none exist; Idealism stays on its own tab);
+  Unit.GODS/GOD_TAGS not moved into God files; Survival ?? needs real skills; a burn's tier cap (read as
+  none).
