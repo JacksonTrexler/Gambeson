@@ -84,6 +84,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_tend(b, u, reads, log)
 		_support(b, u, reads, log)
 	if posture == &"supportive":
+		_replenish(b, u, log)  # a HELP order to one that only restores its own Energy or reserve: it does that
 		return log
 	var rooted := _rooted(b, u)
 	if posture == &"":  # phases for a self-directed turn only - an ATTACK order presses on regardless
@@ -495,6 +496,12 @@ static func _restores(b: Battle, u: Unit, s: Skill, t: Unit) -> Dictionary:
 		for k in more:
 			out[k] = out.get(k, 0) + more[k]
 	return out
+
+
+# Whether s is help u gives, because it restores something (_restores()): not hostile, not a passive,
+# and some pool comes back. What the HUD's HELP order reads, since Skill.serves() can't see behaviours.
+static func restoring(b: Battle, u: Unit, s: Skill) -> bool:
+	return not s.passive and not s.hostile and not _restores(b, u, s, u).is_empty()
 
 
 # A skill for an ally that mends HP: a heal, or whatever declares it restores some (_restores()).

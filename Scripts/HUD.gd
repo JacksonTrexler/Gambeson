@@ -1104,19 +1104,53 @@ func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
 	return _walk_to(it, &"use", a.dest, false)
 
 
-# How many hazard estimates u has left this turn: its int mod, less those it acted on (foresight_used).
-# Below 0 it doesn't even know what it doesn't know (drain(): no "?").
+# How many hazard estimates u can make a turn: its int mod and its foresight stat (Effect: skills and
+# items raise it). Below 0 it doesn't even know what it doesn't know (drain(): no "?").
+func foresight_allowance(u: Unit) -> int:
+	return u.mod(&"intelligence") + roundi(u.stat(&"foresight"))
+
+
+# How many it has left this turn: its allowance, less those it acted on (foresight_used).
 func foresight(u: Unit) -> int:
-	return u.mod(&"intelligence") - foresight_used.get(u, 0)
+	return foresight_allowance(u) - foresight_used.get(u, 0)
+
+
+# What stepping onto c would cost u that the player's side can foresee, by pool (&"hp", &"ap"): the one
+# estimate behind drain()'s forecast. A known trap's dice (times x the average + bonus) and its wounds'
+# first tick (Effect bleed and poison take HP, winded AP), and fire on the tile (1d8 + its setter's wis
+# mod, at least 1: Battle._flame()) - before mitigation, as a hit isn't rolled. {}: nothing foreseen.
+func hazard(u: Unit, c: Vector2i) -> Dictionary:
+	var out := {}
+	var t := battle.terrain(c)
+	if tile_view(c).trap == true:
+		_owe(out, &"hp", t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus)
+		var by: Unit = battle.snares[c].by if c in battle.snares and is_instance_valid(battle.snares[c].by) else null
+		for e in t.wounds:
+			match e.stat:
+				"bleed":
+					_owe(out, &"hp", maxf(((e.dice.x * (e.dice.y + 1) / 2.0 + (by.mod(e.dice_mod) if by and e.dice_mod else 0)) if e.dice != Vector2i.ZERO else e.amount), 1.0))
+				"poison":
+					_owe(out, &"hp", e.amount * u.max_hp)
+				"winded":
+					_owe(out, &"ap", e.amount)
+	if c in battle.flames:
+		_owe(out, &"hp", maxf(4.5 + battle.flames[c].bonus, 1.0))
+	return out
+
+
+func _owe(out: Dictionary, key: StringName, n: float) -> void:
+	if n > 0.0:
+		out[key] = out.get(key, 0.0) + n
 
 
 # What carrying out an intent would consume, as the unit expects it - the "will consume" signal, drawn
-# as a draining segment on its own bars and card rows: {move, ap, hp, energy, <Reserve>: amount;
+# as a draining segment on its own bars and card rows, and as pips for AP and movement on the map:
+# {move, ap, hp, energy, <Reserve>: amount;
 # unsure: [keys whose cost it can't foresee: a flashing "?" after the number]; estimated: true when a
 # hazard estimate went into it (acting on it spends foresight())}. The walk's movement and the skill's
-# AP and cost (after exhaustion) always show; what known traps on the way would do is an estimate:
-# with foresight left, their average damage on HP; with none (or at int mod +0), only "?"; below 0,
-# nothing - the walk looks safe.
+# AP and cost (after exhaustion) always show; what known hazards on the way would do (hazard()) is an
+# estimate: with foresight left, their average on whatever pools they take; with none (or at +0), only
+# "?" on those pools; below 0, nothing - the walk looks safe.
 func drain(it: Dictionary) -> Dictionary:
 	var d := {}
 	var u: Unit = it.get("unit")
@@ -1125,18 +1159,16 @@ func drain(it: Dictionary) -> Dictionary:
 	var w: Dictionary = it.get("walk", {})
 	if not w.is_empty() and not w.path.is_empty():
 		d[&"move"] = w.costs.reduce(func(sum, x): return sum + x, 0.0)
-		for c: Vector2i in w.path:
-			if tile_view(c).trap != true:
-				continue
-			var mind := u.mod(&"intelligence")
-			if mind < 0:
-				continue  # it plans as if the way were safe
-			if foresight(u) > 0:
-				var t := battle.terrain(c)
-				d[&"hp"] = d.get(&"hp", 0.0) + t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus
-				d.estimated = true
-			elif &"hp" not in d.get("unsure", []):
-				d.get_or_add("unsure", []).append(&"hp")
+		if foresight_allowance(u) >= 0:  # below 0 it plans as if the way were safe
+			var ahead := foresight(u) > 0
+			for c: Vector2i in w.path:
+				var owed := hazard(u, c)
+				for key in owed:
+					if ahead:
+						d[key] = d.get(key, 0.0) + owed[key]
+						d.estimated = true
+					elif key not in d.get("unsure", []):
+						d.get_or_add("unsure", []).append(key)
 	var s: Skill = it.get("skill")
 	if s and (it.ready or it.kind == &"strike_at"):
 		var fund: Variant = u.funding(s)
@@ -2719,9 +2751,22 @@ func _nag(why: String) -> void:
 const INTENTS := {&"attack": &"offensive", &"defend": &"defensive", &"help": &"supportive"}
 
 
+# u's default skill for a posture: Unit.intent_skill(), and for HELP any skill that restores something
+# (AI.restoring(): Heal, Energize...) too - Skill.serves() only knows the fields a heal sets, not what a
+# behaviour restores.
+func intent_skill(u: Unit, posture: StringName) -> Skill:
+	var s := u.intent_skill(posture)
+	if s or posture != &"supportive":
+		return s
+	for sk in u.hotbar:
+		if sk and u.can_afford(sk) and AI.restoring(battle, u, sk):
+			return sk
+	return null
+
+
 # The commander can't give u a specific skill order - either it can't convey complex strategy (cha mod
 # <= 0: no hotbar slot is open to orders) or it can't read what u can do (low wisdom). It commands by
-# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (Unit.intent_skill()).
+# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (intent_skill()).
 func uses_intents(u: Unit) -> bool:
 	return _orders(u) and u != command.leader and (command.slots(u) <= 0 or command.leader.mod(&"wisdom") < 0)
 
@@ -2738,7 +2783,7 @@ func intent_options(u: Unit) -> Array:
 	var guessing := _command_read(u) <= -5
 	var out := []
 	for intent in [&"attack", &"defend", &"help"]:
-		var has := u.intent_skill(INTENTS[intent]) != null
+		var has := intent_skill(u, INTENTS[intent]) != null
 		if has or guessing:
 			out.append([intent, has, guessing])
 	return out
@@ -2749,7 +2794,7 @@ func intent_options(u: Unit) -> Array:
 func issue_intent(u: Unit, intent: StringName) -> bool:
 	if not uses_intents(u):
 		return false
-	if u.intent_skill(INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
+	if intent_skill(u, INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
 		_say("%s can't %s that way - a wasted order" % [_name(u), String(intent)])
 		command.lock(u)
 		_mark()

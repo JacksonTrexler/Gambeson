@@ -23,6 +23,8 @@ const STARPOWER := Color("#ffe48a")
 const SHADE := {&"safe": 0.16, &"unsure": 0.26, &"bad": 0.45}  # reach shading strength by ground
 const LEAF := [Color("#7d9a3c"), Color("#a3842f"), Color("#5f7d33"), Color("#b0662e")]  # leaves' greens and browns
 const GLASS := Color("#cfeaff")
+const PIP := 2.0  # a pip of AP or movement on a unit's bars (_pips()): its size, with one pixel between
+const PIPS := 8  # as many as fit over its bars
 
 var hud: HUD
 var top: Node2D
@@ -233,22 +235,15 @@ func draw_top() -> void:
 	var font := ThemeDB.fallback_font
 	var sel := hud.selected
 	if sel and sel.is_alive() and not hud.spend.is_empty():
-		var held := sel.held_reserves()
 		for key in hud.spend:
-			var bar: ProgressBar = null
-			if key is StringName and key == &"hp":
-				bar = sel.hp_bar
-			elif key is StringName and key == &"energy":
-				bar = sel.energy_bar
-			elif key is Reserve:
-				var i := held.find(key)
-				bar = sel.reserve_bar if i == 0 else (sel.second_bar if i == 1 else null)
+			var bar := _bar_for(sel, key)
 			if bar and bar.visible:
 				_drain_bar(sel, bar, float(hud.spend[key]), Color.WHITE)
 		for key in hud.spend.get("unsure", []):
-			var bar: ProgressBar = sel.hp_bar if key == &"hp" else sel.energy_bar
-			if bar.visible:
+			var bar := _bar_for(sel, key)
+			if bar and bar.visible:
 				_unsure_mark(sel, bar)
+		_pips(sel)
 	if not hud.hurt.is_empty():
 		var t: Unit = hud.hurt.unit
 		if t.hp_bar.visible:
@@ -260,6 +255,45 @@ func draw_top() -> void:
 		for z in [["z", Vector2.ZERO, 6], ["Z", Vector2(3, -4), 8]]:
 			top.draw_string_outline(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], 2, Color(0, 0, 0, 0.7))
 			top.draw_string(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], col)
+
+
+# The bar u shows a pool on: HP, Energy, or a reserve it holds (the first, the second, or one of the
+# slivers after: Unit.more_bars). Null for what has no bar (AP and movement: _pips()).
+func _bar_for(u: Unit, key: Variant) -> ProgressBar:
+	if key is Reserve:
+		var i := u.held_reserves().find(key)
+		if i < 0:
+			return null
+		return u.reserve_bar if i == 0 else (u.second_bar if i == 1 else (u.more_bars[i - 2] if i - 2 < u.more_bars.size() else null))
+	if key == &"hp":
+		return u.hp_bar
+	return u.energy_bar if key == &"energy" else null
+
+
+# AP and movement have no bar on the map, so what a plan will spend of them shows as pips in a strip over
+# u's bars: a blue pip a point of AP, a grey one a point of movement (the card's AP and MV colours), the
+# last one short for a part, pulsing as the drain segments do; a "?" at the end of the strip for a cost
+# of theirs it can't foresee. No text and no bar of its own: nothing shows without a plan.
+func _pips(u: Unit) -> void:
+	var row := 0
+	var unsure: Array = hud.spend.get("unsure", [])
+	var left := u.position.x - Unit.BAR_WIDTH / 2.0
+	var y := u.position.y + u.trim.position.y - 3.0
+	var a := 0.55 + 0.35 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
+	for pair in [[&"ap", HUD.AP_COLOR], [&"move", HUD.MOVE_COLOR]]:
+		var n := float(hud.spend.get(pair[0], 0.0))
+		if n <= 0.0 and pair[0] not in unsure:
+			continue
+		var x := left
+		for i in mini(ceili(n), PIPS):
+			var w := PIP * clampf(n - i, 0.0, 1.0)
+			top.draw_rect(Rect2(x, y - row * (PIP + 1.0) - PIP, maxf(w, 1.0), PIP), Color(pair[1], a))
+			x += PIP + 1.0
+		if pair[0] in unsure:
+			var q := Vector2(x + 0.5, y - row * (PIP + 1.0))
+			top.draw_string_outline(ThemeDB.fallback_font, q, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, 2, Color(0, 0, 0, 0.6 * a))
+			top.draw_string(ThemeDB.fallback_font, q, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(HUD.MUTED, a))
+		row += 1
 
 
 # A pulsing segment at the end of one of u's bars: the `amount` about to come off it.

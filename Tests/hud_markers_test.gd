@@ -112,6 +112,10 @@ func test_every_reserve() -> void:
 	var bottom := u.more_bars[0].position.y + 1.0
 	ok(u.second_bar.position.y + 2.0 == u.more_bars[0].position.y or u.more_bars[0].position.y + 1.0 == u.second_bar.position.y, "stacked with the rest")
 	ok(u.trim.position.y + u.trim.size.y - 1.0 >= bottom, "inside the trim")
+	var h := await start(u)
+	ok(h.overlay._bar_for(u, held[0]) == u.reserve_bar and h.overlay._bar_for(u, held[1]) == u.second_bar and h.overlay._bar_for(u, held[2]) == u.more_bars[0], "the forecast maps a drain to each reserve's bar, the third too")
+	ok(h.overlay._bar_for(u, &"ap") == null and h.overlay._bar_for(u, &"hp") == u.hp_bar, "AP has no bar: pips")
+	h.free()
 	u.learned.clear()
 	u.reserves.erase(sweet)
 	u.appear(null)

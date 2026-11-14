@@ -140,6 +140,8 @@ extends Resource
 # tow: a grip with it drags the unit it holds along its holder's next move, up to this many tiles
 # the same way, and ends as its holder's turn ends (Battle.travel(), Battle.end_turn(); Hitch)
 # winded: AP it loses at once if acting, else as its next turn opens (Unit.refresh(); Bludgeon)
+# foresight: hazard estimates more a turn it can make on top of its int mod (HUD.foresight(): the
+# Battle UI's will-consume forecast of known traps and fire)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -150,7 +152,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always

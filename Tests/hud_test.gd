@@ -1182,3 +1182,63 @@ func test_will_consume() -> void:
 	plain = h.drain({kind = &"walk", unit = v(1), walk = {path = [Vector2i(5, 4)], costs = [1.0]}})
 	ok(not plain.has(&"hp") and not plain.has("unsure"), "below 0: not even a '?'; the walk looks safe")
 	h.free()
+
+
+func test_forecast_fire_and_wounds() -> void:
+	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
+	b.revealed[Vector2i(5, 4)] = true  # the trap there, known
+	var wound := effect("bleed", 1.0)
+	wound.dice = Vector2i(1, 4)
+	var winded := effect("winded", 2.0)
+	var spike: Terrain = b.terrain(Vector2i(5, 4)).duplicate()
+	spike.wounds = [wound, winded] as Array[Effect]
+	b.snares[Vector2i(5, 4)] = Battle.Snare.new(spike, v(3))
+	b._views.clear()
+	b.flames[Vector2i(4, 4)] = Battle.Flame.new(v(3), 2)  # fire on the way
+	v(1).intelligence = 12
+	var h := await start(v(1))
+	var here := h.hazard(v(1), Vector2i(5, 4))
+	var dice := spike.times * spike.dice.x * (spike.dice.y + 1) / 2.0 + spike.bonus
+	ok(is_equal_approx(here.get(&"hp", 0.0), dice + 2.5) and here.get(&"ap") == 2.0, "a known trap: its dice and its bleed's first tick on HP, winded on AP (%s)" % here)
+	var fire := h.hazard(v(1), Vector2i(4, 4))
+	ok(is_equal_approx(fire.get(&"hp", 0.0), maxf(4.5 + b.flames[Vector2i(4, 4)].bonus, 1.0)) and fire.size() == 1, "fire: 1d8's average on HP (%s)" % fire)
+	ok(h.hazard(v(1), Vector2i(3, 4)).is_empty(), "plain ground: nothing")
+	var walk := {path = [Vector2i(3, 4), Vector2i(4, 4), Vector2i(5, 4)], costs = [1.0, 1.0, 1.0]}
+	var d := h.drain({kind = &"walk", unit = v(1), walk = walk})
+	ok(is_equal_approx(d.get(&"hp", 0.0), here.hp + fire.hp) and d.get(&"ap") == 2.0 and d.estimated and d.move == 3.0, "the walk sums fire and the trap through the one estimate (%s)" % d)
+	h.foresight_used[v(1)] = 1  # none left
+	d = h.drain({kind = &"walk", unit = v(1), walk = walk})
+	ok(not d.has(&"hp") and not d.has(&"ap") and &"hp" in d.unsure and &"ap" in d.unsure and d.move == 3.0, "out of foresight: a ? on each pool they'd take, no numbers (%s)" % d)
+	h.free()
+
+
+func test_foresight_stat() -> void:
+	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
+	var u := v(1)
+	u.intelligence = 10  # +0
+	var h := await start(u)
+	ok(u.stat(&"foresight") == 0.0 and h.foresight_allowance(u) == 0 and h.foresight(u) == 0, "the base is the int mod")
+	u.afflict(effect("foresight", 2.0), 9)
+	ok(h.foresight_allowance(u) == 2 and h.foresight(u) == 2, "an effect raises the allowance")
+	h.foresight_used[u] = 1
+	ok(h.foresight(u) == 1, "and what it has acted on comes off")
+	u.intelligence = 6  # -2: the stat lifts it to 0, not below
+	ok(h.foresight_allowance(u) == 0, "added to the int mod, so it can lift a negative one")
+	h.free()
+
+
+func test_help_order_reads_restores() -> void:
+	var heal: Skill = load("res://Skills/heal.tres")
+	var u := v(2)
+	u.charisma = 10
+	for i in u.hotbar.size():
+		u.hotbar[i] = null
+	u.learned.append(slot(heal, 1))
+	u.hotbar[0] = heal
+	stage(lancin, {v(1): Vector2i(2, 2), u: Vector2i(2, 3), v(3): Vector2i(8, 1)})
+	u.refresh()
+	var h := await start(v(1))
+	ok(u.intent_skill(&"supportive") == null and not heal.serves(&"supportive"), "Skill.serves() can't see Heal as help")
+	ok(h.intent_skill(u, &"supportive") == heal and h.intent_skill(u, &"offensive") == null, "the HUD's HELP finds it through what it restores")
+	ok(h.intent_options(u).any(func(o: Array): return o[0] == &"help" and o[1]), "HELP is offered")
+	h.free()
