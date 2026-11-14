@@ -234,3 +234,16 @@ The rule is in `docs/done/rules.md`.
 - [x] **Resuscitate** (`Skills/resuscitate.tres`; general Specialist tier 4; 3 AP, 2 Energy, reach 1): a Downed ally comes back with rank x 5% of its max HP; `Behaviour.fits()` filters its target. `resuscitate_test.gd`. (?85, ?124)
 - [x] **Intervention** (`Skills/intervention.tres`; Eros after Renew; 3 AP, 2 Energy): Bless for rank turns: regen while Downed, `hale` (executes read full HP), a check bonus tagged `taps` and `execute`. `intervention_test.gd`, `hale_test.gd`. (?85, ?124)
 - [x] **Borrowed Time** (`Skills/borrowed_time.tres`; Wizard Arcane after Blink; passive `defer`): death put off rank rounds, harms replayed, an execute check at the end. `borrowed_time_test.gd`. (?85, ?124)
+
+## Slayer skills (2026-11-14)
+
+Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?126)
+
+- [x] **Gank** (`Skills/gank.tres`; after Jugular; 4 AP, 2 Energy): 1d10 + str at reach 1, only with an ally within rank tiles of the target; disadvantage unless it ambushes. `gank_test.gd`. Replaces the stub.
+- [x] **Peel** (passive; beside Jam): moves toward a foe near an engaged ally are cheaper, at most half a step, for rank steps a turn; the HUD's reach and preview agree (`Behaviour.step_cost`). `peel_test.gd`.
+- [x] **Poach** (3 AP, 2 Energy; Rangers too): 1d6 + dex; advantage and half the cost back on a bloodied target it never aimed at; its target neutralized, Energy, Focus and Stamina back. `poach_test.gd`.
+- [x] **Sutemi** and **Spike** (after Jugular): a lunge up to rank tiles then 1d10 + str, Off Balance a Defense per tile; 1d10 + str against Defense plus the target's unspent AP, +rank damage. `sutemi_test.gd`, `spike_test.gd`.
+- [x] **Hitch** and **Bludgeon** (Hitch beside Jam; Bludgeon after it): 1d4 + str then a grapple contest, Hitched ?? towing rank tiles; 1d8 + str, +1d4 blunt, Winded. `hitch_test.gd`, `bludgeon_test.gd`.
+- [x] **Slam Jam** (after Jam): 1d10 + str, a contest to interrupt as Jam does, a hit refunds 1/(rank + 2) of its cost. `slam_jam_test.gd`.
+- [x] **Off Balance, Winded, Hitched ??** (`Effects/off_balance.tres`, `winded.tres`, `hitched.tres`).
+

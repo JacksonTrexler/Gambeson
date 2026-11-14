@@ -64,3 +64,15 @@ Plan and calls: `docs/plans/ui-v2.md`. `hud_test` (changed, plus hover_rows, all
 - [x] **Glow and saturation in one place** (`HUD.look_of()`); allied factions glow pale mint (`HUD.ally_glow`). (?83)
 - [x] **Will-consume bars** (`HUD.drain()`; `Overlay`, `UnitCard`): walk, known trap and skill costs on the map bars and the card; foresight by int mod (`HUD.foresight()`) with a muted flashing ? past it.
 - [x] **Cues in place of words**: tooltip down to name and read, one-word shaking refusals (`_refuse()`), odds as bracket bands with the exact % on Alt, two rings for out of reach, exhaustion pips on the slot (`SkillSlot`), dashed unsure steps.
+
+## HUD markers and Pace (2026-11-14)
+
+Plans: `docs/plans/hud-markers.md` (`hud_markers_test`), `docs/plans/pace.md` (`pace_test`). Pace finishes Battle UI v2. (?128, ?129)
+
+- [x] **Gating by `fits()`** (`HUD.why_not()`, `Behaviour.unfit()`): Resuscitate is offered only on the Downed. (?128)
+- [x] **Borrowed Time chip** (`_heart_chips`); **switch marker** (`SkillSlot.switching`); **Downed on its side** (`Unit._lie()`); **third reserve sliver** (`Unit.more_bars`). (?128)
+- [x] **Allied glow stronger and pickable** (`ALLY_BOOST`; Settings "Allied glow": Mint / White / Sky / Gold). (?128)
+- [x] **Handover** (`HUD.hand_over`, `_hand_over()`, `next_able()`): a spent unit passes the focus to the next that hasn't acted. (?129)
+- [x] **Hurry** (`HUD.HURRY`, `speed()`, `_wait()`, `_hurry()`; the `hurry` action, F; `Overlay.hurry()`): hold for x4 on the turn change, waits between units and walks. (?129)
+- [x] **A collapsed log** (`log_open`, `show_log()`): the last whole entry, a click opens the whole. (?129)
+
