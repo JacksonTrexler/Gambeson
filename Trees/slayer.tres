@@ -6,17 +6,61 @@
 [ext_resource type="Resource" path="res://Skills/jugular.tres" id="s_jugular"]
 [ext_resource type="Resource" path="res://Skills/sundering.tres" id="s_sundering"]
 [ext_resource type="Resource" path="res://Skills/silent_strike.tres" id="s_silent_strike"]
-[ext_resource type="Resource" path="res://Skills/gank.tres" id="s_gank"]
 [ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
 [ext_resource type="Resource" path="res://Skills/jam.tres" id="s_jam"]
+[ext_resource type="Resource" path="res://Skills/gank.tres" id="s_gank"]
+[ext_resource type="Resource" path="res://Skills/poach.tres" id="s_poach"]
+[ext_resource type="Resource" path="res://Skills/peel.tres" id="s_peel"]
+[ext_resource type="Resource" path="res://Skills/sutemi.tres" id="s_sutemi"]
+[ext_resource type="Resource" path="res://Skills/spike.tres" id="s_spike"]
+[ext_resource type="Resource" path="res://Skills/hitch.tres" id="s_hitch"]
+[ext_resource type="Resource" path="res://Skills/bludgeon.tres" id="s_bludgeon"]
+[ext_resource type="Resource" path="res://Skills/slam_jam.tres" id="s_slam_jam"]
 
 [sub_resource type="Resource" id="Branch_jugular"]
 script = ExtResource("branch")
 skill = ExtResource("s_jugular")
 
+[sub_resource type="Resource" id="Branch_gank"]
+script = ExtResource("branch")
+skill = ExtResource("s_gank")
+after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
+
+[sub_resource type="Resource" id="Branch_spike"]
+script = ExtResource("branch")
+skill = ExtResource("s_spike")
+after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
+
+[sub_resource type="Resource" id="Branch_sutemi"]
+script = ExtResource("branch")
+skill = ExtResource("s_sutemi")
+after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
+
+[sub_resource type="Resource" id="Branch_poach"]
+script = ExtResource("branch")
+skill = ExtResource("s_poach")
+
 [sub_resource type="Resource" id="Branch_jam"]
 script = ExtResource("branch")
 skill = ExtResource("s_jam")
+
+[sub_resource type="Resource" id="Branch_slam_jam"]
+script = ExtResource("branch")
+skill = ExtResource("s_slam_jam")
+after = Array[ExtResource("skill")]([ExtResource("s_jam")])
+
+[sub_resource type="Resource" id="Branch_peel"]
+script = ExtResource("branch")
+skill = ExtResource("s_peel")
+
+[sub_resource type="Resource" id="Branch_hitch"]
+script = ExtResource("branch")
+skill = ExtResource("s_hitch")
+
+[sub_resource type="Resource" id="Branch_bludgeon"]
+script = ExtResource("branch")
+skill = ExtResource("s_bludgeon")
+after = Array[ExtResource("skill")]([ExtResource("s_hitch")])
 
 [sub_resource type="Resource" id="Branch_sundering"]
 script = ExtResource("branch")
@@ -28,11 +72,6 @@ script = ExtResource("branch")
 skill = ExtResource("s_silent_strike")
 after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
 
-[sub_resource type="Resource" id="Branch_gank"]
-script = ExtResource("branch")
-skill = ExtResource("s_gank")
-after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
-
 [sub_resource type="Resource" id="Branch_stamina"]
 script = ExtResource("branch")
 skill = ExtResource("s_stamina")
@@ -41,4 +80,4 @@ skill = ExtResource("s_stamina")
 script = ExtResource("root")
 name = "Slayer"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_jam"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_gank"), SubResource("Branch_stamina")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_gank"), SubResource("Branch_spike"), SubResource("Branch_sutemi"), SubResource("Branch_poach"), SubResource("Branch_jam"), SubResource("Branch_slam_jam"), SubResource("Branch_peel"), SubResource("Branch_hitch"), SubResource("Branch_bludgeon"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_stamina")])
