@@ -373,7 +373,7 @@ Plan, readings and what was built: `docs/plans/gods.md`; done in `docs/done/clas
     - **Efficiency stack, one mechanic:** `Unit.efficiency(s, t)`, +1 Affinity per stack reaching tree t at s's tier; sources are a learned passive with `Behaviours/efficiency.gd` (its rank the tier cap) and burned slots (read as no tier cap, since a burn has no rank). Bargaining (t5) and Acceptance (t10): max rank 5, stackable, reaching every patron tree the Warlock holds, pacts included; "investment in the general warlock tree" read as skills learned (`min_tier`). Confirm?
     - **Ranger capstones**, each opening a guest choice at -1 and an efficiency stack on it up to rank: Quarry (Bounty, needs 2) opens Prowess: Slayer; Survivalist (Scout, needs 2) a new Survival ?? tree with one stub skill, Forage; Wildcaller (Forester, needs 1) the Nature choice, no longer open from the start. Confirm?
     - **Order changed:** gods by file name, so the Cleric's box reads Eros, Luun, Sol (was Luun, Sol, Eros). Confirm?
-    - **New names to review:** Survival ?? (the tree). The plan marked Quarry, Survivalist, Wildcaller and Forage with ?? too, but their data names carry none: add it?
+    - **New names to review:** Survival ?? (the tree), and Quarry ??, Survivalist ??, Wildcaller ?? and Forage ?? (skills marked `ai = true`, shown with ??).
     - **Heal and Megaheal** sit on the Cleric's Eros tab for now ("domain general": a Life tree would hold them); see ?121.
 - [ ] **Survival ?? needs real skills** (only Forage, a stub; waits on ?81). (?122)
 - [ ] **No Paladin leadership Flex tree**: none exists, so Flex offers prowess, divinity and school trees only; Idealism stays on its own tab. (?122)
