@@ -114,6 +114,23 @@ const TERMS := {
 	&"execute": ["Execute", &"check", "An instant death check, cut by how hurt its target is: HP left over max HP, over its rank. Whatever helps against such checks helps against every one of them."],
 }
 
+# Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],
+# read wherever a term's kind is asked (kind()), so a rule keyed on kinds takes them with no code change.
+static var added := {}
+
+
+# A term's kind (check, damage, condition, ground, target): TERMS first, then added; an element (ELEMENTS)
+# is damage; "" for a word it doesn't know.
+static func kind(id: StringName) -> StringName:
+	if id in TERMS:
+		return TERMS[id][1]
+	if id in added:
+		return added[id][1]
+	if id in ELEMENTS:
+		return &"damage"
+	return &""
+
+
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")
 
 

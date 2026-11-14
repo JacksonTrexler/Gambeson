@@ -142,6 +142,12 @@ extends Resource
 @export var shows_adjectives: Array[String] = []
 @export var shows_nouns: Dictionary[String, String] = {}
 @export_multiline var lore := ""  # a story behind it, shown after what it does (the Bracing passives: Jimhe Deyn's gangs)
+@export_group("Terms")  # what it does and how it scales, for the cost calculator and modifiers (SkillTerms, Pricing, Modifiers); empty: derived from its fields
+@export var intensity := &""  # its damage, a Difficulty.MAGNITUDE word (the user's low faint, moderate low mild, moderate, high strong, extreme severe); empty: from its tier
+@export var impact := &""  # its unique effect beyond damage: tame or impactful; empty: from its fields
+@export var penalty := &""  # what it costs its user to use: minor, major or severe; empty: from its fields (disadvantage, roll_bonus)
+@export var requires: Requirement  # a contingency: a test of the moment and what it gives while met (Scripts/Requirement.gd)
+@export var priced := false  # its AP and cost come from the cost calculator (Pricing), not ap and cost
 @export_group("Stub")  # a skill that isn't built yet: shown on skill trees, but it can't be learned
 @export var stub := ""  # the open question(s) in todo.md it waits on: "?3", "?2 ?11"
 @export_multiline var plan := ""  # what it's meant to do, until it's built
@@ -308,7 +314,7 @@ func healing(u: Unit) -> int:
 	var sum := 0
 	for s in heal_mods:
 		sum += u.mod(s, tags)
-	return maxi(u.rounded(sum / float(heal_split)) + heal_bonus, 1)
+	return maxi(u.rounded(u.mods(self).statf(sum, &"stat_impact") / float(heal_split)) + heal_bonus, 1)
 
 
 # Its cost at a rank (starter spells: cost x rank).
@@ -317,8 +323,10 @@ func price(rank: int) -> int:
 
 
 # How many of the target's turns the effects it puts on last, at a rank.
+# Through u's modifiers (Unit.mods()): its rank_impact rank, its stat_impact mod.
 func lasts(rank: int, u: Unit = null) -> int:
-	return turns + turns_per_rank * rank + (maxi(u.mod(turns_mod), 0) if u and turns_mod else 0)
+	var m := u.mods(self) if u else Modifiers.NONE
+	return turns + turns_per_rank * m.irank(rank, &"rank_impact") + (m.stat(maxi(u.mod(turns_mod), 0), &"stat_impact") if u and turns_mod else 0)
 
 
 # Contests a foe in place of an attack roll: a save, a drag, Level Down, Death.
@@ -335,12 +343,14 @@ func on_self(u: Unit) -> bool:
 # radius_per_rank x rank: Embellish), plus
 # its mod in radius_mod - at least 1, so it reaches an adjacent unit - plus what its range effects add
 # (a Staff, a Broadsword: Unit.skill_stat()).
+# Rank and stats go through u's modifiers (Unit.mods(): rank_range, stat_range).
 func span(u: Unit) -> float:
+	var m := u.mods(self)
 	if reach_scale:  # a magnitude of its rank (Wildfire's cone)
-		return Difficulty.scaled(reach_scale, maxi(u.rank(self), 1)) + (u.skill_stat(&"range", self) if not self_only else 0.0)
-	var r := radius + radius_per_rank * u.rank(self) + (u.stat(radius_stat) if radius_stat else 0.0)
+		return maxi(ceili(m.rank(maxi(u.rank(self), 1), &"rank_range") * Difficulty.MAGNITUDE[reach_scale]), 1) + (u.skill_stat(&"range", self) if not self_only else 0.0)
+	var r := radius + radius_per_rank * m.rank(u.rank(self), &"rank_range") + (m.statf(u.stat(radius_stat), &"stat_range") if radius_stat else 0.0)
 	if radius_mod:
-		r = maxf(r + u.mod(radius_mod, tags), 1.0)
+		r = maxf(r + m.stat(u.mod(radius_mod, tags), &"stat_range"), 1.0)
 	return r + (u.skill_stat(&"range", self) if not self_only else 0.0)
 
 

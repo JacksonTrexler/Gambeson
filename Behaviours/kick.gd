@@ -48,9 +48,14 @@ func apply(c: Cast) -> void:
 		&"loose":
 			c.put(BLINDED, c.rank)
 		&"hole":
-			b.push(c.target, c.caster, c.rank)
+			b.push(c.target, c.caster, c.impact_rank())
 		&"beside":
 			b.push(c.target, c.caster, 1)
+
+
+# Its push into a hole is rank tiles: rank -> impact.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "push")
 
 
 func describe(rank: int) -> String:

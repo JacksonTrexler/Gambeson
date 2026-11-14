@@ -13,7 +13,7 @@ func apply(c: Cast) -> void:
 	if not c.foe or not c.target.is_alive():
 		return
 	var dc := Difficulty.dc(&"difficult", c.rank)
-	var roll := c.battle.resolve(Check.check(c.target.check_mod(&"constitution", &"defensive", c.skill.tags), dc, Check.Kind.SAVE))
+	var roll := c.battle.resolve(Check.check(c.target.check_mod(&"constitution", &"defensive", c.tags), dc, Check.Kind.SAVE))
 	c.bag[&"stunned"] = not roll.hit
 	if roll.hit:
 		return
