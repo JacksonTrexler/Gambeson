@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "regen"
+amount = 0.05
+per_rank = true
+tags = Array[StringName]([&"downed"])
+name = "Bless"
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "hale"
+amount = 1.0
+name = "Bless"
+
+[sub_resource type="Resource" id="Effect_3"]
+script = ExtResource("2_effect")
+stat = "check"
+amount = 1.0
+per_rank = true
+tags = Array[StringName]([&"taps", &"execute"])
+kind = &"defensive"
+name = "Bless"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Intervention"
+glyph = "Iv"
+tags = Array[StringName]([&"magical", &"wis", &"bless"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2"), SubResource("Effect_3")])
+ap = 3.0
+cost = 2
+radius_per_rank = 1.0
+hostile = false
+turns_per_rank = 1

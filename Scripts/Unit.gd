@@ -2505,6 +2505,21 @@ func is_alive() -> bool:
 	return hp > 0 or dbno != null
 
 
+# How whole an execute takes it to be: HP left / max HP - or 1, full, while something makes it hale
+# (Intervention's Bless). Every execute reads this (Battle.executed(), Battle.last_stand(), Luun's Smite).
+func execute_share() -> float:
+	return 1.0 if stat(&"hale") > 0.0 else float(hp) / maxi(max_hp, 1)
+
+
+# The tags a moment of its own state lends what's asked of it: downed while Downed - an effect tagged
+# downed counts only then (Bless's regen; Unit.stat()'s tag filter).
+func state_tags() -> Array[StringName]:
+	var out: Array[StringName] = []
+	if dbno:
+		out.append(&"downed")
+	return out
+
+
 # Under something that takes away all its actions: a helpless effect (Stunned), sleep, or Downed
 # without the will to fight on (Tenacity; Downed.acts). The source; whether it stops it is stopped().
 func helpless() -> bool:

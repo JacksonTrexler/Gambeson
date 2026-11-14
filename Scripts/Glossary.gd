@@ -107,6 +107,7 @@ const TERMS := {
 	&"reduced": ["Reduced capacity ??", &"condition", "Acting where it would otherwise be tapped, by a permit such as Mindless Fury or Drone: fewer actions, or its mental stats held down."],
 	&"enchanted": ["Enchanted", &"condition", "Blessed gear (or a skill that is): rank +1. Pray makes it; honed is the material kind and never counts."],
 	&"honed": ["Honed", &"condition", "Material perfection: rank +1, and none of what enchanted does. Never both."],
+	&"bless": ["Bless", &"condition", "A divine buff: a Downed unit under it recovers HP each turn, executes against it go by its full HP, and checks that would tap or execute it get its rank. Intervention gives it."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")

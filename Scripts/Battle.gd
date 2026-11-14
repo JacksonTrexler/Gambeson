@@ -725,7 +725,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	if foe and skill.save:
 		var fogged: int = fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
 		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags) + r + zeal, Check.Kind.SAVE),
-				Check.side(target.check_mod(skill.save, &"defensive") + fogged, Check.Kind.SAVE).cut(executed(target, skill, r)))
+				Check.side(target.check_mod(skill.save, &"defensive", skill.tags) + fogged, Check.Kind.SAVE).cut(executed(target, skill, r)))
 		var mine := vs.mine.total
 		contested.emit(caster, target, mine, vs.theirs.total)
 		if not vs.won:  # the caster wins ties
@@ -919,7 +919,7 @@ static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
 func _smite(caster: Unit, t: Unit, r: int, gross: int) -> void:
 	match caster.deity():
 		&"luun":
-			if t.is_alive() and t.hp <= t.max_hp * 0.05 * r:
+			if t.is_alive() and t.execute_share() <= 0.05 * r:  # full while hale (Bless)
 				t.slain_from = t.hp
 				if not Downed.finish(t):  # one already Downed dies of it
 					t.hp = 0
@@ -2502,7 +2502,7 @@ func _mend(u: Unit) -> void:
 			u.timed.erase(SICKNESS)
 		elif u.hp > 0:  # (it never lifts one Downed)
 			u.hp = maxi(u.hp - maxi(roundi(SICKNESS.amount * u.max_hp), 1), 1)
-	var regen := u.stat(&"regen")
+	var regen := u.stat(&"regen", u.state_tags())  # regen tagged downed: only while Downed (Bless)
 	var flat := u.stat(&"regen_hp")  # Rejuvinate's cha mod
 	if regen > 0.0 or flat > 0.0:
 		var power := 0
@@ -3955,16 +3955,19 @@ func _chant(u: Unit) -> void:
 # --- Last stands, Level Down and Death
 
 # A general defensive check of the whole unit: d20 + its average stat mod (Unit.average_mod()). Against
-# an execute (Death, at its rank), cut by how hurt it is: x (HP left / max HP) / rank.
+# an execute (Death, at its rank), cut by how hurt it is: x (HP left / max HP, Unit.execute_share()) /
+# rank - and a check that executes, so check effects tagged execute add to it (Unit.check_bonus()).
 func last_stand(u: Unit, execute := 0) -> int:
-	var c := Check.check(u.average_mod() + u.best_defensive_bonus(), 0, Check.Kind.LAST_STAND)
-	return resolve(c.cut((float(u.hp) / maxi(u.max_hp, 1)) / execute if execute > 0 else 1.0)).total
+	var bonus := u.check_bonus(&"", &"defensive", [&"execute"] as Array[StringName]) if execute > 0 else 0
+	var c := Check.check(u.average_mod() + u.best_defensive_bonus() + bonus, 0, Check.Kind.LAST_STAND)
+	return resolve(c.cut(u.execute_share() / execute if execute > 0 else 1.0)).total
 
 
 # The share of a foe's defensive check that counts against an execute (a skill tagged execute) at rank
-# r: its HP left / max HP / r, as Death cuts a last stand. 1 against anything else.
+# r: its HP left / max HP (Unit.execute_share(): full while hale) / r, as Death cuts a last stand. 1
+# against anything else.
 static func executed(t: Unit, skill: Skill, r: int) -> float:
-	return (float(t.hp) / maxi(t.max_hp, 1)) / maxi(r, 1) if &"execute" in skill.tags else 1.0
+	return t.execute_share() / maxi(r, 1) if &"execute" in skill.tags else 1.0
 
 
 # Level Down: rank rolls of d20 + the caster's mod, each beating the higher of the foe's average stat

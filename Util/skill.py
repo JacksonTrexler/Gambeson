@@ -114,6 +114,30 @@ def check_behaviours(problems):
             problems.append("%s: no skill uses it" % p)
 
 
+TAPPING = ("helpless", "sleep")  # Effect stats that take a unit's actions away: a skill putting one on taps
+
+
+def check_check_tags(problems):
+    """The check tag seam (Unit.check_bonus()): a check carries its skill's tags, so a skill that can tap a unit
+    must carry `taps`, and one that executes `execute` - else what helps with such checks (Bless) misses it."""
+    def stat_of(path):
+        m = re.search(r'^stat = "(\w+)"', read(path), re.M) if os.path.exists(os.path.join(ROOT, path)) else None
+        return m.group(1) if m else ""
+    for p in sorted(files("Skills", ".tres")):
+        text = read(p)
+        tags = set(re.findall(r'&"(\w+)"', next((x["props"]["tags"] for x in sections(text) if x["kind"] == "resource" and "tags" in x["props"]), "")))
+        stats = set(re.findall(r'^stat = "(\w+)"', text, re.M))
+        for ref in re.findall(r'path="res://((?:Effects|Behaviours)/[\w/]+\.(?:tres|gd))"', text):
+            if ref.startswith("Effects/"):
+                stats.add(stat_of(ref))
+            else:
+                stats.update(stat_of(e) for e in re.findall(r'preload\("res://(Effects/[\w/]+\.tres)"\)', read(ref)))
+        if stats & set(TAPPING) and "taps" not in tags:
+            problems.append('%s: it can tap a unit (puts on %s) but has no "taps" tag - checks carry their skill\'s tags, so what helps with checks that tap would miss it' % (p, "/".join(sorted(stats & set(TAPPING)))))
+        if re.search(r"^kills = true", text, re.M) and "execute" not in tags:
+            problems.append('%s: it executes (kills) but has no "execute" tag - what helps against executes would miss it' % p)
+
+
 def check_flags(problems):
     n = len(re.findall(r"^@export var ", read("Scripts/Skill.gd"), re.M))
     if n > FLAG_CEILING:
@@ -173,7 +197,7 @@ def check_icons(problems):
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_flags, check_stubs, check_counts, check_icons):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_flags, check_stubs, check_counts, check_icons):
         f(problems)
     for p in problems:
         print(p)
