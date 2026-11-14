@@ -44,12 +44,6 @@ enum Intensity { BARELY, SOMEWHAT, MOSTLY, FULLY }
 const INTENSITY: Array[float] = [0.3, 0.65, 1.25, PROMINENCE]  # each strength's glow, times GLOW: the plain glow (1) sits between somewhat and mostly
 const INTENSITY_SIZE: Array[float] = [0.8, 0.9, 1.15, 1.3]  # ...and how large it spreads
 const CONTRAST_GLOW := 1.6  # high contrast: glows this much stronger again
-# The gods units pray to (god; Pray: Battle.pray()), by domain.
-const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
-		&"drael": "water, air", &"vetruvis": "earth, music"}
-# The damage tag of each god's domain, carried by skills of their worshippers that take it (Smite: Skill.god_tag).
-const GOD_TAGS := {&"ramut": &"physical", &"eros": &"love", &"sol": &"fire", &"urlo": &"energy", &"luun": &"dark",
-		&"drael": &"water", &"vetruvis": &"earth"}
 const TRIM_DARKEN := 0.45  # bar trim: the side's primary, this much darker
 const BAR_WIDTH := 24.0
 
@@ -118,7 +112,7 @@ class Applied:
 # Whom it heals first (AI._heal()): benevolent (the default: those most in need), pragmatic (its MVPs,
 # by the level it reads, when a heal wouldn't go to waste) or loyal (its party first).
 @export var tends := &""
-@export var god := &""  # whom it prays to (Pray), one of GODS; empty: its class's (Role.god)
+@export var god := &""  # whom it prays to (Pray), one of God.pantheon(); empty: its class's (Role.god)
 @export var uncontrolled := false  # on the player's side, but it takes no orders and joins no party: it acts on its own (the Astral Envoy's shades)
 @export var with_player := false  # joins whichever side the player's starter is on (Battle._ready(): the Astral Envoy's villagers and shades)
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())

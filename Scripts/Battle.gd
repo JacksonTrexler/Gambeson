@@ -923,7 +923,7 @@ static func hit_tags(caster: Unit, skill: Skill) -> Array[StringName]:
 		var blow: StringName = (caster.weapon.damage_tag if caster.weapon else &"blunt")
 		if blow and blow not in out:
 			out.append(blow)
-	var god: StringName = Unit.GOD_TAGS.get(caster.deity(), &"")
+	var god := God.tag_of(caster.deity())
 	if skill.god_tag and god and god not in out:
 		out.append(god)
 	return out
@@ -3711,7 +3711,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	var decisive := caster.stat(&"decisive") > 0.0
 	var brutal := roundi(caster.stat(&"brutal"))
 	var elemental := caster.stat(&"elemental") > 0.0
-	var element := caster.element if caster.element else (Unit.GOD_TAGS.get(caster.deity(), &"fire") as StringName)
+	var element := caster.element if caster.element else God.tag_of(caster.deity(), &"fire")
 	var imbued := caster.imbued > 0
 	var blow := tags.duplicate()
 	if (imbued or elemental) and element not in blow:
