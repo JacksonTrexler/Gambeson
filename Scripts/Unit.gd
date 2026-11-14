@@ -1985,7 +1985,8 @@ func pools() -> Dictionary[Reserve, int]:
 	for x in slots:
 		var r := x.skill.reserve
 		if r and x.skill.passive:
-			out[r] = out.get(r, 0) + maxi((mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1) + r.base, 0) * x.rank
+			var m := mods(x.skill)  # its modifiers: the mod is stat impact, the rank rank impact
+			out[r] = out.get(r, 0) + maxi((m.stat(mod(x.skill.reserve_mod), &"stat_impact") if x.skill.reserve_mod else 1) + r.base, 0) * m.irank(x.rank, &"rank_impact")
 	for r in out:
 		out[r] = maxi(out[r] - int(burnt.get(r, 0)), 0)  # Burnout's loss
 	return out
@@ -2053,7 +2054,7 @@ func opened(r: Reserve) -> int:
 	var best := 0
 	for x in on_passives:
 		if x.skill.opens == r:
-			best = maxi(best, x.rank)
+			best = maxi(best, mods(x.skill).irank(x.rank, &"rank_impact"))  # through its modifiers
 	return best
 
 
