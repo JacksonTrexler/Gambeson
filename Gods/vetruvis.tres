@@ -11,4 +11,6 @@
 [resource]
 script = ExtResource("god")
 id = &"vetruvis"
+domains = "earth, music"
+tag = &"earth"
 pool = Array[ExtResource("tab")]([ExtResource("t_protector"), ExtResource("t_vanguard"), ExtResource("t_brawn"), ExtResource("t_stone")])

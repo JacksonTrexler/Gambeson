@@ -79,7 +79,7 @@ extends Resource
 @export var exclusive := &""  # only one skill of this group can be learned (the low-tier Strike upgrades: strike_form)
 @export var waives := &""  # opens a general tree's skills up to its rank in tier without their usual needs - general (Generalist), martial (Martialist), magical (Thaumaturgist); a tree its class doesn't have, it shows, one tier lower (Unit.missing())
 @export var kills := false  # the foe's last stand, cut by how hurt it is (execute), against d20 + the caster's mod in its stat: failing, it takes 1 true damage and dies (Death; Battle._death())
-@export var god_tag := false  # its damage takes the tag of its caster's god as well (Smite; Unit.GOD_TAGS): Urlo's energy drains Energy first
+@export var god_tag := false  # its damage takes the tag of its caster's god as well (Smite; God.tag): Urlo's energy drains Energy first
 @export var carry := 0.0  # energy damage: this x (rank - 1) of what's left once the target's Energy is gone goes on to HP (Smite: 0.2)
 @export var hits_per_rank := false  # Strike III hits three times
 @export var chain := false  # each hit rolls on its own: a miss ends it, and each hit in a row is -1 to hit and damage (Strike; Battle._chain())

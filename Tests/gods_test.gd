@@ -16,7 +16,8 @@ func prayer(u: Unit, god: StringName, r: int) -> void:
 
 
 func test_domains() -> void:
-	ok(Unit.GODS[&"ramut"] == "war, power" and Unit.GODS[&"eros"] == "love, healing" and Unit.GODS[&"vetruvis"] == "earth, music", "domains")
+	ok(God.of(&"ramut").domains == "war, power" and God.of(&"eros").domains == "love, healing" and God.of(&"vetruvis").domains == "earth, music", "domains")
+	ok(God.tag_of(&"ramut") == &"physical" and God.tag_of(&"drael") == &"water" and God.tag_of(&"hogel", &"fire") == &"fire", "damage tags, by god (a patron has none: the fallback)")
 	var text := pray.describe(2)
 	for g in ["Ramut", "Eros", "Sol", "Urlo", "Luun", "Drael", "Vetruvis"]:
 		ok(g + ":" in text, "described: %s" % g)

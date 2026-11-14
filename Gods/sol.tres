@@ -20,5 +20,7 @@ roots = Array[ExtResource("rs")]([ExtResource("r_own")])
 [resource]
 script = ExtResource("god")
 id = &"sol"
+domains = "light, fire"
+tag = &"fire"
 own = SubResource("Tab_own")
 pool = Array[ExtResource("tab")]([ExtResource("t_protector"), ExtResource("t_vanguard"), ExtResource("t_fury"), ExtResource("t_radiance")])

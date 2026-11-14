@@ -61,8 +61,7 @@ def check_reachable(problems):
             problems.append("%s: on no tree, role or item, and granted by nothing - nobody can get it" % p)
 
 
-FLAVOUR = {"idealism", "lawful",  # tags only lore reads, for now (Coordinate, Judgement)
-           "bludgeon"}  # Waterstrike: likely meant blunt (what breaks starpanes) - left as it was
+FLAVOUR = {"idealism", "lawful"}  # tags only lore reads, for now (Coordinate, Judgement)
 
 
 def known_tags():  # what the rules can ask about: any &"tag" in the scripts, class names, tags 2+ skills share, FLAVOUR

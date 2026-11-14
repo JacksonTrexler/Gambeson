@@ -46,12 +46,6 @@ const INTENSITY_SIZE: Array[float] = [0.8, 0.9, 1.15, 1.3]  # ...and how large i
 const DOWN_TILT := 1.35  # radians: a Downed unit lies over on its side (_lie())
 const DOWN_SAT := 0.55  # ...and keeps this share of its colour, however the HUD sets it
 const CONTRAST_GLOW := 1.6  # high contrast: glows this much stronger again
-# The gods units pray to (god; Pray: Battle.pray()), by domain.
-const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
-		&"drael": "water, air", &"vetruvis": "earth, music"}
-# The damage tag of each god's domain, carried by skills of their worshippers that take it (Smite: Skill.god_tag).
-const GOD_TAGS := {&"ramut": &"physical", &"eros": &"love", &"sol": &"fire", &"urlo": &"energy", &"luun": &"dark",
-		&"drael": &"water", &"vetruvis": &"earth"}
 const TRIM_DARKEN := 0.45  # bar trim: the side's primary, this much darker
 const BAR_WIDTH := 24.0
 
@@ -120,7 +114,7 @@ class Applied:
 # Whom it heals first (AI._heal()): benevolent (the default: those most in need), pragmatic (its MVPs,
 # by the level it reads, when a heal wouldn't go to waste) or loyal (its party first).
 @export var tends := &""
-@export var god := &""  # whom it prays to (Pray), one of GODS; empty: its class's (Role.god)
+@export var god := &""  # whom it prays to (Pray), one of God.pantheon(); empty: its class's (Role.god)
 @export var uncontrolled := false  # on the player's side, but it takes no orders and joins no party: it acts on its own (the Astral Envoy's shades)
 @export var with_player := false  # joins whichever side the player's starter is on (Battle._ready(): the Astral Envoy's villagers and shades)
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())
@@ -1542,7 +1536,7 @@ func hooks() -> Array:
 
 # Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and stat(&"jammed") <= 0.0 and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard != Vector2.ZERO and reacts() and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -2741,6 +2735,13 @@ func helpless() -> bool:
 # many skill uses a turn anyway; spent, it's stopped too. It can't act, move or take orders.
 func stopped() -> bool:
 	return helpless() and fury_acts >= roundi(stat(&"mindless"))
+
+
+# Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())
+# and obstruct (Battle.obstruction()). Lost to Jam (the jammed stat) and to being stopped(): helpless,
+# it does none of these. Watching isn't one of them: a helpless unit still sees (Battle._watch()).
+func reacts() -> bool:
+	return stat(&"jammed") <= 0.0 and not stopped()
 
 
 # Tapped, as far as the unit itself can tell: out of AP, or stopped(). Never stored or cleansed: it
