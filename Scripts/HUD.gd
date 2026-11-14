@@ -258,6 +258,7 @@ func _ready() -> void:
 	battle.discovered.connect(_on_discovered)
 	battle.unmasked.connect(_on_unmasked)
 	battle.vanished.connect(_on_vanished)
+	battle.bumped.connect(_on_bumped)
 	battle.untangled.connect(_on_untangled)
 	battle.refused.connect(_on_refused)
 	%CharacterIcon.pressed.connect(toggle_sheet)
@@ -1040,6 +1041,13 @@ func _on_unmasked(by: Unit, of: Variant, was: Read) -> void:
 func _on_vanished(by: Unit, of: Unit, was: Read) -> void:
 	if known(by):
 		_log("%s [color=#%s]!?[/color] %s vanishes" % [_tag(by), SUSPICION.to_html(false), (was.name if was.name else "Something").replace("[", "[lb]")])
+		_mark()
+
+
+# One of the player's units walked into something it couldn't see (Battle.bumped): a recon level on it.
+func _on_bumped(u: Unit, into: Unit) -> void:
+	if known(u):
+		_log("%s bumps into %s" % [_tag(u), _seen_as(u, into).to_lower() if battle.read(u, into).name else "something unseen"])
 		_mark()
 
 

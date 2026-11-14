@@ -31,6 +31,7 @@ signal told(by: Unit, to: Unit, of: Unit, heard: bool)  # spread(): by told an a
 signal discovered(by: Unit, of: Variant)  # suspect(): by's first stack of suspicion of a unit or tile: something odd about it ("?")
 signal unmasked(by: Unit, of: Variant, was: Read)  # suspect(): by now sees through what fooled or hid it; was: by's read before ("!")
 signal vanished(by: Unit, of: Unit, was: Read)  # of slipped from by's sight before its very eyes (_vanish()); was: by's read before ("!?")
+signal bumped(u: Unit, into: Unit)  # u's walk was stopped short by `into`, a unit it couldn't place: a recon level on it (travel(), note())
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
@@ -103,6 +104,7 @@ var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up
 
 @export var prep := false  # the battle opens in Phase.PREP (as one started from the entry screen does: Game.starter.prep)
 var studied: Dictionary[Faction, Dictionary] = {}  # what each side studied in preparation (study()): unit or tile -> recon levels more it reads it at
+var noticed: Dictionary[Unit, Dictionary] = {}  # recon a unit has gained on its own (note()): unit -> {unit or tile -> recon levels more it reads it at}
 var studied_allies: Dictionary[Faction, Array] = {}  # which of those it studied as allies (studies_left())
 var phase := Phase.INITIATIVE:
 	set(v):
@@ -1924,7 +1926,16 @@ func read(o: Unit, target: Variant) -> Read:
 func _read(o: Unit, target: Variant, extra := 0.0) -> Read:
 	if o.faction in studied:
 		extra += studied[o.faction].get(target, 0)  # studied in preparation (study())
+	if o in noticed:
+		extra += noticed[o].get(target, 0)  # learned on its own (note(): bumping into it unseen)
 	return Perception.unit(self, o, target, extra) if target is Unit else Perception.tile(self, o, target, extra)
+
+
+# o gains n recon levels on k (a unit or a tile), its own, for the battle (_read()): bumping into a unit
+# it couldn't place (travel()). Anything that teaches one unit about another can add here.
+func note(o: Unit, k: Variant, n := 1) -> void:
+	var mine: Dictionary = noticed.get_or_add(o, {})
+	mine[k] = mine.get(k, 0) + n
 
 
 # The others o shares what it makes out with: those Coordinate linked along with it (the same caster's
@@ -2008,6 +2019,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		return passed
 	var w := walk(u, dest)
 	passed = w.path
+	if w.blocker and not read(u, w.blocker).located():  # it walked into something it couldn't place: that it's there, at least
+		note(u, w.blocker)
+		bumped.emit(u, w.blocker)
 	if not passed.is_empty():
 		var from := u.cell
 		var sights := _sightings(u)  # those watching it step into cover (_vanish())
@@ -2079,8 +2093,9 @@ func _break_free(u: Unit) -> bool:
 	return false
 
 
-# The walk toward `dest`: {line, path, costs} - the straight line, the tiles kept, and what each
-# cost. Leaving a tile costs its exit, entering costs its enter (plus the unit's move_cost effects
+# The walk toward `dest`: {line, path, costs, blocker} - the straight line, the tiles kept, what each
+# cost, and the unit that stopped it short, if one did (it couldn't stand on its tile, or couldn't pay to
+# pass it). Leaving a tile costs its exit, entering costs its enter (plus the unit's move_cost effects
 # for that ground), and moving through another unit costs pass_cost(). Stops where movement or AP
 # runs out, before a hole, short of other units (they can be passed, not stood on), and on a trap.
 # Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground the
@@ -2098,6 +2113,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		return in_way.call(c) != null
 	var path: Array[Vector2i] = []
 	var costs: Array[float] = []
+	var blocker: Unit = null
 	var left := u.move_left() - escape_cost(u)
 	if held_by(u) and not expected:
 		left = 0.0  # held: travel() breaks it free first
@@ -2114,6 +2130,8 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		if cost > left + 0.0001:
 			var unknown_bad := t.worth() < 0 and not read(u, c).known_bad()
 			if Luck.settle(left / cost, u.luck, not unknown_bad, false) < 1:
+				if other and cost - pass_cost(u, other) <= left + 0.0001:
+					blocker = other  # it could have paid for the ground, not for getting past
 				break
 			cost = left  # squeezed in on what was left
 		left -= cost
@@ -2123,11 +2141,12 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		if t.is_trap() and not blocked.call(c) and not u.passes_by(t, path.size()):
 			break  # stepped on a trap
 	while not path.is_empty() and blocked.call(path[-1]):  # units can be passed, not stood on
+		blocker = in_way.call(path[-1])
 		path.pop_back()
 		costs.pop_back()
 	if expected:
 		rng.state = state
-	return {line = ln, path = path, costs = costs}
+	return {line = ln, path = path, costs = costs, blocker = blocker}
 
 
 # Extra movement for u to move through o's tile: o's size, less a share per point of dex mod - u's,

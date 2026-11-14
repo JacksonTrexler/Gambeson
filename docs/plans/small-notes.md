@@ -73,3 +73,27 @@ Calls:
 - `HUD.uses_intents()`'s low-wisdom half still reads the leader's raw wis mod.
 
 Tests: `Tests/telepathy_test.gd`, `Tests/word_to_the_wise_test.gd`; `command_test` passes unchanged.
+
+## 68 Bumping into a concealed unit
+
+User: "physically contacting a concealed unit and being unable to proceed because of them grants 1
+recon in itself".
+
+Read: `Battle.walk()` stops a walk short of units (they can be passed, not stood on) and where it
+can't pay to pass one (`pass_cost()`); `_contact()` (investigating on contact) is separate and stays.
+
+Built: `walk()` now also returns `blocker`, the unit that stopped it short (the last occupied tile it
+backed off, or a unit whose pass cost it couldn't pay when the ground alone fit). `travel()`: if the
+walker couldn't place the blocker (`read().located()` false) before the bump, it gains a recon level
+on it through a new generic store, `Battle.noticed` (unit -> {unit or tile -> levels}), read in
+`_read()` beside `studied`, written by `Battle.note(o, k, n)` - any later "one unit learns about
+another" can use it. Signal `Battle.bumped(u, into)`; the HUD logs "X bumps into something unseen".
+It counts even when the walk goes nowhere (the first tile is the hider's).
+
+Calls:
+- "concealed" read as "the walker couldn't place it": a unit it had located is no surprise.
+- Each bump adds 1 more, cumulatively, while it still can't place the unit; the recon is the
+  walker's own (not its side's, unlike preparation's study) and lasts the battle.
+- Only walks (`travel()`): pushes and teleports don't bump.
+
+Test: `moves_test.test_bump`.
