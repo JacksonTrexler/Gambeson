@@ -126,3 +126,4 @@ Jimhe Deyn runs competing gangs out of Center, each a mix of species shoehorned 
 
 - [x] **Epic and mythic rarities** (`Item.RANK_COST`; loot pull 0.08 and 0.02): rank-up costs multiply by rarity, common 1 to mythic 5. No item uses them yet. (?97, ?118)
 - [x] **Pike** (`Scenes/pike.tscn`, level 2, unaligned, aggressive, Fish, Aquatic, Strike I; placeholder sprite): in no battle yet. (?82, ?120)
+- [x] **Item icons** (`Util/icon.py item`, `items`, `check`; `Item.icon()`; `Icons/Items/*.png`; `HUD.trims()`, `UnitCard`, `CharacterSheet`): a placeholder per item, shape by slot and kind, emblems a plaque by scope; shown on the sheet, the stash and the card for every worn item; `icon.py check` and `skill.py check` fail a missing one. Plan: `docs/plans/item-icons.md`. `item_icons_test`. (?135)

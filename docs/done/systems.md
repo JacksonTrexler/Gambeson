@@ -193,3 +193,11 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Cost calculator** (`Pricing.TABLE`; `Skill.priced`, `intensity`, `impact`, `penalty`): points to AP and Energy, tapered by requirements and behaviours' contingencies; hand-set costs kept unless `priced`; Poach priced.
 - [x] **Emblems** (`Item.emblem`, `scope`, `trim_tag()`): Density and Diluted Sigils, Concentrated and Dispersed Crests, Restrictive Badge, Unrestrictive Insignia, Fire Insignia, Execute Sigil; in Alabaster's loot.
 - [x] **Tooling** (`skill.py new --intensity --impact --penalty --requires --hand-priced`, `terms`, `modifiers`, `drift`; `Util/terms.gd`).
+
+## Parameterizing and routing (2026-11-14)
+
+- [x] **Parameterized skills** (`Behaviour.mods_on()`, `holder_rank()`, `terms()`; `SkillTerms` reserve, opens, downed and per-stat reads; `Unit.pools()`, `opened()` and `Downed` through `mods()`): 21 skills made eligible for modifiers (Efficiency's five, Bandwagon, Illusionist, Molothrus, Telepathy, Word to the Wise, Energize, Heal, Megaheal, Move, Resuscitate, Clairvoyance, Manifest, Sweet Nothings, Mana, Grudge, Tenacity); `skill.py modifiers` 54 to 33, and 27 with the next. Plan: `docs/plans/param.md`. `param_test` (5 tests). (?133)
+- [x] **Clairvoyance's pings as a behaviour** (`Behaviours/clairvoyance.gd`; hooks `recast_stops()`, `held()`, `senses()`; `Battle.ping()`, `pinged()`): `Skill.pings` gone; the AI's scry reads `senses()`. `clairvoyance_test`. (?133)
+- [x] **Routing through the reader** (`Skill.markup(rank, with_spec, u)`, `Requirement.turns`, `strength`, `markup()`; `Battle.damage_range()`, `_land()`; `Behaviour.describe_as()`): saves, executes, DCs, reach, requirements on every outcome, holder-aware descriptions and AI estimates all read `u.mods()`; the deferred six skills routed. Plan: `docs/plans/route.md`. `route_test` (10 tests). (?134)
+- [x] **Behaviours on every landing path** (`Battle._land()`): Beastshape, Eros's heal, Level Down, Death, Strike's chain and the aura-style branches.
+- [x] **UNSAID emptied; `Skill.cinders` removed**; `FLAG_CEILING` is 128 (from 130). (?133, ?134)

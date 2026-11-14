@@ -275,7 +275,7 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 
 - [x] **Jam** (2026-11-10): built (`docs/done/classes.md`, `docs/plans/channels-jam.md`), `Tests/jam_test.gd`. (?97)
 - [x] **Jam's damage hits Focus** (2026-11-11): it takes as much off the target's Focus as the HP it lost. (?97, ?100)
-- [ ] **No screenshot check** of Jam, or of the Jammed ?? icon.
+- [x] **No screenshot check** of Jam, or of the Jammed ?? icon. Taken 2026-11-14: a red "Jm" chip, the name only in its tooltip and the Glossary (?136).
 
 97. **The channel rule, helpless, Jam - answered (2026-11-11), built (`w-focus`, ?100).** "Slayer is a good call": Jam on Slayer, reaching the Fighter and Berserker, is settled. Focus: "yeah focus is a resource that rangers and mages can access. Focus: builds up quickly, only while resting. can be used in place of energy. if fully used to cast ranged attack skill, rank bonus to accuracy" (built, ?100; `docs/plans/focus.md`). Still open: the Jammed ?? reading of stun; the rank-cost curve (1 + r^2, 19 skills capped). My calls: Your rulings on 85 and 89, built on `v-channel` (`docs/plans/channels-jam.md`). My calls:
     - **Rank-cost curve answered (2026-11-12), built (2026-11-14, ?118):** a Grand Design is an equipment item, not learned and ranked like a skill, but however it is ranked up follows similar logic. A legendary item is about as powerful as 4 skills: ranking it up once costs what ranking up a skill 4 times would. Rarity multipliers: uncommon 1.5, rare 2, epic 3, mythic 5 (legendary 4).
@@ -297,7 +297,7 @@ An arcane and Cleric spell, channeled: the caster senses where unseen foes are, 
 - [x] `Skills/clairvoyance.tres`: 3 AP, 3 cost, wisdom + rank range, location only, suspicion added, pings updated and the rank raised at each turn end held. (?89)
 - [x] **The AI never casts it.** Built 2026-11-14: a scryer with nothing to hunt casts it, then acts on the pings (?130).
 - [ ] **No screenshot check** of how pings look in the running game.
-- [ ] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`).
+- [x] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`). Built 2026-11-14 (?133).
 
 89. **Clairvoyance - answered (2026-11-10), built (`v-channel`, ?97).** There is never a rank cap, but the cost of ranking up rises exponentially, so it gets dear. "Moving does not end the channel" is overruled by the universal channel rule (`docs/todo/systems.md`): channeling has the same requirements as resting, so a unit that can't rest while moving ends the channel by moving. The rest stands as built:
     - A ping sees through walls (it is not sight).
@@ -380,7 +380,7 @@ Plan, readings and what was built: `docs/plans/gods.md`; done in `docs/done/clas
 - [x] **`Unit.GODS` and `GOD_TAGS` not moved into the God files.** Built 2026-11-14 (?127). (?122)
 - [ ] **A burn's tier cap**: read as none; say if a burn should reach only up to a tier. (?122)
 - [ ] **Ramut, Urlo, Drael and Vetruvis have no own Divinity tree**, so a Cleric can't pick them. (?122)
-- [ ] **`.claude/skills/new-class` should mention `role.py god`** (house rule: skills aren't edited without you). (?122)
+- [x] **`.claude/skills/new-class` should mention `role.py god`** (house rule: skills aren't edited without you). Built 2026-11-14: one line, as the coordinator authorised (?135). (?122)
 
 ## Rescue and interrupt: Resuscitate, Intervention, Borrowed Time, friendly fire (2026-11-14)
 

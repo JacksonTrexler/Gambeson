@@ -105,6 +105,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | HUD markers (?128) | `hud_markers_test.gd` |
 | — | Pace: handover, hurry, collapsed log (?129) | `pace_test.gd` |
 | — | AI support: restoring, support, switching, Focus, Clairvoyance (?130) | `ai_support_test.gd` |
+| — | Parameterizing skills; Clairvoyance's pings a behaviour (?133) | `param_test.gd` |
+| — | Routing through the modifier reader (?134) | `route_test.gd` |
+| — | Item icons (?135) | `item_icons_test.gd` |
+| — | Small UI items (?136) | `ui_small_test.gd` |
+| — | Paths round hazards (?137) | `path_test.gd` |
 | — | Skill terms, cost calculator, modifiers and emblems (?131) | `modifiers_test.gd` |
 | — | Forecast: map pips, foresight, trap estimates, HELP reads restores (?132) | `foresight_test.gd`, `hud_test.gd` |
 

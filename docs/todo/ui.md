@@ -15,7 +15,7 @@ The grammar (in `docs/done/rules.md`): `Actor Skill Rank --> Target (ours - thei
 
 - [ ] Settings › Gameplay toggles, starting with auto-equip, once Equipping exists.
 - [ ] The Adventurer's extra slot is a base slot, slightly darker. (?3)
-- [ ] When targeting, if a unit is just out of range from the caster's current tile, show small circles for both units' sizes so the gap is visible. *Now:* a near miss is decided by luck, with no explanation.
+- [x] When targeting, if a unit is just out of range from the caster's current tile, show small circles for both units' sizes so the gap is visible. Built 2026-11-14: two faint circles and a dashed line from the reach ring when the target is within a tile beyond reach (`Overlay.NEAR`, ?136). *Before:* a near miss was decided by luck, with no explanation.
 - [ ] Lore keeper: one reference per skill, and its hover description is what the skill is built from. (?8)
 
 8. Lore keeper: skill data (numbers) + optional flavour text + small behaviour scripts for one-off mechanics. Is that the "hybrid" you mean?
@@ -29,7 +29,7 @@ The grammar (in `docs/done/rules.md`): `Actor Skill Rank --> Target (ours - thei
 
 All built this pass except two bits of polish:
 - [ ] **Walker pictogram** for the tile panel's move cost (needs art); "Mv -N" stands in.
-- [ ] **High contrast: thicken faction borders** (the brighter glow and whiter text are in; borders still to do).
+- [x] **High contrast: thicken faction borders** (the brighter glow and whiter text are in). Built 2026-11-14: a 2px trim standing out one pixel (`Unit._heavy_trim`, ?136).
 - [x] 60. **Built on judgement:** intents come with *either* low cha *or* low info (an inclusive or; an exclusive one would hide them from a commander who is both). Open for review.
   - Your earlier inline notes on 60 built (2026-11-14, ?120): Telepathy and Word to the Wise, per-ally command mods.
 - [x] **Colours by AP and command limits** (2026-11-09): units colored normally, desaturating somewhat (not darkening) as an ally runs out of AP, grey once it can't be commanded on the player's turn; allies of other sides not coloured this way; a leader commands cha mod allies a turn, up to cha mod orders each. Built (`docs/done/ui.md`, `docs/done/rules.md`). (?83)
@@ -121,7 +121,7 @@ Plan, readings and what was built: `docs/plans/hud-markers.md`; done in `docs/do
     - **Allied glow:** x1.7 alpha on a tinted (other-faction ally) glow, and a Settings picker "Allied glow: Mint / White / Sky / Gold", built in code beside the contrast toggle and not saved between runs. **Mint stays the default; on grass White and Sky read better at any strength. Change the default to Sky or White?**
     - **New names to review:** none.
 - [x] **The forecast's drain on a third reserve.** Built 2026-11-14 (`Overlay._bar_for`, ?132). (?128)
-- [ ] **The allied glow picker isn't saved between runs.** (?128)
+- [x] **The allied glow picker isn't saved between runs.** Built 2026-11-14: `Prefs` saves every Settings toggle (?136). (?128)
 - [ ] **A `fits()` that reads hidden state would leak through the hover** (`why_not()` asks the true state); fix when one exists. (?128)
 - [ ] **The AI offers nothing new** from the markers; borrowed time isn't drawn differently on the map. (?128)
 
@@ -137,8 +137,8 @@ Plan, readings and what was built: `docs/plans/pace.md`; done in `docs/done/ui.m
     - **The log:** collapsed by default to its last whole entry (wrapped), at the foot of the right column above End Turn; clicking the line or the LOG title opens it, the title again collapses it; the whole log is kept while collapsed. The title shows a small arrow. Confirm?
     - **The Guide** gets two sentences (handover; hold F to hurry, click LOG), naming F as a fixed word like its other keys, so a rebind leaves it stale. Confirm?
     - **New names to review:** none.
-- [ ] **Floating numbers aren't hurried**; with many AI units hurried, they can stack more. (?129)
-- [ ] **The Guide names F as a fixed word**, so rebinding Hurry leaves it stale. (?129)
+- [x] **Floating numbers aren't hurried**; with many AI units hurried, they can stack more. Built 2026-11-14: the floaters run through `Overlay.hurry()` (?136). (?129)
+- [x] **The Guide names F as a fixed word**, so rebinding Hurry leaves it stale. Built 2026-11-14: `{hurry}` is filled from the bound key (?136). (?129)
 
 ## Forecast (2026-11-14)
 
@@ -152,6 +152,39 @@ Plan, readings and what was built: `docs/plans/forecast.md`; done in `docs/done/
     - **HELP reads `restores()`:** `HUD.intent_skill()` finds any affordable restoring skill; that counts Energize, so `AI.act(supportive)` now ends with `_replenish()`. `Skill.serves()` itself still says Heal isn't supportive (Affinity postures read it); `Skill.gd` was off limits. Confirm?
     - **New names to review:** none (`foresight` is your word).
 - [ ] **No skill or item raises foresight yet.** (?132)
-- [ ] **A route isn't steered round fire or traps**: the walk path is Battle's. (?132)
-- [ ] **Only the first tick of a bleed is counted**, and `afflicts` of ordinary known ground not at all. (?132)
+- [x] **A route isn't steered round fire or traps**: the walk path is Battle's. Built 2026-11-14: `Battle.route()` inside `walk()` (?137). (?132)
+- [x] **Only the first tick of a bleed is counted**, and `afflicts` of ordinary known ground not at all. Built 2026-11-14: every tick and the ground's `afflicts` (?137). (?132)
 - [ ] **`Skill.serves()` still says Heal isn't supportive**; fold in when Skill is reworked (`r-route`, `r-param`). (?132)
+
+## Small UI items (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/ui-small.md`; done in `docs/done/ui.md`. Built on `q-ui`. Tests: `Tests/ui_small_test.gd` (5 tests, 13 checks); frames in the scratchpad `shot_q-ui/`.
+
+136. **Small UI items - built on judgement, open for review (2026-11-14).** Seven open items. My calls, each for you to confirm or change:
+    - **Settings saved** in `user://settings.cfg` through a new `Prefs` class: allied glow, high contrast, suspicious marks, keep slot and hand over (every HUD Settings toggle, the same shape). Tests point `Prefs.SAVE` at a throwaway file. Key binds keep their own file. Confirm?
+    - **Floaters hurried** through `Overlay.hurry()` with the same factor `HUD.HURRY` as the walks.
+    - **The Guide's hurry key** is `{hurry}`, read from `KeyBinds.key_of(&"hurry")`; its other fixed keys (P, H, Space, Tab) are still words.
+    - **Near-miss circles:** the target within 1 tile beyond reach from where the caster stands (`Overlay.NEAR`): a small faint circle on each unit and a dashed line from the reach ring's edge. Shown whether or not a walk would get there. Radius 0.17 tiles per point of size, not the real 0.05 / 0.02, so it says "bigger units reach further", not the arithmetic; no text. Luck.MARGIN isn't shown. Confirm?
+    - **High-contrast borders:** the trim 2px, one pixel further out so it doesn't cover the bars.
+    - **"Worn skill"** read as a skill changed by a worn emblem (`Unit.mods()`), not exhausted (the exhaustion pips were built already, 356ebb1): a small gold diamond left of the slot's type stripe. Confirm?
+    - **Screenshots:** the saturation at 0, 50 and 75% reads as intended, 75% subtle (faint on a dark sprite); a Jammed unit shows a red "Jm" chip and the name "Jammed ??" is only in its tooltip and the Glossary.
+    - **New names to review:** none.
+- [ ] **The other fixed keys in the Guide** (P, H, Space, Tab) are still words. (?136)
+- [ ] **The near-miss circles' radius isn't to scale**, and Luck.MARGIN isn't shown. (?136)
+- [ ] **Hovering a tile in the museum logs "No TileSet atlas source with id -1"** (`HUD._tile_icon`); older than this branch. (?136)
+- [ ] **The Jammed ?? name shows only in the chip's tooltip**, not on the chip. (?136)
+
+## Paths round hazards (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/path.md`; done in `docs/done/ui.md`. Built on `q-path`. Tests: new `Tests/path_test.gd` (9 tests, 19 checks); `hud_test.test_will_consume` moved one hover. `combat_test.test_battles` counts 140 fewer checks because the AIs now walk round known traps and fire.
+
+137. **Paths round hazards - built on judgement, open for review (2026-11-14).** Two open items from ?132. My calls, each for you to confirm or change:
+    - **Steering is in `Battle.walk()`** (`Battle.route(u, dest, line)`): the HUD preview, the reach overlay and `AI.travel` all go through it, so the preview is the walk. Only if the straight line crosses a tile with dread above 0 does it search (8-neighbour Dijkstra, the box of start and destination widened by `STEER_MARGIN` 2), and it keeps the line unless the route is strictly cheaper.
+    - **Dread** (`Battle.dread`): `HAZARD_TILES` 0.5 movement per HP foreseen, 1 per AP, and any known trap or detrimental ground at least 1; a 7-damage trap is worth a 3.5 tile detour, a 1d8 fire about 2.25. The weights are my guess; one constant to turn. Confirm?
+    - **One price, `Battle.stride()`:** ground, wading, obstruction, the passives' `step_cost` hooks (Peel) and `pass_cost`. `Battle.hazard(u, c, read)` moved from the HUD, which delegates with the player's eyes; steering uses the walker's own read, never the true map.
+    - **A negative foresight allowance doesn't steer** (your "negative int mod plans optimistically"); a bonus lifting it to 0 steers again. **Steering is free** and doesn't spend a foresight: allowance 0 steers round what it sees without a number ("?"). Confirm?
+    - **Fuller estimate:** wounds count each tick that takes HP: bleed (dice average + setter's mod, at least 1) and poison (share of max HP) times the wound's turns; `winded` takes AP once. Ground's `afflicts` come from the `Read`, so only ground read at net 0 or better counts.
+    - **New names to review:** none.
+- [ ] **Meander (`passes_by`) isn't foreseen**, and `at_end` effects aren't counted. (?137)
+- [ ] **`AI._approach`** still scores approach cells by its own line risk; unit-blocked routes use `pass_cost` only. (?137)
+- [ ] **`HAZARD_TILES` and `STEER_MARGIN`** are first guesses to tune. (?137)
