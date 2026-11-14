@@ -108,6 +108,7 @@ const TERMS := {
 	&"enchanted": ["Enchanted", &"condition", "Blessed gear (or a skill that is): rank +1. Pray makes it; honed is the material kind and never counts."],
 	&"honed": ["Honed", &"condition", "Material perfection: rank +1, and none of what enchanted does. Never both."],
 	&"bless": ["Bless", &"condition", "A divine buff: a Downed unit under it recovers HP each turn, executes against it go by its full HP, and checks that would tap or execute it get its rank. Intervention gives it."],
+	&"execute": ["Execute", &"check", "An instant death check, cut by how hurt its target is: HP left over max HP, over its rank. Whatever helps against such checks helps against every one of them."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")

@@ -42,3 +42,28 @@ Readings and calls:
   that puts on a helpless/sleep effect (inline, an Effects/ file, or preloaded by its behaviour) without
   the `taps` tag, or that `kills` without `execute`.
 - Test proves it with a throwaway `Skill.new()` tagged taps/execute (`intervention_test.test_seam`).
+
+## Borrowed Time
+
+Readings and calls:
+- **No time branch exists** on any arcane tree. Placed on the Wizard's own **Arcane** root
+  (`Roles/wizard.tres`), after Blink, needing 3 of the root's others (as its capstone Magic Skill Slot
+  does) - standing in for "high tier". Passive, data only: Effect stat `defer` +rank (new, generic: an
+  item or a later skill giving `defer` works the same).
+- Trigger: on its last life (hearts first, as Downed), HP taken to 0. Once a battle (`deferred_once`).
+- While deferred (rank of its side's rounds; the round it began in doesn't count if it was its own
+  side's turn, as Downed): it can't die; its HP stops at 0 (no negatives); it acts as usual, is
+  targeted, healed, executed (an execute can't kill it either). `is_alive()` counts it.
+- "Negative effects received": every `Unit.damage()` (hits after mitigation, bleed, poison...) and
+  every debuff put on (`afflict()` of an effect with `helps() < 0`), logged with the round, kept for the
+  last rank rounds whenever it has `defer` (so the blows that killed it are in it). Replay at each of
+  its rounds' end, in order, through `damage()` and `afflict()` (Downed, other passives etc. apply;
+  `taking_hit` hooks don't, since the logged number is already after them); replays aren't logged again,
+  so each harm is replayed once per round it stays in the window (up to rank times).
+- Expiry: `Battle.last_stand(u, rank)` - cut by `execute_share()`, plus check effects tagged execute -
+  against d20 + rank, the execute winning ties. At 0 HP the stand is 0: certain death unless healed
+  or hale (Bless). Pass: lives, at 1 HP if it had none. Fail: `Unit.fall()` - the death path it put off.
+- **Downed / Tenacity**: Borrowed Time goes first; a failed expiry check with a Downed skill puts it
+  Downed (as an execute on a standing unit does), then Downed's own rules. A Downed unit dying is not
+  deferred (Borrowed Time only catches the 0-HP moment, before Downed).
+- HUD: log lines and a float text on going on borrowed time (`Battle.borrowed` signal). No card chip.

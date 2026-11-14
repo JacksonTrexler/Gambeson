@@ -207,14 +207,95 @@ var hp := 0:
 		if v <= max_hp:
 			over_max = 0
 		hp_changed.emit(was, v)
-		if Downed.takes(self, was, v):  # Downed: on its last life it lingers at 0 or below, is saved, or dies past its limit
-			pass
-		elif v == 0 and not reviving and lives_left() > 0:  # local v, not hp: a listener may have changed hp re-entrantly
-			hearts_used += 1
-			reviving = true
-			downed.emit(self)
-		elif v == 0:
-			died.emit(self)
+		_landed(was, v)
+
+
+# What comes of its HP going from was to v (the hp setter; fall()): nothing while its death is put off
+# (Borrowed Time); on its last life a defer stat puts its death off before Downed has its say; Downed
+# lingers, is saved or dies past its limit; else a heart goes, or it dies.
+func _landed(was: int, v: int) -> void:
+	if deferred > 0:
+		pass  # it can't die meanwhile
+	elif v == 0 and was > 0 and dbno == null and not reviving and lives_left() <= 0 and defer():
+		pass
+	elif Downed.takes(self, was, v):  # Downed: on its last life it lingers at 0 or below, is saved, or dies past its limit
+		pass
+	elif v == 0 and not reviving and lives_left() > 0:  # local v, not hp: a listener may have changed hp re-entrantly
+		hearts_used += 1
+		reviving = true
+		downed.emit(self)
+	elif v == 0:
+		died.emit(self)
+
+
+# --- Deferred death (the defer stat: Borrowed Time)
+# On its last life, taken to 0 HP with a defer stat, it doesn't die - once a battle. For that many of its
+# side's rounds (deferred) it can't: its HP stops at 0, it acts as ever. It keeps a log of what harmed it
+# (harms: HP lost, debuffs put on) over the last `defer` rounds; as each of its rounds ends while its death
+# is put off, the log is replayed in order through the usual paths (damage(), afflict()) - unless
+# something intervenes, that takes it back to 0. The last round over, a check against an execute at
+# that rank (Battle._borrowed()): failing, it falls as it would have (fall(): Downed, if it can).
+signal deferring(u: Unit, how: StringName)  # &"begin", &"replay", &"survived", &"executed" (Battle._borrowed())
+var deferred := 0  # rounds its death is still put off
+var defer_rank := 0  # the defer it went on borrowed time at: the replay window and the execute's rank
+var deferred_once := false
+var defer_fresh := false  # it went on borrowed time in its own side's turn: that turn's end doesn't count (Battle sets it)
+var harms: Array[Dictionary] = []  # {at: rounds, hp: n} or {at, effect, turns, rank}, oldest first, while it has a defer stat
+var rounds := 0  # its side's turns ended since the battle began (Battle._borrowed())
+var replaying := false  # what it suffers now is the log replayed: not logged again
+
+
+# Its defer, rounded: how many rounds its death would be put off, and how far back it keeps its log.
+func defers() -> int:
+	return roundi(stat(&"defer"))
+
+
+# Puts its death off, if it can (the hp setter, at 0 HP on its last life): true if it did.
+func defer() -> bool:
+	if deferred_once or defers() < 1:
+		return false
+	deferred_once = true
+	defer_rank = defers()
+	deferred = defer_rank
+	deferring.emit(self, &"begin")
+	return true
+
+
+# Logs a harm while it has a defer stat (damage(), afflict()), unless it's the log replayed.
+func _log_harm(h: Dictionary) -> void:
+	if replaying or (deferred <= 0 and defers() < 1):
+		return
+	h.at = rounds
+	harms.append(h)
+
+
+# Its side's round is over (Battle._borrowed()): what's older than its window drops out of its log.
+func age_harms() -> void:
+	rounds += 1
+	var keep := maxi(defer_rank if deferred > 0 else defers(), 1)
+	harms.assign(harms.filter(func(h: Dictionary): return h.at > rounds - keep))
+
+
+# The log replayed in order, through the usual paths, none of it logged again.
+func replay_harms() -> void:
+	replaying = true
+	for h in harms.duplicate():
+		if h.has(&"hp"):
+			damage(h.hp)
+		else:
+			afflict(h.effect, h.turns, h.rank)
+	replaying = false
+
+
+# Its borrowed time is up and the execute took it: it falls as its death would have had it - a Downed
+# skill puts it down, else it dies.
+func fall() -> void:
+	deferred = 0
+	slain_from = hp
+	if hp > 0:
+		hp = 0
+	else:
+		_landed(1, 0)
 
 # The default energy every unit has; reserves (mana...) are extra.
 var energy := 0:
@@ -1353,6 +1434,8 @@ func scaling(s: StringName, tags: Array[StringName]) -> float:
 
 
 func damage(d: int) -> void:
+	if d > 0:
+		_log_harm({hp = d})
 	hp -= maxi(d, 0)
 
 
@@ -2388,6 +2471,8 @@ func pay(n: float, use: StringName) -> bool:
 # Puts an effect on this unit for some of its faction's turns. Re-applying refreshes the timer
 # (keeping the higher rank) rather than stacking.
 func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
+	if e.helps() < 0:
+		_log_harm({effect = e, turns = turns, rank = at_rank})
 	var r := maxi(at_rank, timed[e].rank) if e in timed else at_rank
 	timed[e] = Applied.new(turns, r)
 	if e.stat == "level":
@@ -2502,7 +2587,7 @@ func tick() -> void:
 
 # On the field: standing, or Downed (down but not out, at 0 HP or below).
 func is_alive() -> bool:
-	return hp > 0 or dbno != null
+	return hp > 0 or dbno != null or deferred > 0
 
 
 # How whole an execute takes it to be: HP left / max HP - or 1, full, while something makes it hale

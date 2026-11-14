@@ -134,6 +134,9 @@ extends Resource
 # mental mods capped at + this (Drone: its rank; Command.tapped(), Unit.overdriven)
 # hale: above 0, executes against it go by its full HP, not what it has left
 # (Unit.execute_share(); Intervention's Bless)
+# defer: on its last life, a death is put off this many of its side's rounds (once a battle), what
+# harmed it in the last that many rounds replayed as each ends; then a check against an execute at
+# this rank (Borrowed Time; Unit.defer(), Battle._borrowed())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -144,7 +147,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -181,7 +184,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"check": "Checks", "base_ap": "AP", "guard": "Shields Up", "obstruct": "Obstruct", "lovely": "Lovely Caster",
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
-		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??"}
+		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -210,6 +213,12 @@ func marked(rank := 1) -> String:
 		v = Glossary.term(&"jammed", "no reactions")
 	elif stat == "helpless":
 		v = Glossary.term(&"helpless", "helpless")
+	elif stat == "hale":
+		v = "%s go by its full HP" % Glossary.term(&"execute", "executes")
+	elif stat == "defer":
+		var n := roundi(amount * (rank if per_rank else 1))
+		v = "on its last life, death put off %d round%s (once a battle) - what harmed it in the last %d replayed in order as each ends - then a %s against an %s at rank %d" % [
+				n, "" if n == 1 else "s", n, Glossary.term(&"check", "check"), Glossary.term(&"execute", "execute"), n]
 	v = _MOD.sub(v, "{o:$1 mod}", true)
 	if per_rank:
 		v = _NUM.sub(v, "{r:$0}")

@@ -34,6 +34,7 @@ signal vanished(by: Unit, of: Unit, was: Read)  # of slipped from by's sight bef
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
+signal borrowed(u: Unit, how: StringName)  # a deferred death (the defer stat: Borrowed Time): &"begin", &"replay", &"survived", &"executed" (_borrowed())
 signal revived(u: Unit, summoned: Unit)  # u got up, a heart spent; summoned: what came with it (a Regeneration Probe), or null
 signal dropped(u: Unit, item: Item)  # u fell, leaving an item (its loot)
 signal pulsed(u: Unit, healed: Dictionary)  # a Regeneration Pulse: unit -> HP it got back
@@ -372,6 +373,7 @@ func _listen(u: Unit) -> void:
 	u.died.connect(_on_died)
 	u.downed.connect(_on_downed)
 	u.dbno_changed.connect(_on_dbno)
+	u.deferring.connect(_on_deferring)
 	u.taking_hit.connect(_on_taking_hit)
 	u.being_healed.connect(_on_being_healed)
 
@@ -2575,6 +2577,40 @@ func _on_downed(u: Unit) -> void:
 
 
 # u went Downed (down but not out), was saved from it, or died of it: the rules are Downed's.
+# u put its death off (Unit.defer()): in its own side's turn, that turn's end doesn't count.
+func _on_deferring(u: Unit, how: StringName) -> void:
+	if how == &"begin":
+		u.defer_fresh = u.faction == turn
+	borrowed.emit(u, how)
+
+
+# A side's turn ends: for each of its units on borrowed time (Unit.deferred) a round passes - but the
+# one it went on borrowed time in - and what harmed it in its window is replayed in order
+# (Unit.replay_harms()). Its last round over, it makes a check against an execute at its defer rank:
+# its last stand (cut by how whole it is: Unit.execute_share(), helped by checks tagged execute) against
+# d20 + that rank, the execute winning ties. Failing, it falls as it would have (Unit.fall(): Downed, if
+# it can); passing, it lives on, at 1 HP if it had none. Then each ages its log of harms.
+func _borrowed(side: Array[Unit]) -> void:
+	for u in side:
+		if u.deferred > 0:
+			if u.defer_fresh:
+				u.defer_fresh = false
+			else:
+				u.replay_harms()
+				borrowed.emit(u, &"replay")
+				u.deferred -= 1
+				if u.deferred == 0:
+					var r := u.defer_rank
+					if resolve(Check.check(r, last_stand(u, r))).hit:
+						borrowed.emit(u, &"executed")
+						u.fall()
+					else:
+						if u.hp <= 0:
+							u.hp = 1
+						borrowed.emit(u, &"survived")
+		u.age_harms()
+
+
 func _on_dbno(u: Unit, how: StringName) -> void:
 	Downed.changed(self, u, how)
 	dbno_changed.emit(u, how)
@@ -2707,6 +2743,7 @@ func end_turn() -> void:
 			if earthworks[c].turns <= 0:
 				earthworks.erase(c)
 	_tidy_debris()
+	_borrowed(members(turn))  # and for those on borrowed time
 	Downed.end_round(members(turn))  # a round passes for the Downed
 	_revive()
 	_check_stall()
