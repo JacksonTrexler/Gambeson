@@ -957,6 +957,9 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 			return "%s is for foes" % s.name
 		if not ally and not s.for_foes():
 			return "%s is for allies" % s.name
+		for b: Behaviour in s.behaviours:  # the same filter Battle.cast() makes (Resuscitate: only the Downed)
+			if not b.fits(battle, u, target):
+				return b.unfit()
 		if not battle.in_reach(u, s, target):
 			return "Out of reach"
 	elif target is Vector2i and s.channel and u.channel and u.channel.skill == s:
@@ -2123,6 +2126,8 @@ func _refresh_bar() -> void:
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
+		var to: Variant = u.switching() if u and s and u.channel.skill == s else null
+		slot.set_switching("" if to == null else "Energy" if to is StringName else to.name)
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked(u)
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
@@ -2454,6 +2459,10 @@ func _heart_chips(u: Unit, chips: Array) -> void:
 			chips.append(["%d skill use%s left" % [u.dbno.spare(), "" if u.dbno.spare() == 1 else "s"], FOE if u.dbno.spare() == 0 else GOLD])
 		if u.dbno.rule.melee and not u.dbno.meleed and not u.dbno.fresh:
 			chips.append(["Owes a melee attack", GOLD])
+	if u.deferred > 0:  # Borrowed Time: death put off, the harms taken in the window waiting to be replayed
+		chips.append(["Borrowed time: %d round%s left" % [u.deferred, "" if u.deferred == 1 else "s"], FOE if u.deferred == 1 else GOLD])
+		if not u.harms.is_empty():
+			chips.append(["%d harm%s to replay" % [u.harms.size(), "" if u.harms.size() == 1 else "s"], FOE])
 	if u.lives() > 0:
 		chips.append(["%d heart%s left" % [u.lives_left(), "" if u.lives_left() == 1 else "s"], FOE if u.lives_left() == 0 else GOLD])
 

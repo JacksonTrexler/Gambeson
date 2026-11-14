@@ -12,6 +12,10 @@ func fits(_b: Battle, _caster: Unit, target: Unit) -> bool:
 	return target.dbno != null
 
 
+func unfit() -> String:
+	return "Only the Downed"
+
+
 func apply(c: Cast) -> void:
 	if c.foe or c.target.dbno == null:
 		return
