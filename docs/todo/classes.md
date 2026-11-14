@@ -259,7 +259,7 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 - [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`; passive): downed, it keeps acting for rank rounds, 20% x rank limit; more than rank skill uses in all, or a round ending without a melee attack, and it dies. (?85)
 - [x] The card chip, log lines and floats ("Downed", "Saved") say so; the AI takes no turn for a helpless unit, strikes a helpless foe last, and closes in with a Grudge unit's last blows.
 - [x] **Draw a Downed unit differently on the map.** Built 2026-11-14: it lies on its side (?128). Before, nothing did: only the card chip, the log and the float text say so (unit drawing was being reworked elsewhere).
-- [ ] **The AI doesn't try to starve Grudge of melee**: it won't keep away from a Grudge unit to let it die of a round without a melee attack, and a Grudge unit doesn't try to heal itself back up.
+- [x] Built 2026-11-14 (?138), the last-foe case: a Grudge unit's foe starves it of melee and it heals itself. [ ] Still open: allies in its reach, more than one round (?138). **The AI doesn't try to starve Grudge of melee**: it won't keep away from a Grudge unit to let it die of a round without a melee attack, and a Grudge unit doesn't try to heal itself back up.
 - [x] **Bug, noticed and not fixed:** (fixed 2026-11-14, ?127) a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
 - [x] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before. Built 2026-11-14 (?127): a stopped leader gives no orders and a helpless unit loses its reactions (`Unit.reacts()`); it still watches.
 
@@ -419,4 +419,4 @@ Plan, readings and what was built: `docs/plans/slayer.md`; done in `docs/done/cl
 - [ ] **Winded's meaning**: the sentence broke off. (?126)
 - [ ] **A forced unshape or polymorph break** doesn't exist yet; it should call `Battle.neutralize(u, &"unshaped")`. (?126)
 - [ ] **Poach's and Slam Jam's discounts are refunds after paying**, so the HUD shows the full price beforehand; the cost calculator could fold them in. (?126, ?131)
-- [ ] **The AI doesn't weigh** Gank's ambush, Poach's advantage and cost cut, Spike's Defense or Sutemi's Off Balance. (?126)
+- [x] **The AI doesn't weigh** Gank's ambush, Poach's advantage and cost cut, Spike's Defense or Sutemi's Off Balance. Built 2026-11-14 (?138): hit chance, `refunds`, `unguarded`.

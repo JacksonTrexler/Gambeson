@@ -131,7 +131,7 @@ Plan and rules: `docs/plans/exhaustion.md`.
 Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/systems.md`, `docs/done/classes.md`). Suite after the merge: 487 tests, 0 failed.
 - [x] `Util/skill.py new` and `check`, the behaviour seam (`Scripts/Behaviour.gd`, `Skill.behaviours`), Kick, the agent skill `.claude/skills/new-skill/SKILL.md` and `CLAUDE.md`. (?88)
 - [x] **Behaviours don't run on the early-return paths in `Battle.cast()`** (Strike's chain, contests, saves). Built 2026-11-14 (?134): `Battle._land()` runs them on every path that lands; a lost save or contest runs none, as a missed roll runs none.
-- [ ] **The HUD forecast and the AI don't know Kick's tile effects.**
+- [x] **The HUD forecast and the AI don't know Kick's tile effects.** Built 2026-11-14 (?138): `Kick.outcome()`, `Behaviour.foresee`.
 - [ ] **No map has a hole tile yet**, so Kick's hole push is only tested.
 - [ ] **The stale-count check covers only the Adventurer wheel** (`hud_test`).
 - [x] **`skills_test.test_wiring` skips without python3.** Built 2026-11-14: `Test.tool_check` fails, naming the problem (?127).
@@ -284,7 +284,7 @@ Plan and what was built: `docs/plans/ai-support.md`. Tests: `Tests/ai_support_te
     - **Clairvoyance:** with no foe in sight, no clue, no last-seen place and no channel, it casts a `pings` skill and hunts on the pings the same turn; `act()` no longer holds still for a `pings` channel (else a scryer scrys forever). Confirm?
     - **New names to review:** none.
 - [ ] **HUD "help" orders** (`Skill.serves(&"supportive")`) still don't count Heal: that is `Skill.heals()`. A Helpful order does heal, through the AI's own `_heal()`. (?130)
-- [ ] **The AI doesn't hold a shot back to build Focus**, and prefers Resuscitate over Heal on a Downed ally only by want or list order. (?130)
+- [x] **The AI doesn't hold a shot back to build Focus**, and prefers Resuscitate over Heal on a Downed ally only by want or list order. Built 2026-11-14 (?138).
 - [ ] **Switching only goes to a pool that currently holds enough**: a unit with one toggle and no Energy has nowhere to switch to. (?130)
 
 ## Skill terms, cost and modifiers (2026-11-14)
@@ -370,4 +370,21 @@ Plan, readings and what was built: `docs/plans/route.md`; done in `docs/done/sys
 - [ ] **Not routed:** Rift turns, the text of reserves, opens and Downed rules, Look's dissonance rank, and the build-time gates (Dabblings, waives). (?134)
 - [ ] **A lost save or contest runs no behaviours**; add a "missed" hook if one should. (?134)
 
-**In progress:** `q-ai`, the AI weighing Slayer conditions, holding a shot for Focus, preferring Resuscitate on the Downed, using Kick's tile effects, and Grudge.
+## AI tactics (2026-11-14)
+
+Plan and readings: `docs/plans/ai-tactics.md`. Built on `q-ai`. Tests: new `Tests/ai_tactics_test.gd` (11 tests, 31 checks); no existing test changed.
+
+138. **AI tactics - built on judgement, open for review (2026-11-14).** My calls, each for you to confirm or change:
+    - **The AI reads what the player sees:** the chance to hit from `Battle.hit_chance` (edge, guard, Defense, Focus) scales a blow's worth. Uses the target's true Defense, though the HUD may hide it. Kept.
+    - **Two more hooks, `refunds` and `unguarded`:** Poach and Slam Jam's refunds count at 1.5 HP per AP (AP only, not Energy or Focus); Sutemi's lost Defense costs 0.5 HP a point. Both guesses.
+    - **Focus:** it rests rather than fire only weak shots (none likelier than 0.5) when a rest would pay for a ranged attack; melee or a decent shot always wins.
+    - **Resuscitate first:** a `revives` hook and a bonus (1.0), not a rule, so an unaffordable one falls back to Heal.
+    - **Kick's tiles:** `Behaviour.foresee` and `Battle.foresee`; the trap's dice before mitigation, ignoring its blast; the HUD adds them to the HP span and lists riders in the hover tooltip.
+    - **Grudge, cheap halves:** a Downed Grudge unit mends itself when the skill restores more than it is below 0; a Downed Grudge foe that is the last foe standing isn't given its melee (the unit walks away, or holds still outside reach), unless one blow ends it.
+    - **New names to review:** none.
+- [ ] **A Defense on `Read`**, so the AI estimates a foe's Defense as the player does. (?138)
+- [ ] **Starving Grudge with allies in its reach, or over more than one round.** (?138)
+- [ ] **Poach's Energy / Focus refund and its regain on a neutralizing blow, and Slam Jam's interrupt, aren't priced by the AI.** (?138)
+- [ ] **Kick's trap blast on bystanders**, and its push into a unit or edge (the forecast says "back", not how far). (?138)
+
+**In progress:** `s-react` (Phase 3 reactions and interrupts: Interject, Gallantry, Final Act, Snapping Turtle) and `s-marks` (tile marks, Warcry, damage for moving).
