@@ -76,12 +76,14 @@
     - Physical Intelligence: kept as built (the Arcanist Perspective cap).
 
 63. **Magnitudes - built on judgement.** Your "extreme fire damage" and "intense rank cone range" read as tags that scale a number by rank: faint 0.5, mild 1, moderate 1.5, strong 2, intense 2.5, extreme 3, overwhelming 4 x rank, rounded up (`Difficulty.MAGNITUDE`). Open for review.
+    - **Earlier inline notes being built (2026-11-12, branch `a-small`).**
 66. **Shackles - built on judgement.** *Choices:* each pick (approachable, dex) or pry (unfair, str) try costs the shackles' rank in AP, the same as taking them off unlocked; once off they fall away rather than going to the stash, and the stowed trinket goes back on; an AI unit works at them before anything else. Open for review.
 
 ## Command skills and trinkets (2026-11-09)
 
 Plan: `docs/plans/command-skills.md`.
 - [x] **Strategist, Tactician, Strategy Guide, Tactician's Playbook, Grand Design, Legendary rarity** built (`docs/done/classes.md`, `docs/done/world.md`, `docs/done/rules.md`). (?86)
+- [ ] **Item rarity cost curve, `enchanted`, `honed`** (2026-11-12, ?97, branch `a-items`): see ?97 in `docs/todo/classes.md`; ranking an equipment item up costs its rarity's multiple of a skill rank-up (legendary 4, uncommon 1.5, rare 2, epic 3, mythic 5; a Grand Design ranked once costs as much as four skill ranks).
 - [ ] **Nothing ranks items up yet**, so nothing calls `Item.worth()` (rank x 4 for a legendary).
 - [ ] No screenshot taken of the Specialist tree with three skills at tier 3.
 

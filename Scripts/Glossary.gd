@@ -103,6 +103,12 @@ const TERMS := {
 	&"overcharge": ["Overcharge", &"condition", "An extra buffer of Energy, spent before any of its own on a cost - and counted toward what it can afford. It decays to nothing over the turns it was given for, the turn it came not counting."],
 	&"burnout": ["Burnout", &"condition", "Recovering Energy or HP by any means but resting wears a unit out. Each Energy grant spends 1 Recovery Endurance; with none left, every recovery asks a con check (DC 12), and failing cuts that pool's max by 10% x (1 + |RE|) of what came back, lasting. One heal of more than con mod x 20% of max HP asks a con check against the excess: failing costs 1 RE."],
 	&"recovery_endurance": ["Recovery Endurance", &"condition", "RE: how many recoveries a unit takes before Burnout bites - max(con mod, 0) as a battle starts, back in full after a resting turn ended at full Energy. It can run below 0."],
+	&"tapped": ["Tapped", &"condition", "Can't act and takes no orders: out of AP, ordered as far as its leader allows this turn, or helpless with nothing that lets it act. Not an effect: it lifts the moment its cause does."],
+	&"helpless": ["Helpless", &"condition", "Can't act, move or take orders: tapped while it lasts, unless something lets it act in a reduced capacity. Stunned, asleep, and Downed without a will to fight on are helpless."],
+	&"taps": ["Taps", &"check", "A check that can leave its loser tapped, such as resisting a stun. Whatever helps against such checks helps against every one of them."],
+	&"reduced": ["Reduced capacity ??", &"condition", "Acting where it would otherwise be tapped, by a permit such as Mindless Fury or Drone: fewer actions, or its mental stats held down."],
+	&"enchanted": ["Enchanted", &"condition", "Blessed gear (or a skill that is): rank +1. Pray makes it; honed is the material kind and never counts."],
+	&"honed": ["Honed", &"condition", "Material perfection: rank +1, and none of what enchanted does. Never both."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")

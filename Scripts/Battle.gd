@@ -1796,18 +1796,18 @@ func _bind(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 # its stowed trinket goes back on and the shackles fall away. True if they came off.
 func unshackle(u: Unit, how: StringName) -> bool:
 	var it := u.trinket
-	if not it or not it.binding or not _acting(u) or u.ap_for(&"equip") < it.rank - 0.0001:
+	if not it or not it.binding or not _acting(u) or u.ap_for(&"equip") < it.ranked() - 0.0001:
 		return false
 	if how == &"unlock" and u.shackled():
 		return false
 	var diff: StringName = it.picks if how == &"pick" else (it.prised if how == &"pry" else &"")
 	if how != &"unlock" and diff == &"":
 		return false
-	u.pay(it.rank, &"equip")
+	u.pay(it.ranked(), &"equip")
 	var done := true
 	if how != &"unlock":
 		var stat := &"dexterity" if how == &"pick" else &"strength"
-		var roll := resolve(Check.versus(u.check_mod(stat, &"offensive"), diff, it.rank))
+		var roll := resolve(Check.versus(u.check_mod(stat, &"offensive"), diff, it.ranked()))
 		done = roll.hit
 		freed.emit(u, how, roll.total, roll.target, done)
 	else:
@@ -1850,7 +1850,7 @@ static func refill(u: Unit) -> void:
 func restore(u: Unit, it: Item) -> int:
 	var r: Reserve = it.reserve if it.restores == &"reserve" else null
 	var most: int = u.max_hp if it.restores == &"hp" else (u.max_energy if it.restores == &"energy" else u.pools().get(r, 0))
-	var n := maxi(u.rounded(most * it.restore_share * it.rank) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0)
+	var n := maxi(u.rounded(most * it.restore_share * it.ranked()) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0)
 	match it.restores:
 		&"hp":
 			var was := u.hp
@@ -2499,9 +2499,9 @@ func _mend(u: Unit) -> void:
 	_pulse(u)
 	for it in u.items():
 		if it.heat and u.is_alive():  # Ignauldron
-			burned.emit(u, u.hit(it.heat * it.rank, [&"fire"] as Array[StringName]), it.name)
+			burned.emit(u, u.hit(it.heat * it.ranked(), [&"fire"] as Array[StringName]), it.name)
 		if it.burning and u.is_alive():
-			var n := u.hit(maxi(u.rounded(0.1 * it.rank * u.max_hp), 1), [&"fire"] as Array[StringName])
+			var n := u.hit(maxi(u.rounded(0.1 * it.ranked() * u.max_hp), 1), [&"fire"] as Array[StringName])
 			burned.emit(u, n, it.name)
 	if SICKNESS in u.timed:  # gone if it starts the turn whole; else it takes its toll, never the last HP
 		if u.hp >= u.max_hp:
@@ -3421,7 +3421,7 @@ static func persona_rank(u: Unit, s: Skill) -> int:
 
 
 func _acting(u: Unit) -> bool:
-	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.asleep() and not u.helpless()
+	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.stopped()
 
 
 # Touching, diagonals included.
@@ -3649,7 +3649,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if i < featured:
 			power += clampi(caster.mod(&"charisma"), 0, featured)
 		if i == 0:
-			power += (brutal + (caster.weapon.rank if caster.weapon else 0)) if brutal > 0 else 0
+			power += (brutal + (caster.weapon.ranked() if caster.weapon else 0)) if brutal > 0 else 0
 			power += mental * (int(imbued) + int(elemental))
 		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
 		t.hit(dealt, blow, caster)

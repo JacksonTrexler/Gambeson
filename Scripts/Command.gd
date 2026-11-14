@@ -19,7 +19,7 @@ var battle: Battle
 var leader: Unit
 var party: Array[Unit] = []
 var ordered: Dictionary[Unit, int] = {}  # orders given this turn, by unit (the leader's own moves count here too, uncapped)
-var locked: Dictionary[Unit, bool] = {}  # a wasted intent order barred it from more commands this faction turn (HUD.issue_intent)
+var locked: Dictionary[Unit, bool] = {}  # barred from more commands this faction turn, and from acting on its own as it ends: a wasted intent order (HUD.issue_intent), or held (HUD.hold)
 
 
 func _init(b: Battle, l: Unit) -> void:
@@ -106,9 +106,23 @@ func commanded() -> int:
 
 
 # Whether the turn's caps leave u another order: it's the leader, or it has orders left and is one of
-# the allies already commanded, or there's room for one more.
+# the allies already commanded, or there's room for one more - or it's a Drone (the drone stat), which
+# takes orders past both caps in a reduced capacity (Unit.overdriven).
 func under_caps(u: Unit) -> bool:
+	return within_caps(u) or u.stat(&"drone") > 0.0
+
+
+# The caps alone, no permit.
+func within_caps(u: Unit) -> bool:
 	return u == leader or (ordered.get(u, 0) < order_cap() and (u in ordered or commanded() < ally_cap()))
+
+
+# Tapped: it can't act or take orders. The unit's own sources (Unit.tapped(): out of AP, helpless with
+# no permit left), or given as many orders as the caps allow this turn - until the leader's side's
+# turn ends, when it may spend what AP it has left on its own (idle()) - or barred by a wasted intent
+# order. Derived, never stored: it lifts the moment its cause does. Every check for orders reads this.
+func tapped(u: Unit) -> bool:
+	return u.tapped() or not under_caps(u) or u in locked
 
 
 # How many hotbar slots, from the first, a commanded ally will use.
@@ -146,7 +160,7 @@ func in_range(u: Unit) -> bool:
 	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach()))
 
 
-# Takes an order right now: alive, awake and not helpless (Downed), not one that acts on its own (uncontrolled), on the leader's side on its turn, in range,
+# Takes an order right now: alive and not tapped (tapped()), not one that acts on its own (uncontrolled), on the leader's side on its turn, in range,
 # within the turn's caps (under_caps()), and each taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
 	return could_order(u) and in_range(u)
@@ -155,9 +169,8 @@ func can_order(u: Unit) -> bool:
 # Would take an order right now were it in range: all can_order() asks but that. One this holds for
 # out of range stays in colour on the map, its glow weaker (HUD.command_state()).
 func could_order(u: Unit) -> bool:
-	return u != null and u.is_alive() and not u.asleep() and not u.helpless() and not u.uncontrolled and leader.is_alive() \
-			and u not in locked and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction \
-			and under_caps(u) and battle.teammates(leader, u)
+	return u != null and u.is_alive() and not tapped(u) and not u.uncontrolled and leader.is_alive() \
+			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and battle.teammates(leader, u)
 
 
 # Allies join from within plain order range while there's room, if each takes the other for a
@@ -183,21 +196,23 @@ func leave(u: Unit) -> void:
 
 
 func order(u: Unit) -> void:
+	if not within_caps(u):
+		u.overdriven = true  # a Drone past the caps: reduced capacity for the turn (Unit.reduced())
 	ordered[u] = ordered.get(u, 0) + 1
 
 
-# A wasted intent order: u takes no more commands this faction turn (HUD default orders).
+# A wasted intent order, or a hold: u takes no more commands this faction turn, nor acts on its own as it ends.
 func lock(u: Unit) -> void:
 	order(u)
 	locked[u] = true
 
 
-# Allies on the leader's side with no order this turn, and traitors posing in its party: they act on
-# their own as it ends.
+# Allies on the leader's side with no order this turn, those tapped by orders (given all the caps
+# allow) with AP left, and traitors posing in its party: they act on their own as it ends.
 func idle() -> Array[Unit]:
 	var out: Array[Unit] = []
 	for u in battle.members(leader.faction) + party.filter(func(x: Unit): return x.faction != leader.faction and x.is_alive()):
-		if u != leader and u not in ordered:
+		if u != leader and (u not in ordered or (u not in locked and not under_caps(u))):
 			out.append(u)
 	return out
 

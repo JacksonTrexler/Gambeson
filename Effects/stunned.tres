@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Effect" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="1_effect"]
+
+[resource]
+script = ExtResource("1_effect")
+stat = "helpless"
+amount = 1.0
+name = "Stunned"
+wound = true
+ease = 2

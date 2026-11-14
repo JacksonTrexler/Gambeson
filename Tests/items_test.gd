@@ -88,7 +88,7 @@ func test_legendary() -> void:
 	var higher: Item = design.duplicate()
 	higher.rank = 3
 	var rare: Item = load("res://Items/aethendine.tres")
-	ok(higher.worth() == 12 and rare.worth() == rare.rank, "a rank four times the resources; other rarities one for one")
+	ok(higher.worth() == 12.0 and rare.worth() == rare.rank * 2.0, "a rank four times the resources; a rare's two (RANK_COST)")
 	var table := Loot.new()
 	table.items.assign([heart, design])
 	ok(table.describe() == "Heart (95%) or Grand Design (5%)", table.describe())

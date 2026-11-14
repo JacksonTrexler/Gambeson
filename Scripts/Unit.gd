@@ -19,6 +19,7 @@ const BASE_AP := 10.0
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
 		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
+const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
@@ -276,6 +277,8 @@ var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
 var endurance := 0  # Recovery Endurance (RE): recoveries it takes before Burnout bites (Scripts/Burnout.gd); may run below 0
 var burnt := {}  # pool (&"hp", &"energy" or a Reserve) -> max it has lost to Burnout, for good (refit(), pools())
+var fury_acts := 0  # skill uses this turn while helpless, under a permit (Mindless Fury: its rank a turn; stopped())
+var overdriven := false  # ordered past its leader's command caps this turn, under a permit (Drone; Command.order())
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
 var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()), or a switch of what it runs on (toggle())
 	set(v):
@@ -413,11 +416,11 @@ func _process(_delta: float) -> void:
 
 
 # Its rank in s as it uses it: what it has learned, plus what rank effects add or take (a Broadsword:
-# Strike; Record Striker's curse) and a primed Chant (a Warlock skill, once); 0 if it doesn't have s,
-# or it's cursed down to nothing.
+# Strike; Record Striker's curse), a primed Chant (a Warlock skill, once) and +1 if the skill is enchanted
+# or honed (Tags.quality_rank(): a capstone's weight); 0 if it doesn't have s, or it's cursed down to nothing.
 func rank(s: Skill) -> int:
 	var r: int = base_rank(s) - unranked().get(s, 0)
-	return maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags), 0) if r > 0 else 0
+	return maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags) + Tags.quality_rank(s.tags), 0) if r > 0 else 0
 
 
 # Levels a curse has taken off it (Level Down), from its timed level effects alone (its passives can't
@@ -723,7 +726,7 @@ func sealed(i: int) -> bool:
 # (magical, martial, specialist: it only holds skills carrying that tag), or &"" for an untyped one.
 func granted_slots() -> Array[StringName]:
 	var out: Array[StringName] = []
-	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank]) + items().map(func(it: Item): return [it.effects, it.rank])
+	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank]) + items().map(func(it: Item): return [it.effects, it.ranked()])
 	for pair in sources:
 		for e: Effect in pair[0]:
 			if e.stat == "slots":
@@ -744,9 +747,9 @@ func burning_slots() -> Dictionary:
 			var n := 0
 			for e in it.effects:
 				if e.stat == "slots":
-					n += roundi(e.amount * (it.rank if e.per_rank else 1))
+					n += roundi(e.amount * (it.ranked() if e.per_rank else 1))
 			for i in range(end - n, end):
-				out[i] = [maxi(rounded(0.1 * it.rank * max_hp), 1), null]
+				out[i] = [maxi(rounded(0.1 * it.ranked() * max_hp), 1), null]
 	for e in timed:
 		if e.stat == "cinders":
 			var a := timed[e]
@@ -1324,7 +1327,12 @@ func insightful() -> bool:
 # d20-style modifier: 10-11 -> 0, 12-13 -> +1, 8-9 -> -1. With a skill's tags, stand-in
 # passives may swap the stat (see scaling()).
 func mod(s: StringName, tags: Array[StringName] = []) -> int:
-	return floori((scaling(s, tags) - 10) / 2.0)
+	var m := floori((scaling(s, tags) - 10) / 2.0)
+	if s in MENTAL and reduced():
+		if helpless():
+			return FURY_MOD  # Mindless Fury: its mental stats count as 1
+		return mini(m, roundi(stat(&"drone")))  # Drone: capped at + its rank
+	return m
 
 
 # The stat value a skill with these tags scales on, after stand-in passives (Arcanist
@@ -1447,14 +1455,14 @@ func weapon_bonus(s: StringName) -> int:
 	return weapon.enchant if weapon and s == &"strength" else 0
 
 
-# Pray, to Urlo: enchants up to n of its unenchanted items, weapon first, then armor: what an item
+# Pray, to Urlo: enchants up to n of its unenchanted, unhoned items, weapon first, then armor: what an item
 # becomes enchanted (Item.enchanted_as), else a copy of its own at +1. Items with nothing to scale
 # would be skipped (none yet). How many it enchanted.
 func enchant(n: int) -> int:
 	var done := 0
 	for slot in [&"weapon", &"armor"]:
 		var item: Item = get(slot)
-		if done < n and item and not item.enchanted():
+		if done < n and item and not item.enchanted() and not item.honed():  # honed: already as good as it gets
 			if item.enchanted_as:
 				set(slot, item.enchanted_as)
 			else:
@@ -2110,6 +2118,7 @@ func pay_for(s: Skill) -> bool:
 	paid_with = fund
 	if dbno:
 		dbno.acted += 1  # Downed: a skill use against its allowance (Grudge)
+	_count_fury()
 	return true
 
 
@@ -2137,6 +2146,7 @@ func pay_strike(s: Skill) -> bool:
 	energy -= strike_cost(s) - _spend_overcharge(&"energy", strike_cost(s))
 	if dbno:
 		dbno.acted += 1
+	_count_fury()
 	return true
 
 
@@ -2154,6 +2164,8 @@ func refresh() -> void:
 	moved = 0.0
 	steps = 0
 	exposed = 0
+	fury_acts = 0
+	overdriven = false
 
 
 # How hard it worked this turn: &"rest" (idle(), holding no channel), &"light" (it only spent its
@@ -2326,7 +2338,7 @@ func armor_drag(pool: StringName) -> float:
 	var m := mod(&"constitution" if pool == &"move" else &"strength")
 	if armor.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
 		return 0.0
-	return maxf((armor.rank - m) / (2.0 if armor.weight_class() == &"medium" else 1.0), 0.0)
+	return maxf((armor.ranked() - m) / (2.0 if armor.weight_class() == &"medium" else 1.0), 0.0)
 
 
 # Wearing armor to some effect: armor that sets Defense, whose requirement it meets. Bracing passives
@@ -2338,26 +2350,31 @@ func armored() -> bool:
 # What it adds to a check in stat s, as `kind` (offensive or defensive): its mod (stand-ins by `tags`)
 # plus what its bracing gives (check_bonus()). The usual bonus of one side of a Check.
 func check_mod(s: StringName, kind: StringName, tags: Array[StringName] = []) -> int:
-	return mod(s, tags) + check_bonus(s, kind)
+	return mod(s, tags) + check_bonus(s, kind, tags)
 
 
 # What its bracing passives add to a check in stat s (offensive or defensive; mental: int, wis, cha):
 # each that matches its armor's weight, stat and kind adds its armor's rank (x the passive's share),
 # up to the passive's rank (Agility, Balanced, Vanguard, Combat, Meditative, Invigorating Bracing).
 # Plain check effects (Turtle Tactics) add theirs, armor or not.
-func check_bonus(s: StringName, kind: StringName) -> int:
+# A `check` effect with tags counts only for checks carrying one (the check tag seam: a check that
+# taps carries `taps`, an execute's carries `execute`, so one effect can help with every such check).
+func check_bonus(s: StringName, kind: StringName, tags: Array[StringName] = []) -> int:
 	var w := armor.weight_class() if armored() else &""
 	var total := 0
+	var t := Tags.expand(tags) if not tags.is_empty() else ([] as Array[StringName])
 	for pair in _effects():
 		var e: Effect = pair[0]
 		if e.stat not in ["brace", "check"] or (e.kind and e.kind != kind):
+			continue
+		if e.stat == "check" and not e.tags.is_empty() and not e.tags.any(func(x): return x in t):
 			continue
 		if not (s in e.checks or (&"mental" in e.checks and s in MENTAL) or (e.stat == "check" and e.checks.is_empty())):
 			continue
 		if e.stat == "check":
 			total += roundi(e.amount * (pair[1] if e.per_rank else 1) * pair[2])
 		elif armored() and (e.tags.is_empty() or w in e.tags):
-			total += mini(floori(armor.rank * e.amount), pair[1])
+			total += mini(floori(armor.ranked() * e.amount), pair[1])
 	return total
 
 
@@ -2540,9 +2557,35 @@ func is_alive() -> bool:
 	return hp > 0 or dbno != null
 
 
-# Downed and unable to act for it (Tenacity; Downed.acts): it can't act, move or take orders.
+# Under something that takes away all its actions: a helpless effect (Stunned), sleep, or Downed
+# without the will to fight on (Tenacity; Downed.acts). The source; whether it stops it is stopped().
 func helpless() -> bool:
-	return dbno != null and not dbno.rule.acts
+	return stat(&"helpless") > 0.0 or asleep() or (dbno != null and not dbno.rule.acts)
+
+
+# Helpless with nothing letting it act: a permit (the mindless stat: Mindless Fury) lets it take that
+# many skill uses a turn anyway; spent, it's stopped too. It can't act, move or take orders.
+func stopped() -> bool:
+	return helpless() and fury_acts >= roundi(stat(&"mindless"))
+
+
+# Tapped, as far as the unit itself can tell: out of AP, or stopped(). Never stored or cleansed: it
+# lifts the moment its cause does (Stunned healed or cleansed, AP back). Command.tapped() adds the
+# leader's caps; that's the one the HUD and orders read.
+func tapped() -> bool:
+	return ap_left() <= 0.001 or stopped()
+
+
+# Acting in a reduced capacity: where it would be tapped, a permit lets it act - helpless under
+# Mindless Fury (its mental stats count as 1), or ordered past the caps as a Drone (its mental mods
+# capped at + its Drone rank). mod() applies the cost; the HUD drains it to half colour.
+func reduced() -> bool:
+	return overdriven or (helpless() and not stopped())
+
+
+func _count_fury() -> void:
+	if helpless():
+		fury_acts += 1  # a skill use under Mindless Fury
 
 
 func asleep() -> bool:
@@ -2601,7 +2644,7 @@ func _gather_effects(viewer: Unit) -> Array:
 			out.append([e, 1, 1.0])
 	for it in items():
 		for e in it.effects:
-			out.append([e, it.rank, 1.0])
+			out.append([e, it.ranked(), 1.0])
 	if bio:
 		for p in bio.properties:
 			for e in p.effects:
