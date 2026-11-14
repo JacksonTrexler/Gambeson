@@ -59,3 +59,8 @@ func test_burnout() -> void:
 	v(1).energy = v(1).max_energy
 	b.cast(v(1), megaheal, v(2))
 	ok(v(2).endurance == 1, "a big heal on a low-con ally: a failed con check, 1 RE")
+
+
+func test_gated() -> void:
+	ok(eros.branch(heal).after == [load("res://Skills/rejuvinate.tres")] and eros.branch(heal).needs == 4, "Heal: after Rejuvinate, and 4 Eros skills")
+	ok(eros.branch(megaheal).after == [heal] and eros.branch(megaheal).needs == 4, "Megaheal: after Heal, and 4 Eros skills")

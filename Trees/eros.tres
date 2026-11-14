@@ -47,11 +47,15 @@ after = Array[ExtResource("20_skill")]([ExtResource("s_rejuvinate")])
 [sub_resource type="Resource" id="Branch_heal"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_heal")
+after = Array[ExtResource("20_skill")]([ExtResource("s_rejuvinate")])
+needs = 4
 tier = 8
 
 [sub_resource type="Resource" id="Branch_megaheal"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_megaheal")
+after = Array[ExtResource("20_skill")]([ExtResource("s_heal")])
+needs = 4
 tier = 8
 
 [resource]
