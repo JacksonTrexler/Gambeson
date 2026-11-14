@@ -24,6 +24,11 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
    python3 Util/mechanic.py effect scorched --effect "stat=poison amount=0.05"
    python3 Util/mechanic.py stat word_reach --doc "tiles more its word carries (Battle.spread())"
    ```
+   A tag's `--kind` decides which skills a modifier of it (an emblem: "Fire Insignia") can go on, with no
+   code (`Modifiers.why_not()`): `damage` - skills that deal damage; `check` - skills with an attack roll,
+   save or contest (execute, taps); `condition` - skills putting effects on a target; `ground` - skills
+   aimed at a tile; `target` - never. Pick the kind for what the tag acts on, and it works as a modifier
+   at once (`python3 Util/skill.py modifiers` lists skills nothing fits).
    Definitions are plain sentences, no square brackets or double quotes (BBCode). Each writes a test stub,
    `Tests/<id>_test.gd` (`--no-test` to skip). A property's or unit's `--tags` are just words on it: they
    need a Glossary term only once a rule or description names them.
