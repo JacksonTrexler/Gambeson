@@ -374,11 +374,18 @@ func _listen(u: Unit) -> void:
 	u.dbno_changed.connect(_on_dbno)
 	u.taking_hit.connect(_on_taking_hit)
 	u.being_healed.connect(_on_being_healed)
+	u.recovered.connect(_on_recovered)
+	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (Burnout)
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
 	for h in u.hooks():
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
+
+
+# Every recovery but regen (Unit.recovered): Burnout's rule.
+func _on_recovered(u: Unit, pool: Variant, n: int) -> void:
+	Burnout.recovered(self, u, pool, n)
 
 
 func _on_being_healed(u: Unit, got: Dictionary) -> void:
@@ -1854,6 +1861,7 @@ func restore(u: Unit, it: Item) -> int:
 	if r:
 		var was := u.store(r)
 		u.set_store(r, was + n)
+		u.note_recovery(r, u.store(r) - was)
 		return u.store(r) - was
 	return 0
 

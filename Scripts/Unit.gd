@@ -8,6 +8,7 @@ signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
 signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage (from blow.by, tagged blow.tags); listeners may change it (Battle: Molothrus)
 signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp back; listeners may take a cut (Battle: Molothrus)
+signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
@@ -273,6 +274,8 @@ var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arrange
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
+var endurance := 0  # Recovery Endurance (RE): recoveries it takes before Burnout bites (Scripts/Burnout.gd); may run below 0
+var burnt := {}  # pool (&"hp", &"energy" or a Reserve) -> max it has lost to Burnout, for good (refit(), pools())
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
 var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()), or a switch of what it runs on (toggle())
 	set(v):
@@ -382,6 +385,7 @@ func _ready() -> void:
 	energy_changed.connect(_show_bars.unbind(2))
 	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
+	endurance = endurance_max()
 	_one_replacer()
 	energy = 0 if runs_on() is Reserve else max_energy  # running on Mana or Stamina: no Energy of its own
 	for r in pools():
@@ -1575,7 +1579,7 @@ func unequip(slot: String) -> Item:
 func refit() -> void:
 	var authored := max_energy if starkind() > 0 else max_hp - _hp_bonus
 	var grown := authored + (0 if starkind() > 0 else level_hp())
-	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble"))
+	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble")) - burnt.get(&"hp", 0)
 	max_hp = maxi(grown + bonus, 1)
 	_hp_bonus = max_hp - authored
 	if hp > max_hp + over_max:
@@ -1699,10 +1703,43 @@ func siphon_order() -> Array:
 # Energy an effect gives it (Starblade, an Energy Potion, starlight, Starsap, Energy Transfer) - every
 # grant comes through here, not regen (recover()). A powered unit's Energy is its Power, so the grant
 # arrives as Power (Powerful). Up to its max; returns what it got.
-func grant_energy(n: int) -> int:
+# heard: reported as a recovery (recovered: Burnout); a caller that adds Overcharge too reports the two at once.
+func grant_energy(n: int, heard := true) -> int:
 	var was := energy
 	energy += maxi(n, 0)
+	if heard:
+		note_recovery(&"energy", energy - was)
 	return energy - was
+
+
+# Something gave back n of pool (&"hp", &"energy" - Overcharge counts - or a Reserve) by means other than
+# regen: told to whoever listens (recovered: Battle's Burnout). heal() and grant_energy() call it; a new
+# way to restore something calls it too, and burnout reaches it without knowing.
+func note_recovery(pool: Variant, n: int) -> void:
+	if n > 0:
+		recovered.emit(self, pool, n)
+
+
+# Its Recovery Endurance as a battle starts, and as a resting turn at full refills it: con mod, not below 0.
+func endurance_max() -> int:
+	return maxi(mod(&"constitution"), 0)
+
+
+# Burnout takes n off the max of pool for good (burnt): HP through refit(), Energy off max_energy, a
+# reserve through pools().
+func burn(pool: Variant, n: int) -> void:
+	if n <= 0:
+		return
+	burnt[pool] = burnt.get(pool, 0) + n
+	if pool is StringName and pool == &"hp":
+		refit()
+	elif pool is StringName and pool == &"energy":
+		max_energy = maxi(max_energy - n, 0)
+		if starkind() > 0:
+			refit()
+	elif pool is Reserve:
+		set_store(pool, store(pool))
+		reserve_changed.emit(pool, store(pool), store(pool))
 
 
 # Puts n points of Overcharge on it for `turns` of its turns, + `spare` that don't count (1 on its own
@@ -1725,7 +1762,10 @@ func heal(h: int, heard := true) -> void:
 		var got := {hp = h}
 		being_healed.emit(self, got)
 		h = got.hp
+	var was := hp
 	hp += maxi(h, 0)
+	if heard:
+		note_recovery(&"hp", hp - was)
 
 
 # Every reserve it has, by max: its own (reserves), those the trees it picked bring (SkillTab.reserves:
@@ -1743,6 +1783,8 @@ func pools() -> Dictionary[Reserve, int]:
 		var r := x.skill.reserve
 		if r and x.skill.passive:
 			out[r] = out.get(r, 0) + maxi((mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1) + r.base, 0) * x.rank
+	for r in out:
+		out[r] = maxi(out[r] - burnt.get(r, 0), 0)  # Burnout's loss
 	return out
 
 
@@ -2192,6 +2234,8 @@ func recover() -> int:
 	var k := rounded((mod(&"constitution") + mod(&"wisdom")) / 2.0)
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
 	var how := activity()
+	if how == &"rest" and full_resource():
+		endurance = maxi(endurance, endurance_max())  # Burnout: RE comes back only resting at full
 	_recover_reserves(how, rate)
 	if powered() or runs_on() is Reserve:
 		return 0  # running on Mana or Stamina: its own Energy doesn't come back
@@ -2210,6 +2254,14 @@ func recover() -> int:
 	var was := energy
 	energy += whole
 	return energy - was
+
+
+# Whether what it runs on is full: its Energy (Power), or the reserve standing in for it (runs_on()).
+func full_resource() -> bool:
+	var on: Variant = runs_on()
+	if on is Reserve:
+		return store(on) >= pools().get(on, 0)
+	return energy >= max_energy
 
 
 # Reserves that come back at turn's end, by activity `how`: one with_energy (Stamina, Mana) at Energy's

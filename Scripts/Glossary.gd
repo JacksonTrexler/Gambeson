@@ -101,6 +101,8 @@ const TERMS := {
 	&"jammed": ["Jammed ??", &"condition", "Interrupted, it has lost its reactions until its next turn is over: it can't dodge, so all of an evadable attack lands, it can't guard behind its shield, and it doesn't obstruct its foes."],
 	&"siphon": ["Siphon", &"damage", "Its damage comes off the target's resources instead of its HP: its Overcharge first, then what it last paid from, then Energy, then its other reserves. Power is easier to siphon: half again as much."],
 	&"overcharge": ["Overcharge", &"condition", "An extra buffer of Energy, spent before any of its own on a cost - and counted toward what it can afford. It decays to nothing over the turns it was given for, the turn it came not counting."],
+	&"burnout": ["Burnout", &"condition", "Recovering Energy or HP by any means but resting wears a unit out. Each Energy grant spends 1 Recovery Endurance; with none left, every recovery asks a con check (DC 12), and failing cuts that pool's max by 10% x (1 + |RE|) of what came back, lasting. One heal of more than con mod x 20% of max HP asks a con check against the excess: failing costs 1 RE."],
+	&"recovery_endurance": ["Recovery Endurance", &"condition", "RE: how many recoveries a unit takes before Burnout bites - max(con mod, 0) as a battle starts, back in full after a resting turn ended at full Energy. It can run below 0."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")
