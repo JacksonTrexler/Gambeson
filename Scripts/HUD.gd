@@ -126,6 +126,7 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 @onready var skills: SkillTree = %Skills
 @onready var settings: PanelContainer = %Settings
 var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
+var ally_glow := FRIEND  # the glow of allies of another faction (look_of())
 var high_contrast := false  # accessibility: brighter allied glow, heavier borders, whiter text
 var suspicious_marks := false  # accessibility: every suspicious tile shows a plain ?
 var persona := PersonaPanel.new()  # Personify's active half
@@ -1657,14 +1658,12 @@ func _show_units() -> void:
 			continue
 		if known(u):
 			u.appear(null)
-			u.set_saturation(command_sat(u))
 			continue
 		var r := view(u)
 		u.appear(r)
 		if o:
 			_pop(u, r, marks[o], quiet)
 		u.position = battle.map.map_to_local(r.cell if r.located() else u.cell)  # a stale ping: where it was sensed
-		u.set_saturation(1.0)  # its colour isn't the player's to drain (a unit that changed sides)
 		if r.located() and r.silhouette() and battle.pinged(command.faction()).has(u):
 			dubious[r.cell] = "sensed"  # Clairvoyance marks the tile
 		for c in r.area:
@@ -1672,8 +1671,7 @@ func _show_units() -> void:
 				dubious[c] = r.hint
 	for u: Unit in battle.get_node("Units").get_children():  # once every suspicion is noted: whether a walk is sure reads them
 		if u.is_alive() and u.visible:
-			var level := glow_of(u)
-			u.set_glow(level, high_contrast and (known(u) or level >= 0))
+			_apply_look(u, look_of(u))
 
 
 # Once per change in what one viewer makes of a trick in plain view (Read.mark()), a mark pops over
@@ -2644,6 +2642,27 @@ func _apply_contrast() -> void:
 	%Guide.add_theme_color_override(&"default_color", Color.WHITE if high_contrast else Color(0.78, 0.8, 0.85))
 	%TileLines.modulate = Color.WHITE
 	_mark()
+
+
+# How a unit is drawn for what the player is about - the one place glow, colour and tint are decided:
+# {glow: a strength (glow_of(), -1 plain), sat: how much colour it keeps (command_sat(): only the player's
+# own side drains), tint: its glow's colour, or null for its side's own}. An ally of another faction
+# glows ally_glow (green by default) rather than its own primary: plainly on the player's side, not its.
+func look_of(u: Unit) -> Dictionary:
+	var look := {glow = glow_of(u), sat = command_sat(u) if known(u) else 1.0, tint = null}
+	var f: Faction = u.faction if known(u) else view(u).faction
+	var doubt := not known(u) and view(u).mark() == Read.Mark.DOUBT
+	if f and f != command.faction() and Faction.friends(f, command.faction()) and not doubt and not (not known(u) and view(u).silhouette()):
+		look.tint = ally_glow
+	return look
+
+
+# Puts look_of() on the unit.
+func _apply_look(u: Unit, look: Dictionary) -> void:
+	u.set_saturation(look.sat)
+	u.set_glow(look.glow, high_contrast and (known(u) or look.glow >= 0))
+	if look.tint != null and u.glow.visible:
+		u.glow.modulate = Color(look.tint, u.glow.modulate.a)
 
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order

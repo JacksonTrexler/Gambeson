@@ -1126,3 +1126,22 @@ func test_hover_rows() -> void:
 	h.select(v(1))
 	ok(h.intent(v(1).cell).kind == &"done", "the leader, having walked: standing down")
 	h.free()
+
+
+# Allies of another faction glow green (HUD.ally_glow), keep full colour and their own faction's trim;
+# foes and the player's own side glow in their side's colours. All of it decided in look_of().
+func test_allied_glow() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(1, 2), al: Vector2i(1, 4), v(3): Vector2i(8, 2)})
+	var friends := Faction.new()
+	friends.primary = Color("#3060c0")
+	friends.secondary = Color("#203040")
+	friends.allies = [lancin]
+	al.faction = friends
+	var h := await start(v(1))
+	h._refresh()
+	var look := h.look_of(al)
+	ok(look.tint == h.ally_glow and look.sat == 1.0, "an ally of another faction: green glow, full colour")
+	ok(Color(al.glow.modulate, 1.0).is_equal_approx(Color(HUD.FRIEND, 1.0)), "drawn green (%s)" % al.glow.modulate)
+	ok(h.look_of(v(3)).tint == null and h.look_of(v(1)).tint == null, "a foe and your own side keep their side's glow")
+	h.free()
