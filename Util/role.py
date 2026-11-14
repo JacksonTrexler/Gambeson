@@ -9,6 +9,9 @@ with skill.py), its placeholder sprite (Units/<Sprite>.png), and a place on the 
   python3 Util/role.py tree illusion --name Illusion --tag magical [--human]      # an empty tree root, Trees/<id>.tres
   python3 Util/role.py tab rogue --name Trickster --roots showmanship,deception,legerdemain [--kind Calling] \
       [--color "#c58fd0"] [--human] [--choice School --by illusionist --affinity -1 | --into School]
+  python3 Util/role.py god ramut [--patron] [--tree luun --kind Divinity] [--offers protector,radiance] [--human]
+      # a god or patron (Gods/<id>.tres): its own tree (a tab of --tree's root, picked by a choice of god) and
+      # the trees it offers its servants' slots (Gods/tabs/<stem>.tres; TreeChoice.kinds); --offers adds to one
   python3 Util/role.py check
 
 Then give the tree its skills: python3 Util/skill.py new <id> ... --tree <tree file> [--root "Open Palm"]
@@ -32,7 +35,7 @@ FOCUS = {  # stats, general trees, the tag of its own tree's root
     "specialist": ({"strength": 9, "dexterity": 14, "constitution": 10, "intelligence": 11, "wisdom": 11, "charisma": 12}, ["specialist"], "specialist"),
 }
 NPC_ONLY = {"wizard", "mage"}  # classes off the starting screen on purpose (Icor's; the Mage's schools); role.py new --no-entry adds to it by hand
-GODS = ("ramut", "eros", "sol", "urlo", "luun", "vetruvis", "hogel", "elmon")
+GODS = tuple(sorted(f[:-5] for f in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Gods")) if f.endswith(".tres")))  # Gods/<id>.tres
 
 
 def stats_of(a):
@@ -246,6 +249,39 @@ def tab(a):
     return 0
 
 
+def god(a):
+    re.fullmatch(r"[a-z][a-z0-9_]*", a.id) or die("the id is a file name: lower_snake")
+    p = "Gods/%s.tres" % a.id
+    offers = [o.strip() for o in (a.offers or "").split(",") if o.strip()]
+    for o in offers:
+        exists("Gods/tabs/%s.tres" % o) or die("--offers %s: no Gods/tabs/%s.tres" % (o, o))
+    if exists(p):  # add to its pool
+        a.tree and die("%s exists: --tree is for a new god" % p)
+        text = read(p)
+        text, tab_gd = _ext(text, "Script", "res://Scripts/SkillTab.gd")
+        for o in offers:
+            text, oid = _ext(text, "Resource", "res://Gods/tabs/%s.tres" % o)
+            text = _append(text, text.index("\n[resource]\n") + 1, "pool", tab_gd, 'ExtResource("%s")' % oid)
+        write(p, text, a.dry_run)
+        return 0
+    d = Doc('[gd_resource type="Resource" script_class="God" format=3]')
+    d.props = ["script = " + d.res("Script", "res://Scripts/God.gd"), 'id = &"%s"' % a.id]
+    if a.patron:
+        d.props.append("patron = true")
+    if a.tree:
+        exists("Trees/%s.tres" % a.tree) or die("--tree %s: no Trees/%s.tres" % (a.tree, a.tree))
+        a.kind or die("--tree needs --kind: Divinity, Patron...")
+        lines = ['name = "%s"' % ai_name(a.id.replace("_", " ").title(), a.human), 'kind = "%s"' % a.kind]
+        if not a.patron:
+            lines.append('god = &"%s"' % a.id)
+        lines += ["devotes = true", "roots = " + typed(ROOT_GD, d, [d.res("Resource", "res://Trees/%s.tres" % a.tree)])]
+        d.props.append("own = " + d.sub("Tab_own", "res://Scripts/SkillTab.gd", lines))
+    d.props.append("pool = " + typed("res://Scripts/SkillTab.gd", d, [d.res("Resource", "res://Gods/tabs/%s.tres" % o) for o in offers]))
+    write(p, d.text(), a.dry_run)
+    print("next: Unit.GODS (its domains) and GOD_TAGS for a god of the pantheon; a pool tab of its own is a Gods/tabs/<stem>.tres (SkillTab: name, kind, roots)")
+    return 0
+
+
 def check(_a=None):
     problems = []
     entry = read("Scenes/entry.tscn")
@@ -267,6 +303,12 @@ def check(_a=None):
         res = next((s for s in secs if s["kind"] == "resource"), None)
         if res and "branches" in res["props"] and not items(res["props"]["branches"]):
             problems.append("%s: a tree with no skills yet (python3 Util/skill.py new <id> --tree %s)" % (p, p[6:-5]))
+    for p in [f for f in files("Gods", ".tres") if os.path.dirname(f) == "Gods"]:  # Gods/tabs/ holds their pools' tabs
+        text = read(p)
+        for path in re.findall(r'path="res://([^"]+)"', text):
+            exists(path) or problems.append("%s: %s is missing" % (p, path))
+        if "own = " not in text and not re.search(r"^pool = .*ExtResource", text, re.M):
+            problems.append("%s: a god offering nothing (role.py god %s --offers ...)" % (p, p[5:-5]))
     for p in problems:
         print(p)
     print("role.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
@@ -312,9 +354,17 @@ def main():
     for x in (tr, tb):
         x.add_argument("--human", action="store_true", help="a person named it: no ??")
         x.add_argument("--dry-run", action="store_true")
-    sub.add_parser("check", help="every class has a sprite and is offered; no tree left empty")
+    g = sub.add_parser("god", help="a god or patron (Gods/<id>.tres), or more trees in an existing one's pool")
+    g.add_argument("id")
+    g.add_argument("--patron", action="store_true", help="a Warlock's patron")
+    g.add_argument("--tree", help="its own tree: a Trees/ stem (a new god only)")
+    g.add_argument("--kind", help="with --tree: its kind, the choice of god that offers it (Divinity, Patron)")
+    g.add_argument("--offers", help="Gods/tabs/ stems it offers its servants' slots, comma separated")
+    g.add_argument("--human", action="store_true", help="a person named it: no ??")
+    g.add_argument("--dry-run", action="store_true")
+    sub.add_parser("check", help="every class has a sprite and is offered; no tree left empty; every god offers something")
     a = ap.parse_args()
-    sys.exit({"new": new, "tree": tree, "tab": tab, "check": check}[a.cmd](a))
+    sys.exit({"new": new, "tree": tree, "tab": tab, "god": god, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":
