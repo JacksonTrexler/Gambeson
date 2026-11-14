@@ -120,7 +120,7 @@ extends Resource
 # stamina: the holder's exhaustion counts are divided by 1 + this (Stamina: 1 a rank;
 # Exhaustion.of())
 # jammed: above 0, it has lost its reactions: it can't dodge (Battle.evade()), guard
-# (Unit.guarding()) or obstruct (Battle.obstruction()) - Jam
+# (Unit.guarding()) or obstruct (Battle.obstruction()) - Jam; a helpless unit has lost them too (Unit.reacts())
 # focus: added to a ranged attack's roll when paying for it spends the last of its holder's Focus
 # (Unit.focus_bonus(); Skills/focus.tres, 1 a rank)
 # overcharge: marks the Overcharge status: its holder's buffer, Unit.overcharge points, spent

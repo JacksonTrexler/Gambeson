@@ -48,6 +48,7 @@ func open(u: Unit, editable: bool) -> void:
 	for slot in SLOTS:
 		var it: Item = u.get(slot)
 		var row := HBoxContainer.new()
+		row.add_child(UnitCard.trim_mark(it.trim() if it else Color(0, 0, 0, 0), it.name if it else ""))
 		var l := Label.new()
 		l.text = "%s: %s" % [slot.capitalize(), it.name if it else "none"]
 		l.tooltip_text = it.describe() if it else ""
@@ -71,6 +72,7 @@ func open(u: Unit, editable: bool) -> void:
 		_column.add_child(_muted("Nothing yet"))
 	for it in Game.stash:
 		var row := HBoxContainer.new()
+		row.add_child(UnitCard.trim_mark(it.trim(), it.name))
 		var l := Label.new()
 		l.text = it.name
 		l.tooltip_text = it.describe()

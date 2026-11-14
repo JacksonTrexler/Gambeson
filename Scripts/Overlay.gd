@@ -28,7 +28,8 @@ var hud: HUD
 var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
-var _walks_end := 0.0  # when the last walk started finishes, in seconds (walking_left())
+var _walk_len: Dictionary[Unit, float] = {}  # each walk's length, in seconds at speed 1 (walking_left())
+var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
 
 
@@ -439,13 +440,31 @@ func walk(u: Unit, from: Vector2i, path: Array[Vector2i]) -> void:
 	var tw := u.create_tween()
 	for c in path:
 		tw.tween_property(u, "position", map.map_to_local(c), STEP_TIME)
+	tw.set_speed_scale(_speed)
 	_walks[u] = tw
-	_walks_end = maxf(_walks_end, Time.get_ticks_msec() / 1000.0 + path.size() * STEP_TIME)
+	_walk_len[u] = path.size() * STEP_TIME
 
 
-# Seconds till the last walk under way is done (HUD: units moving together).
+# Seconds till the last walk under way is done, at the speed they're going (HUD: units moving together).
 func walking_left() -> float:
-	return maxf(_walks_end - Time.get_ticks_msec() / 1000.0, 0.0)
+	var left := 0.0
+	for u in _walks.keys():
+		if not _walks[u].is_valid():
+			_walks.erase(u)
+			_walk_len.erase(u)
+			continue
+		left = maxf(left, _walk_len[u] - _walks[u].get_total_elapsed_time())
+	return maxf(left, 0.0) / _speed
+
+
+# Walks under way, and ones to come, run at speed s (HUD._hurry()).
+func hurry(s: float) -> void:
+	if is_equal_approx(s, _speed):
+		return
+	_speed = s
+	for tw in _walks.values():
+		if tw.is_valid():
+			tw.set_speed_scale(s)
 
 
 func fade(u: Unit) -> void:

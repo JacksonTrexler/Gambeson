@@ -9,7 +9,7 @@ const HEAD := "[color=#e8c547]%s[/color]"
 # id -> [title, BBCode]; in tab order. Glossary pages are filled in by text().
 const PAGES := {
 	&"play": ["Playing", """[color=#e8c547]Selecting[/color]
-Your own unit is always the focus: right-click or Esc comes back to it. Click an ally in reach to give it orders; Tab steps through the units taking orders. Shift-click a foe to look it over without attacking. One hotbar slot is always selected: the first, or (Settings) the last one used.
+Your own unit is always the focus: right-click or Esc comes back to it. Click an ally in reach to give it orders; Tab steps through the units taking orders; a unit that's spent hands over to the next (Settings). Shift-click a foe to look it over without attacking. One hotbar slot is always selected: the first, or (Settings) the last one used.
 
 [color=#e8c547]Hover to plan, click to do[/color]
 Hovering shows what a click will do; the click does exactly that. A tile: the walk there. A foe: the walk into reach and the first attack from the selected slot rightward (wrapping round). An ally out of your orders' reach: your leader's walk into reach of it. Your unit itself: rest (or keep a channel going), ending only its own turn. With a support skill selected, allies light up and hovering one plans the walk to it. A self skill is used on its key's second press or a click on your unit. An area skill's key aims it: click a tile, or press the key again to put it away. Ctrl-click a tile to strike at whatever may be there; Alt-click casts a Rift unchanneled; hold Alt to see the exact chance to hit when you know the target's Defense.
@@ -18,7 +18,7 @@ Hovering shows what a click will do; the click does exactly that. A tile: the wa
 What a plan would spend drains on the unit's own bars and its card: movement, AP, the skill's cost, and what known traps on the way would do. A unit foresees its int mod of hazards a turn (used up as it acts on them); past that, or at +0, an affected number shows a flashing ?, and below 0 not even that.
 
 [color=#e8c547]Your side[/color]
-Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own. Initiative is each side's d20s plus its best bonus."""],
+Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own. Hold F to hurry the turn changes and the other sides. The log shows its last line: click LOG for all of it. Initiative is each side's d20s plus its best bonus."""],
 	&"skills": ["Skills", """[color=#e8c547]Points and ranks[/color]
 A skill point comes with each level. Unlocking a skill takes 1; raising one from rank r to r + 1 takes 1 + r². The button in the footer shows the cost in its square, and lights up when you can pay it.
 

@@ -6,8 +6,10 @@ extends Resource
 # a choice with `gods` (TreeChoice); its pool is every other tree it offers, each tab's kind the kind of
 # slot it fills (Prowess, Divinity, School): a class's slots (TreeChoice.kinds) pick from it. One god
 # system: patrons are gods too (`patron`).
-@export var id := &""  # its key: Unit.god, SkillTab.god (Unit.GODS for its domains)
+@export var id := &""  # its key: Unit.god, SkillTab.god
 @export var patron := false  # a Warlock's patron rather than a god of the pantheon
+@export var domains := ""  # what it holds sway over, shown in its prayers: "war, power" (a god of the pantheon)
+@export var tag := &""  # the damage tag of its domain, carried by a skill of its worshippers that takes it (Skill.god_tag; Smite)
 @export var own: SkillTab  # its own tree, taken up by choosing it
 @export var pool: Array[SkillTab] = []  # the other trees it offers its servants' slots, by kind
 
@@ -34,6 +36,17 @@ static func of(id: StringName) -> God:
 		if g.id == id:
 			return g
 	return null
+
+
+# The gods of the pantheon, not the patrons (Pray, a god's domains).
+static func pantheon() -> Array[God]:
+	return all().filter(func(g: God): return not g.patron)
+
+
+# The damage tag of god id's domain, or fallback (no such god, or one without).
+static func tag_of(id: StringName, fallback := &"") -> StringName:
+	var g := of(id)
+	return g.tag if g and g.tag else fallback
 
 
 # Its own tree and its pool, of the kinds listed (none: every kind).

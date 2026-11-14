@@ -10,4 +10,6 @@
 [resource]
 script = ExtResource("god")
 id = &"drael"
+domains = "water, air"
+tag = &"water"
 pool = Array[ExtResource("tab")]([ExtResource("t_havoc"), ExtResource("t_slayer"), ExtResource("t_currents")])

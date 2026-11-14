@@ -268,6 +268,9 @@ def god(a):
     d.props = ["script = " + d.res("Script", "res://Scripts/God.gd"), 'id = &"%s"' % a.id]
     if a.patron:
         d.props.append("patron = true")
+    elif a.domains or a.tag:
+        a.domains and d.props.append('domains = "%s"' % a.domains)
+        a.tag and d.props.append('tag = &"%s"' % a.tag)
     if a.tree:
         exists("Trees/%s.tres" % a.tree) or die("--tree %s: no Trees/%s.tres" % (a.tree, a.tree))
         a.kind or die("--tree needs --kind: Divinity, Patron...")
@@ -278,7 +281,7 @@ def god(a):
         d.props.append("own = " + d.sub("Tab_own", "res://Scripts/SkillTab.gd", lines))
     d.props.append("pool = " + typed("res://Scripts/SkillTab.gd", d, [d.res("Resource", "res://Gods/tabs/%s.tres" % o) for o in offers]))
     write(p, d.text(), a.dry_run)
-    print("next: Unit.GODS (its domains) and GOD_TAGS for a god of the pantheon; a pool tab of its own is a Gods/tabs/<stem>.tres (SkillTab: name, kind, roots)")
+    print("next: a god of the pantheon needs --domains (\"war, power\") and --tag (its damage tag) on its Gods/ file; a pool tab of its own is a Gods/tabs/<stem>.tres (SkillTab: name, kind, roots)")
     return 0
 
 
@@ -309,6 +312,8 @@ def check(_a=None):
             exists(path) or problems.append("%s: %s is missing" % (p, path))
         if "own = " not in text and not re.search(r"^pool = .*ExtResource", text, re.M):
             problems.append("%s: a god offering nothing (role.py god %s --offers ...)" % (p, p[5:-5]))
+        if "patron = true" not in text and not (re.search(r"^domains = \"[^\"]+\"", text, re.M) and re.search(r"^tag = &\"[^\"]+\"", text, re.M)):
+            problems.append("%s: a god of the pantheon with no domains or damage tag (God.domains, God.tag)" % p)
     for p in problems:
         print(p)
     print("role.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
@@ -329,7 +334,7 @@ def main():
     n.add_argument("--general", help="general trees: martial, specialist, magical (default: by --focus)")
     n.add_argument("--stats", help='starting stats over --focus\'s, which are: %s' % "; ".join(
         "%s %s" % (k, ",".join("%s=%d" % (s[:3], v) for s, v in f[0].items())) for k, f in FOCUS.items()))
-    n.add_argument("--god", choices=GODS, help="whom its units pray to (Unit.GODS)")
+    n.add_argument("--god", choices=GODS, help="whom its units pray to (Gods/)")
     n.add_argument("--tends", choices=("benevolent", "pragmatic", "loyal"))
     n.add_argument("--items", help="what a starter wears: Items/ stems, comma separated")
     n.add_argument("--race", default="human")
@@ -357,6 +362,8 @@ def main():
     g = sub.add_parser("god", help="a god or patron (Gods/<id>.tres), or more trees in an existing one's pool")
     g.add_argument("id")
     g.add_argument("--patron", action="store_true", help="a Warlock's patron")
+    g.add_argument("--domains", help='a god of the pantheon: what it holds sway over, "war, power"')
+    g.add_argument("--tag", help="a god of the pantheon: the damage tag of its domain (Smite)")
     g.add_argument("--tree", help="its own tree: a Trees/ stem (a new god only)")
     g.add_argument("--kind", help="with --tree: its kind, the choice of god that offers it (Divinity, Patron)")
     g.add_argument("--offers", help="Gods/tabs/ stems it offers its servants' slots, comma separated")

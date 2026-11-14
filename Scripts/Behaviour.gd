@@ -71,6 +71,11 @@ func fits(_b: Battle, _caster: Unit, _target: Unit) -> bool:
 	return true
 
 
+# The reason shown when fits() says no.
+func unfit() -> String:
+	return "Not for that one"
+
+
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
 # (Jam drains as much of its Focus); what a siphon took is c.siphoned (Energy Transfer).
 func dealt(_c: Cast, _n: int) -> void:

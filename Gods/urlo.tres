@@ -10,4 +10,6 @@
 [resource]
 script = ExtResource("god")
 id = &"urlo"
+domains = "magic, energy"
+tag = &"energy"
 pool = Array[ExtResource("tab")]([ExtResource("t_fury"), ExtResource("t_havoc"), ExtResource("t_stars")])

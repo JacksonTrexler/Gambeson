@@ -41,6 +41,7 @@ const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it sc
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
 # (slowest in the middle), hold at the bottom, fade out, and round again from the top.
 const TRANSITION := 1.0  # seconds a turn change takes on screen (other sides wait it out)
+const HURRY := 4.0  # how much faster turn changes and units acting on their own go while the hurry key is held
 const SCROLL_HOLD := 2.0  # seconds
 const SCROLL_FADE := 0.35
 const SCROLL_SPEED := 10.0  # average px a second while scrolling
@@ -51,6 +52,8 @@ const SCROLL_EASE := 0.7  # how much faster than average the ends go, and slower
 @export var pace := 0.45  # seconds between units acting on their own
 @export var together := true  # units acting on their own all move at once, their walks shown side by side, then the turn ends
 @export var turn_clock := true  # the player has turn_seconds() to act each turn (on screen, top middle), then the turn ends
+var hand_over := true  # Settings: a unit that's spent (can't take another order this turn) hands the focus to the next that can
+var log_open := false  # the whole log shows; collapsed (the default), only its last entry
 @export_file("*.tscn") var menu_scene := "res://Scenes/entry.tscn"
 
 var command: Command
@@ -132,6 +135,8 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 @onready var settings: PanelContainer = %Settings
 var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
 const ALLY_GLOW := Color("#b4ffd2")  # default glow of allies of another faction: a pale mint, to read on grass
+const ALLY_GLOWS := {"Mint": ALLY_GLOW, "White": Color("#ffffff"), "Sky": Color("#8fe8ff"), "Gold": Color("#ffe27a")}  # Settings: the picker's choices
+const ALLY_BOOST := 1.7  # an ally's glow is this much stronger than plain: pale on green ground it was hard to find
 var ally_glow := ALLY_GLOW  # the glow of allies of another faction (look_of())
 var high_contrast := false  # accessibility: brighter allied glow, heavier borders, whiter text
 var suspicious_marks := false  # accessibility: every suspicious tile shows a plain ?
@@ -255,6 +260,16 @@ func _ready() -> void:
 		high_contrast = on
 		_apply_contrast()
 		_mark())
+	var picker := OptionButton.new()  # Settings: the allied glow's colour
+	picker.name = "AllyGlow"
+	picker.focus_mode = Control.FOCUS_NONE
+	picker.tooltip_text = "The glow of allies on another side"
+	for n: String in ALLY_GLOWS:
+		picker.add_item("Allied glow: " + n)
+	picker.item_selected.connect(func(i: int) -> void:
+		ally_glow = ALLY_GLOWS.values()[i]
+		_mark())
+	%HighContrast.get_parent().add_child(picker)
 	KeyBinds.load_saved()
 	var keys := KeyBinds.new()  # Settings: key rebinds
 	keys.name = "KeyBinds"
@@ -264,6 +279,15 @@ func _ready() -> void:
 		suspicious_marks = on
 		_mark())
 	%KeepSlot.toggled.connect(func(on: bool) -> void: keep_slot = on)
+	%HandOver.button_pressed = hand_over
+	%HandOver.toggled.connect(func(on: bool) -> void: hand_over = on)
+	%LogTitle.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			show_log(not log_open))
+	%LogLine.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			show_log(true))
+	show_log(log_open)
 	add_to_group(&"guide")
 	show_guide(guide_page)
 	settings.get_parent().add_child(persona)
@@ -341,6 +365,7 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	_tick_clock(delta)
+	_hurry()
 	for l in _spinning:
 		l.text = str(randi_range(1, 20))
 	if pane.visible:
@@ -557,6 +582,7 @@ func hold() -> void:
 	command.lock(u)  # held: done for the turn, and no autopilot once it ends (Command.idle())
 	_log("%s holds" % _tag(u))
 	_mark()
+	_hand_over(u)
 
 
 func toggle_party() -> void:
@@ -957,6 +983,9 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 			return "%s is for foes" % s.name
 		if not ally and not s.for_foes():
 			return "%s is for allies" % s.name
+		for b: Behaviour in s.behaviours:  # the same filter Battle.cast() makes (Resuscitate: only the Downed)
+			if not b.fits(battle, u, target):
+				return b.unfit()
 		if not battle.in_reach(u, s, target):
 			return "Out of reach"
 	elif target is Vector2i and s.channel and u.channel and u.channel.skill == s:
@@ -1352,6 +1381,34 @@ func _done(u: Unit, counted := false) -> void:
 	_note = ""
 	_replan()
 	_mark()
+	_hand_over(u)
+
+
+# Pace (hand_over): a spent unit - one that can't take another order this turn - hands the focus to
+# the next that can (next_able()). Only the selected one, on the player's turn; none left, it stays.
+func _hand_over(u: Unit) -> void:
+	if not hand_over or u != selected or not my_turn() or _orders(u):
+		return
+	var to := next_able(u)
+	if to:
+		select(to)
+
+
+# The next unit after u (the side's order, as Tab walks it, wrapping) that can take an order: the
+# first that hasn't had one this turn, else the first that can still act.
+func next_able(u: Unit) -> Unit:
+	var side := battle.members(command.faction())
+	var at := side.find(u)
+	var any: Unit = null
+	for k in range(1, side.size() + 1):
+		var v := side[(at + k) % side.size()]
+		if v == u or not _orders(v):
+			continue
+		if v not in command.ordered:
+			return v
+		if not any:
+			any = v
+	return any
 
 
 # The skill a click on a foe uses: the first attack from the selected slot rightward, wrapping around,
@@ -1411,6 +1468,7 @@ func _move(u: Unit, c: Vector2i) -> void:
 	_note = ""
 	_replan()
 	_mark()
+	_hand_over(u)
 
 
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
@@ -1420,7 +1478,7 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 	plan = {}
 	_mark()
 	if pace > 0.0 and wait > 0.0:
-		await get_tree().create_timer(wait).timeout
+		await _wait(wait)
 		if not is_inside_tree():
 			return
 	for u in units:
@@ -1429,7 +1487,7 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 		if not u.is_alive():
 			continue
 		if pace > 0.0 and not together:
-			await get_tree().create_timer(pace).timeout
+			await _wait(pace)
 			if not is_inside_tree():
 				return
 		if not together:
@@ -1437,13 +1495,37 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 		AI.act(battle, u)
 		_mark()
 	if pace > 0.0 and battle.phase == Battle.Phase.TURNS:
-		await get_tree().create_timer(maxf(pace, overlay.walking_left())).timeout  # together: till the last walk is done
+		await _wait(pace)
+		while is_inside_tree() and overlay.walking_left() > 0.0:  # together: till the last walk is done
+			await get_tree().process_frame
 		if not is_inside_tree():
 			return
 	busy = false
 	_mark()
 	if battle.phase == Battle.Phase.TURNS and battle.turn == f:
 		battle.end_turn()
+
+
+# Pace: how fast paced shows run - HURRY times while the hurry key is held, else 1.
+func speed() -> float:
+	return HURRY if Input.is_action_pressed(&"hurry") else 1.0
+
+
+# Waits `seconds` of paced time: hurried (speed()) for as long as the key is held, frame by frame.
+func _wait(seconds: float) -> void:
+	var t := 0.0
+	while t < seconds and is_inside_tree():
+		await get_tree().process_frame
+		t += get_process_delta_time() * speed()
+
+
+# The turn change and the walks under way run at speed() (read every frame: letting go slows them back).
+func _hurry() -> void:
+	var s := speed()
+	if _turn_show and _turn_show.is_valid():
+		_turn_show.set_speed_scale(s)
+	if is_instance_valid(overlay):
+		overlay.hurry(s)
 
 
 # --- Battle events
@@ -1612,18 +1694,35 @@ func _on_sprung(_c: Vector2i, by: Unit) -> void:
 	_log("Trap --> %s" % _tag(by))
 
 
+# The blow a unit is taking (Unit.taking_hit), for its damage number's colour: kept until the frame ends.
+var _blows := {}
+
+
+func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
+	_blows[u] = blow.tags
+	(func() -> void: _blows.erase(u)).call_deferred()
+
+
+# A damage number in the colour of what the blow was made of (Tags.mark() past the broad words: a
+# fireball's in fire's), else red.
+func _hurt_colour(u: Unit) -> Color:
+	var t := Tags.mark(_blows.get(u, []), Tags.BROAD)
+	return Tags.color(t) if t else FOE
+
+
 func _on_hp(was: int, now: int, u: Unit) -> void:
 	_mark()
 	if not _hp_shows(u):
 		return
 	if now < was:
-		overlay.float_text(u, "-%d" % (was - now), FOE)
+		overlay.float_text(u, "-%d" % (was - now), _hurt_colour(u))
 	elif now > was:
 		overlay.float_text(u, "+%d" % (now - was), FRIEND)
 
 
 func _watch_unit(u: Unit) -> void:
 	u.hp_changed.connect(_on_hp.bind(u))
+	u.taking_hit.connect(_on_taking_hit)
 	u.energy_changed.connect(_on_energy.bind(u))
 	u.reserve_changed.connect(_mark.unbind(3))
 	u.overcharge_changed.connect(_mark.unbind(2))
@@ -2123,6 +2222,8 @@ func _refresh_bar() -> void:
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
+		var to: Variant = u.switching() if u and s and u.channel and u.channel.skill == s else null
+		slot.set_switching("" if to == null else "Energy" if to is StringName else to.name)
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked(u)
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
@@ -2331,6 +2432,7 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return u.stat(x))), null, MUTED])
 		info.rows = rows
 		info.effects = effect_icons(u) + suspicion_icons(u, u.suspicion)
+		info.trims = trims(u)
 		info.chips = chips
 		return info
 	var r := view(u)
@@ -2404,6 +2506,8 @@ func _info(u: Unit) -> Dictionary:
 	if not r.stats.is_empty():
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return r.stats[x])), null, MUTED])
 	info.rows = rows
+	if not info.silhouette and not info.face and _defense_shows(u):  # its gear can be made out
+		info.trims = trims(u)
 	if known(u):
 		info.effects = effect_icons(u, r.effects) + suspicion_icons(u, r.suspects)
 		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
@@ -2416,6 +2520,15 @@ func _info(u: Unit) -> Dictionary:
 				"; goes for the %s" % " and ".join(r.strategy) if not r.strategy.is_empty() else ""]
 	info.chips = chips
 	return info
+
+
+# [colour, item name] for each item u wears with a trim (Item.trim()): the card's banners.
+static func trims(u: Unit) -> Array:
+	var out := []
+	for it: Item in [u.weapon, u.armor, u.trinket]:
+		if it and it.trim().a > 0.0:
+			out.append([it.trim(), it.name])
+	return out
 
 
 # The selected unit's card, with what the hovered plan would consume (spend) on its rows: a number
@@ -2454,6 +2567,10 @@ func _heart_chips(u: Unit, chips: Array) -> void:
 			chips.append(["%d skill use%s left" % [u.dbno.spare(), "" if u.dbno.spare() == 1 else "s"], FOE if u.dbno.spare() == 0 else GOLD])
 		if u.dbno.rule.melee and not u.dbno.meleed and not u.dbno.fresh:
 			chips.append(["Owes a melee attack", GOLD])
+	if u.deferred > 0:  # Borrowed Time: death put off, the harms taken in the window waiting to be replayed
+		chips.append(["Borrowed time: %d round%s left" % [u.deferred, "" if u.deferred == 1 else "s"], FOE if u.deferred == 1 else GOLD])
+		if not u.harms.is_empty():
+			chips.append(["%d harm%s to replay" % [u.harms.size(), "" if u.harms.size() == 1 else "s"], FOE])
 	if u.lives() > 0:
 		chips.append(["%d heart%s left" % [u.lives_left(), "" if u.lives_left() == 1 else "s"], FOE if u.lives_left() == 0 else GOLD])
 
@@ -2767,7 +2884,7 @@ func _apply_look(u: Unit, look: Dictionary) -> void:
 	u.set_saturation(look.sat)
 	u.set_glow(look.glow, high_contrast and (known(u) or look.glow >= 0))
 	if look.tint != null and u.glow.visible:
-		u.glow.modulate = Color(look.tint, u.glow.modulate.a)
+		u.glow.modulate = Color(look.tint, clampf(u.glow.modulate.a * ALLY_BOOST, 0.0, 1.0))
 
 
 # How a unit of the player's own side stands for orders, for the map: &"ready" (it can take an order
@@ -3015,6 +3132,17 @@ func _tag(u: Unit) -> String:
 
 func _log(text: String) -> void:
 	log_box.append_text(text + "\n")
+	%LogLine.text = text
+
+
+# The log: open, every line; collapsed, only the last entry, at the foot of the column (floating
+# numbers on the units carry the moment). A click on the line or the LOG title opens it; the title closes it.
+func show_log(open: bool) -> void:
+	log_open = open
+	log_box.visible = open
+	%LogLine.visible = not open
+	%LogGap.visible = not open
+	%LogTitle.text = "LOG ▾" if open else "LOG ▸"
 
 
 func _say(text: String) -> void:

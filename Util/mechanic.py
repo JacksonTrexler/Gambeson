@@ -2,7 +2,8 @@
 """Gambeson mechanic authoring: the words and numbers rules are built from, each in its one place.
 
   python3 Util/mechanic.py tag acid --define "Eats through armor: Defense counts half." [--term Acid] \\
-      [--kind damage|condition|ground|check|target] [--parent physical] [--human]
+      --kind damage|condition|ground|check|target --color "#7fd04a" [--parent physical] [--human]
+  python3 Util/mechanic.py color acid "#7fd04a"
   python3 Util/mechanic.py property rotting --effect "stat=mitigate amount=-0.5 tags=fire" \\
       [--tags undead] [--text "Fire takes it apart."] [--name Rotting] [--human]
   python3 Util/mechanic.py effect scorched --effect "stat=poison amount=0.05" [--name Scorched] [--human]
@@ -12,6 +13,8 @@
 tag: a word skills, tiles and units carry (Skill.tags, Terrain.tags, Unit.tags), defined once in the
   Glossary (Glossary.TERMS) so descriptions can say {k:acid}; --parent makes it count as another (Tags.PARENT:
   a slash is physical). The rules ask for it by &"name" - in a behaviour, or where the system lives.
+  --color: its colour (Tags.COLOR), required unless --parent (a child takes its parent's).
+color: sets or changes any tag's colour - one carried by things without a Glossary term too.
 property: what a unit is made of (Properties/<id>.tres, Bio.properties): effects always on it.
 effect: a reusable status (Effects/<id>.tres) skills and tiles put on units.
 stat: a new Effect stat (Effect.gd's list and its doc line). Read it with unit.stat(&"name") where it acts:
@@ -50,12 +53,49 @@ def edit(p, old, new, dry):
     write(p, text.replace(old, new), dry)
 
 
+HEX = re.compile(r"#[0-9a-fA-F]{6}")
+COLOR_LINE = re.compile(r'&"(\w+)": Color\("([^"]*)"\)')
+
+
+def colour_block(text):
+    start = text.index("const COLOR := {")
+    return start, text.index("\n}\n", start)
+
+
+def colours():
+    """Tags.COLOR as {word: "#rrggbb"}."""
+    text = read("Scripts/Tags.gd")
+    start, end = colour_block(text)
+    return dict(COLOR_LINE.findall(text[start:end]))
+
+
+def set_colour(word, hexa, dry):
+    HEX.fullmatch(hexa or "") or die('a colour is "#rrggbb": %r' % hexa)
+    text = read("Scripts/Tags.gd")
+    start, end = colour_block(text)
+    block = text[start:end]
+    m = re.search(r'&"%s": Color\("[^"]*"\)' % word, block)
+    if m:
+        block = block[:m.start()] + '&"%s": Color("%s")' % (word, hexa.lower()) + block[m.end():]
+        text = text[:start] + block + text[end:]
+    else:
+        text = text[:end] + '\n\t&"%s": Color("%s"),' % (word, hexa.lower()) + text[end:]
+    write("Scripts/Tags.gd", text, dry)
+
+
+def color(a):
+    re.fullmatch(r"[a-z][a-z0-9_]*", a.id) or die("a tag is lower_snake")
+    set_colour(a.id, a.hex, a.dry_run)
+    return 0
+
+
 def tag(a):
     t = a.id
     re.fullmatch(r"[a-z][a-z0-9_]*", t) or die("a tag is lower_snake: acid, holy_fire")
     gl = read("Scripts/Glossary.gd")
     re.search(r'^\t&"%s": \[' % t, gl, re.M) and die("%s is already in Glossary.TERMS" % t)
     a.kind in KINDS or die("--kind: one of %s" % ", ".join(KINDS))
+    a.color or a.parent or die('--color "#rrggbb": every tag has a colour (Tags.COLOR); a --parent\'s child may take its parent\'s')
     '"' not in a.define and "[" not in a.define or die("--define: no double quotes or square brackets (BBCode)")
     term = ai_name(a.term or t.replace("_", " ").title(), a.human)
     line = '\t&"%s": ["%s", &"%s", "%s"],\n' % (t, term, a.kind, a.define)
@@ -63,6 +103,8 @@ def tag(a):
     write("Scripts/Glossary.gd", gl[:end + 1] + line + gl[end + 1:], a.dry_run)
     if a.parent:
         edit("Scripts/Tags.gd", "const PARENT := {", 'const PARENT := {&"%s": &"%s", ' % (t, a.parent), a.dry_run)
+    if a.color:
+        set_colour(t, a.color, a.dry_run)
     test_stub(a, "The %s tag (Glossary.TERMS)" % t)
     print('\nnext: put it on what carries it (skill.py --tags, tile.py --tags, unit.py --tags), and make the rules ask for '
           '&"%s" where it acts; a test that it does. The Glossary page shows it now.' % t)
@@ -136,10 +178,35 @@ def check(_a=None):
         m = re.search(r"^tags = .*$", read(p), re.M)
         if m and '&"enchanted"' in m.group(0) and '&"honed"' in m.group(0):
             problems.append("%s: enchanted and honed together - pick one (they exclude each other)" % p)
+    check_colours(problems, gl)
     for p in problems:
         print(p)
     print("mechanic.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
     return 1 if problems else 0
+
+
+def check_colours(problems, gl):
+    """Every tag has a colour (Tags.COLOR), its own or its parent's: Glossary terms, Tags.PARENT's words, and
+    every word on a resource or scene (tags = ...)."""
+    cols = colours()
+    for w, c in cols.items():
+        if not HEX.fullmatch(c):
+            problems.append('Scripts/Tags.gd: %s\'s colour "%s" isn\'t "#rrggbb"' % (w, c))
+    parent = dict(re.findall(r'&"(\w+)": &"(\w+)"', read("Scripts/Tags.gd")))
+    words = {}
+    for t in re.findall(r'^\t&"(\w+)": \[', gl, re.M):
+        words.setdefault(t, "Scripts/Glossary.gd")
+    for c, p in parent.items():
+        words.setdefault(c, "Scripts/Tags.gd")
+        words.setdefault(p, "Scripts/Tags.gd")
+    for top in ("Skills", "Items", "Terrain", "Properties", "Effects", "Scenes", "Races", "Roles"):
+        for f in sorted(list(files(top, ".tres")) + list(files(top, ".tscn"))):
+            for line in re.findall(r"^tags = .*$", read(f), re.M):
+                for t in re.findall(r'&"(\w+)"', line):
+                    words.setdefault(t, f)
+    for t, where in sorted(words.items()):
+        if t not in cols and parent.get(t) not in cols:
+            problems.append('%s: tag "%s" has no colour (mechanic.py color %s "#rrggbb")' % (where, t, t))
 
 
 def main():
@@ -151,6 +218,11 @@ def main():
     t.add_argument("--term", help="shown name (default: from the id)")
     t.add_argument("--kind", required=True, help="its Glossary kind: %s" % ", ".join(KINDS))
     t.add_argument("--parent", help="a tag it also counts as (Tags.PARENT)")
+    t.add_argument("--color", help='"#rrggbb", its colour (Tags.COLOR); required unless --parent')
+    c = sub.add_parser("color", help="set or change a tag's colour (Tags.COLOR)")
+    c.add_argument("id")
+    c.add_argument("hex", help='"#rrggbb"')
+    c.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("property", help="what a unit is made of: Properties/<id>.tres")
     p.add_argument("id")
     p.add_argument("--effect", action="append", default=[], help='"stat=mitigate amount=-0.5 tags=fire" (below 0: a weakness)')
@@ -170,7 +242,7 @@ def main():
         x.add_argument("--no-test", action="store_true", help="don't stub Tests/<id>_test.gd")
     sub.add_parser("check")
     a = ap.parse_args()
-    sys.exit({"tag": tag, "property": property_, "effect": effect, "stat": stat, "check": check}[a.cmd](a))
+    sys.exit({"tag": tag, "color": color, "property": property_, "effect": effect, "stat": stat, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":

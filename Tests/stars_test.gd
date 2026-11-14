@@ -74,6 +74,16 @@ func test_shatter() -> void:
 	v(1).weapon = null
 
 
+# Waterstrike's tag was `bludgeon`, which nothing read: it's a blunt blow like any other.
+func test_waterstrike_shatters() -> void:
+	lattice(0.5)
+	stage(lancin, {v(1): Vector2i(3, 2)})
+	var water: Skill = load("res://Skills/waterstrike.tres")
+	v(1).learned.append(slot(water))
+	ok(&"blunt" in Battle.hit_tags(v(1), water) and &"bludgeon" not in water.tags, "a blunt blow")
+	ok(b.attempt(v(1), water, Vector2i(3, 1)) == &"shattered" and Vector2i(3, 1) not in b.panes, "on a pane with no one there: it breaks")
+
+
 func test_sap() -> void:
 	lattice(0.0)
 	stage(lancin, {v(1): Vector2i(5, 5), v(2): Vector2i(7, 6), v(3): Vector2i(7, 5)})

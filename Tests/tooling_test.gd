@@ -25,9 +25,4 @@ func test_paint_look() -> void:
 
 func test_checks() -> void:
 	for tool in ["tile", "role", "unit", "mechanic"]:
-		var out := []
-		var code := OS.execute("python3", [ProjectSettings.globalize_path("res://Util/%s.py" % tool), "check"], out, true)
-		if code == -1 or code == 127:
-			print("tooling_test: no python3, checks skipped")
-			return
-		ok(code == 0, "Util/%s.py check: %s" % [tool, "".join(out).strip_edges()])
+		tool_check(tool)

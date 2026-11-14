@@ -151,7 +151,7 @@ func test_pray() -> void:
 	v(1).god = &"sol"
 	v(1).refresh()
 	ok(b.cast(v(1), pray, v(1)) and b.hastened[lancin] == 2 and v(2).suspects(v(1)) == 1, "to Sol: no answer yet")
-	ok(Unit.GODS.has_all([&"ramut", &"eros", &"sol", &"urlo", &"luun", &"drael", &"vetruvis"]), "the seven gods")
+	ok(God.pantheon().map(func(g: God): return g.id) == [&"drael", &"eros", &"luun", &"ramut", &"sol", &"urlo", &"vetruvis"], "the seven gods")
 
 
 func test_ai_search() -> void:
