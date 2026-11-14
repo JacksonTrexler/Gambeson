@@ -14,14 +14,24 @@ static func doubters(b: Battle, holder: Unit) -> int:
 			and x.suspects(holder) > 0).size()
 
 
-static func dc(holder: Unit, rank: int) -> int:
-	return Difficulty.dc(DIFFICULTY, rank) + holder.mod(&"charisma")
+# Its DC at rank (as its modifiers read it: m) plus the holder's cha mod (through m).
+static func dc(holder: Unit, rank: int, m := Modifiers.NONE) -> int:
+	return Difficulty.dc(DIFFICULTY, m.irank(rank, &"rank_impact")) + m.stat(holder.mod(&"charisma"), &"stat_impact")
 
 
 func lets_word(b: Battle, holder: Unit, rank: int, teller: Unit, _listener: Unit) -> bool:
-	if doubters(b, holder) > rank + 1:
+	var m := mods_on(holder)
+	if doubters(b, holder) > m.irank(rank, &"rank_impact") + 1:
 		return true
-	return b.resolve(Check.check(teller.check_mod(&"charisma", &"offensive"), dc(holder, rank))).hit
+	return b.resolve(Check.check(teller.check_mod(&"charisma", &"offensive"), dc(holder, rank, m))).hit
+
+
+# Its terms: rank raises the DC and how many may doubt it (impact); its cha mod adds to the DC (impact).
+# The check is the teller's, so check tags don't fit it.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "DC, doubters")
+	t.add(&"stat_impact", "DC")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

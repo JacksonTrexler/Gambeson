@@ -110,9 +110,52 @@ func terms(_t: SkillTerms) -> void:
 	pass
 
 
+# The modifiers on its holder's use of the skill it's on (Unit.mods()), for a hook given only the holder
+# and a rank (a passive's): its rank and stat reads go through them (holder_rank(), Peel's reach).
+func mods_on(holder: Unit) -> Modifiers:
+	if holder == null or not holder.emblems():
+		return Modifiers.NONE
+	for x in holder.slots:
+		if self in x.skill.behaviours:
+			return holder.mods(x.skill)
+	return Modifiers.NONE
+
+
+# A hook's rank as channel c reads it through its holder's modifiers (mods_on()): whole, at least 1.
+func holder_rank(holder: Unit, rank: int, c := &"rank_impact") -> int:
+	return mods_on(holder).irank(rank, c)
+
+
+# Used again while its caster channels it: the channel stops there, free, and nothing else happens
+# (Battle.cast(); Clairvoyance).
+func recast_stops() -> bool:
+	return false
+
+
+# Its skill's channel held through its holder's side's turn end (Battle.end_turn(); Clairvoyance:
+# the pings move, then the channel's rank rises).
+func held(_b: Battle, _holder: Unit) -> void:
+	pass
+
+
+# It senses foes out of sight, and acts on what it sensed rather than holding still for its channel:
+# the AI casts it with nothing else to go on (AI._scry(); Clairvoyance).
+func senses() -> bool:
+	return false
+
+
 # What apply() does at this rank, in Glossary markup: one or more lines of the skill's description.
 func describe(_rank: int) -> String:
 	return ""
+
+
+# The same as its holder has it (Skill.markup() given a unit): c has the caster (or null), the skill, its
+# rank and the caster's modifiers (c.mods) - no battle, no target. A behaviour that reads its numbers
+# through c.impact_rank() / range_rank() / stat_mod() overrides this to say them the same way, so a
+# modifier shows wherever it acts; by default, describe() at the rank.
+func describe_as(c: Cast) -> String:
+	return describe(c.rank)
+
 
 
 # Hooks: what a switched-on passive's behaviours do outside a cast (Unit.hooks()), each given the

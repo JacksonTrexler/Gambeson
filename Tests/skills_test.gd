@@ -7,9 +7,7 @@ extends Test
 const QUIET := ["name", "glyph", "ai", "max_rank", "min_tier", "hostile", "rolls", "weapon_tag", "needs", "hybrid",
 		"difficulty", "reach_scale", "dice_scale"]
 # Flags set before this check that their skills don't mention yet. Shrink it; never grow it.
-const UNSAID := ["Alluring.shows_adjectives", "Alluring.shows_nouns", "Beastshape.shapes", "Cindering.cinders",
-		"Coalescing.grapples", "Drown.grapples", "Coordinate.links", "Personify.ap", "Pray.radius_per_rank",
-		"Sweet Nothings.reserve", "Sweet Nothings.reserve_mod"]
+const UNSAID := []
 
 
 func test_strike_damage() -> void:

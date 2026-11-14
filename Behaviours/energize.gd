@@ -26,21 +26,29 @@ static func room(u: Unit, r: int) -> int:
 # The Energy it can give now: its own pair, and every further pair of AP it can spend, within room().
 func restores(c: Cast) -> Dictionary:
 	var u := c.caster
-	var more := mini(c.rank - 1, floori((u.ap_for(&"skill") - PAIR) / PAIR + 0.0001))
-	return {&"energy": mini(1 + maxi(more, 0), room(u, c.rank))}
+	var r := c.impact_rank()
+	var more := mini(r - 1, floori((u.ap_for(&"skill") - PAIR) / PAIR + 0.0001))
+	return {&"energy": mini(1 + maxi(more, 0), room(u, r))}
 
 
 func apply(c: Cast) -> void:
 	var u := c.caster
-	var more := mini(mini(c.rank - 1, floori(u.ap_for(&"skill") / PAIR + 0.0001)), room(u, c.rank) - 1)
+	var r := c.impact_rank()  # pairs, Overcharge's cap and turns: through its modifiers
+	var more := mini(mini(r - 1, floori(u.ap_for(&"skill") / PAIR + 0.0001)), room(u, r) - 1)
 	if more > 0:
 		u.pay(more * PAIR, &"skill")
-	var n := mini(1 + maxi(more, 0), room(u, c.rank))
+	var n := mini(1 + maxi(more, 0), room(u, r))
 	var got := u.grant_energy(n, false)
-	var over := mini(n - got, maxi(over_cap(u, c.rank) - u.overcharge, 0))
-	u.add_overcharge(over, c.rank, 1 if u.faction == c.battle.turn else 0)
+	var over := mini(n - got, maxi(over_cap(u, r) - u.overcharge, 0))
+	u.add_overcharge(over, r, 1 if u.faction == c.battle.turn else 0)
 	c.bag[&"energized"] = got + over
 	u.note_recovery(&"energy", got + over)
+
+
+# Its terms: pairs spent, Overcharge's cap and its turns all grow with rank (impact); a tame effect.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "energy, overcharge")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:

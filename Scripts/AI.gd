@@ -95,7 +95,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_recover(b, u, reads, log)
 			return log
 		_channel(b, u, reads, log)
-		if u.channel and u.channel.turns > 0 and not u.channel.skill.pings:  # still holding one it began before (Clairvoyance isn't held: it acts on what it sensed): moving or acting would end it (Battle.end_turn())
+		if u.channel and u.channel.turns > 0 and not u.channel.skill.behaviours.any(func(x: Behaviour): return x.senses()):  # still holding one it began before (Clairvoyance isn't held: it acts on what it sensed): moving or acting would end it (Battle.end_turn())
 			log.append("%s holds still, channeling %s" % [u.name, u.channel.skill.name])
 			return log
 		if not rooted and _flee(b, u, reads, log):
@@ -205,10 +205,7 @@ static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
 
 # Perceived worth of using a hostile skill on a unit read as `r`.
 static func score(u: Unit, s: Skill, r: Read) -> float:
-	var t := s.tier(u.rank(s))
-	var dmg := 0.0
-	if t:
-		dmg = (t.power + t.dice.x * (t.dice.y + 1) / 2.0 + (u.mod(t.stat, s.tags) if t.stat else 0)) * (u.rank(s) if s.hits_per_rank else 1)
+	var dmg: float = Battle.damage_range(u, s).get("avg", 0.0)  # as cast() deals it: through u's modifiers
 	var hp: float = maxf(r.hp, 1.0) if r.hp != null else GUESS_HP  # (one Downed, at 0 or below: any blow may be its last)
 	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) else 0.0) \
 			+ (KILL if s.drags_to else 0.0)  # into the water: the Siren's favourite
@@ -312,7 +309,7 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 	if clues.is_empty():
 		return false
 	for s in u.actives.filter(func(x: Skill): return x.observes and u.can_afford(x)):
-		var look := maxi(u.mod(&"wisdom"), 1) + mini(u.rank(s), roundi(u.stat(&"wisdom")))
+		var look := maxi(u.mod(&"wisdom"), 1) + mini(u.mods(s).irank(u.rank(s), &"rank_impact"), roundi(u.stat(&"wisdom")))  # as Battle.observe() is given it
 		var reach := b.area_reach(u, s)
 		var best: Variant = null
 		var most := 0
@@ -526,7 +523,7 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 		share = 0.5
 	var wounds := 0
 	for e in r.effects:
-		if e.wound and e in t.timed and t.timed[e].rank <= s.clears(u.rank(s)):
+		if e.wound and e in t.timed and t.timed[e].rank <= s.clears(u.mods(s).irank(u.rank(s), &"rank_impact")):
 			wounds += 1
 	if share <= 0.0 and wounds == 0:
 		return 0.0
@@ -631,7 +628,8 @@ static func _recover(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 # would take in the most of them, a tile further out to allow for their moving.
 static func _channel(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
 	for s: Skill in u.actives.filter(func(x: Skill): return x.channel):
-		var radius := s.blast * u.rank(s)
+		var radius := s.blast * u.mods(s).rank(u.rank(s), &"rank_range")  # as Battle._detonate() reads it
+
 		var striking := u.channel != null and u.channel.skill == s
 		if not striking and (u.channel != null or not u.can_afford(s)):
 			continue
@@ -796,11 +794,11 @@ static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 
 
 # With no foe in sight, no clue to search and nowhere its side last saw one to hunt, it casts a skill that
-# senses unseen foes (Clairvoyance: Skill.pings), unless it holds a channel already.
+# senses unseen foes (Clairvoyance: Behaviour.senses()), unless it holds a channel already.
 static func _scry(b: Battle, u: Unit, log: Array[String]) -> bool:
 	if u.channel or (u.faction and not b.last_seen(u.faction).is_empty()):
 		return false
-	for s in u.actives.filter(func(x: Skill): return x.pings and u.can_afford(x)):
+	for s in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.senses()) and u.can_afford(x)):
 		if b.cast(u, s, u):
 			log.append("%s uses %s" % [u.name, s.name])
 			return true

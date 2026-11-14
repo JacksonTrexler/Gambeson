@@ -18,7 +18,7 @@ Hovering shows what a click will do; the click does exactly that. A tile: the wa
 What a plan would spend drains on the unit's own bars and its card: movement, AP, the skill's cost, and what known traps on the way would do. A unit foresees its int mod of hazards a turn (used up as it acts on them); past that, or at +0, an affected number shows a flashing ?, and below 0 not even that.
 
 [color=#e8c547]Your side[/color]
-Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own. Hold F to hurry the turn changes and the other sides. The log shows its last line: click LOG for all of it. Initiative is each side's d20s plus its best bonus."""],
+Allies within your charisma reach take orders. P invites one to your party, which hears you from twice as far. H holds an ally where it is. Space ends the turn; allies you didn't order act on their own. Hold {hurry} to hurry the turn changes and the other sides. The log shows its last line: click LOG for all of it. Initiative is each side's d20s plus its best bonus."""],
 	&"skills": ["Skills", """[color=#e8c547]Points and ranks[/color]
 A skill point comes with each level. Unlocking a skill takes 1; raising one from rank r to r + 1 takes 1 + r². The button in the footer shows the cost in its square, and lights up when you can pay it.
 
@@ -77,7 +77,7 @@ static func title(id: StringName) -> String:
 # A page's text: its own, or its Glossary terms, each a paragraph.
 static func text(id: StringName) -> String:
 	if id not in GLOSSARY:
-		return PAGES[id][1] if id in PAGES else ""
+		return PAGES[id][1].replace("{hurry}", KeyBinds.key_of(&"hurry")) if id in PAGES else ""  # the key as it is bound now
 	return "\n\n".join(terms(id).map(func(t: StringName) -> String:
 		return "[color=#%s]%s[/color]  %s" % [Glossary.colour(t).to_html(false), Glossary.name_of(t), Glossary.define(t)]))
 

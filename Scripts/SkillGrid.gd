@@ -344,7 +344,7 @@ func _get_tooltip(at: Vector2) -> String:
 		return ""
 	var r := unit.base_rank(s)
 	var why := unit.missing(s) if r == 0 and not s.stub else ""
-	return "%s%s · T%d\n%s%s" % [s.title(), " " + Skill.roman(r) if r else "", unit.tier(s), s.markup(maxi(r, 1)), "\n" + why if why else ""]
+	return "%s%s · T%d\n%s%s" % [s.title(), " " + Skill.roman(r) if r else "", unit.tier(s), s.markup(maxi(r, 1)) + Skill.base_note(unit, s), "\n" + why if why else ""]  # the skills screen: base values
 
 
 # Its tooltips are Glossary markup, shown rich.

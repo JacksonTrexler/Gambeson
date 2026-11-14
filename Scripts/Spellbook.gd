@@ -39,7 +39,7 @@ func fill(title: String, can_edit: bool, can_switch: Callable) -> void:
 	entries.sort_custom(func(a: Slot, b: Slot) -> bool:
 		return a.rank > b.rank or (a.rank == b.rank and a.skill.name < b.skill.name))
 	for x in entries:
-		var e := SkillEntry.new(x.skill, x.rank, x.on, can_edit, can_switch.call(x.skill))
+		var e := SkillEntry.new(x.skill, x.rank, x.on, can_edit, can_switch.call(x.skill), unit)
 		e.switched.connect(switched.emit)
 		e.picked.connect(pick)
 		(passives if x.skill.passive else actives).add_child(e)

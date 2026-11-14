@@ -173,14 +173,14 @@ func test_requirement() -> void:
 	v(1).hotbar.assign([s])
 	v(1).max_energy = 100
 	v(1).energy = 90
-	ok(b.requirement(v(1), s, v(3), 1) == [2, 0, 0], "met at 90% Energy: +2 to hit")
+	ok(b.requirement(v(1), s, v(3), 1).slice(0, 3) == [2, 0, 0], "met at 90% Energy: +2 to hit")
 	v(1).trinket = emblem(&"lambda_up", &"sigil", 3)  # f 5/6: share 0.2^1.83 = 5%, so 95% Energy (the user's example)
-	ok(b.requirement(v(1), s, v(3), 1) == [0, 0, 0], "Restrictive: 90% is no longer enough")
+	ok(b.requirement(v(1), s, v(3), 1).slice(0, 3) == [0, 0, 0], "Restrictive: 90% is no longer enough")
 	v(1).energy = 96
-	ok(b.requirement(v(1), s, v(3), 1) == [4, 0, 0], "at 96%% it's met, and the payoff is x1.83: +4 (%s)" % [b.requirement(v(1), s, v(3), 1)])
+	ok(b.requirement(v(1), s, v(3), 1).slice(0, 3) == [4, 0, 0], "at 96%% it's met, and the payoff is x1.83: +4 (%s)" % [b.requirement(v(1), s, v(3), 1)])
 	v(1).trinket = emblem(&"lambda_down", &"sigil", 3)
 	v(1).energy = 60
-	ok(b.requirement(v(1), s, v(3), 1) == [1, 0, 0], "Unrestrictive: met at 60%% (0.2^(1/1.83) = 42%%), +2 / 1.83 = +1 (%s)" % [b.requirement(v(1), s, v(3), 1)])
+	ok(b.requirement(v(1), s, v(3), 1).slice(0, 3) == [1, 0, 0], "Unrestrictive: met at 60%% (0.2^(1/1.83) = 42%%), +2 / 1.83 = +1 (%s)" % [b.requirement(v(1), s, v(3), 1)])
 
 
 func test_emblem_scopes() -> void:

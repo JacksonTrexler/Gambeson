@@ -153,7 +153,7 @@ var rng := RandomNumberGenerator.new()
 var zones: Array[Zone] = []  # areas laid by skills (Darkstone's darkness)
 var revealed: Dictionary[Vector2i, bool] = {}  # sprung traps: no longer concealed
 var _seers: Array[Unit] = []  # units that began a Clairvoyance channel, while they hold it (pinged())
-var _blind_to_pings := false  # while clairvoy() asks what its side sees without them
+var _blind_to_pings := false  # while ping() asks what its side sees without them
 const IRE: Skill = preload("res://Skills/ramuts_ire.tres")
 
 # Ramut's Ire waits out this many stalled turns in a row, times the units still standing on the smallest
@@ -681,8 +681,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return false  # a mist only Coalesces (Vaporize)
 	if not caster.shaped_allows(skill) or (skill.shapes and not caster.form and form_for(caster).is_empty()):
 		return false  # a beast's mind (Beastshape); no beast thrives here
-	if skill.pings and caster.channel and caster.channel.skill == skill:
-		end_channel(caster)  # used again: it stops channeling, free
+	if caster.channel and caster.channel.skill == skill and skill.behaviours.any(func(x: Behaviour): return x.recast_stops()):
+		end_channel(caster)  # used again: it stops channeling, free (Clairvoyance)
 		return true
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill):
@@ -690,6 +690,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var r := caster.rank(skill)
 	var m := caster.mods(skill)  # its modifiers: per-rank and per-stat values go through them (Modifiers)
 	var ri := m.irank(r, &"rank_impact")  # its rank for what rank adds to what it does
+	var rr := m.irank(r, &"rank_range")  # ...and to how far it reaches
 	var acts: Behaviour.Cast = cast_of(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
 	if acts:
 		_resolving.append(acts)
@@ -703,18 +704,12 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if not spreading:
 		_discipline(caster, skill, foe)
 	var before := target.hp
+	# Every path below that lands runs the behaviours' apply() (_land()); one that fails (a save or
+	# contest lost) is a miss, as a missed attack roll is, and runs none; so is a channel stopped by using
+	# it again (recast_stops(), above: nothing lands). docs/plans/route.md.
 	if skill.shapes:
-		beastshape(caster, r)
-		used.emit(caster, skill, target, 0)
-		return true
-	if skill.pings:
-		end_channel(caster)
-		caster.channel = Unit.Channel.new(skill, caster.cell)
-		caster.channel.rank = r
-		if caster not in _seers:
-			_seers.append(caster)
-		clairvoy(caster)
-		channeled.emit(caster, skill, caster.cell)
+		beastshape(caster, ri)  # its form's rank and turns: rank impact
+		_land(acts)
 		used.emit(caster, skill, target, 0)
 		return true
 	if skill.aura or skill.retrieves or skill.humbles or skill.fog or skill.exits or (skill.boost_pool and not foe) or not skill.elements.is_empty():
@@ -723,31 +718,34 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		elif skill.fog:
 			waltz(caster, skill)
 		elif not skill.elements.is_empty():
-			imbue(caster, skill, r)
+			imbue(caster, skill, ri)
 		elif skill.aura:
 			_aura(caster, skill, r)
 		elif skill.retrieves:
-			_retrieve(caster, skill, r)
+			_retrieve(caster, skill, ri)  # the item's rank: rank impact
 		elif skill.humbles:
-			_humble(caster, skill, target, r)
+			_humble(caster, skill, target, ri)
 		else:
-			target.ap.append(AP.new(maxf(caster.mod(skill.boost_mod, skill.tags) + r, 0.0), skill.boost_pool))
+			target.ap.append(AP.new(maxf(m.stat(caster.mod(skill.boost_mod, caster.skill_tags(skill)), &"stat_impact") + ri + int(requirement(caster, skill, target, r)[1]), 0.0), skill.boost_pool))
+		_land(acts)
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	if mends:
 		_smite_heal(caster, skill, target, r)
 		_lovely(caster, skill, target)
+		_land(acts)
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	var zeal := passion(caster, target)  # Impassioned Fighter: + to the skill's primary mod, beside its target
 	var crit := false
 	var tags := acts.tags if acts else hit_tags(caster, skill, target if foe else null, self)
 	var stags := caster.skill_tags(skill)  # its own tags and its modifiers' (checks, executes)
-	var req := requirement(caster, skill, target, r)  # its contingency's payoff, met: [hit, damage, edge]
+	var req := requirement(caster, skill, target, r)  # its contingency's payoff, met: [hit, damage, edge, turns, strength]
+	var cut := executed(target, stags, ri)  # an execute's share of the foe's defensive check
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + zeal - drag_penalty(skill, r, Command.tiles(target.cell, spot))),
-				Check.side(target.check_mod(skill.stat(), &"defensive", stags)).cut(executed(target, stags, r)))
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + zeal + int(req[0]) - drag_penalty(skill, ri, Command.tiles(target.cell, spot))).edge(int(req[2])),
+				Check.side(target.check_mod(skill.stat(), &"defensive", stags)).cut(cut))
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_expose(target)
@@ -756,19 +754,19 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			return true
 		drag(caster, target, spot, skill.drags_to)
 	if foe and skill.engulfs:
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + zeal),
-				Check.side(target.check_mod(skill.stat(), &"defensive", stags)).cut(executed(target, stags, r)))
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + zeal + int(req[0])).edge(int(req[2])),
+				Check.side(target.check_mod(skill.stat(), &"defensive", stags)).cut(cut))
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_expose(caster)
 			used.emit(caster, skill, target, 0)
 			return true
 		engulf(caster, target)
-	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(r))) if foe and skill.disables else ([] as Array[Array])
+	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(ri))) if foe and skill.disables else ([] as Array[Array])
 	if foe and skill.save:
 		var fogged: int = fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + r + zeal, Check.Kind.SAVE),
-				Check.side(target.check_mod(skill.save, &"defensive", stags) + fogged, Check.Kind.SAVE).cut(executed(target, stags, r)))
+		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + ri + zeal + int(req[0]), Check.Kind.SAVE).edge(int(req[2])),
+				Check.side(target.check_mod(skill.save, &"defensive", stags) + fogged, Check.Kind.SAVE).cut(cut))
 		var mine := vs.mine.total
 		contested.emit(caster, target, mine, vs.theirs.total)
 		if not vs.won:  # the caster wins ties
@@ -779,18 +777,24 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			return true
 		saved_against = mine
 	if foe and skill.levels_down:
-		_level_down(caster, skill, target, r)
+		if _level_down(caster, skill, target, ri, req) > 0:
+			_land(acts)
 		used.emit(caster, skill, target, 0)
 		return true
 	if foe and skill.kills:
-		_death(caster, skill, target, r)
+		if _death(caster, skill, target, ri, req):
+			_land(acts)
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	for g in fog:
 		for s: Skill in g:
-			target.disable(s, skill.lasts(r, caster) + (1 if target.faction == turn else 0), true)
-	if foe and skill.chain:  # Strike: a hit at a time (_chain())
-		_chain(caster, skill, target, r, tags)
+			target.disable(s, skill.lasts(r, caster) + int(req[3]) + (1 if target.faction == turn else 0), true)
+	if foe and skill.chain:  # Strike: a hit at a time (_chain()); its behaviours land with its first hit
+		var landed := _chain(caster, skill, target, ri, tags, 0, 0, acts, req)
+		if landed > 0 and acts:
+			_land(acts)
+			for bh in skill.behaviours:
+				bh.dealt(acts, before - target.hp)
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_expose(target)
@@ -821,7 +825,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if acts:
 		acts.hit = true
 	if foe and skill.binds:  # landed (a miss returned above): Judgement's shackles
-		_bind(caster, skill, target, r)
+		_bind(caster, skill, target, ri)
 	var known := roundi(caster.stat(&"self_known"))  # what it knew of itself before this (Meditate)
 	var eyes := watchers(target) if skill.investigated else ([] as Array[Unit])
 	var sights := _sightings(target) if skill.effects.any(func(e: Effect): return e.stat == "concealment") else {}
@@ -829,6 +833,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if not (skill.dual and foe):
 		for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
 			var n := e.turns if e.turns else skill.lasts(r, caster)
+			n += int(req[3]) if n > 0 else 0  # a contingency's + turns (Requirement.turns)
 			var a := target.afflict(e, n + (1 if n and target.faction == turn else 0), ri if e.per_rank else r)
 			a.total = n
 			a.fades = skill.fades
@@ -838,14 +843,14 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			a.by = caster
 			a.since = turns_begun
 			a.roll = saved_against
-			a.scale = strength * (m.statf(maxf(caster.mod(e.by_mod), 0.0), &"stat_impact") if e.by_mod else 1.0)  # set as it's put on (Rejuvinate's distance, Interdict's str mod)
+			a.scale = strength * (m.statf(maxf(caster.mod(e.by_mod), 0.0), &"stat_impact") if e.by_mod else 1.0) * (1.0 + float(req[4]))  # set as it's put on (Rejuvinate's distance, Interdict's str mod, a contingency's strength)
 			put.append(a)
 	if skill.respecs:
-		caster.respec_room = mini(r, known)
+		caster.respec_room = mini(ri, known)
 		meditated.emit(caster, caster.respec_room)
 	if skill.investigated:
 		var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
-		var g := resolve(Check.side(target.check_mod(skill.stat(), &"defensive", stags) + r - target.dissonance_penalty(), Check.Kind.CHECK)
+		var g := resolve(Check.side(target.check_mod(skill.stat(), &"defensive", stags) + ri - target.dissonance_penalty(), Check.Kind.CHECK)
 				.edge(1 if hiding and covered(target.cell) else 0))  # cover (Leaves): advantage to hide
 		var guise := g.total
 		var seen := _evaluate(target, skill, g.d20, guise)
@@ -857,29 +862,27 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_scatter(target, guise)
 	if not sights.is_empty():
 		_vanish(target, sights)
-	if acts:
-		for bh in skill.behaviours:
-			bh.apply(acts)
+	_land(acts)
 	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * ri)
 	if foe and skill.push:
 		push(target, caster, skill.push * ri)
 	if skill.sends and target.is_alive():
-		send(target, caster, maxi(caster.mod(skill.sends, skill.tags), 0) + r + zeal)
+		send(target, caster, maxi(m.stat(caster.mod(skill.sends, stags), &"stat_range"), 0) + rr + zeal)
 	if skill.prays:
-		pray(caster, r, target)
+		pray(caster, ri, target)
 	if skill.links:
 		_link(caster, skill, r)
 	if not foe and skill.heals():
 		target.healed_by = caster
-		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(r), skill.per_wound * ri)
+		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri)
 		target.regain(skill.restores * ri)
 	if not foe:
 		_lovely(caster, skill, target)
 	var t := skill.tier(ri) if foe or not skill.dual else null
 	if t:
 		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
-		var hits := r if skill.hits_per_rank else 1
+		var hits := ri if skill.hits_per_rank else 1
 		var gross := 0
 		for i in hits:
 			if not target.is_alive():
@@ -895,7 +898,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 				if acts:
 					acts.siphoned += got
 			elif &"energy" in tags:
-				target.drain(power, tags, caster, skill.carry * (r - 1))
+				target.drain(power, tags, caster, skill.carry * (ri - 1))
 			elif t.direct:
 				target.damage(power)
 			else:
@@ -903,7 +906,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		if foe and gross > 0 and next_to(caster.cell, target.cell):
 			_refill(caster, target, gross)
 		if foe and skill.god_tag and gross > 0:
-			_smite(caster, target, r, gross)
+			_smite(caster, target, ri, gross)
+
 		if acts:
 			for bh in skill.behaviours:
 				bh.dealt(acts, before - target.hp)  # Jam: as much off its Focus
@@ -929,6 +933,16 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		cast(caster, skill, target, true)
 		_recasts -= 1
 	return true
+
+
+# The skill a Cast is for has landed: past its attack roll, save or contest, or on a path with none.
+# Its behaviours do what they do (Behaviour.apply()). Every landing path in cast() comes through here.
+func _land(c: Behaviour.Cast) -> void:
+	if not c:
+		return
+	c.hit = true
+	for bh in c.skill.behaviours:
+		bh.apply(c)
 
 
 # The one Cast a skill's behaviours share as it's used (Skill.behaviours: Kick), from its payment on:
@@ -1051,10 +1065,11 @@ func _smite_heal(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 	var tier := skill.tier(ri)
 	if not tier:
 		return
-	var n := tier.power + roll(Vector2i(tier.dice.x * (ri if skill.dice_per_rank else 1), tier.dice.y)) + (m.stat(caster.mod(tier.stat, skill.tags), &"stat_impact") if tier.stat else 0)
+	var n := tier.power + roll(Vector2i(tier.dice.x * (ri if skill.dice_per_rank else 1), tier.dice.y)) + (m.stat(caster.mod(tier.stat, skill.tags), &"stat_impact") if tier.stat else 0) \
+			+ int(requirement(caster, skill, t, r)[1])
 	var room := t.max_hp + t.over_max - t.hp
 	var over := maxi(n - room, 0)
-	var extra := roundi(over * 0.2 * r)
+	var extra := roundi(over * 0.2 * ri)
 	t.over_max = maxi(t.hp + mini(n, room) + extra - t.max_hp, t.over_max)
 	t.healed_by = caster
 	t.heal(mini(n, room) + extra)
@@ -1091,7 +1106,7 @@ func auto_targets(caster: Unit, skill: Skill) -> Array[Unit]:
 		if o != caster and o.is_alive() and read(caster, o).located() and in_reach(caster, skill, o):
 			out.append(o)
 	out.sort_custom(func(x: Unit, y: Unit): return Vector2(x.cell).distance_to(Vector2(caster.cell)) < Vector2(y.cell).distance_to(Vector2(caster.cell)))
-	return out.slice(0, caster.rank(skill))
+	return out.slice(0, caster.mods(skill).irank(caster.rank(skill), &"rank_range"))  # how many it reaches: rank range
 
 
 # A traitor in the party of a leader on another side (Unit.follows): it acts on that leader's turn
@@ -1658,11 +1673,37 @@ static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null) -> float:
 	if not s.attacks():
 		return 1.0
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
-	var p := clampi(21 - (t.defense(s.tags) + guard_of(c) - u.attack_mod(s) - s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") - s.roll_bonus - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
-	var edge := edge_of(s, c)
+	var req: Array = b.requirement(u, s, t, u.rank(s)) if b else [0, 0, 0, 0, 0.0]  # its contingency, as cast() reads it
+	var tags := c.tags if c else hit_tags(u, s, t, b)
+	var p := clampi(21 - (t.defense(tags) + guard_of(c) - u.attack_mod(s) - s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") - s.roll_bonus - int(req[0]) - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
+	var edge := clampi(edge_of(s, c) + int(req[2]), -1, 1)
+
 	if edge < 0:
 		return p * p
 	return 1.0 - (1.0 - p) * (1.0 - p) if edge > 0 else p
+
+
+# What s deals in u's hands, before the target's Defense, mitigation and damage effects: {lo, hi, avg}
+# over all its hits; empty if it deals none. Read as cast() reads it - its tier, dice and hits at its
+# rank impact, its stat at its stat impact (u's modifiers: Unit.mods()), its weapon - and, given its
+# target and the battle, its contingency's + damage (requirement()). The HUD's forecast (HUD._hurt())
+# and the AI's score (AI.score()) both read it.
+static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) -> Dictionary:
+	var m := u.mods(s)
+	var r := u.rank(s)
+	var ri := m.irank(r, &"rank_impact")
+	var tier := s.tier(ri)
+	if not tier:
+		return {}
+	var hits := ri if s.hits_per_rank else 1
+	var count := tier.dice.x * (ri if s.dice_per_rank else (Difficulty.scaled(s.dice_scale, ri) if s.dice_scale else 1))
+	var tags := u.skill_tags(s)
+	var bonus := (m.stat(u.mod(u.wielded(tier.stat, tags), tags), &"stat_impact") + u.weapon_bonus(tier.stat)) if tier.stat else 0
+	if b and t:
+		bonus += int(b.requirement(u, s, t, r)[1])
+	var lo := maxi(tier.power + count + bonus, 1) * hits
+	var hi := maxi(tier.power + count * tier.dice.y + bonus, 1) * hits
+	return {lo = lo, hi = hi, avg = (lo + hi) / 2.0}
 
 
 # A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
@@ -1727,7 +1768,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		caster.channel = Unit.Channel.new(skill, c)
 		channeled.emit(caster, skill, c)
 	elif skill.observes:
-		observe(caster, c, caster.rank(skill))
+		observe(caster, c, caster.mods(skill).irank(caster.rank(skill), &"rank_impact"))
 	elif skill.guards:
 		_guard(caster, skill, c)
 	elif skill.wells:
@@ -1737,7 +1778,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	elif skill.lays:
 		lay(caster, skill, c)
 	else:
-		zones.append(Zone.new(skill.zone, zone_levels(caster.rank(skill), c), skill.turns, caster.faction))
+		zones.append(Zone.new(skill.zone, zone_levels(caster.mods(skill).irank(caster.rank(skill), &"rank_impact"), c), skill.turns, caster.faction))  # its levels: rank impact
 	caster.heading = Vector2i.ZERO
 	used.emit(caster, skill, c, 0)
 	return true
@@ -1749,7 +1790,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 # for skills tagged trap, so do allies within its charisma mod in tiles (at least 1; trap_word
 # multiplies that: Hazard Expert), and with trap_word, allies further off get a vibe of it.
 func lay(u: Unit, skill: Skill, c: Vector2i) -> Snare:
-	var r := u.rank(skill)
+	var r := u.mods(skill).irank(u.rank(skill), &"rank_impact")  # its trap's per-rank strength
 	var ground := terrain(c)
 	var t: Terrain = ground.duplicate()
 	var plan := skill.lays
@@ -1803,7 +1844,7 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	for o: Unit in units.values():
 		if o == caster or not o.is_alive() or Vector2(o.cell).distance_to(Vector2(c)) > blast + 0.0001:
 			continue
-		var power := maxi(t.power + roll(t.dice) * (ri if skill.dice_per_rank else 1) + (m.stat(caster.mod(t.stat, skill.tags), &"stat_impact") if t.stat else 0), 1) if t else 0
+		var power := maxi(t.power + roll(t.dice) * (ri if skill.dice_per_rank else 1) + (m.stat(caster.mod(t.stat, tags), &"stat_impact") if t.stat else 0) + int(requirement(caster, skill, o, r)[1]), 1) if t else 0
 		var was := o.hp
 		o.hit(power * (1.0 + caster.stat(&"damage", tags)), tags, caster)
 		hit[o] = was - o.hp
@@ -2063,14 +2104,14 @@ func linked(o: Unit) -> Array[Unit]:
 # leader, wherever it is, putting the skill's effects on each of them as on itself: they pool what they
 # make out (read()).
 func _link(caster: Unit, skill: Skill, r: int) -> void:
-	var near := maxi(caster.mod(&"charisma"), 1)
+	var near := maxi(caster.mods(skill).stat(caster.mod(&"charisma"), &"stat_range"), 1)  # its reach: stat range
 	for o: Unit in units.values():
 		if o == caster or not o.is_alive() or not teammates(caster, o):
 			continue
 		if Command.tiles(o.cell, caster.cell) <= near or o == caster.follows:
 			for e in skill.effects:
 				var n := skill.lasts(r, caster)
-				var a := o.afflict(e, n + (1 if o.faction == turn else 0), r)
+				var a := o.afflict(e, n + (1 if o.faction == turn else 0), caster.mods(skill).irank(r, &"rank_impact") if e.per_rank else r)
 				a.skill = skill
 				a.by = caster
 				a.since = turns_begun
@@ -2445,7 +2486,7 @@ func pass_cost(u: Unit, o: Unit) -> float:
 
 
 func _relay(u: Unit) -> float:
-	return maxf(u.stat(&"relay") * u.mod(&"strength"), 0.0)
+	return maxf(u.stat(&"relay"), 0.0)  # its Effect is per str mod (Relay): through its holder's modifiers (Modifiers.effect())
 
 
 # A trap goes off: most are revealed for good (Terrain.reveals), and it hits whoever stepped on it
@@ -3010,9 +3051,9 @@ func end_turn() -> void:
 		elif u.channel:
 			u.channel_held(u.idle())  # a switch of what it runs on carries more over (Unit.toggle())
 	for u in side:
-		if u.channel and u.channel.skill.pings:
-			clairvoy(u)  # the pings move to where the foes are now...
-			u.channel.rank += 1  # ...then it ranks up
+		if u.channel:
+			for bh in u.channel.skill.behaviours:
+				bh.held(self, u)  # Clairvoyance: the pings move, then it ranks up
 	for u in side:
 		var rested := u.activity() == &"rest"
 		if rested:
@@ -3190,7 +3231,7 @@ func engulf(u: Unit, t: Unit) -> void:
 
 # Well Up at c: floods c rank deep and the tiles beside it a rank less, for rank of its side's turns.
 func well_up(u: Unit, s: Skill, c: Vector2i) -> void:
-	var r := u.rank(s)
+	var r := u.mods(s).irank(u.rank(s), &"rank_impact")  # its depth and turns
 	for dx in [-1, 0, 1]:
 		for dy in [-1, 0, 1]:
 			var at := c + Vector2i(dx, dy)
@@ -3199,9 +3240,11 @@ func well_up(u: Unit, s: Skill, c: Vector2i) -> void:
 
 # Waltz of Vapors: fog around u, radius rank + the better of its dex and cha mods, concealing at its
 # rank; it lasts through its next turn, so it's kept up by using it again as each turn opens.
+# Its radius is rank range (and stat range), its concealment rank impact (its caster's modifiers).
 func waltz(u: Unit, s: Skill) -> void:
-	var r := u.rank(s)
-	var reach := r + maxi(u.mod(&"dexterity", s.tags), u.mod(&"charisma", s.tags))
+	var m := u.mods(s)
+	var r := m.irank(u.rank(s), &"rank_impact")
+	var reach := m.irank(u.rank(s), &"rank_range") + m.stat(maxi(u.mod(&"dexterity", u.skill_tags(s)), u.mod(&"charisma", u.skill_tags(s))), &"stat_range")
 	var levels: Dictionary[Vector2i, int] = {}
 	for x in range(u.cell.x - reach, u.cell.x + reach + 1):
 		for y in range(u.cell.y - reach, u.cell.y + reach + 1):
@@ -3410,14 +3453,15 @@ func interrupt(u: Unit) -> Array[StringName]:
 	return ended
 
 
-# Clairvoyance: u, channeling it, senses every foe its side can't see (none of it has it located,
-# pings aside) within its wisdom score + the channel's rank in tiles of where it stands, walls or not.
-# Each is pinged at its tile - its side then knows where it is and nothing more (Perception.unit(),
-# HUD.view()) - and u grows a stack more suspicious of that tile. The pings before are dropped.
-func clairvoy(u: Unit) -> void:
+# u, channeling a skill that senses (Clairvoyance), senses every foe its side can't see (none of it has
+# it located, pings aside) within `reach` tiles of where it stands, walls or not. Each is pinged at its
+# tile - its side then knows where it is and nothing more (Perception.unit(), HUD.view()) - and u grows
+# a stack more suspicious of that tile. The channel's pings before are dropped.
+func ping(u: Unit, reach: int) -> void:
 	var ch := u.channel
 	ch.pings.clear()
-	var reach := clairvoyance_reach(u)
+	if u not in _seers:
+		_seers.append(u)
 	var side := members(u.faction)
 	_blind_to_pings = true
 	for t: Unit in units.values():
@@ -3429,18 +3473,13 @@ func clairvoy(u: Unit) -> void:
 		suspect(u, ch.pings[t])
 
 
-# How far u's Clairvoyance reaches now: its wisdom score + the channel's rank, in tiles.
-func clairvoyance_reach(u: Unit) -> int:
-	return roundi(u.stat(&"wisdom")) + (u.channel.rank if u.channel and u.channel.skill.pings else 0)
-
-
 # Where side f has sensed foes by Clairvoyance: foe -> the tile it was pinged at, over every channel of
-# it its units hold (none while clairvoy() looks).
+# it its units hold (none while ping() looks).
 func pinged(f: Faction) -> Dictionary[Unit, Vector2i]:
 	var out: Dictionary[Unit, Vector2i] = {}
 	if _blind_to_pings or _seers.is_empty():
 		return out
-	_seers.assign(_seers.filter(func(u: Unit): return is_instance_valid(u) and u.is_alive() and u.channel and u.channel.skill.pings))
+	_seers.assign(_seers.filter(func(u: Unit): return is_instance_valid(u) and u.is_alive() and u.channel))
 	for u in _seers:
 		if u.faction == f:
 			out.merge(u.channel.pings)
@@ -3467,8 +3506,10 @@ func close_rift(by: Unit) -> bool:
 
 # Emergency Exit: a forming escape portal (the Meadows) opens rank turns sooner; with none forming, the
 # caster and its allies within rank tiles warp to a pocket of stone for rank turns.
+# Its turns are rank impact, the allies it takes within rank range (its caster's modifiers).
 func emergency_exit(by: Unit, skill: Skill) -> void:
-	var r := by.rank(skill)
+	var mods := by.mods(skill)
+	var r := mods.irank(by.rank(skill), &"rank_impact")
 	var meadows := get_node_or_null("Meadows")
 	if meadows and meadows.portal != null and not meadows.opened:
 		meadows.hasten(r)
@@ -3478,8 +3519,9 @@ func emergency_exit(by: Unit, skill: Skill) -> void:
 	for m in p.marks:
 		m.turns = r
 	var from := by.cell
+	var reach := mods.irank(by.rank(skill), &"rank_range")
 	for u: Unit in members(by.faction):
-		if Vector2(u.cell).distance_to(Vector2(from)) <= r + 0.0001 and not _in_pocket(u.cell):
+		if Vector2(u.cell).distance_to(Vector2(from)) <= reach + 0.0001 and not _in_pocket(u.cell):
 			move(u, free_near_in(p, p.centre))
 
 
@@ -3971,11 +4013,15 @@ func _choke(caster: Unit, t: Unit) -> void:
 # the element's tag, the first hit + its highest mental mod). Landing 12 hits with Strike! (restrike),
 # it strikes again at once with restrike - 1 more (up to three times: a bowling game's strikes); 36 in
 # all (PERFECT_HITS) is a Perfect: PERFECT_HEAL healed at once. How many hits landed.
-func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0) -> int:
+# `r` is its rank as it hits (rank_impact, through its caster's modifiers: Battle.cast()); `acts` its
+# behaviours' Cast (their guard, edge and bonus on each roll); `req` its contingency's payoff
+# (requirement(): + to hit, damage, edge).
+func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0, acts: Behaviour.Cast = null, req: Array = [0, 0, 0, 0, 0.0]) -> int:
 	var tier := skill.tier(r)
 	if not tier:
 		return 0
 	var hits := (1 if caster.stat(&"single") > 0.0 else r) + extra
+	var m := caster.mods(skill)
 	var steady := roundi(caster.stat(&"steady"))
 	var featured := roundi(caster.stat(&"featured"))
 	var recording := roundi(caster.stat(&"recording"))
@@ -3997,8 +4043,8 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty + discipline_hit(caster)
-		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure).keen(discipline_keen(caster)))
+		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), tags), &"offensive") - penalty + discipline_hit(caster) + int(req[0])
+		var hit := resolve(Check.attack(bonus, t.defense(blow) + guard_of(acts)).edge(clampi(edge_of(skill, acts) + int(req[2]), -1, 1)).sure(sure).keen(discipline_keen(caster)))
 		var crit := hit.crit
 		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
@@ -4010,11 +4056,14 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if crit and decisive:
 			sure = true
 		var stat := tier.stat
-		if decisive and stat and caster.mod(&"dexterity", skill.tags) > caster.mod(caster.wielded(stat, skill.tags), skill.tags):
+		if decisive and stat and caster.mod(&"dexterity", tags) > caster.mod(caster.wielded(stat, tags), tags):
 			stat = &"dexterity"
-		var power := tier.power + roll(tier.dice) - penalty
+		var power := tier.power + roll(tier.dice) - penalty + int(req[1])
 		if stat:
-			power += caster.mod(caster.wielded(stat, skill.tags), skill.tags) + caster.weapon_bonus(stat) + (zeal if stat == skill.stat() else 0)
+			power += m.stat(caster.mod(caster.wielded(stat, tags), tags), &"stat_impact") + caster.weapon_bonus(stat) + (zeal if stat == skill.stat() else 0)
+		if acts:
+			for bh in skill.behaviours:
+				power += bh.bonus(acts)
 		if i < featured:
 			power += clampi(caster.mod(&"charisma"), 0, featured)
 		if i == 0:
@@ -4033,7 +4082,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		caster.imbued -= 1
 	var again := roundi(caster.stat(&"restrike"))
 	if landed >= 12 and again > 0 and depth < 3 and t.is_alive():  # Strike!: a strike, bowled
-		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1)
+		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1, acts, req)
 	if depth == 0 and landed >= PERFECT_HITS:  # three strikes in a row: a perfect game
 		caster.heal(PERFECT_HEAL)
 		perfect.emit(caster)
@@ -4141,21 +4190,23 @@ func _flame(u: Unit, f: Flame, why: String) -> void:
 # Flamewall, cast on c: c and rank tiles to either side of it, across the caster's line to it, catch
 # fire for rank of the caster's side's turns. A unit standing on one makes a dex check against the
 # caster's d20 + wis mod to get clear; failing, it burns at once.
+# Its width is rank range, its turns rank impact (its caster's modifiers).
 func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
 	var r := caster.rank(skill)
+	var m := caster.mods(skill)
 	var d := Vector2i(signi(c.x - caster.cell.x), signi(c.y - caster.cell.y))
 	var across := Vector2i(-d.y, d.x) if d != Vector2i.ZERO else Vector2i(1, 0)
 	var tiles: Array[Vector2i] = [c]
-	for i in range(1, r + 1):
+	for i in range(1, m.irank(r, &"rank_range") + 1):
 		tiles.append(c + across * i)
 		tiles.append(c - across * i)
 	for t in tiles:
 		if not on_map(t) or terrain(t).douses:  # no fire on water
 			continue
-		flames[t] = Flame.new(caster, r)
+		flames[t] = Flame.new(caster, m.irank(r, &"rank_impact"))
 		var u := unit_at(t)
 		if u and u.is_alive():
-			var vs := beats(Check.side(u.check_mod(&"dexterity", &"defensive")), Check.side(caster.check_mod(&"wisdom", &"offensive", skill.tags)), false)  # the wall wins ties
+			var vs := beats(Check.side(u.check_mod(&"dexterity", &"defensive")), Check.side(caster.check_mod(&"wisdom", &"offensive", caster.skill_tags(skill))), false)  # the wall wins ties
 			contested.emit(u, caster, vs.mine.total, vs.theirs.total)
 			if not vs.won:
 				_flame(u, flames[t], "is caught in the wall")
@@ -4201,12 +4252,12 @@ func _wildfire(caster: Unit, skill: Skill, c: Vector2i) -> void:
 		if u == caster or not u.is_alive() or not in_cone(caster.cell, u.cell, aim, half, long):
 			continue
 		var bane := skill.bane != &"" and u.has_tag(skill.bane)
-		var share := evade(u, Difficulty.dc(&"impossible" if bane else skill.difficulty, r))
+		var share := evade(u, Difficulty.dc(&"impossible" if bane else skill.difficulty, ri))  # the check it imposes: at its rank impact
 		if share <= 0.0 or not t:
 			hit[u] = 0
 			continue
 		var dice := Vector2i(t.dice.x * (Difficulty.scaled(skill.dice_scale, ri) if skill.dice_scale else 1), t.dice.y)
-		var power := (t.power + roll(dice) + (m.stat(caster.mod(t.stat, skill.tags), &"stat_impact") if t.stat else 0)) * (2 if bane else 1)
+		var power := (t.power + roll(dice) + (m.stat(caster.mod(t.stat, tags), &"stat_impact") if t.stat else 0) + int(requirement(caster, skill, u, r)[1])) * (2 if bane else 1)
 		hit[u] = u.hit(power * share * (1.0 + caster.stat(&"damage", tags)), tags, caster)
 		_expose(u)
 	_expose(caster)
@@ -4218,7 +4269,7 @@ func _wildfire(caster: Unit, skill: Skill, c: Vector2i) -> void:
 
 func _solar(caster: Unit, skill: Skill, c: Vector2i) -> void:
 	var r := caster.rank(skill)
-	var half := deg_to_rad(skill.cone + 15.0 * (r - 1)) / 2.0
+	var half := deg_to_rad(skill.cone_at(r, caster)) / 2.0
 	var aim := Vector2(c - caster.cell).angle()
 	var long := area_reach(caster, skill)
 	var hit := {}
@@ -4293,17 +4344,21 @@ static func discipline_damage(u: Unit, s: Skill) -> float:
 # A skill on its user that spreads its effects to every ally within rank tiles (Flamecharm,
 # Flamedance) - from rank V of a splitting one (Flamecharm), only the nearest rank of them, its
 # strength shared out (Applied.scale).
+# Its reach and how many it splits among are rank range; its effects' rank, rank impact (its caster's
+# modifiers); the split starts at rank V as its holder has it.
 func _aura(caster: Unit, skill: Skill, r: int) -> void:
-	var near: Array = units.values().filter(func(o: Unit): return o.is_alive() and Faction.friends(o.faction, caster.faction) and Command.tiles(o.cell, caster.cell) <= r)
+	var m := caster.mods(skill)
+	var rr := m.irank(r, &"rank_range")
+	var near: Array = units.values().filter(func(o: Unit): return o.is_alive() and Faction.friends(o.faction, caster.faction) and Command.tiles(o.cell, caster.cell) <= rr)
 	near.sort_custom(func(a: Unit, b: Unit): return Command.tiles(a.cell, caster.cell) < Command.tiles(b.cell, caster.cell))
 	var share := 1.0
 	if skill.splits and r >= 5:
-		near = near.slice(0, r)
+		near = near.slice(0, rr)
 		share = 1.0 / maxi(near.size(), 1)
 	for o: Unit in near:
 		for e in skill.effects:
 			var n := skill.lasts(r, caster)
-			var a := o.afflict(e, n + (1 if o.faction == turn else 0), r)
+			var a := o.afflict(e, n + (1 if o.faction == turn else 0), m.irank(r, &"rank_impact") if e.per_rank else r)
 			a.total = n
 			a.scale = share
 			a.skill = skill
@@ -4389,22 +4444,25 @@ static func executed(t: Unit, by: Variant, r: int) -> float:
 func requirement(caster: Unit, skill: Skill, target: Unit, r: int) -> Array:
 	var q := skill.requires
 	if q == null:
-		return [0, 0, 0]
+		return [0, 0, 0, 0, 0.0]
 	var m := caster.mods(skill) if q.beneficial() else Modifiers.NONE
 	var allies := units.values().filter(func(o: Unit): return Faction.friends(o.faction, caster.faction))
 	if not q.met(caster, target, r, m.share(q.share), allies, roundi(caster.stat(&"concealment"))):
-		return [0, 0, 0]
-	return [m.pay(q.hit), m.pay(q.damage), q.edge]
+		return [0, 0, 0, 0, 0.0]
+	return [m.pay(q.hit), m.pay(q.damage), q.edge, m.pay(q.turns), q.strength * m.potency if q.strength > 0.0 else q.strength]
+
 
 
 # Level Down: rank rolls of d20 + the caster's mod, each beating the higher of the foe's average stat
 # mod + level and its last stand. Each that does takes a level off it, for as many turns (rank - misses):
 # the skill's level effect at that rank, brittle (easily cleansed).
-func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+# `r`: its rank impact (Battle.cast()); `req`: its contingency's payoff (+ to each roll, its edge). How
+# many levels it took.
+func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 0, 0.0]) -> int:
 	var bar := maxi(t.average_mod() + t.lv(), last_stand(t))
 	var hits := 0
 	for i in r:
-		var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", skill.tags), bar))
+		var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", caster.skill_tags(skill)) + int(req[0]), bar).edge(int(req[2])))
 		contested.emit(caster, t, roll.total, bar)
 		if roll.margin() > 0:  # beating the bar, not meeting it
 			hits += 1
@@ -4418,6 +4476,7 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 			a.by = caster
 			a.since = turns_begun
 	leveled.emit(caster, t, hits)
+	return hits
 
 
 # Shields Up!, aimed at c: its user faces c behind its shield (Unit.guard) - damage from a source whose
@@ -4462,19 +4521,22 @@ func decay(caster: Unit, skill: Skill, target: Unit) -> float:
 # Death: the foe's last stand against an execute at the skill's rank, against d20 + the caster's mod
 # (the caster wins ties). Failing, it takes 1 true damage and dies at once - keeping the HP it had for
 # revival and die-hard effects (Unit.slain_from). A heart left, it goes down as usual.
-func _death(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
+# `r`: its rank impact (Battle.cast()); `req`: its contingency's payoff. Whether it killed.
+func _death(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 0, 0.0]) -> bool:
 	var stand := last_stand(t, r)
-	var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", skill.tags), stand))  # the caster wins ties
+	var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", caster.skill_tags(skill)) + int(req[0]), stand).edge(int(req[2])))  # the caster wins ties
 	contested.emit(caster, t, roll.total, stand)
 	_expose(caster)
 	_expose(t)
 	if not roll.hit:
-		return
+		return false
 	t.slain_from = t.hp
 	if not Downed.finish(t):  # one already Downed dies of it
 		t.damage(1)
 		t.hp = 0
 	caster.gain(&"kill", 1)
+	return true
+
 
 
 # --- Synergy

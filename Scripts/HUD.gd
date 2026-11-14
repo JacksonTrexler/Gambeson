@@ -256,8 +256,12 @@ func _ready() -> void:
 	%BookIcon.pressed.connect(toggle_spellbook)
 	%CogIcon.pressed.connect(toggle_settings)
 	%SettingsClose.pressed.connect(_close_panels)
+	high_contrast = Prefs.get_pref("high_contrast", false)  # Settings persist (Prefs)
+	%HighContrast.set_pressed_no_signal(high_contrast)
+	_apply_contrast()
 	%HighContrast.toggled.connect(func(on: bool) -> void:
 		high_contrast = on
+		Prefs.put("high_contrast", on)
 		_apply_contrast()
 		_mark())
 	var picker := OptionButton.new()  # Settings: the allied glow's colour
@@ -266,8 +270,12 @@ func _ready() -> void:
 	picker.tooltip_text = "The glow of allies on another side"
 	for n: String in ALLY_GLOWS:
 		picker.add_item("Allied glow: " + n)
+	var kept: int = ALLY_GLOWS.keys().find(Prefs.get_pref("ally_glow", "Mint"))
+	picker.select(maxi(kept, 0))
+	ally_glow = ALLY_GLOWS.values()[maxi(kept, 0)]
 	picker.item_selected.connect(func(i: int) -> void:
 		ally_glow = ALLY_GLOWS.values()[i]
+		Prefs.put("ally_glow", ALLY_GLOWS.keys()[i])
 		_mark())
 	%HighContrast.get_parent().add_child(picker)
 	KeyBinds.load_saved()
@@ -275,12 +283,22 @@ func _ready() -> void:
 	keys.name = "KeyBinds"
 	%Settings.get_node("Column").add_child(keys)
 	%Settings.get_node("Column").move_child(keys, %Settings.get_node("Column/Options").get_index() + 1)
+	suspicious_marks = Prefs.get_pref("suspicious_marks", suspicious_marks)
+	%SuspiciousMarks.set_pressed_no_signal(suspicious_marks)
 	%SuspiciousMarks.toggled.connect(func(on: bool) -> void:
 		suspicious_marks = on
+		Prefs.put("suspicious_marks", on)
 		_mark())
-	%KeepSlot.toggled.connect(func(on: bool) -> void: keep_slot = on)
+	keep_slot = Prefs.get_pref("keep_slot", keep_slot)
+	%KeepSlot.set_pressed_no_signal(keep_slot)
+	%KeepSlot.toggled.connect(func(on: bool) -> void:
+		keep_slot = on
+		Prefs.put("keep_slot", on))
+	hand_over = Prefs.get_pref("hand_over", hand_over)
 	%HandOver.button_pressed = hand_over
-	%HandOver.toggled.connect(func(on: bool) -> void: hand_over = on)
+	%HandOver.toggled.connect(func(on: bool) -> void:
+		hand_over = on
+		Prefs.put("hand_over", on))
 	%LogTitle.gui_input.connect(func(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			show_log(not log_open))
@@ -1169,13 +1187,11 @@ func _hurt(it: Dictionary) -> Dictionary:
 		return {}
 	if not known(t) and view(t).hp == null:
 		return {}
-	var m := u.mods(s)  # its modifiers (Battle.cast() reads the same)
-	var tier := s.tier(m.irank(u.rank(s), &"rank_impact"))
-	if not tier:
+	var d := Battle.damage_range(u, s, t, battle)  # as Battle.cast() deals it: through its modifiers
+	if d.is_empty():
 		return {}
-	var hits := u.rank(s) if s.hits_per_rank else 1
-	var bonus := m.stat(u.mod(u.wielded(tier.stat, s.tags), s.tags), &"stat_impact") + u.weapon_bonus(tier.stat) if tier.stat else 0
-	return {unit = t, lo = maxi(tier.power + tier.dice.x + bonus, 1) * hits, hi = maxi(tier.power + tier.dice.x * tier.dice.y + bonus, 1) * hits}
+	return {unit = t, lo = d.lo, hi = d.hi}
+
 
 
 # How likely the hovered attack is to land, as the target's brackets show it: &"likely" (solid),
@@ -2229,7 +2245,7 @@ func _refresh_bar() -> void:
 		var sense := skill_sense(u, s, r)
 		var off: int = u.disabled.get(s, 0) if u and s else 0
 		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
-		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense, u.mods(s).label() if s else "")
+		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense, u.mods(s).label() if s else "", u)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
@@ -2534,12 +2550,13 @@ func _info(u: Unit) -> Dictionary:
 	return info
 
 
-# [colour, item name] for each item u wears with a trim (Item.trim()): the card's banners.
+# [colour, item name, icon] for each item u wears: the card's equipment, its icon (Item.icon()) with its
+# trim as a banner beside it (a clear colour when it has none).
 static func trims(u: Unit) -> Array:
 	var out := []
 	for it: Item in [u.weapon, u.armor, u.trinket]:
-		if it and it.trim().a > 0.0:
-			out.append([it.trim(), it.name])
+		if it:
+			out.append([it.trim(), it.name, it.icon()])
 	return out
 
 

@@ -7,14 +7,23 @@ extends Behaviour
 
 
 func command_mod(c: Command, holder: Unit, rank: int, u: Unit) -> int:
-	if (c.linked != null and c.linked != u) or Command.tiles(holder.cell, u.cell) > rank:
+	var m := mods_on(holder)
+	if (c.linked != null and c.linked != u) or Command.tiles(holder.cell, u.cell) > m.irank(rank, &"rank_range"):
 		return NO_MOD
-	return rank
+	return m.irank(rank, &"rank_impact")
 
 
 func ordered(c: Command, holder: Unit, rank: int, u: Unit) -> void:
-	if c.linked == null and rank > holder.mod(&"charisma") and Command.tiles(holder.cell, u.cell) <= rank:
+	var m := mods_on(holder)
+	if c.linked == null and m.irank(rank, &"rank_impact") > holder.mod(&"charisma") and Command.tiles(holder.cell, u.cell) <= m.irank(rank, &"rank_range"):
 		c.linked = u
+
+
+# Its terms: an ally within rank tiles (range) takes orders as if its cha mod were its rank (impact); tame.
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_range", "ally reach")
+	t.add(&"rank_impact", "commands as")
+	t.impact = &"tame"
 
 
 func describe(rank: int) -> String:
