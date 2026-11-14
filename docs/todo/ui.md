@@ -31,6 +31,7 @@ All built this pass except two bits of polish:
 - [ ] **Walker pictogram** for the tile panel's move cost (needs art); "Mv -N" stands in.
 - [ ] **High contrast: thicken faction borders** (the brighter glow and whiter text are in; borders still to do).
 - [x] 60. **Built on judgement:** intents come with *either* low cha *or* low info (an inclusive or; an exclusive one would hide them from a commander who is both). Open for review.
+  - Your earlier inline notes on 60 are being built (2026-11-12, branch `a-small`).
 - [x] **Colours by AP and command limits** (2026-11-09): units colored normally, desaturating somewhat (not darkening) as an ally runs out of AP, grey once it can't be commanded on the player's turn; allies of other sides not coloured this way; a leader commands cha mod allies a turn, up to cha mod orders each. Built (`docs/done/ui.md`, `docs/done/rules.md`). (?83)
 
 83. **Colours and command limits - built on judgement, open for review (2026-11-09).**
@@ -61,7 +62,9 @@ All built this pass except two bits of polish:
     - **Bar trim turns neutral** while the "?" stands, with the glow and colours, as if unaffiliated.
     - **The "!" uses the existing reveal** (each stack takes a rank off trickery, so it shows once the read is no longer deceived): no new threshold. Say if you wanted a separate "high suspicion" level.
     - **Suspicion held only by allies other than the leader shows no mark** (todo above). Say if a side-mate's doubt should show.
-90. **Battle UI v2 - planned, open (2026-11-09); the four points asked 2026-11-10; best guesses given 2026-11-11, proposed and awaiting your "go".** `docs/ui-ux-v2.md`; nothing built. Four points to settle before the hover table:
+90. **Battle UI v2 - planned, open (2026-11-09); the four points asked 2026-11-10; answered (2026-11-12), being built on branch `a-ui`.** `docs/ui-ux-v2.md`; nothing built. Four points to settle before the hover table:
+    - **Answered (2026-11-12):** go on the four guesses (the intent, an always-selected slot, hover planning, the glow language, costs and odds on bars). As a unit plans movement, its movement / HP / resource bars show an estimate of the effects of known traps, a "this action will consume" signal; the same feature shows "using this skill will consume" while planning a skill. Units are on a time crunch: the less actual text they have to read the better.
+    - **Prediction limit:** a unit predicts only as many move / skill expenditures per turn as its int mod by default (spent only when an action is taken). Past that, or at +0, an effect tile just tacks a flashing ? onto the resource number, muted, e.g. `HP: 18 / 22` becomes `HP: *18 / 22 ?*`. At a negative int mod the player does not even see the muted ? for affected resources: movement is planned optimistically, hazards ignored.
     - Does resting by clicking yourself end the whole side's turn, or only that unit's? **Proposed:** only that unit's turn.
     - "First offensive skill from the selected slot": search rightward only, or wrap around? **Proposed:** the hover search wraps around the hotbar.
     - Odds as three bands (solid, broken, faint brackets), or keep the percentage when Defense is known? **Proposed:** bands on the map; the exact % on a held modifier key or the expanded card once Defense is known.
