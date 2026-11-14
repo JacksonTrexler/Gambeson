@@ -41,7 +41,7 @@ const COLOR := {
 	&"offensive": Color("#ff9e8a"), &"defensive": Color("#74b4e8"), &"supportive": Color("#8fdc8c"),
 	&"beneficial": Color("#6fdc8c"), &"detrimental": Color("#ff6b5e"), &"damage": Color("#ff9e8a"),
 	&"dangerous": Color("#e8665a"), &"environmental": Color("#b9cf8a"), &"unique": Color("#e8c547"),
-	&"ambush": Color("#7a9a6a"), &"bracing": Color("#a7b1bd"), &"finesse": Color("#c9ced8"), &"dubious": Color("#b39ddb"),
+	&"ambush": Color("#5b4a6e"), &"bracing": Color("#a7b1bd"), &"finesse": Color("#c9ced8"), &"dubious": Color("#b39ddb"),
 	# materials, forms, weights, qualities (PLAIN: never trim)
 	&"metal": Color("#a7b1bd"), &"iron": Color("#8a8f9c"), &"cloth": Color("#c8b89a"), &"padded": Color("#c8b89a"),
 	&"mail": Color("#a7b1bd"), &"wood": Color("#a0784a"), &"stone": Color("#9a948a"), &"rock": Color("#8a847a"),
