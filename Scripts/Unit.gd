@@ -1579,7 +1579,7 @@ func unequip(slot: String) -> Item:
 func refit() -> void:
 	var authored := max_energy if starkind() > 0 else max_hp - _hp_bonus
 	var grown := authored + (0 if starkind() > 0 else level_hp())
-	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble")) - burnt.get(&"hp", 0)
+	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble")) - int(burnt.get(&"hp", 0))
 	max_hp = maxi(grown + bonus, 1)
 	_hp_bonus = max_hp - authored
 	if hp > max_hp + over_max:
@@ -1784,7 +1784,7 @@ func pools() -> Dictionary[Reserve, int]:
 		if r and x.skill.passive:
 			out[r] = out.get(r, 0) + maxi((mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1) + r.base, 0) * x.rank
 	for r in out:
-		out[r] = maxi(out[r] - burnt.get(r, 0), 0)  # Burnout's loss
+		out[r] = maxi(out[r] - int(burnt.get(r, 0)), 0)  # Burnout's loss
 	return out
 
 

@@ -21,7 +21,7 @@ const BIG := 0.2  # of max HP, a con mod
 static func recovered(b: Battle, u: Unit, pool: Variant, n: int) -> void:
 	if n <= 0 or not u.is_alive():
 		return
-	var hp := pool is StringName and pool == &"hp"
+	var hp: bool = pool is StringName and pool == &"hp"
 	var re := u.endurance
 	if re <= 0 and not _passes(b, u, CHECK_DC):
 		u.burn(pool, maxi(u.rounded(LOSS * (1 + absi(re)) * n), 1))
