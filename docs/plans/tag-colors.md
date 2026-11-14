@@ -53,6 +53,37 @@ with color insignia)". And: "the less actual text they have to read the better".
    pennant per equipped item with trim; the unit's sprite a tiny banner with an insignia in its
    trinket's trim colour (trinkets only: one banner per unit, restraint).
 
+8. **light, medium and heavy on an item are its weight** (Item.WEIGHTS), never the element: Item.trim_tag()
+   skips them, so a Dagger or Robe tagged light isn't trimmed pale yellow.
+9. **The hotbar stripe now marks every skill**: martial skills stripe martial red and specialist ones
+   green where they were grey (only seven words had a tint before); magical, elements as before.
+10. **Damage numbers skip the broad words** (Tags.BROAD: martial, magical, specialist, physical and its
+   children): a fireball's number is fire orange, a sword's stays the old red.
+11. **The sprite's banner is the trinket's alone**, on dark cloth rather than its side's colours (a
+   banner mustn't give a disguise away), and on the sprite node so a silhouette blacks it out and a
+   persona's stand-in face hides it. The card shows a banner per trimmed item (weapon, armor, trinket)
+   for its own units and for any unit whose Defense (so its gear) it can make out, not a silhouette.
+12. **Colours aren't names**: no " ??" on them. They are all AI-picked, for the user to retune with
+   `mechanic.py color`.
+13. **For m-core's emblems**: an emblem trims for free if its tag or symbol is in Item.tags and has a
+   colour; its form word (sigil, insignia, crest, badge) needs a colour and a place in Tags.PLAIN, or
+   `mechanic.py check` fails it / it would trim in its form's colour.
+14. **`.claude/skills/new-mechanic/SKILL.md`**: only the tag lines of step 2 changed (`--color`, `color`).
+
 ## As built
 
-(filled in below as stages land)
+- `Scripts/Tags.gd`: COLOR (every existing word: ~200 entries, grouped), NEUTRAL, PLAIN, BROAD;
+  `color()`, `coloured()`, `mark(tags, skip)`.
+- `Scripts/Item.gd`: `trim_tag()`, `trim()`, `draw_banner()` (the placeholder banner, shared).
+- `Scripts/Glossary.gd`: ELEMENTS and TAG gone; `colour()` and `{x:}` read Tags.color().
+- `Scripts/SkillSlot.gd`: TINTS gone; `tint()` is Tags.mark().
+- `Scripts/HUD.gd`: `_on_taking_hit` keeps a blow's tags for the frame; `_hurt_colour()`; `trims(u)`
+  into the card's info.
+- `Scripts/UnitCard.gd`: `trims` row over the portrait's foot, `trim_mark()`; `Scripts/CharacterSheet.gd`:
+  a mark at the start of each equipment and stash row; `Scripts/Unit.gd`: `banner` on the sprite,
+  redrawn by the trinket setter.
+- `Util/mechanic.py`: `tag --color`, `color <word> <hex>`, check_colours().
+- `Tests/tag_colors_test.gd` (reader, every tag coloured, mark, trim, the tool, trim shown);
+  `Tests/glossary_test.gd` reads fire's colour from Tags.
+- Visual check: frames in the scratchpad's shot_m-colors (card banners, sprite banners, a fire -3 beside a
+  red -2; the character sheet's marks).
