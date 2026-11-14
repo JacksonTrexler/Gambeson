@@ -1104,10 +1104,10 @@ func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
 	return _walk_to(it, &"use", a.dest, false)
 
 
-# How many hazard estimates u can make a turn: its int mod and its foresight stat (Effect: skills and
-# items raise it). Below 0 it doesn't even know what it doesn't know (drain(): no "?").
+# How many hazard estimates u can make a turn (Battle.foresight_allowance(): its int mod and its
+# foresight stat). Below 0 it doesn't even know what it doesn't know (drain(): no "?").
 func foresight_allowance(u: Unit) -> int:
-	return u.mod(&"intelligence") + roundi(u.stat(&"foresight"))
+	return battle.foresight_allowance(u)
 
 
 # How many it has left this turn: its allowance, less those it acted on (foresight_used).
@@ -1115,32 +1115,11 @@ func foresight(u: Unit) -> int:
 	return foresight_allowance(u) - foresight_used.get(u, 0)
 
 
-# What stepping onto c would cost u that the player's side can foresee, by pool (&"hp", &"ap"): the one
-# estimate behind drain()'s forecast. A known trap's dice (times x the average + bonus) and its wounds'
-# first tick (Effect bleed and poison take HP, winded AP), and fire on the tile (1d8 + its setter's wis
-# mod, at least 1: Battle._flame()) - before mitigation, as a hit isn't rolled. {}: nothing foreseen.
+# What stepping onto c would cost u that the player's side can foresee, by pool (&"hp", &"ap"): the
+# one estimate behind drain()'s forecast, Battle.hazard() read through tile_view(c) - known traps and
+# their wounds over their length, known ground's afflicts, fire. {}: nothing foreseen.
 func hazard(u: Unit, c: Vector2i) -> Dictionary:
-	var out := {}
-	var t := battle.terrain(c)
-	if tile_view(c).trap == true:
-		_owe(out, &"hp", t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus)
-		var by: Unit = battle.snares[c].by if c in battle.snares and is_instance_valid(battle.snares[c].by) else null
-		for e in t.wounds:
-			match e.stat:
-				"bleed":
-					_owe(out, &"hp", maxf(((e.dice.x * (e.dice.y + 1) / 2.0 + (by.mod(e.dice_mod) if by and e.dice_mod else 0)) if e.dice != Vector2i.ZERO else e.amount), 1.0))
-				"poison":
-					_owe(out, &"hp", e.amount * u.max_hp)
-				"winded":
-					_owe(out, &"ap", e.amount)
-	if c in battle.flames:
-		_owe(out, &"hp", maxf(4.5 + battle.flames[c].bonus, 1.0))
-	return out
-
-
-func _owe(out: Dictionary, key: StringName, n: float) -> void:
-	if n > 0.0:
-		out[key] = out.get(key, 0.0) + n
+	return battle.hazard(u, c, tile_view(c))
 
 
 # What carrying out an intent would consume, as the unit expects it - the "will consume" signal, drawn
