@@ -52,3 +52,37 @@ The user's design (verbatim):
    + rank. Heal: 1d8 x moderate (1.5 x rank, rounded up) + wis mod + rank, 4 AP, 4 Energy. Megaheal:
    1d8 x extreme (3 x rank) + wis mod + rank, 6 AP, 9 Energy. Range 3 (*calls*). wis: the Cleric's
    swaps put cha/int on wis.
+
+## As built
+
+As planned, plus:
+
+- `Scripts/Burnout.gd` holds the rule; `Unit.recovered` signal, `Unit.note_recovery()`,
+  `endurance`, `endurance_max()`, `burnt`, `burn()`, `full_resource()`; `heal()` and
+  `grant_energy(n, heard)` report. Battle: `_on_recovered()`, RE reset in `_listen()`; `restore()`
+  reports a reserve potion. Energy Transfer and Energize grant with `heard = false` and report Energy +
+  Overcharge as one recovery (one RE). Glossary terms `burnout`, `recovery_endurance` (`--human`).
+- Checks are saves (`Check.Kind.SAVE`) on `check_mod(&"constitution", &"defensive")`, so bracing helps.
+- **Energize** (`Skills/energize.tres`, `Behaviours/energize.gd`): tagged `energy`. Base General tree
+  tier 4, so the house rule applies: it needs 3 T4+ skills first. If it has no room at all, its own 2 AP
+  are still spent (*call*: not blocked).
+- **Heal / Megaheal** (`Skills/heal.tres`, `Skills/megaheal.tres`, shared `Behaviours/heal.gd` with an
+  exported `magnitude`): tagged divine, wis, love, magical; not tiers (a tier on an ally skill would
+  deal damage). *Call made while building:* `Branch.tier` 8 only sets depth on a class tree, so a
+  Paladin borrowing Eros could take them at once. Gated: Heal after Rejuvinate, Megaheal after Heal,
+  each needing 4 other Eros skills (the capstone `needs`). They sit on today's `Trees/eros.tres`.
+- **Card** (`HUD._info()`): an "RE n/max" row under OC (red at 0 or below) on the leader's card;
+  "Burnt -n HP/EN/MA" chips on the leader's and on our units' cards. Burning HP below current HP shows
+  the usual damage number.
+- Tests: `Tests/burnout_test.gd`, `Tests/energize_test.gd`, `Tests/megaheal_test.gd` (Heal too:
+  `Tests/heal_test.gd` already existed for heals in general). Changed: `champions_test.test_hex_iii`
+  reset its target with `heal(50)` 60 times; it now sets `hp = 50` (a reset, not a heal).
+
+## Left open
+
+- The AI doesn't know Heal/Megaheal are heals (`Skill.heals()` reads `heal_mods`), and never casts
+  Energize.
+- Other gains (Sweet Nothings on a kill, Focus building, Downed saves via `hp =`, post-battle refills)
+  don't report: they aren't recoveries in the user's sense, or bypass `heal()`.
+- Burnt max lasts past the battle with nothing to restore it yet.
+- Out of combat nothing listens, so no burnout there.
