@@ -163,7 +163,7 @@ static func _unshackle(b: Battle, u: Unit, log: Array[String]) -> void:
 	var it := u.trinket
 	if not it or not it.binding:
 		return
-	var odds := func(stat: StringName, diff: StringName) -> int: return u.mod(stat) - Difficulty.dc(diff, it.rank) if diff else -999
+	var odds := func(stat: StringName, diff: StringName) -> int: return u.mod(stat) - Difficulty.dc(diff, it.ranked()) if diff else -999
 	var how := &"unlock" if not u.shackled() else (&"pick" if odds.call(&"dexterity", it.picks) >= odds.call(&"strength", it.prised) else &"pry")
 	if b.unshackle(u, how):
 		log.append("%s gets its %s off" % [u.name, it.name])

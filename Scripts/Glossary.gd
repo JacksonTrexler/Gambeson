@@ -105,6 +105,8 @@ const TERMS := {
 	&"helpless": ["Helpless", &"condition", "Can't act, move or take orders: tapped while it lasts, unless something lets it act in a reduced capacity. Stunned, asleep, and Downed without a will to fight on are helpless."],
 	&"taps": ["Taps", &"check", "A check that can leave its loser tapped, such as resisting a stun. Whatever helps against such checks helps against every one of them."],
 	&"reduced": ["Reduced capacity ??", &"condition", "Acting where it would otherwise be tapped, by a permit such as Mindless Fury or Drone: fewer actions, or its mental stats held down."],
+	&"enchanted": ["Enchanted", &"condition", "Blessed gear (or a skill that is): rank +1. Pray makes it; honed is the material kind and never counts."],
+	&"honed": ["Honed", &"condition", "Material perfection: rank +1, and none of what enchanted does. Never both."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")

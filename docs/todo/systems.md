@@ -74,6 +74,7 @@ Build roughly in this order; the content below depends on them.
 21. Evidence:  "14 is mid": I made 10–14 the middle band (2–3 debris, 1–3 tiles off) and 9 or less poor. Right floor for "mid"? Debris from hiding and from moving despawn by the same rule (placement range + dex mod). Right?
 
 68. **Moving units and checks - built on judgement, open for review (2026-11-06).**
+    - **Earlier inline notes being built (2026-11-12, branch `a-small`).**
     - Pushes go straight away from the pusher and stop short of the first blocked tile; hitting something does no damage. Nothing pushes yet (a Shove, when designed).
     - Teleports (Send Off) spring a trap where they land and leave no debris trail; they don't count as moving.
     - On contact: a unit walking past a hidden foe (any tile of its walk beside it), or a hider ending its walk beside a foe, has the foe investigate against the hider's own roll, each time they come into contact, until it's seen through. Only hiding (concealment) is felt this way, not disguises.
@@ -98,6 +99,11 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [ ] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. (?100)
 - [x] **A save-Stamina toggle**: Stamina and Mana are now toggles on the hotbar (2026-11-11, ?116); switching is a channel. (?98, ?116)
 - [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
+- [ ] **`tapped` and `helpless`** (2026-11-12, branch `a-tap`): `tapped` is a utility effect other effects may apply; a tapped unit can't act or take orders. It is not a debuff and can't be cleansed, but its sources can be addressed (healing off a stun, a wound), which removes it, and the unit is free to use AP and reactions on its turn. Tapped when: out of AP; it has received cha mod orders this turn (until the commander ends the command phase; afterward it may use remaining AP on autopilot); downed or stunned with no effect or skill letting it act (see Mindless Fury). `helpless` is for stun and other full action-disabling spells. (?65, ?90)
+- [ ] **Tapped saturation** (2026-11-12, `a-tap`): a unit acting in a reduced capacity is drawn at 50% saturation, instead of 0% for tapped or 75% for low AP / command limit.
+- [ ] **Stun** (2026-11-12, `a-tap`): a wound-type cause of `tapped`/`helpless`; healing it off removes the tap.
+- [ ] **Mindless Fury** (2026-11-12, `a-tap`): Berserker passive, tier 5. A unit may take rank actions in a reduced capacity when it would otherwise be interrupted or incapacitated; its effective mental stats are 1 while acting this way. It can't power through `tapped` to take unlimited actions in a turn, and needs blanket mitigation of unit-inflicted disabling effects.
+- [ ] **Drone** (2026-11-12, `a-tap`): tier 4, Mage general / Specialist Merchant. The unit does not tap when the command limit is exceeded; its mental stat mods are capped at +rank when acting this way.
 - [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
 - [ ] **Nothing on the hotbar shows a worn skill until hovered**; a mark on the slot may be wanted.
 - [ ] **Static skill descriptions** (skills screen, spellbook) show base costs only.
@@ -158,7 +164,11 @@ Plan and what was built: `docs/plans/skill-tooling.md`. Built (`docs/done/system
 
 Plan, readings and what was built: `docs/plans/resources.md`; done in `docs/done/systems.md`. `Tests/resources_test.gd`.
 
-116. **Resource rules: Mana and Stamina as toggles - built on judgement, open for review (2026-11-11).** Your design (Mana and Stamina as toggle passives, on when learned; who pays what; Mana's even-keel regen, Stamina's rest bonus; switching as a channel that carries over up to 10% of max per rank per turn; two bars). Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
+116. **Resource rules: Mana and Stamina as toggles - built on judgement, answered (2026-11-12) for the recovery rules, in progress (`a-recover`).** Your design (Mana and Stamina as toggle passives, on when learned; who pays what; Mana's even-keel regen, Stamina's rest bonus; switching as a channel that carries over up to 10% of max per rank per turn; two bars). Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
+    - **Answered (2026-11-12), being built on branch `a-recover`:** Energize and Recovery Endurance (RE) below, with burnout. See ?117 in `docs/todo/classes.md` for the text of both.
+    - **General mechanic, burnout:** a unit recovering Energy by means other than waiting or resting eventually burns out. Con mod worth of recoveries are deferred; that deferral is **Recovery Endurance (RE)**, and it only comes back mid-combat if the unit rests at full resource. Reenergizing always consumes RE.
+    - A unit that recovers Energy or health with no RE left, and fails a con check, loses max HP / resource: 10% x (1 + abs(RE)) x the amount recovered (for HP, the amount over the RE threshold; RE goes negative). A unit that abuses recovery without the con to bear it gradually loses maximum HP / resource.
+    - **Single heals:** a unit healed above con mod x 20% of its health by one skill use makes a con check against the difference; -1 RE on a failure.
     - **Replacement is literal:** a unit running on Mana or Stamina has its own Energy emptied as the battle starts and doesn't get it back. That is the lock-out from Energy-cost actives. Confirm?
     - **Wizards and Mages now start every battle with no Energy** (they run on Mana). Strike costs nothing so still works; their non-magical costed skills need Energy Transfer, Overcharge or a switch. This is the intended result of the design; say if it bites.
     - **Energy from Energy Transfer, a potion or Overcharge pays for anything**, non-caster skills included: the rule reads the toggle, not which reserves are held. Confirm?

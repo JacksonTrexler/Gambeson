@@ -248,7 +248,7 @@ func _ready() -> void:
 	sheet.used_up.connect(_on_used_up)
 	sheet.unshackled.connect(func(u: Unit, how: StringName) -> void:
 		if _outfits(u) and not battle.unshackle(u, how):
-			_say("%s needs %d AP for that" % [_name(u), u.trinket.rank] if u.trinket else "Nothing to take off")
+			_say("%s needs %d AP for that" % [_name(u), u.trinket.ranked()] if u.trinket else "Nothing to take off")
 		sheet.open(u, _outfits(u))
 		_mark())
 	persona.done.connect(_on_personified)
