@@ -117,6 +117,8 @@ var phase := Phase.INITIATIVE:
 		phase_changed.emit(was, v)  # before _enter, so a chained change arrives in order
 		_enter(v)
 
+var ending_turn := false  # inside end_turn(): a side falling now doesn't pass the turn, end_turn() does
+
 # Whose turn it is. Its units get fresh AP and movement as it starts.
 var turn: Faction:
 	set(v):
@@ -2730,6 +2732,9 @@ func free_near(c: Vector2i) -> Variant:
 func end_turn() -> void:
 	if phase != Phase.TURNS:
 		return
+	var ending := turn
+	var was_order := order.duplicate()  # a side can fall out of it below: its successor is still the next one standing
+	ending_turn = true  # so _on_died() doesn't pass the turn too: it's passed once, at the end
 	var side := members(turn)
 	for u in side:
 		if u.channel and u.channel.turns > 0 and not u.idle():
@@ -2803,9 +2808,15 @@ func end_turn() -> void:
 	Downed.end_round(members(turn))  # a round passes for the Downed
 	_revive()
 	_check_stall()
+	ending_turn = false
 	if phase != Phase.TURNS:
 		return
-	turn = order[(order.find(turn) + 1) % order.size()]
+	var at := was_order.find(ending)
+	for k in range(1, was_order.size() + 1):
+		var next: Faction = was_order[(at + k) % was_order.size()]
+		if next in order:
+			turn = next
+			return
 
 
 # A side's turn ends. If none of its units could make out a single foe it would fight while enemies
@@ -4300,8 +4311,8 @@ func _on_died(u: Unit) -> void:
 	zones.assign(zones.filter(func(z: Zone): return z.faction != u.faction))  # nothing left to tick them
 	if sides_left() < 2:
 		phase = Phase.OVER
-	elif turn == u.faction:
-		turn = order[i % order.size()]
+	elif turn == u.faction and not ending_turn:
+		turn = order[i % order.size()]  # (a turn that is ending passes itself: end_turn())
 
 
 func _enter(p: Phase) -> void:
