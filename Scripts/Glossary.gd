@@ -101,6 +101,10 @@ const TERMS := {
 	&"jammed": ["Jammed ??", &"condition", "Interrupted, it has lost its reactions until its next turn is over: it can't dodge, so all of an evadable attack lands, it can't guard behind its shield, and it doesn't obstruct its foes."],
 	&"siphon": ["Siphon", &"damage", "Its damage comes off the target's resources instead of its HP: its Overcharge first, then what it last paid from, then Energy, then its other reserves. Power is easier to siphon: half again as much."],
 	&"overcharge": ["Overcharge", &"condition", "An extra buffer of Energy, spent before any of its own on a cost - and counted toward what it can afford. It decays to nothing over the turns it was given for, the turn it came not counting."],
+	&"tapped": ["Tapped", &"condition", "Can't act and takes no orders: out of AP, ordered as far as its leader allows this turn, or helpless with nothing that lets it act. Not an effect: it lifts the moment its cause does."],
+	&"helpless": ["Helpless", &"condition", "Can't act, move or take orders: tapped while it lasts, unless something lets it act in a reduced capacity. Stunned, asleep, and Downed without a will to fight on are helpless."],
+	&"taps": ["Taps", &"check", "A check that can leave its loser tapped, such as resisting a stun. Whatever helps against such checks helps against every one of them."],
+	&"reduced": ["Reduced capacity ??", &"condition", "Acting where it would otherwise be tapped, by a permit such as Mindless Fury or Drone: fewer actions, or its mental stats held down."],
 }
 
 static var _token := RegEx.create_from_string("\\{([kodrtx]):([^}|]+)(?:\\|([^}]+))?\\}")
