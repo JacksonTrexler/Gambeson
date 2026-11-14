@@ -12,6 +12,11 @@ func fits(_b: Battle, _caster: Unit, target: Unit) -> bool:
 	return target.dbno != null
 
 
+# What a Downed ally comes back up with: what it is below 0, and the share.
+func restores(c: Cast) -> Dictionary:
+	return {&"hp": maxi(-c.target.hp, 0) + amount(c.target.max_hp, c.rank)}
+
+
 func apply(c: Cast) -> void:
 	if c.foe or c.target.dbno == null:
 		return

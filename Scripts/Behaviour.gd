@@ -41,6 +41,14 @@ func fits(_b: Battle, _caster: Unit, _target: Unit) -> bool:
 	return true
 
 
+# What using the skill as `c` (caster, target, skill, rank set; not run) would give the target back, as
+# expected amounts by pool: &"hp", &"energy", or a Reserve. Only what the AI reads, to see what a skill
+# is for (AI._restores(): it casts a restorer on whoever is short of what it restores) - so a new
+# healing behaviour declares it here and the AI picks it up. Empty: it restores nothing.
+func restores(_c: Cast) -> Dictionary:
+	return {}
+
+
 # After its damage lands (Battle.cast(), the same Cast apply() had): `n`, the HP the target lost to it
 # (Jam drains as much of its Focus); what a siphon took is c.siphoned (Energy Transfer).
 func dealt(_c: Cast, _n: int) -> void:
