@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/stun.gd" id="b_stun"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+dice = Vector2i(1, 6)
+stat = &"strength"
+
+[sub_resource type="Resource" id="Behaviour_stun"]
+script = ExtResource("b_stun")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Stun"
+glyph = "St"
+tags = Array[StringName]([&"physical", &"blunt", &"str", &"martial", &"offensive", &"taps"])
+ap = 4.0
+cost = 2
+radius = 1.0
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_stun")])
+roll_bonus = -5

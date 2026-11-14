@@ -107,7 +107,7 @@ static func changed(b: Battle, u: Unit, how: StringName) -> void:
 	match how:
 		&"down":
 			u.dbno.fresh = u.faction == b.turn
-			if u.helpless():
+			if u.stopped():
 				b.end_channel(u)
 		&"saved":
 			b.rescued(u, u.healed_by)

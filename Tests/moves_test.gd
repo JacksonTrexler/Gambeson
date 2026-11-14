@@ -55,3 +55,29 @@ func test_contact_hider_moves() -> void:
 	b.travel(v(3), Vector2i(3, 3))
 	ok(seen.size() == 1 and seen[0][0] == v(1) and seen[0][1] == v(3) and seen[0][2] == 30, "a hider ending beside a foe: the foe looks into it (%s)" % [seen])
 	ok(v(1) not in v(3).timed[hide.effects[0]].known_to, "a roll of 30 holds")
+
+
+# Walking into a unit it couldn't place and stopping short because of it (Battle.walk()'s blocker): the
+# walker gains a recon level on it for the battle (Battle.note()), each such bump.
+func test_bump() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3)})
+	hidden(v(3), 30)
+	v(3).afflict(effect("concealment", 6), 9)  # deep in hiding
+	v(1).refresh()
+	var before := b.read(v(1), v(3))
+	ok(not before.located(), "v(3), hidden, isn't placed")
+	var bumps := []
+	b.bumped.connect(func(u, into): bumps.append([u, into]))
+	var passed := b.travel(v(1), Vector2i(5, 3))
+	ok(passed.size() == 2 and v(1).cell == Vector2i(4, 3), "it can't stand where v(3) stands: stopped short (%s)" % v(1).cell)
+	ok(bumps == [[v(1), v(3)]] and b.noticed.get(v(1), {}).get(v(3)) == 1, "it bumped into v(3): a recon level on it (%s)" % [bumps])
+	ok(b.noticed.get(v(2), {}).is_empty(), "its own, not its side's")
+	v(1).refresh()
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3)})
+	b.travel(v(1), Vector2i(5, 3))
+	ok(b.noticed[v(1)][v(3)] == 2 or b.read(v(1), v(3)).located(), "again: another, while it still can't place it")
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 3)})
+	v(1).refresh()
+	var had: int = b.noticed[v(1)][v(3)]
+	b.travel(v(1), Vector2i(5, 3))
+	ok(b.noticed[v(1)][v(3)] == had, "a walk nothing stops: no recon")

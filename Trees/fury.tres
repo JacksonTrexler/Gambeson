@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://Skills/frenzy.tres" id="s_frenzy"]
 [ext_resource type="Resource" path="res://Skills/grudge.tres" id="s_grudge"]
 [ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
+[ext_resource type="Resource" path="res://Skills/mindless_fury.tres" id="s_mindless_fury"]
 
 [sub_resource type="Resource" id="Branch_second_wind"]
 script = ExtResource("branch")
@@ -21,6 +22,12 @@ script = ExtResource("branch")
 skill = ExtResource("s_frenzy")
 after = Array[ExtResource("skill")]([ExtResource("s_second_wind")])
 
+[sub_resource type="Resource" id="Branch_mindless_fury"]
+script = ExtResource("branch")
+skill = ExtResource("s_mindless_fury")
+after = Array[ExtResource("skill")]([ExtResource("s_grudge"), ExtResource("s_frenzy")])
+needs = 3
+
 [sub_resource type="Resource" id="Branch_stamina"]
 script = ExtResource("branch")
 skill = ExtResource("s_stamina")
@@ -29,4 +36,4 @@ skill = ExtResource("s_stamina")
 script = ExtResource("root")
 name = "Fury"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_second_wind"), SubResource("Branch_grudge"), SubResource("Branch_frenzy"), SubResource("Branch_stamina")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_second_wind"), SubResource("Branch_grudge"), SubResource("Branch_frenzy"), SubResource("Branch_mindless_fury"), SubResource("Branch_stamina")])

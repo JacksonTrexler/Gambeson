@@ -6,6 +6,16 @@ combos we didn't explicitly design. The goal is to make the common cases composa
 content is data + small pieces, not new branches in `Battle.gd`. DRY where interactions
 concentrate; KISS everywhere else. Index: `todo.md`. Open questions live in `docs/todo/`.*
 
+## Design principle (2026-11-12)
+
+Said by the user, verbatim:
+
+> please feel empowered to make any composaiblity calls that would enable future development / emerging gameplay, players should be delighted in finding powerful new synergies and creative approaches to solving problems during their runs, as long as we don't over-abstract.
+>
+> I'd like to keep "unit does a thing and gets a hoagie token, which is only used for hoagie skills" to a minimum. skills that give benefits / negative effects to units with certain tagged debuffs ('love', 'cursed', 'light', 'heavy metal') are fine, there may be skills that apply them to a wider range of skills than usual
+>
+> Basically: it's better for unintended interactions to happen compared to sandboxed and boring but tightly coupled systems
+
 ## Where we are, honestly
 
 The engine works and is well-tested (330 tests), but four systems have grown by accretion

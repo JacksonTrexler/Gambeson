@@ -31,6 +31,7 @@ signal told(by: Unit, to: Unit, of: Unit, heard: bool)  # spread(): by told an a
 signal discovered(by: Unit, of: Variant)  # suspect(): by's first stack of suspicion of a unit or tile: something odd about it ("?")
 signal unmasked(by: Unit, of: Variant, was: Read)  # suspect(): by now sees through what fooled or hid it; was: by's read before ("!")
 signal vanished(by: Unit, of: Unit, was: Read)  # of slipped from by's sight before its very eyes (_vanish()); was: by's read before ("!?")
+signal bumped(u: Unit, into: Unit)  # u's walk was stopped short by `into`, a unit it couldn't place: a recon level on it (travel(), note())
 signal evaluated(u: Unit, skill: Skill, d20: int, total: int)  # an ally's Self-evaluation saw a roll u made using skill (evaluators())
 signal downed(u: Unit)  # u took mortal damage with a heart left: it gets up as the turn ends (_on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # u is Downed (&"down": down but not out, Scripts/Downed.gd), was &"saved", or died of it (why: Downed.succumb())
@@ -60,8 +61,8 @@ static var PLAIN: Terrain = load("res://Terrain/grass.tres")  # tiles with no te
 const UNIT := preload("res://Scenes/unit.tscn")
 const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
-const DISCIPLINE_HIT := 2  # to hit, a point of AP burned (Discipline)
-const DISCIPLINE_DAMAGE := 0.25  # more damage, a point burned
+const DISCIPLINE_HIT := 2  # to hit, a point of Discipline (discipline_points())
+const DISCIPLINE_DAMAGE := 0.1  # more damage, a point of Discipline per point of the attack's stat mod (at least 1)
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
@@ -103,6 +104,7 @@ var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up
 
 @export var prep := false  # the battle opens in Phase.PREP (as one started from the entry screen does: Game.starter.prep)
 var studied: Dictionary[Faction, Dictionary] = {}  # what each side studied in preparation (study()): unit or tile -> recon levels more it reads it at
+var noticed: Dictionary[Unit, Dictionary] = {}  # recon a unit has gained on its own (note()): unit -> {unit or tile -> recon levels more it reads it at}
 var studied_allies: Dictionary[Faction, Array] = {}  # which of those it studied as allies (studies_left())
 var phase := Phase.INITIATIVE:
 	set(v):
@@ -374,11 +376,18 @@ func _listen(u: Unit) -> void:
 	u.dbno_changed.connect(_on_dbno)
 	u.taking_hit.connect(_on_taking_hit)
 	u.being_healed.connect(_on_being_healed)
+	u.recovered.connect(_on_recovered)
+	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (Burnout)
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
 	for h in u.hooks():
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
+
+
+# Every recovery but regen (Unit.recovered): Burnout's rule.
+func _on_recovered(u: Unit, pool: Variant, n: int) -> void:
+	Burnout.recovered(self, u, pool, n)
 
 
 func _on_being_healed(u: Unit, got: Dictionary) -> void:
@@ -762,8 +771,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 	var natural := false  # a natural 20 (Jugular recasts on one)
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * r + skill.roll_bonus + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
-				+ caster.disciplined * DISCIPLINE_HIT + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
-		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(caster.disciplined))
+				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
+		var hit := resolve(Check.attack(bonus, target.defense(tags)).edge(-1 if skill.disadvantage else (1 if skill.advantage else 0)).keen(discipline_keen(caster)))
 		overage = maxi(hit.margin(), 0)
 		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
 		natural = hit.crit
@@ -836,7 +845,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
 			if not target.is_alive():
 				break
 			var bonus := caster.mod(caster.wielded(t.stat, skill.tags), skill.tags) + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
-			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
+			var power := maxi(roundi((t.power + roll(t.dice) + bonus) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
 			gross += power
 			if &"siphon" in tags:
 				var got := target.siphon(power, tags, caster)  # off its resources, never its HP
@@ -1757,7 +1766,7 @@ func unequip(u: Unit, slot: String) -> Item:
 	return u.unequip(slot)
 
 
-# After a Meditation (respec_room), u shifts its stats: each within that room of where it was born
+# After a Meditation (respec_room), u moves up to that many points from some core stats into others
 # (Unit.respec_by()), all or nothing. The room is spent either way. True if they shifted.
 func respec(u: Unit, changes: Dictionary) -> bool:
 	if u.respec_room <= 0:
@@ -1789,18 +1798,18 @@ func _bind(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
 # its stowed trinket goes back on and the shackles fall away. True if they came off.
 func unshackle(u: Unit, how: StringName) -> bool:
 	var it := u.trinket
-	if not it or not it.binding or not _acting(u) or u.ap_for(&"equip") < it.rank - 0.0001:
+	if not it or not it.binding or not _acting(u) or u.ap_for(&"equip") < it.ranked() - 0.0001:
 		return false
 	if how == &"unlock" and u.shackled():
 		return false
 	var diff: StringName = it.picks if how == &"pick" else (it.prised if how == &"pry" else &"")
 	if how != &"unlock" and diff == &"":
 		return false
-	u.pay(it.rank, &"equip")
+	u.pay(it.ranked(), &"equip")
 	var done := true
 	if how != &"unlock":
 		var stat := &"dexterity" if how == &"pick" else &"strength"
-		var roll := resolve(Check.versus(u.check_mod(stat, &"offensive"), diff, it.rank))
+		var roll := resolve(Check.versus(u.check_mod(stat, &"offensive"), diff, it.ranked()))
 		done = roll.hit
 		freed.emit(u, how, roll.total, roll.target, done)
 	else:
@@ -1843,7 +1852,7 @@ static func refill(u: Unit) -> void:
 func restore(u: Unit, it: Item) -> int:
 	var r: Reserve = it.reserve if it.restores == &"reserve" else null
 	var most: int = u.max_hp if it.restores == &"hp" else (u.max_energy if it.restores == &"energy" else u.pools().get(r, 0))
-	var n := maxi(u.rounded(most * it.restore_share * it.rank) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0)
+	var n := maxi(u.rounded(most * it.restore_share * it.ranked()) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0)
 	match it.restores:
 		&"hp":
 			var was := u.hp
@@ -1854,6 +1863,7 @@ func restore(u: Unit, it: Item) -> int:
 	if r:
 		var was := u.store(r)
 		u.set_store(r, was + n)
+		u.note_recovery(r, u.store(r) - was)
 		return u.store(r) - was
 	return 0
 
@@ -1924,7 +1934,16 @@ func read(o: Unit, target: Variant) -> Read:
 func _read(o: Unit, target: Variant, extra := 0.0) -> Read:
 	if o.faction in studied:
 		extra += studied[o.faction].get(target, 0)  # studied in preparation (study())
+	if o in noticed:
+		extra += noticed[o].get(target, 0)  # learned on its own (note(): bumping into it unseen)
 	return Perception.unit(self, o, target, extra) if target is Unit else Perception.tile(self, o, target, extra)
+
+
+# o gains n recon levels on k (a unit or a tile), its own, for the battle (_read()): bumping into a unit
+# it couldn't place (travel()). Anything that teaches one unit about another can add here.
+func note(o: Unit, k: Variant, n := 1) -> void:
+	var mine: Dictionary = noticed.get_or_add(o, {})
+	mine[k] = mine.get(k, 0) + n
 
 
 # The others o shares what it makes out with: those Coordinate linked along with it (the same caster's
@@ -2008,6 +2027,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		return passed
 	var w := walk(u, dest)
 	passed = w.path
+	if w.blocker and not read(u, w.blocker).located():  # it walked into something it couldn't place: that it's there, at least
+		note(u, w.blocker)
+		bumped.emit(u, w.blocker)
 	if not passed.is_empty():
 		var from := u.cell
 		var sights := _sightings(u)  # those watching it step into cover (_vanish())
@@ -2079,8 +2101,9 @@ func _break_free(u: Unit) -> bool:
 	return false
 
 
-# The walk toward `dest`: {line, path, costs} - the straight line, the tiles kept, and what each
-# cost. Leaving a tile costs its exit, entering costs its enter (plus the unit's move_cost effects
+# The walk toward `dest`: {line, path, costs, blocker} - the straight line, the tiles kept, what each
+# cost, and the unit that stopped it short, if one did (it couldn't stand on its tile, or couldn't pay to
+# pass it). Leaving a tile costs its exit, entering costs its enter (plus the unit's move_cost effects
 # for that ground), and moving through another unit costs pass_cost(). Stops where movement or AP
 # runs out, before a hole, short of other units (they can be passed, not stood on), and on a trap.
 # Short by a fraction, net luck can squeeze one more tile in - but never luckily onto ground the
@@ -2098,6 +2121,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		return in_way.call(c) != null
 	var path: Array[Vector2i] = []
 	var costs: Array[float] = []
+	var blocker: Unit = null
 	var left := u.move_left() - escape_cost(u)
 	if held_by(u) and not expected:
 		left = 0.0  # held: travel() breaks it free first
@@ -2114,6 +2138,8 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		if cost > left + 0.0001:
 			var unknown_bad := t.worth() < 0 and not read(u, c).known_bad()
 			if Luck.settle(left / cost, u.luck, not unknown_bad, false) < 1:
+				if other and cost - pass_cost(u, other) <= left + 0.0001:
+					blocker = other  # it could have paid for the ground, not for getting past
 				break
 			cost = left  # squeezed in on what was left
 		left -= cost
@@ -2123,11 +2149,12 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		if t.is_trap() and not blocked.call(c) and not u.passes_by(t, path.size()):
 			break  # stepped on a trap
 	while not path.is_empty() and blocked.call(path[-1]):  # units can be passed, not stood on
+		blocker = in_way.call(path[-1])
 		path.pop_back()
 		costs.pop_back()
 	if expected:
 		rng.state = state
-	return {line = ln, path = path, costs = costs}
+	return {line = ln, path = path, costs = costs, blocker = blocker}
 
 
 # Extra movement for u to move through o's tile: o's size, less a share per point of dex mod - u's,
@@ -2195,7 +2222,8 @@ func wading(u: Unit, c: Vector2i) -> float:
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
-	var cost := maxf(from.exit + to.enter + to.drag + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
+	var swims := u != null and to.depth > 0 and u.has_tag(&"aquatic")  # water is plain going to the aquatic: 1 to enter, nothing dragging (a Pike)
+	var cost := maxf(from.exit + (1.0 if swims else to.enter + to.drag) + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
 	if u and u.form and &"tunneler" in FORMS[u.form][2] and to.tags.any(func(t: StringName): return t in TUNNELS):
 		cost = maxf(cost / maxi(u.form_rank, 1), minf(cost, 1.0))  # a mole: stone and dirt's cost cut by its rank, to 1
 	return cost
@@ -2491,9 +2519,9 @@ func _mend(u: Unit) -> void:
 	_pulse(u)
 	for it in u.items():
 		if it.heat and u.is_alive():  # Ignauldron
-			burned.emit(u, u.hit(it.heat * it.rank, [&"fire"] as Array[StringName]), it.name)
+			burned.emit(u, u.hit(it.heat * it.ranked(), [&"fire"] as Array[StringName]), it.name)
 		if it.burning and u.is_alive():
-			var n := u.hit(maxi(u.rounded(0.1 * it.rank * u.max_hp), 1), [&"fire"] as Array[StringName])
+			var n := u.hit(maxi(u.rounded(0.1 * it.ranked() * u.max_hp), 1), [&"fire"] as Array[StringName])
 			burned.emit(u, n, it.name)
 	if SICKNESS in u.timed:  # gone if it starts the turn whole; else it takes its toll, never the last HP
 		if u.hp >= u.max_hp:
@@ -2785,7 +2813,7 @@ func _grip(u: Unit) -> void:
 	var before := u.hp
 	if s.grip != Vector2i.ZERO:
 		u.hit(roll(s.grip) + by.mod(s.stat(), s.tags), s.tags, by)
-	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u):
+	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u) and not u.has_tag(&"aquatic"):  # the aquatic breathe water
 		u.hit(roll(s.drowns) + by.mod(s.stat(), s.tags), s.tags, by)
 	gripped.emit(u, by, before - u.hp)
 	if u.is_alive() and u.hp < before and read(u, by).deceived:
@@ -3413,7 +3441,7 @@ static func persona_rank(u: Unit, s: Skill) -> int:
 
 
 func _acting(u: Unit) -> bool:
-	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.asleep() and not u.helpless()
+	return phase == Phase.TURNS and (u.faction == turn or (posing(u) and u.follows.faction == turn)) and u.is_alive() and not u.stopped()
 
 
 # Touching, diagonals included.
@@ -3620,8 +3648,8 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty + caster.disciplined * DISCIPLINE_HIT
-		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure).keen(caster.disciplined))
+		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") - penalty + discipline_hit(caster)
+		var hit := resolve(Check.attack(bonus, t.defense(blow)).sure(sure).keen(discipline_keen(caster)))
 		var crit := hit.crit
 		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
 		_evaluate(caster, skill, hit.d20, hit.total)
@@ -3641,9 +3669,9 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if i < featured:
 			power += clampi(caster.mod(&"charisma"), 0, featured)
 		if i == 0:
-			power += (brutal + (caster.weapon.rank if caster.weapon else 0)) if brutal > 0 else 0
+			power += (brutal + (caster.weapon.ranked() if caster.weapon else 0)) if brutal > 0 else 0
 			power += mental * (int(imbued) + int(elemental))
-		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + caster.disciplined * DISCIPLINE_DAMAGE)), 1) * (2 if crit else 1)
+		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
 		t.hit(dealt, blow, caster)
 		gross += dealt
 		landed += 1
@@ -3699,15 +3727,17 @@ func imbue(u: Unit, skill: Skill, r: int) -> void:
 # --- Beastshape
 
 # Beasts a Druid can take the form of (Beastshape): form -> [the ground it thrives on (tile tags), the
-# biomes it belongs to, its traits]. A mote thrives on any elemental ground (MOTES). Traits built:
-# haste (+rank movement), tunneler (stone and dirt cost rank times less, to 1) and elementstrike (its
-# Strikes carry the ground's element, rank uses: Elemental Strike's way). Climber, blindsense,
+# biomes it belongs to, its traits]. A mote thrives on any elemental ground (MOTES). Traits count as
+# its tags while shaped (Unit.has_tag()). Traits built: haste (+rank movement), tunneler (stone and dirt
+# cost rank times less, to 1), elementstrike (its Strikes carry the ground's element, rank uses:
+# Elemental Strike's way) and aquatic (a pike: water costs 1 to enter, never drowns - _cost(), _grip()). Climber, blindsense,
 # floating, siphon and coalesce wait (docs/todo/classes.md: Druid).
 const FORMS := {
 	&"rabbit": [[&"grass", &"dirt"], [&"sylvan", &"montane", &"xeric", &"nival"], [&"haste"]],
 	&"squirrel": [[&"wood", &"leaves", &"brush", &"shrubbery"], [&"sylvan", &"montane"], [&"climber"]],
 	&"mole": [[&"stone", &"dirt", &"rock"], [&"sylvan", &"montane", &"xeric"], [&"blindsense", &"tunneler"]],
 	&"wisp": [[&"star", &"void"], [&"astral"], [&"siphon", &"floating"]],
+	&"pike": [[&"water", &"wet"], [&"thalassic"], [&"aquatic"]],
 	&"mote": [[], [&"astral"], [&"elementstrike", &"coalesce"]],
 }
 # Elemental ground a mote thrives on: tile tag -> [the element its Strikes carry, the elemental it
@@ -3860,22 +3890,52 @@ func _burn(u: Unit, s: Skill) -> void:
 		burned.emit(u, n, "its slot burns")
 
 
-# Discipline (a toggle): an attack on a foe burns the AP its user has left, up to the skill's rank, and
-# each point burned is DISCIPLINE_HIT to hit, DISCIPLINE_DAMAGE more damage and a face lower to crit on
-# (Unit.disciplined, for this attack). The less it has spent this turn, the more there is to burn.
+# Discipline (a toggle): an attack on a foe burns all the AP its user has left (not dex move AP) into
+# it (Unit.disciplined, for this attack). What that buys is its points, discipline_points(): each is
+# DISCIPLINE_HIT to hit, DISCIPLINE_DAMAGE x the attack's stat mod (at least 1) more damage, and a whole
+# one a face lower to crit on. Holding a reserve that aims (Focus), it gets half the points back into
+# it, rounded up. The less it has spent this turn, the more there is to burn.
 func _discipline(u: Unit, s: Skill, foe: bool) -> void:
 	u.disciplined = 0
-	var cap := roundi(u.stat(&"discipline"))
-	if cap <= 0 or not foe or not (s.attacks() or s.chain):
+	if u.stat(&"discipline") <= 0.0 or not foe or not (s.attacks() or s.chain):
 		return
 	var left := 0.0
 	for p in u.ap:
 		if p.only != &"move":
 			left += p.amount
-	var burn := mini(floori(left + 0.0001), cap)
+	var burn := floori(left + 0.0001)
 	if burn > 0 and u.pay(burn, &"skill"):
 		u.disciplined = burn
+		for r in u.pools():  # a steadied mind: Focus comes back a little
+			if r.aims and u.pools()[r] > 0:
+				u.set_store(r, u.store(r) + ceili(discipline_points(u) / 2.0 - 0.0001))
 		disciplined.emit(u, burn)
+
+
+# What a AP burned at Discipline rank r buys: a ^ (r / (r + 1)). One AP is one point at any rank; past
+# that returns diminish, less so each rank, flattening toward one point an AP (docs/plans/small-notes.md).
+static func discipline_curve(a: float, r: float) -> float:
+	return pow(a, r / (r + 1.0)) if a > 0.0 and r > 0.0 else 0.0
+
+
+# u's points of Discipline on the attack it's making (0 between attacks).
+static func discipline_points(u: Unit) -> float:
+	return discipline_curve(u.disciplined, u.stat(&"discipline"))
+
+
+static func discipline_hit(u: Unit) -> int:
+	return roundi(discipline_points(u) * DISCIPLINE_HIT)
+
+
+static func discipline_keen(u: Unit) -> int:
+	return floori(discipline_points(u) + 0.0001)
+
+
+# The damage share it adds to s's hits: DISCIPLINE_DAMAGE a point, times s's stat mod (at least 1).
+static func discipline_damage(u: Unit, s: Skill) -> float:
+	if u.disciplined <= 0:
+		return 0.0
+	return discipline_points(u) * DISCIPLINE_DAMAGE * maxi(u.mod(u.wielded(s.stat(), s.tags), s.tags), 1)
 
 
 # A skill on its user that spreads its effects to every ally within rank tiles (Flamecharm,
