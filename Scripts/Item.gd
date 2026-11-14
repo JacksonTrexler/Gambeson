@@ -249,3 +249,16 @@ func trim_tag() -> StringName:
 func trim() -> Color:
 	var t := trim_tag()
 	return Tags.color(t) if t else Color(0, 0, 0, 0)
+
+
+# Its trim drawn as a little banner (placeholder art): a pole at `at`, a swallowtail of `cloth` edged in
+# the trim colour with a diamond insignia of it. On the wearer's sprite (a trinket: Unit), the unit card
+# and the character sheet.
+static func draw_banner(ci: CanvasItem, at: Vector2, trim_colour: Color, cloth: Color) -> void:
+	ci.draw_line(at, at + Vector2(0, 9), Color("#6b5a44"), 1.0)
+	var flag := PackedVector2Array([at + Vector2(0.5, 0), at + Vector2(6, 0), at + Vector2(6, 6), at + Vector2(3.25, 4.5), at + Vector2(0.5, 6)])
+	ci.draw_colored_polygon(flag, cloth)
+	flag.append(flag[0])
+	ci.draw_polyline(flag, trim_colour, 1.0)
+	var m := at + Vector2(3.25, 2.5)
+	ci.draw_colored_polygon(PackedVector2Array([m + Vector2(0, -1.5), m + Vector2(1.5, 0), m + Vector2(0, 1.5), m + Vector2(-1.5, 0)]), trim_colour)

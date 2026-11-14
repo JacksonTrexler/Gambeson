@@ -66,3 +66,16 @@ func test_tool() -> void:
 	out.clear()
 	code = OS.execute("python3", [py, "color", "fire", "red", "--dry-run"], out, true)
 	ok(code != 0, "a colour is #rrggbb")
+
+
+func test_trim_shows() -> void:
+	var u := v(1)
+	ok(u.banner != null and u.banner.get_parent() == u.sprite, "a unit carries its banner on its sprite (a silhouette hides it too)")
+	u.trinket = load("res://Items/burning_bag.tres")
+	ok(HUD.trims(u).any(func(t: Array) -> bool: return t[0] == Tags.color(&"fire") and t[1] == "Burning Bag"), "the card shows a fire banner for a Burning Bag")
+	u.trinket = load("res://Items/quartz_ring.tres")
+	ok(not HUD.trims(u).any(func(t: Array) -> bool: return t[1] == "Quartz Ring"), "an untrimmed ring shows nothing")
+	u.trinket = null
+	var m := UnitCard.trim_mark(Color(0, 0, 0, 0), "")
+	ok(m.custom_minimum_size == Vector2(7, 10), "an untrimmed item's mark keeps the space, so sheet rows line up")
+	m.free()
