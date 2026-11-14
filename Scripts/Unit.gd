@@ -43,6 +43,8 @@ const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in 
 enum Intensity { BARELY, SOMEWHAT, MOSTLY, FULLY }
 const INTENSITY: Array[float] = [0.3, 0.65, 1.25, PROMINENCE]  # each strength's glow, times GLOW: the plain glow (1) sits between somewhat and mostly
 const INTENSITY_SIZE: Array[float] = [0.8, 0.9, 1.15, 1.3]  # ...and how large it spreads
+const DOWN_TILT := 1.35  # radians: a Downed unit lies over on its side (_lie())
+const DOWN_SAT := 0.55  # ...and keeps this share of its colour, however the HUD sets it
 const CONTRAST_GLOW := 1.6  # high contrast: glows this much stronger again
 # The gods units pray to (god; Pray: Battle.pray()), by domain.
 const GODS := {&"ramut": "war, power", &"eros": "love, healing", &"sol": "light, fire", &"urlo": "magic, energy", &"luun": "dark, jovial",
@@ -435,6 +437,7 @@ var luck: int:
 @onready var energy_bar: ProgressBar = $EnergyBar
 @onready var reserve_bar: ProgressBar = $ReserveBar
 var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
+var more_bars: Array[ProgressBar] = []  # a third reserve's, and any further: 1px slivers (the map's bars, as few pixels as they need)
 
 
 func _init() -> void:
@@ -466,6 +469,7 @@ func _ready() -> void:
 	_show_faction()
 	refit()
 	hp_changed.connect(_show_bars.unbind(2))
+	dbno_changed.connect(_lie.unbind(2))
 	energy_changed.connect(_show_bars.unbind(2))
 	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
@@ -2922,13 +2926,25 @@ func _colour_pools() -> void:
 			reserve_bar.add_sibling(second_bar)
 		second_bar.add_theme_stylebox_override("fill", _flat(held[1].color))
 		second_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
+	for i in range(2, held.size()):  # and one more sliver for each further reserve
+		if more_bars.size() < i - 1:
+			var bar: ProgressBar = reserve_bar.duplicate()
+			bar.name = "ReserveBar%d" % (i + 1)
+			reserve_bar.add_sibling(bar)
+			more_bars.append(bar)
+		more_bars[i - 2].add_theme_stylebox_override("fill", _flat(held[i].color))
+		more_bars[i - 2].add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 
 
 # Stacks the visible bars from the bottom up, with the trim one pixel out around them.
 func _stack() -> void:
 	var bottom := -sprite.sprite_frames.get_frame_texture(&"default", 0).get_height() / 2.0 - 2.0
 	var y := bottom
-	for pair in [[energy_bar, 2.0], [second_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]]:
+	var stack := [[energy_bar, 2.0]]
+	for bar in more_bars:
+		stack.append([bar, 1.0])
+	stack.append_array([[second_bar, 2.0], [reserve_bar, 2.0], [hp_bar, 4.0]])
+	for pair in stack:
 		var bar: ProgressBar = pair[0]
 		if bar and bar.visible:
 			bar.size = Vector2(BAR_WIDTH, pair[1])
@@ -2949,8 +2965,21 @@ func _stack() -> void:
 # How saturated its sprite is (1 full colour .. 0 greyscale): the HUD drains it on the player's units
 # as their AP runs low, and all the way once they can't be commanded this turn (HUD.command_sat()).
 func set_saturation(v: float) -> void:
+	_sat = v
 	if sprite and sprite.material:
-		sprite.material.set_shader_parameter(&"saturation", v)
+		sprite.material.set_shader_parameter(&"saturation", v * (DOWN_SAT if dbno else 1.0))
+
+
+var _sat := 1.0  # the saturation the HUD last asked for (set_saturation())
+
+
+# Downed (down but not out): the sprite lies over on its side, lowered a little, and drains of colour;
+# standing again, upright. Every observer sees it: it's what the unit looks like, not what's known of it.
+func _lie() -> void:
+	var down := dbno != null
+	sprite.rotation = DOWN_TILT * (1.0 if (cell.x + cell.y) % 2 == 0 else -1.0) if down else 0.0  # which way, by its cell
+	sprite.position.y = 3.0 if down else 0.0
+	set_saturation(_sat)
 
 
 # How strongly it glows: at one of the four strengths (`level`, an Intensity: brighter and larger
@@ -3009,6 +3038,12 @@ func _show_bars() -> void:
 		if second_bar.visible:
 			second_bar.max_value = maxi(pools()[held[1]], 1)
 			second_bar.value = r.stores.get(held[1], 0) if r else store(held[1])
+	for i in more_bars.size():
+		var more := more_bars[i]
+		more.visible = held.size() > i + 2 and seen
+		if more.visible:
+			more.max_value = maxi(pools()[held[i + 2]], 1)
+			more.value = r.stores.get(held[i + 2], 0) if r else store(held[i + 2])
 	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
 	hp_bar.value = r.hp if r and r.hp != null else hp
 	energy_bar.max_value = maxi(max_energy, 1)
