@@ -616,6 +616,12 @@ layout_mode = 2
 focus_mode = 0
 text = "Mark suspicious tiles"
 
+[node name="KeepSlot" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Keep the last used skill selected"
+
 [node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
 unique_name_in_owner = true
 layout_mode = 2

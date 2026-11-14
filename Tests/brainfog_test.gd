@@ -102,5 +102,5 @@ func test_hotbar() -> void:
 	var c := h.bar.get_child(0) as SkillSlot
 	ok(c.skill == strike and c.off == 2 and not c.usable and "Disabled for 2" in c.tooltip_text, "greyed out, struck through, saying for how long")
 	h.use_slot(0)
-	ok(h.armed == null and "disabled for 2" in h._note, h._note)
+	ok(not h.aiming() and "disabled for 2" in h._note, h._note)
 	h.free()

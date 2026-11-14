@@ -12,13 +12,6 @@
 [ext_resource type="Resource" path="res://Skills/lightvision.tres" id="22_opt_lightvision"]
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
-[ext_resource type="Resource" path="res://Trees/protector.tres" id="r_protector"]
-[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="t_tab"]
-[ext_resource type="Resource" path="res://Trees/vanguard.tres" id="r_vanguard"]
-[ext_resource type="Resource" path="res://Trees/brawn.tres" id="r_brawn"]
-[ext_resource type="Resource" path="res://Trees/fury.tres" id="r_fury"]
-[ext_resource type="Resource" path="res://Trees/havoc.tres" id="r_havoc"]
-[ext_resource type="Resource" path="res://Trees/slayer.tres" id="r_slayer"]
 [ext_resource type="Resource" path="res://Skills/rejuvinate.tres" id="s_rejuvinate"]
 [ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
 [ext_resource type="Resource" path="res://Skills/renew.tres" id="s_renew"]
@@ -33,7 +26,6 @@
 [ext_resource type="Resource" path="res://Items/half_plate.tres" id="i_half_plate"]
 [ext_resource type="Resource" path="res://Items/broadsword.tres" id="i_broadsword"]
 [ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
-[ext_resource type="Resource" path="res://Trees/eros.tres" id="r_eros"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
 
 [sub_resource type="Resource" id="Slot_strike"]
@@ -60,47 +52,21 @@ name = "Idealism: Chivalry"
 tag = &"specialist"
 branches = Array[ExtResource("7_branch")]([SubResource("Branch_coordinate"), SubResource("Branch_final_act"), SubResource("Branch_gallantry")])
 
-[sub_resource type="Resource" id="Tab_protector"]
-script = ExtResource("t_tab")
-name = "Protector"
-kind = "Prowess"
-roots = Array[ExtResource("6_root")]([ExtResource("r_protector")])
-
-[sub_resource type="Resource" id="Tab_vanguard"]
-script = ExtResource("t_tab")
-name = "Vanguard"
-kind = "Prowess"
-roots = Array[ExtResource("6_root")]([ExtResource("r_vanguard")])
-
-[sub_resource type="Resource" id="Tab_brawn"]
-script = ExtResource("t_tab")
-name = "Brawn"
-kind = "Prowess"
-roots = Array[ExtResource("6_root")]([ExtResource("r_brawn")])
-
-[sub_resource type="Resource" id="Tab_fury"]
-script = ExtResource("t_tab")
-name = "Fury"
-kind = "Prowess"
-roots = Array[ExtResource("6_root")]([ExtResource("r_fury")])
-
-[sub_resource type="Resource" id="Tab_havoc"]
-script = ExtResource("t_tab")
-name = "Havoc"
-kind = "Prowess"
-roots = Array[ExtResource("6_root")]([ExtResource("r_havoc")])
-
-[sub_resource type="Resource" id="Tab_slayer"]
-script = ExtResource("t_tab")
-name = "Slayer"
-kind = "Prowess"
-roots = Array[ExtResource("6_root")]([ExtResource("r_slayer")])
-
 [sub_resource type="Resource" id="Choice_Prowess"]
 script = ExtResource("c_choice")
 name = "Prowess"
-tabs = Array[ExtResource("t_tab")]([SubResource("Tab_protector"), SubResource("Tab_vanguard"), SubResource("Tab_brawn"), SubResource("Tab_fury"), SubResource("Tab_havoc"), SubResource("Tab_slayer")])
 picks = 1
+kinds = Array[String](["Prowess"])
+
+[sub_resource type="Resource" id="Choice_Domain"]
+script = ExtResource("c_choice")
+name = "Domain"
+kinds = Array[String](["Divinity"])
+
+[sub_resource type="Resource" id="Choice_Flex"]
+script = ExtResource("c_choice")
+name = "Flex"
+kinds = Array[String](["Prowess", "Divinity", "School"])
 
 [resource]
 script = ExtResource("1_script")
@@ -112,7 +78,7 @@ race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 12, &"dexterity": 10, &"constitution": 13, &"intelligence": 8, &"wisdom": 11, &"charisma": 13})
 options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement"), ExtResource("s_discipline")])
-roots = Array[ExtResource("6_root")]([ExtResource("r_eros"), SubResource("Root_Idealism")])
+roots = Array[ExtResource("6_root")]([SubResource("Root_Idealism")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"martial", &"magical"])
-choices = Array[ExtResource("c_choice")]([SubResource("Choice_Prowess")])
+choices = Array[ExtResource("c_choice")]([SubResource("Choice_Prowess"), SubResource("Choice_Domain"), SubResource("Choice_Flex")])

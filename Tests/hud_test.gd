@@ -36,7 +36,7 @@ func test_select_and_move() -> void:
 	ok(h.selected == v(1) and h.my_turn(), "the leader is selected as its turn starts")
 	h.hover_cell(Vector2i(3, 2))
 	ok(h.plan.path.back() == Vector2i(3, 2), "hovering a tile plans the walk there")
-	ok("Walk here: 3 of 5" in h.tip_label.text and h.tip.visible, "the tip gives its cost (bramble 1, leaving it 1 + 1)")
+	ok(h.spend.get(&"move") == 3.0 and not h.tip.visible, "its cost drains off the bars, in no words (bramble 1, leaving it 1 + 1)")
 	h._refresh()
 	ok(Vector2i(3, 2) in h.reach and Vector2i(8, 7) not in h.reach, "reachable tiles are known")
 	h.click(Vector2i(3, 2))
@@ -44,30 +44,26 @@ func test_select_and_move() -> void:
 	h.click(Vector2i(8, 2), false, true)
 	ok(h.selected == v(3) and v(1).cell == Vector2i(3, 2), "shift-clicking a foe selects it rather than attacking")
 	h.click(Vector2i(8, 3))
-	ok(v(3).cell == Vector2i(8, 2) and h.selected == null, "an enemy takes no orders; clicking away lets go")
+	ok(v(3).cell == Vector2i(8, 2) and h.selected == v(1), "an enemy takes no orders; clicking away returns the focus to your own unit")
 	h.free()
 
 
 func test_keys_and_targets() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var h := await start(v(1))
+	ok(h.slot == 0 and h.armed == strike, "a slot is always selected: the first, Strike")
 	h._unhandled_input(key(KEY_1))
-	ok(h.armed == strike, "1 arms Strike")
+	ok(h.armed == strike and not h.aiming(), "1 selects it; a unit skill doesn't aim")
 	ok(h.targets().size() == 1 and h.targets()[0] == v(3), "the enemy in reach is its one target")
 	h.hover_cell(Vector2i(5, 3))
-	ok("Click to use: 3 AP · 100% to hit · 2 damage" in h.tip_label.text, "hovering it forecasts the cost, chance to hit and damage")
+	ok(h.spend.get(&"ap") == 3.0 and h.hurt.unit == v(3) and h.hurt.lo == 2 and h.hurt.hi == 2 and h.odds(h.hovered) == &"likely",
+			"hovering it drains 3 AP off the bars, 2 HP off the foe's, and its brackets are solid (%s %s)" % [h.spend, h.hurt])
 	h.click(Vector2i(5, 3))
-	ok(v(3).hp == 8 and h.armed == null and v(1) in h.command.ordered, "clicking it strikes (1 + str mod 1)")
-	h._unhandled_input(key(KEY_1))
-	h.click(Vector2i(6, 6))
-	ok(h.armed == strike and h._note.begins_with("Pick a unit"), "an empty tile isn't a target without Ctrl")
-	h._unhandled_input(key(KEY_1))
-	ok(h.armed == null, "the same key again disarms")
-	h._unhandled_input(key(KEY_1))
+	ok(v(3).hp == 8 and h.armed == strike and v(1) in h.command.ordered, "clicking it strikes (1 + str mod 1); the slot stays")
+	ok(h.intent(Vector2i(6, 6)).kind == &"walk", "with Strike selected, an empty tile is still a walk")
+	h.select(v(3))
 	h._unhandled_input(key(KEY_ESCAPE))
-	ok(h.armed == null and h.selected == v(1), "Esc disarms first")
-	h._unhandled_input(key(KEY_ESCAPE))
-	ok(h.selected == null, "then lets go")
+	ok(h.selected == v(1), "Esc steps back to your own unit")
 	h.free()
 
 
@@ -76,7 +72,7 @@ func test_toggle_from_bar() -> void:
 	stage(nemes, {icor: Vector2i(7, 3), v(1): Vector2i(1, 2)})
 	var h := await start(icor)
 	h._unhandled_input(key(KEY_4))
-	ok(not icor.is_on(arcanist) and h.armed == null, "4 switches Arcanist Perspective off (Strike, Hex, then Mana, before it)")
+	ok(not icor.is_on(arcanist) and not h.aiming(), "4 switches Arcanist Perspective off (Strike, Hex, then Mana, before it)")
 	h.use_slot(3)
 	ok(icor.is_on(arcanist), "and on again")
 	h._unhandled_input(key(KEY_3))
@@ -191,7 +187,7 @@ func test_what_shows() -> void:
 	h.use_slot(0)
 	ok(h.targets().is_empty(), "Strike offers neither the 'friend' nor a unit it can't make out")
 	h.click(Vector2i(4, 6))
-	ok(v(3).hp == 10 and h._note.begins_with("Pick a unit"), "clicking where the hidden one stands finds nothing")
+	ok(v(3).hp == 10, "clicking where the hidden one stands finds nothing: a walk, bumping into it")
 	h.disarm()
 	h.click(Vector2i(4, 6))
 	ok(h.selected == v(1) and v(1).cell == Vector2i(5, 6), "nor selected: the click is a move, and bumps into it")
@@ -362,7 +358,7 @@ func test_ctrl_click() -> void:
 	h.click(Vector2i(5, 3))
 	ok(v(3).hp == 10 and h.armed == strike, "a plain click finds nothing to strike")
 	h.click(Vector2i(5, 3), true)
-	ok(v(3).hp == 8 and v(3).exposed == 1 and h.armed == null, "Ctrl-click strikes the tile and lands")
+	ok(v(3).hp == 8 and v(3).exposed == 1 and not h.aiming(), "Ctrl-click strikes the tile and lands")
 	h.click(Vector2i(4, 4), true)
 	ok(is_equal_approx(v(1).ap_left(), 6.0) and h._note == "Nothing there", "without a skill armed, Ctrl-click uses slot 1; at air, it's spent")
 	h.free()
@@ -373,7 +369,7 @@ func test_click_attacks() -> void:
 	var h := await start(v(1))
 	h.hover_cell(Vector2i(4, 3))
 	ok(h.charge == Vector2i(4, 3) and h.plan.path.back() == Vector2i(3, 3), "hovering a foe plans the walk into reach")
-	ok("Click: walk 2, then Strike I" in h.tip_label.text, "and the tip says what a click will do")
+	ok(h.spend.get(&"move") == 2.0 and h.spend.get(&"ap") == 3.0, "and the bars drain the walk and the Strike (%s)" % h.spend)
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(3, 3) and v(3).hp == 8 and v(1) in h.command.ordered, "clicking it walks up and strikes")
 	stage(lancin, {v(1): Vector2i(0, 7), v(3): Vector2i(9, 0), v(4): Vector2i(9, 1)})
@@ -434,9 +430,9 @@ func test_skill_glow() -> void:
 	ok(h.armed == strike and h.skill_glow(v(1), strike, v(3)) == Unit.Intensity.FULLY, "Strike armed: a foe in reach glows fully")
 	ok(h.skill_glow(v(1), strike, v(4)) == Unit.Intensity.MOSTLY, "one a sure walk reaches, mostly")
 	ok(h.skill_glow(v(1), strike, icor) == Unit.Intensity.BARELY, "one out of reach this turn, barely")
-	ok(h.skill_glow(v(1), strike, v(2)) == -1 and h.glow_of(v(2)) == -1 and is_equal_approx(a.call(v(2)), Unit.GLOW), "an ally isn't Strike's to glow: its plain glow")
-	ok(a.call(icor) < a.call(v(2)) and a.call(v(2)) < a.call(v(4)) and a.call(v(4)) < a.call(v(3)),
-			"drawn so: %.2f < plain %.2f < %.2f < %.2f" % [a.call(icor), a.call(v(2)), a.call(v(4)), a.call(v(3))])
+	ok(h.skill_glow(v(1), strike, v(2)) == -1 and h.glow_of(v(2)) == h.command_glow(v(2)), "an ally isn't Strike's to glow: it glows for orders")
+	ok(a.call(icor) < Unit.GLOW and Unit.GLOW < a.call(v(4)) and a.call(v(4)) < a.call(v(3)),
+			"drawn so: %.2f < plain %.2f < %.2f < %.2f" % [a.call(icor), Unit.GLOW, a.call(v(4)), a.call(v(3))])
 	ok(icor.glow.scale.x < v(4).glow.scale.x and v(4).glow.scale.x < v(3).glow.scale.x, "and larger the stronger")
 	ok(h.targets() == ([v(3)] as Array[Unit]), "only the one in reach is marked as a target")
 	var dark: Dictionary[Vector2i, int] = {}
@@ -449,9 +445,9 @@ func test_skill_glow() -> void:
 	h._refresh()
 	ok(h.ground(Vector2i(3, 3)) == &"unsure" and h.skill_glow(v(1), strike, v(4)) == Unit.Intensity.SOMEWHAT,
 			"every way to it across ground it can't make out: somewhat")
-	ok(a.call(icor) < a.call(v(4)) and a.call(v(4)) < a.call(v(2)), "between barely and plain (%.2f)" % a.call(v(4)))
+	ok(a.call(icor) < a.call(v(4)) and a.call(v(4)) < Unit.GLOW, "between barely and plain (%.2f)" % a.call(v(4)))
 	h.hover_cell(Vector2i(4, 3))
-	ok(h.plan.is_empty() and "no sure walk" in h.tip_label.text, "the tip says why a click won't do (%s)" % h.tip_label.text)
+	ok(h.plan.is_empty() and h.hovered.kind == &"refuse" and h.hovered.get("unsure", false), "a click won't do: only an unsure walk gets there")
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(1, 3) and h.armed == strike and v(4).hp == v(4).max_hp and h._note == "Out of reach", "and a click doesn't walk it there")
 	b.zones.clear()
@@ -459,9 +455,9 @@ func test_skill_glow() -> void:
 	h._refresh()
 	h.hover_cell(Vector2i(5, 5))
 	h.hover_cell(Vector2i(4, 3))
-	ok(h.plan.path.back() == Vector2i(3, 3) and "Click: walk 2, then use" in h.tip_label.text, "hovering a mostly-lit one plans the walk (%s)" % h.tip_label.text)
+	ok(h.plan.path.back() == Vector2i(3, 3) and h.hovered.kind == &"use" and h.hovered.dest == Vector2i(3, 3), "hovering a mostly-lit one plans the walk")
 	h.click(Vector2i(4, 3))
-	ok(v(1).cell == Vector2i(3, 3) and v(4).hp < v(4).max_hp and h.armed == null and h.command.ordered.get(v(1), 0) == 1,
+	ok(v(1).cell == Vector2i(3, 3) and v(4).hp < v(4).max_hp and h.armed == strike and h.command.ordered.get(v(1), 0) == 1,
 			"clicking it walks into reach and strikes: one order")
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(4, 3), v(3): Vector2i(9, 0)})
 	v(2).hp = 3
@@ -471,7 +467,7 @@ func test_skill_glow() -> void:
 	ok(h.armed == aid and h.skill_glow(v(1), aid, v(2)) == Unit.Intensity.MOSTLY and h.skill_glow(v(1), aid, v(3)) == -1,
 			"First Aid armed: the ally a walk away glows mostly, the foe not at all")
 	h.click(Vector2i(4, 3))
-	ok(v(1).cell == Vector2i(3, 3) and v(2).hp > 3 and h.armed == null, "any armed skill walks up and is used, not only Strike")
+	ok(v(1).cell == Vector2i(3, 3) and v(2).hp > 3 and h.slot == 0, "any selected skill walks up and is used, not only Strike; the slot goes back to the first")
 	h.free()
 
 
@@ -491,7 +487,7 @@ func test_command_glow() -> void:
 	ok(h.command_state(al) == &"far" and sat.call(al) == 1.0, "one only out of reach stays in colour")
 	ok(h.command_glow(al) == Unit.Intensity.MOSTLY and a.call(al) < a.call(v(2)) and al.glow.scale.x < v(2).glow.scale.x,
 			"its glow weaker: mostly, the leader's walk toward it bringing it into reach")
-	ok(h.command_glow(v(3)) == -1 and is_equal_approx(a.call(v(3)), Unit.GLOW), "a foe glows plainly")
+	ok(h.command_glow(v(3)) == -1 and h.glow_of(v(3)) == Unit.Intensity.BARELY, "a foe glows for the leader's first attack instead: barely, out of reach this turn")
 	var dark: Dictionary[Vector2i, int] = {Vector2i(2, 3): 1, Vector2i(3, 3): 1, Vector2i(4, 3): 1}
 	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))
 	b.move(v(2), Vector2i(1, 4))
@@ -543,7 +539,7 @@ func test_command_slots() -> void:
 	var h := await start(v(1))
 	h.select(al)
 	h.use_slot(0)
-	ok(h.armed == null and h._note.begins_with("Allies only take move orders"), "cha 8: an ally can't be told to use a skill")
+	ok(not h.aiming() and h._note.begins_with("Allies only take move orders"), "cha 8: an ally can't be told to use a skill")
 	h.click(Vector2i(3, 2))
 	ok(h.selected == v(3) and v(3).hp == 10, "nor to attack: clicking the foe just selects it")
 	h.select(al)
@@ -555,7 +551,7 @@ func test_command_slots() -> void:
 	h._refresh()
 	ok(not (h.bar.get_child(0) as SkillSlot).locked and (h.bar.get_child(1) as SkillSlot).locked, "cha 12: slot 1 open, slot 2 locked")
 	h.use_slot(1)
-	ok(h.armed == null and "slot 1" in h._note, "Stonegift, in slot 2, stays out of reach")
+	ok(h.slot == 0 and "slot 1" in h._note, "Stonegift, in slot 2, stays out of reach")
 	h.use_slot(0)
 	ok(h.armed == strike, "Strike, in slot 1, is armed")
 	h.disarm()
@@ -573,7 +569,7 @@ func test_ground() -> void:
 			"the hidden trap is unsure ground; bramble and the shrine are safe")
 	ok(not h.dubious.is_empty() and h.dubious.keys().all(func(c): return h.grounds[c] == &"unsure"), "so is anywhere something may lurk")
 	h.hover_cell(Vector2i(6, 4))
-	ok(h.tip_label.text.begins_with("Walk here: 4? of 5"), "a walk across unsure ground gets a '?' on its cost")
+	ok(h.spend.get(&"move") == 4.0 and h.plan.path.any(func(c): return h.ground(c) == &"unsure"), "a walk across unsure ground (drawn dashed there): 4 off the bars")
 	ok(h.pane.visible and h.get_node("%TileName").text == "Grass" and h.get_node("%TileCost").text == "" and not h.get_node("%TileCost").visible, "the tile pane shows the hovered tile; a Move 1 cost isn't shown")
 	h.hover_cell(Vector2i(5, 4))
 	var susp: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
@@ -589,7 +585,8 @@ func test_ground() -> void:
 	h._refresh()
 	ok(h.grounds[Vector2i(5, 4)] == &"bad" and Vector2i(5, 4) not in h.suspect, "sprung, it's known bad ground - no longer suspect")
 	h.hover_cell(Vector2i(6, 4))
-	ok("Stops 1 short (3 move)" in h.tip_label.text and "Steps onto a known trap" in h.tip_label.text, "the plan stops on it, warns, and is sure of its cost")
+	ok(h.plan.path.back() == Vector2i(5, 4) and h.spend.get(&"move") == 3.0 and (h.spend.has(&"hp") or &"hp" in h.spend.get("unsure", [])) == (v(1).mod(&"intelligence") >= 0),
+			"the plan stops on it, and what it would do shows on HP as the unit's int lets it foresee (%s)" % h.spend)
 	h.hover_cell(Vector2i(2, 2))
 	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(h.get_node("%TileName").text == "Bramble" and h.get_node("%TileCost").text == "" and lines == ["Sticky: +1 to leave"], "bramble: neutral, sticky (Move 1 hidden)")
@@ -714,17 +711,20 @@ func test_skills_screen() -> void:
 	var names: Array = tabs.get_children().map(func(x: Button): return x.text)
 	ok(names[0] == "CLASS · PALADIN" and h.skills.view() is SkillGrid and load("res://Skills/favour.tres") in h.skills.view().skills(),
 			"a class without a tree: its options as one, growing from the bottom")
-	ok(names.slice(1) == ["SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER"],
-			"no Prowess tab until it's picked; its species, then the general trees a Paladin gets: %s" % [names])
+	ok(names.slice(1) == ["DIVINITY · EROS", "SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER"],
+			"no Prowess tab until it's picked, its Domain (Eros's one Divinity) open with no pick; its species, then the general trees a Paladin gets: %s" % [names])
 	var grid: SkillGrid = h.skills.view()
-	ok(grid._entries.keys().map(func(t: SkillTab): return t.name) == ["Protector", "Vanguard"] and grid._choice_boxes[0][1] == "PROWESS · PICK UP TO 1",
-			"its class tab: a box of the Prowess trees that suit Eros, pick up to 1 (%s)" % [grid._entries.keys().map(func(t: SkillTab): return t.name)])
+	var boxed := func(c: TreeChoice) -> Array: return grid._entries.keys().filter(func(t: SkillTab): return grid._entries[t][1] == c).map(func(t: SkillTab): return t.name)
+	ok(boxed.call(u.role.choices[0]) == ["Protector", "Vanguard"] and grid._choice_boxes[0][1] == "PROWESS · PICK UP TO 1",
+			"its class tab: a box of the Prowess trees that suit Eros, pick up to 1 (%s)" % [boxed.call(u.role.choices[0])])
+	ok(boxed.call(u.role.choices[1]) == ["Eros"] and boxed.call(u.role.choices[2]) == ["Protector", "Vanguard"],
+			"its Domain, Eros, picked already; its Flex: what Eros offers that isn't open yet (%s)" % [boxed.call(u.role.choices[2])])
 	h.skills.choose(u.role.choices[0], grid._entries.keys()[0])
 	ok(h.skills.detail.title_label.text == "Prowess: Protector" and not h.skills.act.disabled, "Protector in the footer, free to pick")
 	h.skills.act.pressed.emit()
 	names = tabs.get_children().map(func(x: Button): return x.text)
 	ok(names[1] == "PROWESS · PROTECTOR" and u.taken("Prowess").name == "Protector", "picked: its tab opens beside the class's (%s)" % [names])
-	(tabs.get_child(2) as Button).pressed.emit()
+	(tabs.get_child(3) as Button).pressed.emit()
 	ok(h.skills.view().skills() == [relay] and h.skills.picked == relay, "Relay on offer from its species")
 	var unlock: CostButton = h.skills.detail.act
 	ok(unlock.text == "Unlock" and unlock.cost == 1 and unlock.disabled, "but there's no point to spend: Unlock, 1 in its square, not lit")
@@ -774,7 +774,7 @@ func test_snare_ui() -> void:
 	var h := await start(v(1))
 	h.use_slot(1)
 	h.hover_cell(Vector2i(3, 3))
-	ok(h.armed == snare and "Click to use" in h.tip_label.text, "armed, a tile in reach is a place for it")
+	ok(h.armed == snare and h.aiming() and h.hovered.kind == &"use" and h.tip_label.text == snare.name, "aimed, a tile in reach is a place for it")
 	h.click(Vector2i(3, 3))
 	h._refresh()
 	ok(Vector2i(3, 3) in b.snares and h.traps.get(Vector2i(3, 3)) == true, "laid, and marked as your own")
@@ -842,7 +842,11 @@ func test_attack_feedback() -> void:
 	ok(h._info(v(3)).rows.any(func(r): return r[0] == "DF" and r[1] == "20 · Bulwark"), "...and a foe's it can make out: Bulwark, 20")
 	h.use_slot(0)
 	h.hover_cell(Vector2i(5, 3))
-	ok("10% to hit" in h.tip_label.text, "the forecast: 10%% against Defense 20 (%s)" % h.tip_label.text)
+	ok(h.odds(h.hovered) == &"unlikely" and "to hit" not in h.tip_label.text, "faint brackets against Defense 20, no number")
+	h.show_odds = true
+	h._update_tip()
+	ok("10% to hit" in h.tip_label.text, "Alt held: the exact chance, 10%% (%s)" % h.tip_label.text)
+	h.show_odds = false
 	var rolled := []
 	b.attacked.connect(func(_c, _t, d20: int, _total, _def): rolled.append(d20))
 	h.click(Vector2i(5, 3))
@@ -863,7 +867,7 @@ func test_hidden_defense() -> void:
 	h.select(v(1))
 	h._refresh()
 	ok(h.view(v(3)).net < 0 and not h._info(v(3)).rows.any(func(r): return r[0] == "DF"), "a foe it can't identify: no Defense on the card")
-	ok("?% to hit" in h._forecast(v(1), strike, v(3)), "nor a chance to hit")
+	ok(h.odds({kind = &"use", unit = v(1), skill = strike, target = v(3)}) == &"unknown", "nor a chance to hit: its brackets waver")
 	h.free()
 
 
@@ -941,11 +945,11 @@ func test_dual_spell_ui() -> void:
 	h._refresh()
 	ok(h.armed == sola and v(1) in h.marked and v(3) in h.marked, "Sola armed: an ally and a foe in reach are both targets")
 	h.hover_cell(Vector2i(5, 3))
-	ok("3 AP, 2 energy · Persona: +1, 1 turn" in h.tip_label.text and "to hit" not in h.tip_label.text, "on the ally: its cost, and what it gets (%s)" % h.tip_label.text)
+	ok(h.spend.get(&"ap") == 3.0 and h.spend.get(&"energy") == 2.0 and h.hurt.is_empty() and h.odds(h.hovered) == &"", "on the ally: its cost drains, no odds or harm (%s)" % h.spend)
 	h.hover_cell(Vector2i(4, 4))
-	ok("to hit" in h.tip_label.text and "4-7 damage" in h.tip_label.text, "on the foe: the chance to hit, and damage (1d4 + int mod 3) (%s)" % h.tip_label.text)
+	ok(h.odds(h.hovered) != &"" and h.hurt.lo == 4 and h.hurt.hi == 7, "on the foe: odds brackets, and 4-7 off its HP (1d4 + int mod 3) (%s)" % h.hurt)
 	h.click(Vector2i(5, 3))
-	ok(v(1).stat(&"persona") == 1.0 and h.armed == null, "clicked on the ally: it gets the persona")
+	ok(v(1).stat(&"persona") == 1.0 and h.slot == 0, "clicked on the ally: it gets the persona")
 	h.free()
 
 
@@ -977,7 +981,9 @@ func test_hide_ui() -> void:
 	var h := await start(v(1))
 	h.select(v(1))
 	h.use_slot(1)
-	ok(hide.effects[0] in v(1).timed and h.armed == null, "Hide goes off at once: there's no target to pick")
+	ok(hide.effects[0] not in v(1).timed and h.armed == hide, "Hide's key selects it, previewed")
+	h.use_slot(1)
+	ok(hide.effects[0] in v(1).timed and h.slot == 0, "the key again uses it: no target to pick")
 	var text := h.log_box.get_parsed_text()
 	var look := text.find(" investigates ")
 	ok(text.find(" Hide I\n") >= 0 and look > text.find(" Hide I\n") and (" investigates --> " in text or " investigates -x> " in text),
@@ -994,6 +1000,7 @@ func test_self_evaluation_ui() -> void:
 	var h := await start(v(1))
 	h.select(v(1))
 	h.use_slot(1)
+	h.click(v(1).cell)  # a click on itself uses the selected self skill, as a second press does
 	ok(RegEx.create_from_string(r"investigates -[-x]> \S+ \(\d+\)").search(h.log_box.get_parsed_text()) != null, "its own roll stays unknown: dropped (%s)" % h.log_box.get_parsed_text())
 	var icons := h.effect_icons(v(1))
 	ok(icons.size() == 1 and icons[0][0] == "CD" and icons[0][1] == HUD.FRIEND and icons[0][3] == "" and "Clever Disguise\nTrickery: +1 · 2 turns left" in icons[0][2],
@@ -1001,6 +1008,7 @@ func test_self_evaluation_ui() -> void:
 	v(1).learned.append(slot(load("res://Skills/self_evaluation.tres")))
 	v(1).refresh()
 	var floats := h.overlay.top.get_child_count()
+	h.use_slot(1)
 	h.use_slot(1)
 	var a: Unit.Applied = v(1).timed[clever.effects[0]]
 	ok(h.overlay.top.get_child_count() == floats + 1, "with Self-evaluation, the roll pops up over it")
@@ -1092,4 +1100,85 @@ func test_layer_pane() -> void:
 	h.hover_cell(Vector2i(6, 3))
 	lines = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(lines.has("Repairing: 1/3") and lines[0].begins_with("Cracked Startile: Lets through, Brittle, Unstable"), "a cracked startile mending (%s)" % [lines])
+	h.free()
+
+
+# The hover table: a tile walks, a foe is attacked with the first attack from the selected slot
+# (wrapping), an ally out of order range plans the leader's walk into range, a support skill selected
+# walks up to an ally and uses it, and clicking yourself rests (only that unit's turn) or keeps a channel.
+func test_hover_rows() -> void:
+	var al := unit("Alabaster")
+	var aid: Skill = load("res://Skills/first_aid.tres")
+	v(1).learned.append(slot(aid))
+	v(1).hotbar[1] = aid
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(2, 3), al: Vector2i(6, 3), v(3): Vector2i(4, 5), v(4): Vector2i(9, 0)})
+	v(1).charisma = 14  # orders reach 2 tiles
+	var h := await start(v(1))
+	ok(h.intent(Vector2i(1, 5)).kind == &"walk", "a tile: walk")
+	h.use_slot(1)
+	var it := h.intent(Vector2i(4, 5))
+	ok(it.kind == &"use" and it.skill == strike, "First Aid selected, a foe: the first attack from the slot, wrapping round to Strike")
+	ok(h.support_view() and h.glow_of(v(3)) == Unit.Intensity.BARELY, "the support view: foes fall back")
+	al.hp = 3
+	it = h.intent(Vector2i(6, 3))
+	ok(it.kind == &"use" and it.skill == aid and it.dest != v(1).cell and not it.walk.is_empty(), "an ally hurt and out of reach: walk up and use First Aid")
+	h.use_slot(0)
+	it = h.intent(Vector2i(6, 3))
+	ok(h.command_state(al) == &"far" and it.kind == &"command_walk" and Command.tiles(it.dest, al.cell) <= 2, "Strike selected: the leader's walk into order range of it")
+	h.click(Vector2i(6, 3))
+	ok(h.command.in_range(al) and h.selected == v(1), "clicking it walks there")
+	ok(h.intent(Vector2i(6, 3)).kind == &"select", "now in range: a click selects it for orders")
+	h.select(v(2))
+	ok(h.intent(v(2).cell).kind == &"rest", "an ally yet to act, clicking itself: rest")
+	h.click(v(2).cell)
+	ok(v(2) in h.command.locked and v(2).activity() == &"rest" and h.command.can_order(v(1)), "it rests: only its own turn ends")
+	h.select(v(1))
+	ok(h.intent(v(1).cell).kind == &"done", "the leader, having walked: standing down")
+	h.free()
+
+
+# Allies of another faction glow green (HUD.ally_glow), keep full colour and their own faction's trim;
+# foes and the player's own side glow in their side's colours. All of it decided in look_of().
+func test_allied_glow() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(1, 2), al: Vector2i(1, 4), v(3): Vector2i(8, 2)})
+	var friends := Faction.new()
+	friends.primary = Color("#3060c0")
+	friends.secondary = Color("#203040")
+	friends.allies = [lancin]
+	al.faction = friends
+	var h := await start(v(1))
+	h._refresh()
+	var look := h.look_of(al)
+	ok(look.tint == h.ally_glow and look.sat == 1.0, "an ally of another faction: green glow, full colour")
+	ok(Color(al.glow.modulate, 1.0).is_equal_approx(Color(HUD.ALLY_GLOW, 1.0)), "drawn green (%s)" % al.glow.modulate)
+	ok(h.look_of(v(3)).tint == null and h.look_of(v(1)).tint == null, "a foe and your own side keep their side's glow")
+	h.free()
+
+
+# "Will consume": a planned walk drains its movement off the bars and, for a known trap on the way, its
+# estimated damage off HP - while the unit has foresight left (int mod a turn, spent only by acting on an
+# estimate). Out of it, or at +0, HP gets a flashing "?" instead; below 0, nothing: it plans as if safe.
+func test_will_consume() -> void:
+	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
+	b.revealed[Vector2i(5, 4)] = true  # the trap there, known
+	v(1).intelligence = 12  # +1: one estimate a turn
+	var h := await start(v(1))
+	h._refresh()
+	h.hover_cell(Vector2i(6, 4))
+	var t := b.terrain(Vector2i(5, 4))
+	var avg := t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus
+	ok(h.spend.get(&"move") == 3.0 and is_equal_approx(h.spend.get(&"hp", 0.0), avg) and h.spend.get("estimated", false), "a trap on the way: its average damage drains off HP (%s)" % h.spend)
+	var card_hp: Array = h._card_info().rows.filter(func(r): return r[0] == "HP")[0]
+	ok(card_hp.size() == 5 and is_equal_approx(card_hp[4], avg), "the card's HP row drains too")
+	h.click(Vector2i(6, 4))
+	ok(h.foresight(v(1)) == 0 and v(1).cell == Vector2i(5, 4), "acting on it spends its one estimate")
+	var plain := h.drain({kind = &"walk", unit = v(1), walk = {path = [Vector2i(5, 4)], costs = [1.0]}})
+	ok(plain.get(&"move") == 1.0 and not plain.has(&"hp") and &"hp" in plain.get("unsure", []), "out of foresight: no estimate, a '?' on HP (%s)" % plain)
+	h.spend = plain
+	var info := h._card_info()
+	ok(info.rows.filter(func(r): return r[0] == "HP")[0][4] == "?", "the card's HP row: muted, a flashing ?")
+	v(1).intelligence = 8  # -1
+	plain = h.drain({kind = &"walk", unit = v(1), walk = {path = [Vector2i(5, 4)], costs = [1.0]}})
+	ok(not plain.has(&"hp") and not plain.has("unsure"), "below 0: not even a '?'; the walk looks safe")
 	h.free()

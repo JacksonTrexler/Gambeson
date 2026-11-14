@@ -8,6 +8,7 @@ signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
 signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage (from blow.by, tagged blow.tags); listeners may change it (Battle: Molothrus)
 signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp back; listeners may take a cut (Battle: Molothrus)
+signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
@@ -155,7 +156,7 @@ var paid_rise := false  # ...and once more for being brought back (Battle.rescue
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
 var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
-var form := &""  # the beast it's shaped into (Beastshape: rabbit, squirrel, mole, wisp, mote; Battle.FORMS), body and mind; "" itself
+var form := &""  # the beast it's shaped into (Beastshape: rabbit, squirrel, mole, wisp, mote, pike; Battle.FORMS), body and mind; "" itself
 var form_turns := 0  # its turns left as one
 var form_rank := 0  # the rank it was shaped at
 static var HASTE: Effect = _haste()
@@ -355,6 +356,8 @@ var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arrange
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
+var endurance := 0  # Recovery Endurance (RE): recoveries it takes before Burnout bites (Scripts/Burnout.gd); may run below 0
+var burnt := {}  # pool (&"hp", &"energy" or a Reserve) -> max it has lost to Burnout, for good (refit(), pools())
 var fury_acts := 0  # skill uses this turn while helpless, under a permit (Mindless Fury: its rank a turn; stopped())
 var overdriven := false  # ordered past its leader's command caps this turn, under a permit (Drone; Command.order())
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
@@ -466,6 +469,7 @@ func _ready() -> void:
 	energy_changed.connect(_show_bars.unbind(2))
 	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
+	endurance = endurance_max()
 	_one_replacer()
 	energy = 0 if runs_on() is Reserve else max_energy  # running on Mana or Stamina: no Energy of its own
 	for r in pools():
@@ -550,27 +554,35 @@ func affinity(s: Skill) -> int:
 # Discipline), and what the tree's choice says (a Wizard's guest trees: -1; Mage schools by Mastery:
 # 0) - a penalty lifted by enough magic learned (invest: a Ranger's Nature) or, sparing kin, for an
 # elemental skill or a tree kin to one it picked (a Druid's guests), and +1 by its talent up to the
-# tier it reads (Natural Talent); then its learned passives' behaviours have their say (Illusionist).
+# tier it reads (Natural Talent); then its efficiency stacks on the tree (efficiency()).
 func guest_affinity(s: Skill) -> int:
 	if not role:
 		return 0
 	var out := 1 if s in role.knack else 0
-	if not role.choices.any(func(c: TreeChoice): return c and (c.affinity != 0 or c.talent)):
-		return out
 	for t in role.tabs_of(s):
-		var c := role.choice_of(t)
-		if c and open_tab(t):
+		for c in role.choices_of(t):
+			if not picks(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind):
+				continue
 			var a := c.affinity
 			if a < 0 and ((c.invest > 0 and magic_learned() >= c.invest) or (c.spares_kin and _kin(s, t))):
 				a = 0
 			if c.talent and role.tier(s) <= roundi(stat(c.talent)):
 				a += 1
-			for x in slots:  # its passives' say (Behaviour.affinity(): Illusionist)
-				if x.rank > 0 and x.skill.passive:
-					for h in x.skill.behaviours:
-						a = h.affinity(self, x.rank, s, t, a)
-			return out + a
+			return out + efficiency(s, t, a)
 	return out
+
+
+# An efficiency stack is +1 Affinity on a tree's skills - cheaper rank-ups - up to a tier: one for
+# each flex slot burned into tree t (burned(): a Warlock's patron, every tier), and whatever its learned
+# passives' behaviours say, given the choice's own `a` (Behaviour.affinity(): Efficiency, a stack up to
+# its rank's tier - Bargaining, Acceptance, a Ranger's capstones; Illusionist).
+func efficiency(s: Skill, t: SkillTab, a := 0) -> int:
+	a += burned(t)
+	for x in slots:
+		if x.rank > 0 and x.skill.passive:
+			for h in x.skill.behaviours:
+				a = h.affinity(self, x.rank, s, t, a)
+	return a
 
 
 # The biomes it has picked (a Druid's: astral, sylvan, montane, xeric, nival, thalassic), by name.
@@ -1088,9 +1100,10 @@ func devotions() -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
 	if role:
 		for c in role.choices:
-			for t in picks(c):
-				if t.devotes:
-					out.append(t)
+			if c and not c.slot():  # a god slot's trees come from whom it serves: they don't decide it
+				for t in picks(c):
+					if t.devotes and t not in out:
+						out.append(t)
 		for t in role.tabs:
 			if t and t.devotes and _learned_on(t):
 				out.append(t)
@@ -1110,24 +1123,45 @@ func _learned_on(t: SkillTab) -> bool:
 	return t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return x in held))
 
 
-# The trees of choice c it has picked (Unit.pick()); with none picked, those it has learned a skill on
-# (units authored with their skills, no picks).
+# The trees of choice c it has picked (Unit.pick()), and those a god slot opens without a pick (grants,
+# or no more on offer than it may pick: "if there's choice at all"); with none, those it has learned a
+# skill on (units authored with their skills, no picks).
 func picks(c: TreeChoice) -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
-	for t in c.all():
+	var offer := offered(c)
+	for t in offer:
 		if t and c.key(t) in picked:
 			out.append(t)
+	if c.slot() and not offer.is_empty() and (c.grants or (not c.by and offer.size() <= c.picks)):
+		for t in offer:
+			if t not in out:
+				out.append(t)
 	if out.is_empty():
-		for t in c.all():
+		for t in offer:
 			if t and _learned_on(t):
+				out.append(t)
+	return out
+
+
+# The trees of choice c open to it to pick: a god slot's, what its god offers of the slot's kinds
+# (God.pool); a burning choice's, the tree it took up in a choice of god as well (to burn a slot into).
+func offered(c: TreeChoice) -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	if not c.slot():
+		out.assign(c.all().filter(func(t: SkillTab): return t != null and suits(t)))
+		return out
+	var g := God.of(deity())
+	if g:
+		for t in c.all():
+			if t and g.has(t, c.kinds):
 				out.append(t)
 	return out
 
 
 # Whether tab t of its class is open to it: a tab beside its own, or a tree of a choice it has picked.
 func open_tab(t: SkillTab) -> bool:
-	var c := role.choice_of(t)
-	return not c or picks(c).any(func(x: SkillTab): return x.name == t.name)
+	var cs := role.choices_of(t)
+	return cs.is_empty() or cs.any(func(c: TreeChoice): return picks(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind))
 
 
 # How many trees of c it may pick: the choice's count, or the rank of the skill that opens it.
@@ -1135,22 +1169,52 @@ func pick_cap(c: TreeChoice) -> int:
 	return base_rank(c.by) if c.by else c.picks
 
 
+# The tree it took up in another choice of god of c's kinds, if c burns (a Warlock's patron, for its
+# Flex), else null.
+func burnable(c: TreeChoice) -> SkillTab:
+	if not c.burns or not role:
+		return null
+	for o in role.choices:
+		if o and o != c and o.gods:
+			for t in picks(o):
+				if c.kinds.is_empty() or t.kind in c.kinds:
+					return t
+	return null
+
+
+# Flex slots burned into tree t (TreeChoice.burns): each an efficiency stack on it (efficiency()).
+func burned(t: SkillTab) -> int:
+	var n := 0
+	if role and t:
+		for c in role.choices:
+			var b := burnable(c) if c and c.burns else null
+			if b and b.name == t.name and b.kind == t.kind:
+				n += picked.count(c.key(b))
+	return n
+
+
 # What stands between it and picking tree t of choice c: "" if nothing. Picking is free.
 func pick_missing(c: TreeChoice, t: SkillTab) -> String:
+	if c.after and rank(c.after) == 0:
+		return "Learn %s first" % c.after.name
 	var mine := picks(c)
-	if mine.any(func(x: SkillTab): return x.name == t.name):
+	var b := burnable(c)
+	var burning := b != null and b.name == t.name and b.kind == t.kind
+	var used := picked.filter(func(k: String): return k.begins_with(c.name + "/")).size()
+	if not burning and (mine.any(func(x: SkillTab): return x.name == t.name) or (c.slot() and open_tab(t))):
 		return "Picked"
 	if c.by and rank(c.by) == 0:
 		return "Learn %s first" % c.by.name
-	if not suits(t):
+	if not offered(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind) and not burning:
 		return "Not %s's way" % deity().capitalize() if deity() else "Needs a god"
 	var cap := pick_cap(c)
-	if mine.size() >= cap:
-		return "Took up %s" % mine[0].title() if cap == 1 else "Picked %d of %d" % [mine.size(), cap]
+	if maxi(used, mine.size()) >= cap:
+		return "Took up %s" % mine[0].title() if cap == 1 and not mine.is_empty() else "Picked %d of %d" % [maxi(used, mine.size()), cap]
 	return ""
 
 
-# Picks tree t of choice c, opening its tab. False if it can't (pick_missing()).
+# Picks tree t of choice c, opening its tab (or burning a slot into it: burned()). False if it can't
+# (pick_missing()).
 func pick(c: TreeChoice, t: SkillTab) -> bool:
 	if pick_missing(c, t) != "":
 		return false
@@ -1311,11 +1375,14 @@ func taken(choice: String) -> SkillTab:
 	return null
 
 
-# Whether a tab of a choice suits its god: none of its roots names gods (SkillRoot.gods), or each
-# names its own.
+# Whether a tab of its class suits its god: no god slot holds it (TreeChoice.kinds), or its god offers
+# it (God.pool: a Paladin's Prowess).
 func suits(t: SkillTab) -> bool:
-	var g := deity()
-	return t.roots.all(func(r: SkillRoot): return not r or r.gods.is_empty() or g in r.gods)
+	var cs := role.choices_of(t) if role else ([] as Array[TreeChoice])
+	if not cs.any(func(c: TreeChoice): return c.slot()) or cs.any(func(c: TreeChoice): return not c.slot()):
+		return true
+	var g := God.of(deity())
+	return g != null and g.has(t)
 
 
 # Its class's tabs (Role.trees()), less the trees of its choices it hasn't picked.
@@ -1324,8 +1391,7 @@ func class_trees() -> Array[SkillTab]:
 	if not role:
 		return out
 	for t in role.trees():
-		var c := role.choice_of(t) if t.kind else null
-		if not c or picks(c).any(func(x: SkillTab): return x.name == t.name):
+		if not t.kind or open_tab(t):
 			out.append(t)
 	return out
 
@@ -1666,7 +1732,7 @@ func unequip(slot: String) -> Item:
 func refit() -> void:
 	var authored := max_energy if starkind() > 0 else max_hp - _hp_bonus
 	var grown := authored + (0 if starkind() > 0 else level_hp())
-	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble"))
+	var bonus := roundi(stat(&"max_hp")) - roundi(stat(&"asphyxia") * grown) - roundi(stat(&"humble")) - int(burnt.get(&"hp", 0))
 	max_hp = maxi(grown + bonus, 1)
 	_hp_bonus = max_hp - authored
 	if hp > max_hp + over_max:
@@ -1674,11 +1740,12 @@ func refit() -> void:
 	_arrange()  # items can grant slots (the Burning Bag)
 
 
-# Whether it carries tag t, from what it is (its tags), what it wears, or what it knows (Wildfire's
-# bane: earth).
+# Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
+# bane: earth), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
 	return t in tags or items().any(func(it: Item): return t in it.tags) \
-			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags)
+			or slots.any(func(x: Slot): return x.rank > 0 and t in x.skill.tags) \
+			or (form != &"" and t in Battle.FORMS[form][2])
 
 
 # Its shackles (a binding trinket) are locked: a Shackled effect is on it.
@@ -1710,14 +1777,21 @@ func level_hp() -> int:
 	return per * lv()
 
 
-# Shifts its base stats (Meditate): `changes` stat -> amount, each stat's total shift kept within
-# `limit` either way of what it was born with. All or nothing: false (and no change) if any would go
-# past it. Everything derived follows (refit()).
+# Shifts its base stats (Meditate): `changes` stat -> amount, points moved out of some core stats and
+# into others - the decreases pay for the increases exactly (the amounts sum to 0), at most `limit`
+# points moved (a point a rank a use), and no stat below 1. All or nothing: false (and no change)
+# otherwise. `respec` keeps the running shift from birth. Everything derived follows (refit()).
 func respec_by(changes: Dictionary, limit: int) -> bool:
+	var total := 0
+	var moved := 0
 	for s in changes:
 		assert(s in CORE, "%s isn't a core stat" % s)
-		if absi(respec.get(s, 0) + changes[s]) > limit:
+		total += changes[s]
+		moved += maxi(changes[s], 0)
+		if get(s) + changes[s] < 1:
 			return false
+	if total != 0 or moved > limit or moved == 0:
+		return false
 	for s in changes:
 		respec[s] = respec.get(s, 0) + changes[s]
 		set(s, get(s) + changes[s])
@@ -1790,10 +1864,43 @@ func siphon_order() -> Array:
 # Energy an effect gives it (Starblade, an Energy Potion, starlight, Starsap, Energy Transfer) - every
 # grant comes through here, not regen (recover()). A powered unit's Energy is its Power, so the grant
 # arrives as Power (Powerful). Up to its max; returns what it got.
-func grant_energy(n: int) -> int:
+# heard: reported as a recovery (recovered: Burnout); a caller that adds Overcharge too reports the two at once.
+func grant_energy(n: int, heard := true) -> int:
 	var was := energy
 	energy += maxi(n, 0)
+	if heard:
+		note_recovery(&"energy", energy - was)
 	return energy - was
+
+
+# Something gave back n of pool (&"hp", &"energy" - Overcharge counts - or a Reserve) by means other than
+# regen: told to whoever listens (recovered: Battle's Burnout). heal() and grant_energy() call it; a new
+# way to restore something calls it too, and burnout reaches it without knowing.
+func note_recovery(pool: Variant, n: int) -> void:
+	if n > 0:
+		recovered.emit(self, pool, n)
+
+
+# Its Recovery Endurance as a battle starts, and as a resting turn at full refills it: con mod, not below 0.
+func endurance_max() -> int:
+	return maxi(mod(&"constitution"), 0)
+
+
+# Burnout takes n off the max of pool for good (burnt): HP through refit(), Energy off max_energy, a
+# reserve through pools().
+func burn(pool: Variant, n: int) -> void:
+	if n <= 0:
+		return
+	burnt[pool] = burnt.get(pool, 0) + n
+	if pool is StringName and pool == &"hp":
+		refit()
+	elif pool is StringName and pool == &"energy":
+		max_energy = maxi(max_energy - n, 0)
+		if starkind() > 0:
+			refit()
+	elif pool is Reserve:
+		set_store(pool, store(pool))
+		reserve_changed.emit(pool, store(pool), store(pool))
 
 
 # Puts n points of Overcharge on it for `turns` of its turns, + `spare` that don't count (1 on its own
@@ -1816,7 +1923,10 @@ func heal(h: int, heard := true) -> void:
 		var got := {hp = h}
 		being_healed.emit(self, got)
 		h = got.hp
+	var was := hp
 	hp += maxi(h, 0)
+	if heard:
+		note_recovery(&"hp", hp - was)
 
 
 # Every reserve it has, by max: its own (reserves), those the trees it picked bring (SkillTab.reserves:
@@ -1834,6 +1944,8 @@ func pools() -> Dictionary[Reserve, int]:
 		var r := x.skill.reserve
 		if r and x.skill.passive:
 			out[r] = out.get(r, 0) + maxi((mod(x.skill.reserve_mod) if x.skill.reserve_mod else 1) + r.base, 0) * x.rank
+	for r in out:
+		out[r] = maxi(out[r] - int(burnt.get(r, 0)), 0)  # Burnout's loss
 	return out
 
 
@@ -2287,6 +2399,8 @@ func recover() -> int:
 	var k := rounded((mod(&"constitution") + mod(&"wisdom")) / 2.0)
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
 	var how := activity()
+	if how == &"rest" and full_resource():
+		endurance = maxi(endurance, endurance_max())  # Burnout: RE comes back only resting at full
 	_recover_reserves(how, rate)
 	if powered() or runs_on() is Reserve:
 		return 0  # running on Mana or Stamina: its own Energy doesn't come back
@@ -2305,6 +2419,14 @@ func recover() -> int:
 	var was := energy
 	energy += whole
 	return energy - was
+
+
+# Whether what it runs on is full: its Energy (Power), or the reserve standing in for it (runs_on()).
+func full_resource() -> bool:
+	var on: Variant = runs_on()
+	if on is Reserve:
+		return store(on) >= pools().get(on, 0)
+	return energy >= max_energy
 
 
 # Reserves that come back at turn's end, by activity `how`: one with_energy (Stamina, Mana) at Energy's

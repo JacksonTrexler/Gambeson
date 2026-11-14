@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/word_to_the_wise.gd" id="b_word_to_the_wise"]
+
+[sub_resource type="Resource" id="Behaviour_word_to_the_wise"]
+script = ExtResource("b_word_to_the_wise")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Word to the Wise"
+glyph = "Ww"
+passive = true
+tags = Array[StringName]([&"specialist", &"supportive", &"wis"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_word_to_the_wise")])

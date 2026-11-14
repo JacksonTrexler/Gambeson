@@ -5,9 +5,7 @@
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
-[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
-[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
 [ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
 [ext_resource type="Resource" path="res://Skills/renew.tres" id="s_renew"]
 [ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
@@ -29,9 +27,6 @@
 [ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
-[ext_resource type="Resource" path="res://Trees/luun.tres" id="r_luun"]
-[ext_resource type="Resource" path="res://Trees/eros.tres" id="r_eros"]
-[ext_resource type="Resource" path="res://Trees/sol.tres" id="r_sol"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
 
 [sub_resource type="Resource" id="Slot_strike"]
@@ -46,35 +41,18 @@ skill = ExtResource("s_pray")
 script = ExtResource("4_slot")
 skill = ExtResource("s_renew")
 
-[sub_resource type="Resource" id="Tab_Luun"]
-script = ExtResource("8_tab")
-name = "Luun"
-kind = "Divinity"
-roots = Array[ExtResource("6_root")]([ExtResource("r_luun")])
-god = &"luun"
-devotes = true
-
-[sub_resource type="Resource" id="Tab_Sol"]
-script = ExtResource("8_tab")
-name = "Sol"
-kind = "Divinity"
-roots = Array[ExtResource("6_root")]([ExtResource("r_sol")])
-god = &"sol"
-devotes = true
-
-[sub_resource type="Resource" id="Tab_Eros"]
-script = ExtResource("8_tab")
-name = "Eros"
-kind = "Divinity"
-roots = Array[ExtResource("6_root")]([ExtResource("r_eros")])
-god = &"eros"
-devotes = true
-
 [sub_resource type="Resource" id="Choice_God"]
 script = ExtResource("c_choice")
 name = "God"
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Luun"), SubResource("Tab_Sol"), SubResource("Tab_Eros")])
 picks = 1
+kinds = Array[String](["Divinity"])
+gods = true
+
+[sub_resource type="Resource" id="Choice_Domain"]
+script = ExtResource("c_choice")
+name = "Domain"
+kinds = Array[String](["School"])
+grants = true
 
 [resource]
 script = ExtResource("1_script")
@@ -88,4 +66,4 @@ shared = Array[ExtResource("5_skill")]([ExtResource("s_pray"), ExtResource("s_re
 swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom", &"intelligence": &"wisdom"})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"magical"])
-choices = Array[ExtResource("c_choice")]([SubResource("Choice_God")])
+choices = Array[ExtResource("c_choice")]([SubResource("Choice_God"), SubResource("Choice_Domain")])

@@ -327,7 +327,7 @@ func test_ally_kit() -> void:
 	ok(h.skill_sense(v(2), strike, h.view(v(2))) == 0, "an unperceptive leader misses its skills wholly")
 	h.select(v(2))
 	h.use_slot(0)
-	ok(h.armed == null, "and can't order them used")
+	ok(not h._slot_usable(v(2), 0) and h.intent(Vector2i(v(3).cell)).skill == null and "can't make out" in h._note, "and can't order them used")
 	h.free()
 
 

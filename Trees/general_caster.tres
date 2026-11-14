@@ -10,6 +10,7 @@
 [ext_resource type="Resource" path="res://Skills/invigorating_bracing.tres" id="s_invigorating_bracing"]
 [ext_resource type="Resource" path="res://Skills/elemental_mastery.tres" id="s_elemental_mastery"]
 [ext_resource type="Resource" path="res://Skills/energy_transfer.tres" id="s_energy_transfer"]
+[ext_resource type="Resource" path="res://Skills/telepathy.tres" id="s_telepathy"]
 [ext_resource type="Resource" path="res://Skills/drone.tres" id="s_drone"]
 
 [sub_resource type="Resource" id="Branch_elemental_strike"]
@@ -21,6 +22,11 @@ tier = 2
 script = ExtResource("3_branch")
 skill = ExtResource("s_energy_transfer")
 tier = 2
+
+[sub_resource type="Resource" id="Branch_telepathy"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_telepathy")
+tier = 3
 
 [sub_resource type="Resource" id="Branch_record_striker"]
 script = ExtResource("3_branch")
@@ -51,7 +57,7 @@ tier = 7
 script = ExtResource("2_root")
 name = "Caster"
 tag = &"magical"
-branches = Array[ExtResource("3_branch")]([SubResource("Branch_elemental_strike"), SubResource("Branch_energy_transfer"), SubResource("Branch_record_striker"), SubResource("Branch_drone"), SubResource("Branch_meditative_bracing"), SubResource("Branch_invigorating_bracing"), SubResource("Branch_elemental_mastery")])
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_elemental_strike"), SubResource("Branch_energy_transfer"), SubResource("Branch_telepathy"), SubResource("Branch_record_striker"), SubResource("Branch_drone"), SubResource("Branch_meditative_bracing"), SubResource("Branch_invigorating_bracing"), SubResource("Branch_elemental_mastery")])
 
 [resource]
 script = ExtResource("1_tab")

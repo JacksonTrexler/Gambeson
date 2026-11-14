@@ -15,6 +15,12 @@ extends Resource
 @export var talent := &""  # a stat raising its trees' skills' Affinity by 1, up to the tier the stat reads (a Ranger's Nature: Natural Talent)
 @export var spares_kin := false  # its affinity penalty spares elemental skills (ELEMENTS) and trees kin to a tree its picker has picked (SkillTab.kin: a Druid's guest trees)
 @export var borrows: Array[String] = []  # kinds of caster tree it also offers from every class, found when first asked (all()): a Wizard's Domain takes every Divinity
+@export_group("God")  # a slot its picker's god fills (God: Unit.offered())
+@export var kinds: Array[String] = []  # a god slot: the trees of these kinds its picker's god offers (a Paladin's Prowess: Prowess; its Flex: Prowess, Divinity, School)
+@export var gods := false  # a choice of god: every god's own tree of its kinds, picking one choosing whom it serves (a Cleric's God: Divinity; a Warlock's Patron)
+@export var grants := false  # every tree of its kinds its god offers is open, no pick (a Cleric's domains); a slot whose god offers no more than it may pick opens them anyway
+@export var burns := false  # picking the tree its picker took up in another choice of god burns a slot into it: an efficiency stack (a Warlock's Flex; Unit.burned())
+@export var after: Skill  # learned first, its count of picks unchanged (a Warlock's Flex: Bargaining)
 
 const CLASSES := "res://Roles/"
 const ELEMENTS: Array[StringName] = [&"fire", &"water", &"earth", &"light", &"dark", &"energy", &"ice", &"air", &"wind", &"nature"]  # tags a guest skill spares_kin spares
@@ -28,11 +34,16 @@ var _found := false
 # as that class shows it (a Cleric's Pray and Renew on Luun). Class features on them stay that class's
 # (Skill.classes: the Paladin's Smite on Eros).
 func all() -> Array[SkillTab]:
-	if borrows.is_empty():
+	if borrows.is_empty() and kinds.is_empty():
 		return tabs
 	if not _found:
 		_found = true
-		_all.assign(tabs.filter(func(t: SkillTab): return t != null))
+		_all.assign(own())
+		if slot():
+			for g in God.all():  # a god slot: whatever any god offers of its kinds (Unit.offered(): its picker's god's)
+				for t in g.offers(kinds):
+					if not _all.any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind):
+						_all.append(t)
 		for f in ResourceLoader.list_directory(CLASSES):
 			var r := load(CLASSES + f) as Role if f.ends_with(".tres") else null
 			if r == null:
@@ -45,6 +56,23 @@ func all() -> Array[SkillTab]:
 					copy.core = row
 					_all.append(copy)
 	return _all
+
+
+# Its trees that are its class's own to lend (Role.own_tabs()): its tabs, and for a choice of god each
+# god's own tree (a Cleric's divinities, a Warlock's patrons) - not what gods offer its slots.
+func own() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	out.assign(tabs.filter(func(t: SkillTab): return t != null))
+	if gods:
+		for g in God.all():
+			if g.own and g.own.kind in kinds and g.own not in out:
+				out.append(g.own)
+	return out
+
+
+# Whether it's a god slot (kinds, not a choice of god): its trees depend on its picker's god.
+func slot() -> bool:
+	return not kinds.is_empty() and not gods
 
 
 # A caster tree: roots, every one of them magical (not a Paladin's Prowess).

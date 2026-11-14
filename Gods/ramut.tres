@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="God" format=3]
+
+[ext_resource type="Script" path="res://Scripts/God.gd" id="god"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="rs"]
+[ext_resource type="Resource" path="res://Gods/tabs/vanguard.tres" id="t_vanguard"]
+[ext_resource type="Resource" path="res://Gods/tabs/brawn.tres" id="t_brawn"]
+[ext_resource type="Resource" path="res://Gods/tabs/fury.tres" id="t_fury"]
+[ext_resource type="Resource" path="res://Gods/tabs/havoc.tres" id="t_havoc"]
+[ext_resource type="Resource" path="res://Gods/tabs/slayer.tres" id="t_slayer"]
+
+[resource]
+script = ExtResource("god")
+id = &"ramut"
+pool = Array[ExtResource("tab")]([ExtResource("t_vanguard"), ExtResource("t_brawn"), ExtResource("t_fury"), ExtResource("t_havoc"), ExtResource("t_slayer")])

@@ -11,7 +11,9 @@ extends RefCounted
 # actions are its own. Allies without an order this turn act on their own when it ends.
 # Leadership learned or carried stands in for charisma: the strategy and tactics stats (Strategist,
 # Tactician; a Strategy Guide, a Tactician's Playbook) add to the two caps on top of that floor of 1,
-# and command_mod (Grand Design) to the charisma mod itself, here and nowhere else (cha_of()).
+# and command_mod (Grand Design) to the charisma mod itself, here and nowhere else (cha_of()). For one
+# ally, a leader's passives may offer a mod to count instead of its charisma (cha_for(): Telepathy, Word
+# to the Wise, through Behaviour.command_mod()); the best wins for that ally's reach, orders and slots.
 
 const PARTY_REACH := 2.0
 
@@ -19,6 +21,7 @@ var battle: Battle
 var leader: Unit
 var party: Array[Unit] = []
 var ordered: Dictionary[Unit, int] = {}  # orders given this turn, by unit (the leader's own moves count here too, uncapped)
+var linked: Unit  # the one ally Telepathy reaches this turn, once ordered through it (Behaviours/telepathy.gd)
 var locked: Dictionary[Unit, bool] = {}  # barred from more commands this faction turn, and from acting on its own as it ends: a wasted intent order (HUD.issue_intent), or held (HUD.hold)
 
 
@@ -54,6 +57,22 @@ func cha() -> int:
 	return cha_of(leader)
 
 
+# The mod the leader commands u by: its own (cha()), or the best any of its passives offer in its place
+# for u (Behaviour.command_mod()), plus command_mod (Grand Design) on that too. No u: cha().
+func cha_for(u: Unit = null) -> int:
+	if u == null or u == leader:
+		return cha()
+	return cha() + maxi(stand_in(u) - leader.mod(&"charisma"), 0)
+
+
+# The best mod the leader's passives offer in place of its charisma for ordering u; NO_MOD if none.
+func stand_in(u: Unit) -> int:
+	var best := Behaviour.NO_MOD
+	for h in leader.hooks():
+		best = maxi(best, h[0].command_mod(self, leader, h[1], u))
+	return best
+
+
 # How far a leader's orders carry: its cha mod + its command stat (a Quartz Ring: no limit), at least 1.
 static func reach_of(l: Unit) -> int:
 	return maxi(cha_of(l) + roundi(l.stat(&"command")), 1)
@@ -76,8 +95,8 @@ func ally_cap() -> int:
 
 # How many orders it may give each of them in a turn: its cha mod, at least 1, and its tactics stat
 # on top of that (Tactician, a Tactician's Playbook: a rank each) - never fewer than 1.
-func order_cap() -> int:
-	return maxi(maxi(cha(), 1) + order_bonus(), 1)
+func order_cap(u: Unit = null) -> int:
+	return maxi(maxi(cha_for(u), 1) + order_bonus(), 1)
 
 
 # What its skills and items add to the two caps.
@@ -90,11 +109,14 @@ func order_bonus() -> int:
 
 
 # What a cap goes by, for the HUD's reasons: "charisma +1", "charisma +3 as it commands" (Grand
-# Design), "charisma -1, +2 from skills and items".
-func basis(bonus := 0) -> String:
+# Design), "charisma -1, +2 from skills and items"; for u, a stand-in mod that beats charisma (Telepathy):
+# "+3 for this ally".
+func basis(bonus := 0, u: Unit = null) -> String:
 	var text := "charisma %+d" % cha()
 	if cha() != leader.mod(&"charisma"):
 		text += " as it commands"
+	if cha_for(u) != cha():
+		text += ", %+d for this ally" % cha_for(u)
 	if bonus != 0:
 		text += ", %+d from skills and items" % bonus
 	return text
@@ -112,9 +134,9 @@ func under_caps(u: Unit) -> bool:
 	return within_caps(u) or u.stat(&"drone") > 0.0
 
 
-# The caps alone, no permit.
+# The caps alone, no permit. The order cap goes by the mod the leader commands u by (cha_for()).
 func within_caps(u: Unit) -> bool:
-	return u == leader or (ordered.get(u, 0) < order_cap() and (u in ordered or commanded() < ally_cap()))
+	return u == leader or (ordered.get(u, 0) < order_cap(u) and (u in ordered or commanded() < ally_cap()))
 
 
 # Tapped: it can't act or take orders. The unit's own sources (Unit.tapped(): out of AP, helpless with
@@ -125,21 +147,21 @@ func tapped(u: Unit) -> bool:
 	return u.tapped() or not under_caps(u) or u in locked
 
 
-# How many hotbar slots, from the first, a commanded ally will use.
-func slots() -> int:
-	return maxi(cha(), 0)
+# How many hotbar slots, from the first, a commanded ally (u, when known: cha_for()) will use.
+func slots(u: Unit = null) -> int:
+	return maxi(cha_for(u), 0)
 
 
 # Whether u may be told to use hotbar slot i: the leader uses all of its own.
 func slot_open(u: Unit, i: int) -> bool:
-	return u == leader or i < slots()
+	return u == leader or i < slots(u)
 
 
 # Whether u may be told to use (or switch) s: it must sit in a slot that's open to orders.
 func may_use(u: Unit, s: Skill) -> bool:
 	if u == leader:
 		return true
-	for i in mini(slots(), u.hotbar.size()):
+	for i in mini(slots(u), u.hotbar.size()):
 		if u.hotbar[i] == s:
 			return true
 	return false
@@ -157,7 +179,13 @@ func in_range(u: Unit) -> bool:
 		return true
 	if not leader.is_alive() or (u.faction != leader.faction and u.follows != leader):
 		return false
-	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach()))
+	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach())) or tiles(leader.cell, u.cell) <= reach_for(u)
+
+
+# How far the leader's orders carry to u by the mod it commands u by (cha_for()): a stand-in mod
+# (Telepathy, Word to the Wise) can reach further than its charisma. Its command stat adds on.
+func reach_for(u: Unit) -> int:
+	return maxi(cha_for(u) + roundi(leader.stat(&"command")), 1)
 
 
 # Takes an order right now: alive and not tapped (tapped()), not one that acts on its own (uncontrolled), on the leader's side on its turn, in range,
@@ -199,6 +227,9 @@ func order(u: Unit) -> void:
 	if not within_caps(u):
 		u.overdriven = true  # a Drone past the caps: reduced capacity for the turn (Unit.reduced())
 	ordered[u] = ordered.get(u, 0) + 1
+	if u != leader:
+		for h in leader.hooks():  # Behaviour.ordered(): Telepathy binds to the ally it carried this order to
+			h[0].ordered(self, leader, h[1], u)
 
 
 # A wasted intent order, or a hold: u takes no more commands this faction turn, nor acts on its own as it ends.
@@ -222,5 +253,6 @@ func idle() -> Array[Unit]:
 func new_turn() -> void:
 	ordered.clear()
 	locked.clear()
+	linked = null
 	for u in party.filter(func(x: Unit): return not x.is_alive() or not battle.teammates(leader, x)):
 		leave(u)

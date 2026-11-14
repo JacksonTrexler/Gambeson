@@ -12,7 +12,7 @@ func test_ladder() -> void:
 	ok(at.call(1) == [1, 3, 5, 6, 8, 9, 10], "rank I: trivial 1 .. impossible 10 (%s)" % [at.call(1)])
 	ok(at.call(3) == [1, 7, 11, 12, 16, 17, 18], "rank III (%s)" % [at.call(3)])
 	ok(at.call(0) == [1, 4, 8, 12, 16, 20, 30], "with no rank: the flat thresholds")
-	ok(Difficulty.scaled(&"intense", 1) == 3 and Difficulty.scaled(&"extreme", 3) == 9 and Difficulty.scaled(&"faint", 1) == 1, "magnitudes: rank x a share, rounded up")
+	ok(Difficulty.scaled(&"intense", 1) == 3 and Difficulty.scaled(&"severe", 3) == 9 and Difficulty.scaled(&"faint", 1) == 1, "magnitudes: rank x a share, rounded up")
 	ok(Check.versus(2, &"unfair", 2).target == 13, "a Check against a difficulty at a rank")
 
 

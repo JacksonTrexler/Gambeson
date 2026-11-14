@@ -64,18 +64,18 @@ func _draw() -> void:
 		for u in b.members(cmd.faction()):
 			if u != cmd.leader and cmd.can_order(u) and u not in cmd.ordered:
 				draw_rect(_rect(u.cell, 2), Color(HUD.shade(cmd.faction().primary), 0.22))
-		if sel and sel.faction == cmd.faction() and not hud.armed:
+		if sel and sel.faction == cmd.faction() and not hud.aiming():
 			var at := _center(cmd.leader.cell)
 			_ring(at, (cmd.reach() + 0.5) * TILE, Color(1, 1, 1, 0.3), false)
 			_ring(at, (floorf(cmd.party_reach()) + 0.5) * TILE, Color(GOLD, 0.35), true)
-	if not hud.reach.is_empty() and not hud.armed:
+	if not hud.reach.is_empty() and not hud.aiming():
 		_draw_reach(sel)
 	if not hud.plan.is_empty():
 		_draw_plan(sel)
 	if hud.charge != HUD.NOWHERE:
-		_brackets(_rect(hud.charge, 1.5), Color(FOE, pulse), 6.0)
-		draw_rect(_rect(hud.charge, 1.5), Color(FOE, 0.15))
-	if sel and hud.armed:
+		_odds_brackets(hud.charge, hud.odds(hud.hovered), FOE if hud.foe(hud.unit_seen(hud.charge)) else FRIEND, pulse)
+	_gap(sel)
+	if sel and hud.aiming():
 		_draw_targeting(sel, hud.armed, pulse)
 	for c in hud.traps:
 		_caltrop(c, GOLD if hud.traps[c] else FOE)
@@ -119,7 +119,10 @@ func _draw_plan(sel: Unit) -> void:
 	for i in ln.size():
 		var p := _center(ln[i])
 		var kept := i < path.size()
-		draw_line(prev, p, Color(MOVE, 0.85) if kept else Color(FOE, 0.3), 1.5 if kept else 1.0)
+		if kept and hud.grounds.get(ln[i], &"safe") == &"unsure":  # a step it can't count on: dashed
+			draw_dashed_line(prev, p, Color(MOVE, 0.85), 1.5, 3.0)
+		else:
+			draw_line(prev, p, Color(MOVE, 0.85) if kept else Color(FOE, 0.3), 1.5 if kept else 1.0)
 		prev = p
 	for i in ln.size():
 		var kept := i < path.size()
@@ -154,6 +157,45 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 			draw_rect(_rect(u.cell, 1.5), Color(mark, 0.18))
 
 
+# The target's brackets say how likely the hit is (HUD.odds()): solid likely, broken even, faint
+# unlikely; wavering (jittering, pulsing) when its Defense can't be made out. Not an attack: solid.
+func _odds_brackets(c: Vector2i, band: StringName, col: Color, pulse: float) -> void:
+	var r := _rect(c, 1.5)
+	draw_rect(r, Color(col, 0.15))
+	match band:
+		&"even":
+			var arm := 6.0
+			_brackets(r, Color(col, 0.9), arm * 0.45)  # each arm broken in two
+			var corners := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
+			var dirs := [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
+			for i in 4:
+				var o: Vector2 = corners[i]
+				draw_line(o + Vector2(dirs[i].x * arm * 0.7, 0), o + Vector2(dirs[i].x * arm, 0), Color(col, 0.9), 1.5)
+				draw_line(o + Vector2(0, dirs[i].y * arm * 0.7), o + Vector2(0, dirs[i].y * arm), Color(col, 0.9), 1.5)
+		&"unlikely":
+			_brackets(r, Color(col, 0.35), 6.0, 1.0)
+		&"unknown":
+			var t := Time.get_ticks_msec() / 1000.0
+			var j := Vector2(sin(t * 9.0), cos(t * 7.0)) * 1.2
+			_brackets(Rect2(r.position + j, r.size), Color(col, 0.35 + 0.5 * pulse), 6.0)
+		_:
+			_brackets(r, Color(col, pulse), 6.0)
+
+
+# A target just out of reach: the gap shows as two rings, the skill's reach around the unit and a
+# ring around the target.
+func _gap(sel: Unit) -> void:
+	var it := hud.hovered
+	if not sel or it.is_empty() or not it.skill or not (it.target is Unit) or it.target == sel:
+		return
+	var out: bool = (it.kind == &"use" and not it.ready and it.why == "Out of reach") or (it.kind == &"refuse" and it.why == "Out of reach")
+	if not out:
+		return
+	var reach_tiles := hud.battle.skill_range(sel, it.skill, it.target)
+	_ring(_center(sel.cell), reach_tiles * TILE, Color(FOE, 0.55), true)
+	_ring(_center(it.target.cell), TILE * 0.6, Color(FOE, 0.75), false)
+
+
 # The tile's centre in this node's space (the map sits at the battle's origin, as this does).
 func _center(c: Vector2i) -> Vector2:
 	return hud.battle.map.position + hud.battle.map.map_to_local(c)
@@ -181,17 +223,61 @@ func _ring(at: Vector2, radius: float, col: Color, dashed: bool) -> void:
 		draw_arc(at, radius, TAU * i / n, TAU * (i + 1) / n, 3, col, 1.0)
 
 
-# Drawn on `top`, above the units: a "zZ" by the bars of each unit seen to be asleep.
+# Drawn on `top`, above the units: a "zZ" by the bars of each unit seen to be asleep, and what the
+# hovered plan would consume on the selected unit's own bars (HUD.spend) and take off its target's HP
+# (HUD.hurt).
 func draw_top() -> void:
 	if not hud:
 		return
 	var font := ThemeDB.fallback_font
+	var sel := hud.selected
+	if sel and sel.is_alive() and not hud.spend.is_empty():
+		var held := sel.held_reserves()
+		for key in hud.spend:
+			var bar: ProgressBar = null
+			if key is StringName and key == &"hp":
+				bar = sel.hp_bar
+			elif key is StringName and key == &"energy":
+				bar = sel.energy_bar
+			elif key is Reserve:
+				var i := held.find(key)
+				bar = sel.reserve_bar if i == 0 else (sel.second_bar if i == 1 else null)
+			if bar and bar.visible:
+				_drain_bar(sel, bar, float(hud.spend[key]), Color.WHITE)
+		for key in hud.spend.get("unsure", []):
+			var bar: ProgressBar = sel.hp_bar if key == &"hp" else sel.energy_bar
+			if bar.visible:
+				_unsure_mark(sel, bar)
+	if not hud.hurt.is_empty():
+		var t: Unit = hud.hurt.unit
+		if t.hp_bar.visible:
+			_drain_bar(t, t.hp_bar, float(hud.hurt.hi), Color(1, 1, 1, 0.45))
+			_drain_bar(t, t.hp_bar, float(hud.hurt.lo), Color.WHITE)
 	var col := Color(HUD.SLEEP, 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 3.0))
 	for u in hud.sleepers:
 		var at := u.position + Vector2(13, -TILE / 2.0 + 4)
 		for z in [["z", Vector2.ZERO, 6], ["Z", Vector2(3, -4), 8]]:
 			top.draw_string_outline(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], 2, Color(0, 0, 0, 0.7))
 			top.draw_string(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], col)
+
+
+# A pulsing segment at the end of one of u's bars: the `amount` about to come off it.
+func _drain_bar(u: Unit, bar: ProgressBar, amount: float, col: Color) -> void:
+	if amount <= 0.0 or bar.max_value <= 0.0:
+		return
+	var a := 0.45 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
+	var r := Rect2(u.position + bar.position, bar.size)
+	var hi := r.size.x * clampf(bar.value / bar.max_value, 0.0, 1.0)
+	var lo := r.size.x * clampf((bar.value - amount) / bar.max_value, 0.0, 1.0)
+	top.draw_rect(Rect2(r.position.x + lo, r.position.y, hi - lo, r.size.y), Color(col, col.a * a))
+
+
+# A muted, flashing ? just right of one of u's bars: a cost there it can't foresee.
+func _unsure_mark(u: Unit, bar: ProgressBar) -> void:
+	var a := 0.35 + 0.45 * absf(sin(Time.get_ticks_msec() / 1000.0 * 3.5))
+	var at := u.position + bar.position + Vector2(bar.size.x + 1.5, bar.size.y + 2.0)
+	top.draw_string_outline(ThemeDB.fallback_font, at, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, 2, Color(0, 0, 0, 0.6 * a))
+	top.draw_string(ThemeDB.fallback_font, at, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(HUD.MUTED, a))
 
 
 # A known trap: a little four-spiked caltrop low in the tile (gold for your side's own).

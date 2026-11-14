@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/heal.gd" id="b_heal"]
+
+[sub_resource type="Resource" id="Behaviour_heal"]
+script = ExtResource("b_heal")
+magnitude = &"moderate"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Heal"
+glyph = "He"
+tags = Array[StringName]([&"divine", &"wis", &"love", &"magical"])
+ap = 4.0
+cost = 4
+radius = 3.0
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_heal")])
+hostile = false
+lore = "Eros, plainly asked: the wound closes."

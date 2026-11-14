@@ -78,3 +78,18 @@ func healing(_b: Battle, _holder: Unit, _rank: int, _t: Unit, n: int) -> int:
 # the first rank of its school's spells). Read off its slot, whether or not it's switched on.
 func affinity(_holder: Unit, _rank: int, _s: Skill, _t: SkillTab, a: int) -> int:
 	return a
+
+
+# What the holder, leading c, may count instead of its charisma mod when it orders u (Command.cha_for();
+# Telepathy: its rank, for one ally a turn; Word to the Wise: its wis mod). The best answer of all its
+# passives, or its charisma, wins. NO_MOD: nothing to offer.
+const NO_MOD := -99
+
+
+func command_mod(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> int:
+	return NO_MOD
+
+
+# The holder, leading c, has just given u an order (Command.order(); Telepathy binds to it for the turn).
+func ordered(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> void:
+	pass

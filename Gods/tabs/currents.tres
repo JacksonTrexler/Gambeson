@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="rs"]
+[ext_resource type="Resource" path="res://Trees/currents.tres" id="root"]
+
+[resource]
+script = ExtResource("tab")
+name = "Currents"
+kind = "School"
+color = Color(0.37, 0.7, 0.88, 1)
+roots = Array[ExtResource("rs")]([ExtResource("root")])

@@ -42,4 +42,3 @@ script = ExtResource("root")
 name = "Slayer"
 tag = &"martial"
 branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_jam"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_gank"), SubResource("Branch_stamina")])
-gods = Array[StringName]([&"luun", &"ramut", &"drael"])

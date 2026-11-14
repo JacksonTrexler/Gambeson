@@ -61,7 +61,7 @@ func _tabs(borrowed: bool) -> Array[SkillTab]:
 			out.append(t)
 	for c in choices:
 		if c:
-			for t in (c.all() if borrowed else c.tabs):
+			for t in (c.all() if borrowed else c.own()):
 				if t and t not in out:
 					out.append(t)
 	return out
@@ -73,6 +73,15 @@ func choice_of(t: SkillTab) -> TreeChoice:
 		if c and c.has(t):
 			return c
 	return null
+
+
+# Every choice offering tab t: a tree may fill more than one slot (a Paladin's Prowess and its Flex).
+func choices_of(t: SkillTab) -> Array[TreeChoice]:
+	var out: Array[TreeChoice] = []
+	for c in choices:
+		if c and c.has(t):
+			out.append(c)
+	return out
 
 
 # Its tree, a tab at a time: its own (named after it, with its innate skills on the core ring

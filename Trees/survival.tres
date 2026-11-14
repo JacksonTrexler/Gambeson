@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/forage.tres" id="s_forage"]
+
+[sub_resource type="Resource" id="Branch_forage"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_forage")
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Survival ??"
+tag = &"specialist"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_forage")])

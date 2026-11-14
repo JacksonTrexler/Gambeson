@@ -93,7 +93,7 @@ extends Resource
 @export var until_move := false  # they last until the target moves rather than standing still - with no turns set, with no limit (Hide)
 @export var self_only := false  # used on its user alone (Hide)
 @export var pays_with := &""  # the AP it draws on first, then general AP: move - paid with movement and AP (Meditate); "" skill AP
-@export var respecs := false  # its user may then shift its stats, each by up to its rank from where it was born - as far as it knew itself before (Meditate; Battle.respec())
+@export var respecs := false  # its user may then move up to its rank in points between its core stats, down one for each up - as far as it knew itself before (Meditate; Battle.respec())
 @export var investigated := false  # the target rolls once (d20 + stat mod + rank), and enemies that can see it investigate against that; those who meet it aren't fooled by it (Battle.investigate())
 
 @export_group("Channel")  # cast on a tile, it channels; cast again for strike_ap and strike_cost to strike (Metea; Battle._detonate())
@@ -117,7 +117,7 @@ extends Resource
 @export var evadable := false  # whoever it lands on makes a dex check against its difficulty to dodge it: passing, none of it; failing by a quarter of the DC or less, half (Battle.evade())
 @export var difficulty := &""  # the difficulty (Difficulty.LADDER) of the check it imposes, at its rank: dodging it (Wildfire: difficult)
 @export var reach_scale := &""  # its reach runs this magnitude of its rank in tiles (Difficulty.MAGNITUDE; Wildfire's cone: intense, 2.5 x rank)
-@export var dice_scale := &""  # its damage dice come this magnitude of its rank, times its tier's count (Wildfire: extreme, 3 x rank)
+@export var dice_scale := &""  # its damage dice come this magnitude of its rank, times its tier's count (Wildfire: severe, 3 x rank)
 @export var bane := &""  # units carrying this tag - from what they are, wear or know (Unit.has_tag()) - dodge at impossible and are hit as a crit (Wildfire: earth)
 @export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels
 @export var radius_per_rank := 0.0  # range grows with rank (Darkstone: 1 + rank; Embellish, cast on a unit: rank - 1)
@@ -603,7 +603,7 @@ func markup(rank := 1, with_spec := true) -> String:
 		if pays_with == &"move":
 			lines.append("Paid with movement and AP: its AP comes from movement first")
 		if respecs:
-			lines.append("Then shift its stats, each up to {r:%d} from where it was born - no further than it already knew itself (%s)" % [rank, Glossary.term(&"self_knowledge", "self-knowledge")])
+			lines.append("Then move up to {r:%d} point%s from its core stats into others, a point down for each point up - no more than it already knew itself (%s)" % [rank, "" if rank == 1 else "s", Glossary.term(&"self_knowledge", "self-knowledge")])
 		if retrieves:
 			lines.append("Takes the %s from wherever it is and puts it on, at rank {r:%d}" % [retrieves.name, rank])
 		if flamewall:

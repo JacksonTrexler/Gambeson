@@ -87,13 +87,14 @@ func test_cleric() -> void:
 	b.get_node("Units").add_child(u)
 	ok(u.rank(load("res://Skills/pray.tres")) == 1 and u.rank(load("res://Skills/renew.tres")) == 1, "Pray and Renew from the start")
 	var god: TreeChoice = cleric.choices[0]
-	ok(cleric.trees().map(func(t: SkillTab): return t.title()) == ["Cleric", "Divinity: Luun", "Divinity: Sol", "Divinity: Eros"] and god.name == "God", "its own tab, then a tab per god to pick")
+	ok(cleric.trees().map(func(t: SkillTab): return t.title()).slice(0, 4) == ["Cleric", "Divinity: Eros", "Divinity: Luun", "Divinity: Sol"] and god.name == "God" and god.gods,
+			"its own tab, then a tab per god to pick (God: each god's own tree)")
 	ok(u.deity() == &"" and u.class_trees().size() == 1, "no god yet: only its own tab")
 	u.skill_points = 2
 	var level_down: Skill = load("res://Skills/level_down.tres")
 	ok(u.missing(level_down) == "Pick Divinity: Luun first", "Luun's skills wait for Luun")
-	ok(u.pick(god, god.tabs[0]) and u.deity() == &"luun" and u.unlock(level_down), "Luun picked: whom it now prays to; Level Down")
-	ok(u.pick_missing(god, god.tabs[1]) == "Took up Divinity: Luun" and u.missing(load("res://Skills/level_up.tres")) == "Pick Divinity: Sol first", "Sol stays shut")
+	ok(u.pick(god, God.of(&"luun").own) and u.deity() == &"luun" and u.unlock(level_down), "Luun picked: whom it now prays to; Level Down")
+	ok(u.pick_missing(god, God.of(&"sol").own) == "Took up Divinity: Luun" and u.missing(load("res://Skills/level_up.tres")) == "Pick Divinity: Sol first", "Sol stays shut")
 	ok(u.funding(level_down) == &"energy", "no Sweet Nothings to need: Energy pays")
 	u.wisdom = 18
 	ok(u.mod(&"charisma", level_down.tags) == 4, "its magical skills use wis for cha")
@@ -106,9 +107,9 @@ func test_cleric_of_eros() -> void:
 	b.get_node("Units").add_child(u)
 	u.skill_points = 20
 	var god: TreeChoice = cleric.choices[0]
-	var eros: SkillTab = god.tabs[2]
-	ok(eros.roots[0] == load("res://Roles/paladin.tres").roots[0] and eros.god == &"eros", "the Paladin's own Divinity: Eros")
-	ok(cleric.trees()[3].core.is_empty(), "Pray and Renew stay on its root, not twice on the tab")
+	var eros: SkillTab = God.of(&"eros").own
+	ok(eros.roots[0] == load("res://Trees/eros.tres") and eros.god == &"eros" and God.of(&"eros").own == eros, "the Paladin's Divinity: Eros, Eros's own tree")
+	ok(cleric.trees()[1].core.is_empty(), "Pray and Renew stay on its root, not twice on the tab")
 	ok(u.pick(god, eros) and u.deity() == &"eros" and u.unlock(load("res://Skills/rejuvinate.tres")) and u.unlock(load("res://Skills/send_off.tres")), "picked: Rejuvinate, then Send Off")
 	for n in ["smite", "lovely_caster", "impassioned_fighter"]:
 		ok(u.missing(load("res://Skills/%s.tres" % n)) == "Paladin only" and not u.unlock(load("res://Skills/%s.tres" % n)), "%s: the Paladin's, locked" % n)

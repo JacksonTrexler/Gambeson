@@ -37,4 +37,3 @@ script = ExtResource("root")
 name = "Fury"
 tag = &"martial"
 branches = Array[ExtResource("branch")]([SubResource("Branch_second_wind"), SubResource("Branch_grudge"), SubResource("Branch_frenzy"), SubResource("Branch_mindless_fury"), SubResource("Branch_stamina")])
-gods = Array[StringName]([&"ramut", &"sol", &"urlo"])

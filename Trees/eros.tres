@@ -11,6 +11,8 @@
 [ext_resource type="Resource" path="res://Skills/lovely_caster.tres" id="s_lovely_caster"]
 [ext_resource type="Resource" path="res://Skills/impassioned_fighter.tres" id="s_impassioned_fighter"]
 [ext_resource type="Resource" path="res://Skills/intervention.tres" id="s_intervention"]
+[ext_resource type="Resource" path="res://Skills/heal.tres" id="s_heal"]
+[ext_resource type="Resource" path="res://Skills/megaheal.tres" id="s_megaheal"]
 
 [sub_resource type="Resource" id="Branch_rejuvinate"]
 script = ExtResource("7_branch")
@@ -48,8 +50,22 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_impassioned_fighter")
 after = Array[ExtResource("20_skill")]([ExtResource("s_rejuvinate")])
 
+[sub_resource type="Resource" id="Branch_heal"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_heal")
+after = Array[ExtResource("20_skill")]([ExtResource("s_rejuvinate")])
+needs = 4
+tier = 8
+
+[sub_resource type="Resource" id="Branch_megaheal"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_megaheal")
+after = Array[ExtResource("20_skill")]([ExtResource("s_heal")])
+needs = 4
+tier = 8
+
 [resource]
 script = ExtResource("6_root")
 name = "Divinity: Eros"
 tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_rejuvinate"), SubResource("Branch_pray"), SubResource("Branch_renew"), SubResource("Branch_intervention"), SubResource("Branch_smite"), SubResource("Branch_send_off"), SubResource("Branch_lovely_caster"), SubResource("Branch_impassioned_fighter")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_rejuvinate"), SubResource("Branch_pray"), SubResource("Branch_renew"), SubResource("Branch_intervention"), SubResource("Branch_smite"), SubResource("Branch_send_off"), SubResource("Branch_lovely_caster"), SubResource("Branch_impassioned_fighter"), SubResource("Branch_heal"), SubResource("Branch_megaheal")])

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="God" format=3]
+
+[ext_resource type="Script" path="res://Scripts/God.gd" id="god"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="rs"]
+[ext_resource type="Resource" path="res://Gods/tabs/fury.tres" id="t_fury"]
+[ext_resource type="Resource" path="res://Gods/tabs/havoc.tres" id="t_havoc"]
+[ext_resource type="Resource" path="res://Gods/tabs/stars.tres" id="t_stars"]
+
+[resource]
+script = ExtResource("god")
+id = &"urlo"
+pool = Array[ExtResource("tab")]([ExtResource("t_fury"), ExtResource("t_havoc"), ExtResource("t_stars")])
