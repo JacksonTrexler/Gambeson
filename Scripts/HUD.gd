@@ -2491,8 +2491,8 @@ func _hint() -> String:
 	var u := selected
 	if picking() and _orders(u):
 		var n := picks_of(u, armed)
-		return "%s: %s - click foes to pick up to %d, the skill's key again to use it" % [armed.name,
-				"%d of %d picked" % [picked.size(), n] if not picked.is_empty() else "the nearest %d" % n, n]
+		return "%s: %s (click foes, its key again casts)" % [armed.name,
+				"%d of %d picked" % [picked.size(), n] if not picked.is_empty() else "the nearest %d" % n]
 	if not u or not hand(u) or _orders(u):
 		return ""
 	if u.asleep():
