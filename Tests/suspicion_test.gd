@@ -185,12 +185,7 @@ func test_shown() -> void:
 	b.player = v(1)
 	v(1).wisdom = 10
 	v(2).charisma = 10  # cha 8 would make it hard for v(1) to read
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud()
 	var sus := func(icons: Array) -> bool: return icons.any(func(x: Array): return x[0] is Texture2D and x[2].begins_with("Suspicious"))
 	b.suspect(v(1), v(3))
 	ok(sus.call(h._info(v(1)).effects), "the leader's card: Suspicious, a buff")

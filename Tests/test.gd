@@ -93,6 +93,54 @@ func bulwark() -> Item:
 	return it
 
 
+# A skill by id: load("res://Skills/<id>.tres").
+func sk(id: String) -> Skill:
+	return load("res://Skills/%s.tres" % id)
+
+
+# v(1) learns s at rank r and stands at (4, 3) beside its target, at (5, 3): a foe, v(3), or with foe
+# false an ally, v(2). Returns the target. The line most skill tests start with.
+func duel(s: Skill, r := 1, foe := true) -> Unit:
+	var t := v(3) if foe else v(2)
+	v(1).learned.append(slot(s, r))
+	stage(lancin, {v(1): Vector2i(4, 3), t: Vector2i(5, 3)})
+	return t
+
+
+# duel() with an ally.
+func ally_duel(s: Skill, r := 1) -> Unit:
+	return duel(s, r, false)
+
+
+# Rigs skill s's declared check (Skill.check; a save, a contest) for caster to win outright: its stat
+# at 60 and t's at 1, through the stats alone. Returns t.
+func sure_save_fail(caster: Unit, s: Skill, t: Unit) -> Unit:
+	caster.set(s.check.mine(s) if s.check else s.stat(), 60)
+	t.set(s.check.theirs(s) if s.check else s.stat(), 1)
+	return t
+
+
+# Gives u a deep pool of HP, so a skill's damage never ends the test early. Returns u.
+func soak(u: Unit, hp := 999) -> Unit:
+	u.max_hp = hp
+	u.hp = hp
+	return u
+
+
+# A HUD on the test battle (auto off, at `pace`, 0: no waits), led by `leader` if given - others'
+# sides are left alone - ready once a frame passes: `var h := await hud(v(1))`.
+func hud(leader: Unit = null, pace := 0.0) -> HUD:
+	if leader:
+		b.player = leader
+	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
+	h.battle = b
+	h.auto = false
+	h.pace = pace
+	tree.root.add_child(h)
+	await tree.process_frame
+	return h
+
+
 # Runs `python3 Util/<tool>.py check` (python3 on the PATH, else where a Mac or Linux puts it) and checks
 # it passed. A failed check, never a skip, if there's no python3 at all: the wiring checks guard the data.
 func tool_check(tool: String) -> void:

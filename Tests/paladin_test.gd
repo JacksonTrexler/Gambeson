@@ -37,10 +37,6 @@ func paladin_tab(c: TreeChoice, n: String) -> SkillTab:
 	return c.all().filter(func(t: SkillTab): return t.name == n)[0]
 
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func prowess_tabs(u: Unit) -> Array:
 	return u.class_trees().filter(func(t: SkillTab): return t.kind == "Prowess").map(func(t: SkillTab): return t.name)
 

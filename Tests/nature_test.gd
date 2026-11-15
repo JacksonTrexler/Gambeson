@@ -5,10 +5,6 @@ extends Test
 # Druid (biomes picked on its own tab, guest trees spared their penalty when kin or elemental, a skill
 # shared by two trees reached on each, Beastshape: Battle.form_for(), Unit.shape()).
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func make(role: String, n: String) -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/%s.tres" % role), name = n})
 	b.get_node("Units").add_child(u)

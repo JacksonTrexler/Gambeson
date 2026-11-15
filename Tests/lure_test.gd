@@ -305,13 +305,7 @@ func test_gullible() -> void:
 
 func test_ally_kit() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2)})
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	ok(h.skill_sense(v(1), strike, null) == 2, "the leader knows its own skills")
 	ok(h.skill_sense(v(2), strike, h.view(v(2))) == 1, "an ally's, by name: allies tell each other what they can do")
 	v(2).afflict(effect("luck", 1), 9)
@@ -333,13 +327,7 @@ func test_ally_kit() -> void:
 
 func test_own_panel() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2)})
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	var mine := h._info(v(1))
 	ok(mine.chips[0][0] == "Leader" and mine.rows[0][1] == v(1).hp, "the leader knows itself")
 	v(1).wisdom = 8

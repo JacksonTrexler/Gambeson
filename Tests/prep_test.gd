@@ -39,12 +39,7 @@ func test_hud() -> void:
 	b.player = v(1)
 	v(1).charisma = 12
 	b.phase = Battle.Phase.PREP
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud()
 	h._mark()
 	h._refresh()
 	ok(h.end_button.text.begins_with("Begin") and not h.end_button.disabled, "the end turn button begins")

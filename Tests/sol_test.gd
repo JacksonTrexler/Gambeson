@@ -8,10 +8,6 @@ var warlock: Role = load("res://Roles/warlock.tres")
 var sn: Reserve = load("res://Reserves/sweet_nothings.tres")
 
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 # A unit of the player's side at `at` with skill n at rank r, wis 18 (mod 4), fresh AP.
 func caster(n: String, r := 1, at := Vector2i(4, 4)) -> Unit:
 	stage(lancin, {v(1): at, v(2): at + Vector2i(1, 0), v(3): at + Vector2i(3, 0), v(4): at + Vector2i(0, 3)})

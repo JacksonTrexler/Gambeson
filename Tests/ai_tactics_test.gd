@@ -122,13 +122,7 @@ func test_kick_foreseen() -> void:
 func test_kick_in_the_forecast() -> void:
 	var u := kicker()
 	b.paint(Vector2i(3, 3), load("res://Terrain/trap.tres"))
-	b.player = u
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(u)
 	var d := Battle.damage_range(u, kick, v(3), b)
 	var it := {kind = &"use", ready = true, target = v(3), skill = kick, unit = u}
 	var hurt: Dictionary = h._hurt(it)

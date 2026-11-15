@@ -11,18 +11,6 @@ func unit(n: String) -> Unit:
 	return b.get_node("Units/" + n)
 
 
-# A HUD on the test battle, led by `leader`, that leaves other sides alone; ready once a frame passes.
-func start(leader: Unit) -> HUD:
-	b.player = leader
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
-	return h
-
-
 func key(k: Key) -> InputEventKey:
 	var e := InputEventKey.new()
 	e.physical_keycode = k
@@ -32,7 +20,7 @@ func key(k: Key) -> InputEventKey:
 
 func test_select_and_move() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(h.selected == v(1) and h.my_turn(), "the leader is selected as its turn starts")
 	h.hover_cell(Vector2i(3, 2))
 	ok(h.plan.path.back() == Vector2i(3, 2), "hovering a tile plans the walk there")
@@ -50,7 +38,7 @@ func test_select_and_move() -> void:
 
 func test_keys_and_targets() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(h.slot == 0 and h.armed == strike, "a slot is always selected: the first, Strike")
 	h._unhandled_input(key(KEY_1))
 	ok(h.armed == strike and not h.aiming(), "1 selects it; a unit skill doesn't aim")
@@ -70,7 +58,7 @@ func test_keys_and_targets() -> void:
 func test_toggle_from_bar() -> void:
 	var icor := unit("Icor")
 	stage(nemes, {icor: Vector2i(7, 3), v(1): Vector2i(1, 2)})
-	var h := await start(icor)
+	var h := await hud(icor)
 	h._unhandled_input(key(KEY_4))
 	ok(not icor.is_on(arcanist) and not h.aiming(), "4 switches Arcanist Perspective off (Strike, Hex, then Mana, before it)")
 	h.use_slot(3)
@@ -85,7 +73,7 @@ func test_toggle_from_bar() -> void:
 func test_orders_in_range() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 3), al: Vector2i(5, 5), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.click(Vector2i(2, 3))
 	h.click(Vector2i(3, 3))
 	ok(v(2).cell == Vector2i(3, 3), "an ally a step from the leader takes orders")
@@ -101,7 +89,7 @@ func test_orders_in_range() -> void:
 
 func test_party() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(2))
 	h._unhandled_input(key(KEY_P))
 	ok(v(2) in h.command.party, "P invites the selected ally")
@@ -117,7 +105,7 @@ func test_party() -> void:
 func test_spellbook_and_bar() -> void:
 	var icor := unit("Icor")
 	stage(nemes, {icor: Vector2i(7, 3), v(1): Vector2i(1, 2)})
-	var h := await start(icor)
+	var h := await hud(icor)
 	h._unhandled_input(key(KEY_B))
 	ok(h.spellbook.visible and h.spellbook.unit == icor, "B opens the selected unit's spellbook")
 	var actives := h.spellbook.actives.get_children()
@@ -152,7 +140,7 @@ func test_spellbook_and_bar() -> void:
 	h._unhandled_input(key(KEY_B))
 	ok(h.spellbook.unit == icor, "with an enemy selected, B opens your own unit's")
 	h.free()
-	var h2: HUD = await start(v(1))
+	var h2: HUD = await hud(v(1))
 	h2._unhandled_input(key(KEY_B))
 	ok(not (h2.spellbook.passives.get_child(0) as SkillEntry).draggable, "a passive without a toggle can't go on the bar")
 	ok(not (h2.bar.get_child(0) as SkillSlot)._can_drop_data(Vector2.ZERO, {skill = favour, from = -1}), "nor be dropped there")
@@ -162,7 +150,7 @@ func test_spellbook_and_bar() -> void:
 func test_end_turn() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 3), al: Vector2i(2, 6), v(3): Vector2i(5, 6), v(4): Vector2i(9, 0)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(2))
 	h._unhandled_input(key(KEY_H))
 	ok(v(2) in h.command.ordered, "H holds an ally")
@@ -177,7 +165,7 @@ func test_what_shows() -> void:
 	var siren := unit("Siren")
 	stage(lancin, {v(1): Vector2i(5, 6), siren: Vector2i(6, 6), v(3): Vector2i(4, 6)})
 	v(3).afflict(effect("concealment", 4), 9)
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var info := h._info(siren)
 	ok(info.chips[0][0] == "Friendly" and info.name != "Siren", "the Siren's persona: it shows as a friend, not by name")
 	ok(not ("Siren" in h._tag(siren)), "nor does the log give it away")
@@ -201,7 +189,7 @@ func test_drawn_as_seen() -> void:
 	icor.afflict(effect("concealment", 4), 9)
 	v(3).afflict(effect("concealment", 3), 9)
 	v(4).afflict(effect("concealment", 1), 9)
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var shadow := func(u: Unit) -> bool: return not u.hp_bar.visible and u.glow.visible and Color(u.glow.modulate, 1.0) == Unit.SHAPE_EDGE
 	var edge := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0) if u.glow.visible else Color.TRANSPARENT
 	ok(not icor.visible, "unlocated: not drawn at all")
@@ -235,7 +223,7 @@ func test_silhouette() -> void:
 	v(4).afflict(effect("concealment", 1), 9)
 	var dark: Dictionary[Vector2i, int] = {Vector2i(8, 1): 2, Vector2i(8, 2): 1}  # Icor, deep enough that a stack of suspicion leaves it some
 	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var black := func(u: Unit) -> bool: return u.sprite.modulate == Unit.SHAPE
 	var grey := func(u: Unit) -> bool: return not u.hp_bar.visible and u.glow.visible and Color(u.glow.modulate, 1.0) == Unit.SHAPE_EDGE
 	ok(v(4).visible and black.call(v(4)) and grey.call(v(4)), "a hider it has placed but can't make out: a black shape")
@@ -276,7 +264,7 @@ func test_suspicion_marks() -> void:
 	v(3).afflict(effect("persona", 3), 99)
 	v(3).afflict(effect("trickery", 3), 99)
 	v(3).stance = "Friendly"
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var glow := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0)
 	var r := h.view(v(3))
 	ok(r.faction == lancin and glow.call(v(3)) == lancin.primary and not is_instance_valid(v(3).mark),
@@ -317,7 +305,7 @@ func test_sight_by_unit() -> void:
 	v(3).afflict(effect("trickery", 3), 99)
 	v(3).stance = "Friendly"
 	v(2).suspicion[v(3)] = 9
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var glow := func(u: Unit) -> Color: return Color(u.glow.modulate, 1.0)
 	ok(h.commanding() and h.eyes() == v(1), "the leader, selected on its turn, is the one the player sees through")
 	ok(h.view(v(3)).faction == lancin and glow.call(v(3)) == lancin.primary, "through the leader the trick passes as a friend")
@@ -353,7 +341,7 @@ func test_sight_by_unit() -> void:
 func test_ctrl_click() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(9, 0)})
 	v(3).afflict(effect("concealment", 4), 9)
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.use_slot(0)
 	h.click(Vector2i(5, 3))
 	ok(v(3).hp == 10 and h.armed == strike, "a plain click finds nothing to strike")
@@ -366,7 +354,7 @@ func test_ctrl_click() -> void:
 
 func test_click_attacks() -> void:
 	stage(lancin, {v(1): Vector2i(1, 3), v(3): Vector2i(4, 3), v(4): Vector2i(9, 0)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.hover_cell(Vector2i(4, 3))
 	ok(h.charge == Vector2i(4, 3) and h.plan.path.back() == Vector2i(3, 3), "hovering a foe plans the walk into reach")
 	ok(h.spend.get(&"move") == 2.0 and h.spend.get(&"ap") == 3.0, "and the bars drain the walk and the Strike (%s)" % h.spend)
@@ -386,7 +374,7 @@ func test_command_colour() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), al: Vector2i(1, 3), v(3): Vector2i(8, 2)})
 	v(1).charisma = 14  # two allies a turn, two orders each
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var sat := func(u: Unit) -> float: return u.sprite.material.get_shader_parameter(&"saturation")
 	ok(sat.call(v(2)) == 1.0 and h.command_state(v(2)) == &"ready", "a fresh ally: full colour, lit")
 	for p in v(2).ap:
@@ -423,7 +411,7 @@ func test_skill_glow() -> void:
 	v(1).learned.append(slot(aid))
 	v(1).hotbar[1] = aid
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(1, 6), v(3): Vector2i(0, 3), v(4): Vector2i(4, 3), icor: Vector2i(9, 0)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var a := func(u: Unit) -> float: return u.glow.modulate.a
 	h.use_slot(0)
 	h._refresh()
@@ -479,7 +467,7 @@ func test_command_glow() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(2, 3), al: Vector2i(6, 3), v(3): Vector2i(9, 7)})
 	v(1).charisma = 14  # orders reach 2 tiles
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var sat := func(u: Unit) -> float: return u.sprite.material.get_shader_parameter(&"saturation")
 	var a := func(u: Unit) -> float: return u.glow.modulate.a
 	ok(h.command_state(v(2)) == &"ready" and h.command_glow(v(2)) == Unit.Intensity.FULLY and is_equal_approx(a.call(v(2)), Unit.GLOW * Unit.PROMINENCE),
@@ -525,7 +513,7 @@ func test_command_glow() -> void:
 func test_charge_one_order() -> void:
 	stage(lancin, {v(1): Vector2i(2, 2), v(2): Vector2i(1, 3), v(3): Vector2i(4, 3)})
 	v(1).charisma = 14
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(2))
 	h.click(Vector2i(4, 3))
 	ok(v(2).cell == Vector2i(3, 3) and v(3).hp < v(3).max_hp and h.command.ordered.get(v(2), 0) == 1 and h.command_state(v(2)) == &"ready",
@@ -536,7 +524,7 @@ func test_charge_one_order() -> void:
 func test_command_slots() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 2), al: Vector2i(2, 2), v(3): Vector2i(3, 2), v(4): Vector2i(9, 0)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(al)
 	h.use_slot(0)
 	ok(not h.aiming() and h._note.begins_with("Allies only take move orders"), "cha 8: an ally can't be told to use a skill")
@@ -564,7 +552,7 @@ func test_command_slots() -> void:
 func test_ground() -> void:
 	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
 	v(3).afflict(effect("concealment", 3), 9)
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(h.grounds[Vector2i(5, 4)] == &"unsure" and h.grounds[Vector2i(2, 2)] == &"safe" and h.grounds[Vector2i(5, 2)] == &"safe",
 			"the hidden trap is unsure ground; bramble and the shrine are safe")
 	ok(not h.dubious.is_empty() and h.dubious.keys().all(func(c): return h.grounds[c] == &"unsure"), "so is anywhere something may lurk")
@@ -598,7 +586,7 @@ func test_ground() -> void:
 func test_tile_effects() -> void:
 	var shrine: Terrain = load("res://Terrain/shrine.tres")
 	stage(lancin, {v(1): Vector2i(4, 2), v(3): Vector2i(8, 6)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var lines := func() -> Array: return h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	h.hover_cell(Vector2i(5, 2))
 	ok(lines.call() == ["Heal: 10% each turn"] and h.get_node("%TileLines").get_child(0).get_theme_color(&"default_color") == HUD.FRIEND,
@@ -643,7 +631,7 @@ func test_tile_effects() -> void:
 
 func test_party_help() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h._refresh()
 	var help: String = h.party_title.tooltip_text
 	ok("press P to invite" in help and "Orders reach allies within 1 tile" in help and "only take move orders" in help,
@@ -657,7 +645,7 @@ func test_party_help() -> void:
 
 func test_stew_pane() -> void:
 	stage(lancin, {v(1): Vector2i(3, 0), v(2): Vector2i(2, 0), v(3): Vector2i(8, 6)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.hover_cell(Vector2i(4, 0))
 	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(h.get_node("%TileName").text == "Magic Stew" and h.get_node("%TileCost").text == "Mv -4", "the magic stew: Mv -4 to enter")
@@ -703,7 +691,7 @@ func test_skills_screen() -> void:
 	var u := b.starter({faction = lancin, role = load("res://Roles/paladin.tres"), name = "Pip"})
 	b.get_node("Units").add_child(u)
 	stage(lancin, {u: Vector2i(1, 2), v(1): Vector2i(1, 3), v(3): Vector2i(8, 2)})
-	var h := await start(u)
+	var h := await hud(u)
 	var relay: Skill = load("res://Skills/relay.tres")
 	h._unhandled_input(key(KEY_S))
 	ok(h.skills.visible and h.skills.unit == u and not h.spellbook.visible, "S opens the leader's skills")
@@ -771,7 +759,7 @@ func test_snare_ui() -> void:
 	v(1).learned.append(slot(snare, 2))
 	v(1).hotbar[1] = snare
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 6)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.use_slot(1)
 	h.hover_cell(Vector2i(3, 3))
 	ok(h.armed == snare and h.aiming() and h.hovered.kind == &"use" and h.tip_label.text == snare.name, "aimed, a tile in reach is a place for it")
@@ -789,7 +777,7 @@ func test_snare_ui() -> void:
 func test_initiative_and_turns() -> void:
 	var icor := unit("Icor")
 	icor.afflict(effect("concealment", 4), 9)
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var rows := h.initiative_rows()
 	ok(rows.size() == 2 and rows[0][0] == b.order[0], "sides in turn order")
 	for row in rows:
@@ -805,7 +793,7 @@ func test_initiative_and_turns() -> void:
 
 func test_clover_bar() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(1))
 	h._refresh()
 	var c := h.bar.get_child(4) as SkillSlot
@@ -835,7 +823,7 @@ func test_clover_bar() -> void:
 func test_attack_feedback() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).armor = bulwark()
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(1))
 	h._refresh()
 	ok(h._info(v(1)).rows.any(func(r): return r[0] == "DF" and r[1] == "2 · unarmored"), "the card shows Defense: 2, unarmored")
@@ -869,7 +857,7 @@ func test_check_odds() -> void:
 	v(1).learned.append(slot(haluca, 1))
 	v(1).refresh()
 	v(3).wisdom = 1
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var it := {kind = &"use", unit = v(1), skill = haluca, target = v(3)}
 	var p := Battle.hit_chance(v(1), haluca, v(3), b)
 	ok(p > 0.9 and p < 1.0 and is_equal_approx(p, Battle.skill_odds(v(1), haluca, v(3), b)), "its chance is its save's odds: cha 5 + rank 1 vs wis -5 (%.3f)" % p)
@@ -888,7 +876,7 @@ func test_check_odds() -> void:
 func test_hidden_defense() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).afflict(effect("concealment", 1), 9)
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(1))
 	h._refresh()
 	ok(h.view(v(3)).net < 0 and not h._info(v(3)).rows.any(func(r): return r[0] == "DF"), "a foe it can't identify: no Defense on the card")
@@ -905,7 +893,7 @@ func shrike() -> Unit:
 func test_adventurer_skills_screen() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	var h := await start(u)
+	var h := await hud(u)
 	var igna: Skill = load("res://Skills/igna.tres")
 	var sola: Skill = load("res://Skills/sola.tres")
 	var hazard: Skill = load("res://Skills/hazard_expert.tres")
@@ -963,7 +951,7 @@ func test_dual_spell_ui() -> void:
 	var sola: Skill = load("res://Skills/sola.tres")
 	u.skill_points = 1
 	u.unlock(sola)
-	var h := await start(u)
+	var h := await hud(u)
 	h.select(u)
 	h._refresh()
 	h.use_slot(1)
@@ -985,7 +973,7 @@ func test_typed_slot_bar() -> void:
 	u.skill_points = 10
 	for k in ["sola", "nadira", "astera", "magic_slot"]:
 		u.unlock(load("res://Skills/%s.tres" % k))
-	var h := await start(u)
+	var h := await hud(u)
 	h.select(u)
 	h._refresh()
 	var m := h.bar.get_child(4) as SkillSlot
@@ -1003,7 +991,7 @@ func test_hide_ui() -> void:
 	v(1).learned.append(slot(hide))
 	v(1).hotbar[1] = hide
 	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(1))
 	h.use_slot(1)
 	ok(hide.effects[0] not in v(1).timed and h.armed == hide, "Hide's key selects it, previewed")
@@ -1022,7 +1010,7 @@ func test_self_evaluation_ui() -> void:
 	v(1).learned.append(slot(clever))
 	v(1).hotbar[1] = clever
 	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.select(v(1))
 	h.use_slot(1)
 	h.click(v(1).cell)  # a click on itself uses the selected self skill, as a second press does
@@ -1053,7 +1041,7 @@ func test_tabbed_skills_screen() -> void:
 	var u := b.starter({faction = lancin, role = rogue, name = "Wren"})
 	b.get_node("Units").add_child(u)
 	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	var h := await start(u)
+	var h := await hud(u)
 	h.toggle_skills()
 	await tree.process_frame
 	var g: SkillGrid = h.get_node("%Grid")
@@ -1091,7 +1079,7 @@ func test_default_orders() -> void:
 		ally.learned.append(slot(strike))
 	ally.hotbar[0] = strike
 	stage(lancin, {u: Vector2i(2, 2), ally: Vector2i(2, 3), icor: Vector2i(3, 3)})
-	var h := await start(u)
+	var h := await hud(u)
 	ok(h.uses_intents(ally) and not h.uses_intents(u), "a cha-0 leader directs the ally only by intent; itself it commands fully")
 	ok(h.intent_options(ally).map(func(o: Array): return o[0]) == [&"attack"],
 			"only ATTACK shows: the ally has an offensive skill, no defensive or support")
@@ -1113,7 +1101,7 @@ func test_default_orders() -> void:
 func test_layer_pane() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2)})
 	b.lay_layer(Vector2i(4, 3), load("res://Terrain/leaves.tres"))
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h.hover_cell(Vector2i(4, 3))
 	var lines: Array = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(h.get_node("%TileName").text == "Leaves" and lines[0] == "Leaves: Lets through, Obscuring, Cover, Flammable, Windswept" and lines[-1] == "?",
@@ -1138,7 +1126,7 @@ func test_hover_rows() -> void:
 	v(1).hotbar[1] = aid
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(2, 3), al: Vector2i(6, 3), v(3): Vector2i(4, 5), v(4): Vector2i(9, 0)})
 	v(1).charisma = 14  # orders reach 2 tiles
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(h.intent(Vector2i(1, 5)).kind == &"walk", "a tile: walk")
 	h.use_slot(1)
 	var it := h.intent(Vector2i(4, 5))
@@ -1172,7 +1160,7 @@ func test_allied_glow() -> void:
 	friends.secondary = Color("#203040")
 	friends.allies = [lancin]
 	al.faction = friends
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h._refresh()
 	var look := h.look_of(al)
 	ok(look.tint == h.ally_glow and look.sat == 1.0, "an ally of another faction: green glow, full colour")
@@ -1188,7 +1176,7 @@ func test_will_consume() -> void:
 	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
 	b.revealed[Vector2i(5, 4)] = true  # the trap there, known
 	v(1).intelligence = 12  # +1: one estimate a turn
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	h._refresh()
 	h.hover_cell(Vector2i(5, 4))  # onto the trap itself: a route would steer round it on the way (path_test)
 	var t := b.terrain(Vector2i(5, 4))
@@ -1221,7 +1209,7 @@ func test_forecast_fire_and_wounds() -> void:
 	b._views.clear()
 	b.flames[Vector2i(4, 4)] = Battle.Flame.new(v(3), 2)  # fire on the way
 	v(1).intelligence = 12
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var here := h.hazard(v(1), Vector2i(5, 4))
 	var dice := spike.times * spike.dice.x * (spike.dice.y + 1) / 2.0 + spike.bonus
 	ok(is_equal_approx(here.get(&"hp", 0.0), dice + 2.5) and here.get(&"ap") == 2.0, "a known trap: its dice and its bleed's first tick on HP, winded on AP (%s)" % here)
@@ -1241,7 +1229,7 @@ func test_foresight_stat() -> void:
 	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
 	var u := v(1)
 	u.intelligence = 10  # +0
-	var h := await start(u)
+	var h := await hud(u)
 	ok(u.stat(&"foresight") == 0.0 and h.foresight_allowance(u) == 0 and h.foresight(u) == 0, "the base is the int mod")
 	u.afflict(effect("foresight", 2.0), 9)
 	ok(h.foresight_allowance(u) == 2 and h.foresight(u) == 2, "an effect raises the allowance")
@@ -1262,7 +1250,7 @@ func test_help_order_reads_restores() -> void:
 	u.hotbar[0] = heal
 	stage(lancin, {v(1): Vector2i(2, 2), u: Vector2i(2, 3), v(3): Vector2i(8, 1)})
 	u.refresh()
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(u.intent_skill(&"supportive") == null and not heal.serves(&"supportive"), "Skill.serves() can't see Heal as help")
 	ok(h.intent_skill(u, &"supportive") == heal and h.intent_skill(u, &"offensive") == null, "the HUD's HELP finds it through what it restores")
 	ok(h.intent_options(u).any(func(o: Array): return o[0] == &"help" and o[1]), "HELP is offered")

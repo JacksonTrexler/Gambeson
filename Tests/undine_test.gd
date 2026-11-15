@@ -13,10 +13,6 @@ func undine(at := Vector2i(6, 4)) -> Unit:
 	return u
 
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func test_undine() -> void:
 	stage(nemes, {v(1): Vector2i(1, 1)})
 	var u := undine()

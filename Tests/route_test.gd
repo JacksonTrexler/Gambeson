@@ -267,10 +267,6 @@ func test_behaviours_everywhere() -> void:
 	ok(spy2.landed == 1, "an aura's early return runs them too")
 
 
-func sk(id: String) -> Skill:
-	return load("res://Skills/%s.tres" % id)
-
-
 # r-param's six deferred skills, whose reads live in Battle.gd: each now fits a modifier, and its
 # description as held shows it.
 func test_deferred_six() -> void:

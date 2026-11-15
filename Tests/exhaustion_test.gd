@@ -174,13 +174,7 @@ func test_ai_and_hud() -> void:
 	ok(log.filter(func(l: String): return "uses Strike" in l).size() == 2 and same(v(1).ap_for(&"skill"), 3.5), "the AI Strikes while it can pay: 3 + 4.5 of its 11 AP, not the 6 a third would take (%s)" % [log])
 	b.end_turn()
 	b.end_turn()
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	h._refresh()
 	ok(is_equal_approx(h.drain(h.intent(v(3).cell)).get(&"ap", 0.0), 4.5), "hovering the foe drains its raised cost off the AP bar: 4.5 (%s)" % h.drain(h.intent(v(3).cell)))
 	var sl := h.bar.get_child(v(1).hotbar.find(strike)) as SkillSlot

@@ -19,29 +19,18 @@ func unit(n: String) -> Unit:
 	return b.get_node("Units/" + n)
 
 
-func start(leader: Unit) -> HUD:
-	b.player = leader
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
-	return h
-
-
 func test_target_gating() -> void:
 	v(1).learned.append(slot(resuscitate, 2))
 	v(2).learned.append(slot(tenacity, 3))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(h.why_not(v(1), resuscitate, v(2)) == "Only the Downed", "a standing ally isn't a target: %s" % h.why_not(v(1), resuscitate, v(2)))
 	ok(h.skill_glow(v(1), resuscitate, v(2)) == -1, "and doesn't glow for it")
 	h.free()
 	v(2).damage(999)
 	ok(v(2).dbno != null, "Downed")
-	h = await start(v(1))
+	h = await hud(v(1))
 	ok(h.why_not(v(1), resuscitate, v(2)) == "" and h.skill_glow(v(1), resuscitate, v(2)) == Unit.Intensity.FULLY, "a Downed one beside it is: it glows fully")
 	h.free()
 
@@ -52,7 +41,7 @@ func test_borrowed_chip() -> void:
 	v(3).refresh()
 	v(3).max_hp = 100
 	v(3).hp = 100
-	var h := await start(v(3))
+	var h := await hud(v(3))
 	ok(not h._info(v(3)).chips.any(func(c): return c[0].begins_with("Borrowed")), "no chip before it's borrowing")
 	v(3).damage(20)
 	v(3).damage(999)
@@ -65,7 +54,7 @@ func test_borrowed_chip() -> void:
 func test_switch_marked() -> void:
 	var icor := unit("Icor")
 	stage(nemes, {icor: Vector2i(7, 3), v(1): Vector2i(1, 2)})
-	var h := await start(icor)
+	var h := await hud(icor)
 	var marked := func() -> Array:
 		return h.bar.get_children().filter(func(s: SkillSlot): return s.switching).map(func(s: SkillSlot): return s.skill)
 	ok(marked.call() == [], "no slot marked at first")
@@ -112,7 +101,7 @@ func test_every_reserve() -> void:
 	var bottom := u.more_bars[0].position.y + 1.0
 	ok(u.second_bar.position.y + 2.0 == u.more_bars[0].position.y or u.more_bars[0].position.y + 1.0 == u.second_bar.position.y, "stacked with the rest")
 	ok(u.trim.position.y + u.trim.size.y - 1.0 >= bottom, "inside the trim")
-	var h := await start(u)
+	var h := await hud(u)
 	ok(h.overlay._bar_for(u, held[0]) == u.reserve_bar and h.overlay._bar_for(u, held[1]) == u.second_bar and h.overlay._bar_for(u, held[2]) == u.more_bars[0], "the forecast maps a drain to each reserve's bar, the third too")
 	ok(h.overlay._bar_for(u, &"ap") == null and h.overlay._bar_for(u, &"hp") == u.hp_bar, "AP has no bar: pips")
 	h.free()

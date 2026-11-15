@@ -44,13 +44,7 @@ func test_ring_overheal() -> void:
 
 func test_autopilot() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(8, 2)})
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	ok(not h.autopilot() and h.my_turn(), "standing: the player plays")
 	v(1).hearts = 1
 	v(1).hp = 0
