@@ -75,6 +75,23 @@ func test_mental() -> void:
 	ok(skill_ap == v(1).ap[2].amount + 2, "and rank more skill AP, while armored")
 
 
+# A watcher near the one it investigates looks at advantage (within its wis mod - rank tiles), against the
+# hider's roll, which isn't rolled again (Battle.investigate() through Battle.check()).
+func test_investigate_close() -> void:
+	var seen := {}
+	b.investigated.connect(func(_by, _of, _s, total, against, close): seen.get_or_add(close, []).append([total, against]))
+	for n in 300:
+		stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3)})
+		v(3).wisdom = 20  # mod 5: close within 5 - rank
+		b.investigate(v(1), load("res://Skills/hide.tres"), [v(3)] as Array[Unit], 12)
+		stage(lancin, {v(1): Vector2i(1, 3), v(3): Vector2i(8, 3)})
+		v(3).wisdom = 20
+		b.investigate(v(1), load("res://Skills/hide.tres"), [v(3)] as Array[Unit], 12)
+	var avg := func(k: bool) -> float: return seen.get(k, []).map(func(x): return x[0]).reduce(func(a, x): return a + x, 0) / maxf(seen.get(k, []).size(), 1.0)
+	ok(seen.get(true, []).size() == 300 and seen.get(false, []).size() == 300 and seen[true][0][1] == 12, "300 looks near, 300 far, each against the roll it was given (12)")
+	ok(avg.call(true) > avg.call(false) + 1.5, "near: the better of two d20s (%.1f vs %.1f)" % [avg.call(true), avg.call(false)])
+
+
 # Bracing and other check effects reach investigations (offensive), hiding (defensive) and last stands
 # (the best defensive bonus over its stats).
 func test_more_checks() -> void:
