@@ -9,7 +9,7 @@ extends Behaviour
 const CHARGE: Effect = preload("res://Effects/charge.tres")
 const CHARGE_AP: Effect = preload("res://Effects/charge_ap.tres")
 const CHARGE_TINT := Color(1.0, 0.45, 0.1)  # hot orange, swelling
-const ROUTED_TINT := Color(0.12, 0.2, 0.62)  # dark blue, collapsing
+const ROUTED_TINT := Color(0.62, 0.12, 0.5)  # dark magenta, collapsing (not the blues of water and the movement outline)
 
 
 # The foes the caster can see, nearest first, up to its rank in range.

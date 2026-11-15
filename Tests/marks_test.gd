@@ -183,6 +183,8 @@ func test_hud_suspects_a_hidden_mark() -> void:
 	b._views.clear()
 	h._refresh()
 	ok(b.read(v(1), spot).net == -1 and b.read(v(1), spot).hint == "" and spot in h.suspect, "suspected, still hidden, no hint: still a ? (net -1)")
+	h.hover_cell(spot)
+	ok(h.get_node("%TileNotes").get_children().any(func(l): return l.get_parsed_text() == "Suspicious of it: 1"), "the tile card counts its suspicion")
 	m.concealment = 1
 	b._views.clear()
 	h._refresh()

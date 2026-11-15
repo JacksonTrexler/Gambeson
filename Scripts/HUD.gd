@@ -2122,6 +2122,9 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 	var out := []
 	if r.hint:
 		out.append([_sentence(r.hint), GROUND[&"unsure"]])
+	var eye := eyes()
+	if eye and eye.suspects(c) > 0 and (c in dubious or c in suspect):
+		out.append(["Suspicious of it: %d" % eye.suspects(c), GROUND[&"unsure"]])  # (each Clairvoyance ping, each look adds one)
 	if c in dubious:
 		out.append(["Something may be here" + (": " + dubious[c] if dubious[c] else ""), GROUND[&"unsure"]])
 	if c in battle.snares and battle.snares[c].faction == command.faction() and tile_view(c).trap == true:
