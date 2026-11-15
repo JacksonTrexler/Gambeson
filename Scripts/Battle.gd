@@ -1193,7 +1193,7 @@ func ambushes(caster: Unit, target: Unit) -> bool:
 
 
 # Taken out of the fight: u was downed (a heart spent), went Downed, or was killed - the one place each
-# such moment is told (neutralized), how saying which; a forced end to a shape would come here too.
+# such moment is told (neutralized), how saying which; unshape() (a forced end to a shape) comes here too.
 # A cast under way whose target it was hears of it (Behaviour.felled(): Poach).
 func neutralize(u: Unit, how: StringName) -> void:
 	neutralized.emit(u, u.last_hit_by, how)
@@ -1201,6 +1201,24 @@ func neutralize(u: Unit, how: StringName) -> void:
 		if c.target == u:
 			for bh in c.skill.behaviours:
 				bh.felled(c, how)
+
+
+# Forces u out of whatever shape it is in - a beast's form (Beastshape) or a mist (Vaporize) - by `by`
+# (any source: the Effect stat unshape reaches it through drive()). Neutralized as &"unshaped" if anything
+# ended; false if u was in none. Choosing to turn back (Beastshape again) is not this: no neutralize().
+func unshape(u: Unit, _by: Unit = null) -> bool:
+	var was := false
+	if u.form:
+		u.unshape()
+		shaped.emit(u, &"", &"")
+		was = true
+	for x in u.slots:
+		if x.on and x.skill.passive and x.skill.toggle and x.skill.effects.any(func(e: Effect): return e.stat == "mist"):
+			u.toggle(x.skill)
+			was = true
+	if was:
+		neutralize(u, &"unshaped")
+	return was
 
 
 # --- Reactions and interrupts (docs/plans/reactions.md)
@@ -3378,6 +3396,10 @@ func _mend(u: Unit) -> void:
 # amount tiles x rank x its strength, away from whoever put it on or toward them (displace(), tagged with the
 # effect's own name). Shove is instant: nothing stays on. Nobody put it on (a flame): it moves no one.
 func drive(u: Unit, e: Effect, a: Unit.Applied) -> void:
+	if e.stat == "unshape":
+		u.timed.erase(e)  # nothing stays on
+		unshape(u, a.by)
+		return
 	var dir: int = DRIVES.get(StringName(e.stat), 0)
 	if dir == 0:
 		return

@@ -155,6 +155,8 @@ extends Resource
 # (nothing stays on, and one that hits a unit or the edge hurts: Battle.displace()); fear and entrance last
 # their turns, and move it again as each of its own turns starts (Battle._frighten()). The tags of the same
 # names ride on the move and on any damage it does.
+# unshape: forced out of any shape, form or mist as it is put on (Battle.unshape(), via drive()):
+# neutralized as &"unshaped"; nothing stays on the unit
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -165,7 +167,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -203,7 +205,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
-		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance"}
+		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -323,6 +325,8 @@ func value(rank := 1) -> String:
 		return "+%s to a skill's primary mod used on an adjacent unit" % Skill.num(x)
 	elif stat == "regen_hp":
 		text = "%s HP each turn" % Skill.num(x)
+	elif stat == "unshape":
+		return "forced out of any shape, form or mist; nothing stays on"
 	elif stat == "mist":
 		return "a mist: it can't attack, only Coalesce into another unit's tile"
 	elif stat in ["unmask_gain", "uncover_gain"]:
