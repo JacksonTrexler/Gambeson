@@ -74,6 +74,7 @@ var charge := NOWHERE  # the hovered foe a click would walk up to and use a skil
 var hovered := {}  # what a click on the hovered tile means (intent())
 var spend := {}  # what the hovered plan would consume (drain()): drawn on the unit's own bars and card
 var hurt := {}  # what the hovered attack would take off its target, when its HP is known: {unit, lo, hi, notes} (notes: what rides on a hit, Battle.foresee())
+var aspect := {}  # the hovered attack lands on its target's &"rear" or &"flank" (Unit.side_of(), as Battle.hit_tags() reads it): {unit, side}; {} from the front or with no attack
 var foresight_used: Dictionary[Unit, int] = {}  # hazard estimates each unit has acted on this turn (foresight())
 var show_odds := false  # Alt held: the exact chance to hit, in the tip (only when the target's Defense is known)
 var marked: Array[Unit] = []  # what the armed skill could be used on
@@ -678,6 +679,11 @@ func toggle_sheet() -> void:
 		sheet.open(u, _outfits(u))
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Save.save()
+
+
 func _outfits(u: Unit) -> bool:
 	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and battle.outfitting(u)))
 
@@ -704,6 +710,7 @@ func _on_equipped(u: Unit, it: Item) -> void:
 		Game.stash.append(old)
 	_log("%s puts on %s" % [_tag(u), it.name])
 	_keep_outfit(u)
+	Save.save()  # the stash and outfit last past the game
 	sheet.open(u, true)
 	_mark()
 
@@ -715,6 +722,7 @@ func _on_unequipped(u: Unit, slot: String) -> void:
 			return
 		Game.stash.append(it)
 		_keep_outfit(u)
+		Save.save()
 		sheet.open(u, true)
 		_mark()
 
@@ -724,6 +732,7 @@ func _on_used_up(u: Unit, it: Item) -> void:
 		Game.stash.erase(it)
 		_log("%s uses %s" % [_tag(u), it.name])
 		_keep_outfit(u)
+		Save.save()
 		sheet.open(u, true)
 		_mark()
 
@@ -1232,6 +1241,18 @@ func _hurt(it: Dictionary) -> Dictionary:
 
 
 
+# Which side of its target the hovered attack would come from, when that isn't the front: {unit, side}.
+# From where the attacker would stand (a plan walks first), by the target's facing; a ranged attack too.
+func _aspect(it: Dictionary) -> Dictionary:
+	var t: Variant = it.get("target")
+	var s: Skill = it.get("skill")
+	var u: Unit = it.get("unit")
+	if it.get("kind") != &"use" or not it.ready or not (t is Unit) or t == u or not s or not (s.attacks() or _checked(s)) or not foe(t):
+		return {}
+	var side: StringName = t.side_of(it.get("dest", u.cell))
+	return {} if side == &"front" else {unit = t, side = side}
+
+
 # How likely the hovered attack is to land, as the target's brackets show it: &"likely" (solid),
 # &"even" (broken), &"unlikely" (faint), &"unknown" (its Defense can't be made out: wavering), or &""
 # (not an attack roll). A skill whose check stands in place of the roll (a save, a drag) shows the chance
@@ -1653,6 +1674,7 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if not won.is_empty():
 		Game.stash.append_array(won)
 		%OverText.text += "\nSpoils: %s" % ", ".join(won.map(func(it: Item): return it.name))
+	Save.save()  # the spoils, and the level and XP the battle gave the starter
 	_log("[color=#e8c547]%s[/color]" % %OverText.text)
 	spellbook.hide()
 	select(null)
@@ -3237,6 +3259,7 @@ func _replan() -> void:
 		it = intent(selected.cell)  # a self skill selected: its use, previewed
 	spend = drain(it)
 	hurt = _hurt(it)
+	aspect = _aspect(it)
 	if card:
 		card.set_info(_card_info())
 	charge = hovered.cell if hovered.get("kind") == &"use" and hovered.target is Unit and hovered.target != selected else NOWHERE

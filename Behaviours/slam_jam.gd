@@ -37,5 +37,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
 	return "A hit: a %s, {o:str mod} + {r:%d} vs the foe's {d:con mod}; won, it interrupts it and leaves it %s, as Jam does. A hit gives back 1/%d of its AP and cost" % [
-			Glossary.term(&"contest"), rank, Glossary.term(&"jammed", "Jammed"), rank + 2]
+			Glossary.term(&"contest"), c.impact_rank(), Glossary.term(&"jammed", "Jammed"), c.rank + 2]

@@ -278,6 +278,13 @@ func draw_top() -> void:
 		if t.hp_bar.visible:
 			_drain_bar(t, t.hp_bar, float(hud.hurt.hi), Color(1, 1, 1, 0.45))
 			_drain_bar(t, t.hp_bar, float(hud.hurt.lo), Color.WHITE)
+	if not hud.aspect.is_empty():  # one word over the target: it is hit from its side or behind
+		var t: Unit = hud.aspect.unit
+		var word := String(hud.aspect.side)
+		var w := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+		var at := t.position + Vector2(-w / 2.0, t.trim.position.y - 3.0)
+		top.draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, 2, Color(0, 0, 0, 0.8))
+		top.draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Glossary.colour(hud.aspect.side).lightened(0.35))
 	var col := Color(HUD.SLEEP, 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 3.0))
 	for u in hud.sleepers:
 		var at := u.position + Vector2(13, -TILE / 2.0 + 4)

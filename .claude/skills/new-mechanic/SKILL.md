@@ -30,7 +30,7 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
    resource and faction colours; see the table's groups); it shows on Glossary links, damage numbers and
    as trim on items carrying it (`Item.trim()`). A plain word (material, form, weight) also goes in
    `Tags.PLAIN` so it never trims. `mechanic.py check` fails a tag with no colour.
-   A new item (`Items/<id>.tres`, written by hand: no tool) needs its icon: `python3 Util/icon.py item <id>` draws `Icons/Items/<id>.png` (a placeholder by slot, kind and trim; art replaces the file); `icon.py check` and `skill.py check` fail one without.
+   A new item goes through `new-item` (`python3 Util/item.py new`), which writes `Items/<id>.tres` and draws its icon (`Icons/Items/<id>.png`, a placeholder by slot, kind and trim; art replaces the file); `item.py check` and `skill.py check` fail an item without one.
    A tag's `--kind` decides which skills a modifier of it (an emblem: "Fire Insignia") can go on, with no
    code (`Modifiers.why_not()`): `damage` - skills that deal damage; `check` - skills with an attack roll,
    save or contest (execute, taps); `condition` - skills putting effects on a target; `ground` - skills

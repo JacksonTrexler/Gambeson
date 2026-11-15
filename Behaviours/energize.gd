@@ -52,5 +52,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return "On itself: {r:1} Energy for every 2 AP, spending all it can up to {r:%d} Energy (its own 2 AP the first) - and no more than it has room for. Past a full bar, the rest as %s, up to {r:%d%%} of its total resource (max Energy and every reserve), for {t:%d turn%s}. Energy this way counts toward %s" % [
 			rank, Glossary.term(&"overcharge", "Overcharge"), roundi(OVER * 100.0 * rank), rank, "" if rank == 1 else "s", Glossary.term(&"burnout", "Burnout")]

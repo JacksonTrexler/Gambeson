@@ -15,6 +15,8 @@ extends SceneTree
 # The run holds museum.tscn (and so Roles/, Trees/, Skills/ it pulls in) for its whole length. Without a
 # reference they leave the ResourceCache when a test frees its scene and every test reloads them (150 ms).
 const MUSEUM := "res://Scenes/museum.tscn"
+var _save: GDScript  # Save and KeyBinds, as scripts (_initialize)
+var _keys: GDScript
 const SLOW_LIST := "res://Tests/slow.txt"  # one "file.method" a line: what the quick tier leaves out
 
 
@@ -28,6 +30,13 @@ func _initialize() -> void:
 	# A test's toggles never reach (or come from) the player's own settings, nor another run's: a file per process.
 	Prefs.SAVE = "user://settings_test_%d.cfg" % OS.get_process_id()
 	var museum: PackedScene = load(MUSEUM)
+	# The same for the save file and the key binds: never the player's own, never another run's. By load(), after
+	# the museum: naming Save or KeyBinds here would compile them (and Role, Item...) before Skill and trip a script cycle.
+	var pid := OS.get_process_id()
+	_save = load("res://Scripts/Save.gd")
+	_save.set("PATH", "user://save_test_%d.json" % pid)
+	_keys = load("res://Scripts/KeyBinds.gd")
+	_keys.set("SAVE", "user://keybinds_test_%d.cfg" % pid)
 	OS.add_logger(ScriptErrors.new())  # a test that crashes mid-way is a failed test
 	ScriptErrors.take()
 	var checks := 0
@@ -50,12 +59,13 @@ func _initialize() -> void:
 			if not words.is_empty() and not words.any(func(w: String): return w in id):
 				continue
 			var start := Time.get_ticks_msec()
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(Prefs.SAVE))
+			_wipe()
 			var t: Test = suite.new()
 			# What one test leaves in Game's statics (a starter, its level, outfit, hearts, the stash) doesn't carry over.
 			Game.starter = {}
 			Game.difficulty = 0.0
 			Game.dungeon = null
+			Game.hero = {}
 			Game.outfit = {}
 			Game.level = 1
 			Game.xp = 0
@@ -84,9 +94,17 @@ func _initialize() -> void:
 		ids.sort_custom(func(a: String, b: String): return spent[a] > spent[b])
 		for id in ids:
 			print("TIME %6d ms  %s" % [spent[id], id])
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(Prefs.SAVE))
+	_wipe()
 	print("%d checks, %d failed (%d tests%s%s%s)" % [checks, failed, ran, ", quick" if quick else "", ", reverse" if reverse else "", ", soak" if "soak" in args else ""])
 	quit(1 if failed else 0)
+
+
+# The per-process files a test may have written: settings, key binds, the save (and a bad one set aside).
+func _wipe() -> void:
+	var path: String = _save.get("PATH")
+	for p in [Prefs.SAVE, _keys.get("SAVE"), path, path + ".bad", path + ".tmp"]:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	_save.set("loaded", false)
 
 
 # The tests the quick tier skips: Tests/slow.txt, a "file.method" a line (# comments).

@@ -28,4 +28,5 @@ func describe(_rank: int) -> String:
 
 func describe_as(c: Cast) -> String:
 	var turns: int = c.skill.turns if c.skill else 0
-	return "Lays %s %s around a tile for {t:%d turn%s}" % [kind, Glossary.term(&"concealment", "concealment"), turns, "" if turns == 1 else "s"]
+	return "Lays %s %s around a tile, {r:%d} deep at its centre and one less a tile out, for {t:%d turn%s}" % [
+			kind, Glossary.term(&"concealment", "concealment"), c.impact_rank(), turns, "" if turns == 1 else "s"]

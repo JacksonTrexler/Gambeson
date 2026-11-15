@@ -34,5 +34,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "With an ally within {r:%d} + {o:wis mod} tiles, and a foe within {r:%d} tiles of that ally: each step toward that foe costs half the tiles it closes less, at most half the step, for {r:%d} step%s a turn" % [
-			rank, rank, rank, "" if rank == 1 else "s"]
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.rank
+	return "With an ally within {r:%d} + %s tiles, and a foe within {r:%d} tiles of that ally: each step toward that foe costs half the tiles it closes less, at most half the step, for {r:%d} step%s a turn" % [
+			c.range_rank(), c.mod_text(&"wisdom", &"stat_range"), rank, rank, "" if rank == 1 else "s"]

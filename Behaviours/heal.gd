@@ -39,4 +39,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "An ally gets back {r:%dd%d} (%s: %s x rank) + {o:wis mod} + {r:%d} HP" % [dice(rank), DIE, String(magnitude).capitalize(), Skill.num(Difficulty.MAGNITUDE[magnitude]), rank]
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
+	return "An ally gets back {r:%dd%d} (%s: %s x rank) + %s + {r:%d} HP" % [dice(rank), DIE, String(magnitude).capitalize(), Skill.num(Difficulty.MAGNITUDE[magnitude]), c.mod_text(&"wisdom"), rank]

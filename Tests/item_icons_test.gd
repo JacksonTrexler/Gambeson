@@ -4,24 +4,14 @@ extends Test
 # character sheet show them beside the trim banner.
 
 
-func test_every_item_has_an_icon() -> void:
-	var missing: Array[String] = []
-	for f in DirAccess.get_files_at("res://Items"):
-		if f.ends_with(".tres") and not ResourceLoader.exists("res://Icons/Items/%s.png" % f.get_basename()):
-			missing.append(f)
-	ok(missing.is_empty(), "every item has Icons/Items/<id>.png (python3 Util/icon.py items): %s" % ", ".join(missing))
+# Every item having one is item.py check's (tooling_test.test_checks).
+func test_item_reads_its_icon() -> void:
 	var it: Item = load("res://Items/dagger.tres")
 	ok(it.icon() != null and it.icon().get_width() == 32, "an item reads its icon from the fixed path")
 	var copy: Item = it.duplicate()
 	ok(copy.icon() == it.icon(), "a copy made at run time (no file) finds it by name")
 	var tp: Item = load("res://Items/tacticians_playbook.tres")
 	ok(tp.icon() != null, "an apostrophe in a name doesn't lose it")
-
-
-func test_icon_tool_check() -> void:
-	var out := []
-	var code := OS.execute("python3", [ProjectSettings.globalize_path("res://Util/icon.py"), "check"], out, true)
-	ok(code == 0, "icon.py check passes: %s" % "".join(out))
 
 
 func test_sheet_and_card_show_icons() -> void:

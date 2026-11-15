@@ -64,5 +64,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.range_rank()
 	return "First lunges up to {r:%d} tile%s straight for the foe, to beside it (no movement spent). Then %s: -1 Defense for each tile lunged, through its next turn" % [
 			rank, "" if rank == 1 else "s", OFF_BALANCE.name]

@@ -27,5 +27,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var reach := c.range_rank()
 	return ("Once a turn, an ally within {r:%d} tile%s takes your orders as if your charisma mod were {r:%d}: as far, as many, as many hotbar slots. "
-			+ "The first ally you order through it is the one, until your next turn") % [rank, "" if rank == 1 else "s", rank]
+			+ "The first ally you order through it is the one, until your next turn") % [reach, "" if reach == 1 else "s", c.impact_rank()]

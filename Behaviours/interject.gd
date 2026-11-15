@@ -57,6 +57,11 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	var out := "{k:reaction|Reaction}: when an ally beside it is hit, a dex {k:check|check} against the attacker; passing, it takes the hit instead. It takes {r:%d%%} less of a hit not aimed at it." \
 			% mini(roundi(CUT * rank * 100), 100)
 	if rank >= GUARD_FROM:
