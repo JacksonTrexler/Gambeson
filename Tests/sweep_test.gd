@@ -136,6 +136,14 @@ func _use(s: Skill, on: Variant) -> bool:
 	return b.cast_at(v(1), s, on) if on is Vector2i else b.cast(v(1), s, on)
 
 
+# What damage takes from u: HP, Energy and every reserve together (an energy skill drains Energy first).
+func _pool(u: Unit) -> int:
+	var n := u.hp + u.energy
+	for r in u.stores:
+		n += u.store(r)
+	return n
+
+
 func test_actives() -> void:
 	var weighed := 0
 	var cast := 0
@@ -146,9 +154,12 @@ func test_actives() -> void:
 		var on: Variant = _pose(s)
 		var es: Array = s.effects + (s.grants.effects if s.grants else ([] as Array[Effect]))
 		var base := _readings(on, es) if on is Unit else {}
+		var pool := _pool(on) if on is Unit else 0
 		var landed := _use(s, on)
 		cast += 1
 		ok(landed, "%s: cast at rank 2 and it landed" % s.name)
+		if landed and on is Unit and on != u and not s.tiers.is_empty() and not s.dual and (s.hostile or s.either):
+			ok(_pool(on) < pool, "%s: it costs the foe something (HP, Energy or a reserve: %d -> %d)" % [s.name, pool, _pool(on)])
 		if not landed or not on is Unit or es.is_empty() or _id(s) in EFFECTS_UNWEIGHED:
 			continue
 		var t: Unit = on
@@ -157,7 +168,8 @@ func test_actives() -> void:
 		ok(held.size() == es.filter(func(e: Effect): return e.stat != "regain").size(), "%s: its effects are on %s (%d of %d)" % [s.name, t.name, held.size(), es.size()])
 		for e: Effect in held:
 			var a: Unit.Applied = t.timed[e]
-			ok(a.total == (e.turns if e.turns else s.lasts(r, u)), "%s: %s lasts %d turns, not %d" % [s.name, e.stat, a.total, s.lasts(r, u)])
+			var turns := e.turns if e.turns else s.turns + s.turns_per_rank * r + (maxi(u.mod(s.turns_mod), 0) if s.turns_mod else 0)  # (Skill.lasts(), spelled out)
+			ok(a.total == turns, "%s: %s lasts %d turns, not %d" % [s.name, e.stat, a.total, turns])
 			ok(a.rank == r or not e.per_rank, "%s: %s at rank %d, not %d" % [s.name, e.stat, a.rank, r])
 		weighed += _weigh(t, held, base, func(e): return t.timed[e].rank, func(e): return t.timed[e].strength(e), s.name)
 	# Ramut's Ire: no hotbar skill, Battle puts it on a unit a turn it stalls (Battle.IRE): applied here.
