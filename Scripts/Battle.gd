@@ -2024,7 +2024,12 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 
 # The chance (0-1) an attack with s by u hits t: the d20 rolls that reach t's Defense, a natural
 # 20 always among them. Given the battle, its behaviours' say on the roll too (edge(), guard(): Gank, Spike).
+# A skill whose declared check stands in place of the roll (a save, Drown's drag): the chance it wins
+# that (skill_odds(), the one check helper's odds), a drag's penalty over the tiles to its spot.
 static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null) -> float:
+	if s.check and not s.check.suspicion and t != u and not Faction.friends(t.faction, u.faction):
+		var spot: Variant = b.drag_spot(u, s, t) if b and s.drags() else null
+		return skill_odds(u, s, t, b, {tiles = Command.tiles(t.cell, spot)} if spot != null else {})
 	if not s.attacks():
 		return 1.0
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null

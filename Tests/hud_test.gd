@@ -860,6 +860,31 @@ func test_attack_feedback() -> void:
 	h.free()
 
 
+# A save in place of the roll (Haluca): its brackets and Alt's number are the chance it wins its check
+# (Battle.hit_chance() -> skill_odds(), the one check helper; docs/plans/checks.md).
+func test_check_odds() -> void:
+	var haluca: Skill = load("res://Skills/haluca.tres")
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(1).charisma = 20
+	v(1).learned.append(slot(haluca, 1))
+	v(1).refresh()
+	v(3).wisdom = 1
+	var h := await start(v(1))
+	var it := {kind = &"use", unit = v(1), skill = haluca, target = v(3)}
+	var p := Battle.hit_chance(v(1), haluca, v(3), b)
+	ok(p > 0.9 and p < 1.0 and is_equal_approx(p, Battle.skill_odds(v(1), haluca, v(3), b)), "its chance is its save's odds: cha 5 + rank 1 vs wis -5 (%.3f)" % p)
+	ok(h.odds(it) == &"likely", "solid brackets (%s)" % h.odds(it))
+	v(3).wisdom = 30
+	v(1).charisma = 4
+	ok(h.odds(it) == &"unlikely", "faint against a wise foe (%.3f)" % Battle.hit_chance(v(1), haluca, v(3), b))
+	h.hovered = it
+	h.hover = Vector2i(5, 3)
+	h.show_odds = true
+	h._update_tip()
+	ok("to win" in h.tip_label.text and "to hit" not in h.tip_label.text, "Alt: the chance to win its check (%s)" % h.tip_label.text)
+	h.free()
+
+
 func test_hidden_defense() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).afflict(effect("concealment", 1), 9)

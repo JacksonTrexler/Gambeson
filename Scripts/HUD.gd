@@ -1235,16 +1235,22 @@ func _hurt(it: Dictionary) -> Dictionary:
 
 # How likely the hovered attack is to land, as the target's brackets show it: &"likely" (solid),
 # &"even" (broken), &"unlikely" (faint), &"unknown" (its Defense can't be made out: wavering), or &""
-# (not an attack roll).
+# (not an attack roll). A skill whose check stands in place of the roll (a save, a drag) shows the chance
+# it wins it (Battle.hit_chance(): the one check helper's odds).
 func odds(it: Dictionary) -> StringName:
 	var t: Variant = it.get("target")
 	var s: Skill = it.get("skill")
-	if it.get("kind") != &"use" or not (t is Unit) or not s or not s.attacks() or not foe(t):
+	if it.get("kind") != &"use" or not (t is Unit) or not s or not (s.attacks() or _checked(s)) or not foe(t):
 		return &""
 	if not _defense_shows(t):
 		return &"unknown"
 	var p := Battle.hit_chance(it.unit, s, t, battle)
 	return &"likely" if p >= 0.65 else (&"even" if p >= 0.35 else &"unlikely")
+
+
+# Whether s rolls its declared check in place of an attack roll (Skill.check, not Sing's).
+static func _checked(s: Skill) -> bool:
+	return s.check != null and not s.check.suspicion
 
 
 # A refused order: the unit shakes and one word floats off it ("Too far", "Spent"); the full reason
@@ -2780,7 +2786,7 @@ func _tip_text() -> String:
 		return ""
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
-		line += "\n%d%% to hit" % roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0)
+		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0), "win" if _checked(it.skill) else "hit"]
 	if not hurt.is_empty() and hurt.unit == u:
 		for note: String in hurt.notes:
 			line += "\n" + note

@@ -58,3 +58,15 @@ func test_hard_to_read() -> void:
 	v(1).wisdom = 8
 	v(2).charisma = 18
 	ok(b.read(v(1), v(2)).hp == null, "high cha doesn't make up for a reader's low wis")
+
+
+# The AI weighs a save by the odds its check wins (AI.score() reads Battle.hit_chance(): the one check
+# helper's odds; docs/plans/checks.md), as the player's forecast does.
+func test_ai_weighs_save() -> void:
+	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
+	caster()
+	v(1).wisdom = 1
+	var easy := AI.score(v(3), haluca, b.read(v(3), v(1)), b, v(1))
+	v(1).wisdom = 30
+	var hard := AI.score(v(3), haluca, b.read(v(3), v(1)), b, v(1))
+	ok(easy > hard and is_equal_approx(Battle.hit_chance(v(3), haluca, v(1), b), Battle.skill_odds(v(3), haluca, v(1), b)), "a foe likely to save is worth less to try (%.2f > %.2f)" % [easy, hard])
