@@ -1172,9 +1172,9 @@ func foresight(u: Unit) -> int:
 
 # What stepping onto c would cost u that the player's side can foresee, by pool (&"hp", &"ap"): the
 # one estimate behind drain()'s forecast, Battle.hazard() read through tile_view(c) - known traps and
-# their wounds over their length, known ground's afflicts, fire. {}: nothing foreseen.
-func hazard(u: Unit, c: Vector2i) -> Dictionary:
-	return battle.hazard(u, c, tile_view(c))
+# their wounds over their length, known ground's afflicts, fire, its own per_tile tolls (the nth tile of a walk). {}: nothing foreseen.
+func hazard(u: Unit, c: Vector2i, nth := 0) -> Dictionary:
+	return battle.hazard(u, c, tile_view(c), nth)
 
 
 # What carrying out an intent would consume, as the unit expects it - the "will consume" signal, drawn
@@ -1195,8 +1195,8 @@ func drain(it: Dictionary) -> Dictionary:
 		d[&"move"] = w.costs.reduce(func(sum, x): return sum + x, 0.0)
 		if foresight_allowance(u) >= 0:  # below 0 it plans as if the way were safe
 			var ahead := foresight(u) > 0
-			for c: Vector2i in w.path:
-				var owed := hazard(u, c)
+			for i in w.path.size():
+				var owed := hazard(u, w.path[i], i + 1)  # (its own per_tile tolls count by the tile it's the nth of)
 				for key in owed:
 					if ahead:
 						d[key] = d.get(key, 0.0) + owed[key]

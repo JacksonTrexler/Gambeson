@@ -2760,8 +2760,15 @@ func foresight_allowance(u: Unit) -> int:
 # average + the setter's mod, at least 1, else its amount: _bleed()) and poison (amount x max HP) every
 # turn of their length; winded takes AP once. All before mitigation, as a hit isn't rolled. {}: nothing
 # foreseen. Only what `r` makes out counts: an unseen trap or ground it can't read owes nothing.
-func hazard(u: Unit, c: Vector2i, r: Read) -> Dictionary:
+# `nth`, when c is the nth tile of a walk (1 on), adds the toll of u's own per_tile effects (Footsore) for it,
+# as _toll() takes it, Meander's wards included; 0, c on no walk (route(): a toll every tile owes alike
+# steers nowhere): none.
+func hazard(u: Unit, c: Vector2i, r: Read, nth := 0) -> Dictionary:
 	var out := {}
+	if nth > 0:
+		for e: Effect in u.timed.keys():
+			if e.stat == "per_tile" and not u.wards(u.timed[e].rank, nth):
+				_owe(out, &"hp", e.amount * (u.timed[e].rank if e.per_rank else 1.0) * u.timed[e].scale)
 	var t := terrain(c)
 	var by: Unit = null
 	if r.trap == true:
