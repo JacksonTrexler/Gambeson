@@ -3,7 +3,7 @@
 # Logs go beside the worktree (its parent directory). Run it under `caffeinate -dims`.
 W=${1:a}; H=${0:a:h}; N=$(basename $W); L=${W:h}
 cd $W
-for t in skill mechanic role unit icon; do
+for t in skill mechanic role unit icon item tile; do
   [ -f Util/$t.py ] || continue
   python3 Util/$t.py check > /dev/null 2>&1 && echo "$t check ok" || { echo "$t check FAILED"; python3 Util/$t.py check 2>&1 | tail -5; }
 done
