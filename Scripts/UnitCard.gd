@@ -77,7 +77,7 @@ func set_info(info: Dictionary) -> void:
 		effects.add_child(_effect(e[0], e[1], e[2], e[3]))
 	effects.visible = effects.get_child_count() > 0
 	for r in info.get("rows", []):
-		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null))
+		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null, r[5] if r.size() > 5 else 0))
 	note.text = info.get("note", "")
 	note.visible = note.text != ""
 
@@ -152,7 +152,7 @@ func _effect(mark: Variant, color: Color, tip: String, roll: String) -> Control:
 
 # drain: what a planned action would consume of it (HUD.drain()): a pulsing segment at the end of its
 # bar; "?": it can't be foreseen - the row goes muted and a ? flashes after the number.
-func _row(label: String, value: Variant, top: Variant, color: Color, drain: Variant = null) -> Control:
+func _row(label: String, value: Variant, top: Variant, color: Color, drain: Variant = null, on_hit: Variant = 0) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 3)
 	var k := Label.new()
@@ -193,6 +193,12 @@ func _row(label: String, value: Variant, top: Variant, color: Color, drain: Vari
 		seg.name = &"Drain"
 		bar.add_child(seg)
 		_pulse(seg, 0.25)
+		if (on_hit is float or on_hit is int) and on_hit > 0:
+			var hit := Label.new()  # a refund the roll decides: "on hit: -N"
+			hit.theme_type_variation = &"Muted"
+			hit.text = "on hit: −%s" % Skill.num(on_hit)
+			hit.name = &"OnHit"
+			h.add_child(hit)
 	elif drain == "?":
 		k.modulate = Color(1, 1, 1, 0.55)
 		bar.modulate = Color(1, 1, 1, 0.55)

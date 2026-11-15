@@ -391,6 +391,7 @@ var channel: Channel:  # a channeled skill it's holding (Metea; Battle.cast_at()
 var paid_for: Skill  # the skill it last paid for (pay_for()), and what with: a Reserve or &"energy" (paid_as())
 var paid_with: Variant
 var paid_ap := 0.0  # and the AP it took (refund())
+var paid_cut := 0.0  # and the share a behaviour took off its price first (Battle.rebate())
 var emptied := false  # that payment spent the last of the reserve it came from (focus_bonus())
 var reserve_rest: Dictionary[Reserve, float] = {}  # a with_energy reserve's recovery towards its next whole point (recover())
 var exhaustion := Exhaustion.new()  # its uses of each skill lately, and what they add to its costs (price(), ap_cost())
@@ -2184,14 +2185,14 @@ func price(s: Skill) -> int:
 # (Sweet Nothings: 1); otherwise price(), times the best cost_with factor of any reserve that
 # payment counts as, where its passives open that reserve up to s's tier (Mana I: the starter spells
 # at half cost). Rounded up.
-func cost_from(s: Skill, fund: Variant) -> int:
+func cost_from(s: Skill, fund: Variant, cut := 0.0) -> int:
 	if fund is Reserve and fund.whole > 0:
 		return fund.whole if price(s) > 0 or s.needs == fund else 0
 	var factor := 1.0
 	for r in s.cost_with:
 		if pays_as(s, fund, r) and opened(r) >= tier(s):
 			factor = minf(factor, s.cost_with[r])
-	return ceili(price(s) * factor - 0.0001)
+	return ceili(price(s) * factor * (1.0 - cut) - 0.0001)
 
 
 # The highest tier its passives open r's savings for (Mana II: tier 2); 0 if none do.
@@ -2412,12 +2413,12 @@ func paid_as(r: Reserve, s: Skill) -> bool:
 
 # AP to use s paid from fund: its AP, times the best factor of any reserve that payment counts as,
 # and more the more it has used it lately (Exhaustion.rate()).
-func ap_cost(s: Skill, fund: Variant) -> float:
+func ap_cost(s: Skill, fund: Variant, cut := 0.0) -> float:
 	var factor := 1.0
 	for r in s.ap_with:
 		if pays_as(s, fund, r):
 			factor = minf(factor, s.ap_with[r])
-	return Pricing.ap_for(self, s) * factor * exhaustion.rate(s)  # priced, or hand-set under its modifiers
+	return Pricing.ap_for(self, s) * factor * exhaustion.rate(s) * (1.0 - cut)  # priced, or hand-set under its modifiers
 
 
 # Its actives it would aim at a foe itself (not a tile, nor used at once on whoever's nearest), those it
@@ -2452,12 +2453,13 @@ func can_afford_after(s: Skill, steps: float) -> bool:
 
 # Pays a skill's AP and cost from its funding: one use of it (Exhaustion.used()). False (and nothing
 # spent) if it can't.
-func pay_for(s: Skill) -> bool:
+func pay_for(s: Skill, cut := 0.0) -> bool:
 	var fund: Variant = funding(s)
-	if fund == null or not pay(ap_cost(s, fund), s.pays_with if s.pays_with else &"skill"):
+	if fund == null or not pay(ap_cost(s, fund, cut), s.pays_with if s.pays_with else &"skill"):
 		return false
-	paid_ap = ap_cost(s, fund)
-	var cost := cost_from(s, fund) - _spend_overcharge(fund, cost_from(s, fund))
+	paid_ap = ap_cost(s, fund, cut)
+	paid_cut = cut
+	var cost := cost_from(s, fund, cut) - _spend_overcharge(fund, cost_from(s, fund, cut))
 	if fund is Reserve:
 		set_store(fund, store(fund) - cost)
 	else:
@@ -2761,7 +2763,7 @@ func refund(s: Skill, share: float) -> int:
 	var fund: Variant = paid_with
 	if not ap.is_empty():
 		ap[0].amount += paid_ap * share
-	var n := floori(cost_from(s, fund) * share + 0.0001)
+	var n := floori(cost_from(s, fund, paid_cut) * share + 0.0001)
 	if fund is Reserve:
 		set_store(fund, store(fund) + n)
 	else:

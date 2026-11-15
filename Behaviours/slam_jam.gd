@@ -9,7 +9,7 @@ extends "res://Behaviours/jam.gd"
 func apply(c: Cast) -> void:
 	if not c.foe:
 		return
-	c.caster.refund(c.skill, 1.0 / (c.rank + 2))
+	c.caster.refund(c.skill, rebate(c).y)
 	if not c.target.is_alive():
 		return
 	var b := c.battle
@@ -20,8 +20,8 @@ func apply(c: Cast) -> void:
 		super.apply(c)
 
 
-func refunds(c: Cast, p: float) -> float:
-	return p / (c.rank + 2)
+func rebate(c: Cast) -> Vector2:  # on a hit only: a refund after paying
+	return Vector2(0.0, 1.0 / (c.rank + 2))
 
 
 func dealt(_c: Cast, _n: int) -> void:

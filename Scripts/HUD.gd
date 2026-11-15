@@ -1215,11 +1215,17 @@ func drain(it: Dictionary) -> Dictionary:
 	var s: Skill = it.get("skill")
 	if s and (it.ready or it.kind == &"strike_at"):
 		var fund: Variant = u.funding(s)
-		d[&"ap"] = d.get(&"ap", 0.0) + u.ap_cost(s, fund)
-		var cost := u.cost_from(s, fund)
+		var t: Variant = it.get("target")
+		var rb := battle.rebate(u, s, t, foe(t)) if t is Unit and t != u and it.kind == &"use" else Vector2.ZERO  # the price a behaviour cuts (sure), or gives back on a hit
+		d[&"ap"] = d.get(&"ap", 0.0) + u.ap_cost(s, fund, rb.x)
+		var cost := u.cost_from(s, fund, rb.x)
+		var key: Variant = fund if fund is Reserve else &"energy"
 		if cost:
-			var key: Variant = fund if fund is Reserve else &"energy"
 			d[key] = d.get(key, 0.0) + cost
+		if rb.y > 0.0:  # "on hit: -N" beside each number
+			d[&"on_hit"] = {&"ap": u.ap_cost(s, fund, rb.x) * rb.y}
+			if cost:
+				d[&"on_hit"][key] = floori(cost * rb.y + 0.0001)
 	return d
 
 
@@ -2695,6 +2701,8 @@ func _card_info() -> Dictionary:
 			r.append("?")
 		elif spend.get(key, 0.0) > 0.0:
 			r.append(spend[key])
+			if spend.get(&"on_hit", {}).get(key, 0.0) > 0.0:
+				r.append(spend[&"on_hit"][key])  # "on hit: -N"
 	return info
 
 

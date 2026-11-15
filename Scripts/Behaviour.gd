@@ -140,11 +140,18 @@ func restores(_c: Cast) -> Dictionary:
 	return {}
 
 
-# The share of its AP price the cast gives back (0-1), expected, given p the chance it lands - what the
-# AI weighs as a saving (Poach's discount is sure before the roll, Slam Jam's comes with a hit). Pure:
-# asked before the cast; apply()/aim() still do the giving (Unit.refund()).
-func refunds(_c: Cast, _p: float) -> float:
-	return 0.0
+# What the cast saves its caster of its AP and cost, as shares (0-1): x is sure, known before the roll
+# (Poach's bloodied foe): Battle.rebate() takes it off the price, so the forecast and the payment both
+# show it. y comes back only on a hit (Slam Jam): paid in full, then Unit.refund()ed from apply(); the
+# forecast shows it as "on hit". Pure; the one hook a behaviour declares a conditional discount with.
+func rebate(_c: Cast) -> Vector2:
+	return Vector2.ZERO
+
+
+# The share of its AP price the cast saves, expected, given p the chance it lands: what the AI weighs.
+func refunds(c: Cast, p: float) -> float:
+	var r := rebate(c)
+	return r.x + r.y * p
 
 
 # Defense the cast costs its own caster, through its next turn (Sutemi's Off Balance: a point a tile

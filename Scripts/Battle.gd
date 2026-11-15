@@ -886,7 +886,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		end_channel(caster)  # used again: it stops channeling, free (Clairvoyance)
 		return true
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
-	if not spreading and not caster.pay_for(skill):
+	if not spreading and not caster.pay_for(skill, rebate(caster, skill, target, foe).x):
 		return false
 	caster.face(target.cell)  # aiming it turns the caster to face its target (a miss too)
 	var r := caster.rank(skill)
@@ -1212,6 +1212,17 @@ static func edge_of(skill: Skill, c: Behaviour.Cast) -> int:
 		for bh in skill.behaviours:
 			n += bh.edge(c)
 	return clampi(n, -1, 1)
+
+
+# What using skill on target saves caster of its price, summed over its behaviours (Behaviour.rebate()):
+# x off the price before the roll (what the forecast shows and _cast() pays), y back on a hit.
+func rebate(caster: Unit, skill: Skill, target: Unit, foe: bool) -> Vector2:
+	var r := Vector2.ZERO
+	if not skill.behaviours.is_empty() and target:
+		var c := cast_of(caster, skill, target, caster.rank(skill), foe)
+		for bh in skill.behaviours:
+			r += bh.rebate(c)
+	return Vector2(clampf(r.x, 0.0, 1.0), clampf(r.y, 0.0, 1.0))
 
 
 # Defense a cast's behaviours give its target against it (Spike).
