@@ -39,6 +39,27 @@ Baseline suite: 45664 checks, 0 failed (816 tests).
    enchant = 1, which `ranked()` reads as rank +1. `disenchant()` already clears `enchant`.
 9. **Modifiers.** Emblems read `Unit.mods(s)` per skill and Sigil walks `u.hotbar`; item skills sit on the
    hotbar so they need nothing special (a worn-emblem mark and a granted mark are separate).
-10. **Hotbar mark.** `SkillSlot.granted` draws a small clasp (a short pip at the slot's lower-left edge,
-    cool silver-blue) distinct from the gold `modded` diamond at upper right; the tooltip says "From <item>".
-11. **Example item:** "Tinderbox ??" (an AI-named trinket, tag fire?) granting an existing skill; see as built.
+10. **Hotbar mark.** `SkillSlot.lent` draws a small pale-blue ring at the slot's lower right, apart from the
+    gold `modded` diamond at the upper right (both can show); the tooltip adds "Lent by <item>". The skills
+    screen says "Lent by <item>" in place of "Learned" and offers no rank button.
+11. **Example item:** "Hobnail Boots ??", an uncommon trinket lending Kick (no new tag, so nothing else to
+    name). A trinket competes with emblems and Heart Up for the one slot: that is the cost of the boots. In
+    Alabaster's loot table (weight 1 of 13 beside the emblems).
+
+## As built
+
+- Scripts/Item.gd (`skills`, `skill_rank()`, `scales()`, a trinket's Pray enchant is rank +1 in `ranked()`,
+  describe), Slot.gd (`from`), Unit.gd (`_own()`, `granted()`, `own_rank()`, `lent_by()`, `_sync_granted()`,
+  `lost_skills`, `enchant()` reaches the trinket and skips what can't scale), Battle.gd (`_on_lost_skills`),
+  SkillSlot.gd, HUD.gd, SkillDetail.gd; Items/hobnail_boots.tres, Icons/Items/hobnail_boots.png,
+  Loot/alabaster.tres; Tests/item_skills_test.gd (new, 9 tests, 41 checks). No existing test changed
+  (Pray's old tests never put a scalable trinket on the unit).
+- Burning Bag: nothing to unify. It lends no skills, only slots (`granted_slots()`), and `burning_slots()`
+  already counts them; a lent skill in a burning slot burns like any other.
+- Visual: shot_u-itemskills/b (frame 150: Strike with the gold Sigil diamond, Kick with the blue ring).
+- Seen while building: a lent skill makes `rank(s) > 0`, so the unit can't unlock the same skill while
+  the item is worn (call 4); a lent Mana toggle starts on, like a learned one.
+- Not done: no Settings or save plumbing (saving doesn't exist yet); Urlo's Smite on the item's skills
+  needs nothing (`disenchant()` clears `enchant`, `ranked()` follows). Questions for the user: should
+  Pray's weapon/armor enchant also raise `ranked()` (armor drag), and should lent skills ever count
+  toward prerequisites (as built: never).
