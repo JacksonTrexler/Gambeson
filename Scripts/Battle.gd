@@ -1660,7 +1660,7 @@ func suspicious(o: Unit) -> Array[Vector2i]:
 
 # The tiles that could look suspicious to o, for suspicious() to read: only concealment levels give a
 # tile a hint (Perception.tile(); recon only adds), and those come from darkness over it, hidden ground
-# (a trap) or o's own suspicion of it. Reading every tile of a plane as big as the Meadows' grows,
+# (a trap), marks laid hidden from it, or o's own suspicion of it. Reading every tile of a plane as big as the Meadows' grows,
 # for every unit, every turn, was what slowed it.
 func maybe_suspicious(o: Unit) -> Array[Vector2i]:
 	var out: Dictionary[Vector2i, bool] = {}
@@ -1670,6 +1670,9 @@ func maybe_suspicious(o: Unit) -> Array[Vector2i]:
 				out[c] = true
 	for c in _maybe_hidden():
 		if hidden(c):
+			out[c] = true
+	for c in marks:  # a mark hidden from o (Mark.told()): its tile may look odd (Perception.tile())
+		if marks[c].any(func(m: Mark): return not m.told(o)):
 			out[c] = true
 	for k in o.suspicion:
 		if k is Vector2i:

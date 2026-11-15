@@ -1941,12 +1941,13 @@ func _refresh() -> void:
 	grounds.clear()
 	traps.clear()
 	suspect.clear()
+	var eye := eyes()
 	for c in _shown_cells():
 		var tv := tile_view(c)
 		grounds[c] = ground(c, tv)
 		if tv.trap == true:
 			traps[c] = c in battle.snares and battle.snares[c].faction == command.faction()
-		if tv.hint != "" and c not in dubious:  # concealed ground it suspects is more than it looks
+		if (tv.hint != "" or (eye and tv.net < 0 and eye.suspects(c) > 0)) and c not in dubious:  # concealed ground it suspects is more than it looks (a hidden mark too: Battle.suspicious())
 			suspect[c] = tv.hint
 	marked = targets()
 	sleepers.assign(battle.units.values().filter(func(u: Unit): return unit_seen(u.cell) == u and sleeping(u)))
@@ -2030,7 +2031,7 @@ func _move_label(cost: Variant, suspicious: bool) -> String:
 # The tile is known to be something more than it shows, its effects concealed: a hint read off it,
 # or a spot where something may lurk.
 func _suspicious(c: Vector2i, r: Read) -> bool:
-	return r.hint != "" or c in dubious or r.obscured
+	return r.hint != "" or c in dubious or c in suspect or r.obscured
 
 
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
