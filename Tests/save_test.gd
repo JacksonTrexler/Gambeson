@@ -118,7 +118,7 @@ func test_new_game() -> void:
 func test_tower_quit_saves() -> void:
 	_game()
 	var t := GamutsTower.new()
-	t._notification(NOTIFICATION_WM_CLOSE_REQUEST)
+	t._notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 	t.free()
 	Game.xp = 0
 	ok(Save.load_game() and Game.xp == 7 and Game.level == 4, "closing the window in the tower writes the save")
