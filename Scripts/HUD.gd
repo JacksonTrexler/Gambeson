@@ -514,7 +514,9 @@ func use_slot(i: int) -> void:
 		return
 	var s: Skill = u.hotbar[i]
 	var again := i == slot
-	if not _orders(u):
+	if s.passive and not s.toggle and not s.hybrid:
+		_say("%s works while it's equipped: nothing to use" % s.name)
+	elif not _orders(u):
 		_refuse(u, _why_no_orders(u))
 	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
 		_say("Your side can't make out what %s could do there" % _name(u))

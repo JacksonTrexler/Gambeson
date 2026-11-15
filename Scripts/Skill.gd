@@ -210,9 +210,10 @@ func tier(rank: int) -> Tier:
 	return best
 
 
-# Has a part its holder works by hand - it's cast, or switched on and off - so it goes on the hotbar.
+# Goes on the hotbar to work: everything but an inherent skill (Starkind), which takes no slot. Actives
+# and toggles are worked by hand from it; an always-on passive just sits there, working (Unit.equipped()).
 func fits_bar() -> bool:
-	return not passive or toggle
+	return not inherent
 
 
 # Its holder's build stands on it (Powerful): it's the easiest to disable, and one going takes every
