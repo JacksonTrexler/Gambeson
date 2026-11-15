@@ -16,8 +16,7 @@ func jammer(r := 1) -> void:
 	v(1).dexterity = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(3).channel = Unit.Channel.new(metea, Vector2i(2, 2))
 	var hid := v(3).afflict(effect("luck", 0.0), 0)
 	hid.until_move = true

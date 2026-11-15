@@ -257,13 +257,7 @@ func test_hud() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3)})
 	give(v(2), tenacity, 2)
 	give(v(1), first_aid, 1)
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	v(2).hit(999.0, [], v(3))
 	await tree.process_frame
 	ok("Villager2 is Downed: 2 rounds to get it above 0 HP" in h.log_box.get_parsed_text(), "the log says it's Downed: %s" % h.log_box.get_parsed_text())

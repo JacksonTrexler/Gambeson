@@ -8,10 +8,6 @@ var warlock: Role = load("res://Roles/warlock.tres")
 var sn: Reserve = load("res://Reserves/sweet_nothings.tres")
 
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 # A unit of the player's side at `at` with skill n at rank r, wis 18 (mod 4), fresh AP.
 func caster(n: String, r := 1, at := Vector2i(4, 4)) -> Unit:
 	stage(lancin, {v(1): at, v(2): at + Vector2i(1, 0), v(3): at + Vector2i(3, 0), v(4): at + Vector2i(0, 3)})
@@ -32,8 +28,7 @@ func test_tiers() -> void:
 
 func test_humble() -> void:
 	var u := caster("humble")
-	u.max_hp = 50
-	u.hp = 50
+	soak(u, 50)
 	ok(sk("humble").span(u) < 0.5 and b.cast(u, sk("humble"), u), "rank I: on itself alone")
 	ok(u.max_hp == 49 and u.hp == 49, "at full HP: max HP capped 1%% lower (%d)" % u.max_hp)
 	var a: Unit.Applied = null
@@ -78,8 +73,7 @@ func test_flamewall() -> void:
 	ok(b.cast_at(u, sk("flamewall"), c), "cast on a tile 2 away")
 	ok([c, Vector2i(6, 3), Vector2i(6, 5), Vector2i(6, 2), Vector2i(6, 6)].all(func(x: Vector2i): return x in b.flames) and b.flames.size() == 5,
 			"it and two tiles to either side, across the line: %s" % [b.flames.keys()])
-	v(2).max_hp = 200
-	v(2).hp = 200
+	soak(v(2), 200)
 	b.move(v(2), Vector2i(5, 3))
 	v(2).refresh()
 	b.travel(v(2), Vector2i(7, 3))
@@ -113,8 +107,7 @@ func test_burning_bag() -> void:
 	ok(b.cast(u, sk("burning_bag"), u), "retrieved")
 	ok(u.trinket.name == "Burning Bag" and u.trinket.rank == 2 and v(3).trinket == null, "taken from wherever it was, at rank II")
 	ok(u.bar_size() == bar + 2 and u.burning_slots().size() == 2, "two burning slots")
-	u.max_hp = 100
-	u.hp = 100
+	soak(u, 100)
 	b._mend(u)
 	ok(u.hp < 100, "it burns as its turn starts")
 
@@ -149,8 +142,7 @@ func test_cindering() -> void:
 		if not v(3).burning_slots().is_empty():
 			break
 	ok(v(3).burning_slots().size() == 2, "its two rightmost slots burn")
-	v(3).max_hp = 200
-	v(3).hp = 200
+	soak(v(3), 200)
 	v(3).hotbar.fill(null)
 	v(3).hotbar[v(3).bar_size() - 1] = strike
 	b.turn = nemes
@@ -171,10 +163,8 @@ func test_flamedance() -> void:
 func test_solar() -> void:
 	var u := caster("solar", 1)
 	for x in [v(2), v(3), v(4)]:
-		x.max_hp = 300
-		x.hp = 300
-	u.max_hp = 300
-	u.hp = 300
+		soak(x, 300)
+	soak(u, 300)
 	ok(b.cast_at(u, sk("solar"), Vector2i(8, 4)), "toward a tile")
 	ok(u.hp < 300 and v(2).hp < 300 and v(3).hp < 300, "itself and those in the cone (wis mod 4 tiles)")
 	ok(v(4).hp == 300, "not off to the side")

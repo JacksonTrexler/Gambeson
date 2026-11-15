@@ -55,8 +55,7 @@ func test_asphyxia() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 40
 	v(3).learned.append_array([slot(gasp), slot(breathtaking, 3)])
-	v(1).max_hp = 100
-	v(1).hp = 100
+	soak(v(1), 100)
 	v(1).refit()
 	var max0 := v(1).max_hp
 	v(3).refresh()
@@ -75,8 +74,7 @@ func test_irradiate() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 40  # mod 15
 	v(3).learned.append_array([slot(gasp), slot(irradiate, 2)])
-	v(1).max_hp = 100
-	v(1).hp = 100
+	soak(v(1), 100)
 	v(3).refresh()
 	b.cast(v(3), gasp, v(1))
 	ok(100 - v(1).hp > 1 and 100 - v(1).hp <= 1 + 2 + 15, "the roll's overage as light damage too, up to rank + cha mod (%d)" % (100 - v(1).hp))

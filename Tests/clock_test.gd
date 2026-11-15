@@ -5,22 +5,12 @@ extends Test
 # acting on their own move together (HUD.together): no pause between them.
 
 
-func hud(pace := 0.45) -> HUD:
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = pace
-	tree.root.add_child(h)
-	return h
-
-
 func test_seconds() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
 	b.player = v(1)
 	v(1).wisdom = 12
 	v(1).intelligence = 11
-	var h := hud(0.0)
-	await tree.process_frame
+	var h := await hud(null, 0.0)
 	ok(is_equal_approx(h.turn_seconds(), 17.0), "wis 12 + int 11 / 2 (5): 17 s (%s)" % h.turn_seconds())
 	h._tick_clock(1.0)
 	ok(not h.clock_label.visible, "unwatched (pace 0): no clock")
@@ -30,8 +20,7 @@ func test_seconds() -> void:
 func test_runs_out() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
 	b.player = v(1)
-	var h := hud()
-	await tree.process_frame
+	var h := await hud(null, 0.45)
 	h._end_intro()
 	ok(h.clock_on and h.clock > 10.0, "the player's turn arms its clock")
 	h.clock_on = false
@@ -54,8 +43,7 @@ func test_runs_out() -> void:
 
 func test_together() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2)})
-	var h := hud()
-	await tree.process_frame
+	var h := await hud(null, 0.45)
 	ok(h.together, "on by default")
 	h.overlay.walk(v(3), v(3).cell, [v(3).cell + Vector2i(1, 0), v(3).cell + Vector2i(2, 0)] as Array[Vector2i])
 	ok(h.overlay.walking_left() > 0.0 and h.overlay.walking_left() <= 2 * Overlay.STEP_TIME + 0.01, "a walk under way: the turn waits it out")

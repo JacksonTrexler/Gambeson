@@ -162,38 +162,6 @@ def check_stubs(problems):
                     problems.append("%s:%d: a stub %s wrote, still to fill in" % (p, k + 1, m.group(1)))
 
 
-def wheel_count(role):  # the skills on a radial class's own tab (Role.trees(), SkillWheel): centre, core, options, roots,
-    secs = sections(read("Roles/%s.tres" % role))  # and its innate skills no other tab or general tree has (Strike)
-    exts = ext_ids(secs)
-    subs = {s["attrs"]["id"]: s for s in secs if s["kind"] == "sub_resource"}
-    res = next(s for s in secs if s["kind"] == "resource")
-    out = set(exts[i] for k in ("center", "core", "options") for i in items(res["props"].get(k, "")))
-    for r in items(res["props"].get("roots", "")):
-        for b in items(subs[r]["props"].get("branches", "")):
-            out.add(exts[items(subs[b]["props"]["skill"])[0]])
-    elsewhere = "\n".join(read(p) for p in files("Trees", ".tres") if os.path.basename(p).startswith("general"))
-    tabbed = {exts[items(s["props"]["skill"])[0]] for s in subs.values() if "skill" in s["props"] and s["attrs"]["id"].startswith("Branch")}
-    for i in items(res["props"].get("innate", "")):
-        s = exts[items(subs[i]["props"]["skill"])[0]]
-        if s not in tabbed and s not in elsewhere:
-            out.add(s)
-    return len(out)
-
-
-COUNTS = [  # tests that hold a count of skills: (file, regex whose group 1 is the number, what it should be)
-    ("Tests/hud_test.gd", r"w\.skills\(\)\.size\(\) == (\d+)", lambda: wheel_count("adventurer"), "the Adventurer wheel"),
-]
-
-
-def check_counts(problems):
-    for p, rx, want, what in COUNTS:
-        m = re.search(rx, read(p))
-        if not m:
-            problems.append("%s: the count of %s is gone - update COUNTS in Util/skill.py" % (p, what))
-        elif int(m.group(1)) != want():
-            problems.append("%s:%d: says %s skills on %s, the data has %d" % (p, read(p)[:m.start()].count("\n") + 1, m.group(1), what, want()))
-
-
 def check_icons(problems):
     import icon
     for sid in icon.missing_skill_icons():
@@ -206,7 +174,7 @@ def check_icons(problems):
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_flags, check_stubs, check_counts, check_icons):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_flags, check_stubs, check_icons):
         f(problems)
     for p in problems:
         print(p)

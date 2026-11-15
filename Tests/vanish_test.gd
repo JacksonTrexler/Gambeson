@@ -7,15 +7,6 @@ extends Test
 # (HUD.suspicion_icons()), naming what it suspects as it knows it.
 
 
-func hud() -> HUD:
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	return h
-
-
 func test_discovered_once() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(1).charisma = 1  # keeps it to itself (Battle.spread())
@@ -85,8 +76,7 @@ func test_eye() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(4, 2)})
 	b.player = v(1)
 	v(1).charisma = 1
-	var h := hud()
-	await tree.process_frame
+	var h := await hud()
 	b.suspect(v(1), v(3), 2)
 	b.suspect(v(1), Vector2i(6, 6))
 	var icons: Array = h._info(v(1)).effects.filter(func(x: Array): return x[0] is Texture2D)

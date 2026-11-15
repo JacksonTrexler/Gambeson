@@ -37,8 +37,7 @@ func test_ambush_tag() -> void:
 
 
 func test_refund() -> void:
-	v(1).learned.append(slot(jam, 1))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(jam, 1)
 	v(1).refresh()
 	v(1).energy = 5
 	v(1).endurance = 2

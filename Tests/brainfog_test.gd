@@ -89,13 +89,7 @@ func test_saved() -> void:
 
 func test_hotbar() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	v(1).disable(strike, 2)
 	h.select(v(1))
 	h._refresh()

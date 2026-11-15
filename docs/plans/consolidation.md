@@ -335,6 +335,67 @@ own lines; a merge conflict there is mechanical) and `Tests/test.gd` (B2 only).
 - Expected end state: about 55 s a run, about 125 files, about 14.5k test lines, Skill.gd about 104
   fields; every data-only skill and passive covered by sweeps with no file of its own.
 
+
+## B2 as built (branch `c-sweeps`)
+
+Built: `Tests/test.gd` helpers (`sk`, `duel`, `sure_save_fail`, `soak`, `hud`), `Tests/sweep_test.gd`,
+`Tests/effect_stats_test.gd`; 13 files deleted; HUD fixture and `sk()` deduped. Calls, for the coordinator:
+
+1. **Helpers.** `duel(s, r, foe := true)` returns the target; **`ally_duel` dropped** (`duel(s, r, false)` is the
+   same line, and nothing would call the alias). `sure_save_fail(caster, s, t)` rigs through stats alone
+   (caster's check stat 60, the foe's 1; `s.stat()` without a declared check), so it survives u-checks.
+   `hud(leader := null, pace := 0.0)` is a coroutine (`await hud(v(1))`); it replaced 22 fixtures and 4 local
+   `start()` / `hud()` helpers. `clock_test` and `vanish_test` now wait the frame the others did.
+2. **T5's "about -350 lines" was not met.** The HUD fixture, `sk()` and 66 `max_hp = N` / `hp = N` pairs (now
+   `soak`) came to about -230; `duel()` has 9 uses, because only 9 tests have the two lines side by side (the
+   51 stage lines mostly sit among rigging). Tests that rig a save with a retry loop (brainfog, haluca) were left:
+   making them `sure_save_fail` would change what they test. Files B3 owns (general, casters, berserker, the
+   five capstones) were not touched.
+3. **The sweep** (`sweep_test.gd`, 4 tests, about 1.3 s with four museum setups, about 0.7 s over the empty-test
+   cost): `test_passives` learns all 99 built passives at rank 2 and weighs 84 stats (amount x rank, per_stat,
+   per_mod, min_rank, above_hp, unless_on understood; a multiplier, an armored or skill-listed effect is skipped);
+   `test_actives` casts 92 built actives at rank 2 on one reused battle (each skill re-poses the same units;
+   `stage()`, timed cleared, HP, AP, Energy topped up; a spare foe stays far off so a kill can't end the battle)
+   with its check and attack roll rigged to land, and asserts: the cast returns true, each effect is on the
+   target, `total` is the turns, `rank` is the cast rank, the stat moved by amount x rank x strength, and a
+   damaging skill costs the foe HP, Energy or a reserve. Ramut's Ire (not castable) is applied through
+   `Battle.IRE`. `test_item_skills` casts what Broadsword (Strike: vacuous, villagers already have it) and
+   Hobnail Boots (Kick) lend. `test_describes` runs every Behaviour at ranks 1-3.
+4. **Skip lists, in the file with reasons, shrink-only:** `NOT_CAST` (beastshape: needs a biome; resuscitate:
+   needs a Downed ally; ramuts_ire: applied instead) and `EFFECTS_UNWEIGHED` (level_down: its own rank rolls;
+   sing: lands on the nearest in range, not on its user). A test asserts every built active is cast or named.
+   Coalescing, Gank, Wildfire etc. needed only a pose (mist, an ally beside the foe, the right target), not a skip.
+5. **Duration oracle.** The plan's row 3 asserts `total == s.lasts(2, caster)`; that cannot catch a broken
+   `Skill.lasts()` (both sides use it). The sweep spells it out: `turns + turns_per_rank x rank (+ turns_mod)`.
+6. **The "no `%`" describe rule** is narrowed to unfilled format specifiers (`%s`, `%d`, `%f`): seven behaviours
+   legitimately write "20%".
+7. **Kept, against the plan's 12 (Call 3: a rule stays):** `vanishing_act_test` (the vanished signal, the assumed
+   faction, a lie that still fools), `prestidigitation_test` (the only test of the move-pool boost; Igna's skill
+   pool is in sol_test), and `double_bluff_test` trimmed to its one rule (embellish puts on a front,
+   `Perception.fronts`). Flourish's "its user alone" is `self_only`, covered in route_test. Showstopper's
+   "Dazzled ??" name pin went with it (a data pin: Call 4).
+8. **Deleted (13):** blur, disguise_self, invisibility, mirror_image, stage_presence, flourish, phantasm,
+   phantasmal_force, showstopper, foresight, hale, regain, forage (+ `.uid`). `effect_stats_test.gd` takes
+   foresight, hale and regain verbatim (3 rule tests, one file). forage's two asserts restated tree / stub data.
+
+### Mutation spot-checks (old = the 16 files the plan names, plus those kept; new = the sweep or the named kept test)
+
+| Mutation (reverted) | Old fails | New fails |
+|---|---|---|
+| `Battle._cast`: effect rank `ri if e.per_rank else r` -> `1 if e.per_rank else r` (the plan's row 1, "pass r for both", changes nothing without modifiers) | 8 | sweep 31 |
+| `Unit.stat`: drop `* (pair[1] if e.per_rank else 1)` | 10 | sweep, both tests |
+| `Skill.lasts()`: ignore `turns_per_rank` | **0** | sweep 23 (Sola, wauaw...) |
+| skill check block `if not vs.won` inverted (Battle.gd, `# the caster wins ties`) | 4 | sweep 5 (Phantasm, Showstopper, Phantasmal Force's damage) |
+| `Battle.investigate()`: early return | moves_test (kept) | moves_test, same 3 |
+| `Unit.hp` setter: drop the floor clamp | (combat) | combat_test.test_battles fails |
+| `Battle.travel()`: drop the `_acting` check | (combat) | combat_test.test_battles fails ("only the turn's faction moves") |
+| `Behaviours/kick.gd` `describe()` returns "" | skills_test.test_flags_described | that, and sweep test_describes (3 ranks) |
+| `TreeChoice.all()`: skip borrowed classes | casters_test (kept) | casters_test, same |
+| `Behaviours/efficiency.gd` affinity +1 -> +0 | B3's table | not run here |
+
+Not done: `skill.py new` still stubs a per-skill test file (CLAUDE.md, pending the user's Call 5). The sweep
+is 734 ms in `test_actives`; `Tests/slow.txt` (c-runner's) uses a 100 ms cutoff, so that test belongs on it.
+
 ## B4 as built (branch `c-tiles`)
 
 Starting suite 45995 checks, 0 failed (838 tests); ending 46001 checks, 0 failed (840 tests) (two tests added, below).
@@ -490,3 +551,28 @@ New: `displace_test` (composability: a plain Hex with a Displace knocks back, dr
 | Emergency Exit, Retrieve no-op | SCRIPT ERROR (test aborts; the runner counts it as passed: a B1 runner gap) |
 
 Suite: 46018 checks, 0 failed (846 tests).
+
+## B3 as built (`c-tables`)
+
+- **Capstones:** `quarry`, `survivalist`, `wildcaller`, `acceptance`, `bargaining` tests (5 files, 145 lines) became
+  `Tests/capstones_test.gd`. The table loops every Role's `choices` whose `by` carries an efficiency behaviour
+  and asserts: it waits on its root, it unlocks once the lower-tier skills of the role's roots are learned, a guest
+  tree with a tier 1 skill picks, that skill's affinity is `choice.affinity + 1`, `describe` says "tier". The three
+  Ranger rows come from the data. Call: Acceptance and Bargaining are not `TreeChoice.by` openers (they reach
+  Patron trees), so their rule tests (Flex `after` / `burns`, the stacks) stay as two plain tests in the same file.
+  Call: the old per-skill probe skill (jugular, forage, stonegift) is now "the first tier 1 skill of the first
+  offered guest tree", so a data change there can't break the table.
+- **Unit pins:** `blinthe_test.gd` deleted; `pike_test.gd` deleted, its water-cost and read-level asserts are
+  `aquatic_test.test_pike`. `Util/unit.py check` now checks, for every unit scene: every `res://` path it names
+  exists, a Bio'd unit has a faction, look, bio, behaviour and appearance, and each clout key is a `Factions/` file.
+  Call: level, role, clout numbers, bio text and skill ranks are values, not rules, and are no longer pinned.
+- **Tree lists:** casters / berserker / general literals are rule asserts (a role's trees are its own tab, then what
+  its choices offer; a choice by a study is -1 except a school; every class gets the base general tree plus one per
+  declared category, for every Role). Dropped the root-name list asserts.
+- **COUNTS:** `skill.py COUNTS`, `check_counts` and `wheel_count` removed. `hud_test` line 917 now asserts every
+  skill of the wheel's tab (centre, core, roots) has a spot on the wheel.
+- **Spot-checks** (old suite fails by construction for the deleted files: they asserted the same):
+  efficiency `a + 1` to `a + 0`: capstones table fails (9); `TreeChoice.all()` skipping borrowed trees: casters fail (8);
+  `general_trees()` ignoring `role.general`: `trees_by_class` fails; `_cost` ignoring aquatic: `aquatic.test_pike` fails;
+  `SkillWheel._put` dropping a skill: the hud wheel rule fails; blinthe.tscn with an empty appearance / a missing
+  faction file / clout keyed to a Role: `unit.py check` reports each. All reverted.

@@ -140,13 +140,7 @@ func test_rule_acting() -> void:
 
 func test_hud() -> void:
 	setup(Vector2i(5, 2), Vector2i(8, 6))
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	h._refresh()
 	ok(not v(3).visible, "hidden: not drawn")
 	b.cast(v(1), clairvoyance, v(1))

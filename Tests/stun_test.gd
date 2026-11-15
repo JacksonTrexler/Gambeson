@@ -19,8 +19,7 @@ func stunner(r := 3) -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	v(1).refresh()
 	v(3).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(3).constitution = 1
 
 

@@ -77,8 +77,7 @@ func test_heavy_drag() -> void:
 	v(1).armor = ign
 	v(1).refresh()
 	ok(v(1).ap[2].amount == wis + 3, "Ignauldron: no wis drag with str mod 2+, and rank more skill AP")
-	v(1).max_hp = 100
-	v(1).hp = 100
+	soak(v(1), 100)
 	b._mend(v(1))
 	ok(v(1).hp == 97, "and it burns for its rank as each turn starts")
 	v(1).armor = load("res://Items/gambeson.tres")

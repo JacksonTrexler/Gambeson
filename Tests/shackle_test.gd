@@ -17,8 +17,7 @@ func icor() -> Unit:
 func judge(r: int) -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), icor(): Vector2i(4, 3)})
 	v(1).wisdom = 90  # sure to hit - and to hit hard, so Icor gets the HP to take it
-	icor().max_hp = 999
-	icor().hp = 999
+	soak(icor())
 	v(1).learned.append(slot(judgement, r))
 	v(1).refresh()
 	v(1).energy = v(1).max_energy

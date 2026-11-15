@@ -13,10 +13,6 @@ func undine(at := Vector2i(6, 4)) -> Unit:
 	return u
 
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func test_undine() -> void:
 	stage(nemes, {v(1): Vector2i(1, 1)})
 	var u := undine()
@@ -62,8 +58,7 @@ func test_coalescing() -> void:
 	stage(nemes, {v(1): Vector2i(4, 4)})
 	var u := undine(Vector2i(5, 4))
 	u.strength = 40  # sure to win
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	ok(not b.cast(u, sk("coalescing"), v(1)), "not a mist yet: no Coalescing")
 	u.toggle(sk("vaporize"))
 	var c := v(1).cell

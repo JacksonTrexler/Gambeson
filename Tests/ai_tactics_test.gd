@@ -28,8 +28,7 @@ func test_ambush_counts() -> void:
 	v(1).learned.append(slot(gank))
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(6, 3)})
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(3).afflict(effect("defense", 12), 5)  # so the roll isn't a sure thing either way
 	var plain := score(v(1), gank, v(3))
 	v(1).afflict(effect("concealment", 4), 3)
@@ -38,11 +37,9 @@ func test_ambush_counts() -> void:
 
 
 func test_spike_defense_counts() -> void:
-	v(1).learned.append(slot(spike))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(spike)
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	var p := Battle.hit_chance(v(1), spike, v(3), b)
 	var plain := score(v(1), spike, v(3))
 	v(3).unspent = 12.0
@@ -54,8 +51,7 @@ func test_chance_picks_the_foe() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(4, 4)})
 	v(1).refresh()
 	for x in [v(3), v(4)]:
-		x.max_hp = 300
-		x.hp = 300
+		soak(x, 300)
 	v(3).unspent = 14.0
 	var reads := {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
 	var log: Array[String] = []
@@ -63,11 +59,9 @@ func test_chance_picks_the_foe() -> void:
 
 
 func test_sutemi_toll() -> void:
-	v(1).learned.append(slot(sutemi, 2))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(sutemi, 2)
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	var beside := score(v(1), sutemi, v(3))
 	b.move(v(1), Vector2i(2, 3))
 	var far := score(v(1), sutemi, v(3))
@@ -77,11 +71,9 @@ func test_sutemi_toll() -> void:
 
 func test_refunds() -> void:
 	v(1).learned.append(slot(poach))
-	v(1).learned.append(slot(slam_jam))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(slam_jam)
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	var cp := b.cast_of(v(1), poach, v(3), 1, true)
 	ok(poach.behaviours[0].refunds(cp, 0.5) == 0.0, "a hale foe: Poach gives nothing back")
 	v(3).hp = 100
@@ -99,8 +91,7 @@ func kicker() -> Unit:
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	return v(1)
 
 
@@ -122,13 +113,7 @@ func test_kick_foreseen() -> void:
 func test_kick_in_the_forecast() -> void:
 	var u := kicker()
 	b.paint(Vector2i(3, 3), load("res://Terrain/trap.tres"))
-	b.player = u
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(u)
 	var d := Battle.damage_range(u, kick, v(3), b)
 	var it := {kind = &"use", ready = true, target = v(3), skill = kick, unit = u}
 	var hurt: Dictionary = h._hurt(it)
@@ -165,8 +150,7 @@ func test_resuscitate_before_heal() -> void:
 	v(2).learned.append(slot(load("res://Skills/tenacity.tres"), 3))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
-	v(2).max_hp = 100
-	v(2).hp = 100
+	soak(v(2), 100)
 	v(2).damage(100)
 	v(2).damage(20)
 	ok(v(2).dbno != null, "Downed")

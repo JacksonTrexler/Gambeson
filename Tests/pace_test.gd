@@ -9,22 +9,11 @@ func unit(n: String) -> Unit:
 	return b.get_node("Units/" + n)
 
 
-func start(leader: Unit) -> HUD:
-	b.player = leader
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
-	return h
-
-
 func test_hand_over() -> void:
 	var al := unit("Alabaster")
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 3), al: Vector2i(2, 2), v(3): Vector2i(8, 2)})
 	v(1).charisma = 8
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(h.hand_over, "on by default")
 	h.select(al)
 	h.click(Vector2i(2, 1))
@@ -57,7 +46,7 @@ func test_hand_over() -> void:
 
 func test_hurry() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	ok(InputMap.has_action(&"hurry") and &"hurry" in KeyBinds.actions(), "the hurry key is a bindable action")
 	ok(is_equal_approx(h.speed(), 1.0), "not held: speed 1")
 	Input.action_press(&"hurry")
@@ -82,7 +71,7 @@ func test_hurry() -> void:
 
 func test_log() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var line: RichTextLabel = h.get_node("%LogLine")
 	ok(not h.log_open and not h.log_box.visible and line.visible, "collapsed by default: just the last line")
 	h._log("First")

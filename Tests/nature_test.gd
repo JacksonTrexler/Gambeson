@@ -5,10 +5,6 @@ extends Test
 # Druid (biomes picked on its own tab, guest trees spared their penalty when kin or elemental, a skill
 # shared by two trees reached on each, Beastshape: Battle.form_for(), Unit.shape()).
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func make(role: String, n: String) -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/%s.tres" % role), name = n})
 	b.get_node("Units").add_child(u)
@@ -34,8 +30,7 @@ func first_bonus(u: Unit, t: Unit) -> int:
 
 func test_discipline() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(4, 3)})
-	v(3).max_hp = 999
-	v(3).hp = 999
+	soak(v(3))
 	var d := sk("discipline")
 	v(1).learned.append(slot(d, 2))
 	v(1).toggle(d)

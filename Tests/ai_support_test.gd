@@ -66,8 +66,7 @@ func test_resuscitates() -> void:
 	v(2).learned.append(slot(tenacity, 3))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
-	v(2).max_hp = 100
-	v(2).hp = 100
+	soak(v(2), 100)
 	AI.act(b, v(1))
 	ok(v(1).energy == v(1).max_energy, "a standing ally: nothing is spent")
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})

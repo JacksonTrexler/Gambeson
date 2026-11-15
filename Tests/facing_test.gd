@@ -113,8 +113,7 @@ func test_interjector_turns() -> void:
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3)})
 	for i in [1, 2, 3]:
 		v(i).refresh()
-		v(i).max_hp = 300
-		v(i).hp = 300
+		soak(v(i), 300)
 	v(2).facing = Vector2(0, 1)  # looking south, the attacker north-east of it
 	ok(b.cast(v(3), jam, v(1)) and v(2).hp < 300, "it takes the hit")
 	ok(v(2).facing.is_equal_approx(Vector2(1, -1).normalized()), "and turns to face the attacker (%s)" % v(2).facing)

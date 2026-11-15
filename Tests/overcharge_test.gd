@@ -68,13 +68,7 @@ func test_not_focus() -> void:
 
 func test_card() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	ok(not h._info(v(1)).rows.any(func(r): return r[0] == "OC"), "no Overcharge: no row")
 	v(1).add_overcharge(4, 2)
 	var rows: Array = h._info(v(1)).rows
