@@ -105,6 +105,18 @@ func test_observe() -> void:
 		ok(observe in role.offered() and load("res://Skills/eyes_forward.tres") in role.offered(), "%s: Observe and Eyes Forward on its tree" % role.name)
 
 
+# Cast on a tile (Behaviour.apply_at(): Behaviours/observe.gd), it looks there - and only within its reach of it.
+func test_observe_looks() -> void:
+	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
+	var looks := looks_of(v(1))
+	v(1).wisdom = 16
+	v(1).learned.append(slot(observe, 2))
+	v(1).refresh()
+	ok(b.cast_at(v(1), observe, Vector2i(6, 4)), "cast within reach")
+	ok(looks.any(func(l: Array): return l[0] == TRAP), "it looks at the trap, a tile from where it's cast: %s" % [looks])
+	ok(looks.all(func(l: Array): return Command.tiles(Vector2i(6, 4), l[0]) <= 3 + 2), "and nowhere past wis mod + rank tiles of it: %s" % [looks])
+
+
 func test_eyes_forward() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	var looks := looks_of(v(1))

@@ -7,10 +7,6 @@ extends Test
 var rogue: Role = load("res://Roles/rogue.tres")
 
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func test_illusionist() -> void:
 	var u := b.starter({faction = lancin, role = rogue, name = "Wick"})
 	b.get_node("Units").add_child(u)

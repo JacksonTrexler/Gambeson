@@ -149,7 +149,7 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 			if s.lays:
 				_brackets(_rect(c, 1.5), Color(GOLD, pulse), 6.0)
 				_caltrop(c, Color(GOLD, 0.5 + 0.3 * pulse))
-			elif s.observes:  # what it would look over: wis mod (at least 1) + rank tiles around c
+			elif s.behaviour(&"observe"):  # what it would look over: wis mod (at least 1) + rank tiles around c
 				_ring(_center(c), (maxi(sel.mod(&"wisdom"), 1) + sel.rank(s)) * TILE, Color(FRIEND, 0.4 + 0.3 * pulse), false)
 				_brackets(_rect(c, 1.5), Color(FRIEND, pulse), 6.0)
 			else:

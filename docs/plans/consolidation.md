@@ -385,3 +385,245 @@ Mutation spot-checks (each reverted; all fail `combat_test` in the new suite):
 | `Battle._acting`: faction check replaced with `true` | "only the turn's faction moves" (turn 2, Icor) |
 | `Unit.pay`: `p.amount -= take * 2` | "AP never negative" (turn 1, Villager3) |
 | `Battle` kill check: `sides_left() < 1` for `< 2` | "over exactly when one faction is left" (turn 14) |
+
+
+## B2 as built (branch `c-sweeps`)
+
+Built: `Tests/test.gd` helpers (`sk`, `duel`, `sure_save_fail`, `soak`, `hud`), `Tests/sweep_test.gd`,
+`Tests/effect_stats_test.gd`; 13 files deleted; HUD fixture and `sk()` deduped. Calls, for the coordinator:
+
+1. **Helpers.** `duel(s, r, foe := true)` returns the target; **`ally_duel` dropped** (`duel(s, r, false)` is the
+   same line, and nothing would call the alias). `sure_save_fail(caster, s, t)` rigs through stats alone
+   (caster's check stat 60, the foe's 1; `s.stat()` without a declared check), so it survives u-checks.
+   `hud(leader := null, pace := 0.0)` is a coroutine (`await hud(v(1))`); it replaced 22 fixtures and 4 local
+   `start()` / `hud()` helpers. `clock_test` and `vanish_test` now wait the frame the others did.
+2. **T5's "about -350 lines" was not met.** The HUD fixture, `sk()` and 66 `max_hp = N` / `hp = N` pairs (now
+   `soak`) came to about -230; `duel()` has 9 uses, because only 9 tests have the two lines side by side (the
+   51 stage lines mostly sit among rigging). Tests that rig a save with a retry loop (brainfog, haluca) were left:
+   making them `sure_save_fail` would change what they test. Files B3 owns (general, casters, berserker, the
+   five capstones) were not touched.
+3. **The sweep** (`sweep_test.gd`, 4 tests, about 1.3 s with four museum setups, about 0.7 s over the empty-test
+   cost): `test_passives` learns all 99 built passives at rank 2 and weighs 84 stats (amount x rank, per_stat,
+   per_mod, min_rank, above_hp, unless_on understood; a multiplier, an armored or skill-listed effect is skipped);
+   `test_actives` casts 92 built actives at rank 2 on one reused battle (each skill re-poses the same units;
+   `stage()`, timed cleared, HP, AP, Energy topped up; a spare foe stays far off so a kill can't end the battle)
+   with its check and attack roll rigged to land, and asserts: the cast returns true, each effect is on the
+   target, `total` is the turns, `rank` is the cast rank, the stat moved by amount x rank x strength, and a
+   damaging skill costs the foe HP, Energy or a reserve. Ramut's Ire (not castable) is applied through
+   `Battle.IRE`. `test_item_skills` casts what Broadsword (Strike: vacuous, villagers already have it) and
+   Hobnail Boots (Kick) lend. `test_describes` runs every Behaviour at ranks 1-3.
+4. **Skip lists, in the file with reasons, shrink-only:** `NOT_CAST` (beastshape: needs a biome; resuscitate:
+   needs a Downed ally; ramuts_ire: applied instead) and `EFFECTS_UNWEIGHED` (level_down: its own rank rolls;
+   sing: lands on the nearest in range, not on its user). A test asserts every built active is cast or named.
+   Coalescing, Gank, Wildfire etc. needed only a pose (mist, an ally beside the foe, the right target), not a skip.
+5. **Duration oracle.** The plan's row 3 asserts `total == s.lasts(2, caster)`; that cannot catch a broken
+   `Skill.lasts()` (both sides use it). The sweep spells it out: `turns + turns_per_rank x rank (+ turns_mod)`.
+6. **The "no `%`" describe rule** is narrowed to unfilled format specifiers (`%s`, `%d`, `%f`): seven behaviours
+   legitimately write "20%".
+7. **Kept, against the plan's 12 (Call 3: a rule stays):** `vanishing_act_test` (the vanished signal, the assumed
+   faction, a lie that still fools), `prestidigitation_test` (the only test of the move-pool boost; Igna's skill
+   pool is in sol_test), and `double_bluff_test` trimmed to its one rule (embellish puts on a front,
+   `Perception.fronts`). Flourish's "its user alone" is `self_only`, covered in route_test. Showstopper's
+   "Dazzled ??" name pin went with it (a data pin: Call 4).
+8. **Deleted (13):** blur, disguise_self, invisibility, mirror_image, stage_presence, flourish, phantasm,
+   phantasmal_force, showstopper, foresight, hale, regain, forage (+ `.uid`). `effect_stats_test.gd` takes
+   foresight, hale and regain verbatim (3 rule tests, one file). forage's two asserts restated tree / stub data.
+
+### Mutation spot-checks (old = the 16 files the plan names, plus those kept; new = the sweep or the named kept test)
+
+| Mutation (reverted) | Old fails | New fails |
+|---|---|---|
+| `Battle._cast`: effect rank `ri if e.per_rank else r` -> `1 if e.per_rank else r` (the plan's row 1, "pass r for both", changes nothing without modifiers) | 8 | sweep 31 |
+| `Unit.stat`: drop `* (pair[1] if e.per_rank else 1)` | 10 | sweep, both tests |
+| `Skill.lasts()`: ignore `turns_per_rank` | **0** | sweep 23 (Sola, wauaw...) |
+| skill check block `if not vs.won` inverted (Battle.gd, `# the caster wins ties`) | 4 | sweep 5 (Phantasm, Showstopper, Phantasmal Force's damage) |
+| `Battle.investigate()`: early return | moves_test (kept) | moves_test, same 3 |
+| `Unit.hp` setter: drop the floor clamp | (combat) | combat_test.test_battles fails |
+| `Battle.travel()`: drop the `_acting` check | (combat) | combat_test.test_battles fails ("only the turn's faction moves") |
+| `Behaviours/kick.gd` `describe()` returns "" | skills_test.test_flags_described | that, and sweep test_describes (3 ranks) |
+| `TreeChoice.all()`: skip borrowed classes | casters_test (kept) | casters_test, same |
+| `Behaviours/efficiency.gd` affinity +1 -> +0 | B3's table | not run here |
+
+Not done: `skill.py new` still stubs a per-skill test file (CLAUDE.md, pending the user's Call 5). The sweep
+is 734 ms in `test_actives`; `Tests/slow.txt` (c-runner's) uses a 100 ms cutoff, so that test belongs on it.
+
+## B4 as built (branch `c-tiles`)
+
+Starting suite 45995 checks, 0 failed (838 tests); ending 46001 checks, 0 failed (840 tests) (two tests added, below).
+
+- **Hook:** `Behaviour.apply_at(c: Cast, cell: Vector2i)`, run by `_land(c, cell)` (an optional second argument:
+  given a tile, `_land()` calls `apply_at()` instead of `apply()`). `_cast_at`'s chain is now `channel` / `rifts` /
+  `lays` / else `_land(cast_of(caster, skill, null, rank, skill.hostile), c)`.
+- **Behaviours:** `flamewall.gd`, `cone.gd` (`degrees`, `evadable`: Solar plain, Wildfire evadable; `width(rank, m)`
+  replaces `Skill.cone_at()`), `observe.gd` (static `reach()`, which `AI._search()` now reads instead of its copy of
+  the formula), `guard.gd`, `well_up.gd`, `zone.gd` (`kind`). `Battle._flamewall/_wildfire/_solar/_guard`,
+  `observe()` and `well_up()` moved out; `flood()`, `evade()`, `in_cone()`, `zone_levels()` stay as Battle primitives.
+- **Fields off Skill.gd (7):** `flamewall`, `cone`, `evadable`, `observes`, `guards`, `wells`, `zone`.
+  `@export` count 126 -> **119**. FLAG_CEILING untouched (126).
+- **Data:** the seven .tres moved by `S/b4_migrate.py` (scratchpad), through `Util/tres.py`'s `sections` /
+  `ext_id_for` / `add_ext`; no ids by hand.
+- **Lines:** Battle.gd +18 -132, Skill.gd +13 -36, SkillTerms.gd +6 -9, AI.gd +6 -5; 287 lines in the six behaviours.
+  As predicted: Battle and the flag bag shrink more than the total does.
+
+### Calls (B4)
+
+1. **A second, pure query beside the hook:** `Behaviour.tile_target() -> StringName` (&"tile", &"area", or empty).
+   `Skill.on_tile()` and `Skill.target()` need to know a skill is aimed at a tile before it's cast, and a hook
+   can't be asked without running it. It's the `fits()` / `unfit()` pattern, not a hook per skill.
+2. **`Skill.behaviour(file: StringName) -> Behaviour`** (by the script's file name: `&"guard"`, `&"observe"`), for
+   readers that act on one kind: Overlay (Observe's ring), `AI._search()` / the Well Up routine, `Battle.interrupt()`
+   (a guard's effects end), `Battle.attempt()` (no zone skill on thin air). File names rather than class names: no
+   global names, no preload cycles. **Merge note:** B5 may add `Skill.has(BehaviourClass)` for the same need;
+   keep one of the two.
+3. **`AI._defend()` reads `s.on_tile()` instead of `s.guards`:** any defensive skill aimed at a tile is aimed at the
+   nearest foe. Only Shields Up! qualifies today, so nothing moves; before, any other such skill would have failed
+   `cast()` on itself.
+4. **Impact:** `SkillTerms._derived_impact()` counted any behaviour as a rider (tame). A tile behaviour now says
+   its own (Flamewall and Zone set tame in `terms()`, as their old fields did); Solar, Wildfire, Observe and
+   Well Up stay "" as before. Every terms line of the seven skills is the same, except below.
+5. **Observe gains a `rank_impact` term ("observe"):** its rank was always read through rank impact, but no term
+   said so. `skill.py modifiers`: unchanged overall; Observe now also fits rho_up (eligibility better, nothing lost).
+6. **Flamewall's check** stays on the helper, `Battle.check(u, dex, caster, wis, ties = false)`, as u-checks left
+   it. It is not a `Skill.check` (SkillCheck): that declares a check in place of an attack roll on a target, and
+   Flamewall has none. `evade()` (Wildfire's DC dodge) is a check against a number, not a contest, so it stays too.
+7. **Private Battle helpers:** `_flame()` renamed `flame()` (behaviours call it). `cone.gd` calls `b._expose()`
+   rather than renaming it, because 16 callers, most of them in `_cast`, sit beside B5's lines. Rename it after both branches merge.
+8. **Description order:** the lifted lines now come after the effect lines (behaviour lines come last in
+   `Skill.markup()`). Shields Up!'s facing line is now below its effects. No test read the order.
+9. `Util/skill.py` HOOKS gains `apply_at`; `Util/tres.py` FLOATS drops `cone`.
+
+### Tests (B4)
+
+- Updated for data shape only: `route_test.test_area` (`solar.cone_at()` / `.cone` -> the cone behaviour's
+  `width()` / `degrees`); `evidence_test.test_ai_follows_it` (`s.observes` -> `s.behaviour(&"observe")`).
+- Added: `sol_test.test_flamewall_catches` (one standing where the wall goes up makes the check and burns at
+  once) and `watch_test.test_observe_looks` (it looks there, within reach). Both pass on the old code too.
+  The suite had no test for either rule: the mutation spot-checks found the gaps.
+
+### Mutation spot-checks (B4; each reverted)
+
+| Mutation | Fails |
+|---|---|
+| flamewall.gd: never burns a unit that loses the check | sol_test.test_flamewall_catches (new; nothing failed before) |
+| flamewall.gd: width 0 | sol_test.test_flamewall, route_test.test_flamewall |
+| cone.gd: Wildfire's dodge ignored (share 1) | difficulty_test.test_wildfire_dodged |
+| cone.gd: Solar's width ignores modifiers | route_test.test_area |
+| observe.gd: early return | watch_test.test_observe_looks (new); before, test_observe only crashed with a SCRIPT ERROR, which the runner doesn't count as failed |
+| guard.gd: guard not raised | facing_test.test_shields_up (4) |
+| well_up.gd: centre a rank shallower | undine_test.test_well_up |
+| zone.gd: lays nothing | perception_test.test_tonefoolery_doubles; zone describe "" -> skills_test.test_flags_described |
+
+Survivors (equivalent mutants, or not covered; recorded, not fixed): Solar's cone at width 0 passes `test_solar`,
+whose units stand on the aim line. Observe's +rank bonus at 0 passes, because `test_observe`'s roll bounds are loose.
+`guard.gd` describe "" passes, because removing the behaviour also changes the spec line, so `test_flags_described`
+can't see it. B2's describe sweep should catch it.
+
+Visual: Wildfire's and Observe's targeting overlay (armed, hovered) captured before and after (`S/driver_b4.gd`,
+`S/shot_b4_*`): the two look the same. The pixel diffs are the overlay's real-time pulse.
+
+## B5 as built (c-displace)
+
+**Fields off Skill.gd: 15.** `push`, `pull`, `sends`, `shapes`, `beast`, `exits`, `fog`, `grip`, `humbles`, `boost_pool`,
+`boost_mod`, `aura`, `splits`, `retrieves`, `elements`. `@export var` count after merging B4: **104** (126 → 111 on its
+own). `opening` stays, as planned. FLAG_CEILING is untouched.
+
+**New behaviours:**
+- `displace.gd` (`class_name Displace`, with `toward`, `teleport`, `tiles`, `stat` and `foes_only`) does Sing's draw
+  and Send Off's teleport.
+- `beastshape`, `emergency_exit`, `waltz`, `imbue` (`elements`), `aura` (`splits`), `retrieve` (`item`), `humble`
+  and `boost` (`pool`, `mod`).
+- The 13 skills' data was moved by a script (`S/migrate_b5.py`: each field becomes a behaviour sub-resource).
+  No ids were hand-edited.
+
+**Battle:**
+- `_cast`'s self / utility elif block is now one `whole()` early return, about 25 lines fewer. The pull / push / send
+  riders are gone from `_cast`.
+- The seven helper bodies moved into the behaviours.
+- `displace(t, from, dir, n, teleport) -> int` is the one primitive. `pull` / `push` / `send` are one-line wrappers,
+  kept for Kick and the tests.
+- Battle.gd is 5143 → 4998 lines.
+- `_lured` became `lured`, because Displace calls it.
+- `_grip`'s dead grip dice are gone.
+
+**AI (L4):** `Unit.foe_actives(affordable)` replaces the 4 copied filters. AI reads `Displace.draws()` and
+`behaviour(&"waltz")`.
+
+**Calls:**
+1. **Two pure Behaviour queries, not hooks:**
+   - `whole(c)`: the behaviour's apply() is the entire cast. This keeps the early return identical. Boost answers
+     `not c.foe`.
+   - `impact()`: tame by default; `&""` for Waltz, Imbue, Aura, Retrieve and a teleport; impactful for Beastshape,
+     Exit and Humble. Without it, having a behaviour would have made Send Off, Waltz, Burning Bag and Elemental
+     Strike "tame", which costs +2 price points under modifiers.
+   - Merged with B4's rule: a tile behaviour counts as tame only through its own terms().
+2. **`beast` became the `beast` tag:** `Unit.shaped_allows` lets any skill tagged `beast` be used while shaped. No
+   skill carries the tag yet, so nothing changes today.
+3. **Beastshape's "no beast thrives here" gate is now its `fits()`/`unfit()`.** The HUD can show the reason.
+4. **Displace generalised:**
+   - its suspicion gate (`Battle.lured()`) applies to any direction; only Sing has such a check.
+   - it skips a dead target and the caster itself.
+   - a teleport toward stops short of `from`.
+   - walking moves only foes unless `foes_only = false` (Send Off).
+5. **One lookup:** after B4 landed I use its `Skill.behaviour(&"file")`. Only `Displace` keeps a class_name.
+6. **Sutemi's lunge is left alone.** It needs its path before it moves, for `fits()` and the AI's `unguarded()`.
+   Kick and Hitch's tow are unchanged.
+7. **Glossary / Effect text** still says "its holder's grip". The grip dice are gone, but drowning still fires the
+   `gripped` signal. Left for review.
+
+**Eligibility:**
+- `skill.py modifiers` is identical before and after: 28 skills eligible for none.
+- `skill.py terms` for the 14 touched skills is identical apart from label order, including points.
+- Every skill's description at ranks I-V has the same set of lines. Only line order moved: behaviour lines come
+  after the effects.
+
+**Tests changed (data shape only):**
+- `moves_test`: `shove.push`
+- `route_test`: `glow.aura` (×2)
+- `water_test`: Drown's `.grip`
+- `meadows_test`: calls `emergency_exit.gd`'s `open()`
+
+New: `displace_test` (composability: a plain Hex with a Displace knocks back, draws in, teleports; nobody turns) and
+`whole_test`.
+
+**Mutation spot-checks (new suite):**
+
+| Mutation | Result |
+|---|---|
+| `displace()` n = 0 | 16 failed (lure, kick, paladin send-off, moves, displace) |
+| Beastshape no-op | 2 failed |
+| Waltz | 2 failed |
+| Imbue | 2 failed |
+| Aura, no split | 1 failed |
+| Aura, no scale | 1 failed |
+| Humble | 1 failed |
+| Boost | 1 failed |
+| `whole()` → false | 1 failed (whole_test; 0 before it existed) |
+| `foe_actives` broken | 51 failed |
+| Emergency Exit, Retrieve no-op | SCRIPT ERROR (test aborts; the runner counts it as passed: a B1 runner gap) |
+
+Suite: 46018 checks, 0 failed (846 tests).
+
+## B3 as built (`c-tables`)
+
+- **Capstones:** `quarry`, `survivalist`, `wildcaller`, `acceptance`, `bargaining` tests (5 files, 145 lines) became
+  `Tests/capstones_test.gd`. The table loops every Role's `choices` whose `by` carries an efficiency behaviour
+  and asserts: it waits on its root, it unlocks once the lower-tier skills of the role's roots are learned, a guest
+  tree with a tier 1 skill picks, that skill's affinity is `choice.affinity + 1`, `describe` says "tier". The three
+  Ranger rows come from the data. Call: Acceptance and Bargaining are not `TreeChoice.by` openers (they reach
+  Patron trees), so their rule tests (Flex `after` / `burns`, the stacks) stay as two plain tests in the same file.
+  Call: the old per-skill probe skill (jugular, forage, stonegift) is now "the first tier 1 skill of the first
+  offered guest tree", so a data change there can't break the table.
+- **Unit pins:** `blinthe_test.gd` deleted; `pike_test.gd` deleted, its water-cost and read-level asserts are
+  `aquatic_test.test_pike`. `Util/unit.py check` now checks, for every unit scene: every `res://` path it names
+  exists, a Bio'd unit has a faction, look, bio, behaviour and appearance, and each clout key is a `Factions/` file.
+  Call: level, role, clout numbers, bio text and skill ranks are values, not rules, and are no longer pinned.
+- **Tree lists:** casters / berserker / general literals are rule asserts (a role's trees are its own tab, then what
+  its choices offer; a choice by a study is -1 except a school; every class gets the base general tree plus one per
+  declared category, for every Role). Dropped the root-name list asserts.
+- **COUNTS:** `skill.py COUNTS`, `check_counts` and `wheel_count` removed. `hud_test` line 917 now asserts every
+  skill of the wheel's tab (centre, core, roots) has a spot on the wheel.
+- **Spot-checks** (old suite fails by construction for the deleted files: they asserted the same):
+  efficiency `a + 1` to `a + 0`: capstones table fails (9); `TreeChoice.all()` skipping borrowed trees: casters fail (8);
+  `general_trees()` ignoring `role.general`: `trees_by_class` fails; `_cost` ignoring aquatic: `aquatic.test_pike` fails;
+  `SkillWheel._put` dropping a skill: the hud wheel rule fails; blinthe.tscn with an empty appearance / a missing
+  faction file / clout keyed to a Role: `unit.py check` reports each. All reverted.

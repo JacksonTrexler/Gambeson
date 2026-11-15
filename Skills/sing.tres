@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
 [ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/displace.gd" id="b_displace"]
 
 [sub_resource type="Resource" id="Effect_movement"]
 script = ExtResource("2_effect")
@@ -14,6 +16,10 @@ per_rank = true
 script = ExtResource("6_skill_check")
 against = &"wisdom"
 suspicion = true
+
+[sub_resource type="Resource" id="Behaviour_displace"]
+script = ExtResource("b_displace")
+toward = true
 
 [resource]
 script = ExtResource("1_script")
@@ -27,6 +33,6 @@ radius_mod = &"charisma"
 dual = true
 rolls = false
 turns = 2
-pull = 1
 auto = true
 check = SubResource("SkillCheck_1")
+behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_displace")])

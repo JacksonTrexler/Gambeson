@@ -217,6 +217,21 @@ def check(_a=None):
         for m in re.finditer(r'path="res://(Units/\w+\.png)"', text):
             if not exists(m.group(1)):
                 problems.append("%s: its sprite %s is missing" % (p, m.group(1)))
+        for m in re.finditer(r'path="res://([^"]+)"', text):  # every skill, role, faction it wires is a file (what a unit scene's test would restate)
+            if not exists(m.group(1)):
+                problems.append("%s: %s is missing" % (p, m.group(1)))
+        if "Bio_" in text:
+            node = text[text.index("[node "):]
+            for what, rx in (("a faction", r"^faction = ExtResource"), ("a look", r"^look = ExtResource"), ("a bio", r"^bio = SubResource")):
+                if not re.search(rx, node, re.M):
+                    problems.append("%s: no %s" % (p, what))
+            for what, rx in (("behaviour", r'^behaviour = &"\w+"'), ("appearance", r'^appearance = "[^"]+"')):
+                if not re.search(rx, text, re.M):
+                    problems.append("%s: its bio has no %s" % (p, what))
+            paths = {i: pth for pth, i in re.findall(r'path="([^"]+)" id="(\w+)"', text)}
+            for m in re.finditer(r'ExtResource\("(\w+)"\): -?\d+', text):  # clout: each key a Factions/ file
+                if not paths.get(m.group(1), "").startswith("res://Factions/"):
+                    problems.append("%s: clout %s isn't a Factions/ file" % (p, m.group(1)))
         b = re.search(r'^behaviour = &"(\w+)"', text, re.M)
         if b and "Bio_" in text and b.group(1) not in BEHAVIOURS:
             problems.append('%s: behaviour "%s" isn\'t one the AI knows (%s)' % (p, b.group(1), ", ".join(BEHAVIOURS)))

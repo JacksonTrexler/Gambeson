@@ -18,8 +18,7 @@ func bless(r := 3) -> void:
 	v(2).learned.append(slot(tenacity, 3))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(6, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
-	v(2).max_hp = 100
-	v(2).hp = 100
+	soak(v(2), 100)
 	ok(b.cast(v(1), intervention, v(2)), "Intervention III reaches an ally 2 tiles off")
 
 

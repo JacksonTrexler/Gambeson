@@ -16,8 +16,7 @@ func ready(u: Unit, ap: float) -> void:
 
 
 func test_energize() -> void:
-	v(1).learned.append(slot(energize, 3))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(energize, 3)
 	var u := v(1)
 	ok(energize.cost == 0 and energize.ap == 2.0 and (load("res://Trees/general.tres") as SkillTab).roots[0].branch(energize).tier == 4, "0 Energy, 2 AP, tier 4 of General")
 	u.max_energy = 10

@@ -14,7 +14,7 @@ extends Resource
 @export var range_penalty := 0  # off the caster's side a tile - tiles dragged, else past the first between them - less 1 a rank past I (Drown: 1)
 @export var tags: Array[StringName] = []  # check tags it carries beside the skill's own (check effects tagged so count on it)
 @export var drags_to := &""  # won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
-@export var suspicion := false  # not in place of a roll: rolled only on a foe suspicious of the caster, and won, takes a stack of suspicion off; the skill pulls only the enraptured (Sing; Battle._lured())
+@export var suspicion := false  # not in place of a roll: rolled only on a foe suspicious of the caster, and won, takes a stack of suspicion off; the skill moves only the enraptured (Sing's draw: Behaviours/displace.gd, Battle.lured())
 
 
 # The caster's stat in it, for skill s.

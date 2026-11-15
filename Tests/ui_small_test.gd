@@ -4,20 +4,9 @@ extends Test
 # naming the Hurry key as bound, high contrast's heavier faction trim, a mark on a modified skill's slot.
 
 
-func start(leader: Unit) -> HUD:
-	b.player = leader
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
-	return h
-
-
 func test_prefs() -> void:
 	ok(Prefs.SAVE != "user://settings.cfg", "the suite keeps its own settings file")
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var picker: OptionButton = h.get_node("%HighContrast").get_parent().get_node("AllyGlow")
 	ok(h.ally_glow == HUD.ALLY_GLOW and not h.high_contrast, "nothing saved: the defaults")
 	picker.select(2)
@@ -25,7 +14,7 @@ func test_prefs() -> void:
 	h.get_node("%HighContrast").toggled.emit(true)
 	ok(Prefs.get_pref("ally_glow", "") == "Sky" and Prefs.get_pref("high_contrast", false), "a change is saved")
 	h.free()
-	h = await start(v(1))
+	h = await hud(v(1))
 	picker = h.get_node("%HighContrast").get_parent().get_node("AllyGlow")
 	ok(h.ally_glow == HUD.ALLY_GLOWS["Sky"] and picker.selected == 2 and h.high_contrast and h.get_node("%HighContrast").button_pressed,
 			"and back on the next run")
@@ -33,7 +22,7 @@ func test_prefs() -> void:
 
 
 func test_floats_hurry() -> void:
-	var h := await start(v(1))
+	var h := await hud(v(1))
 	var ref := Node2D.new()  # a rise at plain speed, to compare with
 	tree.root.add_child(ref)
 	ref.create_tween().tween_property(ref, "position:y", -10.0, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)

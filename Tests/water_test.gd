@@ -29,8 +29,8 @@ func test_depths() -> void:
 		depths[n] = t.depth
 		ok(t.douses and &"water" in t.tags, "%s is water, and puts out fire" % t.name)
 	ok(depths == {"water": 5, "pond": 5, "flowing_water": 2, "shallows": 1}, "Water and Pond 5 deep, Flowing Water 2, Shallows 1 (%s)" % [depths])
-	ok(load("res://Skills/drown.tres").holds() and load("res://Skills/drown.tres").drowns == Vector2i(1, 12) and load("res://Skills/drown.tres").grip == Vector2i.ZERO,
-			"Drown: a grapple that drowns, no crushing grip")
+	ok(load("res://Skills/drown.tres").holds() and load("res://Skills/drown.tres").drowns == Vector2i(1, 12),
+			"Drown: a grapple that drowns")
 
 
 func test_flood() -> void:
@@ -64,8 +64,7 @@ func test_drowning_needs_water() -> void:
 	var c := dry_cell()
 	b.move(v(1), c)
 	b.move(siren(), c + Vector2i(-1, 0) if b.on_map(c + Vector2i(-1, 0)) and not b.unit_at(c + Vector2i(-1, 0)) else c + Vector2i(1, 0))
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	siren().strength = 20  # every drowning hurts
 	var a := v(1).afflict(drown.effects[0], 0, 1)
 	a.lasting = true

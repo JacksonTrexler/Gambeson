@@ -172,13 +172,7 @@ func test_grand_design() -> void:
 func test_refusal_words() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 4), unit("Alabaster"): Vector2i(3, 4)})
 	v(1).charisma = 8
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	h.command.order(v(2))
 	ok(h._why_no_orders(v(2)) == "%s gives an ally 1 order a turn (charisma -1)" % h._name(v(1)), h._why_no_orders(v(2)))
 	ok(h._why_no_orders(unit("Alabaster")) == "%s commands 1 ally a turn (charisma -1)" % h._name(v(1)), h._why_no_orders(unit("Alabaster")))

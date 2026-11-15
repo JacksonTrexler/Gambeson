@@ -40,8 +40,7 @@ func test_counts() -> void:
 	for s in [crushing, missile, hex, kick]:
 		v(1).learned.append(slot(s))
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(3).max_hp = 100
-	v(3).hp = 100
+	soak(v(3), 100)
 	var e := v(1).exhaustion
 	ok(Exhaustion.kinds(crushing) == [&"martial"] and Exhaustion.kinds(hex) == [&"magical"] and Exhaustion.kinds(missile).is_empty(), "a skill's broad kinds: its trees', else its category tags")
 	ok(strike.kinds() == [&"general"] and strike.general() and Exhaustion.kinds(strike).is_empty(), "Strike, tagged martial, is on the base General tree: general")
@@ -103,8 +102,7 @@ func test_channel_is_one_use() -> void:
 
 func test_recovery() -> void:
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(3).max_hp = 100
-	v(3).hp = 100
+	soak(v(3), 100)
 	var u := v(1)
 	ok(b.cast(u, strike, v(3)) and b.cast(u, strike, v(3)) and same(uses(u, strike), 2.0), "two Strikes in a turn")
 	b.end_turn()
@@ -152,8 +150,7 @@ func test_strike_ranks() -> void:
 	v(1).learned.append(slot(strike, 3))
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(4, 6), v(4): Vector2i(5, 6)})
 	for t in [v(3), v(4)]:
-		t.max_hp = 100
-		t.hp = 100
+		soak(t, 100)
 	var rolls := [0]
 	b.attacked.connect(func(_c: Unit, _t: Unit, _d20: int, _total: int, _def: int): rolls[0] += 1)
 	ok(v(1).rank(strike) == 3 and v(2).rank(strike) == 1, "Strike III, and Strike I")
@@ -168,19 +165,12 @@ func test_strike_ranks() -> void:
 
 func test_ai_and_hud() -> void:
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(3).max_hp = 100
-	v(3).hp = 100
+	soak(v(3), 100)
 	var log := AI.act(b, v(1))
 	ok(log.filter(func(l: String): return "uses Strike" in l).size() == 2 and same(v(1).ap_for(&"skill"), 3.5), "the AI Strikes while it can pay: 3 + 4.5 of its 11 AP, not the 6 a third would take (%s)" % [log])
 	b.end_turn()
 	b.end_turn()
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	h._refresh()
 	ok(is_equal_approx(h.drain(h.intent(v(3).cell)).get(&"ap", 0.0), 4.5), "hovering the foe drains its raised cost off the AP bar: 4.5 (%s)" % h.drain(h.intent(v(3).cell)))
 	var sl := h.bar.get_child(v(1).hotbar.find(strike)) as SkillSlot

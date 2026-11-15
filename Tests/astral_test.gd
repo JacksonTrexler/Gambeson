@@ -30,8 +30,7 @@ func test_princess() -> void:
 func test_smite() -> void:
 	var p := her(Vector2i(5, 3))
 	stage(nemes, {p: Vector2i(5, 3), v(1): Vector2i(4, 3)})
-	v(1).max_hp = 200
-	v(1).hp = 200
+	soak(v(1), 200)
 	v(1).max_energy = 5
 	v(1).energy = 5
 	var hit := false
@@ -152,8 +151,7 @@ func test_smite_eros() -> void:
 	pip.refresh()
 	var tags := Battle.hit_tags(pip, smite)
 	ok(&"love" in tags and &"energy" not in tags, "a Paladin of Eros: Smite's damage is love (%s)" % [tags])
-	v(3).max_hp = 200
-	v(3).hp = 200
+	soak(v(3), 200)
 	v(3).energy = 5
 	for i in 20:
 		pip.refresh()

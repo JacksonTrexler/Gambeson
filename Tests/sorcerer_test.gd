@@ -5,10 +5,6 @@ extends Test
 # as Power, it never regenerates), borrowing the astral creatures' spells as they are - the Starmote's
 # Energy Missile, the Starman's Starsap - and, as a caster, Energy Transfer on the general Caster tree.
 
-func sk(n: String) -> Skill:
-	return load("res://Skills/%s.tres" % n)
-
-
 func sorcerer() -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/sorcerer.tres"), name = "Astrid"})
 	b.get_node("Units").add_child(u)

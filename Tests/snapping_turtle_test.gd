@@ -24,8 +24,7 @@ func scene(turtle := 1) -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	for i in [1, 3, 4]:
 		v(i).refresh()
-		v(i).max_hp = 300
-		v(i).hp = 300
+		soak(v(i), 300)
 
 
 static func keen() -> Effect:

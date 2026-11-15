@@ -14,8 +14,7 @@ func berserk(r := 2) -> void:
 	v(3).learned.append(slot(fury, r))
 	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	v(3).refresh()
-	v(1).max_hp = 300
-	v(1).hp = 300
+	soak(v(1), 300)
 	v(3).intelligence = 18
 
 

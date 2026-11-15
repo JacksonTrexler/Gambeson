@@ -81,13 +81,7 @@ func test_big_heal() -> void:
 
 func test_card() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	var u := con(v(1), 14)
 	var info: Dictionary = h._info(u)
 	ok(info.rows.any(func(r): return r[0] == "RE" and r[1] == "2/2"), "the card shows RE 2/2")

@@ -1,6 +1,13 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/boost.gd" id="b_boost"]
+
+[sub_resource type="Resource" id="Behaviour_boost"]
+script = ExtResource("b_boost")
+pool = &"move"
+mod = &"charisma"
 
 [resource]
 script = ExtResource("1_skill")
@@ -12,5 +19,4 @@ cost = 1
 radius = 1.0
 radius_per_rank = 1.0
 hostile = false
-boost_pool = &"move"
-boost_mod = &"charisma"
+behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_boost")])

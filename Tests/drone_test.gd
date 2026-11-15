@@ -42,13 +42,7 @@ func test_drone() -> void:
 
 func test_colour() -> void:
 	drones()
-	b.player = v(1)
-	var h: HUD = load("res://Scenes/UI/hud.tscn").instantiate()
-	h.battle = b
-	h.auto = false
-	h.pace = 0.0
-	tree.root.add_child(h)
-	await tree.process_frame
+	var h := await hud(v(1))
 	h.command.order(al())
 	h.command.order(v(2))
 	h._refresh()

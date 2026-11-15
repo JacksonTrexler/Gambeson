@@ -16,8 +16,7 @@ func ready(r := 2) -> void:
 	v(3).learned.append(slot(borrowed, r))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(1, 1), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
 	v(3).refresh()
-	v(3).max_hp = 100
-	v(3).hp = 100
+	soak(v(3), 100)
 	ok(v(3).lives_left() == 0 and v(3).defers() == r, "on its last life, defer %d" % r)
 
 

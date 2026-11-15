@@ -53,6 +53,32 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# What apply() does is the whole of the cast `c` (Battle.cast()): it lands at once, past any reactions,
+# with no roll, contest, effects or damage of the skill's own (Beastshape, Emergency Exit, an aura, Igna
+# on an ally). Pure: asked once the skill is paid for and aimed.
+func whole(_c: Cast) -> bool:
+	return false
+
+
+# The unique effect it gives its skill in the cost calculator's terms (SkillTerms impact), where the
+# skill names none: &"tame" for doing a thing of its own, &"impactful" for a big one (Beastshape),
+# &"" for one that only carries out what its numbers say (Send Off's teleport). Pure.
+func impact() -> StringName:
+	return &"tame"
+
+
+# A skill cast on a tile rather than a unit (Battle.cast_at(): Flamewall, Solar, Observe), paid for and
+# aimed at `cell`: what it does there. c has no target. A behaviour that has this says so in tile_target().
+func apply_at(_c: Cast, _cell: Vector2i) -> void:
+	pass
+
+
+# How a skill it's on is aimed, if apply_at() makes it a tile skill (Skill.on_tile(), Skill.target()):
+# &"tile", or &"area" for one that covers ground around the tile (a cone, a zone); empty: not on a tile.
+func tile_target() -> StringName:
+	return &""
+
+
 # Once the skill is paid for and aimed, before any roll (Battle.cast()): what comes first (Sutemi's
 # lunge, Poach's discount). The cast's target may still be missed.
 func aim(_c: Cast) -> void:

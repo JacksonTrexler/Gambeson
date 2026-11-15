@@ -39,38 +39,21 @@ extends Resource
 @export var disadvantage := false  # that roll is the worse of two d20s (Jugular)
 @export var sure_crit := false  # a hit is a critical (Jugular)
 @export var recast_on_crit := false  # a natural 20 on its roll recasts it at once on the same foe, free (Jugular; Battle.cast())
-@export var push := 0  # used on a foe: drives it this many tiles x rank straight away from the caster, stopping at what's in the way (Battle.push())
-@export var sends := &""  # teleports the unit (the caster's mod in this) + rank tiles straight away from the caster, to the furthest free tile on that line (Send Off: charisma; Battle.send())
-@export var guards := false  # cast on a tile: its user faces it behind its shield, its effects on itself (Shields Up!; Battle._guard())
 @export var decays := 0.0  # its effects' strength falls this share a tile past the first between caster and target, set as they're put on; none paid wholly with mana (Rejuvinate: 0.05)
-@export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
 @export var engulfs := false  # used on a foe: a contest in its stat; won, the caster moves into the foe's tile, sharing it (Coalescing; Battle.engulf())
-@export var shapes := false  # turns its user, body and mind, into a beast its tile suits, of a biome it picked; used again, back (Beastshape; Battle.beastshape())
-@export var beast := false  # a beast's own: usable while beastshaped, beside Strike (Unit.form)
 @export var mist_only := false  # only while its caster is a mist (Vaporize), and the only kind of skill a mist can use (Coalescing)
 @export var rifts := false  # aimed at a tile in sight within range (over walls from rank III): opens a door to a domain, kept open while its caster channels it (or not: Alt-click), its count starting once it stops; used again, the channel stops (Rift; Battle.open_rift())
-@export var exits := false  # hastens a forming escape portal by rank turns; with none forming, warps its caster and allies within rank tiles to a pocket of stone for rank turns (Emergency Exit; Battle.emergency_exit())
-@export var wells := false  # aimed at a tile: floods it rank deep, the tiles beside it a rank less, for rank of its side's turns (Well Up; Battle.flood())
-@export var fog := false  # lays fog around its caster, radius rank + the better of its dex and cha mods, concealing at its rank (Waltz of Vapors)
 @export var grapples := false  # its effects hold the foe (grappled) until it breaks free by moving away (Drown; Battle._break_free())
 @export var drowns := Vector2i.ZERO  # each turn the foe it holds ends submerged (Battle.submerged()), these dice + the caster's mod in its stat (Drown: 1d12)
-@export var grip := Vector2i.ZERO  # its effects hold the foe (grappled) until it breaks free by moving away: each turn it ends held, these dice + the caster's mod in its stat (Drown: 1d12; Battle._break_free(), Battle._grip())
 @export var links := false  # on itself: links it with its teammates within its cha mod in tiles (at least 1) and its leader, to pool what they make out (Coordinate; Battle._link())
 @export var prays := false  # prays to the caster's god, an effect by god (Pray; Battle.pray())
-@export var observes := false  # cast on a tile: the caster inspects every tile around it as if it had rested rank turns (Observe; Battle.observe())
 @export var auto := false  # used at once, landing on the nearest units in range - allies and foes alike - no more than its rank (Sing; Battle.auto_targets())
 @export var check: SkillCheck  # used on a foe: the check it makes in place of the attack roll - a save (Haluca: wisdom), a contest (Drown's drag) - or beside it (Sing's on the suspicious); lost, it misses (Scripts/SkillCheck.gd, Battle.skill_opts())
 @export var disables := false  # a curse: with its save, the caster's luck-rounded sqrt(rank) of the foe's skill slots are switched off, right to left, for its turns; the foe adds the ranks of the skills in them to its save (Brainfog; Unit.disable_order())
 @export var tiers: Array[Tier] = []  # damage by rank; none: no damage (tagged energy: it drains Energy first - Unit.drain())
 @export var weapon_tag := false  # its damage takes its wielder's weapon's damage tag, or blunt bare-handed (Strike; Item.damage_tag, Battle.hit_tags())
 @export var levels_down := false  # rank rolls of d20 + the caster's mod in its stat, each beating the higher of the foe's average stat mod + level and its last stand; each that does takes a level off it for rank - misses turns (Level Down; Battle._level_down())
-@export var humbles := false  # caps the unit's max HP at its HP now less 1% of its max, for longer the less that cuts (Humble; Battle._humble())
-@export var boost_pool := &""  # on an ally: AP it gains at once, for this use (skill, move)...
-@export var boost_mod := &""  # ...the caster's mod in this + rank (Igna: skill AP; Aetha: movement)
-@export var aura := false  # used on itself, its effects go on every ally within rank tiles too (Flamecharm, Flamedance; Battle._aura())
-@export var splits := false  # ...from rank V, on only the nearest rank of them, its strength split among them (Flamecharm)
 @export var opening := false  # only as its holder's turn opens: before it moves or spends AP (Flamedance)
-@export var retrieves: Item  # used on itself: takes this unique item from wherever it is and puts it on, at the skill's rank (Burning Bag; Battle._retrieve())
 @export var renames := ""  # learned, Strike goes by this name (Decisive Strike; Unit.skill_name())
 @export var exclusive := &""  # only one skill of this group can be learned (the low-tier Strike upgrades: strike_form)
 @export var waives := &""  # opens a general tree's skills up to its rank in tier without their usual needs - general (Generalist), martial (Martialist), magical (Thaumaturgist); a tree its class doesn't have, it shows, one tier lower (Unit.missing())
@@ -79,7 +62,6 @@ extends Resource
 @export var carry := 0.0  # energy damage: this x (rank - 1) of what's left once the target's Energy is gone goes on to HP (Smite: 0.2)
 @export var hits_per_rank := false  # Strike III hits three times
 @export var chain := false  # each hit rolls on its own: a miss ends it, and each hit in a row is -1 to hit and damage (Strike; Battle._chain())
-@export var elements: Array[StringName] = []  # used, its user picks one of these: its Strikes deal it for rank uses (Elemental Strike; Battle.imbue())
 @export var grants: Skill  # also puts this skill's effects on the target (Stonegift: Stoneskin)
 @export var binds: Item  # on a hit, bound onto the target in place of its trinket at the skill's rank - its weight the rank - the trinket stowed till it comes off (Judgement: Shackles; Battle._bind())
 @export var turns := 0  # how many of the target's turns put-on effects last (zones: the caster's)
@@ -107,15 +89,11 @@ extends Resource
 @export var restores := 0.0  # the recipient gets this x rank AP back (Renew)
 @export var per_wound := 0  # this x rank more HP for each wound it clears (First Aid: 1)
 
-@export_group("Area")  # cast on a cell rather than a unit (Darkstone)
-@export var flamewall := false  # sets the tile on fire, and rank tiles to either side of it across the caster's line to it (Flamewall; Battle._flamewall())
-@export var cone := 0.0  # a cone of this many degrees toward the tile, + 15 a rank past I, radius long, hitting everyone in it - its caster too (Solar; Battle._solar()); evadable, it's Wildfire's kind instead (Battle._wildfire())
-@export var evadable := false  # whoever it lands on makes a dex check against its difficulty to dodge it: passing, none of it; failing by a quarter of the DC or less, half (Battle.evade())
-@export var difficulty := &""  # the difficulty (Difficulty.LADDER) of the check it imposes, at its rank: dodging it (Wildfire: difficult)
+@export_group("Area")  # cast on a cell rather than a unit: what it does there is a behaviour's (Behaviour.apply_at(): Darkstone's zone, Wildfire's cone), these its numbers
+@export var difficulty := &""  # the difficulty (Difficulty.LADDER) of the check it imposes, at its rank: dodging it (Wildfire: difficult; Behaviours/cone.gd)
 @export var reach_scale := &""  # its reach runs this magnitude of its rank in tiles (Difficulty.MAGNITUDE; Wildfire's cone: intense, 2.5 x rank)
 @export var dice_scale := &""  # its damage dice come this magnitude of its rank, times its tier's count (Wildfire: severe, 3 x rank)
 @export var bane := &""  # units carrying this tag - from what they are, wear or know (Unit.has_tag()) - dodge at impossible and are hit as a crit (Wildfire: earth)
-@export var zone := &""  # concealment kind laid on tiles: rank - distance from the centre levels
 @export var radius_per_rank := 0.0  # range grows with rank (Darkstone: 1 + rank; Embellish, cast on a unit: rank - 1)
 
 @export_group("Trap")  # cast on a cell, lays a trap there (Snare; Battle.lay())
@@ -239,9 +217,9 @@ func fits_bar() -> bool:
 
 # Its holder's build stands on it (Powerful): it's the easiest to disable, and one going takes every
 # pillar skill with it (Unit.disable()).
-# Whether its effects hold the foe until it breaks free: it grapples, drowns or grips.
+# Whether its effects hold the foe until it breaks free: it grapples or drowns.
 func holds() -> bool:
-	return grapples or drowns != Vector2i.ZERO or grip != Vector2i.ZERO
+	return grapples or drowns != Vector2i.ZERO
 
 
 func pillar() -> bool:
@@ -255,7 +233,16 @@ func foundation() -> bool:
 
 # Aimed at a tile rather than a unit: area skills and trap skills.
 func on_tile() -> bool:
-	return zone != &"" or lays != null or observes or channel or flamewall or cone > 0.0 or guards or wells or rifts
+	return lays != null or channel or rifts or behaviours.any(func(b: Behaviour): return b and b.tile_target() != &"")
+
+
+# Its behaviour from Behaviours/<file>.gd (&"guard": Shields Up!), or null: what a reader asks when it
+# acts on one kind (AI._search(): an Observe).
+func behaviour(file: StringName) -> Behaviour:
+	for b in behaviours:
+		if b and b.get_script().resource_path.get_file().get_basename() == file:
+			return b
+	return null
 
 
 # Whether it can serve a posture when a unit reaches for its default move (HUD default orders, and the
@@ -269,9 +256,9 @@ func serves(posture: StringName) -> bool:
 		return posture in tags
 	match posture:
 		&"offensive":
-			return for_foes() and (attacks() or contests() or not tiers.is_empty() or pull != 0 or disables)
+			return for_foes() and (attacks() or contests() or not tiers.is_empty() or Displace.draws(self) != null or disables)
 		&"supportive":
-			return for_allies() and not self_only and (heals() or grants != null or boost_pool != &"" or aura or not effects.is_empty())
+			return for_allies() and not self_only and (heals() or grants != null or behaviour(&"boost") != null or behaviour(&"aura") != null or not effects.is_empty())
 		&"defensive":
 			return self_only
 	return false
@@ -325,12 +312,6 @@ func price(rank: int) -> int:
 func lasts(rank: int, u: Unit = null) -> int:
 	var m := u.mods(self) if u else Modifiers.NONE
 	return turns + turns_per_rank * m.irank(rank, &"rank_impact") + (m.stat(maxi(u.mod(turns_mod), 0), &"stat_impact") if u and turns_mod else 0)
-
-
-# Solar's cone in degrees at a rank, + 15 a rank past I - its width is rank range, through u's modifiers.
-func cone_at(rank: int, u: Unit = null) -> float:
-	var m := u.mods(self) if u else Modifiers.NONE
-	return cone + 15.0 * (m.rank(rank, &"rank_range") - 1.0)
 
 
 # Contests a foe in place of an attack roll: a save, a drag, Level Down, Death.
@@ -436,7 +417,7 @@ func target() -> StringName:
 		return &"self"
 	if auto:
 		return &"nearest"
-	if zone or cone > 0.0 or channel:
+	if channel or behaviours.any(func(b: Behaviour): return b and b.tile_target() == &"area"):
 		return &"area"
 	if on_tile():
 		return &"tile"
@@ -582,19 +563,8 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 				lines.append("A hit is a %s" % Glossary.term(&"critical"))
 			if recast_on_crit:
 				lines.append("A natural 20 casts it again at once on the same foe, free")
-		if guards:
-			lines.append("Faces a tile (an unobstructed one, occupied or not), until its next turn: damage from a source whose tile lies within the 90 degree cone that way is cut")
-		if push:
-			lines.append("%sDrives it up to {r:%d} tile%s straight away from the caster, stopping at what's in the way" % [foe, push * ri, "" if push * ri == 1 else "s"])
-		if sends:
-			lines.append("Teleports it %s + {r:%d} tiles straight away from the caster, to the furthest free tile on that line" % [_mod(sends, &"stat_range", m), rr])
 		if decays > 0.0:
 			lines.append("Its strength falls %s%% a tile past the first between caster and target, set as it's cast; none paid wholly with mana" % num(decays * 100.0))
-		if zone:
-			lines.append("Lays %s %s around a tile for {t:%d turn%s}" % [zone, Glossary.term(&"concealment", "concealment"), turns, "" if turns == 1 else "s"])
-		if observes:
-			lines.append("Inspects around a tile as if it had rested {t:%d turn%s}: every tile within %s (at least 1) + {r:%d} tiles of it, at +{r:%d}, -1 a tile from it"
-					% [ri, "" if ri == 1 else "s", Glossary.mod(&"wis"), ri, ri])
 		if prays:
 			var n := ri
 			var s := "" if n == 1 else "s"
@@ -659,33 +629,12 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 					% [binds.name, ri, ri, Glossary.term(binds.picks), Difficulty.dc(binds.picks, ri), Glossary.term(binds.prised), Difficulty.dc(binds.prised, ri)])
 		if chain:
 			lines.append("Attacks cease on a miss. -1 to hit and damage for each hit in a row")
-		if not elements.is_empty():
-			lines.append("Pick an element (%s): %s deal%s it, the first hit + your highest mental mod" % [", ".join(elements.map(func(e): return "{x:%s}" % e)),
-					"your next Strike" if ri == 1 else "your next {r:%d} Strikes" % ri, "s" if ri == 1 else ""])
-		if boost_pool:
-			lines.append("%sit gains %s + {r:%d} %s AP at once" % [ally if ally else "On an ally: ", _mod(boost_mod, &"stat_impact", m), ri, boost_pool])
-		if humbles:
-			lines.append("Caps its max HP at its HP now less 1%, for rank x 4 x (1 - the share cut) turns: the less it cuts, the longer")
-		if aura:
-			lines.append("%s: also on every ally within {r:%d} tile%s%s" % [Glossary.term(&"aura"), rr, "" if rr == 1 else "s", " - from rank V only the nearest {r:%d}, its strength split among them" % rr if splits else ""])
 		if opening:
 			lines.append("Only as its turn opens, before it moves or spends AP")
 		if pays_with == &"move":
 			lines.append("Paid with movement and AP: its AP comes from movement first")
 		if respecs:
 			lines.append("Then move up to {r:%d} point%s from its core stats into others, a point down for each point up - no more than it already knew itself (%s)" % [ri, "" if ri == 1 else "s", Glossary.term(&"self_knowledge", "self-knowledge")])
-		if retrieves:
-			lines.append("Takes the %s from wherever it is and puts it on, at rank {r:%d}" % [retrieves.name, ri])
-		if flamewall:
-			lines.append("Sets the tile and {r:%d} to either side of it, across the caster's line, %s for {t:%d turns}: 1d8 + %s {x:fire} to whoever enters or ends a turn there. One standing there makes a %s (%s) to get clear"
-					% [rr, Glossary.term(&"burning", "burning"), ri, Glossary.mod(&"wis"), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true)])
-		if cone > 0.0 and evadable:
-			lines.append("A {r:%d} degree cone, {r:%d} tiles long: it lands on every unit in it but the caster" % [roundi(cone), maxi(ceili(m.rank(rank, &"rank_range") * Difficulty.MAGNITUDE[reach_scale]), 1) if reach_scale else 0])
-		elif cone > 0.0:
-			lines.append("A {r:%d} degree cone, its range long: 1d20 + {o:wis score} {x:fire} to everyone in it, the caster too" % roundi(cone_at(rank, u)))
-		if evadable:
-			lines.append("%s: a %s %s (%s, DC {r:%d}) - passing, none of it lands; failing by a quarter of the DC or less, half"
-					% [Glossary.term(&"evadable"), Glossary.term(difficulty), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true), Difficulty.dc(difficulty, ri)])
 		if bane:
 			lines.append("Units carrying {x:%s} - from what they are, wear or know - dodge it at %s and are hit as a %s" % [bane, Glossary.term(&"impossible", "impossible"), Glossary.term(&"critical", "critical")])
 		if heals():
@@ -705,19 +654,12 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			lines.append("%s (%s vs %s) in place of an attack. Won: moves into its tile, sharing it" % [Glossary.term(&"contest"), me, Glossary.mod(stat(), true)])
 		if holds():
 			lines.append("%s it: moving away first takes 1 + %s tiles of movement and a %s" % [Glossary.term(&"held", "Holds"), me, Glossary.term(&"contest", "contest")])
-		if grip != Vector2i.ZERO:
-			lines.append("Each turn it ends held, it takes %dd%d + %s" % [grip.x, grip.y, me])
 		if drowns != Vector2i.ZERO:
 			lines.append("%s: each turn it ends held and %s, it takes %dd%d + %s" % [Glossary.term(&"drowning", "Drowns it"), Glossary.term(&"submerged", "submerged"), drowns.x, drowns.y, me])
-		if pull:
-			lines.append("%s%s it up to {r:%d} tile%s toward the caster" % [foe, "draws" if dual else "Draws", pull * ri, "" if pull * ri == 1 else "s"])
 		if check and check.suspicion:
 			lines.append("%s%s comes. On a suspicious one, a %s (%s vs %s) takes a stack of %s off"
 					% [foe, ("only one " if dual else "Only one ") + Glossary.term(&"enraptured", "enraptured"), Glossary.term(&"contest", "contest"),
 					me, Glossary.mod(check.theirs(self), true), Glossary.term(&"suspicion", "suspicion")])
-		if shapes:
-			lines.append("Takes the shape of the beast its ground suits (one of the biomes it picked), at rank {r:%d}, for {t:%d turns}: only Strike, beast skills and this until then. Used shaped, it turns back"
-					% [ri, ri + 1])
 		if links:
 			lines.append("Its effects go on its teammates within its %s in tiles (at least 1), and on its leader, too" % _mod(&"charisma", &"stat_range", m))
 		if auto:
@@ -774,13 +716,6 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		lines.append("Only as a mist (Vaporize)")
 	if rifts:
 		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door both ways to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). %s, it stays open while the caster keeps channeling (shown as infinite); used again, the channel stops. Its {t:%d turns} start once the channel stops, or at once if it's cast unchanneled (Alt-click); then the caster's side comes back and the domain goes" % [Glossary.term(&"channeled", "Channeled"), Battle.rift_turns(rank)])
-	if exits:
-		lines.append("An escape portal forming opens {r:%d} turns sooner. With none forming: warps the caster and allies within {r:%d} tiles to a pocket of stone, a door back and forth, for {t:%d turns}; then it returns them in a clump" % [ri, rr, ri])
-	if wells:
-		lines.append("Floods the tile {r:%d} deep and the tiles beside it {r:%d}, for {t:%d turns}" % [ri, maxi(ri - 1, 0), ri])
-	if fog:
-		lines.append("Fog around the caster, radius {r:%d} + the better of its dex and cha mods%s, concealing at {r:%d}. Kept up only by using it again as each of its turns opens"
-				% [rr, "" if m.k[&"stat_range"] == 1.0 else " x %s" % num(snappedf(m.k[&"stat_range"], 0.01)), ri])
 	if studies:
 		lines.append("Dabblings: pick up to {r:%d} of the %s on your tree" % [rank, studies])
 	if opens:

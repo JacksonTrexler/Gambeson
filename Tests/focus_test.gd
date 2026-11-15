@@ -103,8 +103,7 @@ func shot_bonus() -> int:
 
 func test_accuracy() -> void:
 	focused(3)
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	var plain := shot_bonus()
 	ok(v(1).paid_with is StringName, "paid with Energy: no Focus")
 	v(1).set_store(pool, 3)
@@ -124,8 +123,7 @@ func test_jam_drains() -> void:
 	v(3).learned.append(slot(focus, 3))
 	stage(lancin, {v(2): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(2).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(3).set_store(pool, 30)
 	var was := v(3).store(pool)
 	ok(b.cast(v(2), jam, v(3)), "Jam lands")

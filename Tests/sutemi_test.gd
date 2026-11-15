@@ -11,8 +11,7 @@ func lunger(r := 2) -> void:
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 
 
 func test_lunge() -> void:

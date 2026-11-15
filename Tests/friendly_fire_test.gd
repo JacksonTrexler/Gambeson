@@ -15,8 +15,7 @@ func hidden_ally() -> void:
 	v(1).strength = 40
 	var dark: Dictionary[Vector2i, int] = {Vector2i(5, 3): 9}
 	b.zones.append(Battle.Zone.new(&"dark", dark, 99, nemes))
-	v(2).max_hp = 200
-	v(2).hp = 200
+	soak(v(2), 200)
 	ok(b.read(v(1), v(2)).attitude(v(1)) != &"ally", "v(1) can't tell v(2) for an ally")
 
 
