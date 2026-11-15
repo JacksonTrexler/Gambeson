@@ -204,6 +204,8 @@ func _ready() -> void:
 		_log("%s %s%s" % [_tag(u), u.skill_name(s), " (%d vs %d)" % r.rolled if r.rolled.size() == 2 else ""])
 		overlay.float_text(u, u.skill_name(s), GOLD)
 		_mark())
+	battle.directed = _directs
+	battle.interrupt_began.connect(func(u: Unit): _log("%s acts out of turn" % _tag(u)))  # now, not deferred: Battle's AI acts as it opens
 	battle.interrupt_began.connect(_on_interrupt, CONNECT_DEFERRED)
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
@@ -858,25 +860,22 @@ func my_turn() -> bool:
 # The unit acting out of turn (Battle.interrupter: Final Act) is the player's to direct: the leader or
 # its party, whoever's turn it is. Others' interrupts their AI takes (AI.interrupt()).
 func _my_interrupt() -> bool:
-	return battle.interrupter != null and command.ours(battle.interrupter) and not autopilot()
+	return battle.interrupter != null and _directs(battle.interrupter)
 
 
-# An interrupt opened (Battle.interrupt_began): the player picks the free action for its own unit (a
-# skill, or End turn to pass); the AI picks for the rest. The turn it interrupted resumes after.
+# Whether the player picks u's interrupt (Battle.directed): its own unit, while it isn't on autopilot.
+func _directs(u: Unit) -> bool:
+	return command.ours(u) and not autopilot()
+
+
+# An interrupt opened (Battle.interrupt_began) for the player's own unit: they pick the free action (a
+# skill, or End turn to pass). The AI picks for the rest, in Battle itself. The turn it interrupted resumes after.
 func _on_interrupt(u: Unit) -> void:
 	if battle.interrupter != u:
 		return  # stale: already done
-	_log("%s acts out of turn" % _tag(u))
 	if _my_interrupt():
 		select(u)
 		_say("%s: one free action, or End turn to pass" % _name(u))
-		return
-	if pace > 0.0:
-		await _wait(pace)
-		if not is_inside_tree() or battle.interrupter != u:
-			return
-	AI.interrupt(battle, u)
-	_mark()
 
 
 # Units on the player's side: everything about them is known.

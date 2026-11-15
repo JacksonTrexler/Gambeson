@@ -82,6 +82,7 @@ var _resolving: Array[Behaviour.Cast] = []  # casts under way, innermost last: t
 var _aimed: Dictionary[Unit, Dictionary] = {}  # caster -> {target: times it used a skill on it} this battle (aimed())
 var _reacted: Dictionary[Unit, Dictionary] = {}  # holder -> {passive: times it reacted this battle} (times_reacted())
 var interrupter: Unit  # acting out of turn (grant_interrupt()): while set, only it acts (_acting())
+var directed := Callable()  # (unit) -> bool: a person picks that unit's interrupt (the HUD sets it for the player's side); unset, every unit's is the AI's
 var _interrupts: Array = []  # [unit, actions] waiting their turn to interrupt, first first
 var _interrupt_left := 0  # actions the interrupter has left
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
@@ -1139,6 +1140,32 @@ func _swapped(c: Behaviour.Cast, r: Behaviour.Reaction) -> bool:
 	return true
 
 
+# An area skill's blow on u (a cone, a blast: cast_at()) through the moments cast() has: on a foe of a hostile
+# skill's caster, `attacked` before it tries (Gallantry), then `hit` once it lands (Interject), as for one unit,
+# with a cast of its own under way meanwhile (resolving(): Interject's cut). `tries(victim)` is the share of the
+# blow that gets through (Wildfire's dodge; 1 with none; 0 it missed and no `hit` happens); then
+# `strike(victim, share)` does the damage, always, 0 when it missed. A reaction may swap the victim
+# (retarget()): the one that steps in takes it, as in cast(). Allies, the caster and the unaimed get no
+# moment: only a foe is an attack's target. docs/plans/gaps-react-marks.md.
+func area_blow(c: Behaviour.Cast, u: Unit, strike: Callable, tries := Callable()) -> void:
+	var caster := c.caster
+	if not c.skill.hostile or u == caster or Faction.friends(u.faction, caster.faction):
+		strike.call(u, float(tries.call(u)) if tries.is_valid() else 1.0)
+		return
+	var rc := cast_of(caster, c.skill, u, c.rank, true)
+	var depth := _resolving.size()
+	_resolving.append(rc)
+	if _swapped(rc, react(&"attacked", u, caster, rc)):
+		u = rc.target
+	var share := float(tries.call(u)) if tries.is_valid() else 1.0
+	if share > 0.0:
+		if _swapped(rc, react(&"hit", u, caster, rc)):
+			u = rc.target
+		rc.hit = true
+	strike.call(u, share)
+	_resolving.resize(depth)
+
+
 # The one Cast a skill's behaviours share as it's used (Skill.behaviours: Kick), from its payment on:
 # aim(), edge(), guard(), apply(), bonus(), dealt(), felled(). Built by the HUD too, to ask edge() and guard().
 func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Behaviour.Cast:
@@ -1301,6 +1328,8 @@ func _open_interrupt() -> void:
 		_interrupt_ap = AP.new(INTERRUPT_AP, &"skill")
 		u.ap.push_front(_interrupt_ap)  # drawn before any skill-only AP of its own
 		interrupt_began.emit(u)
+		if not (directed.is_valid() and directed.call(u)):
+			AI.interrupt(self, u)  # no one to ask: the AI picks, as headless simulations and the real game alike
 
 
 # The interrupter is done, or passes (the HUD's End turn, the AI with nothing to do): its free AP goes,
@@ -2208,16 +2237,18 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 	var tags := hit_tags(caster, skill)
 	var t := skill.tier(ri)
 	var hit := {}
+	var blasting := cast_of(caster, skill, null, r, skill.hostile)
 	for o: Unit in units.values():
 		if o == caster or not o.is_alive() or Vector2(o.cell).distance_to(Vector2(c)) > blast + 0.0001:
 			continue
-		var power := maxi(t.power + roll(t.dice) * (ri if skill.dice_per_rank else 1) + (m.stat(caster.mod(t.stat, tags), &"stat_impact") if t.stat else 0) + int(requirement(caster, skill, o, r)[1]), 1) if t else 0
-		var was := o.hp
-		o.hit(power * (1.0 + caster.stat(&"damage", tags)), tags, caster)
-		hit[o] = was - o.hp
-		_expose(o)
-		if not o.is_alive() and o.faction != caster.faction:
-			caster.gain(&"kill", 1)
+		area_blow(blasting, o, func(w: Unit, _share: float):
+			var power := maxi(t.power + roll(t.dice) * (ri if skill.dice_per_rank else 1) + (m.stat(caster.mod(t.stat, tags), &"stat_impact") if t.stat else 0) + int(requirement(caster, skill, w, r)[1]), 1) if t else 0
+			var was := w.hp
+			w.hit(power * (1.0 + caster.stat(&"damage", tags)), tags, caster)
+			hit[w] = hit.get(w, 0) + was - w.hp
+			_expose(w)
+			if not w.is_alive() and w.faction != caster.faction:
+				caster.gain(&"kill", 1))
 	_expose(caster)
 	for at in map.get_used_cells():
 		if Vector2(at).distance_to(Vector2(c)) <= blast + 0.0001:
@@ -2969,6 +3000,7 @@ func spring(c: Vector2i, by: Unit) -> void:
 	var raw := roll(t.dice) * t.times + t.bonus
 	for v in units.values().filter(func(x): return x == by or Vector2(x.cell).distance_to(Vector2(c)) <= t.blast + 0.0001):
 		var boost := 1.0 + (by.stat(&"trap_power") if v.faction != by.faction else 0.0)
+		react(&"hit", v, snares[c].by if c in snares and is_instance_valid(snares[c].by) else null)  # (no cast to swap)
 		v.hit(raw * boost, t.damage_tags)
 		for e in t.wounds:  # + 1 on its own turn, which doesn't count
 			var a: Unit.Applied = v.afflict(e, t.wound_turns + (1 if v.faction == turn else 0), t.level)
@@ -4643,7 +4675,9 @@ func form_for(u: Unit) -> Array:
 # Fire a unit takes from a burning tile: 1d8 + its setter's wis mod (at least 1), fire and
 # environmental (Flamedance wards it).
 func flame(u: Unit, f: Flame, why: String) -> void:
-	var n := u.hit(maxi(roll(Vector2i(1, 8)) + f.bonus, 1), [&"fire", &"environmental"] as Array[StringName], f.by if is_instance_valid(f.by) else null)
+	var by: Unit = f.by if is_instance_valid(f.by) else null
+	react(&"hit", u, by)  # a moment with no cast to swap (Behaviour.Reaction.cast is null): the ground did it
+	var n := u.hit(maxi(roll(Vector2i(1, 8)) + f.bonus, 1), [&"fire", &"environmental"] as Array[StringName], by)
 	burned.emit(u, n, why)
 
 

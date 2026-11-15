@@ -37,18 +37,22 @@ func _evadable(c: Cast, cell: Vector2i) -> void:
 	var t := skill.tier(ri)
 	var tags := c.tags
 	var hit := {}
+	var tries := func(w: Unit) -> float:  # the check it imposes: at its rank impact
+		var bane := skill.bane != &"" and w.has_tag(skill.bane)
+		return b.evade(w, Difficulty.dc(&"impossible" if bane else skill.difficulty, ri))
+	var strike := func(w: Unit, share: float) -> void:
+		if share <= 0.0 or not t:
+			hit[w] = hit.get(w, 0)
+			return
+		var bane := skill.bane != &"" and w.has_tag(skill.bane)
+		var dice := Vector2i(t.dice.x * (Difficulty.scaled(skill.dice_scale, ri) if skill.dice_scale else 1), t.dice.y)
+		var power := (t.power + b.roll(dice) + (c.stat_mod(caster.mod(t.stat, tags)) if t.stat else 0) + int(b.requirement(caster, skill, w, c.rank)[1])) * (2 if bane else 1)
+		hit[w] = hit.get(w, 0) + w.hit(power * share * (1.0 + caster.stat(&"damage", tags)), tags, caster)
+		b._expose(w)
 	for u: Unit in b.units.values():
 		if u == caster or not u.is_alive() or not b.in_cone(caster.cell, u.cell, aim, half, long):
 			continue
-		var bane := skill.bane != &"" and u.has_tag(skill.bane)
-		var share := b.evade(u, Difficulty.dc(&"impossible" if bane else skill.difficulty, ri))  # the check it imposes: at its rank impact
-		if share <= 0.0 or not t:
-			hit[u] = 0
-			continue
-		var dice := Vector2i(t.dice.x * (Difficulty.scaled(skill.dice_scale, ri) if skill.dice_scale else 1), t.dice.y)
-		var power := (t.power + b.roll(dice) + (c.stat_mod(caster.mod(t.stat, tags)) if t.stat else 0) + int(b.requirement(caster, skill, u, c.rank)[1])) * (2 if bane else 1)
-		hit[u] = u.hit(power * share * (1.0 + caster.stat(&"damage", tags)), tags, caster)
-		b._expose(u)
+		b.area_blow(c, u, strike, tries)
 	b._expose(caster)
 	for at in b.map.get_used_cells():
 		if at != caster.cell and b.in_cone(caster.cell, at, aim, half, long):
@@ -63,9 +67,11 @@ func _plain(c: Cast, cell: Vector2i) -> void:
 	var aim := Vector2(cell - caster.cell).angle()
 	var long := b.area_reach(caster, c.skill)
 	var hit := {}
+	var strike := func(w: Unit, _share: float) -> void:
+		hit[w] = hit.get(w, 0) + w.hit(b.roll(Vector2i(1, 20)) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
 	for u: Unit in b.units.values():
 		if u == caster or (u.is_alive() and b.in_cone(caster.cell, u.cell, aim, half, long)):
-			hit[u] = u.hit(b.roll(Vector2i(1, 20)) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
+			b.area_blow(c, u, strike)
 	for at in b.map.get_used_cells():
 		if at != caster.cell and b.in_cone(caster.cell, at, aim, half, long):
 			b.expose(at, [&"fire"] as Array[StringName], caster)
