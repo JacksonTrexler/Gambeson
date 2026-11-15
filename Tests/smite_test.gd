@@ -17,8 +17,7 @@ func smiter(god: StringName, r := 1) -> Unit:
 	u.charisma = 40
 	u.learned.append(slot(smite, r))
 	u.refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(3).armor = null
 	return u
 
@@ -90,10 +89,8 @@ func test_drael() -> void:
 
 func test_vetruvis() -> void:
 	var u := smiter(&"vetruvis", 2)
-	v(4).max_hp = 300
-	v(4).hp = 300
-	v(1).max_hp = 300
-	v(1).hp = 300
+	soak(v(4), 300)
+	soak(v(1), 300)
 	b._smite(u, v(3), 2, 30)
 	ok(v(4).hp == 300 - 15 or v(4).hp == 300 - 14, "a tile away: 30 / 2 (%d)" % (300 - v(4).hp))
 	ok(v(1).hp == 290, "two away, an ally too: 30 / 3 (%d)" % (300 - v(1).hp))

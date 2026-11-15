@@ -52,8 +52,7 @@ func test_shields_up() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3), v(4): Vector2i(2, 3)})
 	v(1).learned.append(slot(shields_up, 2))
 	v(1).refresh()
-	v(1).max_hp = 1000
-	v(1).hp = 1000
+	soak(v(1), 1000)
 	var plain := v(1).hit(100, [&"physical"] as Array[StringName], v(3))
 	ok(b.cast_at(v(1), shields_up, Vector2i(6, 3)), "faces a tile")
 	ok(v(1).guard and v(1).facing == Vector2(1, 0) and is_equal_approx(v(1).stat(&"guard"), 0.4), "rank II: 20% + 10% x 2")
@@ -110,8 +109,7 @@ func test_jugular_crits() -> void:
 	v(1).energy = 50
 	v(1).weapon = null
 	v(3).armor = null
-	v(3).max_hp = 1000
-	v(3).hp = 1000
+	soak(v(3), 1000)
 	var rolls := []
 	b.attacked.connect(func(_c, _t, d20, _total, _def): rolls.append(d20))
 	v(1).refresh()
@@ -130,8 +128,7 @@ func test_jugular_recasts() -> void:
 	j.cost = 0
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).learned.append(slot(j, 1))
-	v(3).max_hp = 1000000
-	v(3).hp = 1000000
+	soak(v(3), 1000000)
 	var rolls := []
 	b.attacked.connect(func(_c, _t, d20, _total, _def): rolls.append(d20))
 	for i in 200:

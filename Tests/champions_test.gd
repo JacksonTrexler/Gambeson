@@ -64,8 +64,7 @@ func test_hex_iii() -> void:
 	b.attacked.connect(func(_c, _t, d: int, _total, _def): d20[0] = d)
 	for seed in 60:
 		b.rng.seed = seed
-		v(1).max_hp = 50
-		v(1).hp = 50  # a reset, not a heal: no Burnout
+		soak(v(1), 50)  # a reset, not a heal: no Burnout
 		v(1).timed.clear()
 		icor().set_store(mana, 12)
 		icor().refresh()

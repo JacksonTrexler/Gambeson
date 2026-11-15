@@ -25,8 +25,7 @@ func test_no_drowning() -> void:
 	var siren: Unit = b.get_node("Units/Siren")
 	stage(nemes, {siren: Vector2i(1, 1), v(1): Vector2i(2, 1)})
 	var c := Vector2i(2, 1)
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	v(1).tags.append(&"aquatic")
 	siren.strength = 20
 	var a := v(1).afflict(drown.effects[0], 0, 1)

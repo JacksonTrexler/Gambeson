@@ -11,8 +11,7 @@ func test_tow() -> void:
 	v(1).strength = 60
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(3).strength = 1
 	v(3).dexterity = 1
 	ok(b.cast(v(1), hitch, v(3)), "used")

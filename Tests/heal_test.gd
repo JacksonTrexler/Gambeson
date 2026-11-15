@@ -99,8 +99,7 @@ func test_snare_bleeds() -> void:
 	v(3).refresh()
 	ok(b.cast_at(v(3), snare, Vector2i(2, 2)), "a snare, laid")
 	b.end_turn()
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	b.travel(v(1), Vector2i(2, 2))
 	var bleed: Effect = snare.lays.wounds[0]
 	ok(bleed in v(1).timed and v(1).timed[bleed].rank == 2 and v(1).timed[bleed].turns == 2 + 2 + 1,

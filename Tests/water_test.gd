@@ -64,8 +64,7 @@ func test_drowning_needs_water() -> void:
 	var c := dry_cell()
 	b.move(v(1), c)
 	b.move(siren(), c + Vector2i(-1, 0) if b.on_map(c + Vector2i(-1, 0)) and not b.unit_at(c + Vector2i(-1, 0)) else c + Vector2i(1, 0))
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	siren().strength = 20  # every drowning hurts
 	var a := v(1).afflict(drown.effects[0], 0, 1)
 	a.lasting = true

@@ -26,8 +26,7 @@ func test_properties() -> void:
 	ok(&"rotting" in u.tags, "a property's tags are the unit's: it counts as rotting")
 	ok(is_equal_approx(u.mitigation([&"fire"]), -0.5) and is_equal_approx(u.mitigation([&"dark"]), 0.25),
 			"Rotting: fire takes half again (%s), darkness a quarter less (%s)" % [u.mitigation([&"fire"]), u.mitigation([&"dark"])])
-	u.max_hp = 100
-	u.hp = 100
+	soak(u, 100)
 	ok(u.hit(10, [&"fire"] as Array[StringName]) >= 15, "a fire hit of 10 lands 15")
 	v(1).afflict(effect("recon", 3), 9)
 	ok(b.read(v(1), u).properties == [rotting], "whoever makes out its identity reads what it's made of")
@@ -99,8 +98,7 @@ func test_aggressive_heals_last() -> void:
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(4, 4), v(2): Vector2i(4, 5), v(3): Vector2i(5, 4)})
 	v(2).hp = 2
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	v(1).bio = bio(&"aggressive")
 	var log := AI.act(b, v(1))
 	var hit := log.find_custom(func(x: String): return x.contains("uses Strike"))

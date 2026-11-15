@@ -83,8 +83,7 @@ func test_drown() -> void:
 	var grips := []
 	b.struggled.connect(func(_u: Unit, _by: Unit, total: int, against: int): struggles.append([total, against]))
 	b.gripped.connect(func(_u: Unit, _by: Unit, dealt: int): grips.append(dealt))
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	b.end_turn()  # v(1)'s side's turn
 	var away := func() -> Vector2i: return v(1).cell + (v(1).cell - siren().cell) * 2
 	ok(b.escape_cost(v(1)) == 16.0 and b.travel(v(1), away.call()).is_empty() and struggles.is_empty(),
@@ -125,8 +124,7 @@ func test_drown() -> void:
 func test_holds_on() -> void:
 	var drown: Skill = load("res://Skills/drown.tres")
 	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(8, 5), v(2): Vector2i(1, 1)})
-	v(1).max_hp = 99
-	v(1).hp = 99
+	soak(v(1), 99)
 	v(1).strength = 5
 	siren().strength = 40
 	siren().refresh()

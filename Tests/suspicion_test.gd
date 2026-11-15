@@ -46,8 +46,7 @@ func test_doubt() -> void:
 	var looks := []
 	b.doubted.connect(func(by: Unit, of: Unit, total: int, against: int): looks.append([by, of, total, against]))
 	ok(b.read(v(2), siren()).deceived, "enraptured")
-	v(2).max_hp = 99
-	v(2).hp = 99
+	soak(v(2), 99)
 	v(2).charisma = 1  # keeps what it sees through to itself (Battle.spread())
 	siren().strength = 40
 	siren().refresh()

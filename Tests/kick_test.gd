@@ -18,8 +18,7 @@ func kicker(r := 2, at := AT) -> Unit:
 	v(1).strength = 40
 	v(1).refresh()
 	stage(lancin, {v(1): FROM, v(3): at})
-	v(3).max_hp = 300
-	v(3).hp = 300
+	soak(v(3), 300)
 	return v(1)
 
 

@@ -30,8 +30,7 @@ func first_bonus(u: Unit, t: Unit) -> int:
 
 func test_discipline() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(4, 3)})
-	v(3).max_hp = 999
-	v(3).hp = 999
+	soak(v(3))
 	var d := sk("discipline")
 	v(1).learned.append(slot(d, 2))
 	v(1).toggle(d)

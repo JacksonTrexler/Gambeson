@@ -39,8 +39,7 @@ func test_borrowed_chip() -> void:
 	v(3).learned.append(slot(borrowed, 2))
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
 	v(3).refresh()
-	v(3).max_hp = 100
-	v(3).hp = 100
+	soak(v(3), 100)
 	var h := await hud(v(3))
 	ok(not h._info(v(3)).chips.any(func(c): return c[0].begins_with("Borrowed")), "no chip before it's borrowing")
 	v(3).damage(20)

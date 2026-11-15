@@ -13,8 +13,7 @@ func test_resuscitate() -> void:
 	v(2).learned.append(slot(tenacity, 3))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
-	v(2).max_hp = 100
-	v(2).hp = 100
+	soak(v(2), 100)
 	ok(not b.cast(v(1), resuscitate, v(2)), "not on a standing ally")
 	v(2).damage(100)
 	v(2).damage(30)
