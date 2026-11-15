@@ -137,8 +137,9 @@ func test_area() -> void:
 	var solar: Skill = load("res://Skills/solar.tres")
 	v(1).trinket = emblem(&"rho_down", &"sigil")
 	learn(v(1), solar, 2)
-	var wide := solar.cone_at(2, v(1))
-	ok(is_equal_approx(wide, solar.cone + 15.0 * (2 * 1.75 - 1.0)) and wide > solar.cone_at(2), "Diluted: Solar's cone + 15 a rank, its rank x1.75 (%s)" % wide)
+	var cone = solar.behaviour(&"cone")
+	var wide: float = cone.width(2, v(1).mods(solar))
+	ok(is_equal_approx(wide, cone.degrees + 15.0 * (2 * 1.75 - 1.0)) and wide > cone.width(2), "Diluted: Solar's cone + 15 a rank, its rank x1.75 (%s)" % wide)
 	ok("A %d degree cone" % roundi(wide) in solar.describe(2, v(1)), solar.describe(2, v(1)))
 
 

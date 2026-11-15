@@ -53,6 +53,18 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# A skill cast on a tile rather than a unit (Battle.cast_at(): Flamewall, Solar, Observe), paid for and
+# aimed at `cell`: what it does there. c has no target. A behaviour that has this says so in tile_target().
+func apply_at(_c: Cast, _cell: Vector2i) -> void:
+	pass
+
+
+# How a skill it's on is aimed, if apply_at() makes it a tile skill (Skill.on_tile(), Skill.target()):
+# &"tile", or &"area" for one that covers ground around the tile (a cone, a zone); empty: not on a tile.
+func tile_target() -> StringName:
+	return &""
+
+
 # Once the skill is paid for and aimed, before any roll (Battle.cast()): what comes first (Sutemi's
 # lunge, Poach's discount). The cast's target may still be missed.
 func aim(_c: Cast) -> void:
