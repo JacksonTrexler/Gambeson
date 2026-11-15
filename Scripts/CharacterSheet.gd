@@ -28,7 +28,8 @@ func _init() -> void:
 
 
 # Shows u's sheet; editable: its items can be changed now.
-func open(u: Unit, editable: bool) -> void:
+# r: how the viewing side reads u (Battle.read()), for a unit that isn't its own; null shows u's whole bio.
+func open(u: Unit, editable: bool, r: Read = null) -> void:
 	unit = u
 	for c in _column.get_children():
 		_column.remove_child(c)
@@ -45,6 +46,16 @@ func open(u: Unit, editable: bool) -> void:
 	var hearts := " · %d of %d hearts left" % [u.lives_left(), u.lives()] if u.lives() > 0 else ""
 	var xp := "max level" if u.level >= Unit.MAX_LEVEL else "%d / %d XP" % [u.xp, Unit.xp_to_next(u.level)]
 	_column.add_child(_muted("%s · Lv %d · %s%s" % [who, u.lv(), xp, hearts]))
+	var bio := Bio.line(u, r)
+	if bio:
+		var l := RichTextLabel.new()
+		l.name = "Bio"
+		l.bbcode_enabled = true
+		l.fit_content = true
+		l.scroll_active = false
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		l.text = Glossary.rich(bio)
+		_column.add_child(l)
 	for slot in SLOTS:
 		var it: Item = u.get(slot)
 		var row := HBoxContainer.new()
