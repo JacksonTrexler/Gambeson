@@ -86,6 +86,8 @@ func _draw() -> void:
 	_gap(sel)
 	if sel and hud.aiming():
 		_draw_targeting(sel, hud.armed, pulse)
+	if sel and hud.picking():
+		_draw_picks(pulse)
 	for c in hud.traps:
 		_caltrop(c, GOLD if hud.traps[c] else FOE)
 	for u in cmd.party:
@@ -166,6 +168,14 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 		_brackets(_rect(u.cell, 1.5), Color(mark, pulse), 6.0)
 		if u.cell == hud.hover:
 			draw_rect(_rect(u.cell, 1.5), Color(mark, 0.18))
+
+
+# The foes picked by hand (HUD.picked): brackets and their number, of the most the skill takes.
+func _draw_picks(pulse: float) -> void:
+	for i in hud.picked.size():
+		var at: Vector2i = hud.picked[i].cell
+		_brackets(_rect(at, 1.5), Color(FOE, 0.6 + 0.4 * pulse), 6.0)
+		draw_string(ThemeDB.fallback_font, _rect(at).position + Vector2(TILE - 6, 8), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(FOE, 1.0))
 
 
 # The target's brackets say how likely the hit is (HUD.odds()): solid likely, broken even, faint

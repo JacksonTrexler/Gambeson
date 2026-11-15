@@ -89,6 +89,7 @@ var directed := Callable()  # (unit) -> bool: a person picks that unit's interru
 var _interrupts: Array = []  # [unit, actions] waiting their turn to interrupt, first first
 var _interrupt_left := 0  # actions the interrupter has left
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
+var _picked: Array[Unit] = []  # the units the outermost cast()'s caster picked by hand
 var _casting := 0  # cast() / cast_at() calls under way: an interrupt opens once the outermost is done
 var _reacting := 0  # react() calls under way: an interrupt granted in one opens after it
 var _settling: Unit  # falling after its interrupt (_settle())
@@ -817,11 +818,15 @@ func _flip(g: Array) -> Array:
 # while (Unit.disable_order()). An automatic skill (Sing) is used on the caster and lands on the nearest units in range
 # (auto_targets()), paid once. A traitor told to turn a hostile skill on its real allies refuses, or
 # with a positive cha mod misses on purpose - and either way its leader looks harder at it.
-func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
+func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: Array[Unit] = []) -> bool:
 	var depth := _resolving.size()
+	if _casting == 0:
+		_picked = picked
 	_casting += 1
 	var done := _cast(caster, skill, target, spreading)
 	_casting -= 1
+	if _casting == 0:
+		_picked = []
 	_resolving.resize(depth)
 	_done_casting(caster, done)
 	return done
@@ -1201,7 +1206,17 @@ func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Beh
 	c.foe = foe
 	c.mods = caster.mods(skill)  # read scaled values through them (impact_rank(), stat_mod())
 	c.tags = hit_tags(caster, skill, target if foe else null, self)
+	c.picked = _picked  # what the outermost cast's caster picked by hand (Behaviour.picks())
 	return c
+
+
+# How many targets caster may pick by hand for skill (its behaviours' picks()).
+func picks_of(caster: Unit, skill: Skill) -> int:
+	var c := cast_of(caster, skill, caster, caster.rank(skill), false)
+	var n := 0
+	for bh in skill.behaviours:
+		n += bh.picks(c)
+	return n
 
 
 # The edge on a skill's attack roll: its own advantage or disadvantage, plus its behaviours' (Gank),
