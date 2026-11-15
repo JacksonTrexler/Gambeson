@@ -50,8 +50,15 @@ func _initialize() -> void:
 			var start := Time.get_ticks_msec()
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(Prefs.SAVE))
 			var t: Test = suite.new()
-			Game.level = 1  # a player's starter levelled by an earlier test's battle doesn't carry over
+			# What one test leaves in Game's statics (a starter, its level, outfit, hearts, the stash) doesn't carry over.
+			Game.starter = {}
+			Game.difficulty = 0.0
+			Game.dungeon = null
+			Game.outfit = {}
+			Game.level = 1
 			Game.xp = 0
+			Game.hearts = 0
+			Game.stash = []
 			var scene: Node = museum.instantiate()
 			scene.get_node("Battle").rng.seed = 1
 			root.add_child(scene)
