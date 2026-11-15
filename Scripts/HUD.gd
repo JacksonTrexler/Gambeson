@@ -535,7 +535,7 @@ func use_slot(i: int) -> void:
 			persona.open(u, s, Battle.persona_rank(u, s))
 	elif s.passive:
 		switch(u, s)
-	elif Imbue.of(s):
+	elif s.behaviour(&"imbue"):
 		if not u.can_afford(s):
 			_refuse(u, _short(u, s))
 		else:
@@ -893,7 +893,7 @@ func hand(u: Unit) -> bool:
 # Elemental Strike: a choice of its elements; the pick imbues u's Strikes (Behaviours/imbue.gd).
 func _pick_element(u: Unit, s: Skill) -> void:
 	var picks := []
-	for el in Imbue.of(s).elements:
+	for el in s.behaviour(&"imbue").elements:
 		picks.append([String(el).capitalize(), func() -> void:
 			u.element = el
 			if battle.cast(u, s, u):

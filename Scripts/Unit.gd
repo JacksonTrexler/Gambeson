@@ -708,7 +708,7 @@ func unshape() -> void:
 
 # Whether it can use s as it is now: shaped, only Strike, beast skills (tagged beast) and Beastshape (to turn back).
 func shaped_allows(s: Skill) -> bool:
-	return not form or s.chain or &"beast" in s.tags or s.behaviours.any(func(b: Behaviour): return b is Beastshape)
+	return not form or s.chain or &"beast" in s.tags or s.behaviour(&"beastshape") != null
 
 
 static func _haste() -> Effect:

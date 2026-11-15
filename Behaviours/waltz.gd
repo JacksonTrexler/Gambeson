@@ -1,4 +1,3 @@
-class_name Waltz
 extends Behaviour
 
 # Waltz of Vapors: fog around its caster, radius rank + the better of its dex and cha mods, concealing at

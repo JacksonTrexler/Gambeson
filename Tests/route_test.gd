@@ -137,8 +137,9 @@ func test_area() -> void:
 	var solar: Skill = load("res://Skills/solar.tres")
 	v(1).trinket = emblem(&"rho_down", &"sigil")
 	learn(v(1), solar, 2)
-	var wide := solar.cone_at(2, v(1))
-	ok(is_equal_approx(wide, solar.cone + 15.0 * (2 * 1.75 - 1.0)) and wide > solar.cone_at(2), "Diluted: Solar's cone + 15 a rank, its rank x1.75 (%s)" % wide)
+	var cone = solar.behaviour(&"cone")
+	var wide: float = cone.width(2, v(1).mods(solar))
+	ok(is_equal_approx(wide, cone.degrees + 15.0 * (2 * 1.75 - 1.0)) and wide > cone.width(2), "Diluted: Solar's cone + 15 a rank, its rank x1.75 (%s)" % wide)
 	ok("A %d degree cone" % roundi(wide) in solar.describe(2, v(1)), solar.describe(2, v(1)))
 
 
@@ -165,7 +166,7 @@ func test_flamewall() -> void:
 func test_aura() -> void:
 	var glow := Skill.new()
 	glow.name = "Glow ??"
-	glow.behaviours = [Aura.new()] as Array[Behaviour]
+	glow.behaviours = [load("res://Behaviours/aura.gd").new()] as Array[Behaviour]
 	glow.hostile = false
 	glow.self_only = true
 	glow.turns = 2
@@ -260,7 +261,7 @@ func test_behaviours_everywhere() -> void:
 	glow.hostile = false
 	glow.self_only = true
 	glow.ap = 1.0
-	glow.behaviours = [Aura.new(), spy2] as Array[Behaviour]
+	glow.behaviours = [load("res://Behaviours/aura.gd").new(), spy2] as Array[Behaviour]
 	learn(v(1), glow, 1)
 	b.cast(v(1), glow, v(1))
 	ok(spy2.landed == 1, "an aura's early return runs them too")

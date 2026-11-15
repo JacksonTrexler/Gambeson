@@ -32,6 +32,7 @@ class_name AI
 const KILL := 5.0  # bonus for a hit that should finish the target
 const HATE := 2.0  # per point of ominous aura
 const GUESS_HP := 10.0  # when it can't make out a target's HP
+const OBSERVE := preload("res://Behaviours/observe.gd")  # how far an Observe looks (_search())
 const CRAVEN_REACH := 3  # tiles within which a craven unit wants a higher-level ally before it advances
 const COMMANDER := 0.25  # how much most healers favour a commander
 const PARTY := 1.0  # how much a loyal healer favours its party
@@ -270,10 +271,10 @@ static func _unshackle(b: Battle, u: Unit, log: Array[String]) -> void:
 
 
 # DEFEND: uses u's best self-protective skill on itself (Skill.serves defensive), if it has one it can
-# afford; otherwise it holds. One aimed at a tile (Shields Up!) faces the nearest foe it makes out.
+# afford; otherwise it holds. One aimed at a tile (Shields Up!) is aimed at the nearest foe it makes out.
 static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
 	var s := u.intent_skill(&"defensive")
-	if s and s.guards:
+	if s and s.on_tile():
 		var near: Variant = null
 		for o: Unit in b.units.values():
 			var r := b.read(u, o)
@@ -413,8 +414,8 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 	var clues := b.suspicious(u) + b.evidence(u)
 	if clues.is_empty():
 		return false
-	for s in u.actives.filter(func(x: Skill): return x.observes and u.can_afford(x)):
-		var look := maxi(u.mod(&"wisdom"), 1) + mini(u.mods(s).irank(u.rank(s), &"rank_impact"), roundi(u.stat(&"wisdom")))  # as Battle.observe() is given it
+	for s in u.actives.filter(func(x: Skill): return x.behaviour(&"observe") and u.can_afford(x)):
+		var look := OBSERVE.reach(u, u.mods(s).irank(u.rank(s), &"rank_impact"))  # as it looks when cast
 		var reach := b.area_reach(u, s)
 		var best: Variant = null
 		var most := 0
@@ -499,7 +500,7 @@ static func _luring(b: Battle, u: Unit, reads: Dictionary) -> bool:
 # otherwise it floods the tile of a foe in reach that isn't under water yet (Well Up), and strikes and
 # closes in as any unit would (false: the usual turn goes on).
 static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], rooted: bool) -> bool:
-	for s in u.actives.filter(func(x: Skill): return x.behaviours.any(func(b: Behaviour): return b is Waltz) and u.can_afford(x)):
+	for s in u.actives.filter(func(x: Skill): return x.behaviour(&"waltz") and u.can_afford(x)):
 		if b.cast(u, s, u):
 			log.append("%s waltzes in a fog" % u.name)
 	if b.inside.has(u):
@@ -519,7 +520,7 @@ static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], r
 			if target and b.in_reach(u, s, target) and u.can_afford(s) and b.cast(u, s, target):
 				log.append("%s coalesces into %s" % [u.name, target.name])
 		return true
-	for s in u.actives.filter(func(x: Skill): return x.wells and u.can_afford(x)):
+	for s in u.actives.filter(func(x: Skill): return x.behaviour(&"well_up") and u.can_afford(x)):
 		for t: Unit in reads:
 			var r: Read = reads[t]
 			if t.is_alive() and _foe(u, r) and not b.submerged(t) and Vector2(u.cell).distance_to(Vector2(r.cell)) <= b.area_reach(u, s) + 0.0001 \

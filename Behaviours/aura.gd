@@ -1,4 +1,3 @@
-class_name Aura
 extends Behaviour
 
 # An aura (Flamecharm, Flamedance): used on itself, its skill's effects go on every ally within rank

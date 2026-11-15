@@ -1116,13 +1116,17 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 
 
 # The skill a Cast is for has landed: past its attack roll, save or contest, or on a path with none.
-# Its behaviours do what they do (Behaviour.apply()). Every landing path in cast() comes through here.
-func _land(c: Behaviour.Cast) -> void:
+# Its behaviours do what they do (Behaviour.apply()). Every landing path in cast() comes through here;
+# cast_at() too, giving `at`, the tile it's cast on: then they do what they do there (apply_at()).
+func _land(c: Behaviour.Cast, at: Variant = null) -> void:
 	if not c:
 		return
 	c.hit = true
 	for bh in c.skill.behaviours:
-		bh.apply(c)
+		if at is Vector2i:
+			bh.apply_at(c, at)  # cast on a tile (cast_at())
+		else:
+			bh.apply(c)
 
 
 # Whether reaction r swapped its cast's target: the cast's tags are taken afresh for the new one
@@ -1711,13 +1715,6 @@ func survey(o: Unit, center: Vector2i, rested: int) -> int:
 	return n
 
 
-# Observe: o searches every tile within max(wis mod, 1) + rank of `center`, as if it had rested rank
-# turns (+rank, capped at its wis) - not just what looks suspicious: where to look is its to judge.
-func observe(o: Unit, center: Vector2i, rank: int) -> int:
-	var r := mini(rank, roundi(o.stat(&"wisdom")))
-	var reach := maxi(o.mod(&"wisdom"), 1) + r
-	return search(o, map.get_used_cells().filter(func(c: Vector2i): return Command.tiles(center, c) <= reach), center, r)
-
 
 # An investigation skill's look (Observe, Eyes Forward): o inspects every one of `cells` but its own,
 # at +bonus, from `center`. How many it grew suspicious of.
@@ -2084,7 +2081,7 @@ func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
 # not quite in reach of what is - it's spent on thin air, as long as the tile itself was in reach
 # of a Medium target. Returns &"hit", &"miss", or &"" when it couldn't be tried at all.
 func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
-	if not _acting(caster) or skill not in caster.actives or not skill.for_foes() or skill.zone != &"" or not on_map(c):
+	if not _acting(caster) or skill not in caster.actives or not skill.for_foes() or skill.behaviour(&"zone") or not on_map(c):
 		return &""
 	var t := unit_at(c)
 	if t and t != caster and cast(caster, skill, t):
@@ -2106,8 +2103,8 @@ func _expose(u: Unit) -> void:
 		u.exposed += 1
 
 
-# Skills cast on a cell, within area_reach(): area skills (Darkstone) lay their zone kind of
-# concealment on the tiles around it (see zone_levels()); trap skills (Snare) lay a trap there (lay());
+# Skills cast on a cell, within area_reach(): most do what their behaviours do there (Behaviour.apply_at():
+# Darkstone's zone, Flamewall, Solar and Wildfire's cones, Observe, Shields Up!, Well Up); trap skills (Snare) lay a trap there (lay());
 # channeled skills (Metea) begin channeling there, and once begun strike where they can (_detonate()).
 # A Rift is channeled unless `held` is false (Alt-click): then its count starts at once.
 func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
@@ -2139,29 +2136,16 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		return false
 	caster.face(c)
 	_burn(caster, skill)
-	if skill.flamewall:
-		_flamewall(caster, skill, c)
-	elif skill.cone > 0.0:
-		if skill.evadable:
-			_wildfire(caster, skill, c)
-		else:
-			_solar(caster, skill, c)
-	elif skill.channel:
+	if skill.channel:
 		end_channel(caster)
 		caster.channel = Unit.Channel.new(skill, c)
 		channeled.emit(caster, skill, c)
-	elif skill.observes:
-		observe(caster, c, caster.mods(skill).irank(caster.rank(skill), &"rank_impact"))
-	elif skill.guards:
-		_guard(caster, skill, c)
-	elif skill.wells:
-		well_up(caster, skill, c)
 	elif skill.rifts:
 		open_rift(caster, skill, c, held)
 	elif skill.lays:
 		lay(caster, skill, c)
 	else:
-		zones.append(Zone.new(skill.zone, zone_levels(caster.mods(skill).irank(caster.rank(skill), &"rank_impact"), c), skill.turns, caster.faction))  # its levels: rank impact
+		_land(cast_of(caster, skill, null, caster.rank(skill), skill.hostile), c)  # its behaviours' apply_at() (Flamewall, Solar, Observe...)
 	caster.striding = false
 	used.emit(caster, skill, c, 0)
 	return true
@@ -2575,7 +2559,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 			debris.erase(c)
 		for c in passed:  # walking into fire, and onto marks
 			if c in flames and u.is_alive():
-				_flame(u, flames[c], "walks into fire")
+				flame(u, flames[c], "walks into fire")
 			if c in marks and u.is_alive():
 				_trigger(u, c, &"enter")
 		_toll(u, passed, began)  # what it costs to walk, tile by tile
@@ -2741,7 +2725,7 @@ func foresight_allowance(u: Unit) -> int:
 # &"ap"): the one estimate behind the HUD's forecast (HUD.hazard()) and what route() steers by. A known
 # trap's dice (times x the average + bonus) and its wounds; the effects ordinary ground it has read
 # puts on whoever steps there (afflicts); and fire on the tile (1d8 + its setter's wis mod, at least 1:
-# _flame(), plainly visible to everyone). Effects that last count each tick they take HP: a bleed (dice
+# flame(), plainly visible to everyone). Effects that last count each tick they take HP: a bleed (dice
 # average + the setter's mod, at least 1, else its amount: _bleed()) and poison (amount x max HP) every
 # turn of their length; winded takes AP once. All before mitigation, as a hit isn't rolled. {}: nothing
 # foreseen. Only what `r` makes out counts: an unseen trap or ground it can't read owes nothing.
@@ -3581,7 +3565,7 @@ func end_turn() -> void:
 		_grip(u)
 		_bleed(u)
 		if u.is_alive() and u.cell in flames:
-			_flame(u, flames[u.cell], "ends its turn in fire")
+			flame(u, flames[u.cell], "ends its turn in fire")
 		if u.is_alive() and u.cell in marks:
 			_trigger(u, u.cell, &"end")
 	side = members(turn)  # a grip can drown one, a wound bleed one out
@@ -3738,14 +3722,6 @@ func engulf(u: Unit, t: Unit) -> void:
 	u.position = map.map_to_local(t.cell)
 	inside[u] = t
 
-
-# Well Up at c: floods c rank deep and the tiles beside it a rank less, for rank of its side's turns.
-func well_up(u: Unit, s: Skill, c: Vector2i) -> void:
-	var r := u.mods(s).irank(u.rank(s), &"rank_impact")  # its depth and turns
-	for dx in [-1, 0, 1]:
-		for dy in [-1, 0, 1]:
-			var at := c + Vector2i(dx, dy)
-			flood(at, r if at == c else r - 1, r, u)
 
 
 # u steps out through an escape portal: its side wins the battle at once (the Meadows).
@@ -3937,7 +3913,7 @@ func interrupt(u: Unit) -> Array[StringName]:
 			u.timed.erase(e)
 			if &"hiding" not in ended:
 				ended.append(&"hiding")
-		elif a.skill and a.skill.guards:
+		elif a.skill and a.skill.behaviour(&"guard"):
 			u.timed.erase(e)
 	if u.guard:
 		u.guard = false
@@ -4666,40 +4642,13 @@ func form_for(u: Unit) -> Array:
 
 # Fire a unit takes from a burning tile: 1d8 + its setter's wis mod (at least 1), fire and
 # environmental (Flamedance wards it).
-func _flame(u: Unit, f: Flame, why: String) -> void:
+func flame(u: Unit, f: Flame, why: String) -> void:
 	var n := u.hit(maxi(roll(Vector2i(1, 8)) + f.bonus, 1), [&"fire", &"environmental"] as Array[StringName], f.by if is_instance_valid(f.by) else null)
 	burned.emit(u, n, why)
 
 
-# Flamewall, cast on c: c and rank tiles to either side of it, across the caster's line to it, catch
-# fire for rank of the caster's side's turns. A unit standing on one makes a dex check against the
-# caster's d20 + wis mod to get clear; failing, it burns at once.
-# Its width is rank range, its turns rank impact (its caster's modifiers).
-func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
-	var r := caster.rank(skill)
-	var m := caster.mods(skill)
-	var d := Vector2i(signi(c.x - caster.cell.x), signi(c.y - caster.cell.y))
-	var across := Vector2i(-d.y, d.x) if d != Vector2i.ZERO else Vector2i(1, 0)
-	var tiles: Array[Vector2i] = [c]
-	for i in range(1, m.irank(r, &"rank_range") + 1):
-		tiles.append(c + across * i)
-		tiles.append(c - across * i)
-	for t in tiles:
-		if not on_map(t) or terrain(t).douses:  # no fire on water
-			continue
-		flames[t] = Flame.new(caster, m.irank(r, &"rank_impact"))
-		var u := unit_at(t)
-		if u and u.is_alive():
-			var vs := check(u, &"dexterity", caster, &"wisdom", {role = &"defensive", their_tags = caster.skill_tags(skill), ties = false})  # the wall wins ties
-			contested.emit(u, caster, vs.mine.total, vs.theirs.total)
-			if not vs.won:
-				_flame(u, flames[t], "is caught in the wall")
-
-
-# Solar, cast toward c: a cone of the skill's degrees (+ 15 a rank past I), its range long, from the
-# caster; everyone in it - the caster too - takes d20 + the caster's wis score in fire.
 # Whether `at` lies in a cone from `from`, aimed at angle `aim`, `half` radians to either side, `long`
-# tiles out.
+# tiles out (Behaviours/cone.gd: Solar, Wildfire).
 func in_cone(from: Vector2i, at: Vector2i, aim: float, half: float, long: float) -> bool:
 	var to := Vector2(at - from)
 	return to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001
@@ -4716,56 +4665,6 @@ func evade(u: Unit, dc: int) -> float:
 	var share := 0.0 if roll.hit else (0.5 if roll.total >= ceili(dc * 0.75) else 1.0)
 	evaded.emit(u, roll.total, dc, share)
 	return share
-
-
-# Wildfire, aimed at c: a cone of the skill's degrees, `reach_scale` of its rank in tiles, landing on
-# every unit in it but the caster. Each tries to dodge (evade(): the skill's difficulty at its rank);
-# what lands is its tier's dice x `dice_scale` of its rank + its stat's mod. A unit of its bane (earth)
-# dodges at impossible and, hit, is hit as a crit. Every tile in the cone burns (expose()).
-func _wildfire(caster: Unit, skill: Skill, c: Vector2i) -> void:
-	var r := caster.rank(skill)
-	var half := deg_to_rad(skill.cone) / 2.0
-	var long := area_reach(caster, skill)
-	var aim := Vector2(c - caster.cell).angle()
-	var m := caster.mods(skill)
-	var ri := m.irank(r, &"rank_impact")
-	var t := skill.tier(ri)
-	var tags := hit_tags(caster, skill)
-	var hit := {}
-	for u: Unit in units.values():
-		if u == caster or not u.is_alive() or not in_cone(caster.cell, u.cell, aim, half, long):
-			continue
-		var bane := skill.bane != &"" and u.has_tag(skill.bane)
-		var share := evade(u, Difficulty.dc(&"impossible" if bane else skill.difficulty, ri))  # the check it imposes: at its rank impact
-		if share <= 0.0 or not t:
-			hit[u] = 0
-			continue
-		var dice := Vector2i(t.dice.x * (Difficulty.scaled(skill.dice_scale, ri) if skill.dice_scale else 1), t.dice.y)
-		var power := (t.power + roll(dice) + (m.stat(caster.mod(t.stat, tags), &"stat_impact") if t.stat else 0) + int(requirement(caster, skill, u, r)[1])) * (2 if bane else 1)
-		hit[u] = u.hit(power * share * (1.0 + caster.stat(&"damage", tags)), tags, caster)
-		_expose(u)
-	_expose(caster)
-	for at in map.get_used_cells():
-		if at != caster.cell and in_cone(caster.cell, at, aim, half, long):
-			expose(at, tags, caster)
-	exploded.emit(caster, skill, c, hit)
-
-
-func _solar(caster: Unit, skill: Skill, c: Vector2i) -> void:
-	var r := caster.rank(skill)
-	var half := deg_to_rad(skill.cone_at(r, caster)) / 2.0
-	var aim := Vector2(c - caster.cell).angle()
-	var long := area_reach(caster, skill)
-	var hit := {}
-	for u: Unit in units.values():
-		var to := Vector2(u.cell - caster.cell)
-		if u == caster or (u.is_alive() and to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001):
-			hit[u] = u.hit(roll(Vector2i(1, 20)) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
-	for at in map.get_used_cells():
-		var to := Vector2(at - caster.cell)
-		if at != caster.cell and to.length() <= long + 0.0001 and absf(angle_difference(aim, to.angle())) <= half + 0.0001:
-			expose(at, [&"fire"] as Array[StringName], caster)
-	exploded.emit(caster, skill, c, hit)
 
 
 # Using a skill from a burning slot (Unit.burning_slots()) burns its user.
@@ -4905,19 +4804,6 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0
 	leveled.emit(caster, t, hits)
 	return hits
 
-
-# Shields Up!, aimed at c: its user faces c behind its shield (Unit.guard) - damage from a source whose
-# tile lies within the 90 degree cone that way is cut by its effects - until its next turn.
-func _guard(caster: Unit, skill: Skill, c: Vector2i) -> void:
-	var r := caster.rank(skill)
-	caster.guard = true
-	caster.face(c)
-	for e in skill.effects:
-		var n := e.turns if e.turns else maxi(skill.lasts(r, caster), 1)
-		var a := caster.afflict(e, n + (1 if caster.faction == turn else 0), r)
-		a.skill = skill
-		a.by = caster
-		a.since = turns_begun
 
 
 # Impassioned Fighter: what its holder adds to a skill's primary mod used on a unit beside it.

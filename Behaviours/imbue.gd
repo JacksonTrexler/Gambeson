@@ -1,4 +1,3 @@
-class_name Imbue
 extends Behaviour
 
 # Elemental Strike: its user picks one of its elements (the HUD asks: HUD._pick_element(); else the
@@ -6,14 +5,6 @@ extends Behaviour
 # highest mental mod. The uses are rank impact.
 
 @export var elements: Array[StringName] = []
-
-
-# The first Imbue on s, or null.
-static func of(s: Skill) -> Imbue:
-	for b in s.behaviours:
-		if b is Imbue:
-			return b
-	return null
 
 
 func whole(_c: Cast) -> bool:

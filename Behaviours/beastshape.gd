@@ -1,4 +1,3 @@
-class_name Beastshape
 extends Behaviour
 
 # Beastshape: its caster becomes the beast its ground suits (Battle.form_for(): one of the biomes it

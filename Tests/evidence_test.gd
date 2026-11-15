@@ -60,7 +60,7 @@ func test_ai_follows_it() -> void:
 		b.debris[c] = Battle.Debris.new("Disturbed foliage, twigs", v(3), 0)
 	var at := []
 	b.used.connect(func(_u: Unit, s: Skill, where: Variant, _d: int):
-		if s.observes:
+		if s.behaviour(&"observe"):
 			at.append(where))
 	AI.act(b, v(1))
 	ok(at.size() == 1 and [Vector2i(5, 0), Vector2i(6, 0), Vector2i(5, 1)].all(func(c: Vector2i): return Command.tiles(at[0], c) <= 4)

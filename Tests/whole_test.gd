@@ -34,6 +34,6 @@ func test_boost_whole_only_on_an_ally() -> void:
 	var igna: Skill = load("res://Skills/igna.tres")
 	var c := b.cast_of(v(1), igna, v(2), 1, false)
 	var boost: Behaviour = igna.behaviours[0]
-	ok(boost is Boost and boost.whole(c), "Igna on an ally: the AP is the whole of it")
+	ok(boost == igna.behaviour(&"boost") and boost.whole(c), "Igna on an ally: the AP is the whole of it")
 	c.foe = true
 	ok(not boost.whole(c), "on a foe it isn't: the skill lands as usual")

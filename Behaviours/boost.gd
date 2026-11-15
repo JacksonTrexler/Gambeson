@@ -1,4 +1,3 @@
-class_name Boost
 extends Behaviour
 
 # On an ally, AP at once for this use (Igna: skill AP; Aetha, Prestidigitation: movement): the caster's

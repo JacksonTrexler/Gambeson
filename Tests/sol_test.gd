@@ -86,6 +86,20 @@ func test_flamewall() -> void:
 	ok(v(2).hp < 200, "walking into it burns")
 
 
+# One standing where the wall goes up makes a dex check against the caster's wis (Battle.check(), the
+# wall winning ties); losing it, it burns at once.
+func test_flamewall_catches() -> void:
+	var u := caster("flamewall", 2)
+	v(2).dexterity = 1
+	v(2).max_hp = 200
+	v(2).hp = 200
+	var rolls := []
+	b.contested.connect(func(who: Unit, by: Unit, total: int, against: int): rolls.append([who, by, total, against]))
+	ok(b.cast_at(u, sk("flamewall"), v(2).cell), "cast on its tile")
+	ok(rolls.size() == 1 and rolls[0][0] == v(2) and rolls[0][1] == u, "it makes the check, against the caster: %s" % [rolls])
+	ok(rolls.size() == 1 and rolls[0][2] <= rolls[0][3] and v(2).hp < 200, "dex 1 against wis 18: it loses (ties to the wall) and burns at once: %s, %d HP" % [rolls, v(2).hp])
+
+
 func test_inner_fire() -> void:
 	var u := caster("inner_fire", 2)
 	ok(b.cast(u, sk("inner_fire"), u), "on itself")
