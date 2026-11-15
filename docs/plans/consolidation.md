@@ -375,7 +375,7 @@ Starting suite 45995 checks, 0 failed (838 tests); ending 46001 checks, 0 failed
    it. It is not a `Skill.check` (SkillCheck): that declares a check in place of an attack roll on a target, and
    Flamewall has none. `evade()` (Wildfire's DC dodge) is a check against a number, not a contest, so it stays too.
 7. **Private Battle helpers:** `_flame()` renamed `flame()` (behaviours call it). `cone.gd` calls `b._expose()`
-   rather than renaming it, because 17 callers sit in `_cast` beside B5's lines. Rename it after both branches merge.
+   rather than renaming it, because 16 callers, most of them in `_cast`, sit beside B5's lines. Rename it after both branches merge.
 8. **Description order:** the lifted lines now come after the effect lines (behaviour lines come last in
    `Skill.markup()`). Shields Up!'s facing line is now below its effects. No test read the order.
 9. `Util/skill.py` HOOKS gains `apply_at`; `Util/tres.py` FLOATS drops `cone`.
