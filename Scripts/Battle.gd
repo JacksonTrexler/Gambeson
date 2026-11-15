@@ -191,6 +191,9 @@ var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, u
 var marks: Dictionary[Vector2i, Array] = {}  # cell -> the Marks laid on it, oldest first (lay_mark()): one-use tile effects, disturbed earth
 @export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
 @export var sight := true  # units perceive only within their wisdom total in tiles, and make out appearances within half that, the range shared across their side (in_range(); Perception.unit()). Off: no limit
+var sighted_when: Dictionary[Faction, Dictionary] = {}  # side -> {foe: {since: turns_begun then, moves: its movement as read, 0 unread}}: how stale a sighting is, and how far the foe could have got since (AI.clues())
+var attacks: Dictionary[Faction, Array] = {}  # side -> [{tiles: where an attacker it couldn't place could have struck from, since}] (_note_attack())
+var swept: Dictionary[Faction, Dictionary] = {}  # side -> {tile: turns_begun when one of its units last searched it} (search())
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
 @export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
@@ -205,6 +208,8 @@ const DEBRIS_KINDS := [
 	[[&"grass", &"shrubbery", &"forest"], "Disturbed foliage, twigs"],
 	[[&"mud", &"snow", &"sand", &"mountains", &"desert", &"taiga"], "Depressions"],
 ]
+const HIT_TURNS := 6  # turns an attack from an unseen foe stays a clue to where it is (attacks_on())
+const SWEEP_TURNS := 4  # turns a tile its side searched counts as looked over: no guessing there (AI.clues())
 const CLEAN_HIDE := 15  # a hiding roll this high or more is a good job: little debris, further off
 const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
@@ -474,6 +479,7 @@ func _listen(u: Unit) -> void:
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
+	_note_attack(u, blow)
 	for h in u.hooks():
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
 
@@ -1803,7 +1809,11 @@ func survey(o: Unit, center: Vector2i, rested: int) -> int:
 # at +bonus, from `center`. How many it grew suspicious of.
 func search(o: Unit, cells: Array, center: Variant = null, bonus := 0) -> int:
 	var found := 0
+	if o.faction and o.faction not in swept:
+		swept[o.faction] = {}
 	for c: Vector2i in cells:
+		if o.faction and c != o.cell:
+			swept[o.faction][c] = turns_begun
 		if c != o.cell and inspect(o, c, center, bonus):
 			o.noticed[c] = true
 			found += 1
@@ -3916,10 +3926,92 @@ func in_range(o: Unit, t: Unit) -> int:
 
 
 # Side f made out foe t at c: where its units will look for it once it's out of sight (AI._hunt()).
-func sighted(f: Faction, t: Unit, c: Vector2i) -> void:
+# `moves`: how far it makes the foe's walk, when it could read that (0: it couldn't).
+func sighted(f: Faction, t: Unit, c: Vector2i, moves := 0.0) -> void:
 	if f not in sightings:
 		sightings[f] = {}
 	sightings[f][t] = c
+	if f not in sighted_when:
+		sighted_when[f] = {}
+	sighted_when[f][t] = {since = turns_begun, moves = moves}
+
+
+# How many whole rounds ago (turns of all the sides) turn `since` of turns_begun was.
+func rounds_since(since: int) -> int:
+	var sides := {}
+	for u: Unit in units.values():
+		sides[u.faction] = true
+	return ceili((turns_begun - since) / float(maxi(sides.size(), 1)))
+
+
+# The tiles foe t could have reached from `from` on `budget` movement, as viewer o can reckon it:
+# ground o makes out (known_ground(); the rest plain), every step priced by stride() as t's walk would be
+# paid (its movement effects, Peel), no one standing in its way. Includes `from`.
+func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vector2i]:
+	var best := {from: 0.0}
+	var bags := {from: {}}
+	var grounds := {}
+	var ground_of := func(c: Vector2i) -> Terrain:
+		if c not in grounds:
+			grounds[c] = known_ground(o, c)
+		return grounds[c]
+	var open: Array[Vector2i] = [from]
+	var done := {}
+	while not open.is_empty():
+		var at: Vector2i = open[0]
+		for c in open:
+			if best[c] < best[at]:
+				at = c
+		open.erase(at)
+		if at in done:
+			continue
+		done[at] = true
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				var c := at + Vector2i(dx, dy)
+				if (dx == 0 and dy == 0) or c in done or not on_map(c):
+					continue
+				var bag: Dictionary = bags[at].duplicate()
+				var g: float = best[at] + stride(t, at, c, ground_of.call(at), ground_of.call(c), bag, null, true)
+				if g <= budget + 0.0001 and g < best.get(c, INF) - 0.000001:
+					best[c] = g
+					bags[c] = bag
+					if c not in open:
+						open.append(c)
+	var out: Array[Vector2i] = []
+	out.assign(best.keys())
+	return out
+
+
+# A unit took a blow in a cast from a foe it can't place: its side knows which side of it the blow landed
+# on (the hit's tags: flank, rear; else front) and how far that skill reaches, not the tile: every tile
+# on that side within the skill's reach is where it could have come from. Kept for HIT_TURNS of turns.
+func _note_attack(u: Unit, blow: Dictionary) -> void:
+	var by: Unit = blow.by
+	var cast := resolving()
+	if not u.faction or _casting == 0 or not cast or cast.caster != by or not is_instance_valid(by) or by == u or Faction.friends(by.faction, u.faction) or read(u, by).located():
+		return
+	var side: StringName = &"rear" if &"rear" in blow.tags else (&"flank" if &"flank" in blow.tags else &"front")
+	var reach := skill_range(by, cast.skill, u)
+	var tiles: Array[Vector2i] = []
+	for c in _box(u.cell, ceili(reach)):
+		if c != u.cell and Vector2(c).distance_to(Vector2(u.cell)) <= reach + 0.0001 and u.side_of(c) == side:
+			tiles.append(c)
+	if not attacks.has(u.faction):
+		attacks[u.faction] = []
+	attacks[u.faction].append({tiles = tiles, since = turns_begun})
+
+
+# The attacks on side f in the last HIT_TURNS turns that it couldn't place the attacker of.
+func attacks_on(f: Faction) -> Array:
+	var kept: Array = attacks.get(f, []).filter(func(a: Dictionary): return turns_begun - a.since <= HIT_TURNS)
+	attacks[f] = kept
+	return kept
+
+
+# Whether one of f's units searched c within SWEEP_TURNS of turns.
+func swept_lately(f: Faction, c: Vector2i) -> bool:
+	return turns_begun - swept.get(f, {}).get(c, -999) <= SWEEP_TURNS
 
 
 # Where side f last made out each foe still standing (forgetting the fallen).
