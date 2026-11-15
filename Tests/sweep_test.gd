@@ -210,3 +210,28 @@ func test_describes() -> void:
 			ok(d != "" and not regex.search(d) and "STUB" not in d, "%s describes itself at rank %d: %s" % [f, r, d])
 		n += 1
 	ok(n > 0, "behaviours found")
+
+
+# Every behaviour that declares a scaling term (terms(): rank or stat, impact or range) says its numbers as
+# its holder has them: with a modifier on that channel, describe_as() changes (Behaviour.describe_as()).
+# Each is read on a built skill that carries it (some read the skill's own fields).
+func test_describes_as() -> void:
+	var on := {&"rank_impact": &"rho_up", &"rank_range": &"rho_down", &"stat_impact": &"sigma_down", &"stat_range": &"sigma_up"}
+	var n := 0
+	for s in _built:
+		for bh in s.behaviours:
+			var t := SkillTerms.new(Skill.new())
+			t.skill = s  # (some terms() read it)
+			bh.terms(t)
+			for ch: StringName in on:
+				if not t.has(ch):
+					continue
+				var base := Behaviour.Cast.at(3)
+				base.skill = s
+				var held := Behaviour.Cast.at(3)
+				held.skill = s
+				held.mods = Modifiers.new()
+				held.mods.add(on[ch], 2, &"all")
+				ok(bh.describe_as(held) != bh.describe_as(base), "%s / %s: a %s modifier changes what it says of %s" % [_id(s), bh.get_script().resource_path.get_file(), on[ch], ch])
+				n += 1
+	ok(n > 25, "scaling terms swept (%d)" % n)
