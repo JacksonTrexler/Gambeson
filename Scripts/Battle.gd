@@ -596,6 +596,10 @@ func initiative_bonus(f: Faction) -> int:
 # adds the bonus, and decides the hit - met the target, a natural 20 on an attack, or forced sure.
 # The one place a d20 roll is defined (docs/plan-composability.md, seam 1).
 func resolve(c: Check) -> Check.Roll:
+	if c.is_fixed:  # no die
+		var f := Check.Roll.new()
+		f.total = c.bonus if is_equal_approx(c.share, 1.0) else floori(c.bonus * c.share)
+		return f
 	var d := rng.randi_range(1, 20)
 	if c.advantage > 0:
 		d = maxi(d, rng.randi_range(1, 20))
@@ -634,6 +638,9 @@ func beats(a: Check, b: Check, a_wins_ties := true) -> Check.Contest:
 #   kind          the Check.Kind both sides roll as (Contest; a Save)
 #   ties          false: b wins ties (a grip's holder, a wall of fire)
 # A stat &"" is that side's bonus alone (a last stand); an Array of stats, the better of them (Hitch).
+# `against` a number (b may be null): a total rolled earlier, which doesn't roll again - a look at the roll
+# a hider made (investigate()), a fall against a last stand (_borrowed()), Level Down's bar. Its
+# their_bonus still adds; ties as above.
 func check(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) -> Check.Contest:
 	var s := sides(a, stat, b, against, o)
 	return beats(s[0], s[1], o.get("ties", true))
@@ -655,8 +662,12 @@ static func sides(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) ->
 	theirs_tags.assign(o.get("their_tags", tags))
 	var k: Check.Kind = o.get("kind", Check.Kind.CONTEST)
 	var mine := _side_mod(a, stat, kind, tags) + int(o.get("bonus", 0)) - int(o.get("penalty", 0)) * int(o.get("tiles", 0))
+	var mine_side := Check.side(mine, k).edge(int(o.get("edge", 0)))
+	var cut := float(o.get("cut", 1.0))
+	if against is int:
+		return [mine_side, Check.fixed(against + int(o.get("their_bonus", 0))).cut(cut)]
 	var theirs := _side_mod(b, against, other, theirs_tags) + int(o.get("their_bonus", 0))
-	return [Check.side(mine, k).edge(int(o.get("edge", 0))), Check.side(theirs, k).edge(int(o.get("their_edge", 0))).cut(float(o.get("cut", 1.0)))]
+	return [mine_side, Check.side(theirs, k).edge(int(o.get("their_edge", 0))).cut(cut)]
 
 
 # u's check mod in stat as kind; the better of several stats; none for &"".
@@ -1784,20 +1795,22 @@ func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
 	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
 	if hiding <= 0 and trap <= 0 and not mixed:
 		return false
-	var total := resolve(Check.check(o.check_mod(&"wisdom", &"offensive") + bonus - distance_penalty(o, center if center != null else o.cell, c), 0)).total
+	var look := {bonus = bonus - distance_penalty(o, center if center != null else o.cell, c)}
 	if mixed and hiding <= 0 and trap <= 0:
 		var a := o.scrambled()
-		if total >= a.roll:
+		var seen := check(o, &"wisdom", null, a.roll, look)  # against the roll it scrambled with, spent
+		if seen.won:
 			a.through.append(t)
-		untangled.emit(o, t, total, a.roll)
-		return total >= a.roll
-	var against := resolve(Check.check(maxi(hiding, trap), 0)).total
-	if total >= against:
+		untangled.emit(o, t, seen.mine.total, a.roll)
+		return seen.won
+	look.their_bonus = maxi(hiding, trap)  # what hides it rolls too: a d20 + that
+	var seen := check(o, &"wisdom", null, &"", look)
+	if seen.won:
 		suspect(o, c)
 		if hiding > 0:
 			suspect(o, t)
-	inspected.emit(o, c, total, against)
-	return total >= against
+	inspected.emit(o, c, seen.mine.total, seen.theirs.total)
+	return seen.won
 
 
 # u prays to its god (Unit.deity(); Pray), at rank r, on `target` (Drael's alone isn't on itself).
@@ -1990,9 +2003,9 @@ func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void
 	var r := u.rank(skill)
 	for o in eyes:
 		var close := Command.tiles(o.cell, u.cell) <= o.mod(&"wisdom") - r
-		var look := resolve(Check.check(o.check_mod(&"wisdom", &"offensive"), against).edge(1 if close else 0))
-		var total := look.total
-		if look.hit:
+		var look := check(o, &"wisdom", null, against, {edge = 1 if close else 0})  # against the hider's roll, spent
+		var total := look.mine.total
+		if look.won:
 			for e in skill.effects:
 				if e in u.timed:
 					u.timed[e].known_to.append(o)
@@ -3455,7 +3468,7 @@ func _borrowed(side: Array[Unit]) -> void:
 				u.deferred -= 1
 				if u.deferred == 0:
 					var r := u.defer_rank
-					if resolve(Check.check(r, last_stand(u, r))).hit:
+					if check(null, &"", null, last_stand(u, r), {bonus = r}).won:  # d20 + rank against its last stand
 						borrowed.emit(u, &"executed")
 						u.fall()
 					else:
@@ -4788,9 +4801,9 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0
 	var bar := maxi(t.average_mod() + t.lv(), last_stand(t))
 	var hits := 0
 	for i in r:
-		var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", caster.skill_tags(skill)) + int(req[0]), bar).edge(int(req[2])))
-		contested.emit(caster, t, roll.total, bar)
-		if roll.margin() > 0:  # beating the bar, not meeting it
+		var roll := check(caster, skill.stat(), null, bar, {bonus = int(req[0]), edge = int(req[2]), tags = caster.skill_tags(skill), ties = false})
+		contested.emit(caster, t, roll.mine.total, bar)
+		if roll.won:  # beating the bar, not meeting it
 			hits += 1
 	_expose(caster)
 	_expose(t)

@@ -20,6 +20,7 @@ var target := 0  # the number to meet or beat (Defense, a DC, the other side's t
 var crits := false  # a natural 20 always hits and crits, a miss aside (attacks)
 var crit_on := 20  # the lowest face that crits, where it crits at all (Discipline: 1 lower a point burned)
 var floor_hit := false  # a hit is forced regardless of the roll (decisive Strike after a crit)
+var is_fixed := false  # no die: its total is its bonus (a number rolled earlier, the other side of a check against it: Check.fixed())
 var share := 1.0  # only this share of the total counts, rounded down (an execute: HP left / max HP / rank)
 
 
@@ -74,6 +75,14 @@ static func side(bonus: int, kind := Kind.CONTEST) -> Check:
 	return check(bonus, 0, kind)
 
 
+# A side that doesn't roll: the total `n` an earlier roll made, for a check to meet or beat (Battle.check()
+# given a number to go against). Resolving it spends no die.
+static func fixed(n: int) -> Check:
+	var c := side(n)
+	c.is_fixed = true
+	return c
+
+
 # The better (+1) or worse (-1) of two d20s.
 func edge(n: int) -> Check:
 	advantage = n
@@ -102,18 +111,26 @@ func sure(on := true) -> Check:
 # faces, each weighted by its advantage, totalled as resolve() totals them (a cut share included).
 static func odds(a: Check, b: Check, a_wins_ties := true) -> float:
 	var p := 0.0
-	for i in range(1, 21):
+	for i in _faces(a):
 		var mine := _total(a, i)
-		var pa := _face(a.advantage, i)
-		for j in range(1, 21):
+		var pa := _face(a, i)
+		for j in _faces(b):
 			var theirs := _total(b, j)
 			if mine > theirs or (a_wins_ties and mine == theirs):
-				p += pa * _face(b.advantage, j)
+				p += pa * _face(b, j)
 	return p
 
 
-# The chance of rolling face d on a d20 with advantage n (+1 the better of two, -1 the worse).
-static func _face(n: int, d: int) -> float:
+# The faces c may roll: 1 to 20, or the one "face" 0 of a side that doesn't roll.
+static func _faces(c: Check) -> Array:
+	return [0] if c.is_fixed else range(1, 21)
+
+
+# The chance of c rolling face d on a d20 with its advantage (+1 the better of two, -1 the worse).
+static func _face(c: Check, d: int) -> float:
+	if c.is_fixed:
+		return 1.0
+	var n := c.advantage
 	if n > 0:
 		return (d * d - (d - 1) * (d - 1)) / 400.0
 	if n < 0:

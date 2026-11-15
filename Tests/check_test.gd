@@ -105,6 +105,30 @@ func test_check_helper() -> void:
 	ok(absf(won / 2000.0 - p) < 0.05, "odds() matches what check() rolls (%.3f vs %.3f)" % [won / 2000.0, p])
 
 
+# A check against a number rolled earlier (Battle.check() given a total: investigating, a last-stand fall,
+# Level Down's bar): that side spends no die, ties and a cut work as on any side, and odds() weighs it.
+func test_check_against_a_total() -> void:
+	b.rng.seed = 5
+	var before := b.rng.state
+	var c := b.check(null, &"", null, 15, {bonus = 5})
+	ok(c.theirs.total == 15 and c.mine.total == c.mine.d20 + 5 and c.won == (c.mine.total >= 15), "it meets the total with a d20 + its bonus (%d vs %d)" % [c.mine.total, c.theirs.total])
+	b.rng.seed = 5
+	b.check(null, &"", null, 15, {bonus = 5})
+	var one_die := b.rng.state
+	b.rng.state = before
+	b.rng.randi_range(1, 20)
+	ok(one_die == b.rng.state, "only its own die rolls")
+	ok(is_equal_approx(Battle.odds(null, &"", null, 15, {bonus = 5}), 0.55) and is_equal_approx(Battle.odds(null, &"", null, 15, {bonus = 5, ties = false}), 0.5), "d20 + 5 meets 15 on 11 faces of 20, 10 with ties lost")
+	ok(is_equal_approx(Battle.odds(null, &"", null, 15, {bonus = 5, edge = 1}), 1.0 - 0.45 * 0.45), "advantage on its die")
+	ok(is_equal_approx(Battle.odds(null, &"", null, 15, {bonus = 5, their_bonus = 3}), 0.4), "their_bonus adds to the total (18)")
+	ok(is_equal_approx(Battle.odds(null, &"", null, 20, {bonus = 5, cut = 0.5}), 0.8), "a cut halves it (10): d20 + 5 meets it on 16 faces")
+	var won := 0
+	for n in 2000:
+		if b.check(null, &"", null, 15, {bonus = 5}).won:
+			won += 1
+	ok(absf(won / 2000.0 - 0.55) < 0.05, "odds() matches what it rolls (%.3f)" % (won / 2000.0))
+
+
 # A declared check (Skill.check) as the helper reads it: + rank when ranked, its edge, a range penalty a
 # tile past the first (1 less a rank past I), its own check tags beside the skill's.
 func test_declared_check() -> void:
