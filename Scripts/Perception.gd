@@ -26,6 +26,39 @@ const CHARMING := 16.0  # charisma that seems this high or more stands out: "Cha
 const NERVOUS := 7.0  # ...or this low or less: "Nervous"
 const STAT_WORDS := {&"strength": "strong", &"dexterity": "nimble", &"constitution": "hardy",
 		&"intelligence": "clever", &"wisdom": "wise", &"charisma": "charming"}  # what an embellished stat claims
+# How far a lie is (lie()): the natures ?? of the words a persona can claim and a unit can be -
+# its vibe words, bio adjectives, appearance (kind_noun()), tags, race, aura (OMINOUS_WORD,
+# BENEVOLENT_WORD). Two words sharing a nature are near; two with OPPOSED natures far; any other
+# pair, or a word not listed, the default. Natures (all ??): gentle, fell, fair, foul, bright, dead,
+# holy, unholy, hot, cold, wet, folk, beast, made, small, big, calm. First guesses.
+const NATURES := {
+	"harmless": [&"gentle"], "safe": [&"gentle"], "serene": [&"gentle", &"calm"], "calm": [&"calm"],
+	"gentle": [&"gentle"], "kind": [&"gentle"], "warm": [&"gentle", &"hot"], "benevolent": [&"gentle"],
+	"beautiful": [&"fair"], "precious": [&"fair"], "noble": [&"fair"], "fey": [&"fair"],
+	"radiant": [&"bright", &"fair"], "glittering": [&"bright"], "shining": [&"bright"], "gleaming": [&"bright"],
+	"glimmering": [&"bright"], "flickering": [&"bright"], "astral": [&"bright"],
+	"hungry": [&"fell"], "menacing": [&"fell"], "fierce": [&"fell"], "malevolent": [&"fell"], "dangerous": [&"fell"],
+	"ominous": [&"fell"], "monster": [&"fell", &"beast"], "demon": [&"fell", &"unholy"], "abyssal": [&"unholy"],
+	"smouldering": [&"fell", &"hot"], "crackling": [&"hot"], "brute": [&"fell", &"big"],
+	"reeking": [&"foul"], "repulsive": [&"foul"], "horrific": [&"foul", &"fell"], "rotting": [&"foul", &"dead"],
+	"murky": [&"foul", &"wet"], "briny": [&"wet"], "aquatic": [&"wet"], "siren": [&"wet", &"fell"], "undine": [&"wet"],
+	"cold": [&"cold"], "unyielding": [&"made"], "golem": [&"made", &"big"], "construct": [&"made"], "humming": [&"made"],
+	"undead": [&"dead", &"unholy"], "hollow": [&"dead"], "shade": [&"dead"],
+	"holy": [&"holy"], "divine": [&"holy"],
+	"human": [&"folk"], "everyman": [&"folk"], "tradefolk": [&"folk"], "earthy": [&"folk"], "halfling": [&"folk", &"small"],
+	"knight": [&"folk", &"fell"], "soldier": [&"folk", &"fell"], "caster": [&"folk"], "scout": [&"folk"],
+	"beast": [&"beast"],
+}
+const OPPOSED := [[&"gentle", &"fell"], [&"fair", &"foul"], [&"holy", &"unholy"], [&"holy", &"dead"], [&"bright", &"dead"],
+		[&"hot", &"cold"], [&"folk", &"beast"], [&"folk", &"made"], [&"small", &"big"]]
+const OMINOUS_WORD := "ominous"  # what an aura below 0 makes a unit, for lie()
+const BENEVOLENT_WORD := "benevolent"  # ...above 0
+# What a claimed word costs, by how far it is from the nearest truth (lie()): one it is, near, a word
+# the table can't place, far. First guesses.
+const LIE_TRUE := 0.0
+const LIE_NEAR := 0.5
+const LIE_DEFAULT := 1.0
+const LIE_FAR := 1.5
 
 
 # What `o` knows about unit `t`. Persona advertises; with enough trickery it lies, and to other
@@ -268,6 +301,27 @@ static func kind_noun(t: Unit) -> String:
 	if t.role:
 		return t.role.noun if t.role.noun else t.role.name
 	return "Beast" if &"monster" in t.tags else "Everyman"
+
+
+# What claiming this word costs a unit that truly is these words (lowercase; Unit.true_words()):
+# nothing if it is one of them; near if it shares a nature with any; far if its natures are opposed to
+# any's; else (or for a word NATURES doesn't list) the default.
+static func lie(claim: String, truths: PackedStringArray) -> float:
+	var w := claim.to_lower()
+	if w in truths:
+		return LIE_TRUE
+	var mine: Array = NATURES.get(w, [])
+	if mine.is_empty():
+		return LIE_DEFAULT
+	var theirs := []
+	for t in truths:
+		theirs.append_array(NATURES.get(t, []))
+	if mine.any(func(n): return n in theirs):
+		return LIE_NEAR
+	for pair in OPPOSED:
+		if (pair[0] in mine and pair[1] in theirs) or (pair[1] in mine and pair[0] in theirs):
+			return LIE_FAR
+	return LIE_DEFAULT
 
 
 # How true t's presentation is, as an insightful observer reads it (Read.insight). Fooled, it seems

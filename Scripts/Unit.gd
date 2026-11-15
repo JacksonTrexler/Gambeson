@@ -1525,20 +1525,50 @@ func suspects(t: Variant) -> int:
 
 
 # How far what it shows is from the truth: what insightful units read of it (Perception.insight()),
-# and a penalty to its own deceiving checks - a less believable lie. A point for each thing its
-# persona puts forward at its rank - each vibe word (I), its stance and a level it claims (II), each
-# identity tag and the name it goes by (III) - one each for fronting its stats (Embellish, Brood),
-# plus extra_dissonance.
+# and a penalty to its own deceiving checks - a less believable lie. Each thing its persona puts
+# forward at its rank costs by how far it is from what the unit is (Perception.lie(): nothing if
+# true, half if near, 1 if the table can't say, 1.5 if far - a wolf in sheep's clothing): each vibe
+# word (I); its stance (1) and a level it claims (II: within 1 of its own near, 4+ off far); each
+# identity tag and the name it goes by (III: the worse of its two words). Plus 1 each for fronting
+# its stats (Embellish, Brood) and extra_dissonance; the sum rounded up.
 func dissonance() -> int:
 	var p := roundi(stat(&"persona"))
-	var n := extra_dissonance + int(stat(&"embellish") > 0) + int(stat(&"brood") > 0)
+	var n := float(int(stat(&"embellish") > 0) + int(stat(&"brood") > 0))
+	var truths := true_words()
 	if p >= 1:
-		n += shows_vibe.size()
+		for w in shows_vibe:
+			n += Perception.lie(w, truths)
 	if p >= 2:
-		n += int(stance in Battle.stances(p) and stance != "") + int(shows_level > 0)
+		n += float(stance in Battle.stances(p) and stance != "")
+		if shows_level > 0:
+			var off := absi(shows_level - level)
+			n += Perception.LIE_TRUE if off == 0 else (Perception.LIE_NEAR if off <= 1 else (Perception.LIE_FAR if off >= 4 else Perception.LIE_DEFAULT))
 	if p >= 3:
-		n += shows_tags.size() + int(alias != "")
-	return n
+		for t in shows_tags:
+			n += Perception.lie(t, truths)
+		if alias != "":
+			n += Array(alias.split(" ", false)).map(func(w: String): return Perception.lie(w, truths)).max()
+	return extra_dissonance + ceili(n)
+
+
+# What it truly is, as words a persona's claims are measured against (Perception.lie()), lowercase:
+# its vibe, its bio's adjectives, what it looks like (Perception.kind_noun()), its tags and race,
+# and its aura (ominous below 0, benevolent above).
+func true_words() -> PackedStringArray:
+	var out := PackedStringArray()
+	for w in vibe.split(",", false):
+		out.append(w.strip_edges().to_lower())
+	if bio:
+		for w in bio.adjectives:
+			out.append(w.to_lower())
+	out.append(Perception.kind_noun(self).to_lower())
+	for t in tags:
+		out.append(String(t).to_lower())
+	if race:
+		out.append(race.name.to_lower())
+	if aura != 0:
+		out.append(Perception.OMINOUS_WORD if aura < 0 else Perception.BENEVOLENT_WORD)
+	return out
 
 
 # Dissonance as it counts against its own rolls: cut by the rank of a skill carrying the look it puts

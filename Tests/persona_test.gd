@@ -4,8 +4,8 @@ extends Test
 # Rogue's trees; fronting, which fools allies that aren't insightful without trickery
 # (Perception.fronts_to()); Embellish (cast on itself or an ally) and Brood making stats seem higher
 # or lower to those they fool (Perception._seem()); dissonance: what an insightful observer reads of
-# how true a presentation is (Perception.insight()), tallied from what its persona puts forward
-# (Unit.dissonance()), and a penalty to its own deceiving rolls; and the Astral Princess's Physical
+# how true a presentation is (Perception.insight()), from how far each thing its persona puts forward
+# is from what it is (Unit.dissonance(), Perception.lie()), and a penalty to its own deceiving rolls; and the Astral Princess's Physical
 # Intelligence.
 
 var personify: Skill = load("res://Skills/persona.tres")
@@ -46,8 +46,8 @@ func test_insight() -> void:
 	ok(fooled.deceived and fooled.insight == "%s is as they appear; they make no attempt to appear otherwise." % s.alias,
 			"fooled: it seems to make no attempt (%s)" % fooled.insight)
 	v(1).afflict(effect("recon", 3), 9)
-	ok(s.dissonance() == 4 + 1 + 1 + 1, "its dissonance, tallied from what it puts forward: 4 vibe words, a tag, a stance, a name (%d)" % s.dissonance())
-	ok(s.dissonance_penalty() == 7 - 4, "a practised lie: Alluring IV takes 4 off it against its own rolls")
+	ok(s.dissonance() == 9, "its dissonance, by how far each claim is: a briny, hungry monster claiming harmless, serene, safe (far, 1.5 each), beautiful, holy, a stance, a name (1 each), rounded up (%d)" % s.dissonance())
+	ok(s.dissonance_penalty() == 9 - 4, "a practised lie: Alluring IV takes 4 off it against its own rolls")
 	var noun := s.alias_noun
 	bare(s)
 	ok(b.read(v(1), s).insight == "Siren is as they appear; they make no attempt to appear otherwise.", "seen through, putting nothing forward: as it appears")
@@ -72,6 +72,41 @@ func test_insight() -> void:
 	ok(v(1).insightful() and b.read(v(1), s).insight != "", "a bonus to reading others makes it insightful")
 	var honest := b.read(v(1), v(3))
 	ok(honest.insight == "Villager3 is as they appear; they make no attempt to appear otherwise." or honest.net < 0, "an honest villager is as it appears")
+
+
+# Dissonance by how far the lie is: a claim it truly is costs nothing, one sharing a nature with what
+# it is half, one the table can't place 1, one opposed to what it is 1.5 (Perception.lie()); summed,
+# rounded up. A wolf in sheep's clothing, not a scary dog.
+func test_dissonance_distance() -> void:
+	var u := v(2)
+	bare(u)
+	u.afflict(effect("persona", 3), 9)
+	u.vibe = "Calm"
+	u.aura = 1
+	u.shows_vibe.assign(["Calm"])
+	ok(u.dissonance() == 0, "claiming what it is: no lie")
+	u.shows_vibe.assign(["Serene", "Serene"])
+	ok(u.dissonance() == 1, "near (calm, serene): half each (%d)" % u.dissonance())
+	u.shows_vibe.assign(["Menacing", "Menacing"])
+	ok(u.dissonance() == 3, "far (benevolent, menacing): 1.5 each (%d)" % u.dissonance())
+	u.shows_vibe.assign(["Glorbish ??", "Cold"])
+	ok(u.dissonance() == 2, "a word the table doesn't know, or a pair it doesn't relate: 1 each (%d)" % u.dissonance())
+	u.shows_vibe.clear()
+	u.aura = 0
+	u.tags.assign([&"monster"])
+	u.shows_vibe.assign(["Harmless"])
+	var wolf := u.dissonance()
+	u.shows_vibe.assign(["Fierce"])
+	ok(wolf == 2 and u.dissonance() == 1, "a monster claiming harmless is far (%d); fierce, near (%d)" % [wolf, u.dissonance()])
+	u.shows_vibe.clear()
+	u.shows_tags.assign([&"beast"])
+	ok(Perception.lie("beast", PackedStringArray(["human"])) == Perception.LIE_FAR and Perception.lie("halfling", PackedStringArray(["human"])) == Perception.LIE_NEAR,
+			"tags too: a human claiming beast is far, halfling near")
+	u.shows_tags.clear()
+	u.shows_level = u.level + 1
+	var near := u.dissonance()
+	u.shows_level = u.level + 5
+	ok(near == 1 and u.dissonance() == 2, "a level within 1 of its own is near (%d); 4 or more off, far (%d)" % [near, u.dissonance()])
 
 
 func test_embellish() -> void:

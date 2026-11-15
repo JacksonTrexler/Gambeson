@@ -90,6 +90,7 @@ const COLOR := {
 	&"reaction": Color("#e0a75e"),
 	&"rear": Color("#8a5a7e"),
 	&"flank": Color("#7e6a9a"),
+	&"dissonance": Color("#c9a0dc"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
