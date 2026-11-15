@@ -26,7 +26,7 @@
 ## Items
 
 - [x] Item sprites and icons. Built 2026-11-14: a placeholder PNG per item in `Icons/Items/` from `icon.py item`, on the sheet and the unit card (`docs/plans/item-icons.md`, ?135). *Before:* items were names and descriptions on the character sheet.
-- [ ] **Saving** the stash and outfit: later.
+- [x] **Saving** the stash and outfit. Built 2026-11-15 (?145) (`docs/done/world.md`).
 - [ ] Sources for Habergeon, Brigandine, Aethendine and Ignauldron (drops, rewards, shops).
 
 47. **Confirmed (2026-11-06).** Robe is unique (`no_dex`, `mind_stat = wisdom`: no dex to Defense, wis mod as magical Defense). Plate kept matching Brigandine; weight numbers stand. Encounter-end drops: mundane armor common, armor with added effects rare (`Item.rarity`; `Loot` weights by it; Aethendine and Ignauldron marked rare). Boss commanders wear heavy armor where it fits - Alabaster is a stone golem whose Stoneskin already makes it the heavy unit, so it's left unarmored by design; the rule applies to humanoid commanders as they're authored. *Original, for the record:* Armor weights, as built (my numbers): light the higher of 10 and level / 2, + dex mod; medium the higher of 12 and level × 0.75, + dex mod / 2; heavy the higher of 14 and level, + dex mod / 4. Aethendine and Ignauldron lift their drag at mod 2+. Robe counts as light (it used to be the higher of 8 and level / 4), and Plate now matches Brigandine exactly (it was a flat 20) - should Plate differ, or go? Half Plate is medium now, so your "10 or level / 2 + dex / 4" for it gave way to Habergeon's scaling.
@@ -85,7 +85,7 @@ Plan: `docs/plans/command-skills.md`.
 - [x] **Strategist, Tactician, Strategy Guide, Tactician's Playbook, Grand Design, Legendary rarity** built (`docs/done/classes.md`, `docs/done/world.md`, `docs/done/rules.md`). (?86)
 - [x] **Item rarity cost curve, `enchanted`, `honed`** (2026-11-12, built 2026-11-14, ?118): see ?97 in `docs/todo/classes.md`; ranking an equipment item up costs its rarity's multiple of a skill rank-up (legendary 4, uncommon 1.5, rare 2, epic 3, mythic 5; a Grand Design ranked once costs as much as four skill ranks).
 - [ ] **Nothing ranks items up yet**, so nothing calls `Item.worth()` (rank x 4 for a legendary).
-- [ ] No screenshot taken of the Specialist tree with three skills at tier 3.
+- [x] Screenshot of the Specialist tree: it has four skills at tier 3, not three; reads clearly. Done 2026-11-15 (?149).
 
 86. **Command skills and trinkets - settled (2026-11-10):** "that's fine for now"; the calls stand.
     - **The bonus applies above the floor of 1**, not inside it: a cha -1 leader with Strategist II commands 3 allies. Inside the floor, rank I would do nothing at low charisma.
@@ -125,5 +125,17 @@ Plan, readings and what was built: `docs/plans/item-icons.md`; done in `docs/don
     - **The stash lists items with icons; the post-battle "Spoils" stays a text line.**
     - **New names to review:** none.
 - [ ] **The card's third icon** touches the word under the portrait. (?135)
-- [ ] **No item tool** writes `Items/*.tres`; `icon.py` only draws their art. (?135)
+- [x] **Item tool:** `Util/item.py new` and `check`, `.claude/skills/new-item`. Built 2026-11-15 (?147) (`docs/done/world.md`). (?135)
 - [ ] **Spoils** and any loot list are text, no icons. (?135)
+
+## Item tool (2026-11-15)
+
+Plan and what was built: `docs/plans/item-tool.md`. Built on `y-itemtool`. Tests: `tooling_test.test_item_tool` new, `test_checks` gains "item"; `item_icons_test` lost two checks the tool now holds.
+
+147. **Item tool - built on judgement, open for review (2026-11-15).** My calls, each for you to confirm or change:
+    - **One tool, `Util/item.py new` and `check`,** shaped like `unit.py`: slot, rarity, rank, tags, `--enchanted` or `--honed` (exclusive), `--skill` (lent), `--effect`, `--emblem` with `--scope`, `--damage-tag`, `--loot table[:weight]`, and `--set key=value` for any other `Item.gd` field (validated against its exports), so the tool grows no flag per field.
+    - **An emblem's scope goes on as a tag** (every existing emblem carries it). **A new item's tags must already be coloured**: the tool makes no tags, that stays `mechanic.py`'s one place.
+    - **`check` validates every item and loot table:** icons present and none orphaned, properties real, slot and rarity in `Item.gd`'s enums, tags known and coloured, enchanted and honed exclusive, emblem and scope paired, lent skills real, every `res://` path exists, loot entries real and weights no more than items.
+    - **`skill.py check` now runs the item checks** (a superset of its icon lines), so the house rule covers items; `mechanic.py check` keeps exclusivity for Skills only. `tooling_test.test_checks` runs `item.py check`.
+    - **No new items;** the test is a dry run saved under `user://`.
+    - **New names to review:** none.
