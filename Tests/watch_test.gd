@@ -113,11 +113,12 @@ func test_eyes_forward() -> void:
 	v(3).afflict(effect("concealment", 4), 9)
 	b.move(v(3), Vector2i(4, 5))
 	b.travel(v(1), Vector2i(2, 4))
-	ok(v(1).heading == Vector2i(1, 0) and looks.is_empty(), "moving east")
+	ok(v(1).facing == Vector2(1, 0) and v(1).striding and looks.is_empty(), "moving east")
 	b._look_ahead(v(1))
 	ok(looks.size() == 2 and looks.any(func(l: Array): return l[0] == TRAP) and looks.any(func(l: Array): return l[0] == Vector2i(4, 5))
-			and v(1).heading == Vector2i.ZERO, "it looks ahead at every tile: the trap 3 on (rank 2 + wis mod 1), and v(3), hintless, a tile aside")
-	v(1).heading = Vector2i(-1, 0)
+			and not v(1).striding, "it looks ahead at every tile: the trap 3 on (rank 2 + wis mod 1), and v(3), hintless, a tile aside")
+	v(1).facing = Vector2(-1, 0)
+	v(1).striding = true
 	b._look_ahead(v(1))
 	ok(looks.size() == 2, "moving the other way: not behind it")
 	ok("2 + wis mod tiles ahead and 2 to either side" in load("res://Skills/eyes_forward.tres").describe(2), "described")
@@ -129,7 +130,8 @@ func test_eyes_forward_replaces() -> void:
 	var looks := looks_of(v(1))
 	v(1).wisdom = 12
 	v(1).afflict(effect("eyes_forward", 1), 9)
-	v(1).heading = Vector2i(1, 0)
+	v(1).facing = Vector2(1, 0)
+	v(1).striding = true
 	b._watch(v(1))
 	ok(looks.is_empty(), "moved east last: it looks ahead instead of around - not at the trap behind it")
 	b._watch(v(1))

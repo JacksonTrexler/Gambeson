@@ -113,6 +113,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Small UI items (?136) | `ui_small_test.gd` |
 | — | Paths round hazards (?137) | `path_test.gd` |
 | — | AI tactics: hit chance, Focus, Resuscitate, Kick's tiles, Grudge (?138) | `ai_tactics_test.gd` |
+| — | Tile marks, Warcry, damage for moving (?139) | `marks_test.gd`, `warcry_test.gd`, `per_tile_test.gd`, `regain_test.gd` |
+| — | Reactions and interrupts: Interject, Gallantry, Final Act, Snapping Turtle (?140) | `reaction_test.gd`, `interject_test.gd`, `gallantry_test.gd`, `final_act_test.gd`, `snapping_turtle_test.gd` |
 
 ## Questions to answer first
 
@@ -137,7 +139,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
    - Approach: `Unit.Applied.scale` exists and multiplies an effect's amount; set it at cast time from the distance.
    - Unlocks: Rejuvinate's distance decay.
    - Blocked by: ?12.
-3. **Tile marks** (M)
+3. **Tile marks** (M) *(built 2026-11-14, ?139)*
    - Approach:
      - Snares, zones, debris and earthworks are each their own per-tile dictionary in `Battle` today.
      - Give them a common `Mark` base: owner faction, turns left, what triggers it (entry, turn end, stepped on), and whether it's used up.
@@ -149,14 +151,14 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 4. **Pushes** (S): the reverse of `pull()`, stopping at blockers and holes. A pushed unit that hits something might take damage; that's a design choice to settle when Shove is designed.
 5. **Teleport** (S): `Battle.place(u, c)`, which skips `walk()`. It springs traps but leaves no debris trail. Unlocks Send Off (?12: who picks the tile, and does it work on enemies).
 6. **Fear, shove and entrance** (M): effects that make a unit move, or let go of a grapple. Fear is a forced move away, built on Pushes (and the AI's `_away()`); entrance is a forced move toward, reusing `pull()`. Each ends a grapple through the existing `_let_go()`.
-7. **Damage for moving** (S): an effect hurts per tile walked, hooked into `travel()` through tile marks or a `per_tile` effect stat. Meander's top rank wards it off (`passes_by()` already counts tiles).
+7. **Damage for moving** (S) *(built 2026-11-14, ?139)*: an effect hurts per tile walked, hooked into `travel()` through tile marks or a `per_tile` effect stat. Meander's top rank wards it off (`passes_by()` already counts tiles).
 8. **Facing** (M)
    - Approach: `Unit.heading` exists but is only used by Eyes Forward. Add `Unit.facing`, set by moves and by Shields Up!, and a cone test in `Unit.hit()`.
    - Unlocks: Shields Up!.
 
 ## Phase 3: Reactions
 
-9. **Reactions and interrupts** (L)
+9. **Reactions and interrupts** (L) *(built 2026-11-14, ?140)*
    - Approach:
      - Before `cast()` resolves a hit on a target, collect reactions from units whose passives listen: Interject (an ally is hit), Gallantry (an adjacent ally is attacked), Final Act (it reaches 0 HP; the hearts code's `downed` hook is the place).
      - Each reaction can swap the target or take an action, resolved in a fixed order, at most once each per trigger.

@@ -18,6 +18,7 @@ signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
+const REAR_EDGE := 1  # Defense an attack from behind takes off its target: +1 to hit (defense(), side_of())
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
 		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
@@ -360,8 +361,13 @@ var noticed := {}  # tiles where it has inspected something suspicious (Battle._
 var assumed := {}  # units that vanished before its eyes -> the side they seemed to be of: it goes on taking them for that (Battle._vanish(), Perception)
 var rested_turns := 0  # its side's turns in a row it has rested through: it looks further and better (Battle.survey())
 var unwatched := 0  # its turns since it last looked around (Battle._watch(): wis mod 0 or less looks only every few)
-var guard := Vector2.ZERO  # the way it faces behind its shield while Shields Up! is on it (Battle._guard(); hit())
-var heading := Vector2i.ZERO  # the way its last move this turn went, if moving was the last thing it did (Eyes Forward)
+var facing := Vector2.ZERO:  # the way it faces (a direction; zero: none yet): set by its steps, by what it aims at (face()), by Shields Up!; side_of() reads it
+	set(v):
+		facing = v
+		if heading_tick:
+			heading_tick.queue_redraw()
+var guard := false  # its shield is up (Shields Up!: Battle._guard(); hit()): it blocks what comes from its front
+var striding := false  # moving was the last thing it did this turn (Eyes Forward looks the way it faces)
 var mark: Label  # the mark that last popped over it (pop_mark()), while it fades
 var _face: Label  # draws a persona's stand-in sprite in place of its own (_show_face())
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
@@ -498,6 +504,7 @@ var luck: int:
 @onready var reserve_bar: ProgressBar = $ReserveBar
 var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
 var more_bars: Array[ProgressBar] = []  # a third reserve's, and any further: 1px slivers (the map's bars, as few pixels as they need)
+var heading_tick: Node2D  # a faint tick at the edge of its tile toward the way it faces (facing); on the sprite, so a silhouette hides it
 var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over its shoulder; on the sprite, so a silhouette hides it
 
 
@@ -528,6 +535,10 @@ func _ready() -> void:
 	banner.position = Vector2(6, -13)
 	banner.draw.connect(_draw_banner)
 	sprite.add_child(banner)
+	heading_tick = Node2D.new()
+	heading_tick.name = &"Facing"
+	heading_tick.draw.connect(_draw_tick)
+	sprite.add_child(heading_tick)
 	sprite.material = ShaderMaterial.new()
 	sprite.material.shader = DESATURATE
 	set_saturation(1.0)
@@ -1638,9 +1649,27 @@ func hooks() -> Array:
 	return out
 
 
-# Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
+# Turns to face tile c (not its own).
+func face(c: Vector2i) -> void:
+	if c != cell:
+		facing = Vector2(c - cell).normalized()
+
+
+# Which side of it tile c is on, by the cone test: &"front" (within 45 degrees of the way it faces),
+# &"rear" (within 45 of the opposite) or &"flank" (the 90 degrees to either side). Front when it faces
+# no way yet, or c is its own tile. Battle.hit_tags() tags an attack from the rear or flank with it.
+func side_of(c: Vector2i) -> StringName:
+	if facing == Vector2.ZERO or c == cell:
+		return &"front"
+	var a := absf(angle_difference(facing.angle(), Vector2(c - cell).angle()))
+	if a <= PI / 4.0 + 0.0001:
+		return &"front"
+	return &"rear" if a >= 3.0 * PI / 4.0 - 0.0001 else &"flank"
+
+
+# Shields Up! is on it and c's centre lies in its front cone - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and reacts() and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard and reacts() and stat(&"guard") > 0.0 and c != cell and side_of(c) == &"front"
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -1652,7 +1681,7 @@ func mitigation(tags: Array[StringName]) -> float:
 # untagged ones always, tagged ones against attacks carrying that tag or a child of it (physical
 # Defense counts against a pierce).
 func defense(tags: Array[StringName] = []) -> int:
-	return armor_defense() + roundi(stat(&"defense", tags)) + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0)
+	return armor_defense() + roundi(stat(&"defense", tags)) + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0) - (REAR_EDGE if &"rear" in tags else 0)
 
 
 # Defence its armor's mind_stat adds against magical attacks alone (Robe: wis mod). Untagged queries
@@ -1827,6 +1856,19 @@ func _draw_banner() -> void:
 	var c := trinket.trim() if trinket else Color(0, 0, 0, 0)
 	if c.a > 0.0:
 		Item.draw_banner(banner, Vector2.ZERO, c, Color("#1d1a12"))
+
+
+# The tick for the way it faces: a small pale chevron at the rim of its tile, faint (no side's colour: a
+# disguise gives nothing away).
+func _draw_tick() -> void:
+	if facing == Vector2.ZERO:
+		return
+	var d := facing.normalized()
+	var at := d * 7.0
+	var side := d.orthogonal()
+	var pts := PackedVector2Array([at + d * 1.5, at - d * 0.5 + side * 2.0, at - d * 0.5 - side * 2.0])
+	heading_tick.draw_colored_polygon(pts, Color(1, 1, 1, 0.55))
+	heading_tick.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]), Color(0, 0, 0, 0.35), 0.5)
 
 
 # Takes off what's in a slot, returning it.

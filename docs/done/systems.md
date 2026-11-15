@@ -201,3 +201,10 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Routing through the reader** (`Skill.markup(rank, with_spec, u)`, `Requirement.turns`, `strength`, `markup()`; `Battle.damage_range()`, `_land()`; `Behaviour.describe_as()`): saves, executes, DCs, reach, requirements on every outcome, holder-aware descriptions and AI estimates all read `u.mods()`; the deferred six skills routed. Plan: `docs/plans/route.md`. `route_test` (10 tests). (?134)
 - [x] **Behaviours on every landing path** (`Battle._land()`): Beastshape, Eros's heal, Level Down, Death, Strike's chain and the aura-style branches.
 - [x] **UNSAID emptied; `Skill.cinders` removed**; `FLAG_CEILING` is 128 (from 130). (?133, ?134)
+
+## Tile marks and reactions (2026-11-14)
+
+- [x] **Tile marks** (`Battle.Mark`, `lay_mark()`, `mark_cost()`, `wading()`, `hazard()`; disturbed earth folded in): a side's one-use or lasting effect on a tile, triggered on entry and turn end, known by its side, by recon or plainly. (?139)
+- [x] **Damage for moving** (`Effect.per_tile`, `Unit.wards()`, Footsore ??): HP per tile walked; Meander wards it by rank. (?139)
+- [x] **Regain ??** (`Effect.regain`, `Unit.regain()`): an instant AP refund by the effect's tag. (?139)
+- [x] **Reactions and interrupts** (`Behaviour.react`, `Behaviour.Reaction`, `Battle.react()`, `grant_interrupt()`, `end_interrupt()`; `AI.interrupt()`; tag `reaction`): one hook for swaps, held-up falls and free actions out of turn. (?140)

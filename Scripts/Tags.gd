@@ -88,6 +88,8 @@ const COLOR := {
 	&"crest": Color("#c9b48a"),
 	&"badge": Color("#c9b48a"),
 	&"reaction": Color("#e0a75e"),
+	&"rear": Color("#8a5a7e"),
+	&"flank": Color("#7e6a9a"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

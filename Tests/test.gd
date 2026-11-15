@@ -62,13 +62,14 @@ func villagers_only() -> void:
 
 
 # Clears the board except the given units, placed at the given cells, and starts f's turn - calm:
-# nobody suspicious of anything from the looks it took as it started (calm()).
+# nobody suspicious of anything from the looks it took as it started (calm()); nobody facing any way.
 func stage(f: Faction, placed: Dictionary) -> void:
 	for u: Unit in b.units.values():
 		b.units.erase(u.cell)
 		u.cell = Vector2i(-99, -99)
 	for u: Unit in placed:
 		b.move(u, placed[u])
+		u.facing = Vector2.ZERO  # facing no way: front from every side, till a test turns it (facing_test)
 	b.order.assign([lancin, nemes])
 	b.turn = null
 	b.turn = f

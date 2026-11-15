@@ -33,7 +33,8 @@ func test_leader_permit() -> void:
 
 func test_reactions() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(5, 3)})
-	v(3).guard = Vector2(-1, 0)
+	v(3).guard = true
+	v(3).facing = Vector2(-1, 0)
 	v(3).afflict(effect("guard", 0.5), 9)
 	v(3).afflict(effect("obstruct", 3.0), 9)
 	ok(v(3).reacts() and v(3).guarding(Vector2i(4, 3)) and b.obstruction(v(1), Vector2i(5, 4)) > 0.0, "on its feet it guards and obstructs")
@@ -43,7 +44,7 @@ func test_reactions() -> void:
 	ok(is_equal_approx(b.evade(v(3), 1), 1.0), "or dodge: all of it lands, even against DC 1")
 	ok(is_zero_approx(b.obstruction(v(1), Vector2i(5, 4))), "or obstruct")
 	b.mend(v(3), 0, 3)
-	ok(v(3).reacts() and v(3).guarding(Vector2i(4, 3)) and v(3).guard != Vector2.ZERO, "healed, the shield it had up is up again")
+	ok(v(3).reacts() and v(3).guarding(Vector2i(4, 3)) and v(3).guard, "healed, the shield it had up is up again")
 	v(3).afflict(effect("mindless", 1.0), 3)
 	v(3).afflict(stunned, 3, 3)
 	ok(v(3).reacts(), "under a permit it still reacts")

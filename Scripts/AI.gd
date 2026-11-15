@@ -46,6 +46,7 @@ const AP := 1.5  # what an AP it gets back is worth, in the HP a blow takes (a 3
 const DEFENSE := 0.5  # what a point of Defense it loses through its next turn costs it, per point (Sutemi's Off Balance)
 const RIDER := 1.0  # what each thing riding on a hit is worth (Kick's soaking, blinding, push; Battle.foresee())
 const RESCUE := 1.0  # what a skill that brings a Downed unit back up (Behaviour.revives()) is worth over one that only heals it, on that unit
+const FLANKING := 0.4  # a tile's pull, a point of Defense the target loses to an attack from there (a rear attack's edge, an effect tagged flank), in tiles of walking (_approach())
 const SHOT := 0.5  # the chance to hit below which a ranged attack isn't worth taking now, when resting for Focus would make it one (_steady())
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
@@ -816,7 +817,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			for p in b.line(u.cell, c, u.luck, u):
 				var tr := b.read(u, p)
 				risk += int(tr.known_bad() or tr.hint != "")
-			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0)
+			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c)
 			for o in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:
@@ -826,6 +827,14 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 				best_cost = v
 	b.rng.state = state
 	return best
+
+
+# The points of Defense t loses to an attack made from tile c, by the side of t it lies on (Unit.side_of(): rear,
+# flank) - the same Defense an attack's hit chance reads (Battle.hit_chance()), so an effect tagged rear or flank
+# counts as well as the rear's own edge. A tile it would take its approach by, other things equal.
+static func _opening(t: Unit, c: Vector2i) -> int:
+	var side := t.side_of(c)
+	return t.defense() - t.defense([side] as Array[StringName]) if side != &"front" else 0
 
 
 # What it has left, after its blows, it spends on refilling a pool it runs low on: a skill that restores
