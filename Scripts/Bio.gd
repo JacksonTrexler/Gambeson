@@ -14,6 +14,9 @@ extends Resource
 #               or its trickery does (foes), and doubting it is that much harder (Battle.doubt()).
 
 const BEHAVIOURS: Array[StringName] = [&"timid", &"brave", &"aggressive", &"helpful", &"stoic"]
+# A temper in a few words (the Guide's character page). Keyed by BEHAVIOURS; bio_test checks they match.
+const TEMPERS := {&"timid": "waits for a stronger ally, backs off", &"brave": "charges the strongest", &"aggressive": "presses the weakest",
+	&"helpful": "heals the wounded", &"stoic": "holds, strikes what comes"}
 # How much stronger than itself an observer takes one of each appearance to be, in levels, when it
 # can't read the level (AI._level()). Unlisted: as strong as itself.
 const STANDING := {"knight": 2, "soldier": 1, "brute": 1, "beast": 1, "caster": 0, "scout": 0, "tradefolk": -1, "everyman": -1}
@@ -52,3 +55,40 @@ static func aura(looks: String) -> int:
 # Whether one looking like this looks hurt ("Injured").
 static func hurt(looks: String) -> bool:
 	return Array(looks.to_lower().split(" ", false)).any(func(w: String): return ADJECTIVES.get(w, {}).get("hurt", false))
+
+
+# A unit's bio as its viewer may know it, in Glossary markup: temper, what it looks like (adjectives and
+# appearance), what it's made of. r is the viewer's Read of it (Battle.read()), null for the viewer's own.
+# A foe the viewer can't name shows nothing; one a persona fools shows the persona's looks and no temper
+# or properties; else temper and properties as the Read allows them (an insightful viewer, its identity).
+static func line(t: Unit, r: Read = null) -> String:
+	var temper: StringName = t.temper()
+	var looks: Array[String] = []
+	var props: Array[String] = []
+	if r:
+		if r.name == "":
+			return ""
+		temper = r.temper
+		if r.deceived:
+			temper = &""
+			looks.assign(t.shows_adjectives)
+			if t.alias_noun:
+				looks.append(t.alias_noun)
+		elif t.bio:
+			looks.assign(t.bio.adjectives)
+			looks.append(Perception.kind_noun(t))
+		if not r.deceived:
+			props.assign(r.properties.map(func(p: Property) -> String: return p.name))
+	else:
+		looks.assign(t.bio.adjectives if t.bio else [])
+		if t.bio and t.bio.appearance:
+			looks.append(t.bio.appearance)
+		props.assign(t.bio.properties.map(func(p: Property) -> String: return p.name) if t.bio else [])
+	var out: PackedStringArray = []
+	if temper:
+		out.append("{x:%s|%s}" % [temper, String(temper).capitalize()])
+	if not looks.is_empty():
+		out.append(" ".join(looks))
+	for p in props:
+		out.append("{x:%s|%s}" % [p.to_lower(), p])
+	return " · ".join(out)

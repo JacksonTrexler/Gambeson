@@ -42,7 +42,10 @@ Red, purple and green slots hold only martial, magic and specialist skills. A gr
 The character sheet shows a unit's weapon, armor and trinket, and the stash. On its side's turn (or once the battle is over) a unit of yours puts items on from the stash, takes them off, or uses up a consumable. In battle, putting on or using an item costs its AP; taking one off is free.
 
 [color=#e8c547]The stash[/color]
-Bosses, commanders and won battles give items. Hearts are extra lives."""],
+Bosses, commanders and won battles give items. Hearts are extra lives.
+
+[color=#e8c547]Bio[/color]
+Under the name: temper, looks, what it is made of. A foe shows only what you can read of it; a persona shows its own looks. Tempers: {tempers}."""],
 	&"persona": ["Persona", """[color=#e8c547]Personify[/color]
 Personify puts forward a persona: how others take a unit. Each persona rank opens more of it: a vibe at I, a stance and a claimed level at II, identity tags and a name to go by at III. Changing it costs Personify's AP.
 
@@ -77,7 +80,7 @@ static func title(id: StringName) -> String:
 # A page's text: its own, or its Glossary terms, each a paragraph.
 static func text(id: StringName) -> String:
 	if id not in GLOSSARY:
-		return PAGES[id][1].replace("{hurry}", KeyBinds.key_of(&"hurry")) if id in PAGES else ""  # the key as it is bound now
+		return PAGES[id][1].replace("{hurry}", KeyBinds.key_of(&"hurry")).replace("{tempers}", ", ".join(Bio.BEHAVIOURS.map(func(t: StringName) -> String: return "%s (%s)" % [t, Bio.TEMPERS[t]]))) if id in PAGES else ""  # the key as it is bound now
 	return "\n\n".join(terms(id).map(func(t: StringName) -> String:
 		return "[color=#%s]%s[/color]  %s" % [Glossary.colour(t).to_html(false), Glossary.name_of(t), Glossary.define(t)]))
 
