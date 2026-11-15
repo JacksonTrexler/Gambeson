@@ -44,3 +44,32 @@ Starting suite: 45664 checks, 0 failed (816 tests).
 - Tags kept per site (Sing's foe and a reaction's attacker roll without the actor's tags).
 - `doubt()`: the fooling unit's side now uses its cha check mod (defensive) rather than its bare mod,
   so defensive bracing counts on a deceiving roll, as ?68 says it should. The only number that moves.
+- Uniform now (consolidation): a declared check's options come from one place (`Battle.skill_opts()`), so
+  Sing's contest also takes zeal (Impassioned Fighter), a contingency, an execute's cut, the caster's
+  modifier tags and, on the foe's side, the skill's tags, as the saves and Drown already did. No test moved.
+- Death rolls its last stand through the helper (`stand_bonus()`, `stand_share()`): the caster's d20 now
+  rolls before the foe's (rng order only).
+- Drown's range penalty term and a ranked check join SkillTerms' rank_impact ("range penalty", "check";
+  the old "save" term renamed): rank-impact modifiers now fit Drown. Drown is hand-priced, so no price moves.
+
+## As built
+
+- `Check.odds()`; `Battle.check()`, `odds()`, `sides()`, `_side_mod()`; `skill_check()`, `skill_odds()`,
+  `skill_opts()`, `fogged()`. Option `as` became `role` (`as` is a GDScript keyword).
+- Moved onto it: Drown's drag, Coalescing's engulf, every save skill (Haluca, Brainfog, Interdict,
+  Phantasm, Phantasmal Force, Showstopper, Switcheroo), Sing, `doubt()`, `_break_free()`,
+  `_record()`, Flamewall, Death, Hitch, Slam Jam, `Reaction.contest()`. No `beats()` call is left
+  outside the helper.
+- `Scripts/SkillCheck.gd`, `Skill.check`, `Skill.drags()`; the 9 .tres files migrated by a script that
+  calls `Util/skill.py`'s `check_section()`; `skill.py new --check "..."`; FLAG_CEILING 126.
+- `hit_chance()` answers a declared check's odds (a drag's to its spot); HUD brackets and Alt's
+  "N% to win"; `AI.score()` through hit_chance.
+- Tests: check_test (helper, declared check), hud_test.test_check_odds, haluca_test.test_ai_weighs_save;
+  intervention_test moved from `later.save` to a SkillCheck and now also checks that tags reach the save.
+
+## Undone
+
+- Rolls against an earlier total stay on `resolve()`: investigating a tile or a guise, the last-stand
+  fall in Downed, Level Down's bar. Burnout, Stun and Bandwagon roll against a DC, not against another unit.
+- Hitch and Slam Jam still pass their stats to the helper in code. They don't declare a SkillCheck,
+  because their check comes after a hit, not in place of the roll.

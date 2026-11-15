@@ -103,3 +103,21 @@ func test_check_helper() -> void:
 			won += 1
 	var p := Battle.odds(a, &"strength", t, &"strength", {bonus = 3})
 	ok(absf(won / 2000.0 - p) < 0.05, "odds() matches what check() rolls (%.3f vs %.3f)" % [won / 2000.0, p])
+
+
+# A declared check (Skill.check) as the helper reads it: + rank when ranked, its edge, a range penalty a
+# tile past the first (1 less a rank past I), its own check tags beside the skill's.
+func test_declared_check() -> void:
+	var s: Skill = load("res://Skills/haluca.tres").duplicate()
+	s.check = s.check.duplicate()
+	s.check.range_penalty = 2
+	s.check.edge = -1
+	s.check.tags = [&"taps"] as Array[StringName]
+	v(1).learned.append(slot(s, 1))
+	v(1).refresh()
+	stage(nemes, {v(1): Vector2i(1, 1), v(3): Vector2i(5, 1)})
+	var o := Battle.skill_opts(v(1), s, v(3))
+	ok(o.penalty == 2 and o.tiles == 3 and o.edge == -1 and o.kind == Check.Kind.SAVE, "rank I: -2 a tile, 3 tiles past the first, disadvantage, a save (%s)" % o)
+	ok(&"taps" in o.tags and &"magical" in o.tags and &"taps" not in s.tags, "its check tags join the skill's (which keep their own)")
+	ok(Battle.sides(v(1), &"charisma", v(3), &"wisdom", o)[0].bonus == v(1).check_mod(&"charisma", &"offensive", o.tags) + 1 - 6, "+ rank 1, - 2 x 3")
+	ok(s.check.penalty(3, 3) == 0 and s.check.penalty(2, 3) == 3, "the penalty falls 1 a rank past I")
