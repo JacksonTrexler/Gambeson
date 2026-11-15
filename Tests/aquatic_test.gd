@@ -36,3 +36,13 @@ func test_no_drowning() -> void:
 	ok(b.submerged(v(1)) and b.held_by(v(1)) == a, "held under water")
 	b._grip(v(1))
 	ok(v(1).hp == 99, "it breathes water: no drowning (%d HP)" % v(1).hp)
+
+
+# The Pike (Scenes/pike.tscn) carries the Aquatic property: water costs it 1, and it reads at its level.
+func test_pike() -> void:
+	var side: Faction = load("res://Factions/unaligned.tres")
+	var u: Unit = b.summon(load("res://Scenes/pike.tscn"), side, Vector2i(5, 3))
+	stage(side, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 3)})
+	b.move(u, Vector2i(5, 3))
+	ok(u.has_tag(&"aquatic") and b._cost(u, Battle.PLAIN, load("res://Terrain/water.tres")) == 1.0, "a pike: water costs it 1")
+	ok(b.read(sharp(v(1)), u).level == u.level, "read with recon: its level (%d)" % u.level)

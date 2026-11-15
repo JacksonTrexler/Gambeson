@@ -469,3 +469,28 @@ can't see it. B2's describe sweep should catch it.
 
 Visual: Wildfire's and Observe's targeting overlay (armed, hovered) captured before and after (`S/driver_b4.gd`,
 `S/shot_b4_*`): the two look the same. The pixel diffs are the overlay's real-time pulse.
+
+## B3 as built (`c-tables`)
+
+- **Capstones:** `quarry`, `survivalist`, `wildcaller`, `acceptance`, `bargaining` tests (5 files, 145 lines) became
+  `Tests/capstones_test.gd`. The table loops every Role's `choices` whose `by` carries an efficiency behaviour
+  and asserts: it waits on its root, it unlocks once the lower-tier skills of the role's roots are learned, a guest
+  tree with a tier 1 skill picks, that skill's affinity is `choice.affinity + 1`, `describe` says "tier". The three
+  Ranger rows come from the data. Call: Acceptance and Bargaining are not `TreeChoice.by` openers (they reach
+  Patron trees), so their rule tests (Flex `after` / `burns`, the stacks) stay as two plain tests in the same file.
+  Call: the old per-skill probe skill (jugular, forage, stonegift) is now "the first tier 1 skill of the first
+  offered guest tree", so a data change there can't break the table.
+- **Unit pins:** `blinthe_test.gd` deleted; `pike_test.gd` deleted, its water-cost and read-level asserts are
+  `aquatic_test.test_pike`. `Util/unit.py check` now checks, for every unit scene: every `res://` path it names
+  exists, a Bio'd unit has a faction, look, bio, behaviour and appearance, and each clout key is a `Factions/` file.
+  Call: level, role, clout numbers, bio text and skill ranks are values, not rules, and are no longer pinned.
+- **Tree lists:** casters / berserker / general literals are rule asserts (a role's trees are its own tab, then what
+  its choices offer; a choice by a study is -1 except a school; every class gets the base general tree plus one per
+  declared category, for every Role). Dropped the root-name list asserts.
+- **COUNTS:** `skill.py COUNTS`, `check_counts` and `wheel_count` removed. `hud_test` line 917 now asserts every
+  skill of the wheel's tab (centre, core, roots) has a spot on the wheel.
+- **Spot-checks** (old suite fails by construction for the deleted files: they asserted the same):
+  efficiency `a + 1` to `a + 0`: capstones table fails (9); `TreeChoice.all()` skipping borrowed trees: casters fail (8);
+  `general_trees()` ignoring `role.general`: `trees_by_class` fails; `_cost` ignoring aquatic: `aquatic.test_pike` fails;
+  `SkillWheel._put` dropping a skill: the hud wheel rule fails; blinthe.tscn with an empty appearance / a missing
+  faction file / clout keyed to a Role: `unit.py check` reports each. All reverted.

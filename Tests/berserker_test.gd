@@ -30,8 +30,8 @@ func test_reckless_abandon() -> void:
 	ok(u.affinity(sk("crushing_blow")) == 1 and u.affinity(strike) == 1 and u.affinity(sk("frenzy")) == 1, "Offender: +1 to what attacks (Frenzy is tagged offensive outright)")
 	ok(u.affinity(sk("rally")) == -1 and u.affinity(sk("bulwark")) == -1 and u.affinity(sk("second_wind")) == -1, "Unsupportive, Indefensible: -1 to helping and guarding")
 	ok(u.missing(sk("crushing_blow")) == "" and u.missing(sk("savage_swing")) == "", "it skips Bulwark and Rally on its way to its blows")
-	var tabs: Array = u.role.trees().map(func(t: SkillTab): return t.title())
-	ok(tabs == ["Berserker", "Prowess: Brawn", "Prowess: Fury", "Prowess: Havoc"], "its own tab and three prowesses (%s)" % [tabs])
+	var tabs := u.role.trees()
+	ok(tabs[0].title() == "Berserker" and tabs.size() > 1 and tabs.slice(1).all(func(t: SkillTab): return t.kind == "Prowess"), "its own tab, then prowesses to pick (%d)" % (tabs.size() - 1))
 
 
 func test_live_reranking() -> void:
