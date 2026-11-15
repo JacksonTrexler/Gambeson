@@ -856,10 +856,12 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			if c == r.cell or c == u.cell or not b.on_map(c) or b.unit_at(c):
 				continue
 			var risk := 0
+			var pull := 0.0
 			for p in b.line(u.cell, c, u.luck, u):
 				var tr := b.read(u, p)
 				risk += int(tr.known_bad() or tr.hint != "")
-			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c)
+				pull += b.lure(u, p)  # a known helpful mark on the way (Charge!) draws it a little
+			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) - pull
 			for o in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:

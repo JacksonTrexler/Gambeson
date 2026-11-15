@@ -207,6 +207,7 @@ const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
 const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
 const HAZARD_TILES := 0.5  # steering: movement a point of foreseen HP loss weighs as (a 7 damage trap is a 3.5 tile detour); AP loss weighs 1 a point
+const HELP_PULL := 0.75  # movement a tile with a known helpful mark (Charge!) takes off a step onto it, in route() and the AI's approach: less than a tile, so it only tips a choice
 const STEER_MARGIN := 2  # tiles either side of its straight run that a steered route may wander (route())
 const EARTHWORK_COST := 1.5  # disturbed earth (earthwork()): what entering it costs its side's enemies, times the usual
 
@@ -273,6 +274,10 @@ class Mark:
 	# Whether o is simply told of it: its side, or someone it was passed word to. Everyone, if nothing hides it.
 	func told(o: Unit) -> bool:
 		return concealment <= 0 or Faction.friends(o.faction, faction) or o in known
+
+	# Whether it would do u good to step onto it: it triggers on u, harms it nowhere, and puts something helpful on it.
+	func helps(u: Unit) -> bool:
+		return on == &"enter" and hits(u) and not harms(u) and effects.any(func(e: Effect): return e.helps() > 0)
 
 	# Whether it would hurt u to step onto it: it triggers on u, and costs it movement or puts a harmful effect on it.
 	func harms(u: Unit) -> bool:
@@ -2832,9 +2837,16 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 			dreads[c] = dread(hazard(u, c, r), r, r.marks.any(func(m: Mark): return m.harms(u)))
 		return dreads[c]
 	var danger := 0.0
+	var pulled := false  # a known helpful mark on the line's ground, or near enough to bend it
+	var near_lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
+	var near_hi := Vector2i(maxi(u.cell.x, dest.x), maxi(u.cell.y, dest.y)) + Vector2i(STEER_MARGIN, STEER_MARGIN)
+	for c in marks:
+		if c.x >= near_lo.x and c.y >= near_lo.y and c.x <= near_hi.x and c.y <= near_hi.y and lure(u, c) > 0.0:
+			pulled = true
+			break
 	for c in ln:
 		danger += dread_of.call(c) if on_map(c) else 0.0
-	if danger <= 0.0:
+	if danger <= 0.0 and not pulled:
 		return ln
 	var grounds := {}
 	var ground_of_known := func(c: Vector2i) -> Terrain:
@@ -2843,7 +2855,7 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 		return grounds[c]
 	var cost_of := func(prev: Vector2i, c: Vector2i, bag: Dictionary) -> float:
 		var other := unit_at(c)
-		return stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c) \
+		return maxf(stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c) - lure(u, c), 0.0) \
 				+ 0.00001 * Geometry2D.get_closest_point_to_segment(Vector2(c), Vector2(u.cell), Vector2(dest)).distance_to(Vector2(c))  # ties hug the line
 	var bound := 0.0  # the line's own: movement and dread
 	var bag := {}
@@ -3041,6 +3053,14 @@ func obstruction(u: Unit, c: Vector2i, expected := false) -> float:
 			continue
 		extra += maxf(0.5 * maxf(pass_cost(u, o), 0.0), 0.5 * o.mod(&"constitution") / 10.0) * (1.0 + 0.25 * n)
 	return extra
+
+
+# What a known helpful mark on c (Mark.helps(): Charge!) takes off stepping onto it, in movement: HELP_PULL,
+# once however many there are. What route() and the AI's approach weigh; never what the walk pays.
+func lure(u: Unit, c: Vector2i) -> float:
+	if c not in marks or u == null:
+		return 0.0
+	return HELP_PULL if known_marks(u, c).any(func(m: Mark): return m.helps(u)) else 0.0
 
 
 # What the marks on c make entering it cost u, as a multiplier (wading(): disturbed earth, Pray to Vetruvis,

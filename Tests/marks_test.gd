@@ -190,3 +190,51 @@ func test_hud_suspects_a_hidden_mark() -> void:
 	h._refresh()
 	ok(spot not in h.suspect and not b.read(v(1), spot).marks.is_empty(), "seen through: the mark is known, no longer a ? (%s, %s)" % [h.suspect.get(spot), b.read(v(1), spot).net])
 	h.free()
+
+
+# A known helpful mark (Charge!) pulls a route a little (item 6 of docs/plans/gaps-react-marks.md): of two ways
+# as long as each other it takes the one through it, never a longer way, and not one it can't see, nor a foe's.
+func test_helpful_marks_pull() -> void:
+	var edge := Vector2i(7, 3)  # a tile beside the straight run (8,4) -> (6,4), as far as it
+	var good := effect("damage", 0.1)
+	var dest := Vector2i(6, 4)
+	stage(lancin, {v(2): Vector2i(8, 4), v(3): Vector2i(1, 1)})
+	v(2).movement = 9
+	v(2).intelligence = 12  # it plans (a negative foresight allowance walks the line)
+	v(2).refresh()
+	var plain := b.travel(v(2), dest)
+	ok(plain == ([Vector2i(7, 4), dest] as Array[Vector2i]), "no mark: the straight run (%s)" % [b.line(Vector2i(8, 4), dest, v(2).luck, v(2))])
+	b.move(v(2), Vector2i(8, 4))
+	var m := Battle.Mark.new(&"test", v(1))
+	m.who = &"allies"
+	m.effects.assign([good])
+	b.lay_mark(edge, m)
+	ok(m.helps(v(2)) and b.lure(v(2), edge) == Battle.HELP_PULL and b.lure(v(3), edge) == 0.0, "a mark for its side helps it, not a foe")
+	var way := b.route(v(2), dest, b.line(Vector2i(8, 4), dest, v(2).luck, v(2)))
+	ok(edge in way and way.size() == 2, "a way as short through it: it bends to it (%s)" % [way])
+	b.move(v(2), Vector2i(8, 4))
+	var far := Battle.Mark.new(&"far", v(1))
+	far.who = &"allies"
+	far.effects.assign([good])
+	b.marks.clear()
+	b.lay_mark(Vector2i(7, 1), far)  # two tiles out: a longer way to it
+	ok(not (Vector2i(7, 1) in b.route(v(2), dest, b.line(Vector2i(8, 4), dest, v(2).luck, v(2)))), "never a longer way")
+	b.marks.clear()
+	var hid := Battle.Mark.new(&"hid", v(3))  # a foe's (it's for its foes: v(2) is one), hidden
+	hid.who = &"foes"
+	hid.concealment = 3
+	hid.effects.assign([good])
+	b.lay_mark(edge, hid)
+	ok(not hid.told(v(2)) and b.lure(v(2), edge) == 0.0, "one it can't make out is no lure")
+
+
+func test_helpful_marks_draw_the_approach() -> void:
+	stage(lancin, {v(2): Vector2i(8, 2), v(3): Vector2i(4, 2)})
+	var reads := {v(3): b.read(v(2), v(3))}
+	var first := AI._approach(b, v(2), v(3), reads)
+	var m := Battle.Mark.new(&"test", v(1))
+	m.who = &"allies"
+	m.effects.assign([effect("damage", 0.1)])
+	b.lay_mark(Vector2i(5, 3), m)
+	var drawn := AI._approach(b, v(2), v(3), reads)
+	ok(first == Vector2i(5, 2) and drawn == Vector2i(5, 3), "it closes by the tile with a mark that helps it, over a nearer one (%s, %s)" % [first, drawn])
