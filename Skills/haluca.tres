@@ -2,10 +2,17 @@
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
 
 [sub_resource type="Resource" id="Effect_scrambled"]
 script = ExtResource("2_effect")
 stat = "scrambled"
+
+[sub_resource type="Resource" id="SkillCheck_1"]
+script = ExtResource("6_skill_check")
+against = &"wisdom"
+save = true
+ranked = true
 
 [resource]
 script = ExtResource("1_skill")
@@ -16,6 +23,6 @@ ap = 4.0
 cost = 2
 radius_mod = &"charisma"
 radius_per_rank = 1.0
-save = &"wisdom"
 turns_per_rank = 1
 turns_mod = &"charisma"
+check = SubResource("SkillCheck_1")

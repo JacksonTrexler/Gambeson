@@ -2,7 +2,7 @@
 """Gambeson skill authoring: write a skill and wire it in (`new`), and catch the wiring pitfalls (`check`).
 
   python3 Util/skill.py new kick --tags physical,blunt,str,martial,offensive --intensity low --stat strength \\
-      [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--hand-priced --ap 4 --cost 1] \\
+      [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--check "against=wisdom save=true ranked=true"] [--hand-priced --ap 4 --cost 1] \\
       --range-per-rank 1 --behaviour kick --tree general_martial --after brutal_strike \\
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
       [--set rolls=false] [--passive] [--no-import] [--dry-run]
@@ -20,9 +20,9 @@ missing. Stubs carry STUB: check fails until they're filled in. Plain python3, n
 import argparse, os, re, subprocess, sys
 
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
-                  literal, effect_section)
+                  literal, effect_section, names)
 STUB = "STUB(skill.py)"
-FLAG_CEILING = 128  # (+5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
+FLAG_CEILING = 126  # (-3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 HOOKS = ("lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "revives", "react")  # Behaviour's hooks: what a passive's behaviour does outside a cast
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
@@ -263,8 +263,25 @@ def terms_props(a, ext, subs, props):
             lines.append("%s = %s" % (k, literal(k, v) if k != "share" else (v if "." in v else v + ".0")))
         subs.append("\n".join(lines))
         props.append('requires = SubResource("Requirement_1")')
+    if a.check:
+        ext.append('[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="%s"]' % CHECK_EXT)
+        subs.append(check_section(dict(x.partition("=")[::2] for x in a.check.split())))
+        props.append('check = SubResource("SkillCheck_1")')
     if not a.passive and not a.hand_priced:
         props.append("priced = true")  # its AP and cost from the cost calculator (Scripts/Pricing.gd)
+
+
+CHECK_EXT = "6_skill_check"
+CHECK_FIELDS = {"stat": "name", "against": "name", "save": "bool", "ranked": "bool", "edge": "int", "range_penalty": "int",
+                "tags": "names", "drags_to": "name", "suspicion": "bool"}  # Scripts/SkillCheck.gd
+
+
+def check_section(kv, ext=CHECK_EXT):  # a skill's declared check (Skill.check): --check "against=wisdom save=true ranked=true"
+    lines = ['[sub_resource type="Resource" id="SkillCheck_1"]', 'script = ExtResource("%s")' % ext]
+    for k, v in kv.items():
+        kind = CHECK_FIELDS.get(k) or die("--check: no field %s (%s)" % (k, ", ".join(CHECK_FIELDS)))
+        lines.append("%s = %s" % (k, '&"%s"' % v if kind == "name" else (names(v) if kind == "names" else v)))
+    return "\n".join(lines)
 
 
 def skill_tres(a):
@@ -460,6 +477,7 @@ def main():
     n.add_argument("--impact", help="its unique effect beyond damage: tame or impactful (default: from its fields)")
     n.add_argument("--penalty", help="what it costs its user: minor, major, severe (default: from its fields)")
     n.add_argument("--requires", help='a contingency: "test=energy_above share=0.2 hit=2" (Scripts/Requirement.gd)')
+    n.add_argument("--check", help='its check in place of the attack roll: "against=wisdom save=true ranked=true" (Scripts/SkillCheck.gd: stat, against, save, ranked, edge, range_penalty, tags, drags_to, suspicion)')
     n.add_argument("--radius", help="range before rank")
     n.add_argument("--range-per-rank", dest="radius_per_rank")
     n.add_argument("--tier", action="append", default=[], help="damage by rank: 1:1d4+strength, 3:2+1d6+direct")

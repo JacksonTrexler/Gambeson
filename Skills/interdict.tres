@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
 
 [sub_resource type="Resource" id="Effect_attack_down"]
 script = ExtResource("2_effect")
@@ -17,6 +18,12 @@ amount = -1.0
 by_mod = &"strength"
 name = "Interdicted"
 
+[sub_resource type="Resource" id="SkillCheck_1"]
+script = ExtResource("6_skill_check")
+against = &"strength"
+save = true
+ranked = true
+
 [resource]
 script = ExtResource("1_skill")
 name = "Interdict"
@@ -24,7 +31,7 @@ tags = Array[StringName]([&"martial", &"str", &"physical"])
 ap = 3.0
 cost = 2
 radius = 1.0
-save = &"strength"
 turns = 1
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_attack_down"), SubResource("Effect_ap")])
 lore = "A hand on the sword arm, a shoulder in the way: whatever it meant to do next, it does less of it."
+check = SubResource("SkillCheck_1")

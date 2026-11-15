@@ -44,7 +44,6 @@ extends Resource
 @export var guards := false  # cast on a tile: its user faces it behind its shield, its effects on itself (Shields Up!; Battle._guard())
 @export var decays := 0.0  # its effects' strength falls this share a tile past the first between caster and target, set as they're put on; none paid wholly with mana (Rejuvinate: 0.05)
 @export var pull := 0  # used on a foe: draws it this many tiles x rank toward the caster (Sing; Battle.pull())
-@export var drags_to := &""  # used on a foe: a contest in its stat in place of the attack roll; won, it drags the foe to the nearest ground with this tag the caster could walk to, and both into it (Drown: water; Battle.drag_spot())
 @export var engulfs := false  # used on a foe: a contest in its stat; won, the caster moves into the foe's tile, sharing it (Coalescing; Battle.engulf())
 @export var shapes := false  # turns its user, body and mind, into a beast its tile suits, of a biome it picked; used again, back (Beastshape; Battle.beastshape())
 @export var beast := false  # a beast's own: usable while beastshaped, beside Strike (Unit.form)
@@ -60,9 +59,8 @@ extends Resource
 @export var prays := false  # prays to the caster's god, an effect by god (Pray; Battle.pray())
 @export var observes := false  # cast on a tile: the caster inspects every tile around it as if it had rested rank turns (Observe; Battle.observe())
 @export var auto := false  # used at once, landing on the nearest units in range - allies and foes alike - no more than its rank (Sing; Battle.auto_targets())
-@export var save := &""  # used on a foe: in place of the attack roll, it saves - d20 + its mod in this beating d20 + the caster's mod in the skill's stat + rank; failing, it takes the effects, and that roll is what seeing through them must beat (Haluca: wisdom)
+@export var check: SkillCheck  # used on a foe: the check it makes in place of the attack roll - a save (Haluca: wisdom), a contest (Drown's drag) - or beside it (Sing's on the suspicious); lost, it misses (Scripts/SkillCheck.gd, Battle.skill_opts())
 @export var disables := false  # a curse: with its save, the caster's luck-rounded sqrt(rank) of the foe's skill slots are switched off, right to left, for its turns; the foe adds the ranks of the skills in them to its save (Brainfog; Unit.disable_order())
-@export var resisted := &""  # it pulls only foes enraptured by the caster (fooled, with no suspicion of it); on a suspicious one, d20 + the caster's mod in the skill's stat against d20 + its mod in this takes a stack of suspicion off (Sing: wisdom; Battle._lured())
 @export var tiers: Array[Tier] = []  # damage by rank; none: no damage (tagged energy: it drains Energy first - Unit.drain())
 @export var weapon_tag := false  # its damage takes its wielder's weapon's damage tag, or blunt bare-handed (Strike; Item.damage_tag, Battle.hit_tags())
 @export var levels_down := false  # rank rolls of d20 + the caster's mod in its stat, each beating the higher of the foe's average stat mod + level and its last stand; each that does takes a level off it for rank - misses turns (Level Down; Battle._level_down())
@@ -337,7 +335,12 @@ func cone_at(rank: int, u: Unit = null) -> float:
 
 # Contests a foe in place of an attack roll: a save, a drag, Level Down, Death.
 func contests() -> bool:
-	return save != &"" or drags_to != &"" or levels_down or kills
+	return (check != null and not check.suspicion) or levels_down or kills
+
+
+# The ground tag its check drags a foe to (Drown: water), or none.
+func drags() -> StringName:
+	return check.drags_to if check else &""
 
 
 # Used on its user alone: self_only, except a prayer to Drael (Pray), which is on a unit within rank tiles.
@@ -603,9 +606,9 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			lines.append("Luun: the ground within {r:%d} tile%s falls into %s for {t:%d turn%s}, concealing its side a level" % [n, s, Glossary.term(&"darkness", "darkness"), n, s])
 			lines.append("Drael: takes {r:%d} rank%s of debuffs off an ally within {r:%d} tile%s, the highest first" % [n, s, n, s])
 			lines.append("Vetruvis: the ground within {r:%d} tile%s becomes %s for {t:%d turn%s}, costing its enemies 50%% more to enter" % [n, s, Glossary.term(&"disturbed_earth", "disturbed earth"), n, s])
-		if save:
-			lines.append("%s (%s%s) vs %s + {r:%d}" % [Glossary.term(&"save"), Glossary.mod(save, true),
-					" + the ranks of the skills it would lose" if disables else "", me, ri])
+		if check and check.save:
+			lines.append("%s (%s%s) vs %s%s" % [Glossary.term(&"save"), Glossary.mod(check.theirs(self), true),
+					" + the ranks of the skills it would lose" if disables else "", Glossary.mod(check.mine(self)), " + {r:%d}" % ri if check.ranked else ""])
 		if levels_down:
 			lines.append("{r:%d} %s (%s), each against the higher of the foe's {d:average stat mod} + level and its %s. Each that wins takes a level off it, for {t:%d turn%s} less one a miss"
 					% [ri, Glossary.term(&"check", "check" if ri == 1 else "checks"), me, Glossary.term(&"last_stand"), ri, "" if ri == 1 else "s"])
@@ -695,9 +698,9 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 				lines.append("+{r:%d} HP for each wound it clears" % (per_wound * ri))
 			if restores > 0.0:
 				lines.append("Gives back {r:%s} AP" % num(restores * ri))
-		if drags_to:
-			lines.append("%s (%s vs %s) in place of an attack, -1 a tile it must drag the foe%s. Won: drags it to the nearest %s the caster could walk to, and both go in"
-					% [Glossary.term(&"contest"), me, Glossary.mod(stat(), true), " (less {r:%d})" % (ri - 1) if ri > 1 else "", drags_to])
+		if drags():
+			lines.append("%s (%s vs %s) in place of an attack, -%d a tile it must drag the foe%s. Won: drags it to the nearest %s the caster could walk to, and both go in"
+					% [Glossary.term(&"contest"), me, Glossary.mod(check.theirs(self), true), check.range_penalty, " (less {r:%d})" % (ri - 1) if ri > 1 else "", drags()])
 		if engulfs:
 			lines.append("%s (%s vs %s) in place of an attack. Won: moves into its tile, sharing it" % [Glossary.term(&"contest"), me, Glossary.mod(stat(), true)])
 		if holds():
@@ -708,10 +711,10 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			lines.append("%s: each turn it ends held and %s, it takes %dd%d + %s" % [Glossary.term(&"drowning", "Drowns it"), Glossary.term(&"submerged", "submerged"), drowns.x, drowns.y, me])
 		if pull:
 			lines.append("%s%s it up to {r:%d} tile%s toward the caster" % [foe, "draws" if dual else "Draws", pull * ri, "" if pull * ri == 1 else "s"])
-		if resisted:
+		if check and check.suspicion:
 			lines.append("%s%s comes. On a suspicious one, a %s (%s vs %s) takes a stack of %s off"
 					% [foe, ("only one " if dual else "Only one ") + Glossary.term(&"enraptured", "enraptured"), Glossary.term(&"contest", "contest"),
-					me, Glossary.mod(resisted, true), Glossary.term(&"suspicion", "suspicion")])
+					me, Glossary.mod(check.theirs(self), true), Glossary.term(&"suspicion", "suspicion")])
 		if shapes:
 			lines.append("Takes the shape of the beast its ground suits (one of the biomes it picked), at rank {r:%d}, for {t:%d turns}: only Strike, beast skills and this until then. Used shaped, it turns back"
 					% [ri, ri + 1])

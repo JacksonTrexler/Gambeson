@@ -43,9 +43,13 @@ func test_seam() -> void:
 	ok(v(2).check_bonus(&"constitution", &"defensive") == 0 and v(2).check_bonus(&"constitution", &"offensive", [&"taps"]) == 0, "nothing to other checks, nor its own offensive ones")
 	var later := Skill.new()  # a skill nobody has made yet, tagged taps and execute
 	later.tags = [&"magical", &"taps", &"execute"]
-	later.save = &"wisdom"
+	later.check = SkillCheck.new()  # a wis save (Skill.check)
+	later.check.against = &"wisdom"
+	later.check.save = true
 	v(2).hp = 5
 	ok(v(2).check_mod(&"wisdom", &"defensive", later.tags) == v(2).mod(&"wisdom") + 3, "it gets the bonus")
+	var o := Battle.skill_opts(v(1), later, v(2), b)
+	ok(&"taps" in o.tags and &"execute" in o.tags and Battle.sides(v(1), later.check.mine(later), v(2), later.check.theirs(later), o)[1].bonus == v(2).mod(&"wisdom") + 3, "its declared check carries the tags to the save (%s)" % [o.tags])
 	ok(is_equal_approx(Battle.executed(v(2), later, 2), 0.5), "and its execute goes by full HP, at 5 of 100 (%.2f)" % Battle.executed(v(2), later, 2))
 
 

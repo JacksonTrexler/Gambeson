@@ -9,7 +9,7 @@ extends RefCounted
 #   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast, aura, flamewall width, cone, sends, auto, exits, fog
 #   rank_impact  what rank adds to what it does: tiers by rank, roll_per_rank, dice_per_rank, dice_scale,
 #                turns_per_rank, push, pull, per_wound, restores, per-rank effects, a passive's reserve,
-#                opens and downed rule
+#                opens and downed rule, a check's + rank and range penalty (SkillCheck)
 #   stat_range   what its user's stats add to its reach: radius_mod, radius_stat
 #   stat_impact  what its user's stats add to what it does: a tier's stat, heal_mods, turns_mod, an
 #                effect's per_mod or per_stat (passives) or by_mod (put on), a reserve's reserve_mod
@@ -72,7 +72,11 @@ func _init(s: Skill) -> void:
 	if s.cone > 0.0 and not s.evadable:  # Solar: + 15 degrees a rank
 		add(&"rank_range", "cone")
 	# ...and as what it does: + rank on a save, an execute's / rank, a DC it imposes, hits, rolls, turns.
-	for f in ["shapes", "retrieves", "links", "save", "hits_per_rank", "levels_down", "kills", "disables", "lays", "wells", "zone", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog", "flamewall"]:
+	if s.check and s.check.ranked:  # + rank on its check (the saves: Haluca)
+		add(&"rank_impact", "check")
+	if s.check and s.check.range_penalty > 0:  # its range penalty, 1 less a rank (Drown's drag)
+		add(&"rank_impact", "range penalty")
+	for f in ["shapes", "retrieves", "links", "hits_per_rank", "levels_down", "kills", "disables", "lays", "wells", "zone", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog", "flamewall"]:
 		if s.get(f):
 			add(&"rank_impact", f)
 	if not s.elements.is_empty():
@@ -178,7 +182,7 @@ func _derived_intensity() -> StringName:
 
 func _derived_impact() -> StringName:
 	var s := skill
-	if s.disables or s.kills or s.levels_down or s.binds or s.shapes or s.rifts or s.exits or s.humbles or s.drags_to or s.engulfs:
+	if s.disables or s.kills or s.levels_down or s.binds or s.shapes or s.rifts or s.exits or s.humbles or s.drags() or s.engulfs:
 		return &"impactful"
 	if conditions or s.holds() or not s.behaviours.is_empty() or s.push or s.pull or s.heals() or s.boost_pool or s.zone or s.lays or s.flamewall:
 		return &"tame"

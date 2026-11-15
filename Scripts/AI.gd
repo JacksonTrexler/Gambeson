@@ -312,7 +312,7 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 				toll += bh.unguarded(c)
 			saved = minf(share, 1.0) * u.ap_cost(s, u.funding(s)) * AP
 	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) else 0.0) \
-			+ (KILL if s.drags_to else 0.0) + RIDER * riders  # into the water: the Siren's favourite
+			+ (KILL if s.drags() else 0.0) + RIDER * riders  # into the water: the Siren's favourite
 	return p * value + saved - DEFENSE * toll - _hate(r)
 
 
@@ -382,7 +382,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 				continue
 			if not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
 				continue  # not one it can be used on (Gank: no ally near it; Sutemi: no way through)
-			if s.drags_to and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
+			if s.drags() and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
 			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
 			if t.dbno != null and t.stopped():
@@ -541,7 +541,7 @@ static func _out_of_song(b: Battle, u: Unit, reads: Dictionary) -> bool:
 # the AP (Drown, where there's water to drag the foe to), then whatever it can still afford (Rake).
 static func _ambush(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
 	var struck := false
-	for s in u.actives.filter(func(x: Skill): return x.drags_to and u.can_afford(x)):
+	for s in u.actives.filter(func(x: Skill): return x.drags() and u.can_afford(x)):
 		for t: Unit in reads:
 			if not struck and t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.drag_spot(u, s, t) != null \
 					and not s.effects.any(func(e: Effect): return e in t.timed) and b.cast(u, s, t):  # not one it already holds

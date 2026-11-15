@@ -653,6 +653,52 @@ static func _side_mod(u: Unit, stat: Variant, kind: StringName, tags: Array[Stri
 	return u.check_mod(stat, kind, tags) if stat != &"" else 0
 
 
+# Rolls skill's declared check (Skill.check, a SkillCheck) as caster uses it on t: check() with
+# skill_opts(); `o` adds to them (tiles: how far a drag goes).
+func skill_check(caster: Unit, skill: Skill, t: Unit, o := {}) -> Check.Contest:
+	var k := skill.check
+	return check(caster, k.mine(skill), t, k.theirs(skill), skill_opts(caster, skill, t, self, o))
+
+
+# The chance caster wins skill's declared check on t (the HUD's forecast, the AI: hit_chance()).
+static func skill_odds(caster: Unit, skill: Skill, t: Unit, b: Battle = null, o := {}) -> float:
+	var k := skill.check
+	return odds(caster, k.mine(skill), t, k.theirs(skill), skill_opts(caster, skill, t, b, o))
+
+
+# The helper's options for skill's check as cast() reads them: + its rank impact (ranked), zeal beside
+# its target (passion()), its contingency's + hit and edge (requirement(), given the battle), its edge,
+# its range penalty over the tiles past the first between them (or o.tiles, a drag's), its tags with the
+# caster's skill tags on both sides, an execute's cut, and the foe's slots at stake (Brainfog: fogged()).
+static func skill_opts(caster: Unit, skill: Skill, t: Unit, b: Battle = null, o := {}) -> Dictionary:
+	var k := skill.check
+	var r := caster.rank(skill)
+	var ri := caster.mods(skill).irank(r, &"rank_impact")
+	var req: Array = b.requirement(caster, skill, t, r) if b else [0, 0, 0, 0, 0.0]
+	var tags: Array[StringName] = caster.skill_tags(skill).duplicate()  # (not the skill's own array)
+	for x in k.tags:
+		if x not in tags:
+			tags.append(x)
+	var out := {
+		bonus = (ri if k.ranked else 0) + passion(caster, t) + int(req[0]),
+		edge = clampi(k.edge + int(req[2]), -1, 1),
+		tags = tags,
+		cut = executed(t, tags, ri),
+		penalty = k.penalty(ri, 1),
+		tiles = maxi(Command.tiles(caster.cell, t.cell) - 1, 0),
+		kind = Check.Kind.SAVE if k.save else Check.Kind.CONTEST,
+		their_bonus = fogged(caster, t, ri).reduce(func(sum: int, g: Array): return sum + t.slot_weight(g), 0) if skill.disables else 0,
+	}
+	out.merge(o, true)
+	return out
+
+
+# The slot groups of t's that caster's curse at rank impact ri would switch off (Brainfog: its
+# luck-rounded sqrt(rank), right to left; Unit.disable_order()).
+static func fogged(caster: Unit, t: Unit, ri: int) -> Array[Array]:
+	return t.disable_order().slice(0, caster.rounded(sqrt(ri)))
+
+
 func contest(sides: Array, keys: Array[Callable] = []) -> Array:
 	var chain: Array = keys.duplicate()
 	chain.append_array([best_luck, dexterity])
@@ -791,8 +837,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return false
 	if not skill.behaviours.all(func(x: Behaviour): return x.fits(self, caster, target)):
 		return false  # not a target it can be used on (Resuscitate: only the Downed)
-	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags_to else null
-	if foe and skill.drags_to and spot == null:
+	var spot: Variant = drag_spot(caster, skill, target) if foe and skill.drags() else null
+	if foe and skill.drags() and spot == null:
 		return false
 	if skill.opening and not caster.idle():
 		return false  # only as its turn opens (Flamedance)
@@ -828,7 +874,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_resolving.append(acts)
 		if _swapped(acts, react(&"attacked", target, caster, acts)):
 			target = acts.target
-			if skill.drags_to:
+			if skill.drags():
 				spot = drag_spot(caster, skill, target)
 				if spot == null:
 					used.emit(caster, skill, target, 0)
@@ -874,15 +920,14 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var cut := executed(target, stags, ri)  # an execute's share of the foe's defensive check
 	var saved_against := 0  # a save it failed (Haluca): what seeing through its effects must beat
 	if spot != null:
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + zeal + int(req[0]) - drag_penalty(skill, ri, Command.tiles(target.cell, spot))).edge(int(req[2])),
-				Check.side(target.check_mod(skill.stat(), &"defensive", stags)).cut(cut))
+		var vs := skill_check(caster, skill, target, {tiles = Command.tiles(target.cell, spot)})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_expose(target)
 			_expose(caster)
 			used.emit(caster, skill, target, 0)
 			return true
-		drag(caster, target, spot, skill.drags_to)
+		drag(caster, target, spot, skill.drags())
 	if foe and skill.engulfs:
 		var vs := check(caster, skill.stat(), target, skill.stat(), {bonus = zeal + int(req[0]), edge = int(req[2]), tags = stags, cut = cut})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
@@ -891,11 +936,9 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			used.emit(caster, skill, target, 0)
 			return true
 		engulf(caster, target)
-	var fog: Array[Array] = target.disable_order().slice(0, caster.rounded(sqrt(ri))) if foe and skill.disables else ([] as Array[Array])
-	if foe and skill.save:
-		var fogged: int = fog.reduce(func(sum: int, g: Array): return sum + target.slot_weight(g), 0)
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + ri + zeal + int(req[0]), Check.Kind.SAVE).edge(int(req[2])),
-				Check.side(target.check_mod(skill.save, &"defensive", stags) + fogged, Check.Kind.SAVE).cut(cut))
+	var fog: Array[Array] = fogged(caster, target, ri) if foe and skill.disables else ([] as Array[Array])
+	if foe and skill.check and not skill.check.drags_to and not skill.check.suspicion:
+		var vs := skill_check(caster, skill, target)
 		var mine := vs.mine.total
 		contested.emit(caster, target, mine, vs.theirs.total)
 		if not vs.won:  # the caster wins ties
@@ -1009,7 +1052,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if not sights.is_empty():
 		_vanish(target, sights)
 	_land(acts)
-	if foe and skill.pull and (not skill.resisted or _lured(caster, skill, target)):
+	if foe and skill.pull and (not (skill.check and skill.check.suspicion) or _lured(caster, skill, target)):
 		pull(target, caster, skill.pull * ri)
 	if foe and skill.push:
 		push(target, caster, skill.push * ri)
@@ -1434,13 +1477,13 @@ func _refuse(u: Unit) -> void:
 
 # Whether foe t walks toward caster's skill (Sing): only enraptured - convinced the caster is its ally,
 # with no suspicion of it - taking it for support. A suspicious one won't, but the song works on its
-# suspicion: d20 + the caster's mod in the skill's stat against d20 + its mod in the skill's
-# `resisted` stat (the caster wins ties) takes a stack off. One that isn't convinced, with none to
+# suspicion: the skill's check (Skill.check, with suspicion: Sing's wis; skill_check()) takes a stack off.
+# One that isn't convinced, with none to
 # take, the song does nothing to (it may well walk up to hit the caster all the same).
 func _lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 	if t.suspects(caster) == 0:
 		return read(t, caster).attitude(t) == &"ally"
-	var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", skill.tags)), Check.side(t.check_mod(skill.resisted, &"defensive")))
+	var vs := skill_check(caster, skill, t)
 	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
 	if vs.won:
 		suspect(t, caster, -1)
@@ -4202,7 +4245,7 @@ func mend(t: Unit, hp: int, power: int, per_wound := 0) -> int:
 func drag_spot(caster: Unit, skill: Skill, t: Unit) -> Variant:
 	var best: Variant = null
 	for c in map.get_used_cells():
-		if skill.drags_to not in terrain(c).tags or (unit_at(c) and unit_at(c) != t):
+		if skill.drags() not in terrain(c).tags or (unit_at(c) and unit_at(c) != t):
 			continue
 		if Command.tiles(caster.cell, c) > caster.stat(&"movement"):
 			continue
@@ -4212,9 +4255,10 @@ func drag_spot(caster: Unit, skill: Skill, t: Unit) -> Variant:
 	return best
 
 
-# Off a dragging skill's contest roll: 1 a tile it must drag the foe, less (rank - 1) a tile.
+# Off a dragging skill's contest roll: its check's range penalty a tile it must drag the foe (Drown: 1),
+# less (rank - 1) a tile (SkillCheck.penalty()).
 static func drag_penalty(skill: Skill, rank: int, n: int) -> int:
-	return maxi(1 - (rank - 1), 0) * n
+	return skill.check.penalty(rank, n) if skill.check else 0
 
 
 # Drags t onto `to` and the caster in beside it: onto free ground with the tag if there's any (Drown:

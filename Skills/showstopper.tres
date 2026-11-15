@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
 
 [sub_resource type="Resource" id="Effect_1"]
 script = ExtResource("2_effect")
@@ -9,6 +10,12 @@ stat = "luck"
 amount = -1.0
 per_rank = true
 name = "Dazzled"
+
+[sub_resource type="Resource" id="SkillCheck_1"]
+script = ExtResource("6_skill_check")
+against = &"wisdom"
+save = true
+ranked = true
 
 [resource]
 script = ExtResource("1_skill")
@@ -20,5 +27,5 @@ ap = 3.0
 cost = 2
 radius = 1.0
 radius_per_rank = 1.0
-save = &"wisdom"
 turns_per_rank = 1
+check = SubResource("SkillCheck_1")
