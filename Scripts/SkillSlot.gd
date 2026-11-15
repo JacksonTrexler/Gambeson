@@ -14,6 +14,7 @@ const ON := Color("#3fbf4f")
 const CLOVER := Color("#5fd068")  # the clover slot a lucky unit gets (Unit.clover()); brighter than Specialist green
 # Typed slots (Unit.granted_slots()): dull red, purple and green. Skill trees colour their roots the same.
 const TYPES := {&"martial": Color("#b0574f"), &"magical": Color("#8d6bc9"), &"specialist": Color("#6b9a5e")}
+const LENT := Color("#8fb8d8")  # the pale blue ring of a skill an item lends (Unit.lent_by()), apart from the gold diamond of a worn emblem
 const NO_LUCK := "The clover slot only works while this unit is lucky"
 
 var index := 0
@@ -35,6 +36,7 @@ var exhausted := 0.0  # uses counted against its skill (Exhaustion.of()): a pip 
 var switching := false  # its passive is a switch of what the unit runs on (Mana, Stamina) in progress: a turning arc and a pulsing rim until the channel ends
 var holder: Unit  # whose slot it is: its tooltip describes the skill as this unit has it (Skill.markup())
 var modded := false  # a worn emblem puts a modifier on its skill (Unit.mods()): a small gold diamond, the tooltip's symbols without hovering
+var lent := ""  # the item lending its skill (Unit.lent_by()): a small pale ring at the slot's lower right, and its tooltip says whose
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 
@@ -84,6 +86,14 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 		tooltip_text = "[%s] %s\nYour side can't make out more of it" % [_key(), s.name]
 	else:
 		tooltip_text = "[%s] %s %s%s\n%s" % [_key(), s.title(), Skill.roman(r), "  " + mods if mods else "", s.markup(r, true, holder)]  # its modifiers, as symbols (Modifiers.label())
+	queue_redraw()
+
+
+# Its skill is lent by this item (empty: it isn't): marked, and the tooltip names it.
+func set_lent(item_name: String) -> void:
+	lent = item_name
+	if lent != "":
+		tooltip_text += "\nLent by %s while it's worn: it ranks with the item, and goes when the item does" % lent
 	queue_redraw()
 
 
@@ -189,6 +199,8 @@ func _draw() -> void:
 	if modded and sense == 2:
 		var at := Vector2(size.x - 10.0, 4.0)
 		draw_colored_polygon(PackedVector2Array([at + Vector2(0, -2), at + Vector2(2, 0), at + Vector2(0, 2), at + Vector2(-2, 0)]), Color(GOLD, 0.85))
+	if lent != "" and sense == 2:
+		draw_arc(Vector2(size.x - 8.5, size.y - 3.5), 1.7, 0.0, TAU, 10, Color(LENT, 0.95), 1.0)
 	if switching:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(GOLD, 0.35 + 0.25 * sin(Time.get_ticks_msec() / 220.0)), false, 1.0)
 	if armed:

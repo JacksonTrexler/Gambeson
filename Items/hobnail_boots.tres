@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="2_skill"]
+[ext_resource type="Resource" path="res://Skills/kick.tres" id="3_kick"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Hobnail Boots ??"
+slot = "trinket"
+rarity = "uncommon"
+skills = Array[ExtResource("2_skill")]([ExtResource("3_kick")])

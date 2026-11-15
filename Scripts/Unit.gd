@@ -11,6 +11,7 @@ signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp b
 signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
+signal lost_skills(u: Unit, skills: Array[Skill])  # items it wore took skills with them (_sync_granted()): Battle ends a channel on one
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
@@ -400,16 +401,60 @@ var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_t
 var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 
-# Every skill entry, the role's first; a skill listed twice keeps its highest rank.
+# Every skill entry, its own (_own()) and what its items lend (granted()): a skill listed twice keeps its
+# highest rank, its own first on a tie.
 var slots: Array[Slot]:
 	get:
 		var best := {}
-		for s in _role_slots + innate + learned:
+		for s in _own() + granted():
 			if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
 				best[s.skill] = s
 		var out: Array[Slot] = []
 		out.assign(best.values())
 		return out
+
+var _held: Array[Skill] = []  # the skills its items lent at the last refit() (_sync_granted())
+var _granted: Dictionary[Skill, Slot] = {}  # the slots its items lend, kept while they're worn (granted()): a toggle's state lasts as long
+
+# Its own skill entries, the role's first: what it has learned, one per skill at its highest rank. What its
+# items lend (granted()) is not among them: it can't be raised, and doesn't count toward learning anything.
+func _own() -> Array[Slot]:
+	var best := {}
+	for s in _role_slots + innate + learned:
+		if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
+			best[s.skill] = s
+	var out: Array[Slot] = []
+	out.assign(best.values())
+	return out
+
+
+# The slots its worn items lend (Item.skills), at the item's rank (Item.skill_rank()): flagged with the item
+# (Slot.from). A skill two items lend comes from the higher; one an item stops lending, or that comes off
+# with it, drops out (its toggle state with it).
+func granted() -> Array[Slot]:
+	var out: Array[Slot] = []
+	var live := {}
+	for it in items():
+		for s in it.skills:
+			if not s:
+				continue
+			var r := it.skill_rank(s)
+			if s in live and live[s].rank >= r:
+				continue
+			var x: Slot = _granted.get(s)
+			if not x:
+				x = Slot.new()
+				x.skill = s
+				_granted[s] = x
+			x.rank = r
+			x.from = it
+			live[s] = x
+	for s in _granted.keys():
+		if s not in live:
+			_granted.erase(s)
+	out.assign(live.values())
+	return out
+
 
 var actives: Array[Skill]:
 	get:
@@ -553,9 +598,18 @@ func unranked() -> Dictionary:
 	return out
 
 
-# Its rank in s as learned: what skill points raise (raise_cost()).
+# Its rank in s as it has it: what it learned (own_rank()), or what an item lends (granted()), the higher.
 func base_rank(s: Skill) -> int:
-	for x in slots:
+	var best := own_rank(s)
+	for x in granted():
+		if x.skill == s:
+			best = maxi(best, x.rank)
+	return best
+
+
+# Its rank in s as learned: what skill points raise (raise_cost()). Items lend ranks that can't be raised.
+func own_rank(s: Skill) -> int:
+	for x in _own():
 		if x.skill == s:
 			if x.rank > 0 and s.rank_cost == 0:
 				var a := affinity(s)
@@ -672,7 +726,7 @@ func _kin(s: Skill, t: SkillTab) -> bool:
 
 # Skill points put into s: what was spent on it, or what its rank is worth on the even curve.
 func points_in(s: Skill) -> int:
-	for x in slots:
+	for x in _own():
 		if x.skill == s:
 			return x.points if x.points >= 0 else Unit.worth(x.rank, 0)
 	return 0
@@ -1167,7 +1221,7 @@ func devotion() -> SkillTab:
 # Whether it has learned a skill on t's roots beyond the shared row (its slots' own ranks: base_rank()
 # reads Affinity, which reads this).
 func _learned_on(t: SkillTab) -> bool:
-	var held := slots.filter(func(x: Slot): return x.rank > 0 and role.tab_of(x.skill) == t).map(func(x: Slot): return x.skill)
+	var held := _own().filter(func(x: Slot): return x.rank > 0 and role.tab_of(x.skill) == t).map(func(x: Slot): return x.skill)
 	return t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return x in held))
 
 
@@ -1299,7 +1353,7 @@ func unlock(s: Skill) -> bool:
 # (r = 0) is the same rule: 1. A skill with its own rank_cost charges that for II, times its
 # rank_growth each rank after (Clever Disguise: 4, 8, 16).
 func raise_cost(s: Skill) -> int:
-	var r := base_rank(s)
+	var r := own_rank(s)
 	if s.rank_cost > 0 and r > 0:
 		return roundi(s.rank_cost * pow(s.rank_growth, r - 1))
 	var a := affinity(s) if r > 0 else 0
@@ -1310,7 +1364,7 @@ func raise_cost(s: Skill) -> int:
 
 # Whether s can go up a rank at all: it has it, and it's below the skill's cap.
 func can_raise(s: Skill) -> bool:
-	var r := base_rank(s)
+	var r := own_rank(s)
 	return r > 0 and not s.stub and (s.max_rank == 0 or r < s.max_rank)
 
 
@@ -1323,7 +1377,7 @@ func raise(s: Skill) -> bool:
 	var curved := affinity(s) != 0 and s.rank_cost == 0
 	purchases.append([s, cost])
 	skill_points -= cost
-	for x in slots:
+	for x in _own():
 		if x.skill == s:
 			x.points = into
 			x.rank = maxi(Unit.rank_for(into, 0, s.max_rank), 1) if curved else x.rank + 1  # its even-curve rank, for when the Affinity's gone
@@ -1648,14 +1702,15 @@ func weapon_bonus(s: StringName) -> int:
 	return weapon.enchant if weapon and s == &"strength" else 0
 
 
-# Pray, to Urlo: enchants up to n of its unenchanted, unhoned items, weapon first, then armor: what an item
-# becomes enchanted (Item.enchanted_as), else a copy of its own at +1. Items with nothing to scale
-# would be skipped (none yet). How many it enchanted.
+# Pray, to Urlo: enchants up to n of its unenchanted, unhoned items, weapon first, then armor, then trinket: what
+# an item becomes enchanted (Item.enchanted_as), else a copy of its own at +1 (Defense, damage; a trinket's, and
+# any item's skills, a rank). Items with nothing to scale (Item.scales(): Heart Up) are skipped, and cost none of
+# n. How many it enchanted.
 func enchant(n: int) -> int:
 	var done := 0
-	for slot in [&"weapon", &"armor"]:
+	for slot in [&"weapon", &"armor", &"trinket"]:
 		var item: Item = get(slot)
-		if done < n and item and not item.enchanted() and not item.honed():  # honed: already as good as it gets
+		if done < n and item and not item.enchanted() and not item.honed() and item.scales():  # honed: already as good as it gets
 			if item.enchanted_as:
 				set(slot, item.enchanted_as)
 			else:
@@ -1663,6 +1718,8 @@ func enchant(n: int) -> int:
 				item.enchant = 1
 				set(slot, item)
 			done += 1
+	if done > 0:
+		refit()  # a trinket's rank, a skill's
 	return done
 
 
@@ -1794,6 +1851,38 @@ func refit() -> void:
 	if hp > max_hp + over_max:
 		hp = max_hp + over_max
 	_arrange()  # items can grant slots (the Burning Bag)
+	_sync_granted()  # and skills
+
+
+# The name of the item lending it s - "" if it has none, or learned s at a rank the item doesn't beat.
+func lent_by(s: Skill) -> String:
+	for x in slots:
+		if x.skill == s:
+			return x.from.name if x.from else ""
+	return ""
+
+
+# Its hotbar follows what its items lend (refit(), on every equip, unequip and enchantment): a skill newly lent
+# goes in the first free slot it fits, one no longer lent comes off the bar and is announced (lost_skills: Battle
+# ends a channel on it). Only the hotbar of a unit in the tree: one still being set up fills itself (_fill_bar()).
+func _sync_granted() -> void:
+	var now: Array[Skill] = []
+	now.assign(granted().map(func(x: Slot): return x.skill))
+	var lost: Array[Skill] = []
+	lost.assign(_held.filter(func(s: Skill): return s not in now and rank(s) == 0))  # one it learned as well isn't lost
+	if hotbar.size() == bar_size():
+		for s in now:
+			if s not in _held and s.fits_bar() and s not in hotbar:
+				var i := free_slot(s)
+				if i >= 0:
+					hotbar[i] = s
+		for s in lost:
+			var i := hotbar.find(s)
+			if i >= 0:
+				hotbar[i] = null
+	_held = now
+	if not lost.is_empty():
+		lost_skills.emit(self, lost)
 
 
 # Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
@@ -2133,13 +2222,13 @@ func _general_need(s: Skill, t: int) -> Array:
 			continue
 		var c := g.category
 		if c == &"":
-			var have := slots.filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
+			var have := _own().filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
 			if have >= 3:
 				return ["", null]
 			why = "Needs 3 T%d+ skills (%d so far)" % [t, have]
 		else:
 			var best := -1
-			for x in slots:
+			for x in _own():
 				if x.rank > 0 and role and role.tier(x.skill) >= 0 and role.category(x.skill) == c:
 					best = maxi(best, role.tier(x.skill))
 			if best >= t:

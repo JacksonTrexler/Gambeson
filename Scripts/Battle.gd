@@ -443,6 +443,7 @@ func _listen(u: Unit) -> void:
 	u.deferring.connect(_on_deferring)
 	u.falling.connect(_on_falling)
 	u.taking_hit.connect(_on_taking_hit)
+	u.lost_skills.connect(_on_lost_skills)
 	u.being_healed.connect(_on_being_healed)
 	u.recovered.connect(_on_recovered)
 	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (Burnout)
@@ -3832,6 +3833,13 @@ func open_rift(by: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 # How many of its maker's side's turns a Rift stays once its count starts: 3 x its difficulty.
 static func rift_turns(rank: int) -> int:
 	return ceili(3.0 * rift_difficulty(rank))
+
+
+# Skills its items lent went with them (Unit.lost_skills): a channel on one stops, a Rift's count starting as it
+# does; a switch of what it runs on (Mana) in progress is a channel, and ends the same.
+func _on_lost_skills(u: Unit, skills: Array[Skill]) -> void:
+	if u.channel and u.channel.skill in skills:
+		end_channel(u)
 
 
 # u stops channeling whatever it was: a Rift's count starts (close_rift()).

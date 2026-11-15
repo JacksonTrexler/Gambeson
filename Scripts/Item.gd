@@ -10,6 +10,7 @@ extends Resource
 @export var enchant := 0  # enchanted (Pray, to Urlo): armor +1 Defense, a weapon +1 damage to strength attacks
 @export var enchanted_as: Item  # its own enchantment: enchanted, it becomes this instead of taking the +1
 @export var effects: Array[Effect] = []  # on its wearer while it's equipped (Burning Blade: str mod to max HP)
+@export var skills: Array[Skill] = []  # skills its wearer has while it's worn (Unit.granted()): on loan, so they can't be ranked; they rank with the item (skill_rank()) and come off with it
 @export var requires := &""  # it can only be worn with a positive mod in this (Heart Up-Link: constitution)
 @export var hearts := 0  # extra lives: while it's worn (Heart Up), or given for good as it's used (a Heart)
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
@@ -117,6 +118,9 @@ func describe() -> String:
 		lines.append("Puts %s on %s: x%s" % [word, reach, Skill.num(snappedf(1.0 + Modifiers.rsc(ranked(), Modifiers.SCOPES.get(scope, &"all")), 0.01))])
 	for e in effects:
 		lines.append(e.describe(ranked()))
+	for sk in skills:
+		if sk:
+			lines.append("Gives the skill %s %s while worn (can't be ranked up; it ranks with the item)" % [sk.title(), Skill.roman(skill_rank(sk))])
 	lines.append(("%d - dex mod AP to put on in battle" % ARMOR_AP) if slot == "armor" else "%s AP to put on or use in battle" % Skill.num(ap_cost()))
 	return "\n".join(lines)
 
@@ -195,8 +199,26 @@ func worth() -> float:
 
 
 # The rank its effects scale by: rank, +1 for enchanted or honed (Tags.quality_rank()), whatever its rarity.
+# A trinket's Pray enchantment (enchant) has no +1 of its own to give, so it is the +1 rank too.
 func ranked() -> int:
-	return rank + Tags.quality_rank(tags)
+	return rank + Tags.quality_rank(tags) + (1 if enchant > 0 and slot == "trinket" else 0)
+
+
+# The rank its skills have on its wearer (Unit.granted()): ranked(), and one more for Pray's enchantment on a
+# weapon or armor (whose +1 is Defense or damage, and leaves ranked() alone), capped at a skill's max_rank.
+func skill_rank(s: Skill) -> int:
+	var r := ranked() + (1 if enchant > 0 and slot != "trinket" else 0)
+	return mini(r, s.max_rank) if s.max_rank > 0 else r
+
+
+# Whether Pray's enchantment (Unit.enchant()) would do anything to it: a weapon or armor always (+1), a trinket if
+# it has skills, an effect that scales by rank, a life-giving revive, heat, burning or an emblem to scale - or an
+# enchanted form of its own. Heart Up and the like (hearts, a flat effect) have nothing to scale: skipped.
+func scales() -> bool:
+	if enchanted_as or slot in ["weapon", "armor"]:
+		return true
+	return slot == "trinket" and (not skills.is_empty() or revives > 0.0 or heat > 0 or burning or emblem != &"" \
+			or effects.any(func(e: Effect): return e.per_rank))
 
 
 func sets_defense() -> bool:
