@@ -23,4 +23,18 @@
 
 ## As built
 
-(filled in below)
+Built as called, with these particulars:
+
+- `Unit.facing` (Vector2, setter redraws the tick), `face(cell)`, `side_of(cell)`, `REAR_EDGE = 1`, `striding`, `guard: bool`. `heading` is gone. `Battle.travel()` faces the last step; `_cast()` turns the caster toward its target once paid, `_cast_at()` toward the tile (so Shields Up!, Darkstone, Snare, a flamewall all turn it); `_guard()` sets `guard` and faces the tile.
+- **Reactions (call 8):** a unit that takes a blow in another's place (Interject, Gallantry: `Battle._swapped()`) turns to face the attacker, *after* the blow's side is read, so the roll it faces is still judged by how it stood. Final Act and Snapping Turtle attack through `cast()`, so they turn as any attack does. Dodging, being hit and being healed turn nobody.
+- **Opening facing (call 7):** `Battle._line_up()`, at set-up, turns each unit that has no facing toward the nearest foe by faction. Units added later (summons) have none: front from every side until they act. `Tests/test.gd` `stage()` clears facing so staged tests stay as they were.
+- **Draw (call 9):** `Unit.heading_tick`, a child of the sprite (so a silhouette hides it): a small white chevron, 55% alpha with a faint dark rim, 7 px from the centre. Captured in `shot_u-facing/`: reads as a pointer, quiet beside the HP bars.
+- **AI (call 10):** `AI._opening(t, c)` = `t.defense() - t.defense([side])`, `FLANKING = 0.4` tiles per point, in `_approach()` only. Strikes already read the rear through `Battle.hit_chance()` since the hit tags carry it. It does not walk to a side for a better shot (the AI picks a tile adjacent to its target by distance; the pull only breaks ties of under half a step).
+- **Tag names:** `rear ??` and `flank ??` are AI-made (Glossary "Rear ??", "Flank ??"; colours #8a5a7e, #7e6a9a, kind check).
+- **Shields Up!'s recorded design** ("faces the tile ... 90 degree cone", docs/todo/classes.md) is unchanged for the cast turn. What differs: the shield now follows the unit's facing when it later walks or attacks, until its next turn is through.
+
+Tests changed to the new shape (not weakened): `fighter_test` (guard is a bool, facing set; re-stage sets facing), `jam_test`, `helpless_test` (`guard = true` plus `facing`), `watch_test` (`striding` and `facing` for `heading`), `Tests/test.gd` (`stage()` clears facing). New: `Tests/facing_test.gd` (moves, attacks, cone at each angle, tags and the rear edge, effects tagged rear, Shields Up! via the cone, Interject turning, line-up, AI approach).
+
+Suite: started 45664 checks, 0 failed (816 tests); now 45731 checks, 0 failed (825 tests).
+
+Not done: the HUD's hit forecast shows the rear's +1 only through the number (no "from behind" label); a unit that is hit doesn't turn; forced moves (push, pull, send, teleport) don't turn; no skill yet carries a flank/rear rider (Gank's ambush analogue).
