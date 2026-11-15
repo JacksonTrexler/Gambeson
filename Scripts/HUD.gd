@@ -2335,6 +2335,7 @@ func _refresh_bar() -> void:
 		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
 		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense, u.mods(s).label() if s else "", u)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
+		slot.set_lent(u.lent_by(s) if u and s and sense == 2 else "")
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
 		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))

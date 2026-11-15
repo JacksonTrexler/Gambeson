@@ -384,10 +384,25 @@ func _ready() -> void:
 		for t: Unit in units.values():
 			if u.faction and t.faction and not Faction.friends(u.faction, t.faction) and Perception.cover(self, t) == 0:
 				sighted(u.faction, t, t.cell)  # each side knows where the others drew up in the open
+	for u: Unit in units.values():
+		_line_up(u)
 	if prep:
 		phase = Phase.PREP  # held there till begin()
 	else:
 		_enter(phase)
+
+
+# A unit drawn up before the fight faces the nearest foe by faction (it has no facing yet), so the first
+# blows have a front, flanks and a rear to land on; one with no foe in the field faces none.
+func _line_up(u: Unit) -> void:
+	if u.facing != Vector2.ZERO or not u.faction:
+		return
+	var near: Unit = null
+	for t: Unit in units.values():
+		if t.faction and not Faction.friends(u.faction, t.faction) and (near == null or Command.tiles(u.cell, t.cell) < Command.tiles(u.cell, near.cell)):
+			near = t
+	if near:
+		u.face(near.cell)
 
 
 # Preparation over: the initiative roll, and the first turn.
@@ -443,6 +458,7 @@ func _listen(u: Unit) -> void:
 	u.deferring.connect(_on_deferring)
 	u.falling.connect(_on_falling)
 	u.taking_hit.connect(_on_taking_hit)
+	u.lost_skills.connect(_on_lost_skills)
 	u.being_healed.connect(_on_being_healed)
 	u.recovered.connect(_on_recovered)
 	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (Burnout)
@@ -852,6 +868,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill):
 		return false
+	caster.face(target.cell)  # aiming it turns the caster to face its target (a miss too)
 	var r := caster.rank(skill)
 	var m := caster.mods(skill)  # its modifiers: per-rank and per-stat values go through them (Modifiers)
 	var ri := m.irank(r, &"rank_impact")  # its rank for what rank adds to what it does
@@ -977,7 +994,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_expose(caster)
 		if not target.is_alive():  # (downing one that lingers Downed is no kill; its death is)
 			caster.gain(&"kill", 1)
-		caster.heading = Vector2i.ZERO
+		caster.striding = false
 		_tidy_debris()
 		used.emit(caster, skill, target, before - target.hp)
 		if target.hp < before and target.is_alive() and read(target, caster).deceived:
@@ -1112,7 +1129,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_expose(caster)
 		if not target.is_alive():
 			caster.gain(&"kill", 1)  # Sweet Nothings
-	caster.heading = Vector2i.ZERO
+	caster.striding = false
 	_tidy_debris()
 	used.emit(caster, skill, target, before - target.hp)
 	if foe and skill.hostile and target.hp < before and target.is_alive() and read(target, caster).deceived:
@@ -1139,7 +1156,8 @@ func _land(c: Behaviour.Cast) -> void:
 func _swapped(c: Behaviour.Cast, r: Behaviour.Reaction) -> bool:
 	if c.target == r.subject:
 		return false
-	c.tags = hit_tags(c.caster, c.skill, c.target if c.foe else null, self)
+	c.tags = hit_tags(c.caster, c.skill, c.target if c.foe else null, self)  # (as it stood: the blow's side is read before it turns)
+	c.target.face(c.caster.cell)  # one that takes a blow in another's place turns to face its attacker
 	return true
 
 
@@ -1360,11 +1378,16 @@ func _spent_interrupt(u: Unit) -> void:
 # The tags a skill's damage carries for its caster: its own and its modifiers' (Unit.skill_tags(): a Fire
 # Insignia's fire), plus its weapon's blows (Skill.weapon_tag:
 # Strike - blunt bare-handed) and its god's (Skill.god_tag: Smite - Eros's love, Urlo's energy). Given
-# the foe it's used on and the battle: ambush, if it ambushes (ambushes()).
+# the foe it's used on and the battle: ambush, if it ambushes (ambushes()); and flank or rear, if it comes
+# at the foe from the side or behind (Unit.side_of(): a rear attack also takes Unit.REAR_EDGE off Defense).
 static func hit_tags(caster: Unit, skill: Skill, foe: Unit = null, b: Battle = null) -> Array[StringName]:
 	var out: Array[StringName] = caster.skill_tags(skill).duplicate()
 	if foe and b and b.ambushes(caster, foe) and &"ambush" not in out:
 		out.append(&"ambush")
+	if foe and foe != caster:
+		var side := foe.side_of(caster.cell)  # the cone test: from its flank or rear (Unit.side_of())
+		if side != &"front":
+			out.append(side)
 	if skill.weapon_tag:
 		var blow: StringName = (caster.weapon.damage_tag if caster.weapon else &"blunt")
 		if blow and blow not in out:
@@ -1737,11 +1760,11 @@ func search(o: Unit, cells: Array, center: Variant = null, bonus := 0) -> int:
 # rank to either side - inspecting every tile there, in place of looking around. False if it didn't.
 func _look_ahead(o: Unit) -> bool:
 	var rank := roundi(o.stat(&"eyes_forward"))
-	var way := o.heading
-	o.heading = Vector2i.ZERO
-	if rank <= 0 or way == Vector2i.ZERO:
+	var dir := o.facing
+	var strode := o.striding
+	o.striding = false
+	if rank <= 0 or not strode or dir == Vector2.ZERO:
 		return false
-	var dir := Vector2(way).normalized()
 	var ahead := rank + o.mod(&"wisdom")
 	var strip: Array[Vector2i] = []
 	var r := ceili(ahead + rank + 1.0)
@@ -2140,6 +2163,7 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		return false
 	if not caster.pay_for(skill):
 		return false
+	caster.face(c)
 	_burn(caster, skill)
 	if skill.flamewall:
 		_flamewall(caster, skill, c)
@@ -2164,7 +2188,7 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		lay(caster, skill, c)
 	else:
 		zones.append(Zone.new(skill.zone, zone_levels(caster.mods(skill).irank(caster.rank(skill), &"rank_impact"), c), skill.turns, caster.faction))  # its levels: rank impact
-	caster.heading = Vector2i.ZERO
+	caster.striding = false
 	used.emit(caster, skill, c, 0)
 	return true
 
@@ -2571,7 +2595,8 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		for i in touched:  # stepping in happens on the unit's own turn, which isn't one of those counted
 			for e in terrain(passed[i]).afflicts:
 				u.afflict(e, (e.turns if e.turns else terrain(passed[i]).turns) + 1)
-		u.heading = Vector2i(signi(passed[-1].x - from.x), signi(passed[-1].y - from.y))
+		u.face(passed[-1] + passed[-1] - (passed[-2] if passed.size() > 1 else from))  # the way its last step went
+		u.striding = true
 		for c in passed:  # trodden into the ground
 			debris.erase(c)
 		for c in passed:  # walking into fire, and onto marks
@@ -3928,6 +3953,13 @@ static func rift_turns(rank: int) -> int:
 	return ceili(3.0 * rift_difficulty(rank))
 
 
+# Skills its items lent went with them (Unit.lost_skills): a channel on one stops, a Rift's count starting as it
+# does; a switch of what it runs on (Mana) in progress is a channel, and ends the same.
+func _on_lost_skills(u: Unit, skills: Array[Skill]) -> void:
+	if u.channel and u.channel.skill in skills:
+		end_channel(u)
+
+
 # u stops channeling whatever it was: a Rift's count starts (close_rift()).
 func end_channel(u: Unit) -> void:
 	if u.channel and u.channel.skill.rifts:
@@ -3952,8 +3984,8 @@ func interrupt(u: Unit) -> Array[StringName]:
 				ended.append(&"hiding")
 		elif a.skill and a.skill.guards:
 			u.timed.erase(e)
-	if u.guard != Vector2.ZERO:
-		u.guard = Vector2.ZERO
+	if u.guard:
+		u.guard = false
 		ended.append(&"guard")
 	if u.chant_up or u.chant_gains > 0:
 		u.chant_up = false
@@ -5023,7 +5055,8 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0
 # tile lies within the 90 degree cone that way is cut by its effects - until its next turn.
 func _guard(caster: Unit, skill: Skill, c: Vector2i) -> void:
 	var r := caster.rank(skill)
-	caster.guard = Vector2(c - caster.cell)
+	caster.guard = true
+	caster.face(c)
 	for e in skill.effects:
 		var n := e.turns if e.turns else maxi(skill.lasts(r, caster), 1)
 		var a := caster.afflict(e, n + (1 if caster.faction == turn else 0), r)

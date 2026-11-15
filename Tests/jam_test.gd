@@ -21,7 +21,8 @@ func jammer(r := 1) -> void:
 	v(3).channel = Unit.Channel.new(metea, Vector2i(2, 2))
 	var hid := v(3).afflict(effect("luck", 0.0), 0)
 	hid.until_move = true
-	v(3).guard = Vector2(-1, 0)
+	v(3).guard = true
+	v(3).facing = Vector2(-1, 0)
 	v(3).afflict(shields_up.effects[0], 2).skill = shields_up
 	v(3).chant_up = true
 	v(3).rested_turns = 2
@@ -34,7 +35,7 @@ func test_interrupts() -> void:
 	b.interrupted.connect(func(u: Unit, ended: Array[StringName]): got.append([u, ended]))
 	ok(b.cast(v(1), jam, v(3)), "Jam lands")
 	ok(v(3).hp < 300 and 300 - v(3).hp <= 4 + v(1).mod(&"dexterity"), "low damage: 1d4 + dex mod (%d)" % (300 - v(3).hp))
-	ok(v(3).channel == null and v(3).guard == Vector2.ZERO and not v(3).chant_up and v(3).rested_turns == 0, "its channel, guard, Chant and watch: all ended")
+	ok(v(3).channel == null and not v(3).guard and not v(3).chant_up and v(3).rested_turns == 0, "its channel, guard, Chant and watch: all ended")
 	ok(not v(3).timed.values().any(func(a: Unit.Applied): return a.until_move or (a.skill == shields_up)), "hiding and the guard's effects gone")
 	ok(got.size() == 1 and got[0][1] == [&"channel", &"hiding", &"guard", &"chant", &"watch"], "it says what it ended: %s" % [got])
 	ok(v(3).stat(&"jammed") > 0.0, "Jammed")
@@ -43,7 +44,8 @@ func test_interrupts() -> void:
 func test_jammed() -> void:
 	jammer()
 	b.cast(v(1), jam, v(3))
-	v(3).guard = Vector2(-1, 0)
+	v(3).guard = true
+	v(3).facing = Vector2(-1, 0)
 	ok(not v(3).guarding(Vector2i(4, 3)), "Jammed: no guard")
 	ok(is_equal_approx(b.evade(v(3), 1), 1.0), "no dodge: all of it lands, even against DC 1")
 	v(3).afflict(effect("obstruct", 3.0), 9)

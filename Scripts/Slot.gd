@@ -6,3 +6,4 @@ extends Resource
 @export var rank := 1
 @export var points := -1  # skill points put into it; -1: what its rank is worth on the even curve (Unit.points_in(), Unit.worth())
 @export var on := true
+var from: Item  # the item lending it (Unit.granted()): it can't be ranked, and goes with the item; null: the unit's own

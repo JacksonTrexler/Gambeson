@@ -56,10 +56,11 @@ func test_shields_up() -> void:
 	v(1).hp = 1000
 	var plain := v(1).hit(100, [&"physical"] as Array[StringName], v(3))
 	ok(b.cast_at(v(1), shields_up, Vector2i(6, 3)), "faces a tile")
-	ok(v(1).guard == Vector2(2, 0) and is_equal_approx(v(1).stat(&"guard"), 0.4), "rank II: 20% + 10% x 2")
+	ok(v(1).guard and v(1).facing == Vector2(1, 0) and is_equal_approx(v(1).stat(&"guard"), 0.4), "rank II: 20% + 10% x 2")
 	ok(v(1).hit(100, [&"physical"] as Array[StringName], v(3)) == plain - 40, "a blow from the way it faces: 40% off")
 	ok(v(1).hit(100, [&"physical"] as Array[StringName], v(4)) == plain, "from behind: nothing off")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 4)})
+	v(1).facing = Vector2(1, 0)
 	ok(v(1).guarding(Vector2i(5, 4)) and not v(1).guarding(Vector2i(4, 4)), "the cone is 90 degrees: 45 to either side")
 	var a: Unit.Applied = v(1).timed[shields_up.effects[0]]
 	ok(a.turns == 2, "until its next turn is through (put on during its own turn: one more)")
@@ -147,4 +148,4 @@ func test_defend_order() -> void:
 	v(1).refresh()
 	ok(v(1).intent_skill(&"defensive") == shields_up, "Shields Up! is a defensive move")
 	AI.act(b, v(1), &"defensive")
-	ok(v(1).guard == Vector2(3, 0) and v(1).stat(&"guard") > 0.0, "told to defend, it faces the nearest foe it makes out (%s)" % v(1).guard)
+	ok(v(1).guard and v(1).facing == Vector2(1, 0) and v(1).stat(&"guard") > 0.0, "told to defend, it faces the nearest foe it makes out (%s)" % v(1).facing)

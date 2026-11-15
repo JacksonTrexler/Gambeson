@@ -109,6 +109,8 @@ static func state(u: Unit, s: Skill) -> String:
 	if s.stub:
 		return tier + " · Not built yet. " + s.waits()
 	var r := u.base_rank(s)
+	if r > 0 and u.own_rank(s) == 0:
+		return tier + " · Lent by %s" % u.lent_by(s)  # an item's (Unit.granted()): it can't be ranked
 	if r > 0:
 		return tier + (" · Learned" if u.can_raise(s) else " · Highest rank")
 	var why := u.missing(s)
