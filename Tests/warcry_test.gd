@@ -89,3 +89,45 @@ func test_the_ai_lays_its_marks_before_it_advances() -> void:
 	ok(b.marks.size() > 0 and b.marks.values().all(func(st: Array): return st.all(func(m: Battle.Mark): return m.by == v(3))), "it laid its marks as it set off (%s)" % [log])
 	ok(v(3).cell != Vector2i(8, 3), "and still moved")
 	ok(not warcry.behaviours[0].marks(b, v(3)), "with its marks up, not worth casting again")
+
+
+func test_the_caster_picks_its_foes() -> void:
+	start(1)
+	ok(warcry.behaviours[0].picks(b.cast_of(v(1), warcry, v(1), 2, false)) == 2, "Warcry lets its caster pick up to rank foes (Behaviour.picks)")
+	ok(b.picks_of(v(1), warcry) == 1 and b.picks_of(v(1), load("res://Skills/strike.tres")) == 0, "Battle.picks_of: rank 1 picks one; Strike none")
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(0, 0), v(3): Vector2i(7, 3), v(4): Vector2i(1, 7)})
+	b.sight = false
+	b.cast(v(1), warcry, v(1), false, [v(3)] as Array[Unit])
+	ok(b.marks.keys() == [Vector2i(2, 3)], "the picked foe, not the nearer one, is marked toward (%s)" % [b.marks.keys()])
+	b.marks.clear()
+	b.cast(v(1), warcry, v(1), false, [v(3), v(4)] as Array[Unit])
+	ok(b.marks.keys() == [Vector2i(2, 3)], "picks beyond rank 1 are ignored: only the first is marked toward (%s)" % [b.marks.keys()])
+
+
+func test_the_hud_toggles_picks() -> void:
+	start(1)
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(0, 0), v(3): Vector2i(7, 3), v(4): Vector2i(1, 7)})
+	b.sight = false
+	var h := await hud(v(1))
+	v(1).hotbar[1] = warcry
+	h._unhandled_input(key_of(KEY_2))
+	ok(h.picking() and h.picked.is_empty() and "nearest 1" in h._hint(), "its key aims it: nothing picked is the nearest foe (%s)" % h._hint())
+	h.click(Vector2i(7, 3))
+	ok(h.picked == Array([v(3)], TYPE_OBJECT, "Node", null) and "1 of 1" in h._hint(), "clicking a visible foe picks it, with a count (%s)" % h._hint())
+	h.click(Vector2i(1, 7))
+	ok(h.picked == Array([v(3)], TYPE_OBJECT, "Node", null), "never more than rank")
+	h.click(Vector2i(7, 3))
+	h.click(Vector2i(1, 7))
+	ok(h.picked == Array([v(4)], TYPE_OBJECT, "Node", null), "clicking a picked foe unpicks it, making room")
+	h.click(Vector2i(1, 7))
+	h.click(Vector2i(7, 3))
+	h.click(v(1).cell)
+	ok(v(1) in h.command.ordered and b.marks.keys() == [Vector2i(2, 3)] and h.picked.is_empty(), "a click on itself casts it toward the picked foe, and clears the picks")
+	h.free()
+
+
+func key_of(k: Key) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.physical_keycode = k
+	e.pressed = true
+	return e
