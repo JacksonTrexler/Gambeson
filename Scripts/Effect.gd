@@ -149,6 +149,12 @@ extends Resource
 # regain: AP back to a pool the moment it is put on, up to what that pool started the turn with:
 # its tag names the pool (dex: dex AP, wis: wis AP; none: the general pool). Never lasts
 # (Unit.afflict(), Unit.regain(); Warcry's Charge!)
+# shove / fear / entrance: forced moves, as it is put on (Battle.drive(); amount tiles, x rank with per_rank,
+# x its strength), driving its holder straight away from whoever put it on (shove, fear) or drawing it
+# toward them (entrance) - no movement spent, nobody turns, a grapple on either side ends. Shove is instant
+# (nothing stays on, and one that hits a unit or the edge hurts: Battle.displace()); fear and entrance last
+# their turns, and move it again as each of its own turns starts (Battle._frighten()). The tags of the same
+# names ride on the move and on any damage it does.
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -159,7 +165,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -197,11 +203,11 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
-		"per_tile": "Damage per tile walked", "regain": "Regain ??"}
+		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -287,6 +293,8 @@ func value(rank := 1) -> String:
 		text = "%s damage for each tile it walks (Meander at least the effect's rank passes by the first tiles)" % Skill.num(x)
 	elif stat == "regain":
 		text = "%s AP back at once" % Skill.num(x)
+	elif stat in ["shove", "fear", "entrance"]:
+		return "driven %s tile%s %s it, no movement spent%s" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s", "toward whoever put it on" if stat == "entrance" else "straight away from whoever put it on", "; it hurts if it hits something" if stat == "shove" else ", and again as each of its turns starts while it lasts"]
 	elif stat == "sleep":
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":

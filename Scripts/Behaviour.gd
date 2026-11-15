@@ -46,6 +46,7 @@ class Cast:
 		a.skill = skill
 		a.by = caster
 		a.since = battle.turns_begun
+		battle.drive(target, e, a)  # shove, fear, entrance
 		return a
 
 
