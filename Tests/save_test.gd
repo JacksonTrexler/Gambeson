@@ -70,3 +70,30 @@ func test_bad_file() -> void:
 func test_test_paths() -> void:
 	ok("save_test_%d" % OS.get_process_id() in Save.PATH and Save.PATH != "user://save.json", "the save is this process's own file")
 	ok("keybinds_test_%d" % OS.get_process_id() in KeyBinds.SAVE and Prefs.SAVE != "user://settings.cfg", "and so are the key binds and settings")
+
+
+func _entry() -> Control:
+	var e: Control = load("res://Scenes/entry.tscn").instantiate()
+	e.next_scene = ""
+	tree.root.add_child(e)
+	return e
+
+
+func test_entry() -> void:
+	var e := _entry()
+	ok(not e.get_node("%Continue").visible and not FileAccess.file_exists(Save.PATH), "a first run offers no Continue")
+	e._play()
+	ok(FileAccess.file_exists(Save.PATH) and Game.hero.name == "Shrike" and not Game.hero.has("prep"), "Play saves the new starter")
+	e.free()
+	Game.level = 5
+	Save.save()
+	Game.hero = {}
+	Game.starter = {}
+	Game.level = 1
+	Save.loaded = false
+	e = _entry()
+	var cont: Button = e.get_node("%Continue")
+	ok(cont.visible and "Shrike" in cont.text and "level 5" in cont.text, "the next run offers it: %s" % cont.text)
+	cont.pressed.emit()
+	ok(Game.starter.name == "Shrike" and Game.starter.prep and Game.level == 5 and Game.starter.role == Game.hero.role, "Continue starts that starter as it was, at its level")
+	e.free()
