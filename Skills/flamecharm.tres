@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/aura.gd" id="b_aura"]
 
 [sub_resource type="Resource" id="Effect_0"]
 script = ExtResource("2_effect")
@@ -11,6 +13,10 @@ per_rank = true
 tags = Array[StringName]([&"fire"])
 name = "Flamecharm"
 
+[sub_resource type="Resource" id="Behaviour_aura"]
+script = ExtResource("b_aura")
+splits = true
+
 [resource]
 script = ExtResource("1_skill")
 name = "Flamecharm"
@@ -19,7 +25,6 @@ ap = 3.0
 cost = 3
 hostile = false
 self_only = true
-aura = true
-splits = true
 turns_per_rank = 1
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])
+behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_aura")])

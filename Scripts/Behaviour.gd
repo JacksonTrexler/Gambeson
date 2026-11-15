@@ -53,6 +53,20 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# What apply() does is the whole of the cast `c` (Battle.cast()): it lands at once, past any reactions,
+# with no roll, contest, effects or damage of the skill's own (Beastshape, Emergency Exit, an aura, Igna
+# on an ally). Pure: asked once the skill is paid for and aimed.
+func whole(_c: Cast) -> bool:
+	return false
+
+
+# The unique effect it gives its skill in the cost calculator's terms (SkillTerms impact), where the
+# skill names none: &"tame" for doing a thing of its own, &"impactful" for a big one (Beastshape),
+# &"" for one that only carries out what its numbers say (Send Off's teleport). Pure.
+func impact() -> StringName:
+	return &"tame"
+
+
 # Once the skill is paid for and aimed, before any roll (Battle.cast()): what comes first (Sutemi's
 # lunge, Poach's discount). The cast's target may still be missed.
 func aim(_c: Cast) -> void:

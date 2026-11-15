@@ -153,7 +153,7 @@ var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it get
 var paid_fall := false  # it has paid out its XP for falling (Battle._award()): a unit pays once...
 var paid_rise := false  # ...and once more for being brought back (Battle.rescued())
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
-var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Battle.imbue())
+var element := &""  # the element its Strikes carry when imbued or with Elemental Mastery (Behaviours/imbue.gd)
 var imbued := 0  # Strike uses left carrying its element (Elemental Strike)
 var form := &""  # the beast it's shaped into (Beastshape: rabbit, squirrel, mole, wisp, mote, pike; Battle.FORMS), body and mind; "" itself
 var form_turns := 0  # its turns left as one
@@ -685,7 +685,7 @@ func biomes() -> Array[StringName]:
 	return out
 
 
-# Takes form f at rank r for `turns` of its turns (Battle.beastshape()): a rabbit's haste is +rank
+# Takes form f at rank r for `turns` of its turns (Behaviours/beastshape.gd): a rabbit's haste is +rank
 # movement; a mote's element goes into its Strikes, rank uses.
 func shape(f: StringName, el: StringName, r: int, turns: int) -> void:
 	form = f
@@ -706,9 +706,9 @@ func unshape() -> void:
 	form_rank = 0
 
 
-# Whether it can use s as it is now: shaped, only Strike, beast skills and Beastshape (to turn back).
+# Whether it can use s as it is now: shaped, only Strike, beast skills (tagged beast) and Beastshape (to turn back).
 func shaped_allows(s: Skill) -> bool:
-	return not form or s.chain or s.beast or s.shapes
+	return not form or s.chain or &"beast" in s.tags or s.behaviours.any(func(b: Behaviour): return b is Beastshape)
 
 
 static func _haste() -> Effect:
@@ -2418,6 +2418,14 @@ func ap_cost(s: Skill, fund: Variant) -> float:
 		if pays_as(s, fund, r):
 			factor = minf(factor, s.ap_with[r])
 	return Pricing.ap_for(self, s) * factor * exhaustion.rate(s)  # priced, or hand-set under its modifiers
+
+
+# Its actives it would aim at a foe itself (not a tile, nor used at once on whoever's nearest), those it
+# can pay for now only if `affordable` - what the AI weighs to strike with.
+func foe_actives(affordable := false) -> Array[Skill]:
+	var out: Array[Skill] = []
+	out.assign(actives.filter(func(x: Skill): return x.for_foes() and not x.on_tile() and not x.auto and (not affordable or can_afford(x))))
+	return out
 
 
 func can_afford(s: Skill) -> bool:

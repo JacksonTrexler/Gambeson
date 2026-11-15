@@ -1,6 +1,11 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/beastshape.gd" id="b_beastshape"]
+
+[sub_resource type="Resource" id="Behaviour_beastshape"]
+script = ExtResource("b_beastshape")
 
 [resource]
 script = ExtResource("1_skill")
@@ -11,5 +16,5 @@ classes = Array[StringName]([&"druid"])
 ap = 2.0
 hostile = false
 self_only = true
-shapes = true
 lore = "Body and mind: the druid who comes back is the one who went, mostly."
+behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_beastshape")])

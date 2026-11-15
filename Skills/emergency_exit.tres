@@ -1,6 +1,11 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/emergency_exit.gd" id="b_emergency_exit"]
+
+[sub_resource type="Resource" id="Behaviour_emergency_exit"]
+script = ExtResource("b_emergency_exit")
 
 [resource]
 script = ExtResource("1_skill")
@@ -14,4 +19,4 @@ hostile = false
 rolls = false
 min_tier = 4
 max_rank = 3
-exits = true
+behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_emergency_exit")])

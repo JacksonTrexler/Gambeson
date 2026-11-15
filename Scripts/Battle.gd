@@ -860,8 +860,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return false  # only as its turn opens (Flamedance)
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
 		return false  # a mist only Coalesces (Vaporize)
-	if not caster.shaped_allows(skill) or (skill.shapes and not caster.form and form_for(caster).is_empty()):
-		return false  # a beast's mind (Beastshape); no beast thrives here
+	if not caster.shaped_allows(skill):
+		return false  # a beast's mind (Beastshape)
 	if caster.channel and caster.channel.skill == skill and skill.behaviours.any(func(x: Behaviour): return x.recast_stops()):
 		end_channel(caster)  # used again: it stops channeling, free (Clairvoyance)
 		return true
@@ -872,7 +872,6 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var r := caster.rank(skill)
 	var m := caster.mods(skill)  # its modifiers: per-rank and per-stat values go through them (Modifiers)
 	var ri := m.irank(r, &"rank_impact")  # its rank for what rank adds to what it does
-	var rr := m.irank(r, &"rank_range")  # ...and to how far it reaches
 	var acts: Behaviour.Cast = cast_of(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
 	if acts:
 		_resolving.append(acts)
@@ -900,27 +899,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	# Every path below that lands runs the behaviours' apply() (_land()); one that fails (a save or
 	# contest lost) is a miss, as a missed attack roll is, and runs none; so is a channel stopped by using
 	# it again (recast_stops(), above: nothing lands). docs/plans/route.md.
-	if skill.shapes:
-		beastshape(caster, ri)  # its form's rank and turns: rank impact
-		_land(acts)
-		used.emit(caster, skill, target, 0)
-		return true
-	if skill.aura or skill.retrieves or skill.humbles or skill.fog or skill.exits or (skill.boost_pool and not foe) or not skill.elements.is_empty():
-		if skill.exits:
-			emergency_exit(caster, skill)
-		elif skill.fog:
-			waltz(caster, skill)
-		elif not skill.elements.is_empty():
-			imbue(caster, skill, ri)
-		elif skill.aura:
-			_aura(caster, skill, r)
-		elif skill.retrieves:
-			_retrieve(caster, skill, ri)  # the item's rank: rank impact
-		elif skill.humbles:
-			_humble(caster, skill, target, ri)
-		else:
-			target.ap.append(AP.new(maxf(m.stat(caster.mod(skill.boost_mod, caster.skill_tags(skill)), &"stat_impact") + ri + int(requirement(caster, skill, target, r)[1]), 0.0), skill.boost_pool))
-		_land(acts)
+	if acts and skill.behaviours.any(func(x: Behaviour): return x.whole(acts)):
+		_land(acts)  # its behaviours are the whole of it (Beastshape, Emergency Exit, an aura, Igna on an ally): no roll, effects or damage of its own
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	if mends:
@@ -1069,12 +1049,6 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if not sights.is_empty():
 		_vanish(target, sights)
 	_land(acts)
-	if foe and skill.pull and (not (skill.check and skill.check.suspicion) or _lured(caster, skill, target)):
-		pull(target, caster, skill.pull * ri)
-	if foe and skill.push:
-		push(target, caster, skill.push * ri)
-	if skill.sends and target.is_alive():
-		send(target, caster, maxi(m.stat(caster.mod(skill.sends, stags), &"stat_range"), 0) + rr + zeal)
 	if skill.prays:
 		pray(caster, ri, target)
 	if skill.links:
@@ -1503,7 +1477,7 @@ func _refuse(u: Unit) -> void:
 # suspicion: the skill's check (Skill.check, with suspicion: Sing's wis; skill_check()) takes a stack off.
 # One that isn't convinced, with none to
 # take, the song does nothing to (it may well walk up to hit the caster all the same).
-func _lured(caster: Unit, skill: Skill, t: Unit) -> bool:
+func lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 	if t.suspects(caster) == 0:
 		return read(t, caster).attitude(t) == &"ally"
 	var vs := skill_check(caster, skill, t)
@@ -3722,8 +3696,8 @@ func _ire(u: Unit) -> void:
 	stalled.emit(u, rank)
 
 
-# Still held as its side's turn ends (a grapple: Drown's effects), u takes the grip's dice + its
-# holder's mod in the grip's stat, and drowns while submerged (the skill's drowns dice + that mod) -
+# Still held as its side's turn ends (a grapple: Drown's effects), u drowns while submerged (the
+# skill's drowns dice + its holder's mod in the skill's stat) -
 # and, fooled by its holder, looks harder at it. A holder that's fallen, or isn't beside it (or on its
 # tile) any more, lets go.
 func _grip(u: Unit) -> void:
@@ -3736,8 +3710,6 @@ func _grip(u: Unit) -> void:
 		_let_go(u, s)
 		return
 	var before := u.hp
-	if s.grip != Vector2i.ZERO:
-		u.hit(roll(s.grip) + by.mod(s.stat(), s.tags), s.tags, by)
 	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u) and not u.has_tag(&"aquatic"):  # the aquatic breathe water
 		u.hit(roll(s.drowns) + by.mod(s.stat(), s.tags), s.tags, by)
 	gripped.emit(u, by, before - u.hp)
@@ -3774,23 +3746,6 @@ func well_up(u: Unit, s: Skill, c: Vector2i) -> void:
 		for dy in [-1, 0, 1]:
 			var at := c + Vector2i(dx, dy)
 			flood(at, r if at == c else r - 1, r, u)
-
-
-# Waltz of Vapors: fog around u, radius rank + the better of its dex and cha mods, concealing at its
-# rank; it lasts through its next turn, so it's kept up by using it again as each turn opens.
-# Its radius is rank range (and stat range), its concealment rank impact (its caster's modifiers).
-func waltz(u: Unit, s: Skill) -> void:
-	var m := u.mods(s)
-	var r := m.irank(u.rank(s), &"rank_impact")
-	var reach := m.irank(u.rank(s), &"rank_range") + m.stat(maxi(u.mod(&"dexterity", u.skill_tags(s)), u.mod(&"charisma", u.skill_tags(s))), &"stat_range")
-	var levels: Dictionary[Vector2i, int] = {}
-	for x in range(u.cell.x - reach, u.cell.x + reach + 1):
-		for y in range(u.cell.y - reach, u.cell.y + reach + 1):
-			var at := Vector2i(x, y)
-			if on_map(at) and Vector2(at).distance_to(Vector2(u.cell)) <= reach + 0.0001:
-				levels[at] = r
-	zones = zones.filter(func(z: Zone): return not (z.kind == &"fog" and z.faction == u.faction and z.levels.has(u.cell)))  # the last waltz lifts
-	zones.append(Zone.new(&"fog", levels, 2, u.faction))
 
 
 # u steps out through an escape portal: its side wins the battle at once (the Meadows).
@@ -4049,27 +4004,6 @@ func close_rift(by: Unit) -> bool:
 	return true
 
 
-# Emergency Exit: a forming escape portal (the Meadows) opens rank turns sooner; with none forming, the
-# caster and its allies within rank tiles warp to a pocket of stone for rank turns.
-# Its turns are rank impact, the allies it takes within rank range (its caster's modifiers).
-func emergency_exit(by: Unit, skill: Skill) -> void:
-	var mods := by.mods(skill)
-	var r := mods.irank(by.rank(skill), &"rank_impact")
-	var meadows := get_node_or_null("Meadows")
-	if meadows and meadows.portal != null and not meadows.opened:
-		meadows.hasten(r)
-		return
-	var p := _new_pocket(&"refuge", by, skill, by.cell)
-	p.turns = r
-	for m in p.marks:
-		m.turns = r
-	var from := by.cell
-	var reach := mods.irank(by.rank(skill), &"rank_range")
-	for u: Unit in members(by.faction):
-		if Vector2(u.cell).distance_to(Vector2(from)) <= reach + 0.0001 and not _in_pocket(u.cell):
-			move(u, free_near_in(p, p.centre))
-
-
 func _in_pocket(c: Vector2i) -> Pocket:
 	for p in pockets:
 		if c in p.cells:
@@ -4211,44 +4145,52 @@ func _let_go(u: Unit, s: Skill) -> void:
 			u.timed.erase(e)  # a grip its behaviour put on (Hitch)
 
 
-# Forced movement: t is drawn up to n tiles toward `to`, a step at a time, stopping beside it or at
-# anything in the way (Sing). Ground it's dragged over does nothing to it.
-func pull(t: Unit, to: Unit, n: int) -> void:
-	for i in n:
-		if next_to(t.cell, to.cell):
-			return
-		var d := to.cell - t.cell
-		var c := t.cell + Vector2i(signi(d.x), signi(d.y))
-		if not on_map(c) or not move(t, c):
-			return
-
-
-# Drives t up to n tiles straight away from `from` (pull()'s reverse), a tile at a time along the line
-# between them, stopping short of the map's edge, a hole or another unit. Returns the tiles it went.
-func push(t: Unit, from: Unit, n: int) -> int:
-	var dir := Vector2(t.cell - from.cell).normalized()
-	var start := Vector2(t.cell)
+# Forced movement (Behaviours/displace.gd, Kick, Send Off): t moves up to n tiles from `from` - away
+# (dir 1) along the line from it through t, or toward it (dir -1), a step at a time straight for it,
+# stopping beside it - a tile at a time, stopping short of the map's edge, a hole or another unit. Ground
+# it's moved over does nothing to it, and it doesn't turn (docs/plans/facing.md). Teleporting, it goes
+# straight to the furthest free tile on that line, n tiles out or nearer (place(): a trap there springs),
+# never past `from`. Returns the tiles it went (0: none).
+func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false) -> int:
+	var line := Vector2(t.cell - from).normalized() * signf(dir)
+	var start := t.cell
+	if teleport:
+		for k in range(n, 0, -1):
+			var c := Vector2i((Vector2(start) + line * k).round())
+			if c != start and c != from and on_map(c) and not unit_at(c) and (dir > 0 or Command.tiles(start, c) < Command.tiles(start, from)) and place(t, c):
+				return k
+		return 0
 	var went := 0
 	for k in range(1, n + 1):
-		var c := Vector2i((start + dir * k).round())
-		if c == t.cell:
-			continue
+		var c: Vector2i
+		if dir < 0:
+			if next_to(t.cell, from):
+				break
+			var d := from - t.cell
+			c = t.cell + Vector2i(signi(d.x), signi(d.y))
+		else:
+			c = Vector2i((Vector2(start) + line * k).round())
+			if c == t.cell:
+				continue
 		if not on_map(c) or not move(t, c):
 			break
 		went += 1
 	return went
 
 
-# Teleports t up to n tiles straight away from `from`: to the furthest free tile on that line, n tiles
-# out or nearer (Send Off). False if none is free.
+# Draws t up to n tiles toward `to`, a step at a time, stopping beside it or at anything in the way (displace()).
+func pull(t: Unit, to: Unit, n: int) -> int:
+	return displace(t, to.cell, -1, n)
+
+
+# Drives t up to n tiles straight away from `from` (displace()). Returns the tiles it went.
+func push(t: Unit, from: Unit, n: int) -> int:
+	return displace(t, from.cell, 1, n)
+
+
+# Teleports t up to n tiles straight away from `from` (displace()). False if no tile on the line is free.
 func send(t: Unit, from: Unit, n: int) -> bool:
-	var dir := Vector2(t.cell - from.cell).normalized()
-	for k in range(n, 0, -1):
-		var c := Vector2i((Vector2(t.cell) + dir * k).round())
-		if c != t.cell and on_map(c) and not unit_at(c):
-			place(t, c)
-			return true
-	return false
+	return displace(t, from.cell, 1, n, true) > 0
 
 
 # Puts u on c without walking there (a teleport): no movement paid, no trail of debris, nothing
@@ -4677,14 +4619,6 @@ func _record(caster: Unit, t: Unit) -> void:
 	a.since = turns_begun
 
 
-# Elemental Strike: its user's next rank Strikes carry its element (Unit.element: picked as it's used,
-# else the skill's first), the first hit of each + its highest mental mod.
-func imbue(u: Unit, skill: Skill, r: int) -> void:
-	if u.element not in skill.elements:
-		u.element = skill.elements[0]
-	u.imbued = r
-
-
 # --- Beastshape
 
 # Beasts a Druid can take the form of (Beastshape): form -> [the ground it thrives on (tile tags), the
@@ -4726,19 +4660,6 @@ func form_for(u: Unit) -> Array:
 		elif (FORMS[f][0] as Array).any(func(t: StringName): return t in u.ground):
 			return [f, &""]
 	return []
-
-
-# Beastshape at rank r: u becomes the beast its ground suits (form_for()) for rank + 1 of its turns,
-# body and mind - only Strike, beast skills and Beastshape until then (Unit.shaped_allows()). Used
-# shaped, it turns back.
-func beastshape(u: Unit, r: int) -> void:
-	if u.form:
-		u.unshape()
-		shaped.emit(u, &"", &"")
-		return
-	var f := form_for(u)
-	u.shape(f[0], f[1], r, r + 1)
-	shaped.emit(u, f[0], f[1])
 
 
 # --- Sol's fire
@@ -4902,72 +4823,6 @@ static func discipline_damage(u: Unit, s: Skill) -> float:
 	if u.disciplined <= 0:
 		return 0.0
 	return discipline_points(u) * DISCIPLINE_DAMAGE * maxi(u.mod(u.wielded(s.stat(), s.tags), s.tags), 1)
-
-
-# A skill on its user that spreads its effects to every ally within rank tiles (Flamecharm,
-# Flamedance) - from rank V of a splitting one (Flamecharm), only the nearest rank of them, its
-# strength shared out (Applied.scale).
-# Its reach and how many it splits among are rank range; its effects' rank, rank impact (its caster's
-# modifiers); the split starts at rank V as its holder has it.
-func _aura(caster: Unit, skill: Skill, r: int) -> void:
-	var m := caster.mods(skill)
-	var rr := m.irank(r, &"rank_range")
-	var near: Array = units.values().filter(func(o: Unit): return o.is_alive() and Faction.friends(o.faction, caster.faction) and Command.tiles(o.cell, caster.cell) <= rr)
-	near.sort_custom(func(a: Unit, b: Unit): return Command.tiles(a.cell, caster.cell) < Command.tiles(b.cell, caster.cell))
-	var share := 1.0
-	if skill.splits and r >= 5:
-		near = near.slice(0, rr)
-		share = 1.0 / maxi(near.size(), 1)
-	for o: Unit in near:
-		for e in skill.effects:
-			var n := skill.lasts(r, caster)
-			var a := o.afflict(e, n + (1 if o.faction == turn else 0), m.irank(r, &"rank_impact") if e.per_rank else r)
-			a.total = n
-			a.scale = share
-			a.skill = skill
-			a.by = caster
-			a.since = turns_begun
-
-
-# The Burning Bag: the one there is, taken from whoever has it (or the stash) and put on its caster at
-# the skill's rank; what the caster wore there goes to the stash, if it's the player's.
-func _retrieve(caster: Unit, skill: Skill, r: int) -> void:
-	var it := skill.retrieves
-	for o: Unit in $Units.get_children():
-		for slot in CharacterSheet.SLOTS:
-			var worn: Item = o.get(slot)
-			if worn and worn.name == it.name:
-				o.unequip(slot)
-	for x in Game.stash.duplicate():
-		if x.name == it.name:
-			Game.stash.erase(x)
-	var mine: Item = it.duplicate()
-	mine.rank = r
-	var old: Item = caster.get(mine.slot)
-	caster.equip(mine)
-	if old and player and caster.faction == player.faction:
-		Game.stash.append(old)
-
-
-# Humble: t's max HP is capped at its HP now less 1% of its max (Effect humble: the cut), for rank x 4
-# x (1 - the share cut) turns, at least 1: the less it loses, the longer it lasts.
-func _humble(caster: Unit, skill: Skill, t: Unit, r: int) -> void:
-	var cap := maxi(t.hp - maxi(ceili(0.01 * t.max_hp), 1), 1)
-	var cut := t.max_hp - cap
-	if cut <= 0:
-		return
-	var e := Effect.new()
-	e.stat = "humble"
-	e.name = "Humbled"
-	e.amount = cut
-	var n := maxi(ceili(r * 4.0 * (1.0 - float(cut) / t.max_hp)), 1)
-	var a := t.afflict(e, n + (1 if t.faction == turn else 0), r)
-	a.skill = skill
-	a.by = caster
-	a.since = turns_begun
-	t.refit()
-	if not Faction.friends(t.faction, caster.faction) and caster.stat(&"breathless") > 0.0:
-		_choke(caster, t)
 
 
 # Chant, as its side's turn ends with it having waited (rested) through it: its next rank Sweet

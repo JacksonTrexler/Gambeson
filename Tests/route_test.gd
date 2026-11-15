@@ -165,7 +165,7 @@ func test_flamewall() -> void:
 func test_aura() -> void:
 	var glow := Skill.new()
 	glow.name = "Glow ??"
-	glow.aura = true
+	glow.behaviours = [Aura.new()] as Array[Behaviour]
 	glow.hostile = false
 	glow.self_only = true
 	glow.turns = 2
@@ -257,11 +257,10 @@ func test_behaviours_everywhere() -> void:
 	var spy2 := Spy.new()
 	var glow := Skill.new()
 	glow.name = "Glow ??"
-	glow.aura = true
 	glow.hostile = false
 	glow.self_only = true
 	glow.ap = 1.0
-	glow.behaviours = [spy2] as Array[Behaviour]
+	glow.behaviours = [Aura.new(), spy2] as Array[Behaviour]
 	learn(v(1), glow, 1)
 	b.cast(v(1), glow, v(1))
 	ok(spy2.landed == 1, "an aura's early return runs them too")

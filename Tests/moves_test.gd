@@ -1,6 +1,6 @@
 extends Test
 
-# Moving units without their walking: pushes (Battle.push(), Skill.push) and teleports (Battle.place(),
+# Moving units without their walking: pushes (Battle.push(), a Displace behaviour) and teleports (Battle.place(),
 # send()); and investigating on contact (Battle._contact()): coming beside a hidden foe, a unit looks
 # into what hides it, against the hider's own roll.
 
@@ -13,7 +13,9 @@ func test_push() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(4, 4)})
 	ok(b.push(v(3), v(1), 1) == 1 and v(3).cell == Vector2i(5, 5), "diagonally too")
 	var shove: Skill = hex.duplicate()
-	shove.push = 2
+	var push := Displace.new()
+	push.tiles = 2
+	shove.behaviours = [push] as Array[Behaviour]
 	ok("Drives it up to 4 tiles straight away from the caster" in shove.describe(2), shove.describe(2))
 
 

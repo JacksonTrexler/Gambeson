@@ -4,11 +4,18 @@
 [ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
 [ext_resource type="Script" path="res://Scripts/Reserve.gd" id="4_reserve"]
 [ext_resource type="Resource" path="res://Reserves/mana.tres" id="5_mana"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/boost.gd" id="b_boost"]
 
 [sub_resource type="Resource" id="Tier_0"]
 script = ExtResource("3_tier")
 dice = Vector2i(1, 4)
 stat = &"intelligence"
+
+[sub_resource type="Resource" id="Behaviour_boost"]
+script = ExtResource("b_boost")
+pool = &"move"
+mod = &"intelligence"
 
 [resource]
 script = ExtResource("1_skill")
@@ -20,6 +27,5 @@ cost_per_rank = true
 cost_with = Dictionary[ExtResource("4_reserve"), float]({ExtResource("5_mana"): 0.5})
 radius_mod = &"intelligence"
 dual = true
-boost_pool = &"move"
-boost_mod = &"intelligence"
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_0")])
+behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_boost")])
