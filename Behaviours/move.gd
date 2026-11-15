@@ -24,4 +24,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return "On itself: {r:%d} tile%s more movement this turn; paid with %s, {r:%d} more" % [rank, "" if rank == 1 else "s", Glossary.term(&"stamina"), rank]

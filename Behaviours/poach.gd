@@ -57,6 +57,11 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return "\n".join([
 		"On a bloodied foe (half its HP or less) it hasn't used a skill on this battle: at advantage, and half its AP and cost come back",
 		"Its blow neutralizing the foe (downed, Downed or killed): {r:%d}%% of its max Energy back, and {r:%d}%% of its Focus and Stamina (each a recovery: %s)" % [

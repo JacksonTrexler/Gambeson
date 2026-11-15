@@ -36,4 +36,8 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "Using an {x:offensive} skill on a foe, it also sets off up to {r:%d} of its other {x:defensive} {k:reaction|reactions}, top to bottom." % rank
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	return "Using an {x:offensive} skill on a foe, it also sets off up to {r:%d} of its other {x:defensive} {k:reaction|reactions}, top to bottom." % c.impact_rank()

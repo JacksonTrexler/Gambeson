@@ -20,4 +20,8 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "The foe adds the AP it left unspent last turn to its Defense against it. A hit deals {r:%d} more damage" % rank
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	return "The foe adds the AP it left unspent last turn to its Defense against it. A hit deals {r:%d} more damage" % c.impact_rank()

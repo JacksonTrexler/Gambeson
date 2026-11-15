@@ -33,5 +33,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
 	return "Wielding blunt (or bare-handed): + 1d4 damage. A hit leaves it %s: it loses {r:%d} AP, at once if it's acting, else as its next turn opens" % [
-			WINDED.name, rank]
+			WINDED.name, c.impact_rank()]

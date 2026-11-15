@@ -92,12 +92,17 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.rank
 	var turns := "{t:%d turn%s}" % [rank, "" if rank == 1 else "s"]
 	return "\n".join([
 		"Kicks what lies at its feet, between it and the foe, at the foe:",
 		"A trap: it springs on the foe",
 		"Water: %s (%s) for %s" % [Glossary.term(&"soaked"), SOAKED.markup(rank), turns],
 		"Leaves, sand or debris: %s (%s) for %s" % [Glossary.term(&"blinded"), BLINDED.markup(rank), turns],
-		"A hole or an edge: drives it {r:%d} tile%s straight back" % [rank, "" if rank == 1 else "s"],
+		"A hole or an edge: drives it {r:%d} tile%s straight back" % [c.impact_rank(), "" if c.impact_rank() == 1 else "s"],
 		"Beside it, nothing between: drives it 1 tile straight back",
 	])

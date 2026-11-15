@@ -35,5 +35,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "A foe that grows suspicious of it must pass a {k:check|Check} of its {d:cha mod} against {r:%d} + {o:cha mod} to tell each ally, while no more than {r:%d} foes suspect it." \
-			% [Difficulty.dc(DIFFICULTY, rank), rank + 1]
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	return "A foe that grows suspicious of it must pass a {k:check|Check} of its {d:cha mod} against {r:%d} + %s to tell each ally, while no more than {r:%d} foes suspect it." \
+			% [Difficulty.dc(DIFFICULTY, c.impact_rank()), c.mod_text(&"charisma"), c.impact_rank() + 1]

@@ -24,5 +24,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return ("Opens the %s school of spellcasting, to pick on your class's own tab. The first {r:%d} of its spells you learn "
 			+ "rank as your own: none of a guest tree's Affinity penalty") % [school, rank]

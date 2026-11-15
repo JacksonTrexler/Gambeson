@@ -29,5 +29,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
 	return "A hit grapples: a %s, {o:str mod} + {r:%d} vs the better of {d:str mod} and {d:dex mod}. Won, it holds the foe, and its moves this turn tow it {r:%d} tile%s the same way. The grip ends with its turn" % [
-			Glossary.term(&"contest"), rank, rank, "" if rank == 1 else "s"]
+			Glossary.term(&"contest"), c.impact_rank(), c.rank, "" if c.rank == 1 else "s"]

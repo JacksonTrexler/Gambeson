@@ -48,5 +48,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var r := c.impact_rank()
 	return "Those it fools within {r:%d} tiles feed it {r:%d%%} of each heal they get, and take {r:%d%%} of each hit it takes in its place, shared." \
-			% [rank, roundi(SIPHON * rank * 100), mini(roundi(SHIELD * rank * 100), 100)]
+			% [c.range_rank(), roundi(SIPHON * r * 100), mini(roundi(SHIELD * r * 100), 100)]

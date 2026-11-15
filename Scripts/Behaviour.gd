@@ -29,6 +29,17 @@ class Cast:
 	func impact_rank() -> int:
 		return mods.irank(rank, &"rank_impact") if mods else rank
 
+	# A cast of no one at rank r: its base, for describe().
+	static func at(r: int) -> Cast:
+		var c := Cast.new()
+		c.rank = r
+		return c
+
+	# Stat x's mod as channel `ch` reads it, in markup: "cha mod", or "1.75 x cha mod" under a modifier
+	# (a describe_as() line's; Skill._mod()).
+	func mod_text(x: StringName, ch := &"stat_impact") -> String:
+		return Skill._mod(x, ch, mods if mods else Modifiers.NONE)
+
 	func range_rank() -> int:
 		return mods.irank(rank, &"rank_range") if mods else rank
 
@@ -215,6 +226,11 @@ func describe(_rank: int) -> String:
 # modifier shows wherever it acts; by default, describe() at the rank.
 func describe_as(c: Cast) -> String:
 	return describe(c.rank)
+
+
+# A behaviour whose numbers scale (it declares rank or stat terms) writes its text once, in describe_as(),
+# and has describe() say it at the base: `func describe(rank): return describe_as(Cast.at(rank))`. A sweep
+# (sweep_test) holds each to it: a rho-up modifier must change what it says.
 
 
 

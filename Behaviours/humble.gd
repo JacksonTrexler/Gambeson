@@ -39,5 +39,9 @@ func terms(t: SkillTerms) -> void:
 	t.add(&"rank_impact", "humbles")
 
 
-func describe(_rank: int) -> String:
-	return "Caps its max HP at its HP now less 1%, for rank x 4 x (1 - the share cut) turns: the less it cuts, the longer"
+func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	return "Caps its max HP at its HP now less 1%%, for {r:%d} x 4 x (1 - the share cut) turns: the less it cuts, the longer" % c.impact_rank()
