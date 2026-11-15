@@ -48,7 +48,7 @@ const TERMS := {
 	&"true": ["True", &"damage", "Damage nothing reduces or redirects: it goes straight to HP."],
 	&"unblockable": ["Unblockable", &"damage", "Damage mitigation doesn't reduce."],
 	&"drain": ["Drain", &"damage", "Energy damage takes Energy (or Power) first; only what's past it reaches HP."],
-	&"held": ["Held", &"condition", "Grappled: moving away first takes movement and a contest to break free. Each turn it ends held, it takes its holder's grip."],
+	&"held": ["Held", &"condition", "Grappled: moving away first takes movement and a contest to break free. Each turn it ends held while submerged, it drowns (Drown)."],
 	&"wound": ["Wound", &"condition", "A lasting hurt with a rank; a heal clearing at least that rank takes it off."],
 	&"enraptured": ["Enraptured", &"condition", "Fooled by a unit's persona, with no suspicion of it."],
 	&"suspicion": ["Suspicion", &"condition", "Stacks of doubt about a unit's persona: each makes it harder to fool."],

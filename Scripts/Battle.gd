@@ -942,8 +942,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		var vs := skill_check(caster, skill, target, {tiles = Command.tiles(target.cell, spot)})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
-			_expose(target)
-			_expose(caster)
+			_lose_cover(target)
+			_lose_cover(caster)
 			used.emit(caster, skill, target, 0)
 			return true
 		drag(caster, target, spot, skill.drags())
@@ -951,7 +951,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		var vs := check(caster, skill.stat(), target, skill.stat(), {bonus = zeal + int(req[0]), edge = int(req[2]), tags = stags, cut = cut})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
-			_expose(caster)
+			_lose_cover(caster)
 			used.emit(caster, skill, target, 0)
 			return true
 		engulf(caster, target)
@@ -961,7 +961,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		var mine := vs.mine.total
 		contested.emit(caster, target, mine, vs.theirs.total)
 		if not vs.won:  # the caster wins ties
-			_expose(caster)
+			_lose_cover(caster)
 			if read(target, caster).located():
 				suspect(target, caster)  # it felt something try
 			used.emit(caster, skill, target, 0)
@@ -992,8 +992,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 				bh.dealt(acts, before - target.hp)
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
-		_expose(target)
-		_expose(caster)
+		_lose_cover(target)
+		_lose_cover(caster)
 		if not target.is_alive():  # (downing one that lingers Downed is no kill; its death is)
 			caster.gain(&"kill", 1)
 		caster.striding = false
@@ -1016,7 +1016,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_evaluate(caster, skill, hit.d20, hit.total)
 		rolled = hit
 		if not hit.hit:
-			_expose(target)
+			_lose_cover(target)
 			used.emit(caster, skill, target, 0)
 			return true
 	if foe and skill.hostile and target != caster:  # hit: reactions before its damage (Interject)
@@ -1027,7 +1027,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			tags = acts.tags
 			if rolled and not rolled.crit and rolled.total < target.defense(tags) + guard_of(acts) + rh.guard:
 				attacked.emit(caster, target, rolled.d20, rolled.total, target.defense(tags) + guard_of(acts) + rh.guard)
-				_expose(target)
+				_lose_cover(target)
 				used.emit(caster, skill, target, 0)  # the roll that hit its first target misses its new one
 				return true
 	if acts:
@@ -1122,8 +1122,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if foe:
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
-		_expose(target)
-		_expose(caster)
+		_lose_cover(target)
+		_lose_cover(caster)
 		if not target.is_alive():
 			caster.gain(&"kill", 1)  # Sweet Nothings
 	caster.striding = false
@@ -2183,7 +2183,7 @@ func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
 
 # Hitting a unit, or attacking, gives away where it is: a hidden one loses a level of concealment
 # until its side's next turn starts.
-func _expose(u: Unit) -> void:
+func _lose_cover(u: Unit) -> void:
 	if Perception.cover(self, u) > 0:
 		u.exposed += 1
 
@@ -2302,10 +2302,10 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 			var was := w.hp
 			w.hit(power * (1.0 + caster.stat(&"damage", tags)), tags, caster)
 			hit[w] = hit.get(w, 0) + was - w.hp
-			_expose(w)
+			_lose_cover(w)
 			if not w.is_alive() and w.faction != caster.faction:
 				caster.gain(&"kill", 1))
-	_expose(caster)
+	_lose_cover(caster)
 	for at in map.get_used_cells():
 		if Vector2(at).distance_to(Vector2(c)) <= blast + 0.0001:
 			expose(at, tags, caster)
@@ -4976,8 +4976,8 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0
 		contested.emit(caster, t, roll.mine.total, bar)
 		if roll.won:  # beating the bar, not meeting it
 			hits += 1
-	_expose(caster)
-	_expose(t)
+	_lose_cover(caster)
+	_lose_cover(t)
 	if hits > 0:
 		for e in skill.effects:
 			var a := t.afflict(e, hits + (1 if t.faction == turn else 0), hits)
@@ -5023,8 +5023,8 @@ func decay(caster: Unit, skill: Skill, target: Unit) -> float:
 func _death(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 0, 0.0]) -> bool:
 	var vs := check(caster, skill.stat(), t, &"", {bonus = int(req[0]), edge = int(req[2]), tags = caster.skill_tags(skill), their_bonus = stand_bonus(t, r), cut = stand_share(t, r)})  # its last stand; the caster wins ties
 	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
-	_expose(caster)
-	_expose(t)
+	_lose_cover(caster)
+	_lose_cover(t)
 	if not vs.won:
 		return false
 	t.slain_from = t.hp
