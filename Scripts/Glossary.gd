@@ -52,6 +52,7 @@ const TERMS := {
 	&"wound": ["Wound", &"condition", "A lasting hurt with a rank; a heal clearing at least that rank takes it off."],
 	&"enraptured": ["Enraptured", &"condition", "Fooled by a unit's persona, with no suspicion of it."],
 	&"suspicion": ["Suspicion", &"condition", "Stacks of doubt about a unit's persona: each makes it harder to fool."],
+	&"dissonance": ["Dissonance", &"condition", "How far a unit's persona is from what it is, counting against its own lies. A claim it truly is costs nothing, one near what it is half, one far from it (a monster claiming harmless) 1.5, any other 1; rounded up."],
 	&"pinged": ["Pinged", &"condition", "Sensed by a channeled Clairvoyance: a foe out of sight shown as a black shape where it was last sensed. Only where, not who or what side; gone once the channel ends."],
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],

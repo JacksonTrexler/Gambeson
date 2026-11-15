@@ -679,7 +679,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			lines.append(said)
 	if has_look():
 		var look := ([stance] if stance else []) + [", ".join(shows_vibe)] + [", ".join(shows_tags)]
-		lines.append("Puts forward a look: %s. Its holder's dissonance counts {r:%d} less against its own checks"
+		lines.append("Puts forward a look: %s. Its holder's {k:dissonance|dissonance} counts {r:%d} less against its own checks"
 				% ["; ".join(look.filter(func(x: String): return x != "")), rank])
 		if not (shows_adjectives.is_empty() and shows_nouns.is_empty()):  # what it may go by (Unit.alias: the persona panel)
 			var names: PackedStringArray = []
