@@ -6,7 +6,7 @@ extends RefCounted
 # its own (Behaviour.terms()). docs/plans/skill-modifiers.md.
 #
 # Four channels of scaling, each a list of what scales that way:
-#   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast, aura, flamewall width, cone, sends, auto, exits, fog
+#   rank_range   what rank adds to its reach: radius_per_rank, reach_scale, blast, aura, sends, auto, exits, fog; a behaviour's (Flamewall's width, Solar's cone)
 #   rank_impact  what rank adds to what it does: tiers by rank, roll_per_rank, dice_per_rank, dice_scale,
 #                turns_per_rank, push, pull, per_wound, restores, per-rank effects, a passive's reserve,
 #                opens and downed rule, a check's + rank and range penalty (SkillCheck)
@@ -66,23 +66,19 @@ func _init(s: Skill) -> void:
 	if s.effects.any(func(e: Effect): return e.per_rank):
 		add(&"rank_impact", "effects")
 	# What Battle reads through the reader too (docs/plans/route.md): rank as reach or count reached...
-	for f in ["aura", "flamewall", "sends", "auto", "exits", "fog"]:
+	for f in ["aura", "sends", "auto", "exits", "fog"]:
 		if s.get(f):
 			add(&"rank_range", f)
-	if s.cone > 0.0 and not s.evadable:  # Solar: + 15 degrees a rank
-		add(&"rank_range", "cone")
 	# ...and as what it does: + rank on a save, an execute's / rank, a DC it imposes, hits, rolls, turns.
 	if s.check and s.check.ranked:  # + rank on its check (the saves: Haluca)
 		add(&"rank_impact", "check")
 	if s.check and s.check.range_penalty > 0:  # its range penalty, 1 less a rank (Drown's drag)
 		add(&"rank_impact", "range penalty")
-	for f in ["shapes", "retrieves", "links", "hits_per_rank", "levels_down", "kills", "disables", "lays", "wells", "zone", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog", "flamewall"]:
+	for f in ["shapes", "retrieves", "links", "hits_per_rank", "levels_down", "kills", "disables", "lays", "boost_pool", "carry", "binds", "respecs", "investigated", "humbles", "prays", "god_tag", "exits", "fog"]:
 		if s.get(f):
 			add(&"rank_impact", f)
 	if not s.elements.is_empty():
 		add(&"rank_impact", "elements")
-	if s.evadable and s.difficulty:
-		add(&"rank_impact", "difficulty")
 	if s.heals() and not s.passive:
 		add(&"rank_impact", "clears")
 	if &"execute" in s.tags:
@@ -116,7 +112,7 @@ func _init(s: Skill) -> void:
 		add(&"stat_impact", "effects")
 	hit_per_rank = s.roll_per_rank
 	damage = not s.tiers.is_empty()
-	check = not s.passive and (s.attacks() or s.contests() or s.evadable)
+	check = not s.passive and (s.attacks() or s.contests())  # or a behaviour's (an evadable cone: Wildfire)
 	conditions = not s.passive and (not s.effects.is_empty() or s.grants != null)  # put on a target
 	ground = not s.passive and s.on_tile()
 	intensity = s.intensity if s.intensity else _derived_intensity()
@@ -184,7 +180,8 @@ func _derived_impact() -> StringName:
 	var s := skill
 	if s.disables or s.kills or s.levels_down or s.binds or s.shapes or s.rifts or s.exits or s.humbles or s.drags() or s.engulfs:
 		return &"impactful"
-	if conditions or s.holds() or not s.behaviours.is_empty() or s.push or s.pull or s.heals() or s.boost_pool or s.zone or s.lays or s.flamewall:
+	# A behaviour is a rider, except one cast on a tile, which says its own in terms() (Flamewall's fire: tame).
+	if conditions or s.holds() or s.behaviours.any(func(b: Behaviour): return b and b.tile_target() == &"") or s.push or s.pull or s.heals() or s.boost_pool or s.lays:
 		return &"tame"
 	return &""
 

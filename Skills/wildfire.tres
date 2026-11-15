@@ -2,11 +2,18 @@
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
 [ext_resource type="Script" path="res://Scripts/Tier.gd" id="2_tier"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/cone.gd" id="b_cone"]
 
 [sub_resource type="Resource" id="Tier_1"]
 script = ExtResource("2_tier")
 dice = Vector2i(1, 6)
 stat = &"wisdom"
+
+[sub_resource type="Resource" id="Behaviour_cone"]
+script = ExtResource("b_cone")
+degrees = 60.0
+evadable = true
 
 [resource]
 script = ExtResource("1_skill")
@@ -14,11 +21,10 @@ name = "Wildfire"
 tags = Array[StringName]([&"fire", &"divine", &"wis", &"magical"])
 ap = 10.0
 cost = 10
-cone = 60.0
-evadable = true
 difficulty = &"difficult"
 reach_scale = &"intense"
 dice_scale = &"severe"
 bane = &"earth"
 tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
 lore = "Sol's fire at its widest: it runs with the wind and finds what's rooted in the ground."
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_cone")])
