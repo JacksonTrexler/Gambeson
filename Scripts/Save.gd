@@ -13,7 +13,8 @@ class_name Save
 const VERSION := 1
 const ITEMS := "res://Items/"
 
-static var PATH := "user://save.json"
+# A script run with -s (a screenshot driver; the test runner sets its own path as well) is not the game: it keeps to a file of its own.
+static var PATH := "user://save.json" if not Engine.get_main_loop().get_script() else "user://save_driver.json"
 static var loaded := false  # load_once() has run: going back to the entry screen doesn't reload over what's in memory
 static var _ids := {}  # item name -> its file, for an item copy that no longer knows its own (id())
 
@@ -164,3 +165,11 @@ static func load_once() -> void:
 	if not loaded:
 		loaded = true
 		load_game()
+
+
+# New game: the save file (and a set-aside .bad) gone and everything Game holds back to its start.
+static func erase() -> void:
+	for p in [PATH, PATH + ".bad", PATH + ".tmp"]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	Game.reset()

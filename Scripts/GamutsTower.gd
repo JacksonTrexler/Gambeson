@@ -227,6 +227,12 @@ func climb(n: int) -> void:
 	_say("Floor %d: %s" % [level + 1, Difficulty.AREA_NAMES[difficulty()]])
 
 
+# Quitting mid-tower keeps what the battles there brought (they save at their end; this is the rest).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Save.save()
+
+
 func _say(text: String) -> void:
 	_note.text = text
 

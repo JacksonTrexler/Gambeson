@@ -97,3 +97,28 @@ func test_entry() -> void:
 	cont.pressed.emit()
 	ok(Game.starter.name == "Shrike" and Game.starter.prep and Game.level == 5 and Game.starter.role == Game.hero.role, "Continue starts that starter as it was, at its level")
 	e.free()
+
+
+func test_new_game() -> void:
+	_game()
+	Save.save()
+	Game.dungeon = Dungeon.new()
+	var e := _entry()
+	var wipe: Button = e.get_node("%Delete")
+	ok(wipe.visible, "a save to delete: the button shows")
+	wipe.pressed.emit()
+	ok(FileAccess.file_exists(Save.PATH) and not Game.hero.is_empty(), "the first press only asks")
+	wipe.pressed.emit()
+	ok(not FileAccess.file_exists(Save.PATH) and Game.hero.is_empty() and Game.stash.is_empty() and Game.outfit.is_empty(), "the second clears the file and Game")
+	ok(Game.level == 1 and Game.xp == 0 and Game.hearts == 0 and Game.dungeon == null, "level, xp, hearts, dungeon back to the start")
+	ok(not wipe.visible and not e.get_node("%Continue").visible, "nothing left to continue or delete")
+	e.free()
+
+
+func test_tower_quit_saves() -> void:
+	_game()
+	var t := GamutsTower.new()
+	t._notification(NOTIFICATION_WM_CLOSE_REQUEST)
+	t.free()
+	Game.xp = 0
+	ok(Save.load_game() and Game.xp == 7 and Game.level == 4, "closing the window in the tower writes the save")
