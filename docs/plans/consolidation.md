@@ -408,3 +408,85 @@ can't see it. B2's describe sweep should catch it.
 
 Visual: Wildfire's and Observe's targeting overlay (armed, hovered) captured before and after (`S/driver_b4.gd`,
 `S/shot_b4_*`): the two look the same. The pixel diffs are the overlay's real-time pulse.
+
+## B5 as built (c-displace)
+
+**Fields off Skill.gd: 15.** `push`, `pull`, `sends`, `shapes`, `beast`, `exits`, `fog`, `grip`, `humbles`, `boost_pool`,
+`boost_mod`, `aura`, `splits`, `retrieves`, `elements`. `@export var` count after merging B4: **104** (126 → 111 on its
+own). `opening` stays, as planned. FLAG_CEILING is untouched.
+
+**New behaviours:**
+- `displace.gd` (`class_name Displace`, with `toward`, `teleport`, `tiles`, `stat` and `foes_only`) does Sing's draw
+  and Send Off's teleport.
+- `beastshape`, `emergency_exit`, `waltz`, `imbue` (`elements`), `aura` (`splits`), `retrieve` (`item`), `humble`
+  and `boost` (`pool`, `mod`).
+- The 13 skills' data was moved by a script (`S/migrate_b5.py`: each field becomes a behaviour sub-resource).
+  No ids were hand-edited.
+
+**Battle:**
+- `_cast`'s self / utility elif block is now one `whole()` early return, about 25 lines fewer. The pull / push / send
+  riders are gone from `_cast`.
+- The seven helper bodies moved into the behaviours.
+- `displace(t, from, dir, n, teleport) -> int` is the one primitive. `pull` / `push` / `send` are one-line wrappers,
+  kept for Kick and the tests.
+- Battle.gd is 5143 → 4998 lines.
+- `_lured` became `lured`, because Displace calls it.
+- `_grip`'s dead grip dice are gone.
+
+**AI (L4):** `Unit.foe_actives(affordable)` replaces the 4 copied filters. AI reads `Displace.draws()` and
+`behaviour(&"waltz")`.
+
+**Calls:**
+1. **Two pure Behaviour queries, not hooks:**
+   - `whole(c)`: the behaviour's apply() is the entire cast. This keeps the early return identical. Boost answers
+     `not c.foe`.
+   - `impact()`: tame by default; `&""` for Waltz, Imbue, Aura, Retrieve and a teleport; impactful for Beastshape,
+     Exit and Humble. Without it, having a behaviour would have made Send Off, Waltz, Burning Bag and Elemental
+     Strike "tame", which costs +2 price points under modifiers.
+   - Merged with B4's rule: a tile behaviour counts as tame only through its own terms().
+2. **`beast` became the `beast` tag:** `Unit.shaped_allows` lets any skill tagged `beast` be used while shaped. No
+   skill carries the tag yet, so nothing changes today.
+3. **Beastshape's "no beast thrives here" gate is now its `fits()`/`unfit()`.** The HUD can show the reason.
+4. **Displace generalised:**
+   - its suspicion gate (`Battle.lured()`) applies to any direction; only Sing has such a check.
+   - it skips a dead target and the caster itself.
+   - a teleport toward stops short of `from`.
+   - walking moves only foes unless `foes_only = false` (Send Off).
+5. **One lookup:** after B4 landed I use its `Skill.behaviour(&"file")`. Only `Displace` keeps a class_name.
+6. **Sutemi's lunge is left alone.** It needs its path before it moves, for `fits()` and the AI's `unguarded()`.
+   Kick and Hitch's tow are unchanged.
+7. **Glossary / Effect text** still says "its holder's grip". The grip dice are gone, but drowning still fires the
+   `gripped` signal. Left for review.
+
+**Eligibility:**
+- `skill.py modifiers` is identical before and after: 28 skills eligible for none.
+- `skill.py terms` for the 14 touched skills is identical apart from label order, including points.
+- Every skill's description at ranks I-V has the same set of lines. Only line order moved: behaviour lines come
+  after the effects.
+
+**Tests changed (data shape only):**
+- `moves_test`: `shove.push`
+- `route_test`: `glow.aura` (×2)
+- `water_test`: Drown's `.grip`
+- `meadows_test`: calls `emergency_exit.gd`'s `open()`
+
+New: `displace_test` (composability: a plain Hex with a Displace knocks back, draws in, teleports; nobody turns) and
+`whole_test`.
+
+**Mutation spot-checks (new suite):**
+
+| Mutation | Result |
+|---|---|
+| `displace()` n = 0 | 16 failed (lure, kick, paladin send-off, moves, displace) |
+| Beastshape no-op | 2 failed |
+| Waltz | 2 failed |
+| Imbue | 2 failed |
+| Aura, no split | 1 failed |
+| Aura, no scale | 1 failed |
+| Humble | 1 failed |
+| Boost | 1 failed |
+| `whole()` → false | 1 failed (whole_test; 0 before it existed) |
+| `foe_actives` broken | 51 failed |
+| Emergency Exit, Retrieve no-op | SCRIPT ERROR (test aborts; the runner counts it as passed: a B1 runner gap) |
+
+Suite: 46018 checks, 0 failed (846 tests).
