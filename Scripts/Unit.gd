@@ -11,12 +11,14 @@ signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp b
 signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
+signal lost_skills(u: Unit, skills: Array[Skill])  # items it wore took skills with them (_sync_granted()): Battle ends a channel on one
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
 const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"intelligence",
 		&"wisdom", &"charisma", &"movement", &"reach", &"size"]
 const BASE_AP := 10.0
+const REAR_EDGE := 1  # Defense an attack from behind takes off its target: +1 to hit (defense(), side_of())
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
 		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
@@ -359,8 +361,13 @@ var noticed := {}  # tiles where it has inspected something suspicious (Battle._
 var assumed := {}  # units that vanished before its eyes -> the side they seemed to be of: it goes on taking them for that (Battle._vanish(), Perception)
 var rested_turns := 0  # its side's turns in a row it has rested through: it looks further and better (Battle.survey())
 var unwatched := 0  # its turns since it last looked around (Battle._watch(): wis mod 0 or less looks only every few)
-var guard := Vector2.ZERO  # the way it faces behind its shield while Shields Up! is on it (Battle._guard(); hit())
-var heading := Vector2i.ZERO  # the way its last move this turn went, if moving was the last thing it did (Eyes Forward)
+var facing := Vector2.ZERO:  # the way it faces (a direction; zero: none yet): set by its steps, by what it aims at (face()), by Shields Up!; side_of() reads it
+	set(v):
+		facing = v
+		if heading_tick:
+			heading_tick.queue_redraw()
+var guard := false  # its shield is up (Shields Up!: Battle._guard(); hit()): it blocks what comes from its front
+var striding := false  # moving was the last thing it did this turn (Eyes Forward looks the way it faces)
 var mark: Label  # the mark that last popped over it (pop_mark()), while it fades
 var _face: Label  # draws a persona's stand-in sprite in place of its own (_show_face())
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
@@ -400,16 +407,60 @@ var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_t
 var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 
-# Every skill entry, the role's first; a skill listed twice keeps its highest rank.
+# Every skill entry, its own (_own()) and what its items lend (granted()): a skill listed twice keeps its
+# highest rank, its own first on a tie.
 var slots: Array[Slot]:
 	get:
 		var best := {}
-		for s in _role_slots + innate + learned:
+		for s in _own() + granted():
 			if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
 				best[s.skill] = s
 		var out: Array[Slot] = []
 		out.assign(best.values())
 		return out
+
+var _held: Array[Skill] = []  # the skills its items lent at the last refit() (_sync_granted())
+var _granted: Dictionary[Skill, Slot] = {}  # the slots its items lend, kept while they're worn (granted()): a toggle's state lasts as long
+
+# Its own skill entries, the role's first: what it has learned, one per skill at its highest rank. What its
+# items lend (granted()) is not among them: it can't be raised, and doesn't count toward learning anything.
+func _own() -> Array[Slot]:
+	var best := {}
+	for s in _role_slots + innate + learned:
+		if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
+			best[s.skill] = s
+	var out: Array[Slot] = []
+	out.assign(best.values())
+	return out
+
+
+# The slots its worn items lend (Item.skills), at the item's rank (Item.skill_rank()): flagged with the item
+# (Slot.from). A skill two items lend comes from the higher; one an item stops lending, or that comes off
+# with it, drops out (its toggle state with it).
+func granted() -> Array[Slot]:
+	var out: Array[Slot] = []
+	var live := {}
+	for it in items():
+		for s in it.skills:
+			if not s:
+				continue
+			var r := it.skill_rank(s)
+			if s in live and live[s].rank >= r:
+				continue
+			var x: Slot = _granted.get(s)
+			if not x:
+				x = Slot.new()
+				x.skill = s
+				_granted[s] = x
+			x.rank = r
+			x.from = it
+			live[s] = x
+	for s in _granted.keys():
+		if s not in live:
+			_granted.erase(s)
+	out.assign(live.values())
+	return out
+
 
 var actives: Array[Skill]:
 	get:
@@ -453,6 +504,7 @@ var luck: int:
 @onready var reserve_bar: ProgressBar = $ReserveBar
 var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
 var more_bars: Array[ProgressBar] = []  # a third reserve's, and any further: 1px slivers (the map's bars, as few pixels as they need)
+var heading_tick: Node2D  # a faint tick at the edge of its tile toward the way it faces (facing); on the sprite, so a silhouette hides it
 var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over its shoulder; on the sprite, so a silhouette hides it
 
 
@@ -483,6 +535,10 @@ func _ready() -> void:
 	banner.position = Vector2(6, -13)
 	banner.draw.connect(_draw_banner)
 	sprite.add_child(banner)
+	heading_tick = Node2D.new()
+	heading_tick.name = &"Facing"
+	heading_tick.draw.connect(_draw_tick)
+	sprite.add_child(heading_tick)
 	sprite.material = ShaderMaterial.new()
 	sprite.material.shader = DESATURATE
 	set_saturation(1.0)
@@ -553,9 +609,18 @@ func unranked() -> Dictionary:
 	return out
 
 
-# Its rank in s as learned: what skill points raise (raise_cost()).
+# Its rank in s as it has it: what it learned (own_rank()), or what an item lends (granted()), the higher.
 func base_rank(s: Skill) -> int:
-	for x in slots:
+	var best := own_rank(s)
+	for x in granted():
+		if x.skill == s:
+			best = maxi(best, x.rank)
+	return best
+
+
+# Its rank in s as learned: what skill points raise (raise_cost()). Items lend ranks that can't be raised.
+func own_rank(s: Skill) -> int:
+	for x in _own():
 		if x.skill == s:
 			if x.rank > 0 and s.rank_cost == 0:
 				var a := affinity(s)
@@ -672,7 +737,7 @@ func _kin(s: Skill, t: SkillTab) -> bool:
 
 # Skill points put into s: what was spent on it, or what its rank is worth on the even curve.
 func points_in(s: Skill) -> int:
-	for x in slots:
+	for x in _own():
 		if x.skill == s:
 			return x.points if x.points >= 0 else Unit.worth(x.rank, 0)
 	return 0
@@ -1167,7 +1232,7 @@ func devotion() -> SkillTab:
 # Whether it has learned a skill on t's roots beyond the shared row (its slots' own ranks: base_rank()
 # reads Affinity, which reads this).
 func _learned_on(t: SkillTab) -> bool:
-	var held := slots.filter(func(x: Slot): return x.rank > 0 and role.tab_of(x.skill) == t).map(func(x: Slot): return x.skill)
+	var held := _own().filter(func(x: Slot): return x.rank > 0 and role.tab_of(x.skill) == t).map(func(x: Slot): return x.skill)
 	return t.roots.any(func(r: SkillRoot): return r and r.skills().any(func(x: Skill): return x in held))
 
 
@@ -1299,7 +1364,7 @@ func unlock(s: Skill) -> bool:
 # (r = 0) is the same rule: 1. A skill with its own rank_cost charges that for II, times its
 # rank_growth each rank after (Clever Disguise: 4, 8, 16).
 func raise_cost(s: Skill) -> int:
-	var r := base_rank(s)
+	var r := own_rank(s)
 	if s.rank_cost > 0 and r > 0:
 		return roundi(s.rank_cost * pow(s.rank_growth, r - 1))
 	var a := affinity(s) if r > 0 else 0
@@ -1310,7 +1375,7 @@ func raise_cost(s: Skill) -> int:
 
 # Whether s can go up a rank at all: it has it, and it's below the skill's cap.
 func can_raise(s: Skill) -> bool:
-	var r := base_rank(s)
+	var r := own_rank(s)
 	return r > 0 and not s.stub and (s.max_rank == 0 or r < s.max_rank)
 
 
@@ -1323,7 +1388,7 @@ func raise(s: Skill) -> bool:
 	var curved := affinity(s) != 0 and s.rank_cost == 0
 	purchases.append([s, cost])
 	skill_points -= cost
-	for x in slots:
+	for x in _own():
 		if x.skill == s:
 			x.points = into
 			x.rank = maxi(Unit.rank_for(into, 0, s.max_rank), 1) if curved else x.rank + 1  # its even-curve rank, for when the Affinity's gone
@@ -1584,9 +1649,27 @@ func hooks() -> Array:
 	return out
 
 
-# Shields Up! is on it and c's centre lies within the 90 degree cone it faces - not while Jammed.
+# Turns to face tile c (not its own).
+func face(c: Vector2i) -> void:
+	if c != cell:
+		facing = Vector2(c - cell).normalized()
+
+
+# Which side of it tile c is on, by the cone test: &"front" (within 45 degrees of the way it faces),
+# &"rear" (within 45 of the opposite) or &"flank" (the 90 degrees to either side). Front when it faces
+# no way yet, or c is its own tile. Battle.hit_tags() tags an attack from the rear or flank with it.
+func side_of(c: Vector2i) -> StringName:
+	if facing == Vector2.ZERO or c == cell:
+		return &"front"
+	var a := absf(angle_difference(facing.angle(), Vector2(c - cell).angle()))
+	if a <= PI / 4.0 + 0.0001:
+		return &"front"
+	return &"rear" if a >= 3.0 * PI / 4.0 - 0.0001 else &"flank"
+
+
+# Shields Up! is on it and c's centre lies in its front cone - not while Jammed.
 func guarding(c: Vector2i) -> bool:
-	return guard != Vector2.ZERO and reacts() and stat(&"guard") > 0.0 and c != cell and absf(angle_difference(guard.angle(), Vector2(c - cell).angle())) <= PI / 4.0 + 0.0001
+	return guard and reacts() and stat(&"guard") > 0.0 and c != cell and side_of(c) == &"front"
 
 
 # Fraction of a hit with these tags that's blocked (additive, capped at 100%).
@@ -1598,7 +1681,7 @@ func mitigation(tags: Array[StringName]) -> float:
 # untagged ones always, tagged ones against attacks carrying that tag or a child of it (physical
 # Defense counts against a pierce).
 func defense(tags: Array[StringName] = []) -> int:
-	return armor_defense() + roundi(stat(&"defense", tags)) + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0)
+	return armor_defense() + roundi(stat(&"defense", tags)) + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0) - (REAR_EDGE if &"rear" in tags else 0)
 
 
 # Defence its armor's mind_stat adds against magical attacks alone (Robe: wis mod). Untagged queries
@@ -1648,14 +1731,15 @@ func weapon_bonus(s: StringName) -> int:
 	return weapon.enchant if weapon and s == &"strength" else 0
 
 
-# Pray, to Urlo: enchants up to n of its unenchanted, unhoned items, weapon first, then armor: what an item
-# becomes enchanted (Item.enchanted_as), else a copy of its own at +1. Items with nothing to scale
-# would be skipped (none yet). How many it enchanted.
+# Pray, to Urlo: enchants up to n of its unenchanted, unhoned items, weapon first, then armor, then trinket: what
+# an item becomes enchanted (Item.enchanted_as), else a copy of its own at +1 (Defense, damage; a trinket's, and
+# any item's skills, a rank). Items with nothing to scale (Item.scales(): Heart Up) are skipped, and cost none of
+# n. How many it enchanted.
 func enchant(n: int) -> int:
 	var done := 0
-	for slot in [&"weapon", &"armor"]:
+	for slot in [&"weapon", &"armor", &"trinket"]:
 		var item: Item = get(slot)
-		if done < n and item and not item.enchanted() and not item.honed():  # honed: already as good as it gets
+		if done < n and item and not item.enchanted() and not item.honed() and item.scales():  # honed: already as good as it gets
 			if item.enchanted_as:
 				set(slot, item.enchanted_as)
 			else:
@@ -1663,6 +1747,8 @@ func enchant(n: int) -> int:
 				item.enchant = 1
 				set(slot, item)
 			done += 1
+	if done > 0:
+		refit()  # a trinket's rank, a skill's
 	return done
 
 
@@ -1772,6 +1858,19 @@ func _draw_banner() -> void:
 		Item.draw_banner(banner, Vector2.ZERO, c, Color("#1d1a12"))
 
 
+# The tick for the way it faces: a small pale chevron at the rim of its tile, faint (no side's colour: a
+# disguise gives nothing away).
+func _draw_tick() -> void:
+	if facing == Vector2.ZERO:
+		return
+	var d := facing.normalized()
+	var at := d * 7.0
+	var side := d.orthogonal()
+	var pts := PackedVector2Array([at + d * 1.5, at - d * 0.5 + side * 2.0, at - d * 0.5 - side * 2.0])
+	heading_tick.draw_colored_polygon(pts, Color(1, 1, 1, 0.55))
+	heading_tick.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]), Color(0, 0, 0, 0.35), 0.5)
+
+
 # Takes off what's in a slot, returning it.
 func unequip(slot: String) -> Item:
 	var old: Item = get(slot)
@@ -1794,6 +1893,38 @@ func refit() -> void:
 	if hp > max_hp + over_max:
 		hp = max_hp + over_max
 	_arrange()  # items can grant slots (the Burning Bag)
+	_sync_granted()  # and skills
+
+
+# The name of the item lending it s - "" if it has none, or learned s at a rank the item doesn't beat.
+func lent_by(s: Skill) -> String:
+	for x in slots:
+		if x.skill == s:
+			return x.from.name if x.from else ""
+	return ""
+
+
+# Its hotbar follows what its items lend (refit(), on every equip, unequip and enchantment): a skill newly lent
+# goes in the first free slot it fits, one no longer lent comes off the bar and is announced (lost_skills: Battle
+# ends a channel on it). Only the hotbar of a unit in the tree: one still being set up fills itself (_fill_bar()).
+func _sync_granted() -> void:
+	var now: Array[Skill] = []
+	now.assign(granted().map(func(x: Slot): return x.skill))
+	var lost: Array[Skill] = []
+	lost.assign(_held.filter(func(s: Skill): return s not in now and rank(s) == 0))  # one it learned as well isn't lost
+	if hotbar.size() == bar_size():
+		for s in now:
+			if s not in _held and s.fits_bar() and s not in hotbar:
+				var i := free_slot(s)
+				if i >= 0:
+					hotbar[i] = s
+		for s in lost:
+			var i := hotbar.find(s)
+			if i >= 0:
+				hotbar[i] = null
+	_held = now
+	if not lost.is_empty():
+		lost_skills.emit(self, lost)
 
 
 # Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
@@ -2133,13 +2264,13 @@ func _general_need(s: Skill, t: int) -> Array:
 			continue
 		var c := g.category
 		if c == &"":
-			var have := slots.filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
+			var have := _own().filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
 			if have >= 3:
 				return ["", null]
 			why = "Needs 3 T%d+ skills (%d so far)" % [t, have]
 		else:
 			var best := -1
-			for x in slots:
+			for x in _own():
 				if x.rank > 0 and role and role.tier(x.skill) >= 0 and role.category(x.skill) == c:
 					best = maxi(best, role.tier(x.skill))
 			if best >= t:
