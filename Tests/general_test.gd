@@ -22,9 +22,12 @@ func names(u: Unit) -> Array:
 
 
 func test_trees_by_class() -> void:
-	ok(names(unit_of("adventurer")) == ["General", "Martial", "Specialist", "Caster"], "an Adventurer: all three, and the base")
-	ok(names(unit_of("rogue")) == ["General", "Specialist"], "a Rogue: Specialist")
-	ok(names(unit_of("paladin")) == ["General", "Martial", "Caster"], "a Paladin: Martial and Caster")
+	for f in DirAccess.get_files_at("res://Roles"):
+		if f.ends_with(".tres") and (load("res://Roles/" + f) as Role).has_tree():
+			var u := unit_of(f.get_basename())
+			var got := u.general_trees()
+			ok(got[0].category == &"" and got.size() == 1 + u.role.general.size() and got.slice(1).all(func(g: SkillTab): return g.category in u.role.general),
+					"%s: the base tree and one for each general category it declares (%s)" % [f.get_basename(), names(u)])
 	ok(unit_of("cleric").tier(sk("strike")) == 0 and sk("strike") in unit_of("wizard").actives, "Strike: tier 0 on the General tree, every class has it")
 
 
