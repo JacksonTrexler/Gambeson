@@ -885,6 +885,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var ri := m.irank(r, &"rank_impact")  # its rank for what rank adds to what it does
 	var acts: Behaviour.Cast = cast_of(caster, skill, target, r, foe) if not skill.behaviours.is_empty() else null
 	if acts:
+		acts.strength = strength
 		_resolving.append(acts)
 		for bh in skill.behaviours:
 			bh.aim(acts)  # before any roll (Sutemi's lunge)
@@ -898,6 +899,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if foe and skill.hostile and target != caster:  # attacked: reactions before any roll (Gallantry)
 		if not acts:
 			acts = cast_of(caster, skill, target, r, foe)  # the moment's cast, whose target a reaction swaps
+			acts.strength = strength
 			_resolving.append(acts)
 		if _swapped(acts, react(&"attacked", target, caster, acts)):
 			target = acts.target

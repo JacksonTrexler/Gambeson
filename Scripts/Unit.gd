@@ -1864,11 +1864,11 @@ func _draw_tick() -> void:
 	if facing == Vector2.ZERO:
 		return
 	var d := facing.normalized()
-	var at := d * 7.0
+	var at := d * 9.0  # out past the sprite's arms
 	var side := d.orthogonal()
-	var pts := PackedVector2Array([at + d * 1.5, at - d * 0.5 + side * 2.0, at - d * 0.5 - side * 2.0])
-	heading_tick.draw_colored_polygon(pts, Color(1, 1, 1, 0.55))
-	heading_tick.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]), Color(0, 0, 0, 0.35), 0.5)
+	var pts := PackedVector2Array([at + d * 2.5, at - d * 1.0 + side * 3.0, at - d * 1.0 - side * 3.0])
+	heading_tick.draw_colored_polygon(pts, Color(1, 1, 1, 0.8))
+	heading_tick.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]), Color(0, 0, 0, 0.7), 1.0)
 
 
 # Takes off what's in a slot, returning it.

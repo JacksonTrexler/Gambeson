@@ -28,7 +28,7 @@ func apply(c: Cast) -> void:
 			var n := c.skill.lasts(r, caster)
 			var a := o.afflict(e, n + (1 if o.faction == b.turn else 0), c.impact_rank() if e.per_rank else r)
 			a.total = n
-			a.scale = share
+			a.scale = share * c.strength  # (and what the skill's distance decay leaves)
 			a.skill = c.skill
 			a.by = caster
 			a.since = b.turns_begun

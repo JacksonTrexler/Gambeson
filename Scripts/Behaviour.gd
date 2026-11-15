@@ -48,12 +48,14 @@ class Cast:
 	func stat_mod(m: int, channel := &"stat_impact") -> int:
 		return mods.stat(m, channel) if mods else m
 	var hit := false  # it landed: past its attack roll, if it makes one
+	var strength := 1.0  # what its skill's `decays` leaves of it, set as it was cast (Battle.decay()): every effect it puts on has it (put())
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
 	# cast's, as a skill's own effects are.
 	func put(e: Effect, turns: int) -> Unit.Applied:
 		var a := target.afflict(e, turns + (1 if target.faction == battle.turn else 0), rank)
 		a.total = turns
+		a.scale = strength
 		a.skill = skill
 		a.by = caster
 		a.since = battle.turns_begun
