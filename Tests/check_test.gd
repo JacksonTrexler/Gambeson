@@ -82,3 +82,24 @@ func test_execute() -> void:
 		v(1).energy = v(1).max_energy
 		b.cast(v(1), grip, v(3))
 	ok(theirs.size() == 20 and theirs.all(func(t): return t == 0), "1 HP of 100: its saves count for nothing (%s)" % [theirs])
+
+
+# The one check helper (Battle.check(), odds(), sides(); docs/plans/checks.md): ties, kinds, the better
+# of several stats, a range penalty, a cut, and odds that match what it rolls.
+func test_check_helper() -> void:
+	ok(is_equal_approx(Check.odds(Check.side(0), Check.side(0)), 0.525), "even sides: the actor wins ties, 21/40 (%s)" % Check.odds(Check.side(0), Check.side(0)))
+	ok(is_equal_approx(Check.odds(Check.side(0), Check.side(0), false), 0.475), "...and loses them with ties false")
+	ok(is_equal_approx(Check.odds(Check.side(-50), Check.side(0)), 0.0) and is_equal_approx(Check.odds(Check.side(50), Check.side(0)), 1.0), "hopeless and certain")
+	ok(Check.odds(Check.side(0).edge(1), Check.side(0)) > 0.65 and Check.odds(Check.side(0).edge(-1), Check.side(0)) < 0.4, "advantage and disadvantage weigh in")
+	var a := v(1)
+	var t := v(3)
+	var s := Battle.sides(a, &"strength", t, [&"strength", &"dexterity"], {bonus = 2, penalty = 1, tiles = 3, cut = 0.5})
+	ok(s[0].bonus == a.check_mod(&"strength", &"offensive") + 2 - 3, "a's side: its check mod + bonus - penalty x tiles (%d)" % s[0].bonus)
+	ok(s[1].bonus == maxi(t.check_mod(&"strength", &"defensive"), t.check_mod(&"dexterity", &"defensive")) and is_equal_approx(s[1].share, 0.5), "b's: the better stat, defensive, cut")
+	ok(Battle.sides(a, &"", t, &"", {bonus = 4, their_bonus = 1})[0].bonus == 4, "a stat &\"\": its bonus alone")
+	var won := 0
+	for n in 2000:
+		if b.check(a, &"strength", t, &"strength", {bonus = 3}).won:
+			won += 1
+	var p := Battle.odds(a, &"strength", t, &"strength", {bonus = 3})
+	ok(absf(won / 2000.0 - p) < 0.05, "odds() matches what check() rolls (%.3f vs %.3f)" % [won / 2000.0, p])

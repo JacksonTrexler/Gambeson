@@ -96,3 +96,31 @@ func keen(n: int) -> Check:
 func sure(on := true) -> Check:
 	floor_hit = on
 	return self
+
+
+# The chance (0-1) side `a` wins a Contest against `b` (Battle.beats()), without rolling: every pair of
+# faces, each weighted by its advantage, totalled as resolve() totals them (a cut share included).
+static func odds(a: Check, b: Check, a_wins_ties := true) -> float:
+	var p := 0.0
+	for i in range(1, 21):
+		var mine := _total(a, i)
+		var pa := _face(a.advantage, i)
+		for j in range(1, 21):
+			var theirs := _total(b, j)
+			if mine > theirs or (a_wins_ties and mine == theirs):
+				p += pa * _face(b.advantage, j)
+	return p
+
+
+# The chance of rolling face d on a d20 with advantage n (+1 the better of two, -1 the worse).
+static func _face(n: int, d: int) -> float:
+	if n > 0:
+		return (d * d - (d - 1) * (d - 1)) / 400.0
+	if n < 0:
+		return ((21 - d) * (21 - d) - (20 - d) * (20 - d)) / 400.0
+	return 1.0 / 20.0
+
+
+# What face d totals to on this check (Battle.resolve()'s sum).
+static func _total(c: Check, d: int) -> int:
+	return d + c.bonus if is_equal_approx(c.share, 1.0) else floori((d + c.bonus) * c.share)

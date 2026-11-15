@@ -16,7 +16,7 @@ Starting suite: 45664 checks, 0 failed (816 tests).
 
 1. **One helper.** `Battle.check(a, stat, b, against, o) -> Check.Contest` rolls; static
    `Battle.odds(...)` gives the same check's chance without rolling; both build their two sides in one
-   static `Battle.sides()`. Options `o`: `as` (a's kind, offensive by default; b rolls the other),
+   static `Battle.sides()`. Options `o`: `role` (a's kind, offensive by default; b rolls the other),
    `bonus` / `their_bonus`, `edge` / `their_edge`, `tags` / `their_tags` (check tags; b gets a's unless
    told), `penalty` x `tiles` (range penalty), `cut` (an execute's share of b), `kind` (Check.Kind),
    `ties` (a wins ties unless false). A stat `&""` is a side's bonus alone (a last stand); an Array of

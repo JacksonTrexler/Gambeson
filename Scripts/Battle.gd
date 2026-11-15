@@ -605,6 +605,54 @@ func beats(a: Check, b: Check, a_wins_ties := true) -> Check.Contest:
 	return c
 
 
+# The one check helper every check between two units goes through (docs/plans/checks.md): `a` - the
+# one acting - rolls d20 + its check mod in `stat` against b's d20 + its check mod in `against`, and
+# wins ties unless o.ties is false. Returns both totals and the winner (Check.Contest). odds() is the
+# same check's chance, unrolled: the HUD's forecast and the AI read that. Options (o):
+#   role          a's kind, &"offensive" (default) or &"defensive"; b rolls the other
+#   bonus         + on a's side (rank, a contingency, zeal); their_bonus: on b's
+#   edge          a's advantage (+1) or disadvantage (-1); their_edge: b's
+#   tags          the check's tags (an execute, taps, the skill's own), on both sides unless their_tags
+#   penalty       off a's side per tile, `tiles` of them (a range penalty)
+#   cut           the share of b's total that counts (an execute: Battle.executed())
+#   kind          the Check.Kind both sides roll as (Contest; a Save)
+#   ties          false: b wins ties (a grip's holder, a wall of fire)
+# A stat &"" is that side's bonus alone (a last stand); an Array of stats, the better of them (Hitch).
+func check(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) -> Check.Contest:
+	var s := sides(a, stat, b, against, o)
+	return beats(s[0], s[1], o.get("ties", true))
+
+
+# The chance (0-1) `a` wins check(a, stat, b, against, o), without rolling.
+static func odds(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) -> float:
+	var s := sides(a, stat, b, against, o)
+	return Check.odds(s[0], s[1], o.get("ties", true))
+
+
+# The two Check sides check() rolls and odds() weighs.
+static func sides(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) -> Array[Check]:
+	var kind: StringName = o.get("role", &"offensive")
+	var other := &"defensive" if kind == &"offensive" else &"offensive"
+	var tags: Array[StringName] = []
+	tags.assign(o.get("tags", []))
+	var theirs_tags: Array[StringName] = []
+	theirs_tags.assign(o.get("their_tags", tags))
+	var k: Check.Kind = o.get("kind", Check.Kind.CONTEST)
+	var mine := _side_mod(a, stat, kind, tags) + int(o.get("bonus", 0)) - int(o.get("penalty", 0)) * int(o.get("tiles", 0))
+	var theirs := _side_mod(b, against, other, theirs_tags) + int(o.get("their_bonus", 0))
+	return [Check.side(mine, k).edge(int(o.get("edge", 0))), Check.side(theirs, k).edge(int(o.get("their_edge", 0))).cut(float(o.get("cut", 1.0)))]
+
+
+# u's check mod in stat as kind; the better of several stats; none for &"".
+static func _side_mod(u: Unit, stat: Variant, kind: StringName, tags: Array[StringName]) -> int:
+	if stat is Array:
+		var best := -999
+		for s: StringName in stat:
+			best = maxi(best, u.check_mod(s, kind, tags))
+		return best if not stat.is_empty() else 0
+	return u.check_mod(stat, kind, tags) if stat != &"" else 0
+
+
 func contest(sides: Array, keys: Array[Callable] = []) -> Array:
 	var chain: Array = keys.duplicate()
 	chain.append_array([best_luck, dexterity])
@@ -836,8 +884,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			return true
 		drag(caster, target, spot, skill.drags_to)
 	if foe and skill.engulfs:
-		var vs := beats(Check.side(caster.check_mod(skill.stat(), &"offensive", stags) + zeal + int(req[0])).edge(int(req[2])),
-				Check.side(target.check_mod(skill.stat(), &"defensive", stags)).cut(cut))
+		var vs := check(caster, skill.stat(), target, skill.stat(), {bonus = zeal + int(req[0]), edge = int(req[2]), tags = stags, cut = cut})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_expose(caster)
@@ -1499,8 +1546,7 @@ func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
 	lie += t.clout(o.faction)  # standing with o's side: its word carries
 	var close := Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie
-	var vs := beats(Check.side(o.check_mod(&"wisdom", &"offensive")).edge(-1 if edge < 0 else (1 if edge > 0 or close else 0)),
-			Check.side(t.mod(&"charisma") + lie - t.dissonance_penalty()))
+	var vs := check(o, &"wisdom", t, &"charisma", {edge = -1 if edge < 0 else (1 if edge > 0 or close else 0), their_bonus = lie - t.dissonance_penalty()})
 	if vs.won:
 		suspect(o, t)
 	doubted.emit(o, t, vs.mine.total, vs.theirs.total)
@@ -2558,7 +2604,7 @@ func _break_free(u: Unit) -> bool:
 	if u.move_left() < cost - 0.0001:
 		return false
 	u.walked(0, cost)
-	var vs := beats(Check.side(u.check_mod(s.stat(), &"defensive", s.tags)), Check.side(by.check_mod(s.stat(), &"offensive", s.tags)), false)  # the holder wins ties
+	var vs := check(u, s.stat(), by, s.stat(), {role = &"defensive", tags = s.tags, ties = false})  # the holder wins ties
 	struggled.emit(u, by, vs.mine.total, vs.theirs.total)
 	if vs.won:
 		_let_go(u, s)
@@ -4536,7 +4582,7 @@ func _record(caster: Unit, t: Unit) -> void:
 	if not first:
 		return
 	var mind: StringName = [&"intelligence", &"wisdom", &"charisma"].reduce(func(best: StringName, x: StringName): return x if caster.mod(x) > caster.mod(best) else best, &"intelligence")
-	var vs := beats(Check.side(caster.check_mod(mind, &"offensive")), Check.side(t.check_mod(&"wisdom", &"defensive")))
+	var vs := check(caster, mind, t, &"wisdom")
 	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
 	if not vs.won:
 		return
@@ -4642,7 +4688,7 @@ func _flamewall(caster: Unit, skill: Skill, c: Vector2i) -> void:
 		flames[t] = Flame.new(caster, m.irank(r, &"rank_impact"))
 		var u := unit_at(t)
 		if u and u.is_alive():
-			var vs := beats(Check.side(u.check_mod(&"dexterity", &"defensive")), Check.side(caster.check_mod(&"wisdom", &"offensive", caster.skill_tags(skill))), false)  # the wall wins ties
+			var vs := check(u, &"dexterity", caster, &"wisdom", {role = &"defensive", their_tags = caster.skill_tags(skill), ties = false})  # the wall wins ties
 			contested.emit(u, caster, vs.mine.total, vs.theirs.total)
 			if not vs.won:
 				_flame(u, flames[t], "is caught in the wall")
@@ -4859,9 +4905,18 @@ func _chant(u: Unit) -> void:
 # an execute (Death, at its rank), cut by how hurt it is: x (HP left / max HP, Unit.execute_share()) /
 # rank - and a check that executes, so check effects tagged execute add to it (Unit.check_bonus()).
 func last_stand(u: Unit, execute := 0) -> int:
+	var c := Check.check(stand_bonus(u, execute), 0, Check.Kind.LAST_STAND)
+	return resolve(c.cut(stand_share(u, execute))).total
+
+
+# What a last stand adds to its d20 (last_stand()), and the share of it that counts.
+static func stand_bonus(u: Unit, execute := 0) -> int:
 	var bonus := u.check_bonus(&"", &"defensive", [&"execute"] as Array[StringName]) if execute > 0 else 0
-	var c := Check.check(u.average_mod() + u.best_defensive_bonus() + bonus, 0, Check.Kind.LAST_STAND)
-	return resolve(c.cut(u.execute_share() / execute if execute > 0 else 1.0)).total
+	return u.average_mod() + u.best_defensive_bonus() + bonus
+
+
+static func stand_share(u: Unit, execute := 0) -> float:
+	return u.execute_share() / execute if execute > 0 else 1.0
 
 
 # The share of a foe's defensive check that counts against an execute (a skill tagged execute, its own
@@ -4959,12 +5014,11 @@ func decay(caster: Unit, skill: Skill, target: Unit) -> float:
 # revival and die-hard effects (Unit.slain_from). A heart left, it goes down as usual.
 # `r`: its rank impact (Battle.cast()); `req`: its contingency's payoff. Whether it killed.
 func _death(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 0, 0.0]) -> bool:
-	var stand := last_stand(t, r)
-	var roll := resolve(Check.check(caster.check_mod(skill.stat(), &"offensive", caster.skill_tags(skill)) + int(req[0]), stand).edge(int(req[2])))  # the caster wins ties
-	contested.emit(caster, t, roll.total, stand)
+	var vs := check(caster, skill.stat(), t, &"", {bonus = int(req[0]), edge = int(req[2]), tags = caster.skill_tags(skill), their_bonus = stand_bonus(t, r), cut = stand_share(t, r)})  # its last stand; the caster wins ties
+	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
 	_expose(caster)
 	_expose(t)
-	if not roll.hit:
+	if not vs.won:
 		return false
 	t.slain_from = t.hp
 	if not Downed.finish(t):  # one already Downed dies of it

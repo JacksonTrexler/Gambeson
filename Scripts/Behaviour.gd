@@ -268,7 +268,7 @@ class Reaction:
 	# A reaction's check: holder's mod in stat (a defensive check, with the passive's tags: effects tagged
 	# reaction count on it) against `against`'s (an offensive one), holder winning ties. Kept for the log.
 	func contest(holder: Unit, stat: StringName, against: Unit) -> bool:
-		var vs := battle.beats(Check.side(holder.check_mod(stat, &"defensive", holder.skill_tags(skill))), Check.side(against.check_mod(stat, &"offensive")))
+		var vs := battle.check(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
 		rolled = [vs.mine.total, vs.theirs.total]
 		return vs.won
 

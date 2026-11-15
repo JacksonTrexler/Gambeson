@@ -13,8 +13,7 @@ func apply(c: Cast) -> void:
 		return
 	var b := c.battle
 	var t := c.target
-	var vs := b.beats(Check.side(c.caster.check_mod(&"strength", &"offensive", c.tags) + c.impact_rank()),
-			Check.side(maxi(t.check_mod(&"strength", &"defensive", c.skill.tags), t.check_mod(&"dexterity", &"defensive", c.skill.tags))), false)
+	var vs := b.check(c.caster, &"strength", t, [&"strength", &"dexterity"], {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, ties = false})  # the foe wins ties
 	b.contested.emit(c.caster, t, vs.mine.total, vs.theirs.total)
 	c.bag[&"hitched"] = vs.won
 	if vs.won:
