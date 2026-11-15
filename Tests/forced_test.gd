@@ -128,3 +128,16 @@ func test_displace_carries_its_tags() -> void:
 	v(1).refresh()
 	b.cast(v(1), s, v(3))
 	ok(moves.size() == 2 and moves[0][2] == [&"shove"] and moves[1][2] == [&"entrance"], "a Displace tells shove away and entrance toward: %s" % [moves.map(func(m): return m[2])])
+
+
+func test_whatever_puts_it_on_drives() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
+	soak(v(3))
+	var c := b.cast_of(v(1), hex, v(3), 1, true)
+	c.put(effect("shove", 1.0), 1)
+	ok(v(3).cell == Vector2i(5, 3), "a behaviour's put() drives it (%s)" % v(3).cell)
+	var m := Battle.Mark.new(&"scare", v(1), lancin)
+	m.effects = [effect("fear", 2.0)] as Array[Effect]
+	b.lay_mark(Vector2i(5, 3), m)
+	b._trigger(v(3), Vector2i(5, 3), &"enter")
+	ok(v(3).cell == Vector2i(7, 3), "and a mark's effects do, from the one who laid it (%s)" % v(3).cell)
