@@ -49,6 +49,7 @@ const RIDER := 1.0  # what each thing riding on a hit is worth (Kick's soaking, 
 const RESCUE := 1.0  # what a skill that brings a Downed unit back up (Behaviour.revives()) is worth over one that only heals it, on that unit
 const FLANKING := 0.4  # a tile's pull, a point of Defense the target loses to an attack from there (a rear attack's edge, an effect tagged flank), in tiles of walking (_approach())
 const SHOT := 0.5  # the chance to hit below which a ranged attack isn't worth taking now, when resting for Focus would make it one (_steady())
+const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take off it in its reckoning (_foiled()): a target it can't hit through them is still a target
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -387,6 +388,8 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if s.drags() and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
 			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
+			if v > 0.0:
+				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -404,6 +407,44 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	log.append("%s uses %s on %s -> %d" % [u.name, best[0].name, best[1].name, best[1].hp])
 	reads[best[1]] = b.read(u, best[1])
 	return true
+
+
+# The share (0-1, at most FOILED) of a blow of s on t that t's side's reactions would likely take from u: each
+# passive of a unit beside the fight that u reads t's side as having (Read.skills, Read.kit: what it makes out
+# of them; an unread one it can't weigh) is asked, through the hook the reaction itself uses (Behaviour.foils()),
+# about each moment the blow would bring - attacked, hit, and fallen when it would kill - and what each leaves
+# standing multiplies. Cheap: nothing is asked unless such a passive is read.
+static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
+	if not s.hostile or t == u:
+		return 0.0
+	var held := []  # [holder, its slot]
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if o == u or not o.is_alive() or not o.reacts() or not Faction.friends(o.faction, t.faction):
+			continue
+		for x in Battle.reactions_of(o):
+			if x.skill in r.skills or x.skill in r.kit:
+				held.append([o, x])
+	if held.is_empty():
+		return 0.0
+	var moments: Array[StringName] = [&"attacked", &"hit"]
+	var hp: float = maxf(reads[t].hp, 1.0) if reads[t].hp != null else GUESS_HP
+	if float(Battle.damage_range(u, s, t, b).get("avg", 0.0)) >= hp:
+		moments.append(&"fallen")
+	var m := b.cast_of(u, s, t, u.rank(s), true)
+	var keep := 1.0
+	for trigger in moments:
+		var r := Behaviour.Reaction.new()
+		r.battle = b
+		r.trigger = trigger
+		r.subject = t
+		r.by = u
+		r.cast = m
+		for h in held:
+			r.skill = h[1].skill
+			for bh in r.skill.behaviours:
+				keep *= 1.0 - clampf(bh.foils(r, h[0], h[1].rank), 0.0, 1.0)
+	return minf(1.0 - keep, FOILED)
 
 
 # With no foe to go after, it searches (Observe) where the clues point: the tile in reach whose look

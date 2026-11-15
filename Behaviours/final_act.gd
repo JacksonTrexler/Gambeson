@@ -13,6 +13,13 @@ func react(r: Reaction, holder: Unit, _rank: int) -> bool:
 	return true
 
 
+const WORTH := 0.25  # of a killing blow on it the AI counts lost: it has its say before it falls (foils())
+
+
+func foils(r: Reaction, holder: Unit, _rank: int) -> float:
+	return WORTH if r.trigger == &"fallen" and r.subject == holder and r.battle.times_reacted(holder, r.skill) == 0 else 0.0
+
+
 func terms(t: SkillTerms) -> void:
 	t.impact = &"impactful"
 

@@ -139,6 +139,15 @@ func unguarded(_c: Cast) -> int:
 	return 0
 
 
+# How much of a blow the AI plans (r: the moment as it would come, r.skill this passive, r.cast the blow) its
+# holder's reaction would likely take from it (0-1): turning it to itself, or into something its caster
+# didn't count on. The same eligibility react() has, no rolls spent (Reaction.odds()); a reaction that
+# does nothing the caster would mind leaves the default. AI._foiled() asks it for the foes' reactions it can
+# make out, and takes the blow's value down by what's likely to be lost. Pure.
+func foils(_r: Reaction, _holder: Unit, _rank: int) -> float:
+	return 0.0
+
+
 # What a hit would do beyond its damage, foreseen as the cast is planned and as Battle.foresee() reads it
 # for the HUD's forecast and the AI: {lo, hi: more HP it takes off the target, notes: Array[String]: one
 # line for each rider it puts on it}. Pure (no rolls spent). Empty: nothing more.
@@ -297,6 +306,10 @@ class Reaction:
 		var vs := battle.check(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
 		rolled = [vs.mine.total, vs.theirs.total]
 		return vs.won
+
+	# The chance (0-1) contest() passes, without rolling: what a reaction's foils() weighs.
+	func odds(holder: Unit, stat: StringName, against: Unit) -> float:
+		return Battle.odds(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
 
 	# Whether holder already reacted to this moment with some passive.
 	func reacted(holder: Unit) -> bool:
