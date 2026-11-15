@@ -30,8 +30,7 @@ func test_eligible() -> void:
 # An active's behaviour: Move's tiles are rank impact.
 func test_move() -> void:
 	var move: Skill = load("res://Skills/move.tres")
-	v(1).learned.append(slot(move, 2))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(move, 2)
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # x1.5: rank II reads as 3
 	var before := v(1).move_left()
 	ok(b.cast(v(1), move, v(1)) and is_equal_approx(v(1).move_left() - before, 3.0), "Density: Move II gains 3 tiles (%s)" % (v(1).move_left() - before))

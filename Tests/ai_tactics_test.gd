@@ -37,8 +37,7 @@ func test_ambush_counts() -> void:
 
 
 func test_spike_defense_counts() -> void:
-	v(1).learned.append(slot(spike))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(spike)
 	v(1).refresh()
 	soak(v(3), 300)
 	var p := Battle.hit_chance(v(1), spike, v(3), b)
@@ -60,8 +59,7 @@ func test_chance_picks_the_foe() -> void:
 
 
 func test_sutemi_toll() -> void:
-	v(1).learned.append(slot(sutemi, 2))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(sutemi, 2)
 	v(1).refresh()
 	soak(v(3), 300)
 	var beside := score(v(1), sutemi, v(3))
@@ -73,8 +71,7 @@ func test_sutemi_toll() -> void:
 
 func test_refunds() -> void:
 	v(1).learned.append(slot(poach))
-	v(1).learned.append(slot(slam_jam))
-	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	duel(slam_jam)
 	v(1).refresh()
 	soak(v(3), 300)
 	var cp := b.cast_of(v(1), poach, v(3), 1, true)

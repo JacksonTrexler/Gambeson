@@ -107,11 +107,6 @@ func duel(s: Skill, r := 1, foe := true) -> Unit:
 	return t
 
 
-# duel() with an ally.
-func ally_duel(s: Skill, r := 1) -> Unit:
-	return duel(s, r, false)
-
-
 # Rigs skill s's declared check (Skill.check; a save, a contest) for caster to win outright: its stat
 # at 60 and t's at 1, through the stats alone. Returns t.
 func sure_save_fail(caster: Unit, s: Skill, t: Unit) -> Unit:
