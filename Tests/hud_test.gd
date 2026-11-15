@@ -848,6 +848,29 @@ func test_attack_feedback() -> void:
 	h.free()
 
 
+# The forecast says when a planned attack lands on a foe's flank or rear, by the way it faces and where the
+# attacker would stand (HUD.aspect; docs/plans/facing.md): nothing from the front, nothing for a skill that
+# doesn't attack.
+func test_forecast_side() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var h := await hud(v(1))
+	v(3).facing = Vector2(-1, 0)  # toward the striker
+	h.hover_cell(Vector2i(5, 3))
+	ok(h.aspect.is_empty(), "from the front: no cue (%s)" % h.aspect)
+	v(3).facing = Vector2(0, 1)
+	h._replan()
+	ok(h.aspect.get("side") == &"flank" and h.aspect.unit == v(3), "from its side: flank (%s)" % h.aspect)
+	v(3).facing = Vector2(1, 0)
+	h._replan()
+	ok(h.aspect.get("side") == &"rear", "from behind: rear (%s)" % h.aspect)
+	var it := {kind = &"use", ready = true, unit = v(1), skill = strike, target = v(3), dest = Vector2i(6, 3)}
+	ok(h._aspect(it).is_empty(), "walking round to its front first: no cue")
+	it.skill = load("res://Skills/first_aid.tres")
+	it.dest = v(1).cell
+	ok(h._aspect(it).is_empty(), "a skill that doesn't attack: no cue")
+	h.free()
+
+
 # A save in place of the roll (Haluca): its brackets and Alt's number are the chance it wins its check
 # (Battle.hit_chance() -> skill_odds(), the one check helper; docs/plans/checks.md).
 func test_check_odds() -> void:
