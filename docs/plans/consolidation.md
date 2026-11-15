@@ -334,3 +334,54 @@ own lines; a merge conflict there is mechanical) and `Tests/test.gd` (B2 only).
 - After all five: the coordinator lowers `FLAG_CEILING` to the new count and updates CLAUDE.md's "~30 s".
 - Expected end state: about 55 s a run, about 125 files, about 14.5k test lines, Skill.gd about 104
   fields; every data-only skill and passive covered by sweeps with no file of its own.
+
+## B1 as built (branch `c-runner`)
+
+Measured on this machine, one godot run at a time (single-threaded, so overlap with other runs moves it little):
+
+| | before | after |
+|---|---|---|
+| full run, wall | **150 s** (45,995 checks, 838 tests) | **61.6 s** (7,445 checks, 839 tests) |
+| `quick` | not measured | 32.8 s (5,750 checks, 751 tests) |
+| `soak` (30 seeds) | n/a | about 80 s (7,619 checks) |
+| `combat_test.test_battles` / `test_replay` | about 21 s / 2.6 s | 6.6 s / 2.2 s |
+
+**The drop from 46k to 7.4k checks is cosmetic.** The invariants, the AI and the battles are the same. Each
+battle used to report every evaluation (6 invariants x units x unit-turns) as a check; it now reports one
+per invariant per battle. A broken invariant fails with `first broken: turn N, <unit>` and the seed.
+Nobody should read the drop as lost coverage.
+
+Calls:
+- **Museum held** in `run.gd` (`var museum: PackedScene = load(MUSEUM)`), as the survey measured.
+- **`reverse`** reverses files and the tests within each. It found one real leak straight away:
+  `champions_test.test_entry` leaves `Game.outfit` / `stash` / `hearts` / `starter` set, which broke four
+  `adventurer_test` tests. That is a static-state leak, not the resource cache. The runner now resets all
+  of Game's statics before every test (it already reset `level` and `xp`). Forward and `reverse` both end at 0 failed.
+- **`soak`** is read by `combat_test` from `OS.get_cmdline_user_args()`, so `Test` is untouched. `run.gd` also
+  strips `soak` and `reverse` from the test-name words.
+- **Per-process settings file**: `Prefs.SAVE = "user://settings_test_<pid>.cfg"`, deleted at exit. Nothing
+  in `Prefs.gd` changed. `KeyBinds.SAVE` is a `const` shared the same way (`keybinds_test` and `ui_small_test` write
+  and delete it), so overlapping runs can still collide there. Not touched: it is a game file, and no flake seen yet.
+- **combat**: 8 seeds (`SEEDS`), 30 under `soak`, 7 `INVARIANTS` each as one `ok()` per battle, plus "battle ends".
+  `test_replay` compares two 5-turn fights of seed 7 and a 5-turn fight of seed 8.
+- **No extra roster battle.** `astral_test.test_envoy` already plays a full AI battle on the astral envoy scene
+  with its own hp and board checks; its revival rules (`reviving` units stay on the board) contradict combat_test's
+  "on the board iff alive". Meadows is generated async around the party. Neither fits combat_test's invariants cheaply.
+- **Crash detection** (coordinator's request): a SCRIPT ERROR inside a test aborts the method, so its remaining
+  `ok()` calls silently never ran. `Tests/script_errors.gd` (`ScriptErrors`, a `Logger`) is installed with
+  `OS.add_logger`; after each test `run.gd` takes what it saw and counts each script error as a failure,
+  "FAIL <test>: crashed, its remaining checks did not run: <error> (file:line, function)". Only
+  `ERROR_TYPE_SCRIPT` counts; `push_error` and engine errors do not, so nothing in the suite was newly flagged.
+  Checked by hand with a temporary crashing test (reported, then deleted). `Tests/runner_test.gd` proves the logger
+  keeps script errors and drops others, feeding it by hand: a real crash prints "SCRIPT ERROR", which `t.sh` treats
+  as a compile failure and would kill the run.
+- **`slow.txt` regenerated** from `times` at the same 100 ms rule: 88 tests (was 27).
+
+Mutation spot-checks (each reverted; all fail `combat_test` in the new suite):
+
+| Mutation | Fails with |
+|---|---|
+| `Unit.hp` setter: clamp floor lowered by 3 | "hp/energy in range", "on the board iff alive" (turn 5, Villager2), and the battle never ends |
+| `Battle._acting`: faction check replaced with `true` | "only the turn's faction moves" (turn 2, Icor) |
+| `Unit.pay`: `p.amount -= take * 2` | "AP never negative" (turn 1, Villager3) |
+| `Battle` kill check: `sides_left() < 1` for `< 2` | "over exactly when one faction is left" (turn 14) |

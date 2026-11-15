@@ -28,6 +28,8 @@ func _initialize() -> void:
 	# A test's toggles never reach (or come from) the player's own settings, nor another run's: a file per process.
 	Prefs.SAVE = "user://settings_test_%d.cfg" % OS.get_process_id()
 	var museum: PackedScene = load(MUSEUM)
+	OS.add_logger(ScriptErrors.new())  # a test that crashes mid-way is a failed test
+	ScriptErrors.take()
 	var checks := 0
 	var failed := 0
 	var ran := 0
@@ -72,6 +74,9 @@ func _initialize() -> void:
 			for f in t.failures:
 				failed += 1
 				print("FAIL %s: %s" % [id, f])
+			for e in ScriptErrors.take():
+				failed += 1
+				print("FAIL %s: crashed, its remaining checks did not run: %s" % [id, e])
 			scene.free()
 			spent[id] = Time.get_ticks_msec() - start
 	if times:
