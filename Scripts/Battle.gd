@@ -23,6 +23,7 @@ signal contested(caster: Unit, target: Unit, total: int, against: int)  # a cont
 signal investigated(by: Unit, of: Unit, skill: Skill, total: int, against: int, close: bool)  # investigate(): seen through when total >= against
 signal stalled(u: Unit, rank: int)  # u stalls the fight: Ramut's Ire builds on it, to this rank (_check_stall())
 signal struggled(u: Unit, by: Unit, total: int, against: int)  # u, held, tries to move away from by's grip (_break_free()): free when total > against
+signal driven(u: Unit, by: Unit, tags: Array[StringName], went: int, hit: bool)  # u was forced to move (displace()): went tiles, its tags (shove, fear, entrance) riding on it; hit: it was stopped short by a unit or the edge and took the blow
 signal gripped(u: Unit, by: Unit, dealt: int)  # u, still held as its turn ends, takes by's grip (_grip())
 signal inspected(by: Unit, at: Vector2i, total: int, against: int)  # inspect(): by grows suspicious of the tile when total >= against
 signal prayed(u: Unit, god: StringName, rank: int)  # pray(): u prays to its god (Pray)
@@ -73,6 +74,8 @@ const DISCIPLINE_HIT := 2  # to hit, a point of Discipline (discipline_points())
 const DISCIPLINE_DAMAGE := 0.1  # more damage, a point of Discipline per point of the attack's stat mod (at least 1)
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
+const SLAM := 2  # blunt HP for each tile of a push stopped short by a unit or the map's edge (displace())
+const DRIVES := {&"shove": 1, &"fear": 1, &"entrance": -1}  # the Effect stats that move their holder: away (1) or toward (-1) whoever put them on (drive())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
 const WORD := 4  # tiles (+ its cha mod) within which a unit tells its allies what it's grown suspicious of (spread())
 const XP_NEAR := 3.0  # tiles from a unit falling or brought back within which others get a share of its XP (_share())
@@ -1031,6 +1034,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			a.roll = saved_against
 			a.scale = strength * (m.statf(maxf(caster.mod(e.by_mod), 0.0), &"stat_impact") if e.by_mod else 1.0) * (1.0 + float(req[4]))  # set as it's put on (Rejuvinate's distance, Interdict's str mod, a contingency's strength)
 			put.append(a)
+			drive(target, e, a)  # shove, fear, entrance
 	if skill.respecs:
 		caster.respec_room = mini(ri, known)
 		meditated.emit(caster, caster.respec_room)
@@ -2595,6 +2599,25 @@ func _tow(u: Unit, from: Vector2i, to: Vector2i) -> void:
 				break
 
 
+# Those u holds in a grapple (held_by(): Drown, Hitch).
+func holding(u: Unit) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for o: Unit in units.values():
+		var a := held_by(o) if o != u else null
+		if a and a.by == u:
+			out.append(o)
+	return out
+
+
+# Any grapple u is in lets go, as holder or held: a forced move breaks it.
+func _break_grips(u: Unit) -> void:
+	var a := held_by(u)
+	if a:
+		_let_go(u, a.skill)
+	for o in holding(u):
+		_let_go(o, held_by(o).skill)
+
+
 # A grip with tow lasts only its holder's turn: as u's side's turn ends, it lets go of those it holds so.
 func _release_tows(u: Unit) -> void:
 	for o: Unit in units.values().duplicate():
@@ -2934,6 +2957,7 @@ func _trigger(u: Unit, c: Vector2i, on: StringName) -> void:
 			a.total = n
 			a.by = from
 			a.since = turns_begun
+			drive(u, e, a)
 		if m.uses > 0:
 			m.uses -= 1
 			if m.uses == 0:
@@ -3325,6 +3349,7 @@ func _mender(c: Vector2i) -> Array:
 # rank of the strongest regen on it), then poison takes that fraction (each rounded by its luck).
 func _mend(u: Unit) -> void:
 	_pulse(u)
+	_frighten(u)
 	for it in u.items():
 		if it.heat and u.is_alive():  # Ignauldron
 			burned.emit(u, u.hit(it.heat * it.ranked(), [&"fire"] as Array[StringName]), it.name)
@@ -3347,6 +3372,27 @@ func _mend(u: Unit) -> void:
 	var poison := u.stat(&"poison")
 	if poison > 0.0 and u.is_alive():
 		u.damage(Luck.settle(poison * u.max_hp, u.luck, false))
+
+
+# The effect e has just been put on u as a (a.by set): if it's a forced move (shove, fear, entrance) u is driven
+# amount tiles x rank x its strength, away from whoever put it on or toward them (displace(), tagged with the
+# effect's own name). Shove is instant: nothing stays on. Nobody put it on (a flame): it moves no one.
+func drive(u: Unit, e: Effect, a: Unit.Applied) -> void:
+	var dir: int = DRIVES.get(StringName(e.stat), 0)
+	if dir == 0:
+		return
+	if a.by and a.by != u and a.by.is_alive() and u.is_alive():
+		displace(u, a.by.cell, dir, roundi(e.amount * (a.rank if e.per_rank else 1) * a.strength(e)), false, [StringName(e.stat)] as Array[StringName], a.by)
+	if e.stat == "shove" and u.timed.get(e) == a:
+		u.timed.erase(e)
+
+
+# As its side's turn starts, each fear and entrance still on u drives it again - not the turn it was put on,
+# which drove it already (drive()) - from where its source stands now.
+func _frighten(u: Unit) -> void:
+	for e in u.timed.keys():
+		if e.stat in ["fear", "entrance"] and u.is_alive() and e in u.timed and u.timed[e].since != turns_begun:
+			drive(u, e, u.timed[e])
 
 
 # As its side's turn ends, each bleed on u takes its dice + the mod of whoever put it on (at least 1) -
@@ -4121,47 +4167,73 @@ func _let_go(u: Unit, s: Skill) -> void:
 			u.timed.erase(e)  # a grip its behaviour put on (Hitch)
 
 
-# Forced movement (Behaviours/displace.gd, Kick, Send Off): t moves up to n tiles from `from` - away
-# (dir 1) along the line from it through t, or toward it (dir -1), a step at a time straight for it,
-# stopping beside it - a tile at a time, stopping short of the map's edge, a hole or another unit. Ground
-# it's moved over does nothing to it, and it doesn't turn (docs/plans/facing.md). Teleporting, it goes
-# straight to the furthest free tile on that line, n tiles out or nearer (place(): a trap there springs),
-# never past `from`. Returns the tiles it went (0: none).
-func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false) -> int:
+# Forced movement (Behaviours/displace.gd, Kick, Send Off, the shove, fear and entrance effects): t moves up
+# to n tiles from `from` - away (dir 1) along the line from it through t, or toward it (dir -1), a step at a
+# time straight for it, stopping beside it - a tile at a time, stopping short of the map's edge, a hole or
+# another unit. Ground it's moved over does nothing to it, and it doesn't turn (docs/plans/facing.md).
+# Teleporting, it goes straight to the furthest free tile on that line, n tiles out or nearer (place(): a
+# trap there springs), never past `from`. Returns the tiles it went (0: none).
+# Whoever moved lets go: a grapple t is held in, or holds others in, ends (_let_go()). Driven away and
+# stopped short by a unit or the edge, t takes SLAM blunt damage for each tile unspent - and the unit it
+# struck the same (docs/plans/fear.md). `tags` (shove, fear, entrance) ride on the move (driven) and on that
+# damage, so effects and passives tagged so count on it; `by` is who drove it, credited with the blow.
+func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false, tags: Array[StringName] = [], by: Unit = null) -> int:
 	var line := Vector2(t.cell - from).normalized() * signf(dir)
 	var start := t.cell
+	var went := 0
+	var hit := false
 	if teleport:
 		for k in range(n, 0, -1):
 			var c := Vector2i((Vector2(start) + line * k).round())
 			if c != start and c != from and on_map(c) and not unit_at(c) and (dir > 0 or Command.tiles(start, c) < Command.tiles(start, from)) and place(t, c):
-				return k
-		return 0
-	var went := 0
-	for k in range(1, n + 1):
-		var c: Vector2i
-		if dir < 0:
-			if next_to(t.cell, from):
+				went = k
 				break
-			var d := from - t.cell
-			c = t.cell + Vector2i(signi(d.x), signi(d.y))
-		else:
-			c = Vector2i((Vector2(start) + line * k).round())
-			if c == t.cell:
-				continue
-		if not on_map(c) or not move(t, c):
-			break
-		went += 1
+	else:
+		for k in range(1, n + 1):
+			var c: Vector2i
+			if dir < 0:
+				if next_to(t.cell, from):
+					break
+				var d := from - t.cell
+				c = t.cell + Vector2i(signi(d.x), signi(d.y))
+			else:
+				c = Vector2i((Vector2(start) + line * k).round())
+				if c == t.cell:
+					continue
+			if not on_map(c) or not move(t, c):
+				if dir > 0:
+					hit = _slam(t, c, n - went, tags, by)
+				break
+			went += 1
+	if went > 0:
+		_break_grips(t)
+	if went > 0 or hit:
+		driven.emit(t, by, tags, went, hit)
 	return went
 
 
+# SLAM blunt damage to t for each of the `left` tiles it didn't get, driven into c (the unit there, or the
+# map's edge); the unit takes the same. True if it hurt (the push was stopped, with tiles to spare).
+func _slam(t: Unit, c: Vector2i, left: int, tags: Array[StringName], by: Unit) -> bool:
+	if left <= 0 or not t.is_alive():
+		return false
+	var hurt: Array[StringName] = [&"blunt"]
+	hurt.append_array(tags.filter(func(x: StringName): return x not in hurt))
+	var other := unit_at(c) if on_map(c) else null
+	t.hit(SLAM * left, hurt, by)
+	if other and other != t and other.is_alive():
+		other.hit(SLAM * left, hurt, by)
+	return true
+
+
 # Draws t up to n tiles toward `to`, a step at a time, stopping beside it or at anything in the way (displace()).
-func pull(t: Unit, to: Unit, n: int) -> int:
-	return displace(t, to.cell, -1, n)
+func pull(t: Unit, to: Unit, n: int, tags: Array[StringName] = [], by: Unit = null) -> int:
+	return displace(t, to.cell, -1, n, false, tags, by)
 
 
 # Drives t up to n tiles straight away from `from` (displace()). Returns the tiles it went.
-func push(t: Unit, from: Unit, n: int) -> int:
-	return displace(t, from.cell, 1, n)
+func push(t: Unit, from: Unit, n: int, tags: Array[StringName] = [], by: Unit = null) -> int:
+	return displace(t, from.cell, 1, n, false, tags, by)
 
 
 # Teleports t up to n tiles straight away from `from` (displace()). False if no tile on the line is free.
