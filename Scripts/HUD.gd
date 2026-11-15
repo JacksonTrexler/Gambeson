@@ -1669,6 +1669,21 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 	_mark()
 
 
+# The spoils as icons under the text (UnitCard.item_row()); none: the row goes.
+func _show_spoils(won: Array[Item]) -> void:
+	var col: Node = %OverText.get_parent()
+	var old := col.get_node_or_null("Spoils")
+	if old:
+		col.remove_child(old)
+		old.queue_free()
+	if won.is_empty():
+		return
+	var row := UnitCard.item_row(won)
+	row.name = "Spoils"
+	col.add_child(row)
+	col.move_child(row, %OverText.get_index() + 1)
+
+
 func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if now != Battle.Phase.OVER:
 		return
@@ -1680,6 +1695,7 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if not won.is_empty():
 		Game.stash.append_array(won)
 		%OverText.text += "\nSpoils: %s" % ", ".join(won.map(func(it: Item): return it.name))
+	_show_spoils(won)
 	Save.save()  # the spoils, and the level and XP the battle gave the starter
 	_log("[color=#e8c547]%s[/color]" % %OverText.text)
 	spellbook.hide()
