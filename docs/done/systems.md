@@ -208,3 +208,10 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Damage for moving** (`Effect.per_tile`, `Unit.wards()`, Footsore ??): HP per tile walked; Meander wards it by rank. (?139)
 - [x] **Regain ??** (`Effect.regain`, `Unit.regain()`): an instant AP refund by the effect's tag. (?139)
 - [x] **Reactions and interrupts** (`Behaviour.react`, `Behaviour.Reaction`, `Battle.react()`, `grant_interrupt()`, `end_interrupt()`; `AI.interrupt()`; tag `reaction`): one hook for swaps, held-up falls and free actions out of turn. (?140)
+
+## Checks, facing, items and consolidation (2026-11-15)
+
+- [x] **Checks and contests** (`Battle.check()`, `odds()`, `sides()`, `Check.odds()`, `SkillCheck`, `Skill.check`): one helper for every d20-against-d20 site; skills declare their check; the forecast and the AI read its odds; `doubt()` counts defensive bracing. `FLAG_CEILING` 128 to 126. Plan: `docs/plans/checks.md`. `check_test`. (?141)
+- [x] **Facing** (`Unit.facing`, `face()`, `side_of()`, `striding`, `REAR_EDGE`, Rear ??, Flank ??): walks and actions turn a unit; the shield turns with it; a rear attack needs 1 less; the AI prefers the weaker aspect. Plan: `docs/plans/facing.md`. `facing_test`. (?142)
+- [x] **Skills on items** (`Item.skills`, `Slot.from`, `Unit.granted()`, `lost_skills`; Hobnail Boots ??): lent while worn, never ranked, drawn with a ring; Urlo's enchantment reaches trinkets and skips what can't scale. Plan: `docs/plans/item-skills.md`. `item_skills_test`. (?143)
+- [x] **Test and logic consolidation** (`docs/plans/consolidation.md`): the museum held across a run (150 s to about 60 s), runner words `reverse` and `soak`, script errors fail their test, the `Game` statics reset per test; `sweep_test` over every skill, 19 files deleted; `Behaviour.apply_at` and `Displace`, `Skill.gd` fields 126 to 104. The check count fell about 46k to about 8k, cosmetically. (?144)

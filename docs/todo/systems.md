@@ -16,14 +16,14 @@ Build roughly in this order; the content below depends on them.
     - The cap: level 20 (`Unit.MAX_LEVEL`). XP past it is lost; a starter never starts above it; the debug level-up stops there; the character sheet shows "max level". Level Up can still lift a unit's level now above 20 for a while.
     - The log groups a fall's XP in one line for the player's side: "XP for felling Villager3: Brick +4, Villager1 +2".
 
-- [ ] **Checks and contests.** Skill-defined checks with `offensive` / `defensive` tags, advantage/disadvantage, per-skill range penalties. Needed by Interject, Gallantry, Snapping Turtle, the Siren's Charm. *Now:* the Check resolver carries advantage and disadvantage, offensive and defensive kinds (`Unit.check_mod()`, the `check` effect) and executes (`Check.cut()`); Jugular, Interdict and Turtle Tactics are built on it. Still separate fields: Drown's `drags_to`, Sing's `resisted`, Haluca's and Brainfog's `save`. Per-skill range penalties are still to do.
+- [x] **Checks and contests.** Built 2026-11-15 (?141): `Battle.check()`, `SkillCheck` (`docs/done/systems.md`). Was: skill-defined checks with `offensive` / `defensive` tags, advantage/disadvantage, per-skill range penalties. Needed by Interject, Gallantry, Snapping Turtle, the Siren's Charm. *Now:* the Check resolver carries advantage and disadvantage, offensive and defensive kinds (`Unit.check_mod()`, the `check` effect) and executes (`Check.cut()`); Jugular, Interdict and Turtle Tactics are built on it. Still separate fields: Drown's `drags_to`, Sing's `resisted`, Haluca's and Brainfog's `save`. Per-skill range penalties are still to do.
 - [ ] **Equipping skills.** Learned vs equipped; slots shared by actives and passives, passives filling from the bottom of the hotbar; auto-equip (on by default); losing slots. *Now:* the hotbar has 4 + level / 4 slots (+ `extra_slots`), then slots skills grant, then the clover slot (filled on its unit's turn; hidden while it's unlucky, remembering its skill). Only actives and switched passives go on it, and every learned passive works. Disabling (Brainfog) treats always-on passives as filling the bar from the bottom. Unequipping a slot-granting skill should make its slots disappear.
 - [x] **Real trees for Fighter and Paladin** (`docs/done/classes.md`). (?67)
 - [ ] **Real trees for the Wizard and the Mage**: laid out, every new skill a stub (`docs/todo/classes.md`). (?70)
 - [x] **Bracing in more checks**: investigations, inspecting tiles and doubting are offensive, hiding and deceiving rolls defensive, and a last stand takes its best defensive bonus (`docs/done/systems.md`). (?68)
 - [ ] **More resources**: Stamina, Rage, Focus, Hype, Clout, Gold. *Now:* Mana, Sweet Nothings and Power exist, so Field Experience and Everyman still have nothing to work with.
 - [x] **Reactions and interrupts**: Interject, Gallantry, Final Act, Snapping Turtle. Built 2026-11-14 (?140): `Behaviour.react`, `Battle.react`, `grant_interrupt` (`docs/done/systems.md`).
-- [ ] **Facing and direction**. *Now:* only Shields Up!'s `Unit.guard`, set by the skill; moves don't turn a unit.
+- [x] **Facing and direction**: `Unit.facing`, Rear ?? and Flank ??. Built 2026-11-15 (?142) (`docs/done/systems.md`).
 - [x] **Effect strength set when cast**: `Unit.Applied.scale`, from Rejuvinate's distance (`Skill.decays`) and the caster's mod (`Effect.by_mod`: Interdict, Rejuvinate) (`docs/done/systems.md`).
 - [x] **One-use tile effects laid by skills** (Warcry). Built 2026-11-14 (?139): `Battle.Mark`, `lay_mark()` (`docs/done/systems.md`).
 - [x] **Teleport** (Send Off) and **pushes** (`Battle.place()`, `send()`, `push()`, `Skill.push`; nothing pushes yet) (`docs/done/systems.md`). (?68)
@@ -34,8 +34,8 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Commitment to the bit**: skills that let a traitor follow through on attacking its real allies rather than whiff (a Cultist, Oath or Devotee tree).
 - [ ] **More ways suspicion wears off.** *Now:* a Siren's Sing and Pray to Eros, a stack at a time. No decay for now.
 - [ ] **Divinity trees**: one per god, each with Pray at tier 1: Ramut (war, power), Eros (love, healing), Sol (light, fire), Urlo (magic, energy), Luun (dark, jovial), Drael (water, air), Vetruvis (earth, music). *Now:* the Paladin's Divinity root is Eros's (Rejuvinate, Pray, Renew, Smite, Send Off, Lovely Caster, Impassioned Fighter); the Paladin worships Eros. Clerics have a tab per god. The shared tier 1 row (`Role.shared`) is built, for a tab per god.
-- [ ] **Urlo's enchantments, the rest**: trinkets, skills on items (their own enchantment effect, else +1 rank), and skipping items that can't be scaled (Heart +1). *Now:* weapon and armor, +1 or the item's own enchanted form; the trinket slot exists but Urlo skips it.
-- [ ] **Skills on items**: an item carrying a skill its wearer can use while it's equipped. *Now:* items carry effects, hearts and their own fields (Starblade's refill), not skills.
+- [x] **Urlo's enchantments, the rest**: trinkets and item skills (else +1 rank), skipping items that can't be scaled (Heart +1). Built 2026-11-15 (?143) (`docs/done/systems.md`).
+- [x] **Skills on items**: `Item.skills`, lent while worn. Built 2026-11-15 (?143) (`docs/done/systems.md`).
 - [ ] **Last stands elsewhere**: the general defensive check (`Battle.last_stand()`) is meant to come up again; only Level Down and Death use it now.
 - [x] **Execute, more**: any skill tagged `execute` cuts the foe's side of its contests by how hurt it is (`docs/done/systems.md`). *Now:* only Death carries the tag. (?68)
 - [ ] **Shops** (later): another way to get items.
@@ -425,3 +425,73 @@ Plan and what was built: `docs/plans/reactions.md`. Built on `s-react`. Tests: n
 - [ ] **Reactions to area skills on tiles and to damage outside casts** (flames, traps): no `attacked` or `hit` moment there. (?140)
 - [ ] **The AI doesn't weigh enemies' reactions** when picking targets, nor hold a Final Act unit back. (?140)
 - [ ] **Battle doesn't run the AI for interrupts**: headless simulations must call `AI.interrupt()`. (?140)
+
+## Checks and contests (2026-11-15)
+
+Plan and what was built: `docs/plans/checks.md`. Built on `u-checks`. Tests: new `Tests/check_test.gd`; `hud_test`, `haluca_test`, `intervention_test` changed. FLAG_CEILING 128 to 126.
+
+141. **Checks and contests - built on judgement, open for review (2026-11-15).** My calls, each for you to confirm or change:
+    - **One helper:** `Battle.check(a, stat, b, against, o)` rolls, `Battle.odds()` gives the chance, both through `Battle.sides()`; `Check.odds()` sums the d20 faces, advantage included. No `beats()` call is left outside it. Kept.
+    - **`SkillCheck` / `Skill.check`** (code names, no `??`): a skill declares its check; it replaces `save`, `resisted` and `drags_to`, so `FLAG_CEILING` goes 128 to 126 (three out, one in). The nine .tres were migrated by script.
+    - **Range penalty:** per tile, less 1 a rank past I (Drown's rule made general); its distance is tiles dragged for a drag, else tiles between caster and target past the first.
+    - **Ties and tags kept per site:** the actor wins except Hitch (the foe), a grip (the holder) and Flamewall (the wall); Sing's foe and a reaction's attacker roll without the actor's tags. Not made uniform: each is in its skill's text.
+    - **`doubt()`:** the fooling unit now uses its defensive cha check mod, so bracing counts on a deceiving roll as ?68 says. The only number that moved.
+    - **Uniform now:** a declared check's options come from `Battle.skill_opts()`, so Sing also takes zeal, a contingency, an execute's cut and the modifier tags. Death rolls its last stand through the helper (its caster's d20 now rolls first: rng order only).
+    - **Forecast:** `hit_chance()` answers a declared check's odds (a drag's to its spot), so the HUD's brackets, Alt's "N% to win" and `AI.score()` now see a save skill's chance, which was always 1.0 before.
+    - **New names to review:** none.
+- [ ] **Rolls against an earlier total stay on `resolve()`**: investigating a tile or a guise, the last-stand fall, Level Down's bar; Burnout, Stun and Bandwagon roll against a DC. (?141)
+- [ ] **Hitch and Slam Jam pass their stats to the helper in code**, not as a `SkillCheck`, because their check follows a hit. (?141)
+
+## Facing (2026-11-15)
+
+Plan and what was built: `docs/plans/facing.md`. Built on `u-facing`. Tests: new `Tests/facing_test.gd`; `fighter_test`, `jam_test`, `helpless_test`, `watch_test`, `Tests/test.gd` changed to the new shape (not weakened).
+
+142. **Facing - built on judgement, open for review (2026-11-15).** My calls, each for you to confirm or change:
+    - **The shield turns with the unit (the main call).** `Unit.guard` is now a bool and its cone is the front of `facing`, so Shields Up! faces the tile it was aimed at on the cast turn, but when the unit later walks or attacks the shield turns with it, until its next turn is through. Alternative: pin the shield where it was aimed. Kept, because a shield you carry points where you point.
+    - **One facing:** `Unit.facing`, precise rather than snapped to 8 ways, set by a walk (its last step), by any skill aimed at a unit or tile (as it is paid for, so a miss turns too) and by Shields Up!. `heading` is folded in (Eyes Forward reads `facing` gated by `striding`; a strip now follows the last step).
+    - **The cone:** within 45 degrees of facing is front, within 45 of the opposite is rear, the two arcs between are flank; edges inclusive; no facing is front.
+    - **Hit tags Rear ?? and Flank ??** (AI-made names): added in `Battle.hit_tags()` like `ambush`, so effects tagged for them need no new code. A rear attack needs 1 less (`REAR_EDGE`, +1 to hit); flank has a tag and no number of its own.
+    - **Not turned by being hit,** healed or dodging. A unit that takes a blow in another's place (Interject, Gallantry) turns to the attacker after the blow's side is read.
+    - **Opening facing:** each unit with none turns toward the nearest foe at set-up; summons start with none (front from every side).
+    - **Draw and AI:** a faint chevron on the sprite; `AI._approach` prefers the tile whose aspect lowers the foe's Defense (0.4 tiles a point, ties and near-ties only).
+    - **New names to review:** Rear ??, Flank ??.
+- [ ] **The hit forecast shows the rear's +1 only through the number**, with no "from behind" label. (?142)
+- [ ] **A unit that is hit doesn't turn**, and forced moves (push, pull, send, teleport) don't turn anyone. (?142)
+- [ ] **No skill carries a flank or rear rider yet** (Gank's ambush analogue). (?142)
+- [ ] **The AI doesn't walk to a side for a better shot**; the pull only breaks ties. (?142)
+
+## Skills on items (2026-11-15)
+
+Plan and what was built: `docs/plans/item-skills.md`. Built on `u-itemskills`. Tests: new `Tests/item_skills_test.gd` (9 tests); no existing test changed.
+
+143. **Skills on items - built on judgement, open for review (2026-11-15).** My calls, each for you to confirm or change:
+    - **`Item.skills`** are lent on the hotbar while the item is worn (`Slot.from` marks them on loan); they are never ranked and never cost points. A skill both learned and lent takes the higher rank, a tie going to the learned one.
+    - **Rank:** the item's `skill_rank()`: its rank, enchanted or honed, a trinket's Pray enchant, and +1 more for Pray's numeric enchant on a weapon or armor, capped at the skill's `max_rank`.
+    - **On loan doesn't count as learned:** lending a capstone's prerequisite doesn't open the capstone. You can't buy a skill you are wearing.
+    - **Hotbar:** a lent skill goes into the first free slot; if none, the spellbook. Losing the item takes it off and ends a channel of it. Pale-blue ring, "Lent by <item>".
+    - **Urlo's enchantment** reaches the trinket, and skips items with nothing to scale (Heart Up, Heart Up-Link) without using up Pray's count.
+    - **Hobnail Boots ??** (AI-made name): an uncommon trinket lending Kick, in Alabaster's loot, so it competes with emblems and Heart Up for the one slot.
+    - **New names to review:** Hobnail Boots ??.
+- [ ] **Should a weapon or armor enchant raise the item's rank?** As built, Pray's enchant on a weapon or armor raises its lent skills' rank, not its drag. Open question. (?143)
+- [ ] **Should lent skills ever count toward prerequisites?** As built, never. (?143)
+- [ ] **Saving**: no Settings or save plumbing for lent skills until saving exists. (?143)
+
+## Test and logic consolidation (2026-11-15)
+
+Plan, survey and what each part built: `docs/plans/consolidation.md` (survey, then "B1" to "B5 as built"). Built on `v-survey`, `c-runner`, `c-sweeps`, `c-tables`, `c-tiles`, `c-displace`.
+
+144. **Test and logic consolidation - answered and built (2026-11-15).** Your request (2026-11-14): "assign delegates to consider consolidating tests 20/80 style, abstracting / apply DRY and KISS where it would do the most impact. there are a lot of tests for not a lot of game at present. any opportunity to make tests / logic less concrete may be an area of interest". The results:
+    - **Time:** a full run went 150 s to about 60 s (the museum scene held for the whole run was most of it); `quick` is about 33 s.
+    - **Check count** about 46k to about 8k. **That drop is cosmetic:** combat counts one check per invariant per battle, over 8 seeds by default and 30 under `soak`, where it used to count every evaluation. Same invariants, same AI, same battles.
+    - **Runner:** new words `reverse` (files and tests reversed, to catch order dependence) and `soak`; a script error inside a test now fails it (`ScriptErrors` logger); `slow.txt` regenerated; each run has its own settings file.
+    - **`reverse` found a real leak:** `champions_test.test_entry` left `Game.outfit`, `stash`, `hearts` and `starter` set. The runner now resets all of `Game`'s statics before every test.
+    - **Tests:** a sweep (`sweep_test`) casts every active and weighs every passive, so per-skill effect tests went; 19 per-skill or pin files deleted (13 in the sweep, 5 capstones into one table, 2 unit pins out of 3, with `unit.py check` taking the wiring). Rule tests were kept. Each deletion was spot-checked by mutation.
+    - **Logic:** `Skill.gd` fields 126 to 104 (`FLAG_CEILING` 104): seven tile skills moved onto a new `Behaviour.apply_at`, fifteen self and utility fields onto behaviours (`Displace`, `beastshape`, `waltz`, `aura`...), one `Battle.displace()` primitive. Battle.gd shrank by about 150 lines.
+    - **My calls:** fewer seeds not fewer invariants; no extra roster battle (astral and meadows don't fit the invariants); pure queries (`tile_target()`, `whole()`, `impact()`) beside the hooks rather than a hook per skill; Sutemi's lunge, `channel`, Strike's chain, the Look and Terms groups left alone.
+    - **Asked of you:** the per-item test file question at the top of `todo.md`.
+    - **New names to review:** none.
+- [ ] **Should `skill.py new`, `unit.py new` and `mechanic.py` keep writing one test file per item?** Option A (recommended): a table row for data-only skills, a file only with a behaviour. Option B: keep a file, a 3-line stub on the shared helpers. Either needs a `CLAUDE.md` and `.claude/skills/` change. (?144)
+- [ ] **`KeyBinds.SAVE` is a shared `const`**, so overlapping runs can still collide on it. (?144)
+- [ ] **Behaviours that crash on a missing precondition** (Emergency Exit, Retrieve no-op mutation) aborted a test silently before the runner counted script errors; check the sweep covers them. (?144)
+- [ ] **Rename `Battle._expose()`** once the branches that call it are merged; Glossary and Effect text still say "its holder's grip". (?144)
+- [ ] **Not lifted, by design:** Sutemi's lunge, `channel`, Strike's `chain`, the Look and Terms groups, the heal fields. Lift on touch. (?144)
