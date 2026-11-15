@@ -2,13 +2,18 @@ extends SceneTree
 
 # Runs the test_* methods in Tests/*_test.gd, each on a fresh museum with rng seed 1. Exit code 1 on
 # any failure. What it runs, by the arguments after `--`:
-#   (none) or all   every test (about 10 minutes)
-#   quick           the 20/80 tier: everything but the slow tests listed in Tests/slow.txt (about a minute)
+#   (none) or all   every test (about a minute: the museum is held for the whole run, see below)
+#   quick           the 20/80 tier: everything but the slow tests listed in Tests/slow.txt (about 30 s)
+#   reverse         files and tests in reverse order: a test that leaks into a later one (resources are
+#                   cached across tests) fails here when it doesn't forward. Run both before merging
+#   soak            the long form of the seeded tests: combat_test fights all 30 seeds, not 8 (about 20 s more)
 #   <words>         targeted: only tests whose "file.method" contains one of the words
 #                   (hud_test, warlock_test.test_toggle, smite)
 #   times           also print each test's time, slowest first (with any of the above)
 # e.g. godot --headless --path . -s Tests/run.gd -- quick
 
+# The run holds museum.tscn (and so Roles/, Trees/, Skills/ it pulls in) for its whole length. Without a
+# reference they leave the ResourceCache when a test frees its scene and every test reloads them (150 ms).
 const MUSEUM := "res://Scenes/museum.tscn"
 const SLOW_LIST := "res://Tests/slow.txt"  # one "file.method" a line: what the quick tier leaves out
 
@@ -17,18 +22,26 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var quick := "quick" in args
 	var times := "times" in args
-	var words: Array = Array(args).filter(func(a: String): return a not in ["quick", "all", "times"])
+	var reverse := "reverse" in args
+	var words: Array = Array(args).filter(func(a: String): return a not in ["quick", "all", "times", "reverse", "soak"])
 	var slow := _slow() if quick else []
-	Prefs.SAVE = "user://settings_test.cfg"  # a test's toggles never reach (or come from) the player's own settings
+	# A test's toggles never reach (or come from) the player's own settings, nor another run's: a file per process.
+	Prefs.SAVE = "user://settings_test_%d.cfg" % OS.get_process_id()
+	var museum: PackedScene = load(MUSEUM)
 	var checks := 0
 	var failed := 0
 	var ran := 0
 	var spent := {}
-	for file in DirAccess.get_files_at("res://Tests"):
-		if not file.ends_with("_test.gd"):
-			continue
+	var files := Array(DirAccess.get_files_at("res://Tests")).filter(func(f: String): return f.ends_with("_test.gd"))
+	files.sort()
+	if reverse:
+		files.reverse()
+	for file in files:
 		var suite: GDScript = load("res://Tests/" + file)
-		for m in suite.get_script_method_list():
+		var methods := suite.get_script_method_list()
+		if reverse:
+			methods.reverse()
+		for m in methods:
 			var id := "%s.%s" % [file.get_basename(), m.name]
 			if not m.name.begins_with("test_") or id in slow:
 				continue
@@ -39,7 +52,7 @@ func _initialize() -> void:
 			var t: Test = suite.new()
 			Game.level = 1  # a player's starter levelled by an earlier test's battle doesn't carry over
 			Game.xp = 0
-			var scene: Node = load(MUSEUM).instantiate()
+			var scene: Node = museum.instantiate()
 			scene.get_node("Battle").rng.seed = 1
 			root.add_child(scene)
 			await process_frame
@@ -59,7 +72,8 @@ func _initialize() -> void:
 		ids.sort_custom(func(a: String, b: String): return spent[a] > spent[b])
 		for id in ids:
 			print("TIME %6d ms  %s" % [spent[id], id])
-	print("%d checks, %d failed (%d tests%s)" % [checks, failed, ran, ", quick" if quick else ""])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Prefs.SAVE))
+	print("%d checks, %d failed (%d tests%s%s%s)" % [checks, failed, ran, ", quick" if quick else "", ", reverse" if reverse else "", ", soak" if "soak" in args else ""])
 	quit(1 if failed else 0)
 
 
