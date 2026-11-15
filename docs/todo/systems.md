@@ -22,13 +22,13 @@ Build roughly in this order; the content below depends on them.
 - [ ] **Real trees for the Wizard and the Mage**: laid out, every new skill a stub (`docs/todo/classes.md`). (?70)
 - [x] **Bracing in more checks**: investigations, inspecting tiles and doubting are offensive, hiding and deceiving rolls defensive, and a last stand takes its best defensive bonus (`docs/done/systems.md`). (?68)
 - [ ] **More resources**: Stamina, Rage, Focus, Hype, Clout, Gold. *Now:* Mana, Sweet Nothings and Power exist, so Field Experience and Everyman still have nothing to work with.
-- [ ] **Reactions and interrupts.** Units acting outside their turn: Interject, Gallantry, Final Act. *Now:* only the side whose turn it is acts (and traitors posing in its party).
+- [x] **Reactions and interrupts**: Interject, Gallantry, Final Act, Snapping Turtle. Built 2026-11-14 (?140): `Behaviour.react`, `Battle.react`, `grant_interrupt` (`docs/done/systems.md`).
 - [ ] **Facing and direction**. *Now:* only Shields Up!'s `Unit.guard`, set by the skill; moves don't turn a unit.
 - [x] **Effect strength set when cast**: `Unit.Applied.scale`, from Rejuvinate's distance (`Skill.decays`) and the caster's mod (`Effect.by_mod`: Interdict, Rejuvinate) (`docs/done/systems.md`).
-- [ ] **One-use tile effects laid by skills**, triggered on entry (Warcry). *Now:* traps, zones, debris and earthworks, each its own kind.
+- [x] **One-use tile effects laid by skills** (Warcry). Built 2026-11-14 (?139): `Battle.Mark`, `lay_mark()` (`docs/done/systems.md`).
 - [x] **Teleport** (Send Off) and **pushes** (`Battle.place()`, `send()`, `push()`, `Skill.push`; nothing pushes yet) (`docs/done/systems.md`). (?68)
 - [x] **Investigating on contact** (`docs/done/systems.md`). (?68)
-- [ ] **Damage for moving**: effects that hurt a unit when it moves, which Meander can ward off at a higher rank.
+- [x] **Damage for moving**: the `per_tile` Effect stat, Footsore ??, warded by Meander. Built 2026-11-14 (?139) (`docs/done/systems.md`).
 - [ ] **Hard to read, by debuffs**: Haluca exists; others to come. *Now:* negative cha.
 - [ ] **Fear, shove and entrance effects**: ways to make a grappler let go (or move) besides breaking free.
 - [ ] **Commitment to the bit**: skills that let a traitor follow through on attacking its real allies rather than whiff (a Cultist, Oath or Devotee tree).
@@ -268,7 +268,7 @@ Plan and what was built: `docs/plans/fixes-11-14.md`. Tests: `turn_test` (three 
     - **Wiring tests fail, not skip,** with no python (`Test.tool_check` tries python3, python, then the usual folders).
     - **New names to review:** none.
 - [ ] **Should `Unit.guard` end (not just pause) on going helpless?** (?127)
-- [ ] **Other reactions** (opportunity-style) don't exist yet; they should read `reacts()` when they do. (?127)
+- [x] **Other reactions** read `reacts()`. Built 2026-11-14 (?140): `Battle.react` gates every reaction on `Unit.reacts()`. (?127)
 
 ## AI support (2026-11-14)
 
@@ -387,4 +387,41 @@ Plan and readings: `docs/plans/ai-tactics.md`. Built on `q-ai`. Tests: new `Test
 - [ ] **Poach's Energy / Focus refund and its regain on a neutralizing blow, and Slam Jam's interrupt, aren't priced by the AI.** (?138)
 - [ ] **Kick's trap blast on bystanders**, and its push into a unit or edge (the forecast says "back", not how far). (?138)
 
-**In progress:** `s-react` (Phase 3 reactions and interrupts: Interject, Gallantry, Final Act, Snapping Turtle) and `s-marks` (tile marks, Warcry, damage for moving).
+## Tile marks, Warcry and moving damage (2026-11-14)
+
+Plan and readings: `docs/plans/tile-marks.md`. Built on `s-marks`. Tests: new `Tests/marks_test.gd`, `warcry_test.gd`, `per_tile_test.gd`, `regain_test.gd`; `fighter_test`, `gods_test`, `pockets_test` changed. Suite 45594 checks, 0 failed.
+
+139. **Tile marks, Warcry, damage for moving - built on judgement, open for review (2026-11-14).** My calls, each for you to confirm or change:
+    - **One `Battle.Mark`** (side, lifetime, uses, price on entering, who it touches, how it's drawn); only disturbed earth (Pray) folded in. Snares, zones, debris, flames and layers stay as they are. Kept.
+    - **Triggers:** entry (every tile of a walk, and a teleport) and turn end; a mark on a tile you pass goes off, so no separate "stepped on".
+    - **Who knows:** its side, units that know it, or everyone at concealment 0 (Warcry's); otherwise the tile read decides. Warcry's marks are all plain.
+    - **Warcry:** a self-cast that marks toward the nearest rank foes it can read (no UI to choose), the first rank tiles of each line from the caster, the nearer half Charge! (allies, +10% x rank damage, rank AP back) and the rest Routed! (foes pay rank more movement); lasts 2 + rank of its side's turns, each tile one use.
+    - **Regain ??:** a new instant Effect stat (AI-made name): it gives AP back to a pool by its tag, up to what the pool started the turn with.
+    - **Footsore ??:** a reusable status (AI-made name), `per_tile` 1 a rank.
+    - **`per_tile`** (your name): each tile walked costs HP, not for teleports, pulls or pushes. **Meander wards it** when its rank is at least the effect's (the skill's text says "higher", its ground rule "not greater": equal wards).
+    - **The AI** casts Warcry just before it advances on a foe, with a new `marks` hook.
+    - **New names to review:** Footsore ??, Regain ??.
+- [ ] **The hazard estimate doesn't foresee `per_tile`**, nor Meander's partial ward. (?139)
+- [ ] **Fire, zones, debris and snares aren't marks**; helpful marks (Charge!) don't attract the AI or the route. (?139)
+- [ ] **Hidden marks have the read plumbing but no content uses concealment**, and the HUD draws no "?" for a suspected one. (?139)
+- [ ] **You can't choose which foes Warcry marks toward.** (?139)
+
+## Reactions and interrupts (2026-11-14)
+
+Plan and what was built: `docs/plans/reactions.md`. Built on `s-react`. Tests: new `Tests/reaction_test.gd`, `interject_test.gd`, `gallantry_test.gd`, `final_act_test.gd`, `snapping_turtle_test.gd`; `paladin_test`, `fighter_test` changed.
+
+140. **Reactions and interrupts - built on judgement, open for review (2026-11-14).** My calls, each for you to confirm or change (?12 and ?13 had been left "as built", and nothing was):
+    - **One hook, `Behaviour.react`,** and one seam, `Battle.react`; triggers attacked, hit, fallen and snap. Area skills cast on a tile and damage outside casts (flames, traps) trigger none but `fallen`.
+    - **Order:** the attacker first, then its target, then the rest by distance; a unit's passives top to bottom; each at most once a moment.
+    - **Reaction checks** are contests, the reactor winning ties, carrying their skill's tags (so Turtle Tactics helps).
+    - **Tag `reaction`** (your word), on all four skills; `skill.py check` fails a reacting behaviour without it.
+    - **Interrupt turn:** a free action is one skill use of any AP cost, no walking, Energy still paid; the player picks for the leader and party, the AI for others (`AI.interrupt()`).
+    - **Interject (?13):** allies beside it, every hit; rank 5+ adds +25% x rank Defense as guard.
+    - **Gallantry:** an adjacent ally, before the roll, cha contest; the attack then locks on the Paladin. Rank adds nothing yet.
+    - **Final Act (?12):** holds at 0 HP, takes one free action, then falls as it would have unless it healed above 0; once a battle.
+    - **Snapping Turtle:** on an offensive skill, snaps up to rank of its other defensive passives that have behaviours; Gallantry and Final Act have no snapped form.
+    - **New names to review:** none.
+- [ ] **Snapped forms for Gallantry and Final Act**; always-on defensive passives (Turtle Tactics) have nothing to snap. (?140)
+- [ ] **Reactions to area skills on tiles and to damage outside casts** (flames, traps): no `attacked` or `hit` moment there. (?140)
+- [ ] **The AI doesn't weigh enemies' reactions** when picking targets, nor hold a Final Act unit back. (?140)
+- [ ] **Battle doesn't run the AI for interrupts**: headless simulations must call `AI.interrupt()`. (?140)

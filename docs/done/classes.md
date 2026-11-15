@@ -247,3 +247,7 @@ Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?
 - [x] **Slam Jam** (after Jam): 1d10 + str, a contest to interrupt as Jam does, a hit refunds 1/(rank + 2) of its cost. `slam_jam_test.gd`.
 - [x] **Off Balance, Winded, Hitched ??** (`Effects/off_balance.tres`, `winded.tres`, `hitched.tres`).
 
+## Warcry and reactions (2026-11-14)
+
+- [x] **Warcry** (Vanguard; `Behaviours/warcry.gd`, `Effects/charge.tres`, `charge_ap.tres`): lays Charge! and Routed! marks on the lines toward the nearest rank foes. `warcry_test.gd`. (?139)
+- [x] **Interject** (Protector, after Shields Up!), **Snapping Turtle** (after Turtle Tactics), **Final Act** and **Gallantry** (Chivalry, after Coordinate): reactions through `Behaviour.react`. (?140)
