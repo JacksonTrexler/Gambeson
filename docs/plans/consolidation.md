@@ -334,3 +334,77 @@ own lines; a merge conflict there is mechanical) and `Tests/test.gd` (B2 only).
 - After all five: the coordinator lowers `FLAG_CEILING` to the new count and updates CLAUDE.md's "~30 s".
 - Expected end state: about 55 s a run, about 125 files, about 14.5k test lines, Skill.gd about 104
   fields; every data-only skill and passive covered by sweeps with no file of its own.
+
+## B4 as built (branch `c-tiles`)
+
+Starting suite 45995 checks, 0 failed (838 tests); ending 46001 checks, 0 failed (840 tests) (two tests added, below).
+
+- **Hook:** `Behaviour.apply_at(c: Cast, cell: Vector2i)`, run by `_land(c, cell)` (an optional second argument:
+  given a tile, `_land()` calls `apply_at()` instead of `apply()`). `_cast_at`'s chain is now `channel` / `rifts` /
+  `lays` / else `_land(cast_of(caster, skill, null, rank, skill.hostile), c)`.
+- **Behaviours:** `flamewall.gd`, `cone.gd` (`degrees`, `evadable`: Solar plain, Wildfire evadable; `width(rank, m)`
+  replaces `Skill.cone_at()`), `observe.gd` (static `reach()`, which `AI._search()` now reads instead of its copy of
+  the formula), `guard.gd`, `well_up.gd`, `zone.gd` (`kind`). `Battle._flamewall/_wildfire/_solar/_guard`,
+  `observe()` and `well_up()` moved out; `flood()`, `evade()`, `in_cone()`, `zone_levels()` stay as Battle primitives.
+- **Fields off Skill.gd (7):** `flamewall`, `cone`, `evadable`, `observes`, `guards`, `wells`, `zone`.
+  `@export` count 126 -> **119**. FLAG_CEILING untouched (126).
+- **Data:** the seven .tres moved by `S/b4_migrate.py` (scratchpad), through `Util/tres.py`'s `sections` /
+  `ext_id_for` / `add_ext`; no ids by hand.
+- **Lines:** Battle.gd +18 -132, Skill.gd +13 -36, SkillTerms.gd +6 -9, AI.gd +6 -5; 287 lines in the six behaviours.
+  As predicted: Battle and the flag bag shrink more than the total does.
+
+### Calls (B4)
+
+1. **A second, pure query beside the hook:** `Behaviour.tile_target() -> StringName` (&"tile", &"area", or empty).
+   `Skill.on_tile()` and `Skill.target()` need to know a skill is aimed at a tile before it's cast, and a hook
+   can't be asked without running it. It's the `fits()` / `unfit()` pattern, not a hook per skill.
+2. **`Skill.behaviour(file: StringName) -> Behaviour`** (by the script's file name: `&"guard"`, `&"observe"`), for
+   readers that act on one kind: Overlay (Observe's ring), `AI._search()` / the Well Up routine, `Battle.interrupt()`
+   (a guard's effects end), `Battle.attempt()` (no zone skill on thin air). File names rather than class names: no
+   global names, no preload cycles. **Merge note:** B5 may add `Skill.has(BehaviourClass)` for the same need;
+   keep one of the two.
+3. **`AI._defend()` reads `s.on_tile()` instead of `s.guards`:** any defensive skill aimed at a tile is aimed at the
+   nearest foe. Only Shields Up! qualifies today, so nothing moves; before, any other such skill would have failed
+   `cast()` on itself.
+4. **Impact:** `SkillTerms._derived_impact()` counted any behaviour as a rider (tame). A tile behaviour now says
+   its own (Flamewall and Zone set tame in `terms()`, as their old fields did); Solar, Wildfire, Observe and
+   Well Up stay "" as before. Every terms line of the seven skills is the same, except below.
+5. **Observe gains a `rank_impact` term ("observe"):** its rank was always read through rank impact, but no term
+   said so. `skill.py modifiers`: unchanged overall; Observe now also fits rho_up (eligibility better, nothing lost).
+6. **Flamewall's check** stays on the helper, `Battle.check(u, dex, caster, wis, ties = false)`, as u-checks left
+   it. It is not a `Skill.check` (SkillCheck): that declares a check in place of an attack roll on a target, and
+   Flamewall has none. `evade()` (Wildfire's DC dodge) is a check against a number, not a contest, so it stays too.
+7. **Private Battle helpers:** `_flame()` renamed `flame()` (behaviours call it). `cone.gd` calls `b._expose()`
+   rather than renaming it, because 17 callers sit in `_cast` beside B5's lines. Rename it after both branches merge.
+8. **Description order:** the lifted lines now come after the effect lines (behaviour lines come last in
+   `Skill.markup()`). Shields Up!'s facing line is now below its effects. No test read the order.
+9. `Util/skill.py` HOOKS gains `apply_at`; `Util/tres.py` FLOATS drops `cone`.
+
+### Tests (B4)
+
+- Updated for data shape only: `route_test.test_area` (`solar.cone_at()` / `.cone` -> the cone behaviour's
+  `width()` / `degrees`); `evidence_test.test_ai_follows_it` (`s.observes` -> `s.behaviour(&"observe")`).
+- Added: `sol_test.test_flamewall_catches` (one standing where the wall goes up makes the check and burns at
+  once) and `watch_test.test_observe_looks` (it looks there, within reach). Both pass on the old code too.
+  The suite had no test for either rule: the mutation spot-checks found the gaps.
+
+### Mutation spot-checks (B4; each reverted)
+
+| Mutation | Fails |
+|---|---|
+| flamewall.gd: never burns a unit that loses the check | sol_test.test_flamewall_catches (new; nothing failed before) |
+| flamewall.gd: width 0 | sol_test.test_flamewall, route_test.test_flamewall |
+| cone.gd: Wildfire's dodge ignored (share 1) | difficulty_test.test_wildfire_dodged |
+| cone.gd: Solar's width ignores modifiers | route_test.test_area |
+| observe.gd: early return | watch_test.test_observe_looks (new); before, test_observe only crashed with a SCRIPT ERROR, which the runner doesn't count as failed |
+| guard.gd: guard not raised | facing_test.test_shields_up (4) |
+| well_up.gd: centre a rank shallower | undine_test.test_well_up |
+| zone.gd: lays nothing | perception_test.test_tonefoolery_doubles; zone describe "" -> skills_test.test_flags_described |
+
+Survivors (equivalent mutants, or not covered; recorded, not fixed): Solar's cone at width 0 passes `test_solar`,
+whose units stand on the aim line. Observe's +rank bonus at 0 passes, because `test_observe`'s roll bounds are loose.
+`guard.gd` describe "" passes, because removing the behaviour also changes the spec line, so `test_flags_described`
+can't see it. B2's describe sweep should catch it.
+
+Visual: Wildfire's and Observe's targeting overlay (armed, hovered) captured before and after (`S/driver_b4.gd`,
+`S/shot_b4_*`): the two look the same. The pixel diffs are the overlay's real-time pulse.
