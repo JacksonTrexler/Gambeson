@@ -183,6 +183,31 @@ func test_actives() -> void:
 	ok(cast + NOT_CAST.size() == _built.filter(func(s: Skill): return not s.passive).size(), "every built active is cast or named in NOT_CAST")
 
 
+# Skills whose behaviour reads state that may be missing (Retrieve: where the item is; Emergency Exit: a
+# forming portal) are cast here with each state absent and present, so a crash on a missing precondition
+# fails the run (the runner counts script errors) and a no-op shows.
+func test_missing_preconditions() -> void:
+	var bag: Skill = load("res://Skills/burning_bag.tres")
+	var item: Item = bag.behaviours[0].item
+	for where in ["nowhere", "stash", "ally"]:
+		var on: Variant = _pose(bag)
+		Game.stash.clear()
+		v(1).unequip(item.slot)
+		v(2).unequip(item.slot)
+		if where == "stash":
+			Game.stash.append(item.duplicate())
+		elif where == "ally":
+			v(2).equip(item.duplicate())
+		ok(_use(bag, on), "Burning Bag cast with the bag %s" % where)
+		var worn: Item = v(1).get(item.slot)
+		ok(worn != null and worn.name == item.name, "...it ends up on its caster (%s)" % where)
+		ok(v(2).get(item.slot) == null and Game.stash.all(func(x: Item): return x.name != item.name), "...and nowhere else (%s)" % where)
+	Game.stash.clear()
+	var exit: Skill = load("res://Skills/emergency_exit.tres")
+	var on: Variant = _pose(exit)
+	ok(b.get_node_or_null("Meadows") == null and _use(exit, on) and b.pockets.size() == 1, "Emergency Exit with no portal forming makes its pocket")
+
+
 func test_item_skills() -> void:
 	var n := 0
 	for f in DirAccess.get_files_at("res://Items"):
