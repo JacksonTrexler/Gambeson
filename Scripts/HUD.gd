@@ -677,6 +677,11 @@ func toggle_sheet() -> void:
 		sheet.open(u, _outfits(u))
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Save.save()
+
+
 func _outfits(u: Unit) -> bool:
 	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and battle.outfitting(u)))
 
@@ -703,6 +708,7 @@ func _on_equipped(u: Unit, it: Item) -> void:
 		Game.stash.append(old)
 	_log("%s puts on %s" % [_tag(u), it.name])
 	_keep_outfit(u)
+	Save.save()  # the stash and outfit last past the game
 	sheet.open(u, true)
 	_mark()
 
@@ -714,6 +720,7 @@ func _on_unequipped(u: Unit, slot: String) -> void:
 			return
 		Game.stash.append(it)
 		_keep_outfit(u)
+		Save.save()
 		sheet.open(u, true)
 		_mark()
 
@@ -723,6 +730,7 @@ func _on_used_up(u: Unit, it: Item) -> void:
 		Game.stash.erase(it)
 		_log("%s uses %s" % [_tag(u), it.name])
 		_keep_outfit(u)
+		Save.save()
 		sheet.open(u, true)
 		_mark()
 
@@ -1667,6 +1675,7 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if not won.is_empty():
 		Game.stash.append_array(won)
 		%OverText.text += "\nSpoils: %s" % ", ".join(won.map(func(it: Item): return it.name))
+	Save.save()  # the spoils, and the level and XP the battle gave the starter
 	_log("[color=#e8c547]%s[/color]" % %OverText.text)
 	spellbook.hide()
 	select(null)

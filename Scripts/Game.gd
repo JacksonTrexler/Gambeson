@@ -5,6 +5,7 @@ class_name Game
 static var starter := {}  # {faction: Faction, role: Role, name: String}
 static var difficulty := 0.0  # the area difficulty of the floor of Gamut's Tower the portal taken stands on (Battle.difficulty); 0: the scene's own
 static var dungeon: Dungeon  # the dungeon entered at Gamut's Tower: what winning it brings there (Meadows: Battle.rewards)
+static var hero := {}  # the player's starter as picked - {faction: Faction, role: Role, name: String} - kept for the save (Save) after Battle uses `starter` up; Entry's Continue plays it again
 static var outfit := {}  # what the player's starter has on, by slot (weapon, armor, trinket): it keeps it from battle to battle
 static var level := 1  # the player's starter's level, and its XP toward the next (Battle._award()): kept from battle to battle
 static var xp := 0

@@ -37,7 +37,7 @@ func apply(c: Cast) -> void:
 	var check := c.skill.check
 	if check and check.suspicion and not c.battle.lured(c.caster, c.skill, c.target):
 		return  # its song moves only one it enraptures (Sing)
-	c.battle.displace(c.target, c.caster.cell, -1 if toward else 1, reach(c), teleport)
+	c.battle.displace(c.target, c.caster.cell, -1 if toward else 1, reach(c), teleport, [&"entrance" if toward else &"shove"] as Array[StringName], c.caster)
 
 
 # Teleporting, it isn't a unique effect beyond its numbers (Send Off); a push or a draw is tame.
