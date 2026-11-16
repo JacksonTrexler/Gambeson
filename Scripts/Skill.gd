@@ -529,12 +529,18 @@ func summary() -> String:
 	return Glossary.plain(spec_line())
 
 
-# A line for a static view of s (the skills screen) that shows its base values while u's modifiers
-# change it: "" when they don't.
+# Lines for a static view of s (the skills screen) that shows its base values: that u's modifiers change
+# them, and that u has used it lately and pays more now (Exhaustion.note()); "" when neither.
 static func base_note(u: Unit, s: Skill) -> String:
-	if not u or u.mods(s).empty():
+	if not u:
 		return ""
-	return "\nBase values: %s changes them (the spellbook and hotbar show them as %s has it)" % [u.mods(s).label(), u.name]
+	var note := ""
+	if not u.mods(s).empty():
+		note = "\nBase values: %s changes them (the spellbook and hotbar show them as %s has it)" % [u.mods(s).label(), u.name]
+	var worn := u.exhaustion.note(s) if u.exhaustion and not s.passive else ""
+	if worn:
+		note += "\nCosts more now: " + worn
+	return note
 
 
 # Everything it does at this rank, as plain text (as u holds it, given u: markup()).

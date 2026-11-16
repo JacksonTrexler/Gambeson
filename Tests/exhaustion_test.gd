@@ -66,6 +66,7 @@ func test_costs() -> void:
 	ok(same(u.ap_cost(hex, &"energy"), 4.0) and u.cost_from(hex, &"energy") == 2, "Hex fresh: 4 AP, 2 Energy")
 	ok(b.cast(u, hex, v(1)) and u.energy == 8 and same(u.ap_for(&"skill"), 7.0), "paid")
 	ok(same(u.ap_cost(hex, &"energy"), 6.0) and u.cost_from(hex, &"energy") == 3 and u.price(hex) == 3, "used once: half as much again, 6 AP and 3 Energy")
+	ok("exhausted x1" in Skill.base_note(u, hex) and Skill.base_note(v(1), hex) == "", "the skills screen's base view says so for the unit that has worn it")
 	ok(same(u.ap_cost(strike, &"energy"), 3.0) and u.price(strike) == 0, "Strike, martial, is as it was")
 	ok(b.cast(u, hex, v(1)) and u.energy == 5 and same(u.ap_for(&"skill"), 1.0), "paid at the raised cost: both AP and Energy")
 	ok(same(u.ap_cost(hex, &"energy"), 8.0) and u.cost_from(hex, &"energy") == 4, "used twice: 8 AP, 4 Energy")
