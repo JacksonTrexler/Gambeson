@@ -87,6 +87,15 @@ func apply_at(_c: Cast, _cell: Vector2i) -> void:
 	pass
 
 
+# The skill it's on failed (Battle._miss()): its attack roll missed, its save or contest was lost (a drag,
+# a grapple, a level down), its Strike hit nothing, its level or its life wasn't taken. The counterpart
+# of apply(), which runs only when it lands: a refund, a rider on a miss. Not run on a cast that is
+# stopped or refused before it's tried, nor for a foe's dodge of a tile skill's area (area_blow() hands
+# those to missed() too, on a Cast of the victim's own).
+func missed(_c: Cast) -> void:
+	pass
+
+
 # How a skill it's on is aimed, if apply_at() makes it a tile skill (Skill.on_tile(), Skill.target()):
 # &"tile", or &"area" for one that covers ground around the tile (a cone, a zone); empty: not on a tile.
 func tile_target() -> StringName:

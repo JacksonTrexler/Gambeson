@@ -919,8 +919,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 					return true
 	var before := target.hp
 	# Every path below that lands runs the behaviours' apply() (_land()); one that fails (a save or
-	# contest lost) is a miss, as a missed attack roll is, and runs none; so is a channel stopped by using
-	# it again (recast_stops(), above: nothing lands). docs/plans/route.md.
+	# contest lost, a roll missed) runs their missed() instead (_miss()); a channel stopped by using
+	# it again (recast_stops(), above) lands nothing and misses nothing. docs/plans/route.md, param-tail.md.
 	if acts and skill.behaviours.any(func(x: Behaviour): return x.whole(acts)):
 		_land(acts)  # its behaviours are the whole of it (Beastshape, Emergency Exit, an aura, Igna on an ally): no roll, effects or damage of its own
 		used.emit(caster, skill, target, before - target.hp)
@@ -944,6 +944,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		if not vs.won:
 			_expose(target)
 			_expose(caster)
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 		drag(caster, target, spot, skill.drags())
@@ -952,6 +953,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_expose(caster)
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 		engulf(caster, target)
@@ -964,17 +966,22 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_expose(caster)
 			if read(target, caster).located():
 				suspect(target, caster)  # it felt something try
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 		saved_against = mine
 	if foe and skill.levels_down:
 		if _level_down(caster, skill, target, ri, req) > 0:
 			_land(acts)
+		else:
+			_miss(acts)
 		used.emit(caster, skill, target, 0)
 		return true
 	if foe and skill.kills:
 		if _death(caster, skill, target, ri, req):
 			_land(acts)
+		else:
+			_miss(acts)
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	for g in fog:
@@ -990,6 +997,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_land(acts)
 			for bh in skill.behaviours:
 				bh.dealt(acts, before - target.hp)
+		elif landed == 0:
+			_miss(acts)
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_expose(target)
@@ -1017,6 +1026,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		rolled = hit
 		if not hit.hit:
 			_expose(target)
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 	if foe and skill.hostile and target != caster:  # hit: reactions before its damage (Interject)
@@ -1028,6 +1038,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			if rolled and not rolled.crit and rolled.total < target.defense(tags) + guard_of(acts) + rh.guard:
 				attacked.emit(caster, target, rolled.d20, rolled.total, target.defense(tags) + guard_of(acts) + rh.guard)
 				_expose(target)
+				_miss(acts)
 				used.emit(caster, skill, target, 0)  # the roll that hit its first target misses its new one
 				return true
 	if acts:
@@ -1152,6 +1163,17 @@ func _land(c: Behaviour.Cast, at: Variant = null) -> void:
 			bh.apply(c)
 
 
+# The skill a Cast is for failed: a roll missed, a save or contest lost, a Strike with no hit, a level
+# or a life not taken. The counterpart of _land(): its behaviours' missed() run (a refund, a rider on a
+# miss), and c.hit stays false. Called before `used`, on every path of cast() that lost.
+func _miss(c: Behaviour.Cast) -> void:
+	if not c:
+		return
+	c.hit = false
+	for bh in c.skill.behaviours:
+		bh.missed(c)
+
+
 # Whether reaction r swapped its cast's target: the cast's tags are taken afresh for the new one
 # (an ambush is against whom it lands on).
 func _swapped(c: Behaviour.Cast, r: Behaviour.Reaction) -> bool:
@@ -1184,6 +1206,8 @@ func area_blow(c: Behaviour.Cast, u: Unit, strike: Callable, tries := Callable()
 		if _swapped(rc, react(&"hit", u, caster, rc)):
 			u = rc.target
 		rc.hit = true
+	else:
+		_miss(rc)  # it dodged: the skill's behaviours hear of it
 	strike.call(u, share)
 	_resolving.resize(depth)
 
@@ -4010,7 +4034,7 @@ func _new_pocket(kind: StringName, by: Unit, skill: Skill, origin: Vector2i) -> 
 # turns infinite), its count (rift_turns()) starting once it stops; cast unchanneled, the count starts
 # at once. Demons wait there - a formation at the rift's difficulty, at the caster's level.
 func open_rift(by: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
-	var r := by.rank(skill)
+	var r := by.mods(skill).irank(by.rank(skill), &"rank_impact")  # its difficulty and its count are what rank does
 	if not can_rift(by, skill, c):
 		return false
 	var p := _new_pocket(&"domain", by, skill, c)
@@ -4130,7 +4154,7 @@ func close_rift(by: Unit) -> bool:
 	by.channel = null
 	for p in pockets:
 		if p.by == by and p.kind == &"domain" and p.turns < 0:
-			p.turns = rift_turns(by.rank(s) if s else 1)
+			p.turns = rift_turns(by.mods(s).irank(by.rank(s), &"rank_impact") if s else 1)
 			for m in p.marks:
 				m.turns = p.turns
 	return true
@@ -4683,7 +4707,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	var blow := tags.duplicate()
 	if (imbued or elemental) and element not in blow:
 		blow.append(element)
-	var mental := maxi(maxi(caster.mod(&"intelligence"), caster.mod(&"wisdom")), caster.mod(&"charisma"))
+	var mental := m.stat(maxi(maxi(caster.mod(&"intelligence"), caster.mod(&"wisdom")), caster.mod(&"charisma")), &"stat_impact")  # the element's bonus: stat impact
 	var zeal := passion(caster, t)  # Impassioned Fighter
 	var landed := 0
 	var gross := 0

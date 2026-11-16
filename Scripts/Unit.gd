@@ -1578,7 +1578,7 @@ func dissonance_penalty() -> int:
 	var practised := 0
 	for x in slots:
 		if x.skill.has_look():
-			practised = maxi(practised, x.rank)
+			practised = maxi(practised, mods(x.skill).irank(x.rank, &"rank_impact"))
 	return maxi(dissonance() - practised, 0)
 
 

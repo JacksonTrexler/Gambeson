@@ -680,7 +680,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	if has_look():
 		var look := ([stance] if stance else []) + [", ".join(shows_vibe)] + [", ".join(shows_tags)]
 		lines.append("Puts forward a look: %s. Its holder's {k:dissonance|dissonance} counts {r:%d} less against its own checks"
-				% ["; ".join(look.filter(func(x: String): return x != "")), rank])
+				% ["; ".join(look.filter(func(x: String): return x != "")), ri])
 		if not (shows_adjectives.is_empty() and shows_nouns.is_empty()):  # what it may go by (Unit.alias: the persona panel)
 			var names: PackedStringArray = []
 			if not shows_adjectives.is_empty():
@@ -715,7 +715,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	if mist_only:
 		lines.append("Only as a mist (Vaporize)")
 	if rifts:
-		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door both ways to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). %s, it stays open while the caster keeps channeling (shown as infinite); used again, the channel stops. Its {t:%d turns} start once the channel stops, or at once if it's cast unchanneled (Alt-click); then the caster's side comes back and the domain goes" % [Glossary.term(&"channeled", "Channeled"), Battle.rift_turns(rank)])
+		lines.append("Opens a rift on a tile in sight (over walls from {r:III}): a door both ways to a domain, an 8x8 diamond of grass with demons of its own (difficulty by rank, the caster's level). %s, it stays open while the caster keeps channeling (shown as infinite); used again, the channel stops. Its {t:%d turns} start once the channel stops, or at once if it's cast unchanneled (Alt-click); then the caster's side comes back and the domain goes" % [Glossary.term(&"channeled", "Channeled"), Battle.rift_turns(ri)])
 	if studies:
 		lines.append("Dabblings: pick up to {r:%d} of the %s on your tree" % [rank, studies])
 	if opens:
