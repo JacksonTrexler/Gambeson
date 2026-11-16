@@ -430,7 +430,7 @@ Plans: `docs/plans/price-refunds.md` (`y-price`) and `docs/plans/unshape.md` (`y
     - **A roll-dependent share stays a refund** (`Unit.refund()`); the card row shows "on hit: -N" beside the drain segment. Slam Jam's energy share floors as the refund does. `Unit.paid_cut` remembers the cut so a later refund is a share of what was paid.
     - **`Pricing.gd` untouched:** the calculator prices a skill by its terms; the per-cast discount is a target fact.
     - **New names to review:** none.
-- [ ] **`can_afford` and the AI's affordability use the full price**, so a unit with exactly half of Poach's AP cannot start it though the hover shows the discount. (?151)
+- [x] **`can_afford` and the AI's affordability use the full price**, so a unit with exactly half of Poach's AP could not start it though the hover showed the discount. Built 2026-11-15 (?164). (?151)
 - [ ] **Only `_cast` (a single target) takes the cut**; auto, spread and tile paths pay full (no target to ask). (?151)
 
 153. **Forced unshape - built on judgement, open for review (2026-11-15).** Tied to ?126's open question. My calls:
