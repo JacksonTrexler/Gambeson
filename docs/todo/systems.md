@@ -913,6 +913,14 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Profile:** `Battle.read()` is about 215 calls a unit turn (0.33 ms each); `_line_up` 137 x 28 ms; `travel`, `_approach`, `suspicious` and `_watch` follow.
     - **Level 1 with four skills leans low** against a real party's turn.
     - **Load order:** a sim script must name `Test` before `Role`, `Branch` or `Effect` or the scripts hang in a cycle; `field.gd` has no `class_name`.
-- [ ] **AI turn cost over budget** (100 ms a unit turn, 1000 ms an `end_turn` on M3 x 4): a per-act read cache, `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up`'s foresee over every tile, a Brood-free fast path in `Unit.stat`, `travel`/`_approach`. In flight as `r-aiperf`. (?183)
+- [ ] **AI turn cost over budget** (100 ms a unit turn, 1000 ms an `end_turn` on M3 x 4): a per-act read cache, `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up`'s foresee over every tile, a Brood-free fast path in `Unit.stat`, `travel`/`_approach`. Halved by `r-aiperf` (?184); still over at the unit turn. (?183)
 - [ ] **Frame times unmeasured:** `busy_fight.gd`'s windowed path is written, not run. (?183)
 - [ ] **A hunt where hiders are in range from round 1**, to measure the search apart from the walk. (?183)
+
+184. **AI turn cost and the floater's tools - built on judgement, open for review (2026-11-16).** Calls (numbers in `docs/plans/r-aiperf.md`):
+- A cache only inside a "stretch" (`Unit.begin_read()/end_read()`) where nothing mutates: `suspicious`, `_sightings`, `route`, `_check_stall`, the AI's reads and the weighing in `_strike`, `_line_up`, `_approach`, `_steady`, `_could_strike`, `_best_target`; dropped on a cell, footing or steadied change. A whole-act cache and a distance bound on `_line_up` were rejected as not strict.
+- Proof of no decision change: `ai_sim` identical on 8 seeds; a `digest=` of every act's log in `busy_fight` equal before and after; 0 mismatches in 1.16 M cache hits.
+- M3 mean / p95 ms: 15v15 unit turn 80/217 -> 38/75, `end_turn` 200/651 -> 122/347; 20v20 unit turn 100/260 -> 44/82, `end_turn` 425/1406 -> 233/679.
+- Tools: `land.sh <branch>...` (merge main and the others in, union the appended docs, verify, ff, push, remove); `metrics.sh` and `docs/agents/metrics.csv`; `floater.md`, a brief to hand a whole prompt to one delegate. The haiku-timer idea: not used, since notifications carry tokens, tool uses and time.
+- [ ] **Unit turn still over budget** (151 ms at target vs 100): `suspicious()` reads every unit (~5 ms a call); `_look_harder` unscoped (`doubt` emits signals); `Perception.unit`, `skill_range`. (?184)
+- [ ] **land.sh on a failed push** stops after the fast-forward, leaving the worktrees: push again by hand, then remove them. (?184)

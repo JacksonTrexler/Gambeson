@@ -5,17 +5,17 @@ Maintained by the docs keeper after each merge batch: built cards removed, follo
 Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), Skeleton, Deathlust, the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-- `r-aiperf`: AI turn cost (`Scripts/AI.gd`, `Battle.read` callers). Cards below that touch AI.gd or `read()` collide with it; wait.
+Nothing.
 
 ## Wave 1: follow-ups from ?178 to ?183 (all need nothing from the user)
 
 ### AI turn cost: a per-act read cache and `_line_up`'s foresee
 - Source: docs/todo/systems.md (?183)
-- Scope: only if `r-aiperf` leaves it over budget (100 ms a unit turn, 1000 ms an `end_turn` at M3 x 4; `Tests/sims/busy_fight.gd`). A per-act cache of a unit's reads (invalidated by any state change), `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up` foreseeing fewer tiles, a Brood-free fast path in `Unit.stat`.
+- Scope: `r-aiperf` halved it (?184) but a unit turn is still over budget (100 ms a unit turn, 1000 ms an `end_turn` at M3 x 4; `Tests/sims/busy_fight.gd`). A per-act cache of a unit's reads (invalidated by any state change), `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up` foreseeing fewer tiles, a Brood-free fast path in `Unit.stat`.
 - Read: docs/plans/r-sims.md
 - Files: Scripts/AI.gd, Scripts/Battle.gd, Scripts/Unit.gd, Tests/ai_tactics_test.gd
 - Model: sonnet/high
-- Collides with: `r-aiperf`
+- Collides with: the AI cards below (AI.gd)
 
 ### The AI casts Skeleton
 - Source: docs/todo/classes.md (?181)
@@ -23,7 +23,7 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 - Read: docs/plans/r-skeleton.md
 - Files: Scripts/AI.gd, Tests/ai_tactics_test.gd, Tests/summon_test.gd
 - Model: sonnet/high
-- Collides with: `r-aiperf` (AI.gd), the next card
+- Collides with: the AI-cost card (AI.gd), the next card
 
 ### Deathlust AI awareness
 - Source: docs/todo/systems.md (?182)
