@@ -127,3 +127,41 @@ func test_afflicts_of_known_ground() -> void:
 	sting.turns = 0
 	brier.turns = 3
 	ok(is_equal_approx(b.hazard(v(1), c, b.read(v(1), c)).get(&"hp", 0.0), 9.0), "an effect without turns of its own takes the ground's")
+
+
+# Meander passes a trap by (Unit.passes_by(), travel()): the estimate leaves it out for a tile it passes, and
+# the route doesn't bend round it; further into the walk than Meander reaches, it counts and bends.
+func test_meander_passes_a_trap_by() -> void:
+	walker()
+	b.revealed[TRAP] = true
+	v(1).learned.append(slot(load("res://Skills/meander.tres"), 1))
+	var r := b.read(v(1), TRAP)
+	ok(b.hazard(v(1), TRAP, r, 1).is_empty() and not b.hazard(v(1), TRAP, r, 2).is_empty() and not b.hazard(v(1), TRAP, r).is_empty(), "the 1st tile is passed by, the 2nd isn't, off a walk it's counted")
+	var w := b.walk(v(1), Vector2i(7, 4), true)
+	ok(TRAP in w.path, "the trap is its 1st tile: no detour (%s)" % [w.path])
+	var hp := v(1).hp
+	b.travel(v(1), Vector2i(6, 4))
+	ok(v(1).hp == hp, "and it springs nothing, as foreseen")
+	walker()
+	b.revealed[TRAP] = true
+	v(1).cell = Vector2i(3, 4)
+	b.units.erase(Vector2i(4, 4))
+	b.units[Vector2i(3, 4)] = v(1)
+	v(1).learned.append(slot(load("res://Skills/meander.tres"), 1))
+	ok(TRAP not in b.walk(v(1), Vector2i(7, 4), true).path, "from a tile further back the trap is its 2nd: round it")
+
+
+# What the ground puts on whoever ends its turn there (at_end) counts for the tile a walk ends on only.
+func test_at_end_counts_where_it_ends() -> void:
+	walker()
+	var stew := Terrain.new()
+	stew.name = "Stew ??"
+	stew.turns = 2
+	stew.at_end = [effect("bleed", 3.0)] as Array[Effect]
+	var c := Vector2i(5, 4)
+	b.lay_layer(c, stew, false)
+	var r := b.read(v(1), c)
+	ok(b.hazard(v(1), c, r, 1).is_empty() and b.hazard(v(1), c, r).is_empty(), "passing through: nothing")
+	ok(is_equal_approx(b.hazard(v(1), c, r, 2, true).get(&"hp", 0.0), 6.0), "ending there: 3 a turn for 2 turns (%s)" % [b.hazard(v(1), c, r, 2, true)])
+	var w := b.walk(v(1), c, true)
+	ok(w.path.back() == c, "route(): nothing to bend round for a destination, it still goes (%s)" % [w.path])

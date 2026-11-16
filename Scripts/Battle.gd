@@ -3016,23 +3016,28 @@ func foresight_allowance(u: Unit) -> int:
 # turn of their length; winded takes AP once. All before mitigation, as a hit isn't rolled. {}: nothing
 # foreseen. Only what `r` makes out counts: an unseen trap or ground it can't read owes nothing.
 # `nth`, when c is the nth tile of a walk (1 on), adds the toll of u's own per_tile effects (Footsore) for it,
-# as _toll() takes it, Meander's wards included; 0, c on no walk (route(): a toll every tile owes alike
-# steers nowhere): none.
-func hazard(u: Unit, c: Vector2i, r: Read, nth := 0) -> Dictionary:
+# as _toll() takes it, Meander's wards included (`tolls` false: not - route() leaves out what every tile owes
+# alike), and leaves out the trap and the ground's afflicts that standing still (Meander: passes_by()) passes
+# by, as travel() does; 0, c on no walk: none of that. `ends`: c is where the walk ends, so what the ground
+# puts on whoever ends its turn there (at_end: Magic Stew) counts too.
+func hazard(u: Unit, c: Vector2i, r: Read, nth := 0, ends := false, tolls := true) -> Dictionary:
 	var out := {}
-	if nth > 0:
+	if nth > 0 and tolls:
 		for e: Effect in u.timed.keys():
 			if e.stat == "per_tile" and not u.wards(u.timed[e].rank, nth):
 				_owe(out, &"hp", e.amount * (u.timed[e].rank if e.per_rank else 1.0) * u.timed[e].scale)
 	var t := terrain(c)
 	var by: Unit = null
-	if r.trap == true:
+	var passed := nth > 0 and u.passes_by(t, nth)  # standing still, it walks over the ground without touching it
+	if r.trap == true and not passed:
 		_owe(out, &"hp", t.times * t.dice.x * (t.dice.y + 1) / 2.0 + t.bonus)
 		by = snares[c].by if c in snares and is_instance_valid(snares[c].by) else null
 		for e in t.wounds:
 			_owe_wound(out, u, e, maxi(t.wound_turns, 1), t.level, by)
-	for e in r.afflicts:  # what ordinary ground does to whoever steps on it, for its turns
+	for e in r.afflicts if not passed else ([] as Array[Effect]):  # what ordinary ground does to whoever steps on it, for its turns
 		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)  # (travel() puts them on at rank 1)
+	for e in r.at_end if ends else ([] as Array[Effect]):  # and to whoever ends its turn there (end_turn(): the tick takes that turn)
+		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)
 	for m: Mark in r.marks:  # what the marks it knows of would put on it
 		if m.on == &"enter" and m.hits(u):
 			for e in m.effects:
@@ -3059,12 +3064,12 @@ func _owe(out: Dictionary, key: StringName, n: float) -> void:
 
 # What a hazard() weighs against the way round, in movement: HAZARD_TILES a point of HP, 1 a point of
 # anything else. A known trap, detrimental ground or `bad` (a known mark that would harm the walker:
-# Mark.harms()) counts at least a tile, whatever the estimate says.
-func dread(owed: Dictionary, r: Read, bad := false) -> float:
+# Mark.harms()) counts at least a tile, whatever the estimate says - but not a trap `passed` by (Meander).
+func dread(owed: Dictionary, r: Read, bad := false, passed := false) -> float:
 	var n := 0.0
 	for key in owed:
 		n += owed[key] * (HAZARD_TILES if key == &"hp" else 1.0)
-	return maxf(n, 1.0) if n > 0.0 or r.known_bad() or bad else 0.0
+	return maxf(n, 1.0) if n > 0.0 or (r.known_bad() and not (passed and r.trap == true)) or bad else 0.0
 
 
 # The walk's tiles: the straight line `ln` from u to dest, or - when it crosses ground u knows to be
@@ -3077,12 +3082,14 @@ func dread(owed: Dictionary, r: Read, bad := false) -> float:
 func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 	if ln.size() < 2 or foresight_allowance(u) < 0:
 		return ln
-	var dreads := {}  # tile -> its dread, read once
-	var dread_of := func(c: Vector2i) -> float:
-		if c not in dreads:
+	var dreads := {}  # tile (and, for one that stands still, how far along: Meander passes ground by) -> its dread, read once
+	var wards := u.meander()
+	var dread_of := func(c: Vector2i, nth: int) -> float:
+		var key: Variant = c if wards <= 0 else [c, mini(nth, wards + 1)]
+		if key not in dreads:
 			var r := read(u, c)
-			dreads[c] = dread(hazard(u, c, r), r, r.marks.any(func(m: Mark): return m.harms(u)))
-		return dreads[c]
+			dreads[key] = dread(hazard(u, c, r, nth if wards > 0 else 0, c == dest, false), r, r.marks.any(func(m: Mark): return m.harms(u)), wards > 0 and u.passes_by(terrain(c), nth))
+		return dreads[key]
 	var danger := 0.0
 	var pulled := false  # a known helpful mark on the line's ground, or near enough to bend it
 	var near_lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
@@ -3091,8 +3098,8 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 		if c.x >= near_lo.x and c.y >= near_lo.y and c.x <= near_hi.x and c.y <= near_hi.y and lure(u, c) > 0.0:
 			pulled = true
 			break
-	for c in ln:
-		danger += dread_of.call(c) if on_map(c) else 0.0
+	for i in ln.size():
+		danger += dread_of.call(ln[i], i + 1) if on_map(ln[i]) else 0.0
 	if danger <= 0.0 and not pulled:
 		return ln
 	var grounds := {}
@@ -3100,21 +3107,22 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 		if c not in grounds:
 			grounds[c] = known_ground(u, c)
 		return grounds[c]
-	var cost_of := func(prev: Vector2i, c: Vector2i, bag: Dictionary) -> float:
+	var cost_of := func(prev: Vector2i, c: Vector2i, bag: Dictionary, nth: int) -> float:
 		var other := unit_at(c)
-		return maxf(stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c) - lure(u, c), 0.0) \
+		return maxf(stride(u, prev, c, ground_of_known.call(prev), ground_of_known.call(c), bag, other if other and other != u and read(u, other).located() else null, true) + dread_of.call(c, nth) - lure(u, c), 0.0) \
 				+ 0.00001 * Geometry2D.get_closest_point_to_segment(Vector2(c), Vector2(u.cell), Vector2(dest)).distance_to(Vector2(c))  # ties hug the line
 	var bound := 0.0  # the line's own: movement and dread
 	var bag := {}
 	var prev := u.cell
-	for c in ln:
-		bound += cost_of.call(prev, c, bag) if on_map(c) else INF
-		prev = c
+	for i in ln.size():
+		bound += cost_of.call(prev, ln[i], bag, i + 1) if on_map(ln[i]) else INF
+		prev = ln[i]
 	var lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
 	var hi := Vector2i(maxi(u.cell.x, dest.x), maxi(u.cell.y, dest.y)) + Vector2i(STEER_MARGIN, STEER_MARGIN)
 	var best := {u.cell: 0.0}
 	var came := {}
 	var bags := {u.cell: {}}
+	var depth := {u.cell: 0}  # tiles walked to reach each
 	var open: Array[Vector2i] = [u.cell]
 	var done := {}
 	while not open.is_empty():
@@ -3134,11 +3142,12 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 				if (dx == 0 and dy == 0) or c in done or not on_map(c) or c.x < lo.x or c.y < lo.y or c.x > hi.x or c.y > hi.y:
 					continue
 				var b: Dictionary = bags[at].duplicate()
-				var g: float = best[at] + cost_of.call(at, c, b)
+				var g: float = best[at] + cost_of.call(at, c, b, depth[at] + 1)
 				if g < bound - 0.001 and g < best.get(c, INF) - 0.000001:
 					best[c] = g
 					came[c] = at
 					bags[c] = b
+					depth[c] = depth[at] + 1
 					if c not in open:
 						open.append(c)
 	if dest not in came or best[dest] >= bound - 0.001:
