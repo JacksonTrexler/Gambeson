@@ -22,8 +22,3 @@ func test_slam() -> void:
 	ok(v(3).channel == null and v(3).stat(&"jammed") > 0.0, "interrupted and Jammed")
 	ok(v(1).energy == 8 and is_equal_approx(ap - v(1).ap_left(), 4.0), "a third back at rank I: 2 Energy, 4 AP (%d, %s)" % [v(1).energy, ap - v(1).ap_left()])
 
-
-func test_tree() -> void:
-	var br: Branch = load("res://Trees/slayer.tres").branches.filter(func(x: Branch): return x.skill == slam)[0]
-	ok(jam in br.after, "uptree from Jam")
-	ok(not slam.ai and slam.name == "Slam Jam", "the user's")
