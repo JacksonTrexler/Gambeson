@@ -20,6 +20,7 @@ So: prefer shared tags and one generic hook over a bespoke counter or a one-off 
 - Visual changes: capture frames per `/Users/jtrex/.claude/projects/-Users-jtrex-projects-Gambeson/memory/visual-check-godot-ui.md` (adapt the newest `S/driver*.gd`; load Battle.gd before Game.gd in the driver) into `S/shot_<name>/` and look at them.
 
 ## Lean tests (the user, 2026-11-14: "a lot of tests for not a lot of game")
+- Hardware (the user, 2026-11-16): tests run on an M3, about 4x the target consumer device. Lean on the hardware over test count: one larger sim (`Tests/sims/`) beats many small tests; budgets at target speed = M3 time x 4.
 - Prefer extending the shared coverage over new files: `Tests/sweep_test.gd` (every skill cast or applied), table tests (`Tests/capstones_test.gd`), tool `check`s for wiring. One test per seam (rule), not per content item.
 - A stub `Tests/<id>_test.gd` that `skill.py new` writes for a data-only skill the sweep already covers: delete it. Keep a file only for a behaviour's own rule.
 - Prove a test earns its place: break the rule, see it fail, revert (a mutation spot-check). List them in your plan.

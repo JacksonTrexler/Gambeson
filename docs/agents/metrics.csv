@@ -1,0 +1,10 @@
+# One line per finished delegate (builder, docs keeper, floater). Written by .claude/skills/coordinate/metrics.sh.
+# tokens, tool_uses and duration_ms come from each task notification's <usage>; the user suggested haiku-low timer
+# agents, but notifications already carry these numbers, so timers are optional. result: landed, blocked, dropped.
+date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
+2026-11-16,r-docs,sonnet,medium,43128,10,37844,landed
+2026-11-16,r-skeleton,sonnet,high,112347,49,580581,landed
+2026-11-16,r-deathlust,sonnet,high,133291,48,805345,landed
+2026-11-16,r-sims,sonnet,high,175881,77,2011722,landed
+2026-11-16,r-docs2,sonnet,medium,76132,11,99555,landed
+2026-11-16,r-aiperf,sonnet,high,149279,63,3180461,landed
