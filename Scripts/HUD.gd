@@ -2829,7 +2829,7 @@ func effect_icons(u: Unit, only: Variant = null) -> Array:
 	return out
 
 
-# A condition's two letters on its chip, with the ?? a name made up by an AI still wears ("Jm ??").
+# A condition's two letters on its chip, with the ?? a name made up by an AI still wears ("Ja ??").
 static func _chip_mark(label: String) -> String:
 	return label.left(2) + (" ??" if label.ends_with(" ??") else "")
 

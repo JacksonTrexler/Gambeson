@@ -1060,6 +1060,9 @@ func test_self_evaluation_ui() -> void:
 	var card: UnitCard = h.card
 	ok(card.effects.visible and card.effects.get_child_count() == 1 and card.effects.get_child(0).get_child(0).get_child(1).text == str(a.roll),
 			"on the card: the disguise's icon, its roll in the corner")
+	v(1).afflict(load("res://Effects/jammed.tres"), 2)
+	var jm: Array = h.effect_icons(v(1)).filter(func(i: Array) -> bool: return not i[0].begins_with("C"))
+	ok(jm.size() == 1 and jm[0][0] == "Ja ??", "a made-up condition's chip keeps its ?? (%s)" % [jm])
 	h.free()
 
 
