@@ -13,13 +13,23 @@ const ROUTED_TINT := Color(0.62, 0.12, 0.5)  # dark magenta, collapsing (not the
 
 
 # The foes the caster can see, nearest first, up to its rank in range.
-static func picks(b: Battle, caster: Unit, n: int) -> Array[Unit]:
+static func nearest(b: Battle, caster: Unit, n: int) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for o: Unit in b.units.values():
 		if o.is_alive() and not Faction.friends(o.faction, caster.faction) and b.read(caster, o).located():
 			out.append(o)
 	out.sort_custom(func(x: Unit, y: Unit): return Command.tiles(x.cell, caster.cell) < Command.tiles(y.cell, caster.cell))
 	return out.slice(0, n)
+
+
+# The foes it marks toward: those its caster picked that it can still see (up to rank), else the nearest.
+static func chosen(c: Cast) -> Array[Unit]:
+	var n := c.range_rank()
+	var out: Array[Unit] = []
+	for o in c.picked:
+		if out.size() < n and o.is_alive() and not Faction.friends(o.faction, c.caster.faction) and c.battle.read(c.caster, o).located() and o not in out:
+			out.append(o)
+	return out if not out.is_empty() else nearest(c.battle, c.caster, n)
 
 
 # The tiles it marks toward foe t: the first `n` of the line, short of the foe's own tile.
@@ -33,7 +43,12 @@ static func tiles(b: Battle, caster: Unit, t: Unit, n: int) -> Array[Vector2i]:
 
 # Worth casting: a foe in sight, and none of the caster's own marks are still up.
 func marks(b: Battle, u: Unit) -> bool:
-	return not picks(b, u, 1).is_empty() and not b.marks.values().any(func(st: Array): return st.any(func(m: Battle.Mark): return m.by == u))
+	return not nearest(b, u, 1).is_empty() and not b.marks.values().any(func(st: Array): return st.any(func(m: Battle.Mark): return m.by == u))
+
+
+# It lets its caster pick the foes: up to rank of them, as many as it would pick itself.
+func picks(c: Cast) -> int:
+	return c.range_rank()
 
 
 func fits(_b: Battle, caster: Unit, target: Unit) -> bool:
@@ -45,7 +60,7 @@ func apply(c: Cast) -> void:
 	var turns := c.skill.lasts(c.rank, c.caster)
 	var charged := ceili(rank / 2.0)
 	var taken := {}
-	for t in picks(c.battle, c.caster, c.range_rank()):
+	for t in chosen(c):
 		var at := tiles(c.battle, c.caster, t, rank)
 		for i in at.size():
 			if at[i] in taken:
@@ -94,5 +109,5 @@ func describe_as(c: Cast) -> String:
 
 
 func _say(_rank: int, foes: int, tiles: int, turns: int) -> String:
-	return "Picks up to {r:%d} foe%s it can see, the nearest first, and marks the first {r:%d} tile%s of the line to each: the nearer half %s, the farther half %s. Each is used up by the first to enter it and lasts {t:%d turn%s}.\n%s: allies who enter regain {r:%d} dex AP and deal +{r:%d%%} damage until their turn ends.\n%s: foes who enter pay {r:%d} more movement" % [
+	return "Picks up to {r:%d} foe%s it can see (you choose them, else the nearest first), and marks the first {r:%d} tile%s of the line to each: the nearer half %s, the farther half %s. Each is used up by the first to enter it and lasts {t:%d turn%s}.\n%s: allies who enter regain {r:%d} dex AP and deal +{r:%d%%} damage until their turn ends.\n%s: foes who enter pay {r:%d} more movement" % [
 			foes, "" if foes == 1 else "s", tiles, "" if tiles == 1 else "s", "Charge!", "Routed!", turns, "" if turns == 1 else "s", "Charge!", tiles, tiles * 10, "Routed!", tiles]

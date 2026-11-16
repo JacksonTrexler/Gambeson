@@ -89,6 +89,7 @@ var directed := Callable()  # (unit) -> bool: a person picks that unit's interru
 var _interrupts: Array = []  # [unit, actions] waiting their turn to interrupt, first first
 var _interrupt_left := 0  # actions the interrupter has left
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
+var _picked: Array[Unit] = []  # the units the outermost cast()'s caster picked by hand
 var _casting := 0  # cast() / cast_at() calls under way: an interrupt opens once the outermost is done
 var _reacting := 0  # react() calls under way: an interrupt granted in one opens after it
 var _settling: Unit  # falling after its interrupt (_settle())
@@ -191,6 +192,9 @@ var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, u
 var marks: Dictionary[Vector2i, Array] = {}  # cell -> the Marks laid on it, oldest first (lay_mark()): one-use tile effects, disturbed earth
 @export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
 @export var sight := true  # units perceive only within their wisdom total in tiles, and make out appearances within half that, the range shared across their side (in_range(); Perception.unit()). Off: no limit
+var sighted_when: Dictionary[Faction, Dictionary] = {}  # side -> {foe: {since: turns_begun then, moves: its movement as read, 0 unread}}: how stale a sighting is, and how far the foe could have got since (AI.clues())
+var attacks: Dictionary[Faction, Array] = {}  # side -> [{tiles: where an attacker it couldn't place could have struck from, since}] (_note_attack())
+var swept: Dictionary[Faction, Dictionary] = {}  # side -> {tile: turns_begun when one of its units last searched it} (search())
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
 @export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
@@ -205,6 +209,8 @@ const DEBRIS_KINDS := [
 	[[&"grass", &"shrubbery", &"forest"], "Disturbed foliage, twigs"],
 	[[&"mud", &"snow", &"sand", &"mountains", &"desert", &"taiga"], "Depressions"],
 ]
+const HIT_TURNS := 6  # turns an attack from an unseen foe stays a clue to where it is (attacks_on())
+const SWEEP_TURNS := 4  # turns a tile its side searched counts as looked over: no guessing there (AI.clues())
 const CLEAN_HIDE := 15  # a hiding roll this high or more is a good job: little debris, further off
 const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
@@ -474,6 +480,7 @@ func _listen(u: Unit) -> void:
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
+	_note_attack(u, blow)
 	for h in u.hooks():
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
 
@@ -817,11 +824,15 @@ func _flip(g: Array) -> Array:
 # while (Unit.disable_order()). An automatic skill (Sing) is used on the caster and lands on the nearest units in range
 # (auto_targets()), paid once. A traitor told to turn a hostile skill on its real allies refuses, or
 # with a positive cha mod misses on purpose - and either way its leader looks harder at it.
-func cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool:
+func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: Array[Unit] = []) -> bool:
 	var depth := _resolving.size()
+	if _casting == 0:
+		_picked = picked
 	_casting += 1
 	var done := _cast(caster, skill, target, spreading)
 	_casting -= 1
+	if _casting == 0:
+		_picked = []
 	_resolving.resize(depth)
 	_done_casting(caster, done)
 	return done
@@ -942,8 +953,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		var vs := skill_check(caster, skill, target, {tiles = Command.tiles(target.cell, spot)})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
-			_expose(target)
-			_expose(caster)
+			_lose_cover(target)
+			_lose_cover(caster)
 			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
@@ -952,7 +963,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		var vs := check(caster, skill.stat(), target, skill.stat(), {bonus = zeal + int(req[0]), edge = int(req[2]), tags = stags, cut = cut})
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
-			_expose(caster)
+			_lose_cover(caster)
 			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
@@ -963,7 +974,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		var mine := vs.mine.total
 		contested.emit(caster, target, mine, vs.theirs.total)
 		if not vs.won:  # the caster wins ties
-			_expose(caster)
+			_lose_cover(caster)
 			if read(target, caster).located():
 				suspect(target, caster)  # it felt something try
 			_miss(acts)
@@ -1001,8 +1012,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_miss(acts)
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
-		_expose(target)
-		_expose(caster)
+		_lose_cover(target)
+		_lose_cover(caster)
 		if not target.is_alive():  # (downing one that lingers Downed is no kill; its death is)
 			caster.gain(&"kill", 1)
 		caster.striding = false
@@ -1025,7 +1036,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_evaluate(caster, skill, hit.d20, hit.total)
 		rolled = hit
 		if not hit.hit:
-			_expose(target)
+			_lose_cover(target)
 			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
@@ -1037,7 +1048,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			tags = acts.tags
 			if rolled and not rolled.crit and rolled.total < target.defense(tags) + guard_of(acts) + rh.guard:
 				attacked.emit(caster, target, rolled.d20, rolled.total, target.defense(tags) + guard_of(acts) + rh.guard)
-				_expose(target)
+				_lose_cover(target)
 				_miss(acts)
 				used.emit(caster, skill, target, 0)  # the roll that hit its first target misses its new one
 				return true
@@ -1133,8 +1144,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if foe:
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
-		_expose(target)
-		_expose(caster)
+		_lose_cover(target)
+		_lose_cover(caster)
 		if not target.is_alive():
 			caster.gain(&"kill", 1)  # Sweet Nothings
 	caster.striding = false
@@ -1225,7 +1236,17 @@ func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Beh
 	c.foe = foe
 	c.mods = caster.mods(skill)  # read scaled values through them (impact_rank(), stat_mod())
 	c.tags = hit_tags(caster, skill, target if foe else null, self)
+	c.picked = _picked  # what the outermost cast's caster picked by hand (Behaviour.picks())
 	return c
+
+
+# How many targets caster may pick by hand for skill (its behaviours' picks()).
+func picks_of(caster: Unit, skill: Skill) -> int:
+	var c := cast_of(caster, skill, caster, caster.rank(skill), false)
+	var n := 0
+	for bh in skill.behaviours:
+		n += bh.picks(c)
+	return n
 
 
 # The edge on a skill's attack roll: its own advantage or disadvantage, plus its behaviours' (Gank),
@@ -1827,7 +1848,11 @@ func survey(o: Unit, center: Vector2i, rested: int) -> int:
 # at +bonus, from `center`. How many it grew suspicious of.
 func search(o: Unit, cells: Array, center: Variant = null, bonus := 0) -> int:
 	var found := 0
+	if o.faction and o.faction not in swept:
+		swept[o.faction] = {}
 	for c: Vector2i in cells:
+		if o.faction and c != o.cell:
+			swept[o.faction][c] = turns_begun
 		if c != o.cell and inspect(o, c, center, bonus):
 			o.noticed[c] = true
 			found += 1
@@ -2207,7 +2232,7 @@ func attempt(caster: Unit, skill: Skill, c: Vector2i) -> StringName:
 
 # Hitting a unit, or attacking, gives away where it is: a hidden one loses a level of concealment
 # until its side's next turn starts.
-func _expose(u: Unit) -> void:
+func _lose_cover(u: Unit) -> void:
 	if Perception.cover(self, u) > 0:
 		u.exposed += 1
 
@@ -2326,10 +2351,10 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 			var was := w.hp
 			w.hit(power * (1.0 + caster.stat(&"damage", tags)), tags, caster)
 			hit[w] = hit.get(w, 0) + was - w.hp
-			_expose(w)
+			_lose_cover(w)
 			if not w.is_alive() and w.faction != caster.faction:
 				caster.gain(&"kill", 1))
-	_expose(caster)
+	_lose_cover(caster)
 	for at in map.get_used_cells():
 		if Vector2(at).distance_to(Vector2(c)) <= blast + 0.0001:
 			expose(at, tags, caster)
@@ -3940,10 +3965,95 @@ func in_range(o: Unit, t: Unit) -> int:
 
 
 # Side f made out foe t at c: where its units will look for it once it's out of sight (AI._hunt()).
-func sighted(f: Faction, t: Unit, c: Vector2i) -> void:
+# `moves`: how far it makes the foe's walk, when it could read that (0: it couldn't).
+func sighted(f: Faction, t: Unit, c: Vector2i, moves := 0.0) -> void:
 	if f not in sightings:
 		sightings[f] = {}
 	sightings[f][t] = c
+	if f not in sighted_when:
+		sighted_when[f] = {}
+	sighted_when[f][t] = {since = turns_begun, moves = moves}
+
+
+# How many whole rounds ago (turns of all the sides) turn `since` of turns_begun was.
+func rounds_since(since: int) -> int:
+	var sides := {}
+	for u: Unit in units.values():
+		sides[u.faction] = true
+	return ceili((turns_begun - since) / float(maxi(sides.size(), 1)))
+
+
+# The tiles foe t could have reached from `from` on `budget` movement, as viewer o can reckon it:
+# ground o makes out (known_ground(); the rest plain), every step priced by stride() as t's walk would be
+# paid (its movement effects, Peel), no one standing in its way, within `budget` tiles as the crow flies
+# (walk() goes in lines). Includes `from`.
+func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vector2i]:
+	var best := {from: 0.0}
+	var bags := {from: {}}
+	var grounds := {}
+	var ground_of := func(c: Vector2i) -> Terrain:
+		if c not in grounds:
+			grounds[c] = known_ground(o, c)
+		return grounds[c]
+	var open: Array[Vector2i] = [from]
+	var done := {}
+	while not open.is_empty():
+		var at: Vector2i = open[0]
+		for c in open:
+			if best[c] < best[at]:
+				at = c
+		open.erase(at)
+		if at in done:
+			continue
+		done[at] = true
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				var c := at + Vector2i(dx, dy)
+				if (dx == 0 and dy == 0) or c in done or not on_map(c):
+					continue
+				var bag: Dictionary = bags[at].duplicate()
+				var g: float = best[at] + stride(t, at, c, ground_of.call(at), ground_of.call(c), bag, null, true)
+				if g <= budget + 0.0001 and g < best.get(c, INF) - 0.000001:
+					best[c] = g
+					bags[c] = bag
+					if c not in open:
+						open.append(c)
+	var out: Array[Vector2i] = []
+	for c: Vector2i in best:
+		if Vector2(c).distance_to(Vector2(from)) <= budget + 0.0001:  # a walk goes in a line: ceil(distance) tiles, not a diagonal's two
+			out.append(c)
+	return out
+
+
+# A unit took a blow in a cast from a foe it can't place: its side knows which side of it the blow landed
+# on (the hit's tags: flank, rear; else front) and how far that skill reaches, not the tile: every tile
+# on that side within the skill's reach is where it could have come from. Kept for HIT_TURNS of turns.
+func _note_attack(u: Unit, blow: Dictionary) -> void:
+	var by: Unit = blow.by
+	var cast := resolving()
+	if not u.faction or _casting == 0 or not cast or cast.caster != by or not is_instance_valid(by) or by == u or Faction.friends(by.faction, u.faction) or read(u, by).located():
+		return
+	var side: StringName = &"rear" if &"rear" in blow.tags else (&"flank" if &"flank" in blow.tags else &"front")
+	var reach := skill_range(by, cast.skill, u)
+	var tiles: Array[Vector2i] = []
+	for c in _box(u.cell, ceili(reach)):
+		if c != u.cell and Vector2(c).distance_to(Vector2(u.cell)) <= reach + 0.0001 and u.side_of(c) == side:
+			tiles.append(c)
+	if not attacks.has(u.faction):
+		attacks[u.faction] = []
+	attacks[u.faction].append({tiles = tiles, since = turns_begun})
+
+
+# The attacks on side f in the last HIT_TURNS turns that it couldn't place the attacker of.
+func attacks_on(f: Faction) -> Array:
+	var kept: Array = attacks.get(f, []).filter(func(a: Dictionary): return turns_begun - a.since <= HIT_TURNS)
+	attacks[f] = kept
+	return kept
+
+
+# Whether one of f's units searched c within SWEEP_TURNS of turns.
+func swept_lately(f: Faction, c: Vector2i) -> bool:
+	return turns_begun - swept.get(f, {}).get(c, -999) <= SWEEP_TURNS
 
 
 # Where side f last made out each foe still standing (forgetting the fallen).
@@ -5000,8 +5110,8 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0
 		contested.emit(caster, t, roll.mine.total, bar)
 		if roll.won:  # beating the bar, not meeting it
 			hits += 1
-	_expose(caster)
-	_expose(t)
+	_lose_cover(caster)
+	_lose_cover(t)
 	if hits > 0:
 		for e in skill.effects:
 			var a := t.afflict(e, hits + (1 if t.faction == turn else 0), hits)
@@ -5047,8 +5157,8 @@ func decay(caster: Unit, skill: Skill, target: Unit) -> float:
 func _death(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 0, 0.0]) -> bool:
 	var vs := check(caster, skill.stat(), t, &"", {bonus = int(req[0]), edge = int(req[2]), tags = caster.skill_tags(skill), their_bonus = stand_bonus(t, r), cut = stand_share(t, r)})  # its last stand; the caster wins ties
 	contested.emit(caster, t, vs.mine.total, vs.theirs.total)
-	_expose(caster)
-	_expose(t)
+	_lose_cover(caster)
+	_lose_cover(t)
 	if not vs.won:
 		return false
 	t.slain_from = t.hp

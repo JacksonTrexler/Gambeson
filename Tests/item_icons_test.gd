@@ -21,3 +21,32 @@ func test_sheet_and_card_show_icons() -> void:
 	var u := v(1)
 	u.weapon = load("res://Items/dagger.tres")
 	ok(HUD.trims(u).any(func(t: Array) -> bool: return t[1] == "Dagger" and t[2] != null), "the card lists a worn weapon with its icon")
+
+
+# However many items a card lists, no icon overlaps another or the name block above; the spoils are icons too.
+func test_card_icons_never_overlap_and_spoils_show_them() -> void:
+	var h := await hud(v(1))
+	var it: Item = load("res://Items/dagger.tres")
+	var trims := []
+	for i in 9:
+		trims.append([Color(1, 0, 0) if i % 2 else Color(0, 0, 0, 0), "Dagger", it.icon()])
+	var info: Dictionary = h._info(v(1))
+	info["trims"] = trims
+	h.card.set_info(info)
+	await tree.process_frame
+	await tree.process_frame
+	var rects: Array[Rect2] = [h.card.get_node("Head").get_global_rect()]
+	for c: Control in h.card.trims.get_children():
+		rects.append(c.get_global_rect())
+	ok(rects.size() == 10, "an icon each (%d rects)" % rects.size())
+	var hit := false
+	for i in rects.size():
+		for j in range(i + 1, rects.size()):
+			hit = hit or rects[i].intersects(rects[j])
+	ok(not hit, "no icon touches another or the head (%s)" % [rects])
+	h._show_spoils([it, it] as Array[Item])
+	var row: Node = h.get_node("%OverText").get_parent().get_node_or_null("Spoils")
+	ok(row != null and row.get_child_count() == 2 and row.get_child(0).get_child(0) is TextureRect, "the spoils draw an icon each")
+	h._show_spoils([] as Array[Item])
+	ok(h.get_node("%OverText").get_parent().get_node_or_null("Spoils") == null, "and no row without any")
+	h.free()

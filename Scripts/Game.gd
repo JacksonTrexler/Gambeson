@@ -11,3 +11,16 @@ static var level := 1  # the player's starter's level, and its XP toward the nex
 static var xp := 0
 static var hearts := 0  # extra lives the starter has been given for good (a Heart)
 static var stash: Array[Item] = []  # items the player's side has won (Battle.spoils), to equip or use between and in battles
+
+
+# Back to a new game's start (Save.erase()).
+static func reset() -> void:
+	starter = {}
+	difficulty = 0.0
+	dungeon = null
+	hero = {}
+	outfit = {}
+	level = 1
+	xp = 0
+	hearts = 0
+	stash = []
