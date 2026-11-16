@@ -79,9 +79,11 @@ func test_afford_the_cut() -> void:
 	ok(not AI._strike(b, v(1), reads, log), "and the AI doesn't strike")
 	var h := await hud(v(1))
 	ok("Not enough" in h.why_not(v(1), poach, v(3)), "the HUD says so (%s)" % h.why_not(v(1), poach, v(3)))
+	ok(not h._approach(v(1), poach, v(3).cell).ready, "a walk plan says not ready")
 	v(3).hp = 150
 	ok(not v(1).can_afford(poach) and b.can_afford(v(1), poach, v(3)) and v(1).can_afford(poach, 0.5), "bloodied: half the price, so it can")
 	ok(h.why_not(v(1), poach, v(3)) == "", "the HUD lets it (%s)" % h.why_not(v(1), poach, v(3)))
+	ok(h._approach(v(1), poach, v(3).cell).ready, "and a walk plan calls it ready")
 	ok(AI._strike(b, v(1), reads, log) and "Poach" in log[0], "the AI strikes (%s)" % [log])
 	ok(is_equal_approx(v(1).ap_for(&"skill"), 0.0), "and paid the 2 AP")
 	h.free()
