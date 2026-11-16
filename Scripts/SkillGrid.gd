@@ -13,6 +13,7 @@ extends Control
 # holding each tree's tier 0 root: click one to choose it (chose), and the footer offers to pick it. The
 # same face as SkillWheel, which still draws the Adventurer's own tab.
 
+signal lifted  # a skill dragged out of it, toward the hotbar
 signal picked(s: Skill)
 signal chose(c: TreeChoice, t: SkillTab)  # a tree's root in a choice's box was clicked
 
@@ -335,7 +336,10 @@ func _gui_input(e: InputEvent) -> void:
 
 # A skill it has drags onto the hotbar from here, equipping it (HUD._on_dropped()).
 func _get_drag_data(at: Vector2) -> Variant:
-	return SkillSlot.drag_learned(self, unit, skill_at(at) if unit else null)
+	var d: Variant = SkillSlot.drag_learned(self, unit, skill_at(at) if unit else null)
+	if d:
+		lifted.emit()  # the skills screen steps aside, baring the hotbar (SkillTree)
+	return d
 
 
 func _notification(what: int) -> void:

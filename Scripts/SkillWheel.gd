@@ -11,6 +11,7 @@ extends Control
 # skills not built yet, show the open question they wait on ("?3"). Hover a skill for its tooltip;
 # click it to pick it, and the skills screen shows what it does and what it takes (SkillTree).
 
+signal lifted  # a skill dragged out of it, toward the hotbar
 signal picked(s: Skill)
 
 const UNWORN := Color("#8a7a45")  # a learned skill's rank, dulled while it isn't equipped (Unit.equipped()): it does nothing till it is
@@ -282,7 +283,10 @@ func _gui_input(e: InputEvent) -> void:
 
 # A skill it has drags onto the hotbar from here, equipping it (HUD._on_dropped()).
 func _get_drag_data(at: Vector2) -> Variant:
-	return SkillSlot.drag_learned(self, unit, skill_at(at) if unit else null)
+	var d: Variant = SkillSlot.drag_learned(self, unit, skill_at(at) if unit else null)
+	if d:
+		lifted.emit()  # the skills screen steps aside, baring the hotbar (SkillTree)
+	return d
 
 
 func _notification(what: int) -> void:

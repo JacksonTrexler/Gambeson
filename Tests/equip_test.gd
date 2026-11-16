@@ -59,6 +59,10 @@ func test_auto_equip() -> void:
 	var data: Variant = view._get_drag_data(view.spot(learned[0]))
 	ok(data is Dictionary and data.skill == learned[0] and data.from == -1, "the skills screen: a skill it has drags onto the hotbar (%s)" % learned[0].name)
 	ok(unknown.is_empty() or view._get_drag_data(view.spot(unknown[0])) == null, "one it hasn't learned doesn't")
+	await tree.process_frame
+	ok(not h.skills.visible, "while it's dragged the skills screen steps aside, baring the hotbar")
+	h.skills.notification(Control.NOTIFICATION_DRAG_END)
+	ok(h.skills.visible, "and comes back as the drag ends")
 	h.free()
 
 

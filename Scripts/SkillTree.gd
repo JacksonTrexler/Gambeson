@@ -43,6 +43,25 @@ func _ready() -> void:
 	grid.picked.connect(pick)
 	grid.chose.connect(choose)
 	detail.acted.connect(_act)
+	wheel.lifted.connect(_step_aside)
+	grid.lifted.connect(_step_aside)
+
+
+# A skill dragged out toward the hotbar (equipping it): the screen hides while the drag lasts, so the bar
+# underneath takes the drop, and comes back as it ends showing what's equipped now.
+var _aside := false
+
+
+func _step_aside() -> void:
+	_aside = true
+	hide.call_deferred()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END and _aside:
+		_aside = false
+		show()
+		fill(_title, can_spend)
 
 
 func open(u: Unit, title: String, spend: bool) -> void:
