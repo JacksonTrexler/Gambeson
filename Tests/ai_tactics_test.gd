@@ -18,6 +18,7 @@ var grudge: Skill = load("res://Skills/grudge.tres")
 var focus: Skill = load("res://Skills/focus.tres")
 var focus_pool: Reserve = load("res://Reserves/focus.tres")
 var missile: Skill = load("res://Skills/energy_missile.tres")
+var intervention: Skill = load("res://Skills/intervention.tres")
 
 
 func score(u: Unit, s: Skill, t: Unit) -> float:
@@ -365,10 +366,63 @@ func test_wear_varies_the_blow() -> void:
 	var w := AI._wear(v(1), worn)
 	ok(w > 0.0, "worn, it costs it %.2f" % w)
 	ok(picked.call() == other.name, "worn out, it takes the other blow (%s)" % picked.call())
-	for i in 40:
+	for i in 10:
 		v(1).exhaustion.used(other)
 	v(1).ap = [AP.new(100.0, &"")]
 	ok(AI._strike(b, v(1), reads, []), "both worn: a worn blow is still better than none")
+	Exhaustion.on = false
+
+
+# docs/plans/ai-walks.md. A heal or a support that exhaustion has made dearer is worth less than a fresher one that
+# does as well - but a lone worn one is still cast.
+func test_wear_weighs_heals_and_supports() -> void:
+	var mega: Skill = load("res://Skills/megaheal.tres")
+	var twin: Skill = load("res://Skills/stonegift.tres")
+	for s in [heal, mega]:
+		v(1).learned.append(slot(s, 2))
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
+	Exhaustion.on = true
+	var rested := func() -> void:
+		v(1).refresh()
+		v(1).max_energy = 200
+		v(1).energy = 200
+		v(1).ap = [AP.new(100.0, &"")]  # whatever the wear has made them cost
+	var healed := func() -> Skill:  # the heal it casts on a wounded ally
+		rested.call()
+		v(2).max_hp = 100
+		v(2).hp = 40
+		var before := {heal: v(1).exhaustion.uses.get(heal, 0.0), mega: v(1).exhaustion.uses.get(mega, 0.0)}
+		AI._heal(b, v(1), {v(2): b.read(v(1), v(2))}, [])
+		return heal if v(1).exhaustion.uses.get(heal, 0.0) > before[heal] else (mega if v(1).exhaustion.uses.get(mega, 0.0) > before[mega] else null)
+	ok(AI._fresh(v(1), heal) == 1.0, "fresh: the whole of its worth")
+	ok(healed.call() == heal, "of two heals that do alike, the first")
+	for i in 8:
+		v(1).exhaustion.used(heal)
+	ok(AI._fresh(v(1), heal) < 1.0 and AI._fresh(v(1), heal) >= 1.0 - AI.WORN, "worn: less, never past the floor (%.2f)" % AI._fresh(v(1), heal))
+	ok(healed.call() == mega, "worn, Heal gives way to Megaheal")
+	for i in 10:
+		v(1).exhaustion.used(mega)
+		v(1).exhaustion.used(heal)
+	ok(healed.call() != null, "both worn out: a worn heal is still better than none")
+	var u := v(2)  # the supports are another's: a unit holds four skills at a time
+	for s in [intervention, twin]:
+		u.learned.append(slot(s, 2))
+	var gave := func() -> String:  # the support it gives an ally with nothing on
+		u.refresh()
+		u.max_energy = 200
+		u.energy = 200
+		u.ap = [AP.new(100.0, &"")]
+		for e in v(1).timed.keys():
+			v(1).timed.erase(e)
+		var log: Array[String] = []
+		AI._support(b, u, {v(1): b.read(u, v(1))}, log)
+		return log[0].split(" gives ")[1].split(" to ")[0] if not log.is_empty() else ""
+	var first: String = gave.call()
+	var skills := {"Intervention": intervention, "Stonegift": twin}
+	for i in 8:
+		u.exhaustion.used(skills[first])
+	var then: String = gave.call()
+	ok(first != "" and then != "" and then != first, "a worn support gives way to the fresher (%s, then %s)" % [first, then])
 	Exhaustion.on = false
 
 

@@ -487,6 +487,13 @@ static func _wear(u: Unit, s: Skill) -> float:
 	return (1.0 - 1.0 / rate) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
 
 
+# What share of its worth a skill keeps for what exhaustion has added to its cost: 1 fresh, 1 / rate worn, never
+# below 1 - WORN (_wear() for a blow, in HP: a heal's worth is a share of an ally's HP, a support's has no HP
+# to take it off, so these weigh it as a share): of two skills that do alike, the fresher is picked.
+static func _fresh(u: Unit, s: Skill) -> float:
+	return maxf(1.0 / maxf(u.exhaustion.rate(s), 1.0), 1.0 - WORN)
+
+
 # Each reaction moment a blow of s on t would bring that a passive of t's side u can make out (Read.skills,
 # Read.kit: an unread one it can't weigh) would be asked about - attacked, hit, and fallen when the blow's
 # average kills - as [behaviour, the Reaction, its holder, its rank], what foils() and reprisal() are asked of.
@@ -666,7 +673,11 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 # (Intervention, Rally; not self_only or dual ones). Not one whose effects harm (Effect.helps(): fear, shove,
 # entrance drive the ally about): that lands on foes, through score().
 static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
-	for s in u.actives.filter(func(x: Skill): return not x.hostile and (x.grants or (not x.for_foes() and not x.self_only and not x.effects.is_empty())) and not x.effects.any(func(e: Effect): return e.helps() < 0) and u.can_afford(x)):
+	var gives := u.actives.filter(func(x: Skill): return not x.hostile and (x.grants or (not x.for_foes() and not x.self_only and not x.effects.is_empty())) and not x.effects.any(func(e: Effect): return e.helps() < 0) and u.can_afford(x))
+	var order := range(gives.size())  # the least worn first (its own order on a tie): of two that give alike, the fresher
+	order.sort_custom(func(i: int, j: int): return _fresh(u, gives[i]) > _fresh(u, gives[j]) or (_fresh(u, gives[i]) == _fresh(u, gives[j]) and i < j))
+	for i in order:
+		var s: Skill = gives[i]
 		var e: Effect = s.grants.effects[0] if s.grants else s.effects[0]
 		for t: Unit in reads.keys() + [u]:
 			var r: Read = b.read(u, u) if t == u else reads[t]
@@ -764,7 +775,7 @@ static func _heal(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 			if not t.is_alive() or (t != u and r.attitude(u) != &"ally") or not b.in_reach(u, s, t) \
 					or not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
 				continue
-			var v := want(b, u, s, t, r) + (RESCUE if _revives(b, u, s, t) else 0.0)
+			var v := (want(b, u, s, t, r) + (RESCUE if _revives(b, u, s, t) else 0.0)) * _fresh(u, s)  # a worn one is worth less than a fresh one that does as well
 			if v > best_score:
 				best = t
 				how = s
