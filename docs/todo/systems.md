@@ -43,7 +43,7 @@ Build roughly in this order; the content below depends on them.
 - [x] **More contextual clues for searching**: `AI.clues()` weighs last seen, reach, where a blow came from, marks and debris. Built 2026-11-15 (?159) (`docs/done/systems.md`).
 - [ ] **Rangers**: Observe belongs on their tree too, once they exist.
 - [x] **Dissonance by how far the lie is**: `Perception.lie()` over a natures table. Built 2026-11-15 (?152) (`docs/done/systems.md`). Was: a tally of what the persona puts forward.
-- [ ] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. *Now:* units can be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
+- [x] **Unbounded maps, camera control, spawning mid-battle**, for Infernal Meadows. Built 2026-11-16 (?175): bounded work, a panning camera, spawns checked by the real sight rules; the 30-kill portal battle stays later (`[ ]` under ?175). *Was:* units could be summoned onto a fixed map (`Battle.summon()`: Regeneration Probes).
   - [x] **Procedural maps** generated around the party: grass, light brush, ponds, thin streams (`Meadows.gd`).
   - [x] **Spawn formations** (`Formation`, `Formations/`): prefab groups (units and offsets) that scale and are reused, placed beside features (ponds) beyond the party's perception.
   - [x] **Area difficulty** (`Battle.difficulty`, `Difficulty.area()`): an area attribute (0.5, 1, 1.5) for dungeons and scenarios, built off the roll difficulties; it caps live spawns at ally faction count x difficulty and slows the escape portal.
@@ -655,7 +655,7 @@ Plan and what was built: `docs/plans/search-clues.md`. Built on `z-search`. Test
     - **After searching it still hunts** where its side last saw a foe (it used to hunt only if it hadn't searched).
     - **Combat sims shift:** an Observe user with old sightings and no clue now searches at battle start.
     - **New names to review:** none.
-- [ ] **Tune the clue weights and turn caps by the sims** (all guesses). Tried in ?173 on the museum: every value gave identical fights, so none changed; needs a purpose-built sim (an Observe user hunting a hider, over the seeds). (?159, ?173)
+- [x] **Tune the clue weights and turn caps by the sims** (all guesses). Tried in ?173 on the museum: every value gave identical fights, so none changed; needs a purpose-built sim (an Observe user hunting a hider, over the seeds). (?159, ?173) Tuned in ?177 with the sim: `DEBRIS` 1 -> 3, the rest unmoved. (?177)
 
 ## Param tail (2026-11-15)
 
@@ -695,7 +695,7 @@ Plan and what was built: `docs/plans/ai-prices.md`. Built on `z-aiprice`. Tests 
     - **New names to review:** none.
 - [x] **Defense through a lie** (`_lie`/`twist`) is read, by the AI and the HUD. Built 2026-11-16 (?173): `Read.believed()`. (?162)
 - [x] **A Grudge unit plans a retreat tile** so as not to be cornered next round. Built 2026-11-16 (?173): `AI._retreat()`, `_room()`. (?162)
-- [ ] **Tune `GUESS_DEFENSE`, `POINT`, `RIDER`, `PUSH`, `STARVE` by the sims.** Tried in ?173: no change on the museum (it never uses STARVE or PUSH); needs a purpose-built sim (a Kick against a wall; a Grudge unit in a corner). (?162, ?173)
+- [x] **Tune `GUESS_DEFENSE`, `POINT`, `RIDER`, `PUSH`, `STARVE` by the sims.** Tried in ?173: no change on the museum (it never uses STARVE or PUSH); needs a purpose-built sim (a Kick against a wall; a Grudge unit in a corner). (?162, ?173) Tuned in ?177: all five unmoved (table in `docs/plans/ai-sim.md`). (?177)
 
 ## Equipping skills (2026-11-15)
 
@@ -729,7 +729,7 @@ Plan and what was built: `docs/plans/checks-tail.md`. Built on `z-checkstail`. S
     - **New names to review:** none.
 - [ ] **No forecast for Death's chance**, and the initiative d20 and the two last-stand rolls have no DC. (?164)
 - [x] **Unproven by mutation:** Hitch's `apply()` options and `hit_chance`'s Level Down branch. Built 2026-11-15 (?172): four mutations each fail `check_test`. (?164)
-- [ ] **Tune `AI.SEEN` (0.9)** by the sims; it is a guess. Tried in ?173 (0.8 / 0.95): no change on the museum; needs the purpose-built sim. (?164, ?173)
+- [x] **Tune `AI.SEEN` (0.9)** by the sims; it is a guess. Tried in ?173 (0.8 / 0.95): no change on the museum; needs the purpose-built sim. (?164, ?173) Swept in ?177: kept 0.9. (?177)
 
 ## Equip follow-ups (2026-11-15)
 
@@ -762,7 +762,7 @@ Plan and what was built: `docs/plans/ai-support-2.md`. Built on `z-aisupport`. S
     - **Help orders:** `Skill.serves(posture, u)`: "supportive" also holds for a skill whose behaviour `restores()` (new `Skill.restoring(u)`). So Energize is supportive despite `self_only`, serves both HELP and DEFEND, a Berserker's Affinity for it nets -2, and Heal and Resuscitate now get Unsupportive -1 like Second Wind. `HUD.intent_skill` and `AI.restoring` are gone.
     - **?87 is not fixed by the AI alone:** 30 museum seeds, Lancin 27 / Nemes 3 became 26 / 4; Icor Hex 126 to 125, Strike 95 to 92. Hex still outscores Strike enough that Nemes leans on it; WORN was not tuned to hit a quota. Cost tuning is the user's call (Needs the user).
     - **New names to review:** none.
-- [ ] **Tune `AI.WORN` (0.8)** by the sims; weigh heals and supports for wear too. Tried in ?173 (0.6 / 0.9): no change; heals and supports still not weighed for wear (`_wear` prices strikes only). (?167, ?173)
+- [x] **Tune `AI.WORN` (0.8)** by the sims; weigh heals and supports for wear too. Tried in ?173 (0.6 / 0.9): no change; heals and supports still not weighed for wear (`_wear` prices strikes only). (?167, ?173) Swept in ?177: kept 0.8; heals and supports now weigh wear (?176). (?176, ?177)
 - [ ] **Hex outscores Strike in the museum** (?87): needs cost tuning from the user. (?167)
 
 ## Param rest (2026-11-15)
@@ -788,7 +788,7 @@ Plan and what was built: `docs/plans/forced-forecast.md`. Built on `z-forced`. T
     - **`drive()` in Aura's and Coordinate's (`Battle._link`) loops**, after `a.by` is set; an aura's shove drives each ally from its caster.
     - **Tags on skills' own `tags`: not added** (a skill's tags are the whole cast's; a `shove` tag on Send Off would make its blow, cost and effects read as a shove). Asked of you, at the top of `todo.md`.
     - **New names to review:** none.
-- [ ] **The AI doesn't walk to a tile to line up a shove against a wall**, nor weigh being shoved by foes in its own positioning (`_away` etc.). (?170)
+- [x] **The AI doesn't walk to a tile to line up a shove against a wall**, nor weigh being shoved by foes in its own positioning (`_away` etc.). (?170) Built 2026-11-16 (?176): `AI._line_up`, `_shoved`. (?176)
 - [ ] **Fear and entrance's repeat moves aren't foreseen**; neither are mitigation, boosts or reactions on a slam. (?170)
 - [ ] **No skill carries fear, shove or entrance yet** (still needs a design). (?146)
 - [ ] **Turning**: a unit hit or moved by force still faces as it did. (?142)
@@ -814,6 +814,54 @@ Plan and what was built: `docs/plans/ai-tuning.md`. Built on `z-aitune`. Tests: 
     - **No constant tuned:** a scratch sim ran each of 15 constants low and high over the museum's 8 seeds, all identical to base (extremes moved only the turn count); 30 seeds before and after: Lancin 26 / Nemes 4, 413 turns. The museum has no Observe user, hider, Kick, Grudge or rider skill, so it cannot tell them apart. All stay at their guesses; the sim is not in the suite.
     - **Not done:** weighing heals and supports for exhaustion wear (`_wear` prices strikes only).
     - **New names to review:** none.
-- [ ] **A purpose-built AI sim** (an Observe user hunting a hider; a Kick against a wall; a Grudge unit in a corner) to tune the clue weights, `STARVE`, `PUSH`, `SEEN`, `WORN`. (?173)
-- [ ] **Heals and supports weigh exhaustion wear** (`AI._wear` prices strikes only). (?167, ?173)
-- [ ] **Other Grudge retreat parts**: the Grudge unit's approach, allies coordinating, foreseeing its next position. (?173)
+- [x] **A purpose-built AI sim** (an Observe user hunting a hider; a Kick against a wall; a Grudge unit in a corner) to tune the clue weights, `STARVE`, `PUSH`, `SEEN`, `WORN`. (?173) Built 2026-11-16 (?177): `Tests/sims/ai_sim.gd`, `sweep.sh`. (?177)
+- [x] **Heals and supports weigh exhaustion wear** (`AI._wear` prices strikes only). (?167, ?173) Built 2026-11-16 (?176): `AI._fresh`. (?176)
+- [x] **Other Grudge retreat parts**: the Grudge unit's approach, allies coordinating, foreseeing its next position. (?173) The Grudge unit's approach built (?176); allies coordinating a retreat is not, see ?176. (?176)
+
+## Unbounded maps, camera and spawning (2026-11-16)
+
+Plan and what was built: `docs/plans/unbounded-maps.md`. Built on `z-maps`. Tests: `Tests/meadows_test.gd` (`test_streaming`, `test_camera`, `test_spawning`, each mutation-checked).
+
+175. **Unbounded maps - built on judgement, open for review (2026-11-16).** Phase 7 item 27. My calls:
+    - **Streaming stays the Meadows'** (`Meadows.ensure_around()`); no generic streamer lifted out, as only one map streams. It now triggers on any party move and on a forced move (`driven`), so a shove off the known plane grows it.
+    - **Bounded work:** `Battle.cells_near(c, r)` walks only the box round c; every "all cells within r" loop goes through it (prayers, explosions, `strike_tiles()`, `free_near()`, `drag_spot()`, `_scatter()`, the AI's Observe and channel candidates). A source test keeps new `get_used_cells()` loops out of Battle, AI, HUD and Overlay.
+    - **Rule change: where sight is limited (the Meadows), a tile beyond a unit's perception can't look suspicious to it.** `maybe_suspicious()` reads only its sight's box; a hidden trap 20 tiles off gives no "disturbed earth?" hint to a unit that perceives 12. Where sight isn't limited, nothing changes.
+    - **Camera:** arrow keys pan (new rebindable actions `camera_left/right/up/down`); a pan lets go of the unit, and the view keeps to the active unit again on an action, a new turn, a selection change or Home. The active unit is the selected one or the last to act that the player's side makes out, so an unseen demon doesn't pull the view. No edge-pan or drag (the HUD's panels sit on the edges, the mouse buttons are taken).
+    - **Spawning unseen:** `summon(scene, f, c, unseen_by := null)` lands on the nearest free tile where no unit of that side would make it out by the real read (`Battle.read()`), or returns null. The Meadows pass the party's side; its distance check stays as the cheap first guess. Where sight isn't limited the check is skipped.
+    - **Timings (seed 7, three rounds of every AI):** a round on the starting plane (2,304 tiles) 342 / 513 / 1,049 ms (was 345 / 788 / 1,178); on the grown plane (76,176 tiles) 1,021 / 743 / 960 ms (was 2,883 / 2,253 / 6,135). `free_near` 17.6 ms to 0.01 ms. An unseen `summon()` starting inside sight 164-176 ms; a formation spawn 9-10 ms; the HUD's `_mark()` 0.002 ms.
+    - **A UI bug seen in passing, not fixed:** the turn clock's number draws over the end of the Meadows' "Demons slain" tally at the top centre.
+    - **New names to review:** none.
+- [ ] **The 30-kill escape-portal battle** stays as it is, a later battle. (?175)
+- [ ] **Edge-pan and drag for the camera** (the HUD's edge panels and the mouse buttons are taken). (?175)
+- [ ] **A cheaper first guess for an unseen `summon()` starting inside sight** (~170 ms), if something summons often near the party. (?175)
+- [ ] **The turn clock's number overlaps the "Demons slain" tally** at the top centre of the Meadows. (?175)
+
+## AI walks (2026-11-16)
+
+Plan and what was built: `docs/plans/ai-walks.md`. Built on `q2-aiwalks`. Tests: `ai_tactics_test` (`test_wear_weighs_heals_and_supports`, `test_lines_up_a_shove`, `test_retreat_weighs_shoves_and_price`, `test_grudge_goes_for_what_it_reaches`), each mutation-checked; suite 8609 checks, 0 failed (920 tests).
+
+176. **AI walks - built on judgement, open for review (2026-11-16).** My calls:
+    - **Wear for heals and supports as a share:** `AI._fresh(u, s) = max(1/rate, 1 - WORN)`; `_heal` multiplies a heal's want by it (a lone worn heal still gets cast), `_support` tries skills least worn first. A share, not `_wear()`'s subtraction, because a heal's worth and a support's none aren't in HP; `WORN`'s floor is reused.
+    - **Shove positioning through the forecast:** `Battle.standing(u, c, f)` reads `foresee()` as if u stood on c. `AI._line_up` walks to the tile where a skill's drive adds most beyond its damage, if that beats where it stands by `PUSH x RIDER` (no new constant). `AI._shoved` prices being driven by foes it reads (the foe placed squarely beside the tile, since Kick's `between()` reads a diagonal as no push) and is `_retreat`'s first key.
+    - **One price for the other walks:** `_retreat` (flee, kite, recover, starve) prices each end tile by `route()` with `wary`, keying `gap - extra`. `_recover`'s lattice walk and `_escape` untouched. `_retreat` and `_line_up` restore the rng.
+    - **Grudge approach:** `_last_blows` picks among the foes it can walk up to this round (`_reachable()`), so a far strong foe doesn't draw it past a near one.
+    - **Allies coordinating a retreat: not done.** The one rule tried (don't end beside an ally still to back off) was indistinguishable from what `_room()` already does; the mutation survived its test, so it came out.
+    - **`SUSPECT_TILES` stays 3.0:** 8 museum seeds, 12 or 30 hinted traps: springs 29 / 27 / 25 / 24 / 24 / 24 at 0 / 1 / 2 / 3 / 5 / 8 (12 traps); 59 / 55 / 58 / 51 / 52 / 51 (30 traps). The knee is 3.
+    - **Survived mutation:** the line-up's gain threshold (`PUSH x RIDER`), left as a one-line choice.
+    - **New names to review:** none.
+- [ ] **Allies coordinate a retreat** (don't crowd the one tile out; back off in turn). (?176)
+- [ ] **A test for the line-up's gain threshold** (`PUSH x RIDER`: no test stages a gain between 0 and one tile's drive). (?176)
+
+## AI sim and tuning (2026-11-16)
+
+Plan, scenarios and the full table: `docs/plans/ai-sim.md`. Built on `q2-sim`. Outside the suite: `Tests/sims/ai_sim.gd` and `Tests/sims/sweep.sh`.
+
+177. **AI sim and tuning - built on judgement, open for review (2026-11-16).** My calls:
+    - **The sim lives outside the suite:** `godot --headless --path . -s Tests/sims/ai_sim.gd -- [scenario words] [n=8] [debug]`, about 6 s at n=10, one `SIM <scenario> k=v` line each. Scenarios: hunt-still, hunt-moving, ambush, clash, kick-margin, kick-fight, grudge, rider, armor, worn, hide. `sweep.sh CONSTANT "v1 v2 v3"` edits one `const` in AI.gd or Battle.gd, runs it, and restores the file. The AI is deterministic, so seeds vary dice and start tiles; the choice scenarios read the AI's prices directly.
+    - **`DEBRIS` 1 -> 3:** clash-debris 4.93 / 4.70 / 4.30 / 4.08 rounds to find the hider at 1 / 2 / 3 / 4 (n = 60); a sign outweighs a guess, and a decoy debris costs nothing. 4 gains little more.
+    - **Left unmoved, with results recorded** (`docs/plans/ai-sim.md`): `SUSPICIOUS`, `MARKED`, `REACH`, `HIT`, `REACH_TURNS` (nothing moved); `LAST_SEEN` .5 (a plateau above .25); `SWEEP_TURNS` 4 (monotone but inside the noise, and 1 would break `evidence_test`); `GUESS_DEFENSE` 12; `POINT` .5; `RIDER` 1; `PUSH` .5; `STARVE` 5 (flips between 10 and 20); `AI.SEEN` .9; `AI.WORN` .8.
+    - **Findings, not constants:** an Observe user that has swept its last clue stands beside a hider and never looks again; Poach is never chosen over Strike or Slam Jam in the rider set; Kick beats Strike on price even in the open, so `PUSH` and `RIDER` can't be tuned without a rival at par; after ?176 the Grudge set's Lancin HP lost fell 3.75 to 2.00.
+    - **New names to review:** none.
+- [ ] **An Observe user that has swept its last clue stands next to a hider and never looks again** (hunt-still, seed 1: adjacent for 8 rounds). (?177)
+- [ ] **Poach is never chosen** over Strike or Slam Jam in the rider set; look at its price. (?177)
+- [ ] **`PUSH` and `RIDER` can't be tuned until Kick has a rival at par on price.** (?177)

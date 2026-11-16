@@ -15,6 +15,7 @@ The host plans, briefs, merges and judges. It does not build, wait or read trans
 - `S` = your session scratchpad (the absolute path from your environment). Worktrees go in `S/wt-<branch>`, never inside the repo.
 - Copy the helpers: `cp .claude/skills/coordinate/{t.sh,verify.sh,union.py,brief-common.md} $S/`. Builders read `S/brief-common.md` and run `S/t.sh`. Put S's real path into its `S =` line.
 - The integration branch is the one checked out in `/Users/jtrex/projects/Gambeson` (check `git status -sb`; lately `adventurer-skills`). Pushing it to origin is authorized. Never commit in that tree except a fast-forward. The user and other sessions edit it; if `git status -s` shows their changes, wait or ask.
+- The AI sim harness is `Tests/sims/ai_sim.gd` plus `Tests/sims/sweep.sh`, for tuning AI constants outside the suite.
 - Read `docs/queue.md` for the ready tasks and `todo.md`'s "next is N" for the next question number.
 
 ## Pick and size the work

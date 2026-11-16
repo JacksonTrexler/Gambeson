@@ -249,3 +249,6 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Forced moves: forecast and AI** (`Battle.course()`, `foresee_drive()`, `DRIVES`, `Displace.moves()`/`foresee()`; Aura and Coordinate call `drive()`; `_support` skips a harming skill): plan `docs/plans/forced-forecast.md`. `forced_test`, `ai_tactics_test`. (?170)
 - [x] **Warcry's default-pick preview** (`Behaviour.defaults()`, `Battle.defaults_of()`, `HUD.preview()`): plan `docs/plans/warcry-preview.md`. `warcry_test`. (?171)
 - [x] **AI tuning** (`Read.believed()`, `Perception.MIRROR`, `AI._retreat()`/`_room()`; Defense through a lie; Grudge retreat; no constant changed, the museum cannot tell them apart): plan `docs/plans/ai-tuning.md`. `hud_test`, `ai_tactics_test`. (?173)
+- [x] **Unbounded maps, camera and spawning** (`Battle.cells_near()`, `summon(.., unseen_by)`, `unseen_at()`, `BattleCamera.pan()`, camera actions, `Meadows._explore()` on `traveled` and `driven`): plan `docs/plans/unbounded-maps.md`. `meadows_test`. (?175)
+- [x] **AI walks** (`AI._fresh`, `_line_up`, `_shoved`, `_retreat` on `route()`'s price, `_reachable`, `Battle.standing()`): plan `docs/plans/ai-walks.md`. `ai_tactics_test`. (?176)
+- [x] **AI sim and tuning** (`Tests/sims/ai_sim.gd`, `sweep.sh`; `DEBRIS` 1 to 3, the rest unmoved): plan `docs/plans/ai-sim.md`. Outside the suite. (?177)

@@ -229,5 +229,5 @@ Plan, readings and the sim table: `docs/plans/path-foresight.md`. Built on `z-pa
     - **Three tests restaged** (listed above) as the premises moved.
     - **New names to review:** none.
 - [ ] **The walk's real line draws from the rng later than the AI's `line()` call**, so on a tie the approach's line can differ from the walk's. (?174)
-- [ ] **Other AI walks (flee, kite, retreat) pick cells without `route()`'s price.** (?174)
-- [ ] **Tune `SUSPECT_TILES` (3.0)** by a sim with hinted traps. (?174)
+- [x] **Other AI walks (flee, kite, retreat) pick cells without `route()`'s price.** (?174) Built 2026-11-16 (?176): `_retreat` prices by `route()`. (?176)
+- [x] **Tune `SUSPECT_TILES` (3.0)** by a sim with hinted traps. (?174) Swept in ?176: 3.0 stays. (?176)

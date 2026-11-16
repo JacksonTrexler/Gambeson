@@ -1,37 +1,52 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-16. Reconciled against the code after ?170 to ?174.
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-16. Reconciled against the code after ?175 to ?177.
 
-Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: forced moves (forecast and AI), Warcry's default-pick preview, Guide rings and check tests, AI tuning, path foresight, the checks tail and rebate affordability, equip follow-ups, tooling guards, AI support 2, the HUD glow and Guide bundle, param rest, param, save follow-ups, the foe look-over, AI prices, equipping and the test tidy, search clues, Warcry's picker and card icons, besides the item tool, dissonance, rebates, forced unshape, bio text and the older cards. Run cards in parallel only where "Collides with" says none.
+Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: unbounded maps, AI walks (wear, shove positioning, route() retreats, Grudge approach), the AI sim and tuning, forced moves (forecast and AI), Warcry's default-pick preview, Guide rings and check tests, AI tuning, path foresight, the checks tail and rebate affordability, equip follow-ups, tooling guards, AI support 2, the HUD glow and Guide bundle, param rest, param, save follow-ups, the foe look-over, AI prices, equipping and the test tidy, search clues, Warcry's picker and card icons, besides the item tool, dissonance, rebates, forced unshape, bio text and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-- `z-maps`: unbounded maps, the camera and spawning (Battle.gd, Overlay.gd, BattleCamera.gd, Scenes/). Nearly every Battle and Overlay card collides with it: hold those until it merges.
+Nothing.
 
-## Wave 1: the AI, after `z-maps` merges
+## Wave 1: follow-ups from ?175 to ?177 (all small; the files differ, so they can run together)
 
-### A purpose-built AI sim
-- Source: docs/todo/systems.md (?159, ?162, ?164, ?167, ?173)
-- Scope: a scratch battle set that exercises what the museum cannot (an Observe user hunting a hider; a Kick against a wall; a Grudge unit in a corner; a rider skill), run over seeds with each constant low and high, to tune the clue weights and caps (`SUSPICIOUS` ... `HIT`, `REACH_TURNS`, `SWEEP_TURNS`), `GUESS_DEFENSE`, `POINT`, `RIDER`, `PUSH`, `STARVE`, `AI.SEEN`, `AI.WORN`. Keep the sim out of the suite (slow) unless a small version is cheap. Record each choice and the table. The museum's Hex-over-Strike balance (?87) is not here: cost tuning is the user's.
-- Read: docs/plans/ai-tuning.md, docs/plans/search-clues.md, docs/plans/ai-prices.md
-- Files: Scripts/AI.gd, Tests/ (a scratch driver)
-- Model: sonnet/high
-- Collides with: AI cards below (AI.gd)
-
-### Exhaustion wear for heals and supports
-- Source: docs/todo/systems.md (?167, ?173)
-- Scope: `AI._wear` prices strikes only; weigh heals and supports for the cost exhaustion adds too, with a test by seam.
-- Read: docs/plans/ai-support-2.md
-- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd
+### Meadows HUD: the turn clock over "Demons slain"
+- Source: docs/todo/systems.md (?175)
+- Scope: the turn clock's number draws over the end of the Meadows' "Demons slain" tally at the top centre; lay them out so they don't overlap (check by a screenshot, `visual-check-godot-ui`).
+- Files: Scripts/HUD.gd (or the clock's scene), Tests/hud_test.gd
 - Model: sonnet/medium
-- Collides with: the purpose-built sim (AI.gd)
+- Collides with: none
 
-### AI positioning for forced moves, and the other walks on route()'s price
-- Source: docs/todo/systems.md (?170); docs/todo/ui.md (?174)
-- Scope: the AI walks to a tile that lines up a shove against a wall and weighs being shoved by foes in `_away`; flee, kite and retreat walks price cells with `route()` (as `_approach` does); the Grudge unit's own approach and allies coordinating a retreat (?173); tune `SUSPECT_TILES` with a hinted-trap sim.
-- Read: docs/plans/forced-forecast.md, docs/plans/path-foresight.md, docs/plans/ai-tuning.md
-- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd, Tests/path_test.gd
+### Camera: edge-pan
+- Source: docs/todo/systems.md (?175)
+- Scope: pan the camera by pushing the mouse to the screen edge, clear of the HUD's edge panels; a setting to turn it off. Arrow-key pan exists.
+- Read: docs/plans/unbounded-maps.md
+- Files: Scripts/BattleCamera.gd, Scripts/Settings (as found), Tests/meadows_test.gd
+- Model: sonnet/medium
+- Collides with: the HUD card above only if it touches the same panel
+
+### A cheaper first guess for summons inside sight
+- Source: docs/todo/systems.md (?175)
+- Scope: an unseen `summon()` that starts inside sight takes ~170 ms reading its way out; guess a tile past perception range first (as the Meadows' formation spawn does, 9-10 ms) and read only to confirm. Measure before and after.
+- Read: docs/plans/unbounded-maps.md
+- Files: Scripts/Battle.gd, Tests/meadows_test.gd
+- Model: sonnet/medium
+- Collides with: none
+
+### Allies coordinate a retreat
+- Source: docs/todo/systems.md (?176)
+- Scope: allies backing off from one Grudge unit shouldn't crowd the same tile out. The rule tried in ?176 (don't end beside an ally still to back off) was no better than `_room()`; find one a seam test can tell apart, or drop the card.
+- Read: docs/plans/ai-walks.md
+- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd
 - Model: sonnet/high
-- Collides with: the AI cards above (AI.gd)
+- Collides with: the next card (AI.gd)
+
+### AI findings from the sim
+- Source: docs/todo/systems.md (?177, ?176)
+- Scope: an Observe user that has swept its last clue stands beside a hider and never looks again (sim `hunt-still`, seed 1); Poach is never chosen over Strike or Slam Jam (sim `rider`); a test for the line-up's gain threshold (`PUSH x RIDER`). Fix what the sim shows and re-run it (`Tests/sims/ai_sim.gd`, `sweep.sh`).
+- Read: docs/plans/ai-sim.md, docs/plans/ai-walks.md
+- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd
+- Model: sonnet/high
+- Collides with: allies coordinate a retreat (AI.gd)
 
 ## Needs the user (not queued)
 - Test stubs, Option A or B: ?144.

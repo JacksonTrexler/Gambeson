@@ -148,6 +148,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Guide rings and check tests (?172) | `check_test.gd` |
 | — | AI tuning: Defense through a lie, Grudge retreat (?173) | `hud_test.gd`, `ai_tactics_test.gd` |
 | — | Path foresight (?174) | `path_test.gd`, `facing_test.gd`, `marks_test.gd` |
+| 27 | Unbounded maps, camera and spawning (?175) | `meadows_test.gd` |
+| — | AI walks: heal wear, shove positioning, route() retreats, Grudge approach (?176) | `ai_tactics_test.gd` |
+| — | AI sim and tuning (?177) | `Tests/sims/ai_sim.gd` (outside the suite) |
 
 ## Questions to answer first
 
@@ -227,7 +230,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 ## Phase 7: Encounters
 
 26. **Astral Envoy tuning** (S, later): balance waits until more of the game exists; Sunder once Sundering exists (?13).
-27. **Unbounded maps, camera and spawning** (L): a map that streams chunks, a camera that pans and follows units, and spawning out of view (`Battle.summon()` is the start). Unlocks Infernal Meadows (30 kills open the escape portal).
+27. **Unbounded maps, camera and spawning** (L): a map that streams chunks, a camera that pans and follows units, and spawning out of view (`Battle.summon()` is the start). Unlocks Infernal Meadows (30 kills open the escape portal). **Built (?175);** the 30-kill portal battle stays later.
 
 ## Suggested order
 
