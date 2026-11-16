@@ -38,6 +38,7 @@ const SEEN := 0.9  # a hiding skill foes would see through at least this often i
 const DEBRIS := 3.0  # debris a hiding foe left, fresh; halved a round on
 const MARKED := 0.5  # a mark a foe laid that it knows of
 const LAST_SEEN := 0.5  # where its side last made a foe out
+const LOST := 0.5  # a foe its side made out once and has lost track of (the sighting forgotten at the spot): a look where the hunter stands, after the sweep lapses
 const REACH := 0.5  # shared among the tiles that foe could have reached since
 const HIT := 1.0  # shared among the tiles an unseen attacker could have struck from
 const REACH_TURNS := 3  # the most turns of a foe's walking it reckons on
@@ -675,6 +676,8 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 #  - marks of foes it knows of: MARKED each;
 #  - where its side last made a foe out: LAST_SEEN there, and REACH shared among the tiles that foe could have
 #    reached by now (Battle.reckon_reach(): its movement as read, a turn's worth for each round since, to REACH_TURNS);
+#  - a foe its side once made out, living, that no sighting places now (the hunter reached the spot and found no one): LOST, where u stands.
+#    A guess like the rest, so a look there rules it out for SWEEP_TURNS and it looks again after, not standing by a hider for good;
 #  - where it was struck from by one it couldn't place (Battle.attacks_on()): HIT shared among the tiles on
 #    the side the blow landed that its skill reached.
 static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
@@ -700,6 +703,11 @@ static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
 	for a in b.attacks_on(u.faction) if u.faction else []:
 		for c in a.tiles:
 			_clue(guess, c, HIT / a.tiles.size())
+	if u.faction:
+		for t: Unit in b.sighted_when.get(u.faction, {}):
+			if is_instance_valid(t) and t.is_alive() and not Faction.friends(t.faction, u.faction) and not seen.has(t):
+				_clue(guess, u.cell, LOST)
+				break
 	for c in guess:
 		if u.faction and b.swept_lately(u.faction, c):
 			continue

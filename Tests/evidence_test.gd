@@ -166,6 +166,20 @@ func test_clues_weigh() -> void:
 	ok(spot in AI.clues(b, v(1)), "but it's worth another look in time")
 
 
+func test_clues_lost_foe() -> void:
+	watcher()
+	b.sighted(lancin, v(3), Vector2i(4, 3), 2.0)
+	b.last_seen(lancin).erase(v(3))  # its hunter reached the spot, found no one: the sighting forgotten
+	var here := v(1).cell
+	ok(AI.clues(b, v(1)) == {here: AI.LOST}, "a foe it made out once and has lost: a look where it stands, nothing else %s" % [AI.clues(b, v(1))])
+	b.swept[lancin] = {here: b.turns_begun}
+	ok(AI.clues(b, v(1)).is_empty(), "looked over: nothing to go on")
+	b.turns_begun += Battle.SWEEP_TURNS + 1
+	ok(here in AI.clues(b, v(1)), "but it looks again in time, not standing by a hider for good")
+	b.sighted_when[lancin].clear()
+	ok(AI.clues(b, v(1)).is_empty(), "a foe it never made out is no clue")
+
+
 func test_clues_reach_by_known_ground() -> void:
 	watcher()
 	var from := Vector2i(8, 3)
