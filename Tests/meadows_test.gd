@@ -39,6 +39,36 @@ func test_plane() -> void:
 	m.free()
 
 
+# The plane streams: a chunk is the same whichever order it's reached in (its seed's noise alone), and
+# what loops over "the tiles near here" walks only the box around it (Battle.cells_near()), so the work
+# stays the area's as the plane grows - no whole-map get_used_cells() loop in Battle or the AI.
+func test_streaming() -> void:
+	var m: Node = await meadows()
+	var mb: Battle = m.get_node("Battle")
+	var md: Meadows = mb.get_node("Meadows")
+	md.ensure_around(Vector2i(60, 60))
+	var first := {}
+	for c in mb.cells_near(Vector2i(60, 60), 16):
+		first[c] = mb.map.get_cell_atlas_coords(c)
+	m.free()
+	m = await meadows()
+	mb = m.get_node("Battle")
+	md = mb.get_node("Meadows")
+	md.ensure_around(Vector2i(-60, 30))
+	md.ensure_around(Vector2i(60, 60))
+	ok(first.size() > 600 and first.keys().all(func(c: Vector2i): return mb.map.get_cell_atlas_coords(c) == first[c]), "the same seed, reached another way: the same ground")
+	var near := mb.cells_near(Vector2i(60, 60), 3)
+	ok(near.size() == mb.map.get_used_cells().filter(func(c: Vector2i): return Vector2(c).distance_to(Vector2(60, 60)) <= 3.5).size(), "cells_near: every tile within reach, from its box")
+	var was := mb.on_map(Vector2i(90, 90))
+	mb.move(mb.player, Vector2i(83, 83))
+	mb.driven.emit(mb.player, null, [] as Array[StringName], 3, false)
+	ok(not was and mb.on_map(Vector2i(90, 90)), "pushed to its edge: the plane grows around it")
+	for f in ["res://Scripts/Battle.gd", "res://Scripts/AI.gd", "res://Scripts/HUD.gd", "res://Scripts/Overlay.gd"]:
+		var code := FileAccess.get_file_as_string(f).split("\n")
+		ok(not Array(code).any(func(l: String): return "get_used_cells()" in l and not l.strip_edges().begins_with("#")), "%s loops over no whole map" % f.get_file())
+	m.free()
+
+
 func test_sight() -> void:
 	var m: Node = await meadows()
 	var mb: Battle = m.get_node("Battle")

@@ -561,7 +561,7 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 		var reach := b.area_reach(u, s)
 		var best: Variant = null
 		var most := 0.0
-		for c in b.map.get_used_cells():
+		for c in b.cells_near(u.cell, reach):
 			if Vector2(u.cell).distance_to(Vector2(c)) > reach + 0.0001:
 				continue
 			var n := 0.0
@@ -966,7 +966,7 @@ static func _channel(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 		var striking := u.channel != null and u.channel.skill == s
 		if not striking and (u.channel != null or not u.can_afford(s)):
 			continue
-		var cells: Array = b.strike_tiles(u) if striking else b.map.get_used_cells().filter(
+		var cells: Array = b.strike_tiles(u) if striking else b.cells_near(u.cell, b.area_reach(u, s)).filter(
 				func(c: Vector2i): return Vector2(u.cell).distance_to(Vector2(c)) <= b.area_reach(u, s) + 0.0001)
 		var best: Variant = null
 		var most := 0.0

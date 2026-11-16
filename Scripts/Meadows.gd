@@ -62,6 +62,7 @@ func _ready() -> void:
 		ensure_around(u.cell)
 	ensure_around(Vector2i.ZERO)
 	battle.traveled.connect(_on_traveled)
+	battle.driven.connect(func(u: Unit, _by: Unit, _tags: Array[StringName], _went: int, _hit: bool): _explore(u))  # pushed, pulled, sent
 	battle.turn_changed.connect(_on_turn)
 	_tally = Label.new()
 	_tally.add_theme_font_size_override(&"font_size", 7)
@@ -256,9 +257,15 @@ func _open() -> void:
 		battle.escape(u)
 
 
-func _on_traveled(u: Unit, _from: Vector2i, path: Array[Vector2i]) -> void:
+# The plane grows around the party wherever one of them goes, however it got there.
+func _explore(u: Unit) -> void:
 	if battle.player and Faction.friends(u.faction, battle.player.faction):
 		ensure_around(u.cell)
+
+
+func _on_traveled(u: Unit, _from: Vector2i, path: Array[Vector2i]) -> void:
+	_explore(u)
+	if battle.player and Faction.friends(u.faction, battle.player.faction):
 		if opened and (portal in path or u.cell == portal):
 			battle.escape(u)
 

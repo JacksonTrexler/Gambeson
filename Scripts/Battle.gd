@@ -1797,7 +1797,8 @@ func maybe_suspicious(o: Unit) -> Array[Vector2i]:
 		if not z.allied:
 			for c in z.levels:
 				out[c] = true
-	for c in _maybe_hidden():
+	var sees := perception_range(o)  # where sight is limited, what o can't perceive can't look odd to it
+	for c in _maybe_hidden(o.cell if sees >= 0.0 else null, sees):
 		if hidden(c):
 			out[c] = true
 	for c in marks:  # a mark hidden from o (Mark.told()): its tile may look odd (Perception.tile())
@@ -1806,12 +1807,17 @@ func maybe_suspicious(o: Unit) -> Array[Vector2i]:
 	for k in o.suspicion:
 		if k is Vector2i:
 			out[k] = true
-	return out.keys().filter(func(c: Vector2i): return map.get_cell_source_id(c) != -1)
+	var kept: Array[Vector2i] = []
+	for c: Vector2i in out:
+		if map.get_cell_source_id(c) != -1 and (sees < 0.0 or Vector2(c).distance_to(Vector2(o.cell)) <= sees + 0.0001):
+			kept.append(c)
+	return kept
 
 
 # Every cell that could be hidden (hidden()): those layered over or trapped (their terrain isn't the
-# map's), and those painted with a tile whose terrain is concealed - found by tile, not cell by cell.
-func _maybe_hidden() -> Array[Vector2i]:
+# map's), and those painted with a tile whose terrain is concealed - found by tile, not cell by cell;
+# or, given a centre `around`, among the tiles within `r` of it only (cells_near()).
+func _maybe_hidden(around: Variant = null, r := -1.0) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	out.assign(layers.keys() + snares.keys())
 	if _concealed_tiles.is_empty() and map.tile_set:
@@ -1829,6 +1835,14 @@ func _maybe_hidden() -> Array[Vector2i]:
 					var ter: Terrain = d.get_custom_data("terrain") if d and ts.get_custom_data_layer_by_name("terrain") >= 0 else null
 					if ter and ter.concealment > 0:
 						_concealed_tiles.append([ts.get_source_id(i), at, alt])
+	if around != null:
+		var kinds := {}
+		for k in _concealed_tiles.slice(1):
+			kinds[k] = true
+		for c in cells_near(around, r) if not kinds.is_empty() else []:
+			if [map.get_cell_source_id(c), map.get_cell_atlas_coords(c), map.get_cell_alternative_tile(c)] in kinds:
+				out.append(c)
+		return out
 	for k in _concealed_tiles.slice(1):
 		out.append_array(map.get_used_cells_by_id(k[0], k[1], k[2]))
 	return out
@@ -2001,14 +2015,14 @@ func pray(u: Unit, r: int, target: Unit = null) -> void:
 				left -= o.enchant(left)
 		&"luun":
 			var levels: Dictionary[Vector2i, int] = {}
-			for c in map.get_used_cells():
+			for c in cells_near(u.cell, r):
 				if Command.tiles(u.cell, c) <= r:
 					levels[c] = 1
 			zones.append(Zone.new(&"dark", levels, r, u.faction, true))
 		&"drael":
 			cleanse(target if target else u, r)
 		&"vetruvis":
-			for c in map.get_used_cells():
+			for c in cells_near(u.cell, r):
 				if Command.tiles(u.cell, c) <= r:
 					lay_mark(c, earthwork(u, r))
 	prayed.emit(u, u.deity(), r)
@@ -2056,7 +2070,11 @@ func _scatter(u: Unit, roll: int, along: Array[Vector2i] = []) -> void:
 	if from.is_empty():
 		from.append(u.cell)
 	var spots: Array[Vector2i] = []
-	for c in map.get_used_cells():
+	var near := {}
+	for p in from:
+		for c in cells_near(p, band[1][1]):
+			near[c] = true
+	for c: Vector2i in near:
 		var d := 99
 		for p in from:
 			d = mini(d, Command.tiles(p, c))
@@ -2486,7 +2504,7 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 			if not w.is_alive() and w.faction != caster.faction:
 				caster.gain(&"kill", 1))
 	_lose_cover(caster)
-	for at in map.get_used_cells():
+	for at in cells_near(c, blast):
 		if Vector2(at).distance_to(Vector2(c)) <= blast + 0.0001:
 			expose(at, tags, caster)
 	used.emit(caster, skill, c, hit.values().reduce(func(sum, x): return sum + x, 0))
@@ -2498,7 +2516,7 @@ func _detonate(caster: Unit, skill: Skill, c: Vector2i) -> bool:
 func strike_tiles(u: Unit) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if u.channel:
-		for c in map.get_used_cells():
+		for c in cells_near(u.channel.at, u.channel.turns):
 			if Command.tiles(u.channel.at, c) <= u.channel.turns:
 				out.append(c)
 	return out
@@ -3409,6 +3427,25 @@ func on_map(c: Vector2i) -> bool:
 	return map.get_cell_source_id(c) != -1
 
 
+# The tiles on the map within r + 0.5 of c: every tile within r by either measure (as the crow flies,
+# or Command.tiles()' rounded one), for the caller to narrow by its own. Only the box around c is
+# walked, clipped to the map's used rect, so the work is the area's, not the map's (the Meadows' plane
+# grows as the party explores). "The tiles within so many of here" goes through this, never a loop over
+# map.get_used_cells().
+func cells_near(c: Vector2i, r: float) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if r < 0.0:
+		return out
+	var n := ceili(r) + 1
+	var box := Rect2i(c - Vector2i(n, n), Vector2i(2 * n + 1, 2 * n + 1)).intersection(map.get_used_rect())
+	for x in range(box.position.x, box.end.x):
+		for y in range(box.position.y, box.end.y):
+			var at := Vector2i(x, y)
+			if Vector2(at).distance_to(Vector2(c)) <= r + 0.5 and map.get_cell_source_id(at) != -1:
+				out.append(at)
+	return out
+
+
 # What whoever's on c deals with: its top layer, composed with each beneath while the one above passes
 # (Leaves over glass over grass) - or its ground alone, bare. Cached until the stack changes.
 func terrain(c: Vector2i) -> Terrain:
@@ -3874,13 +3911,23 @@ func summon(scene: PackedScene, f: Faction, c: Vector2i) -> Unit:
 	return u
 
 
-# The free tile on the map nearest c (c itself if it's free), or null.
-func free_near(c: Vector2i) -> Variant:
-	var best: Variant = null
-	for x in map.get_used_cells():
-		if not unit_at(x) and (best == null or Vector2(x).distance_to(Vector2(c)) < Vector2(best).distance_to(Vector2(c))):
-			best = x
-	return best
+# The free tile on the map nearest c (c itself if it's free), or null: looked for in widening boxes,
+# so a crowded spot on a big map costs its neighbourhood, not the map. `ok`: what else a tile must be.
+func free_near(c: Vector2i, ok := Callable()) -> Variant:
+	var used := map.get_used_rect()
+	var far := maxi(maxi(absi(c.x - used.position.x), absi(c.x - used.end.x)), maxi(absi(c.y - used.position.y), absi(c.y - used.end.y)))
+	var n := 2
+	while true:
+		var best: Variant = null
+		for x in cells_near(c, n):
+			if not unit_at(x) and (not ok.is_valid() or ok.call(x)) and (best == null or Vector2(x).distance_to(Vector2(c)) < Vector2(best).distance_to(Vector2(c))):
+				best = x
+		if best != null and Vector2(best).distance_to(Vector2(c)) <= n:  # nothing nearer outside the box
+			return best
+		if n > far:
+			return best
+		n *= 2
+	return null
 
 
 # The turn passes. A channel held since an earlier turn holds through this one only if its unit met
@@ -4675,7 +4722,7 @@ func mend(t: Unit, hp: int, power: int, per_wound := 0) -> int:
 # must be dragged, that the caster could walk to (within its movement); null if there's none.
 func drag_spot(caster: Unit, skill: Skill, t: Unit) -> Variant:
 	var best: Variant = null
-	for c in map.get_used_cells():
+	for c in cells_near(caster.cell, caster.stat(&"movement")):
 		if skill.drags() not in terrain(c).tags or (unit_at(c) and unit_at(c) != t):
 			continue
 		if Command.tiles(caster.cell, c) > caster.stat(&"movement"):
