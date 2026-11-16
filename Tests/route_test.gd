@@ -396,6 +396,8 @@ func test_reserve_text() -> void:
 	v(2).learned.append(slot(stamina, 2))
 	v(1).refresh()
 	v(2).refresh()
+	v(1).energy = v(1).max_energy
+	var kept := v(1).carry(&"energy", mana, 1)
 	var plain := {&"sweet": sweet.markup(2, false, v(1)), &"stamina": stamina.markup(2, false, v(2)), &"mana": mana.markup(2, false, v(1)), &"tenacity": tenacity.markup(2, false, v(1))}
 	print("POOLS ", v(1).pools()[sweet.reserve], " ", v(2).giver_rank(stamina.reserve), " ", v(1).opened(mana.opens), " ", v(1).charisma)
 	ok(v(1).pools()[sweet.reserve] == 4 and v(2).giver_rank(stamina.reserve) == 2 and v(1).opened(mana.opens) == 2, "unmodified: Sweet Nothings 2 x 2, rank 2, tier 2")
@@ -405,6 +407,7 @@ func test_reserve_text() -> void:
 	var dense := {&"sweet": sweet.markup(2, false, v(1)), &"stamina": stamina.markup(2, false, v(2)), &"mana": mana.markup(2, false, v(1)), &"tenacity": tenacity.markup(2, false, v(1))}
 	ok(v(1).pools()[sweet.reserve] == 6 and "x {r:3}" in dense[&"sweet"], "Density: the reserve's size and its text read rank 3 (%s)" % dense[&"sweet"])
 	ok(v(2).giver_rank(stamina.reserve) == 3 and "{r:6} more on a turn it rests" in dense[&"stamina"] and "{r:4} more" in plain[&"stamina"], "the resting rate: 2 x rank, mechanic and text (%s)" % dense[&"stamina"])
+	ok(kept == floori(v(1).max_energy * 0.2 + 0.0001) and v(1).carry(&"energy", mana, 1) == floori(v(1).max_energy * 0.3 + 0.0001), "a switch carries 10%% x rank of the Energy it leaves: rank 3 under Density (%d -> %d)" % [kept, v(1).carry(&"energy", mana, 1)])
 	ok(v(1).opened(mana.opens) == 3 and "{r:T3}" in dense[&"mana"] and "{r:30}%" in dense[&"mana"] and "{r:20}%" in plain[&"mana"], "Mana opens tier 3, and a switch carries 30%% a turn (%s)" % dense[&"mana"])
 	ok(tenacity.downed.markup(3) in dense[&"tenacity"] and dense[&"tenacity"] != plain[&"tenacity"], "the Downed rule is described at rank 3, as Downed.takes() reads it")
 	v(1).trinket = emblem(&"sigma_down", &"insignia", 1)  # stat impact x1.5: cha mod 2 -> 3
