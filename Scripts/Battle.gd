@@ -1745,11 +1745,13 @@ static func _sees_through(was: Read, now: Read) -> bool:
 # _vanish() to compare after something that may hide it.
 func _sightings(t: Unit) -> Dictionary:
 	var out := {}
+	Unit.begin_read()
 	for o: Unit in units.values():
 		if o != t and o.is_alive() and not o.asleep():
 			var r := read(o, t)
 			if r.located() and r.faction != null:
 				out[o] = r
+	Unit.end_read()
 	return out
 
 
@@ -1807,6 +1809,7 @@ func _look_harder(u: Unit) -> void:
 # hidden trap or a hidden unit there, or one it already suspects and still can't make out; or an ally
 # whose tags it sees scrambled (Haluca). Nearest first.
 func suspicious(o: Unit) -> Array[Vector2i]:
+	Unit.begin_read()  # all reads, nothing changed: each unit's effects are found once (Unit._effects())
 	var out: Array[Vector2i] = []
 	for c in maybe_suspicious(o):
 		var r := read(o, c)
@@ -1817,6 +1820,7 @@ func suspicious(o: Unit) -> Array[Vector2i]:
 			var r := read(o, t)
 			if r.located() and (r.hint != "" or (o.suspects(t) + o.suspects(t.cell) > 0 and r.net < 0) or (t.faction == o.faction and o.scrambles(t))):
 				out.append(t.cell)
+	Unit.end_read()
 	out.sort_custom(func(x: Vector2i, y: Vector2i): return Vector2(x).distance_to(Vector2(o.cell)) < Vector2(y).distance_to(Vector2(o.cell)))
 	return out
 

@@ -1663,17 +1663,24 @@ func paused_on(ground_tags: Array[StringName]) -> Array[Skill]:
 # "mul" effects then multiply the total (Stoneskin halves dexterity). As `viewer` sees it: timed
 # effects it saw through (Hide, against an investigator who passed) don't count.
 func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: Skill = null) -> float:
-	var t := Tags.expand(tags)
+	var t: Array[StringName] = []
+	var expanded := false  # the query's tags, expanded when the first effect that asks for tags turns up
 	var sum: float = 0.0
 	if s == &"size" and race:
 		sum = race.size
 	elif s in CORE:
 		sum = get(s)
 	var factor := 1.0
-	for pair in _effects(viewer):
+	for pair in _stat_fx(s, viewer) if reading > 0 else _effects(viewer):
 		var e: Effect = pair[0]
-		if e.stat != s or not (e.tags.is_empty() or e.tags.any(func(x): return x in t)):
+		if e.stat != s:
 			continue
+		if not e.tags.is_empty():
+			if not expanded:
+				t = Tags.expand(tags)
+				expanded = true
+			if not e.tags.any(func(x): return x in t):
+				continue
 		if not e.skills.is_empty() and of not in e.skills:
 			continue
 		if e.armored and not armored():
@@ -3264,31 +3271,63 @@ func wake() -> void:
 # on, and effect of its items. A timed effect the unit's own passives already give doesn't count twice (Stonegift on a
 # Stoneskin golem), nor does one `viewer` saw through.
 func _effects(viewer: Unit = null) -> Array:
-	var key := [self, viewer]
-	if reading > 0 and key in _read_fx:
-		return _read_fx[key]
-	var out := _gather_effects(viewer)
 	if reading > 0:
-		_read_fx[key] = out
-	return out
+		return _held_fx(viewer).all
+	return _gather_effects(viewer)
 
 
-# While a read is under way (Battle.read(): reading > 0), what _effects() found for each unit and
-# viewer, kept for the read's length: a read changes no one's effects, and asks for the same few
-# units' stats dozens of times. Cleared as the outermost read ends (end_read()).
+# While a read is under way, or any other stretch that changes no one's effects (begin_read()/end_read(): reading > 0),
+# what _effects() found for each viewer (null: none), kept for the stretch's length with its effects listed by stat
+# (_stat_fx()): a read changes no one's effects, and asks for the same few units' stats dozens of times. It holds only
+# while the unit stands where it was (a planning step on another tile, Battle.standing(), has other ground's effects),
+# and it is dropped as the outermost stretch begins (_epoch), so nothing carries from one to the next.
+var _fx := {}  # viewer -> {all: [effect, rank, strength]..., by: {stat: the same, of that stat}}
+var _fx_epoch := -1
+var _fx_at: Variant
+var _fx_ground: Terrain
+var _fx_steady: Variant
 static var reading := 0
-static var _read_fx := {}
+static var _epoch := 0
 
 
+func _held_fx(viewer: Unit) -> Dictionary:
+	if _fx_epoch != _epoch or _fx_at != cell or _fx_ground != footing or _fx_steady != steadied:
+		_fx.clear()
+		_fx_epoch = _epoch
+		_fx_at = cell
+		_fx_ground = footing
+		_fx_steady = steadied
+	var held: Variant = _fx.get(viewer)
+	if held == null:
+		held = {all = _gather_effects(viewer), by = {}}
+		_fx[viewer] = held
+	return held
+
+
+# What _effects() holds for s alone, in the order it holds them (the same sum comes out); in a stretch only.
+func _stat_fx(s: StringName, viewer: Unit) -> Array:
+	var held := _held_fx(viewer)
+	var by: Dictionary = held.by
+	if s not in by:
+		var some := []
+		for pair in held.all:
+			if StringName(pair[0].stat) == s:
+				some.append(pair)
+		by[s] = some
+	return by[s]
+
+
+# Begins a stretch in which nothing's effects change (a read, or a planning loop of reads: suspicious(), the AI's
+# weighing of its options before it acts). Nest freely; end each with end_read(). Anything that changes a unit's
+# passives, timed effects or items must not happen inside one.
 static func begin_read() -> void:
+	if reading == 0:
+		_epoch += 1
 	reading += 1
 
 
 static func end_read() -> void:
-	reading -= 1
-	if reading <= 0:
-		reading = 0
-		_read_fx.clear()
+	reading = maxi(reading - 1, 0)
 
 
 func _gather_effects(viewer: Unit) -> Array:

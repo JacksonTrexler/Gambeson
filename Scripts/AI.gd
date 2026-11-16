@@ -67,6 +67,17 @@ const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by 
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
+# What u makes out of every other unit now.
+static func _reads(b: Battle, u: Unit) -> Dictionary:
+	var reads := {}
+	Unit.begin_read()  # all reads, nothing changed: each unit's effects are found once (Unit._effects())
+	for o in b.units.values():
+		if o != u:
+			reads[o] = b.read(u, o)
+	Unit.end_read()
+	return reads
+
+
 # Takes u's turn. `posture` restricts it to abilities that serve one aim, for a unit a commander could
 # only direct by intent (HUD default orders): &"offensive" strike only, &"supportive" heal and support
 # only, &"defensive" a self-protective skill only. The default (&"") is a full, self-directed turn.
@@ -74,10 +85,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	var log: Array[String] = []
 	if not u.is_alive() or u.stopped():
 		return log
-	var reads := {}
-	for o in b.units.values():
-		if o != u:
-			reads[o] = b.read(u, o)
+	var reads := _reads(b, u)
 	_remember(b, u, reads)
 	if b.held_by(u):
 		_escape(b, u, log)
@@ -121,10 +129,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			log.append("%s holds still, channeling %s" % [u.name, u.channel.skill.name])
 			return log
 		if not rooted and _flee(b, u, reads, log):
-			reads = {}
-			for o in b.units.values():
-				if o != u:
-					reads[o] = b.read(u, o)
+			reads = _reads(b, u)
 		if u.behaviour == &"undine" and _undine(b, u, reads, log, rooted):
 			return log
 		if _luring(b, u, reads):
@@ -173,10 +178,7 @@ static func interrupt(b: Battle, u: Unit) -> Array[String]:
 	var log: Array[String] = []
 	if b.interrupter != u:
 		return log
-	var reads := {}
-	for o in b.units.values():
-		if o != u:
-			reads[o] = b.read(u, o)
+	var reads := _reads(b, u)
 	if not _strike(b, u, reads, log):
 		_heal(b, u, reads, log)
 	if b.interrupter == u:

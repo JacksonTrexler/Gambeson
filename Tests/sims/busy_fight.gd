@@ -119,6 +119,10 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		f.close()
 		await process_frame
 	print("SIM busy-%dv%d fights=%d rounds_played=%.1f alive_at_end=%.1f v %.1f (of %d a side) digest=%d" % [size, size, n, float(played) / n, float(left_l) / n, float(left_n) / n, size, digest])
+	var pf: Dictionary = Engine.get_meta(&"perf", {})  #PERF
+	var ks := pf.keys(); ks.sort_custom(func(a, b): return pf[a].y > pf[b].y)  #PERF
+	for k in ks: print("PERF %-28s calls %7d  total %8.0f ms  each %.3f ms" % [k, pf[k].x, pf[k].y / 1000.0, pf[k].y / pf[k].x / 1000.0])  #PERF
+	Engine.set_meta(&"perf", {})  #PERF
 	_report("busy-%dv%d unit turn" % [size, size], acts, TURN_BUDGET_MS)
 	_report("busy-%dv%d unit turn using a skill" % [size, size], busy, TURN_BUDGET_MS)
 	_report("busy-%dv%d side end_turn" % [size, size], ends, SIDE_BUDGET_MS)
