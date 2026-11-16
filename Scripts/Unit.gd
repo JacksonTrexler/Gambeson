@@ -873,7 +873,7 @@ func switching() -> Variant:
 func carry(from: Variant, s: Skill, held: int) -> int:
 	var most: int = max_energy if from is StringName else pools().get(from, 0)
 	var have: int = energy if from is StringName else store(from)
-	return mini(floori(most * 0.1 * maxi(rank(s), 1) * held + 0.0001), have)
+	return mini(floori(most * 0.1 * maxi(mods(s).irank(rank(s), &"rank_impact"), 1) * held + 0.0001), have)
 
 
 # A switch's channel ends: what it leaves goes, all but carry() of it, which comes into what it
@@ -2915,7 +2915,7 @@ func giver_rank(r: Reserve) -> int:
 	var best := 0
 	for x in slots:
 		if (x.skill.reserve == r or x.skill.opens == r) and x.skill.passive and equipped(x.skill):
-			best = maxi(best, x.rank)
+			best = maxi(best, mods(x.skill).irank(x.rank, &"rank_impact"))  # as its modifiers read it, as pools() does
 	return best
 
 

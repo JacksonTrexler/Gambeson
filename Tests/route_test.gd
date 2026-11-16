@@ -378,3 +378,34 @@ func test_strike_element() -> void:
 	v(1).trinket = emblem(&"sigma_down", &"sigil")  # stat impact x1.75: +5 -> +9
 	var dense: int = dealt.call()
 	ok(plain > 0 and dense - plain == 4, "Concentrated: the element's mental mod x1.75 (%d -> %d)" % [plain, dense])
+
+
+# The text of reserves (size, resting rate, a switch's carry), of the tiers a skill opens and of a
+# Downed rule reads what the mechanics read: the holder's mod and rank through its modifiers.
+func test_reserve_text() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(3, 3)})  # Mana and Stamina each stand in for Energy: one unit has one
+	var sweet := sk("sweet_nothings")
+	var stamina := sk("stamina")
+	var mana := sk("mana")
+	var tenacity := sk("tenacity")
+	v(1).charisma = 14  # +2
+	v(1).constitution = 14
+	v(2).constitution = 14
+	for s in [sweet, mana, tenacity]:
+		v(1).learned.append(slot(s, 2))
+	v(2).learned.append(slot(stamina, 2))
+	v(1).refresh()
+	v(2).refresh()
+	var plain := {&"sweet": sweet.markup(2, false, v(1)), &"stamina": stamina.markup(2, false, v(2)), &"mana": mana.markup(2, false, v(1)), &"tenacity": tenacity.markup(2, false, v(1))}
+	print("POOLS ", v(1).pools()[sweet.reserve], " ", v(2).giver_rank(stamina.reserve), " ", v(1).opened(mana.opens), " ", v(1).charisma)
+	ok(v(1).pools()[sweet.reserve] == 4 and v(2).giver_rank(stamina.reserve) == 2 and v(1).opened(mana.opens) == 2, "unmodified: Sweet Nothings 2 x 2, rank 2, tier 2")
+	ok("({o:cha mod}) x {r:2}" in plain[&"sweet"] and "T2" in plain[&"mana"] and tenacity.downed.markup(2) in plain[&"tenacity"] and tenacity.downed.markup(2) in tenacity.markup(2), "unmodified text is the base's: %s" % plain[&"sweet"])
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # rank impact x1.5: 2 -> 3
+	v(2).trinket = v(1).trinket
+	var dense := {&"sweet": sweet.markup(2, false, v(1)), &"stamina": stamina.markup(2, false, v(2)), &"mana": mana.markup(2, false, v(1)), &"tenacity": tenacity.markup(2, false, v(1))}
+	ok(v(1).pools()[sweet.reserve] == 6 and "x {r:3}" in dense[&"sweet"], "Density: the reserve's size and its text read rank 3 (%s)" % dense[&"sweet"])
+	ok(v(2).giver_rank(stamina.reserve) == 3 and "{r:6} more on a turn it rests" in dense[&"stamina"] and "{r:4} more" in plain[&"stamina"], "the resting rate: 2 x rank, mechanic and text (%s)" % dense[&"stamina"])
+	ok(v(1).opened(mana.opens) == 3 and "{r:T3}" in dense[&"mana"] and "{r:30}%" in dense[&"mana"] and "{r:20}%" in plain[&"mana"], "Mana opens tier 3, and a switch carries 30%% a turn (%s)" % dense[&"mana"])
+	ok(tenacity.downed.markup(3) in dense[&"tenacity"] and dense[&"tenacity"] != plain[&"tenacity"], "the Downed rule is described at rank 3, as Downed.takes() reads it")
+	v(1).trinket = emblem(&"sigma_down", &"insignia", 1)  # stat impact x1.5: cha mod 2 -> 3
+	ok(v(1).pools()[sweet.reserve] == 6 and "{o:1.5 x cha mod}" in sweet.markup(2, false, v(1)), "Concentrated: the mod is 1.5 x, in size and text (%s)" % sweet.markup(2, false, v(1)))
