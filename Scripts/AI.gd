@@ -34,6 +34,7 @@ const HATE := 2.0  # per point of ominous aura
 const GUESS_HP := 10.0  # when it can't make out a target's HP
 const OBSERVE := preload("res://Behaviours/observe.gd")  # how far an Observe looks (_search())
 const SUSPICIOUS := 1.0  # what a tile it finds suspicious is worth a look, in foes (clues())
+const SEEN := 0.9  # a hiding skill foes would see through at least this often isn't worth casting (Battle.seen_odds())
 const DEBRIS := 1.0  # debris a hiding foe left, fresh; halved a round on
 const MARKED := 0.5  # a mark a foe laid that it knows of
 const LAST_SEEN := 0.5  # where its side last made a foe out
@@ -255,8 +256,8 @@ static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	if owing.is_empty() or _rooted(b, u) or reads.keys().any(func(o: Unit): return o.is_alive() and o not in owing and _foe(u, reads[o]) and reads[o].located() and not o.helpless()):
 		return false
 	for g in owing:
-		for s in u.foe_actives(true):
-			if b.in_reach(u, s, g) and Battle.damage_range(u, s, g, b).get("lo", 0) > g.hp + g.dbno.limit:
+		for s in u.foe_actives():
+			if b.in_reach(u, s, g) and b.can_afford(u, s, g) and Battle.damage_range(u, s, g, b).get("lo", 0) > g.hp + g.dbno.limit:
 				return false  # one blow ends it
 	var threat := func(g: Unit) -> bool: return Command.tiles(u.cell, g.cell) <= ceili(g.stat(&"movement")) + 1
 	if not owing.any(threat):
@@ -392,7 +393,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	for s in u.foe_actives().filter(func(x: Skill): return not (attacks_only and x.dual)):
 		for t in reads:
 			var r: Read = reads[t]
-			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not u.can_afford(s):
+			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not b.can_afford(u, s, t):
 				continue
 			if not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
 				continue  # not one it can be used on (Gank: no ally near it; Sutemi: no way through)
@@ -582,7 +583,7 @@ static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 		for t: Unit in reads.keys() + [u]:
 			var r: Read = b.read(u, u) if t == u else reads[t]
 			if t.is_alive() and (t == u or r.attitude(u) == &"ally") and e not in r.effects and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)) \
-					and b.cast(u, s, t):
+					and not (s.investigated and Battle.seen_odds(u, s, t, b.watchers(t), b) >= SEEN) and b.cast(u, s, t):
 				log.append("%s gives %s to %s" % [u.name, s.name, t.name])
 				return
 
@@ -1001,9 +1002,9 @@ static func _pays(u: Unit, pool: Variant, s: Skill) -> bool:
 
 # Whether it could strike a foe it reads from where it stands, with a skill it can pay for.
 static func _could_strike(b: Battle, u: Unit, reads: Dictionary) -> bool:
-	for s in u.foe_actives(true):
+	for s in u.foe_actives():
 		for t: Unit in reads:
-			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t):
+			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
 				return true
 	return false
 
@@ -1018,9 +1019,9 @@ static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	if not u.idle():
 		return false
 	var weak := false
-	for s in u.foe_actives(true):
+	for s in u.foe_actives():
 		for t: Unit in reads:
-			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t):
+			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
 				if not u.ranged(s) or Battle.hit_chance(u, s, t, b) >= SHOT:
 					return false
 				weak = true

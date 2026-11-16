@@ -6,6 +6,7 @@ extends Behaviour
 # tow stat: Battle.travel()). The grip ends as the caster's turn does.
 
 const HITCHED: Effect = preload("res://Effects/hitched.tres")
+const FOE_STATS: Array[StringName] = [&"strength", &"dexterity"]  # the foe rolls the better of them
 
 
 func apply(c: Cast) -> void:
@@ -13,11 +14,24 @@ func apply(c: Cast) -> void:
 		return
 	var b := c.battle
 	var t := c.target
-	var vs := b.check(c.caster, &"strength", t, [&"strength", &"dexterity"], {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, ties = false})  # the foe wins ties
+	var vs := b.check(c.caster, &"strength", t, FOE_STATS, grapple(c))
 	b.contested.emit(c.caster, t, vs.mine.total, vs.theirs.total)
 	c.bag[&"hitched"] = vs.won
 	if vs.won:
 		c.put(HITCHED, 1).lasting = true
+
+
+# The grapple's helper options (apply() rolls them, foresee() weighs them): + rank, the caster's tags on its
+# side and the skill's on the foe's; the foe wins ties.
+static func grapple(c: Cast) -> Dictionary:
+	return {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, ties = false}
+
+
+# What a hit would bring: the chance the grapple holds the foe (Battle.odds(), the roll apply() makes).
+func foresee(c: Cast) -> Dictionary:
+	if not c.foe:
+		return {}
+	return {notes = ["%d%% to hold it" % roundi(Battle.odds(c.caster, &"strength", c.target, FOE_STATS, grapple(c)) * 100.0)] as Array[String]}
 
 
 # Its terms: + rank on its grapple contest (a check), the tow an impactful effect.

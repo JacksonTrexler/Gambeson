@@ -1085,7 +1085,8 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 			return "Can't set a trap there"
 	else:
 		return "Pick a unit"
-	return _short(u, s) if not u.can_afford(s) else ""
+	var at: Unit = target if target is Unit else (unit_seen(target) if target is Vector2i else null)  # whom to ask for a cut
+	return _short(u, s) if not battle.can_afford(u, s, at) else ""
 
 
 # --- Acting
@@ -1240,9 +1241,9 @@ func drain(it: Dictionary) -> Dictionary:
 						d.get_or_add("unsure", []).append(key)
 	var s: Skill = it.get("skill")
 	if s and (it.ready or it.kind == &"strike_at"):
-		var fund: Variant = u.funding(s)
 		var t: Variant = it.get("target")
 		var rb := battle.rebate(u, s, t, foe(t)) if t is Unit and t != u and it.kind == &"use" else Vector2.ZERO  # the price a behaviour cuts (sure), or gives back on a hit
+		var fund: Variant = u.funding(s, rb.x)
 		d[&"ap"] = d.get(&"ap", 0.0) + u.ap_cost(s, fund, rb.x)
 		var cost := u.cost_from(s, fund, rb.x)
 		var key: Variant = fund if fund is Reserve else &"energy"
@@ -1292,7 +1293,7 @@ func _aspect(it: Dictionary) -> Dictionary:
 func odds(it: Dictionary) -> StringName:
 	var t: Variant = it.get("target")
 	var s: Skill = it.get("skill")
-	if it.get("kind") != &"use" or not (t is Unit) or not s or not (s.attacks() or _checked(s)) or not foe(t):
+	if it.get("kind") != &"use" or not (t is Unit) or not s or not (s.attacks() or _contests(s)) or not foe(t):
 		return &""
 	if not _defense_shows(t):
 		return &"unknown"
@@ -1303,6 +1304,22 @@ func odds(it: Dictionary) -> StringName:
 # Whether s rolls its declared check in place of an attack roll (Skill.check, not Sing's).
 static func _checked(s: Skill) -> bool:
 	return s.check != null and not s.check.suspicion
+
+
+# Whether s rolls a check of its own on a foe that hit_chance() forecasts: a declared one, or Level Down's.
+static func _contests(s: Skill) -> bool:
+	return _checked(s) or s.levels_down
+
+
+# What the hovered investigated skill (Hide) would be seen through by, in %, to the foes the player can
+# make out beside it (Battle.seen_odds()); -1 for none: not that skill, or no one to see through it.
+func _seen(it: Dictionary, t: Unit) -> int:
+	var s: Skill = it.get("skill")
+	if it.get("kind") != &"use" or not s or not s.investigated or t == null or foe(t):
+		return -1
+	var eyes: Array[Unit] = []
+	eyes.assign(battle.watchers(t).filter(func(o: Unit): return unit_seen(o.cell) == o))
+	return roundi(Battle.seen_odds(it.unit, s, t, eyes, battle) * 100.0) if not eyes.is_empty() else -1
 
 
 # A refused order: the unit shakes and one word floats off it ("Too far", "Spent"); the full reason
@@ -1580,14 +1597,15 @@ func _slot_usable(u: Unit, i: int) -> bool:
 func _approach(u: Unit, s: Skill, c: Vector2i, sure := false) -> Dictionary:
 	var span := battle.skill_range(u, s, unit_seen(c))
 	var near := func(at: Vector2i) -> bool: return Vector2(at).distance_to(Vector2(c)) <= span + 0.0001
+	var whom := unit_seen(c)  # who may grant a cut on its price
 	if near.call(u.cell):
-		return {dest = u.cell, ready = u.can_afford(s)}
+		return {dest = u.cell, ready = battle.can_afford(u, s, whom)}
 	_find_reach()
 	var best := u.cell
 	var best_cost := INF
 	var closest := u.cell
 	for at in reach:
-		if near.call(at) and u.can_afford_after(s, reach[at]) and reach[at] < best_cost and (not sure or _sure_walk(u, _ways[at])):
+		if near.call(at) and battle.can_afford(u, s, whom, reach[at]) and reach[at] < best_cost and (not sure or _sure_walk(u, _ways[at])):
 			best = at
 			best_cost = reach[at]
 		var d := Vector2(at).distance_to(Vector2(c))
@@ -2882,7 +2900,10 @@ func _tip_text() -> String:
 		return ""
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
-		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0), "win" if _checked(it.skill) else "hit"]
+		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0), "win" if _contests(it.skill) else "hit"]
+	var seen := _seen(it, u)
+	if show_odds and seen >= 0:
+		line += "\n%d%% to be seen through" % seen
 	if not hurt.is_empty() and hurt.unit == u:
 		for note: String in hurt.notes:
 			line += "\n" + note

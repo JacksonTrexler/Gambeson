@@ -12,14 +12,30 @@ const STUNNED: Effect = preload("res://Effects/stunned.tres")
 func apply(c: Cast) -> void:
 	if not c.foe or not c.target.is_alive():
 		return
-	var dc := Difficulty.dc(&"difficult", c.rank)
-	var roll := c.battle.resolve(Check.check(c.target.check_mod(&"constitution", &"defensive", c.tags), dc, Check.Kind.SAVE))
-	c.bag[&"stunned"] = not roll.hit
-	if roll.hit:
+	var saved := c.battle.check(c.target, &"constitution", null, dc(c), save_opts(c)).won
+	c.bag[&"stunned"] = not saved
+	if saved:
 		return
 	c.put(STUNNED, c.rank)
 	if c.target.stopped():
 		c.bag[&"interrupted"] = c.battle.interrupt(c.target)
+
+
+# Its save's DC, and the helper's options for the foe's roll of it (the cast's own tags help it: checks tagged taps).
+static func dc(c: Cast) -> int:
+	return Difficulty.dc(&"difficult", c.rank)
+
+
+static func save_opts(c: Cast) -> Dictionary:
+	return {role = &"defensive", kind = Check.Kind.SAVE, tags = c.tags}
+
+
+# What a hit would bring: the chance the foe fails its save (Battle.odds(), the roll apply() makes).
+func foresee(c: Cast) -> Dictionary:
+	if not c.foe:
+		return {}
+	var p := 1.0 - Battle.odds(c.target, &"constitution", null, dc(c), save_opts(c))
+	return {notes = ["%d%% to stun" % roundi(p * 100.0)] as Array[String]}
 
 
 func describe(rank: int) -> String:
