@@ -28,3 +28,27 @@ nothing changes. *Not done:* Grudge units' own approach; allies don't coordinate
 (room is against where it stands now).
 Test: `ai_tactics_test.test_starving_keeps_room_to_retreat` (the wiser tile is out of reach and has more room than the furthest tile; a corner has
 none; the starving turn walks to it). Mutations (each fails it, reverted): `_starve` not passing `safe`; `_room` counting equal-distance tiles.
+
+### 3. Tuning by simulation: no number changed
+Method: a scratch sim (not kept; `Tests/combat_test.fight()` per seed on the museum, counting each unit's skill uses from the log) run for each
+constant moved to a low and a high value, one at a time, over combat_test's 8 seeds (about 20 s a run); then `soak`-size 30 seeds before and after.
+Values tried: SUSPICIOUS 0.5/2, DEBRIS 0.5/2, MARKED 0.25/1, LAST_SEEN 0.25/1, REACH 0.25/1, HIT 0.5/2, REACH_TURNS 2/5, SWEEP_TURNS 2/8,
+GUESS_DEFENSE 10/14, POINT 0.25/1, RIDER 0.5/2, PUSH 0.25/1, STARVE 2.5/10, SEEN 0.8/0.95, WORN 0.6/0.9.
+
+- **Result: every run is identical** to the base (8 seeds: Lancin 6, Nemes 2, 108 turns, same skill-use counts). The extremes (POINT 50, WORN 0,
+  GUESS_DEFENSE 40) move only the turn count (108 -> 114), not the winner.
+- 30 seeds, before this branch (a30a25d) and after: **Lancin 26 / Nemes 4, 413 turns both**, skill uses identical, so the lie and the retreat don't touch
+  the museum: Alabaster Strike 134, Icor Hex 125 / Strike 92, Siren Rake 104 / Drown 42, Villager1 Strike 63, Villager2 Strike 116, Villager3 Hex 97 /
+  Strike 105, Villager4 Hex 106 / Strike 140. (Icor's Hex over Strike is ?87's cost balance, the user's.)
+- **Why:** the museum fight has no Observe user, hiding foe, Kick, Grudge or rider skill, and no wounded-unseen Defense, so the clue weights, STARVE, PUSH, RIDER
+  never come up, and the rest only reorder equal-looking blows. A museum battle can't tell these numbers apart; with no evidence to move them, **all stay as
+  they are** (SUSPICIOUS 1, DEBRIS 1, MARKED 0.5, LAST_SEEN 0.5, REACH 0.5, HIT 1, REACH_TURNS 3, SWEEP_TURNS 4, GUESS_DEFENSE 12, POINT 0.5, RIDER 1,
+  PUSH 0.5, STARVE 5, SEEN 0.9, WORN 0.8). Chasing a change would be a guess, which they already are. *Open for the user:* a purpose-built sim (an Observe
+  user hunting a hider across the seeds; a Kick against a wall; a Grudge unit in a corner) is what would tune the clue weights, STARVE and PUSH; nothing
+  in the repo builds one, and I didn't add one to the suite (one more slow test).
+- Not done from the queue card: weighing heals and supports for exhaustion wear (`_wear` only prices strikes; the museum shows nothing to measure it on).
+
+## As built
+`Scripts/Perception.gd` (`MIRROR`, `_lie`), `Scripts/Read.gd` (`believed`, `skew`), `Scripts/Battle.gd` (`hit_chance` guess), `Scripts/AI.gd` (`_chance`, `_away`,
+`_retreat`, `_room`, `_starve`), `Scripts/HUD.gd` (`odds`, tip, `_roll_text`, `_defense_line`), `Tests/hud_test.gd`, `Tests/ai_tactics_test.gd`.
+No existing test changed.
