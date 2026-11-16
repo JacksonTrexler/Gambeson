@@ -1053,8 +1053,10 @@ func _sealed_now(i: int) -> bool:
 	return i < _slots_at(level) and i >= _slots_at(maxi(level - _cursed_levels(), 1))
 
 
-# Its equipped skills, slot by slot (null where empty): what a save keeps. set_equipped() puts them back.
+# Its equipped skills, slot by slot (null where empty), brought up to date (_sync_new()): what a save keeps
+# and the HUD's bar shows. set_equipped() puts them back.
 func get_equipped() -> Array[Skill]:
+	_sync_new()
 	return hotbar.duplicate()
 
 
@@ -1128,12 +1130,17 @@ func equip_skill(s: Skill) -> bool:
 	return true
 
 
-# Where s goes by itself: a pillar in the last free sure slot; an always-on passive in the last free
-# slot it fits (the bottom of the bar, never the clover slot: fits()); anything else the first. -1: full.
+# Where s goes by itself: a pillar in the last free sure slot; an always-on passive in the last free sure
+# slot (the bottom of the bar), else the last granted slot it fits - never the clover slot (fits()), and
+# a granted slot only past the sure ones, so one granting skill rarely sits in another's slot; anything
+# else the first free slot it fits. -1: full.
 func _auto_slot(s: Skill) -> int:
 	if s.passive and not s.toggle or s.pillar():
-		var end := slot_count() if s.pillar() else hotbar.size()
-		for i in range(mini(end, hotbar.size()) - 1, -1, -1):
+		var sure := mini(slot_count(), hotbar.size())
+		var order := range(sure - 1, -1, -1)
+		if not s.pillar():
+			order += range(hotbar.size() - 1, sure - 1, -1)
+		for i in order:
 			if not hotbar[i] and slot_works(i) and fits(s, i):
 				return i
 		return -1

@@ -267,6 +267,15 @@ func _on_gui_input(e: InputEvent) -> void:
 
 # The theme a control draws with: its own, or the nearest ancestor's (for drag previews, which
 # live outside the HUD).
+# A skill dragged out of the skills screen (SkillWheel, SkillGrid) to equip it: one u has (learned or
+# lent) that goes on the bar. Null for anything else.
+static func drag_learned(from: Control, u: Unit, s: Skill) -> Variant:
+	if not u or not s or u.base_rank(s) == 0 or not s.fits_bar():
+		return null
+	from.set_drag_preview(chip(s, theme_of(from)))
+	return {skill = s, from = -1}
+
+
 static func theme_of(n: Node) -> Theme:
 	while n:
 		if n is Control and n.theme:

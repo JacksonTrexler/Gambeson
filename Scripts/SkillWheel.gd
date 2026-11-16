@@ -13,6 +13,7 @@ extends Control
 
 signal picked(s: Skill)
 
+const UNWORN := Color("#8a7a45")  # a learned skill's rank, dulled while it isn't equipped (Unit.equipped()): it does nothing till it is
 const R := 6.0  # a skill's circle
 const RING := 22.0  # the core ring's radius
 const CORE := Color("#c9ced8")  # the centre and core ring
@@ -260,7 +261,7 @@ func _node(s: Skill, at: Vector2, tone: Color, font: Font) -> void:
 		draw_string(font, at + Vector2(-w / 2.0, 2.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5, ink)
 	var r := unit.base_rank(s)
 	if r > 0:
-		draw_string(font, at + Vector2(R - 1.0, R + 2.5), Skill.roman(r), HORIZONTAL_ALIGNMENT_LEFT, -1, 4, GOLD)
+		draw_string(font, at + Vector2(R - 1.0, R + 2.5), Skill.roman(r), HORIZONTAL_ALIGNMENT_LEFT, -1, 4, GOLD if unit.equipped(s) else UNWORN)
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -277,6 +278,11 @@ func _gui_input(e: InputEvent) -> void:
 		if s:
 			picked.emit(s)
 			accept_event()
+
+
+# A skill it has drags onto the hotbar from here, equipping it (HUD._on_dropped()).
+func _get_drag_data(at: Vector2) -> Variant:
+	return SkillSlot.drag_learned(self, unit, skill_at(at) if unit else null)
 
 
 func _notification(what: int) -> void:

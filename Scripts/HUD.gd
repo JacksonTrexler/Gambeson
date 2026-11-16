@@ -301,6 +301,11 @@ func _ready() -> void:
 	%KeepSlot.toggled.connect(func(on: bool) -> void:
 		keep_slot = on
 		Prefs.put("keep_slot", on))
+	Unit.auto_equip = Prefs.get_pref("auto_equip", true)  # on by default
+	%AutoEquip.set_pressed_no_signal(Unit.auto_equip)
+	%AutoEquip.toggled.connect(func(on: bool) -> void:
+		Unit.auto_equip = on
+		Prefs.put("auto_equip", on))
 	hand_over = Prefs.get_pref("hand_over", hand_over)
 	%HandOver.button_pressed = hand_over
 	%HandOver.toggled.connect(func(on: bool) -> void:
@@ -2320,6 +2325,8 @@ func _bar_slots(u: Unit) -> int:
 
 
 func _refresh_bar() -> void:
+	if selected:
+		selected.get_equipped()  # its bar up to date with what it has newly got (auto-equip)
 	_rebuild_bar()
 	var u := selected if selected and hand(selected) else null
 	bar.visible = u != null or not selected  # other sides' skills aren't the player's to see

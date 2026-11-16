@@ -1,7 +1,7 @@
 extends Test
 
 # Sweeps over every skill in Skills/*.tres, so a new skill is covered with no file of its own:
-#   test_passives    each passive learned at rank 2: every stat its effects name moved by amount x rank
+#   test_passives    each passive learned at rank 2: every stat its effects name moved by amount x rank; unequipped, back
 #   test_actives     each built active cast once at rank 2 on a staged target (or tile) it can be used
 #                    on, its checks and attack roll rigged to land: the cast returns true, every effect
 #                    is on the target for skill.lasts(2) turns at the right rank and strength, and the
@@ -82,6 +82,7 @@ func test_passives() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(7, 3), v(4): Vector2i(8, 3)})
 	var weighed := 0
 	var swept := 0
+	var inert := 0
 	for s in _built:
 		if not s.passive:
 			continue
@@ -95,10 +96,16 @@ func test_passives() -> void:
 		var r := u.rank(s)
 		ok(r > 0, "%s: learned at rank 2" % s.name)
 		weighed += _weigh(u, s.effects, before, func(_e): return r, func(_e): return 1.0, s.name)
+		if not s.inherent and not s.pillar():  # off the bar it does nothing: every stat back where it was (Unit.equipped()); pillars can't come off
+			ok(u.equipped(s), "%s: auto-equipped" % s.name)
+			u.bar_clear(u.hotbar.find(s))
+			ok(not u.equipped(s) and _readings(u, s.effects) == before, "%s: unequipped, inert" % s.name)
+			inert += 1
 		u.learned.pop_back()
 		swept += 1
 	ok(weighed >= 60, "the passive sweep weighed %d stats" % weighed)
-	print("sweep: %d passives learned at rank 2, %d stats weighed" % [swept, weighed])
+	ok(inert >= 60, "the passive sweep unequipped %d" % inert)
+	print("sweep: %d passives learned at rank 2, %d stats weighed, %d unequipped" % [swept, weighed, inert])
 
 
 # Stands v(1) with s learned at rank 2 and returns what it's used on: itself (a skill on its user, or an

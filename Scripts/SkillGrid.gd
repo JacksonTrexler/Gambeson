@@ -86,6 +86,15 @@ func row_y(t: int) -> float:
 	return PAD + _head + (_top - t) * (BOX.y + GAP.y)
 
 
+# The bottom edge of its lowest tier that holds a skill: what the skills screen opens scrolled to (a tree
+# whose low tiers are empty - the Specialist tree's T0 and T1 - opens on its first filled one, not on blanks).
+func floor_y() -> float:
+	var low := _top
+	for s in skills():
+		low = mini(low, _tier(s))
+	return row_y(low) + BOX.y + PAD
+
+
 func _tier(s: Skill) -> int:
 	var t := tab.tier_of(s) if tab.general() else unit.tier(s)
 	return maxi(t, 0)
@@ -299,7 +308,7 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 	var numeral := Skill.roman(r) if r > 0 else ("?" if s.stub else "")
 	if numeral:  # its rank in the corner (a stub's question mark)
 		var nw := font.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 4).x
-		draw_string(font, box.end + Vector2(-nw - 1.0, -1.5), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 4, GOLD if r > 0 else STUB)
+		draw_string(font, box.end + Vector2(-nw - 1.0, -1.5), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, 4, (GOLD if unit.equipped(s) else SkillWheel.UNWORN) if r > 0 else STUB)
 
 
 func _gui_input(e: InputEvent) -> void:
@@ -322,6 +331,11 @@ func _gui_input(e: InputEvent) -> void:
 		elif t:
 			chose.emit(_entries[t][1], t)
 			accept_event()
+
+
+# A skill it has drags onto the hotbar from here, equipping it (HUD._on_dropped()).
+func _get_drag_data(at: Vector2) -> Variant:
+	return SkillSlot.drag_learned(self, unit, skill_at(at) if unit else null)
 
 
 func _notification(what: int) -> void:

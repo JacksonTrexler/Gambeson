@@ -58,6 +58,7 @@ func _initialize() -> void:
 			Game.dungeon = null
 			Game.outfit = {}
 			Game.level = 1
+			Unit.auto_equip = true  # a test that switches it off doesn't leave it off
 			Game.xp = 0
 			Game.hearts = 0
 			Game.stash = []
