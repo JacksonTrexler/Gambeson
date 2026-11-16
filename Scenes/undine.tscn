@@ -36,6 +36,7 @@ skill = ExtResource("s_well_up")
 rank = 3
 
 [node name="Undine" instance=ExtResource("1_unit")]
+extra_slots = 1
 modulate = Color(0.55, 0.75, 0.95, 1)
 look = ExtResource("2_look")
 tags = Array[StringName]([&"monster", &"elemental", &"demon", &"undine", &"aquatic", &"malevolent", &"abyssal"])

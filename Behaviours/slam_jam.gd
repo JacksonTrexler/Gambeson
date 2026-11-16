@@ -26,11 +26,12 @@ static func contest(c: Cast) -> Dictionary:
 	return {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, kind = Check.Kind.SAVE}
 
 
-# What a hit would bring: the chance the foe is interrupted and Jammed (Battle.odds(), the roll apply() makes).
+# Its contest's odds (as apply() rolls it): the interrupt is a rider that lands that often.
 func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
-	return {notes = ["%d%% to jam it" % roundi(Battle.odds(c.caster, &"strength", c.target, &"constitution", contest(c)) * 100.0)] as Array[String]}
+	var p := Battle.odds(c.caster, &"strength", c.target, &"constitution", contest(c))
+	return {notes = ["Interrupts it, Jammed (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
 
 
 func rebate(c: Cast) -> Vector2:  # on a hit only: a refund after paying

@@ -94,7 +94,7 @@ func test_intervenes() -> void:
 
 # A Wizard with Mana and Stamina, Mana empty, Stamina full, a martial skill only Stamina pays for.
 func two_reserves() -> Unit:
-	var u: Unit = b.get_node("Units/Icor")
+	var u: Unit = roomy(b.get_node("Units/Icor"))
 	u.learned.append(slot(stamina))
 	u.learned.append(slot(crushing))
 	u.constitution = 14

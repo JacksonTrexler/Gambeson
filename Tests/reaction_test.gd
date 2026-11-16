@@ -32,6 +32,7 @@ func echo(u: Unit, e: Echo) -> Skill:
 
 # v(3) (Nemes) Jams v(1), sure to hit; v(2) beside v(1), v(4) further off.
 func scene() -> void:
+	roomy(v(3))
 	v(3).learned.append(slot(jam))
 	v(3).dexterity = 40
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3), v(4): Vector2i(8, 3)})
@@ -194,6 +195,7 @@ func test_area_moments() -> void:
 	wild.ap = 1.0
 	wild.cost = 0
 	stage(nemes, {v(3): Vector2i(1, 3), v(1): Vector2i(3, 3), v(2): Vector2i(3, 4), v(4): Vector2i(2, 3)})  # v(4) an ally, in the cone's way
+	roomy(v(3))
 	v(3).learned.append(slot(solar))
 	v(3).learned.append(slot(wild))
 	v(3).wisdom = 40  # Solar's reach is its wis mod

@@ -110,11 +110,18 @@ static func state(u: Unit, s: Skill) -> String:
 		return tier + " · Not built yet. " + s.waits()
 	var r := u.base_rank(s)
 	if r > 0 and u.own_rank(s) == 0:
-		return tier + " · Lent by %s" % u.lent_by(s)  # an item's (Unit.granted()): it can't be ranked
+		return tier + " · Lent by %s" % u.lent_by(s) + _worn(u, s)  # an item's (Unit.granted()): it can't be ranked
 	if r > 0:
-		return tier + (" · Learned" if u.can_raise(s) else " · Highest rank")
+		return tier + (" · Learned" if u.can_raise(s) else " · Highest rank") + _worn(u, s)
 	var why := u.missing(s)
 	return tier + (" · " + why if why else "")
+
+
+# Whether it's equipped (Unit.equipped()): only then does it work. Drag it onto the hotbar to equip it.
+static func _worn(u: Unit, s: Skill) -> String:
+	if s.inherent:
+		return ""
+	return " · Equipped" if u.equipped(s) else " · Not equipped: drag it onto the hotbar"
 
 
 func _fill_spec(s: Skill, u: Unit = null, r := 1) -> void:

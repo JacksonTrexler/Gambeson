@@ -10,6 +10,7 @@ var rogue: Role = load("res://Roles/rogue.tres")
 func test_illusionist() -> void:
 	var u := b.starter({faction = lancin, role = rogue, name = "Wick"})
 	b.get_node("Units").add_child(u)
+	roomy(u)
 	u.skill_points = 60
 	var c: TreeChoice = rogue.choices.filter(func(x: TreeChoice): return x.name == "Illusion")[0]
 	var school: SkillTab = c.tabs[0]

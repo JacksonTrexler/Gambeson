@@ -151,18 +151,19 @@ func test_dc_and_rider_forecasts() -> void:
 	for n in 1500:
 		got += 1 if b.evade(v(3), 12) == 0.0 else 0
 	ok(dex > 0.2 and dex < 0.9 and absf(got / 1500.0 - dex) < 0.04, "a dodge passes as often as its odds say (%.3f vs %.3f)" % [got / 1500.0, dex])
-	for pair in [["stun", "to stun", 1], ["hitch", "to hold it", 1], ["slam_jam", "to jam it", 1]]:
+	for pair in [["stun", "Stuns it"], ["hitch", "Holds it"], ["slam_jam", "Interrupts it, Jammed"]]:
 		var s: Skill = load("res://Skills/%s.tres" % pair[0])
 		v(1).learned.append(slot(s, 2))
 		v(1).refresh()
-		var note: String = b.foresee(v(1), s, v(3)).get("notes", [""])[0]
+		var more := b.foresee(v(1), s, v(3))
+		var note: String = more.get("notes", [""])[0]
 		var c := b.cast_of(v(1), s, v(3), 2, true)
 		var p := Battle.odds(v(3), &"constitution", null, STUN.dc(c), STUN.save_opts(c))
 		match pair[0]:
 			"stun": p = 1.0 - p
 			"hitch": p = Battle.odds(v(1), &"strength", v(3), HITCH.FOE_STATS, HITCH.grapple(c))
 			"slam_jam": p = Battle.odds(v(1), &"strength", v(3), &"constitution", SLAM_JAM.contest(c))
-		ok(note == "%d%% %s" % [roundi(p * 100.0), pair[1]] and p > 0.0 and p < 1.0, "%s: \"%s\" is the odds of its roll" % [pair[0], note])
+		ok(note == "%s (%d%%)" % [pair[1], roundi(p * 100.0)] and is_equal_approx(more.riders, p) and p > 0.0 and p < 1.0, "%s: \"%s\" is the odds of its roll" % [pair[0], note])
 	var s: Skill = load("res://Skills/stun.tres")
 	var c := b.cast_of(v(1), s, v(3), 2, true)
 	var held := 0

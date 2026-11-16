@@ -112,6 +112,7 @@ func test_dissonance_distance() -> void:
 func test_embellish() -> void:
 	var s := siren()
 	stage(nemes, {s: Vector2i(8, 6), v(3): Vector2i(8, 5), v(4): Vector2i(7, 5), v(1): Vector2i(1, 1)})
+	roomy(s)
 	s.learned.append(slot(embellish, 1))
 	s.refresh()
 	ok(embellish.summary() == "Ally · range rank - 1 · 2 AP · 2 cost" and not b.cast(s, embellish, v(3)), "Embellish I: on itself only (%s)" % embellish.summary())
@@ -149,6 +150,7 @@ func test_embellish() -> void:
 func test_brood() -> void:
 	var s := siren()
 	stage(nemes, {s: Vector2i(8, 6), v(3): Vector2i(8, 5), v(4): Vector2i(5, 5), v(1): Vector2i(1, 1)})
+	roomy(s)
 	s.learned.append(slot(brood, 1))
 	s.refresh()
 	v(1).afflict(effect("recon", 1), 9)
@@ -187,6 +189,7 @@ func test_physical_intelligence() -> void:
 
 func test_dissonance_investigation() -> void:
 	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(7, 6)})
+	roomy(siren())
 	siren().learned.append(slot(clever, 1))
 	siren().refresh()
 	siren().extra_dissonance = 50

@@ -230,9 +230,9 @@ func test_idle() -> void:
 func test_default_bar() -> void:
 	var siren := unit("Siren")
 	ok(same(unit("Icor").hotbar, [strike, hex, load("res://Skills/mana.tres"), arcanist, null, null]), "Icor (level 5): 5 slots and a clover slot; Strike (every class's), Hex, then its toggled Mana (the Wizard's) and Arcanist Perspective")
-	ok(same(siren.hotbar, [load("res://Skills/rake.tres"), load("res://Skills/drown.tres"), load("res://Skills/sing.tres"), tonefoolery, null]),
-			"Siren: Rake, Drown and Sing, then a toggle; Oceanic has none, Personify is left for want of a slot (the last is its clover slot)")
-	ok(same(v(1).hotbar, [strike, null, null, null, null]) and v(1).slot_count() == Unit.SLOTS, "4 slots and a clover one; Favour stays off the bar")
+	ok(same(siren.hotbar, [load("res://Skills/rake.tres"), load("res://Skills/drown.tres"), load("res://Skills/sing.tres"), tonefoolery, load("res://Skills/alluring.tres"), load("res://Skills/oceanic.tres"), null]),
+			"Siren (2 extra slots): Rake, Drown and Sing, then a toggle from the left; Oceanic and Alluring from the bottom (the last is its clover slot)")
+	ok(same(v(1).hotbar, [strike, null, null, favour, null]) and v(1).slot_count() == Unit.SLOTS, "4 slots and a clover one; Favour, a passive, in the last sure slot")
 
 
 func test_bar_place() -> void:
@@ -241,7 +241,7 @@ func test_bar_place() -> void:
 	ok(u.bar_place(arcanist, 4) and same(u.hotbar, [strike, hex, m, null, arcanist, null]), "a skill on the bar moves, swapping with the empty slot")
 	ok(u.bar_place(hex, 4) and same(u.hotbar, [strike, arcanist, m, null, hex, null]), "...or with the skill there")
 	ok(not u.bar_place(load("res://Skills/snare.tres"), 2), "not a skill it doesn't have")
-	ok(not v(1).bar_place(favour, 1), "not a passive without a toggle")
+	ok(v(1).bar_place(favour, 1) and not v(1).fits(favour, v(1).clover()), "a passive without a toggle moves too, but never into the clover slot")
 	ok(u.bar_place(hex, 4) and not u.bar_place(hex, 5) and not u.bar_place(hex, 6), "a fifth slot at level 5; not the clover slot while unlucky, nor past it")
 	u.bar_clear(0)
 	ok(same(u.hotbar, [null, arcanist, m, null, hex, null]), "cleared")

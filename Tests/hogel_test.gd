@@ -23,6 +23,7 @@ func test_tree() -> void:
 func test_chant() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 16
+	roomy(v(3))
 	v(3).learned.append_array([slot(sweet), slot(chant, 2), slot(gasp)])
 	v(3).set_store(sn, 0)
 	v(3).refresh()
@@ -54,6 +55,7 @@ func test_gasp() -> void:
 func test_asphyxia() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 40
+	roomy(v(3))
 	v(3).learned.append_array([slot(gasp), slot(breathtaking, 3)])
 	soak(v(1), 100)
 	v(1).refit()
@@ -73,6 +75,7 @@ func test_asphyxia() -> void:
 func test_irradiate() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 40  # mod 15
+	roomy(v(3))
 	v(3).learned.append_array([slot(gasp), slot(irradiate, 2)])
 	soak(v(1), 100)
 	v(3).refresh()

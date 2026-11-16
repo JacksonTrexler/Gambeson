@@ -109,6 +109,7 @@ func _play() -> void:
 	Game.hearts = 0
 	Game.level = clampi(roundi(level.value), 1, Unit.MAX_LEVEL)  # a new starter starts over, at the level picked
 	Game.xp = 0
+	Game.equipped = []  # its class's default bar
 	if not Game.stash.any(func(it: Item): return it == RING):
 		Game.stash.append(RING)  # the player's own trinket: a life once a battle
 	Save.save()

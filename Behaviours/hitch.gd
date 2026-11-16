@@ -31,7 +31,8 @@ static func grapple(c: Cast) -> Dictionary:
 func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
-	return {notes = ["%d%% to hold it" % roundi(Battle.odds(c.caster, &"strength", c.target, FOE_STATS, grapple(c)) * 100.0)] as Array[String]}
+	var p := Battle.odds(c.caster, &"strength", c.target, FOE_STATS, grapple(c))
+	return {notes = ["Holds it (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
 
 
 # Its terms: + rank on its grapple contest (a check), the tow an impactful effect.

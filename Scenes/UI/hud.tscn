@@ -616,9 +616,10 @@ focus_mode = 0
 tooltip_text = "Close (Esc)"
 text = "Close"
 
-[node name="Options" type="HBoxContainer" parent="Root/Settings/Column"]
+[node name="Options" type="HFlowContainer" parent="Root/Settings/Column"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 2
 
 [node name="HighContrast" type="CheckButton" parent="Root/Settings/Column/Options"]
 unique_name_in_owner = true
@@ -643,6 +644,13 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "Next unit when one is spent"
+
+[node name="AutoEquip" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Skills your units learn or are lent, and skills for slots they gain, go on the hotbar by themselves"
+text = "Auto-equip new skills"
 
 [node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
 unique_name_in_owner = true

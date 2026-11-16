@@ -17,6 +17,7 @@ func _game() -> void:
 	Game.level = 4
 	Game.xp = 7
 	Game.hearts = 2
+	Game.equipped = [strike, null, load("res://Skills/everyman.tres")]
 
 
 func test_round_trip() -> void:
@@ -30,6 +31,7 @@ func test_round_trip() -> void:
 	Game.level = 1
 	Game.xp = 0
 	Game.hearts = 0
+	Game.equipped = []
 	ok(Save.load_game(), "read")
 	ok(Game.hero.name == "Wren" and Game.hero.faction == lancin and Game.hero.role.name == "Adventurer", "the hero, by its side and class files")
 	ok(Game.level == 4 and Game.xp == 7 and Game.hearts == 2, "level, XP and hearts")
@@ -38,7 +40,10 @@ func test_round_trip() -> void:
 	ok(Game.stash.size() == 3 and Game.stash[0] == boots and Game.stash[1] == boots, "the stash in order, plain items the file's own")
 	ok(Game.stash[2].name == "Broadsword" and Game.stash[2].rank == 3, "a ranked copy keeps its rank")
 	ok(Game.stash[0].skills == boots.skills and not Game.stash[0].skills.is_empty(), "an item's lent skills come back with it")
-	ok(Save.pack().has("equipped"), "the equipped-set hook is in the file")
+	ok(Game.equipped == [strike, null, load("res://Skills/everyman.tres")], "the equipped set, slot by slot (%s)" % [Game.equipped])
+	var u := b.starter(Game.hero)
+	b.get_node("Units").add_child(u)
+	ok(u.get_equipped().slice(0, 4) == ([strike, null, load("res://Skills/everyman.tres"), null] as Array[Skill]), "the starter comes back with it: Working Knowledge and Field Experience left off")
 
 
 func test_never_blank() -> void:

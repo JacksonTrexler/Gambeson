@@ -59,6 +59,9 @@ const RESCUE := 1.0  # what a skill that brings a Downed unit back up (Behaviour
 const FLANKING := 0.4  # a tile's pull, a point of Defense the target loses to an attack from there (a rear attack's edge, an effect tagged flank), in tiles of walking (_approach())
 const SHOT := 0.5  # the chance to hit below which a ranged attack isn't worth taking now, when resting for Focus would make it one (_steady())
 const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take off it in its reckoning (_foiled()): a target it can't hit through them is still a target
+const GUESS_DEFENSE := 12  # the Defense it takes a foe to have when it can't make it out (Read.defense null): a medium armor's floor
+const POINT := 0.5  # what a point of Energy or other cost it gets back is worth, in the HP a blow takes (a 3 AP strike costs a few)
+const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -246,19 +249,25 @@ static func _starving(u: Unit, reads: Dictionary) -> Array[Unit]:
 	return out
 
 
-# The cheap half of starving a Grudge unit of melee: with it the one foe left, u doesn't hand it a blow -
-# it keeps beyond its walk and one tile (its movement + 1), or, out of its reach already, holds where it
-# stands rather than close - unless it can finish it with a blow (its low roll past the Downed limit) or
-# shoot from beyond that reach. It does not plan for allies in reach, nor for a second round. True if the
-# turn is spent so.
+# Starving a Grudge unit of melee: it must make one this round or die (Downed.rule.melee), so u doesn't hand it
+# the blow - it keeps beyond its walk and one tile (its movement + 1), or, out of its reach already, holds
+# where it stands rather than close - unless it can finish it with a blow (its low roll past the Downed limit)
+# or shoot from beyond that reach. Whether that is worth the strikes it gives up (starve_worth()): the foes
+# it would turn from, or the allies it would be asking to do the same, weigh against it. True if the turn is
+# spent so.
 static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
 	var owing := _starving(u, reads)
-	if owing.is_empty() or _rooted(b, u) or reads.keys().any(func(o: Unit): return o.is_alive() and o not in owing and _foe(u, reads[o]) and reads[o].located() and not o.helpless()):
+	if owing.is_empty() or _rooted(b, u):
 		return false
 	for g in owing:
 		for s in u.foe_actives():
 			if b.in_reach(u, s, g) and b.can_afford(u, s, g) and Battle.damage_range(u, s, g, b).get("lo", 0) > g.hp + g.dbno.limit:
 				return false  # one blow ends it
+	var worth := 0.0
+	for g in owing:
+		worth += starve_worth(b, u, g)
+	if worth <= _best_strike(b, u, owing, reads):
+		return false
 	var threat := func(g: Unit) -> bool: return Command.tiles(u.cell, g.cell) <= ceili(g.stat(&"movement")) + 1
 	if not owing.any(threat):
 		return not _could_strike(b, u, reads)  # out of its reach: shoot if it can, else wait
@@ -269,6 +278,34 @@ static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 		log.append("%s keeps from %s's reach, starving it of a blow" % [u.name, owing[0].name])
 		return true
 	return false
+
+
+# What starving the Downed Grudge unit g of its melee is worth u, in the score's own HP: STARVE (a kill, as
+# KILL is) shared by the units of u's side, itself too, standing in g's reach (its movement + 1): each
+# would have to keep out of it, or g takes the blow from one of them. Nothing once g dies of its rounds
+# anyway (Downed.State.left: 1 or fewer, the several rounds a longer Grudge lasts are starved one by one,
+# each as this one is, since the turn is judged afresh).
+static func starve_worth(b: Battle, u: Unit, g: Unit) -> float:
+	if g.dbno == null or g.dbno.left <= 1:
+		return 0.0
+	var reach := ceili(g.stat(&"movement")) + 1
+	var n := 0
+	for o: Unit in b.units.values():
+		if o.is_alive() and not o.helpless() and Faction.friends(o.faction, u.faction) and Command.tiles(o.cell, g.cell) <= reach:
+			n += 1
+	return STARVE / maxf(n, 1.0)
+
+
+# The best strike u could make now at a standing foe it reads other than `besides`, by score(): what holding
+# back from a Grudge unit gives up. 0 with none.
+static func _best_strike(b: Battle, u: Unit, besides: Array[Unit], reads: Dictionary) -> float:
+	var best := 0.0
+	for s in u.foe_actives(true):
+		for t: Unit in reads:
+			if t not in besides and t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located() and b.in_reach(u, s, t) \
+					and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
+				best = maxf(best, score(u, s, reads[t], b, t))
+	return best
 
 
 # Shackled (a binding trinket): off with them if they're unlocked; locked, one try at whichever of
@@ -299,35 +336,45 @@ static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
 		log.append("%s %s" % [u.name, s.name])
 
 
+# The chance u's s hits t, as the player's own forecast would show it: t's Defense as r has it, or
+# GUESS_DEFENSE where u can't make it out (Read.defense: its armor doesn't show).
+static func _chance(u: Unit, s: Skill, r: Read, b: Battle, t: Unit) -> float:
+	return Battle.hit_chance(u, s, t, b, -1 if r.defense != null else GUESS_DEFENSE)
+
+
 # Perceived worth of using a hostile skill on a unit read as `r`. Given the battle and the unit (`t`, the
 # one `r` reads), it reads what the player's forecast shows: the chance to hit (Battle.hit_chance(): the
 # skill's edge, its behaviours' edge() and guard() - Gank's ambush, Spike's Defense - the target's
-# Defense), the damage (damage_range()) and what rides on it (Battle.foresee(): Kick's tile). Then what
-# those can't say, from hooks any behaviour joins: the AP it gives back (refunds(): Poach, Slam Jam) and
-# the Defense it costs its caster (unguarded(): Sutemi's Off Balance).
+# Defense as r has it, else GUESS_DEFENSE), the damage (damage_range()) and what rides on it (Battle.foresee():
+# Kick's tile and blast, Poach's regain, Slam Jam's interrupt at its odds; each rider RIDER, `spill` as it is).
+# Then what those can't say, from hooks any behaviour joins: the AP and cost it gives back (refunds(): Poach,
+# Slam Jam; a cost point is worth POINT) and the Defense it costs its caster (unguarded(): Sutemi's Off Balance).
 static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) -> float:
 	var d := Battle.damage_range(u, s, t, b) if b and t else Battle.damage_range(u, s)  # as cast() deals it: through u's modifiers
 	var dmg: float = d.get("avg", 0.0)
 	var hp: float = maxf(r.hp, 1.0) if r.hp != null else GUESS_HP  # (one Downed, at 0 or below: any blow may be its last)
 	var p := 1.0
-	var riders := 0
+	var riders := 0.0
+	var spill := 0.0
 	var saved := 0.0
 	var toll := 0
 	if b and t:
-		p = Battle.hit_chance(u, s, t, b)
+		p = _chance(u, s, r, b, t)
 		var more := b.foresee(u, s, t)
 		if not more.is_empty():
 			dmg += (more.lo + more.hi) / 2.0
-			riders = more.notes.size()
+			riders = more.riders
+			spill = more.spill
 		if not s.behaviours.is_empty():
 			var c := b.cast_of(u, s, t, u.rank(s), true)
 			var share := 0.0
 			for bh in s.behaviours:
 				share += bh.refunds(c, p)
 				toll += bh.unguarded(c)
-			saved = minf(share, 1.0) * u.ap_cost(s, u.funding(s)) * AP
+			var fund: Variant = u.funding(s)
+			saved = minf(share, 1.0) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
 	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) else 0.0) \
-			+ (KILL if s.drags() else 0.0) + RIDER * riders  # into the water: the Siren's favourite
+			+ (KILL if s.drags() else 0.0) + RIDER * riders + spill  # into the water: the Siren's favourite
 	return p * value + saved - DEFENSE * toll - _hate(r)
 
 
@@ -402,6 +449,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
 			if v > 0.0:
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
+				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -421,14 +469,10 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	return true
 
 
-# The share (0-1, at most FOILED) of a blow of s on t that t's side's reactions would likely take from u: each
-# passive of a unit beside the fight that u reads t's side as having (Read.skills, Read.kit: what it makes out
-# of them; an unread one it can't weigh) is asked, through the hook the reaction itself uses (Behaviour.foils()),
-# about each moment the blow would bring - attacked, hit, and fallen when it would kill - and what each leaves
-# standing multiplies. Cheap: nothing is asked unless such a passive is read.
-static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
-	if not s.hostile or t == u:
-		return 0.0
+# Each reaction moment a blow of s on t would bring that a passive of t's side u can make out (Read.skills,
+# Read.kit: an unread one it can't weigh) would be asked about - attacked, hit, and fallen when the blow's
+# average kills - as [behaviour, the Reaction, its holder, its rank], what foils() and reprisal() are asked of.
+static func _moments(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> Array:
 	var held := []  # [holder, its slot]
 	for o: Unit in reads:
 		var r: Read = reads[o]
@@ -437,26 +481,51 @@ static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) ->
 		for x in Battle.reactions_of(o):
 			if x.skill in r.skills or x.skill in r.kit:
 				held.append([o, x])
+	var out := []
 	if held.is_empty():
-		return 0.0
+		return out
 	var moments: Array[StringName] = [&"attacked", &"hit"]
 	var hp: float = maxf(reads[t].hp, 1.0) if reads[t].hp != null else GUESS_HP
 	if float(Battle.damage_range(u, s, t, b).get("avg", 0.0)) >= hp:
 		moments.append(&"fallen")
 	var m := b.cast_of(u, s, t, u.rank(s), true)
-	var keep := 1.0
 	for trigger in moments:
-		var r := Behaviour.Reaction.new()
-		r.battle = b
-		r.trigger = trigger
-		r.subject = t
-		r.by = u
-		r.cast = m
 		for h in held:
+			var r := Behaviour.Reaction.new()
+			r.battle = b
+			r.trigger = trigger
+			r.subject = t
+			r.by = u
+			r.cast = m
 			r.skill = h[1].skill
 			for bh in r.skill.behaviours:
-				keep *= 1.0 - clampf(bh.foils(r, h[0], h[1].rank), 0.0, 1.0)
+				out.append([bh, r, h[0], h[1].rank])
+	return out
+
+
+# The share (0-1, at most FOILED) of a blow of s on t that t's side's reactions would likely take from u: each
+# passive of a unit beside the fight that u reads t's side as having is asked, through the hook the reaction
+# itself uses (Behaviour.foils()), about each moment the blow would bring (_moments()), and what each leaves
+# standing multiplies. Cheap: nothing is asked unless such a passive is read.
+static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
+	if not s.hostile or t == u:
+		return 0.0
+	var keep := 1.0
+	for m in _moments(b, u, s, t, reads):
+		keep *= 1.0 - clampf(m[0].foils(m[1], m[2], m[3]), 0.0, 1.0)
 	return minf(1.0 - keep, FOILED)
+
+
+# What those reactions would cost u in HP, on top (Behaviour.reprisal(): Final Act's free action against the
+# unit that finishes it). _strike() takes it off the blow's worth, but never more than FOILED of it: a lone
+# Final Act unit is still finished, it is just left for last.
+static func _reprisal(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
+	if not s.hostile or t == u:
+		return 0.0
+	var cost := 0.0
+	for m in _moments(b, u, s, t, reads):
+		cost += maxf(m[0].reprisal(m[1], m[2], m[3]), 0.0)
+	return cost
 
 
 # With no foe to go after, it searches (Observe) where the clues point: the tile in reach whose look
@@ -613,7 +682,7 @@ static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], r
 		return true  # holding on inside its prey
 	var vapor: Slot = null
 	for x in u.slots:
-		if x.skill.toggle and x.skill.effects.any(func(e: Effect): return e.stat == "mist"):
+		if x.skill.toggle and u.equipped(x.skill) and x.skill.effects.any(func(e: Effect): return e.stat == "mist"):
 			vapor = x
 	if vapor and not vapor.on and u.hp * 2 < u.max_hp:
 		u.toggle(vapor.skill)
@@ -985,7 +1054,7 @@ static func _switch(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 		return false
 	for x in u.slots:
 		var to: Variant = &"energy" if x.on else Unit.replacer(x.skill)
-		if Unit.replacer(x.skill) and x.skill not in u.disabled and worth.any(func(w: Skill): return _pays(u, to, w)) and u.toggle(x.skill):
+		if Unit.replacer(x.skill) and x.skill not in u.disabled and u.equipped(x.skill) and worth.any(func(w: Skill): return _pays(u, to, w)) and u.toggle(x.skill):
 			log.append("%s switches to %s" % [u.name, to.name if to is Reserve else "Energy"])
 			return true
 	return false
@@ -1022,7 +1091,7 @@ static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	for s in u.foe_actives():
 		for t: Unit in reads:
 			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
-				if not u.ranged(s) or Battle.hit_chance(u, s, t, b) >= SHOT:
+				if not u.ranged(s) or _chance(u, s, reads[t], b, t) >= SHOT:
 					return false
 				weak = true
 	var pools := u.pools()

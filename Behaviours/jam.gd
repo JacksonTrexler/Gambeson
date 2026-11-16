@@ -16,6 +16,11 @@ func apply(c: Cast) -> void:
 	c.put(JAMMED, 1)
 
 
+# For the AI and the forecast: the interrupt and Jammed it puts on a foe, one rider (Slam Jam: as likely as its contest).
+func foresee(c: Cast) -> Dictionary:
+	return {notes = ["Interrupts it, Jammed"] as Array[String]} if c.foe else {}
+
+
 func dealt(c: Cast, n: int) -> void:
 	if c.foe and n > 0 and c.target.store(FOCUS) > 0:
 		c.target.set_store(FOCUS, c.target.store(FOCUS) - n)

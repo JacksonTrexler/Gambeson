@@ -49,6 +49,7 @@ func test_defer() -> void:
 
 func test_downed() -> void:
 	ready(1)
+	roomy(v(3))
 	v(3).learned.append(slot(tenacity, 2))
 	v(3).refresh()
 	v(3).damage(999)

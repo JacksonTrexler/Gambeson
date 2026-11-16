@@ -10,6 +10,7 @@ static var outfit := {}  # what the player's starter has on, by slot (weapon, ar
 static var level := 1  # the player's starter's level, and its XP toward the next (Battle._award()): kept from battle to battle
 static var xp := 0
 static var hearts := 0  # extra lives the starter has been given for good (a Heart)
+static var equipped: Array = []  # the player's starter's hotbar, skill by slot (null empty): it keeps what it equipped from battle to battle (Unit.set_equipped())
 static var stash: Array[Item] = []  # items the player's side has won (Battle.spoils), to equip or use between and in battles
 
 

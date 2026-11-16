@@ -31,6 +31,13 @@ func rebate(c: Cast) -> Vector2:  # sure: the price shown and paid is half (Batt
 	return Vector2(0.5, 0.0) if easy(c) else Vector2.ZERO
 
 
+# For the AI and the forecast: a blow that on average neutralizes the foe gives its regain (felled()), one rider.
+func foresee(c: Cast) -> Dictionary:
+	if not c.foe or float(Battle.damage_range(c.caster, c.skill, c.target, c.battle).get("avg", 0.0)) < c.target.hp:
+		return {}
+	return {notes = ["Felling it regains Energy, Focus and Stamina"] as Array[String]}
+
+
 func felled(c: Cast, _how: StringName) -> void:
 	if c.bag.get(&"regained", false) or not c.caster.is_alive():
 		return

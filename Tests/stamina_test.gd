@@ -36,6 +36,7 @@ func test_reserve() -> void:
 
 func test_pays() -> void:
 	for s in [crushing, waterstrike, solar]:
+		roomy(v(1))
 		v(1).learned.append(slot(s))
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	fit(v(1))

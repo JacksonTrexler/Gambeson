@@ -11,7 +11,7 @@ signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp b
 signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
-signal lost_skills(u: Unit, skills: Array[Skill])  # items it wore took skills with them (_sync_granted()): Battle ends a channel on one
+signal lost_skills(u: Unit, skills: Array[Skill])  # skills stopped being equipped (an item taken off, a slot lost, unequipped: _sync_granted(), _arrange(), bar_clear()): Battle ends a channel on one
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
@@ -144,8 +144,9 @@ class Applied:
 @export_group("")
 @export var innate: Array[Slot] = []  # from the unit's kind (villagers: Strike); the role adds its own
 @export var learned: Array[Slot] = []  # per unit
-# Skills on the hotbar by slot, null where empty (see Skill.fits_bar() and slot_kinds()). Left empty,
-# it fills with the unit's actives, then its toggled passives.
+# Skills on the hotbar by slot, null where empty (see Skill.fits_bar() and slot_kinds()): its equipped
+# skills (equipped()), the only ones that work. Left empty, it fills at setup: pillars in the last sure
+# slots, actives and toggles from the left, always-on passives from the right (the bottom).
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
@@ -373,7 +374,10 @@ var _face: Label  # draws a persona's stand-in sprite in place of its own (_show
 var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate skills
 var _ap_start: Array[float] = []  # each AP pool as its turn started, to tell how hard it worked (activity())
 var _walk_ap: Array[float] = []  # of each AP pool, what walking took this turn (activity(): standing still doesn't count)
-var _kinds: Array[StringName] = []  # the slot kinds the hotbar was last arranged for (_arrange())
+var _keys: Array = []  # the slot keys the hotbar was last arranged for (_slot_keys(), _arrange())
+var _seen: Dictionary[Skill, bool] = {}  # skills it has had since it was set up: one not among them is new, and auto-equips (_sync_new())
+var _seen_sig := -1  # _skill_sig() when _seen was last brought up to date (_sync_new(): cheap to check)
+static var auto_equip := true  # Settings: new skills, and skills for new slots, go on the bar by themselves (HUD sets it from Prefs)
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
@@ -467,15 +471,16 @@ var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
 		var lost := unranked()
-		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill) and rank(x.skill) > 0).map(func(x: Slot): return x.skill))
+		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill) and rank(x.skill) > 0).map(func(x: Slot): return x.skill))
 		return s
 
-# Passive entries that are on (and not disabled).
+# Passive entries that work: equipped (equipped()), on, and not disabled. Every reader of what a passive
+# does goes through here, or through equipped() itself.
 var on_passives: Array[Slot]:
 	get:
 		var s: Array[Slot] = []
 		var lost := unranked()
-		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
+		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
 		return s
 
 var passives: Array[Skill]:
@@ -527,9 +532,9 @@ func _ready() -> void:
 			for x in p.tags:
 				if x not in tags:
 					tags.append(x)  # an Aquatic unit counts as water to skills that ask
+	_fill_bar()  # first: its looks come from what it has equipped
 	_take_looks()
 	_pick_alias()
-	_fill_bar()
 	_show_look()
 	banner = Node2D.new()
 	banner.name = &"Banner"
@@ -664,13 +669,13 @@ func guest_affinity(s: Skill) -> int:
 
 
 # An efficiency stack is +1 Affinity on a tree's skills - cheaper rank-ups - up to a tier: one for
-# each flex slot burned into tree t (burned(): a Warlock's patron, every tier), and whatever its learned
+# each flex slot burned into tree t (burned(): a Warlock's patron, every tier), and whatever its equipped
 # passives' behaviours say, given the choice's own `a` (Behaviour.affinity(): Efficiency, a stack up to
 # its rank's tier - Bargaining, Acceptance, a Ranger's capstones; Illusionist).
 func efficiency(s: Skill, t: SkillTab, a := 0) -> int:
 	a += burned(t)
 	for x in slots:
-		if x.rank > 0 and x.skill.passive:
+		if x.rank > 0 and x.skill.passive and equipped(x.skill):
 			for h in x.skill.behaviours:
 				a = h.affinity(self, x.rank, s, t, a)
 	return a
@@ -929,12 +934,21 @@ func sealed(i: int) -> bool:
 # (magical, martial, specialist: it only holds skills carrying that tag), or &"" for an untyped one.
 func granted_slots() -> Array[StringName]:
 	var out: Array[StringName] = []
-	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank]) + items().map(func(it: Item): return [it.effects, it.ranked()])
-	for pair in sources:
-		for e: Effect in pair[0]:
+	out.assign(_grants().map(func(g: Array): return g[0]))
+	return out
+
+
+# granted_slots(), each with where it comes from: [type, source], the source the granting skill, or
+# &"item" for its items' (an enchantment swaps an item for a copy: theirs pool by type). A skill
+# unequipped takes its own slots with it, and the skills in them (_arrange()).
+func _grants() -> Array:
+	var out := []
+	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank, x.skill]) + items().map(func(it: Item): return [it.effects, it.ranked(), &"item"])
+	for t in sources:
+		for e: Effect in t[0]:
 			if e.stat == "slots":
-				for i in roundi(e.amount * (pair[1] if e.per_rank else 1)):
-					out.append(e.tags[0] if not e.tags.is_empty() else &"")
+				for i in roundi(e.amount * (t[1] if e.per_rank else 1)):
+					out.append([e.tags[0] if not e.tags.is_empty() else &"", t[2]])
 	return out
 
 
@@ -966,9 +980,18 @@ func burning_slots() -> Dictionary:
 # type), then the clover slot (&"clover") while level / 4 has something to round.
 func slot_kinds() -> Array[StringName]:
 	var out: Array[StringName] = []
+	for k in _slot_keys():
+		out.append(k if k is StringName else k[0])
+	return out
+
+
+# Each hotbar slot's key, what _arrange() sorts skills by: &"" a sure slot, &"clover", or a granted
+# slot's [type, source] (_grants()), so a granting skill's slots are told from another's.
+func _slot_keys() -> Array:
+	var out := []
 	for i in slot_count():
 		out.append(&"")
-	out.append_array(granted_slots())
+	out.append_array(_grants())
 	if lv() % 4:
 		out.append(&"clover")
 	return out
@@ -997,10 +1020,144 @@ func slot_works(i: int) -> bool:
 	return i >= 0 and i < bar_size() and (i != clover() or luck > 0) and not sealed(i)
 
 
-# Whether s can go in hotbar slot i: a typed slot only holds skills carrying its type.
+# Whether s can go in hotbar slot i: a typed slot only holds skills carrying its type, and the clover
+# slot, filled on its unit's own turn and only working while it's lucky, holds no always-on passive.
 func fits(s: Skill, i: int) -> bool:
 	var k := slot_kind(i)
-	return k == &"" or k == &"clover" or k in s.tags
+	if k == &"clover":
+		return s.fits_bar() and (not s.passive or s.toggle)
+	return k == &"" or k in s.tags
+
+
+# --- Equipping
+# A unit's learned skills (slots) and what it has equipped: its hotbar. Only equipped skills work, actives
+# and passives alike: every reader asks equipped() (on_passives and actives do). Inherent skills (Starkind)
+# take no slot and are always equipped. A skill it gets that it hasn't had before goes on the bar by
+# itself (auto-equip, the Settings toggle: Unit.auto_equip) - actives and toggles from the left,
+# always-on passives from the right (the bottom), pillars in the last sure slots.
+
+# Whether s is equipped, so working: inherent, or on its hotbar in a slot a level curse hasn't sealed.
+# Asking brings in any skill it has newly got first (_sync_new()).
+func equipped(s: Skill) -> bool:
+	if s == null:
+		return false
+	if s.inherent:
+		return true
+	_sync_new()
+	var i := hotbar.find(s)
+	return i >= 0 and not _sealed_now(i)
+
+
+# sealed(), read without its passives (they depend on this): a sure slot past what its level, less what
+# a level curse takes, gives.
+func _sealed_now(i: int) -> bool:
+	return i < _slots_at(level) and i >= _slots_at(maxi(level - _cursed_levels(), 1))
+
+
+# Its equipped skills, slot by slot (null where empty), brought up to date (_sync_new()): what a save keeps
+# and the HUD's bar shows. set_equipped() puts them back.
+func get_equipped() -> Array[Skill]:
+	_sync_new()
+	return hotbar.duplicate()
+
+
+# Equips these skills, slot by slot, as far as it can (bar_place(): what it knows, where it fits);
+# anything else comes off the bar.
+func set_equipped(bar: Array) -> void:
+	var was := hotbar.duplicate()
+	for i in hotbar.size():
+		if hotbar[i] and not hotbar[i].pillar():
+			hotbar[i] = null
+	for i in mini(bar.size(), hotbar.size()):
+		if bar[i] is Skill and bar[i] not in hotbar:
+			bar_place(bar[i], i)
+	_settle(was)
+
+
+# Notes skills it has got since it last looked (learned, lent, its role's), cheaply: only when what its
+# skill entries hold changed (_skill_sig()). New ones auto-equip (auto_equip); ones it no longer has come
+# off the bar. A unit still being set up waits for _fill_bar().
+func _sync_new() -> void:
+	if hotbar.is_empty():
+		return
+	var sig := _skill_sig()
+	if sig == _seen_sig:
+		return
+	_seen_sig = sig
+	var have := {}
+	var fresh: Array[Skill] = []
+	for x in slots:
+		have[x.skill] = true
+		if x.skill not in _seen:
+			_seen[x.skill] = true
+			fresh.append(x.skill)
+	var gone: Array[Skill] = []
+	for sk in _seen.keys():
+		if sk not in have:
+			_seen.erase(sk)
+			gone.append(sk)
+	var was := hotbar.duplicate()
+	for sk in gone:
+		var i := hotbar.find(sk)
+		if i >= 0:
+			hotbar[i] = null
+	if auto_equip:
+		for sk in fresh:
+			equip_skill(sk)
+	if not gone.is_empty():
+		_settle(was)
+
+
+# What its skill entries hold, as one number: changes as a skill is learned, lent or dropped.
+func _skill_sig() -> int:
+	var h := 17
+	for list: Array[Slot] in [_role_slots, innate, learned]:
+		for x in list:
+			h = (h * 31 + (x.skill.get_instance_id() if x and x.skill else 0)) & 0x7fffffffffff
+	for sk in _granted:
+		h = (h * 31 + sk.get_instance_id()) & 0x7fffffffffff
+	return h
+
+
+# Puts s on the bar where it goes by itself (_auto_slot()), if it isn't there. False if it has nowhere.
+func equip_skill(s: Skill) -> bool:
+	if s == null or s.inherent or s in hotbar or not s.fits_bar() or base_rank(s) == 0:
+		return s != null and (s.inherent or s in hotbar)
+	var i := _auto_slot(s)
+	if i < 0:
+		return false
+	hotbar[i] = s
+	_arrange()  # it may grant slots
+	return true
+
+
+# Where s goes by itself: a pillar in the last free sure slot; an always-on passive in the last free sure
+# slot (the bottom of the bar), else the last granted slot it fits - never the clover slot (fits()), and
+# a granted slot only past the sure ones, so one granting skill rarely sits in another's slot; anything
+# else the first free slot it fits. -1: full.
+func _auto_slot(s: Skill) -> int:
+	if s.passive and not s.toggle or s.pillar():
+		var sure := mini(slot_count(), hotbar.size())
+		var order := range(sure - 1, -1, -1)
+		if not s.pillar():
+			order += range(hotbar.size() - 1, sure - 1, -1)
+		for i in order:
+			if not hotbar[i] and slot_works(i) and fits(s, i):
+				return i
+		return -1
+	return free_slot(s)
+
+
+# Fills its free slots, as auto_equip does when slots appear: its learned skills that aren't equipped,
+# actives and toggles first, in the order it has them.
+func auto_fill() -> void:
+	var picks := slots.filter(func(x: Slot): return x.skill.fits_bar() and not x.skill.passive)
+	picks.append_array(slots.filter(func(x: Slot): return x.skill.fits_bar() and x.skill.passive))
+	for x in picks:
+		if x.skill not in hotbar and base_rank(x.skill) > 0:
+			var i := _auto_slot(x.skill)
+			if i >= 0:
+				hotbar[i] = x.skill
 
 
 # x rounded down, or up while the unit is lucky (level / 2 for a Gambeson, level / 4 for slots).
@@ -1011,21 +1168,41 @@ func rounded(x: float) -> int:
 # Puts one of the unit's skills in hotbar slot i (one that works and that it fits). A skill already on
 # the bar swaps places with whatever is in i - which comes off the bar if it doesn't fit there. Pillar
 # skills keep the last sure slots: they can't be moved, and nothing takes their place.
+# Pillar skills keep the last sure slots: they can't be moved, and nothing takes their place - one off the
+# bar goes only into an empty sure slot. Whatever drops off the bar by it, or with the slots it took
+# (a slot-granting skill moved out), is announced (lost_skills).
 func bar_place(s: Skill, i: int) -> bool:
-	if i < 0 or i >= hotbar.size() or not slot_works(i) or not s or not s.fits_bar() or rank(s) == 0 or not fits(s, i):
+	if i < 0 or i >= hotbar.size() or not slot_works(i) or not s or not s.fits_bar() or base_rank(s) == 0 or not fits(s, i):
 		return false
-	if s.pillar() or (hotbar[i] and hotbar[i].pillar()):
+	if (hotbar[i] and hotbar[i].pillar()) or (s.pillar() and (s in hotbar or hotbar[i] or i >= slot_count())):
 		return false
+	var was := hotbar.duplicate()
 	var old := hotbar.find(s)
 	if old >= 0:
 		hotbar[old] = hotbar[i] if hotbar[i] and fits(hotbar[i], old) else null
 	hotbar[i] = s
+	_settle(was)
 	return true
 
 
+# Unequips the skill in slot i (not a pillar). One that granted slots takes them with it, and their skills.
 func bar_clear(i: int) -> void:
 	if i >= 0 and i < hotbar.size() and not (hotbar[i] and hotbar[i].pillar()):
+		var was := hotbar.duplicate()
 		hotbar[i] = null
+		_settle(was)
+
+
+# After a change to the bar: its slots follow what's equipped (_arrange(), till nothing more drops), and
+# the skills no longer on it are announced.
+func _settle(was: Array) -> void:
+	_arrange()
+	var lost: Array[Skill] = []
+	for sk in was:
+		if sk and sk not in hotbar and sk not in lost:
+			lost.append(sk)
+	if not lost.is_empty():
+		lost_skills.emit(self, lost)
 
 
 func level_up() -> void:
@@ -1353,11 +1530,9 @@ func unlock(s: Skill) -> bool:
 	learned.append(x)
 	skill_points -= 1
 	purchases.append([s, 1])
+	_sync_new()  # onto the bar where it goes (auto_equip)
 	_arrange()
 	refit()  # a passive may change what's derived (Hardy)
-	var free := free_slot(s)
-	if s.fits_bar() and free >= 0:
-		hotbar[free] = s
 	return true
 
 
@@ -1398,10 +1573,17 @@ func raise(s: Skill) -> bool:
 	return true
 
 
+# Sets the hotbar up as the unit is: one left empty (as scenes leave it) is filled - pillar skills in the
+# last sure slots, then actives and toggles from the left, then always-on passives from the right, as
+# far as its slots go (actives first: NPCs and monsters carry extra_slots for the rest). Not a setting:
+# a unit comes ready, auto-equip or not.
 func _fill_bar() -> void:
 	var fresh := hotbar.is_empty()
 	hotbar.resize(bar_size())
-	_kinds = slot_kinds()
+	_keys = _slot_keys()
+	for x in slots:
+		_seen[x.skill] = true
+	_seen_sig = _skill_sig()
 	if not fresh:
 		return
 	var pinned := slot_count() - 1
@@ -1409,33 +1591,62 @@ func _fill_bar() -> void:
 		if x.skill.pillar() and x.skill.fits_bar() and pinned >= 0:  # pillar skills take the last sure slots
 			hotbar[pinned] = x.skill
 			pinned -= 1
-	var picks := slots.filter(func(x: Slot): return not x.skill.passive and not x.skill.pillar())
-	picks.append_array(slots.filter(func(x: Slot): return x.skill.passive and x.skill.fits_bar() and not x.skill.pillar()))
-	for x in picks:
-		var i := free_slot(x.skill)
-		if i >= 0:
-			hotbar[i] = x.skill
+	for pass_ in 2:  # the slots its passives grant join as they go on
+		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and (not y.skill.passive or y.skill.toggle)):
+			if x.skill not in hotbar:
+				var i := free_slot(x.skill)
+				if i >= 0:
+					hotbar[i] = x.skill
+		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and y.skill.passive and not y.skill.toggle and y.skill.fits_bar()):
+			if x.skill not in hotbar:
+				var i := _auto_slot(x.skill)
+				if i >= 0:
+					hotbar[i] = x.skill
+					_arrange()
 
 
-# Re-sorts the hotbar after its slots change (a level, a slot-granting skill): each skill keeps a slot
-# of the kind it was in - sure slots in order, typed ones by type, and the clover slot's skill in the
-# clover slot, or in a sure one when the clover slot turns plain. A skill left with no slot comes off
-# the bar.
+# Re-sorts the hotbar after its slots change (a level, a slot-granting skill equipped or not): each skill
+# keeps a slot of the kind it was in - sure slots in order, a granted one by its type and the skill (or
+# items) granting it, and the clover slot's skill in the clover slot, or in a sure one when the clover
+# slot turns plain. A skill left with no slot comes off the bar - a granting skill's slots go with it,
+# skills and all, and so on till nothing more drops. Slots that appear auto-fill (auto_equip).
 func _arrange() -> void:
-	var now := slot_kinds()
-	if now == _kinds and hotbar.size() == now.size():
-		return
-	var queues := {}
-	for i in hotbar.size():
-		queues.get_or_add(_kinds[i] if i < _kinds.size() else &"", []).append(hotbar[i])
-	var out: Array[Skill] = []
-	for k in now:
-		var from: Array = queues.get(k, [])
-		if from.is_empty() and k == &"" and &"clover" not in now:
-			from = queues.get(&"clover", [])
-		out.append(from.pop_front() if not from.is_empty() else null)
-	hotbar = out
-	_kinds = now
+	if hotbar.is_empty():
+		return  # not set up yet: _fill_bar()
+	var grew := false
+	for guard in 8:
+		var now := _slot_keys()
+		if now == _keys and hotbar.size() == now.size():
+			break
+		grew = grew or now.size() > _keys.size()
+		var queues := {}
+		for i in hotbar.size():
+			queues.get_or_add(_key_name(_keys[i] if i < _keys.size() else &""), []).append(hotbar[i])
+		var sure: Array = queues.get_or_add("", [])
+		var more: int = now.count(&"") - sure.size() - (queues.get("clover", []).size() if &"clover" not in now else 0)
+		if more > 0:  # new sure slots go in above the passives and pillars at the bottom, which stay there
+			var at := sure.size()
+			while at > 0 and (sure[at - 1] == null or (sure[at - 1].passive and not sure[at - 1].toggle) or sure[at - 1].pillar()):
+				at -= 1
+			for n in more:
+				sure.insert(at, null)
+		var out: Array[Skill] = []
+		for k in now:
+			var from: Array = queues.get(_key_name(k), [])
+			if from.is_empty() and k is StringName and k == &"" and &"clover" not in now:
+				from = queues.get("clover", [])
+			out.append(from.pop_front() if not from.is_empty() else null)
+		hotbar = out
+		_keys = now
+	if grew and auto_equip:
+		auto_fill()
+		_arrange()
+
+
+static func _key_name(k: Variant) -> String:
+	if k is StringName:
+		return String(k)
+	return "%s@%s" % [k[0], k[1].get_instance_id() if k[1] is Object else k[1]]
 
 
 # Passives (on) that stop working on ground with these tags (Oceanic on water).
@@ -1577,7 +1788,7 @@ func true_words() -> PackedStringArray:
 func dissonance_penalty() -> int:
 	var practised := 0
 	for x in slots:
-		if x.skill.has_look():
+		if x.skill.has_look() and equipped(x.skill):
 			practised = maxi(practised, mods(x.skill).irank(x.rank, &"rank_impact"))
 	return maxi(dissonance() - practised, 0)
 
@@ -1602,7 +1813,7 @@ func clout(f: Faction) -> int:
 
 # Has Conspire, switched off: its allies see straight through its persona.
 func candid() -> bool:
-	return slots.any(func(x: Slot): return x.skill.passive and not x.on and x.skill.effects.any(func(e: Effect): return e.stat == "conspire"))
+	return slots.any(func(x: Slot): return x.skill.passive and not x.on and equipped(x.skill) and x.skill.effects.any(func(e: Effect): return e.stat == "conspire"))
 
 
 # Reads others well enough that only trickery fools it: a positive wis mod, or a bonus to reading
@@ -1936,33 +2147,34 @@ func lent_by(s: Skill) -> String:
 
 
 # Its hotbar follows what its items lend (refit(), on every equip, unequip and enchantment): a skill newly lent
-# goes in the first free slot it fits, one no longer lent comes off the bar and is announced (lost_skills: Battle
-# ends a channel on it). Only the hotbar of a unit in the tree: one still being set up fills itself (_fill_bar()).
+# is new (_sync_new(): it auto-equips), one no longer lent comes off the bar and is announced (lost_skills: Battle
+# ends a channel on it) - lent again later, it's new again. Only the hotbar of a unit in the tree: one still
+# being set up fills itself (_fill_bar()).
 func _sync_granted() -> void:
 	var now: Array[Skill] = []
 	now.assign(granted().map(func(x: Slot): return x.skill))
 	var lost: Array[Skill] = []
-	lost.assign(_held.filter(func(s: Skill): return s not in now and rank(s) == 0))  # one it learned as well isn't lost
-	if hotbar.size() == bar_size():
-		for s in now:
-			if s not in _held and s.fits_bar() and s not in hotbar:
-				var i := free_slot(s)
-				if i >= 0:
-					hotbar[i] = s
-		for s in lost:
-			var i := hotbar.find(s)
-			if i >= 0:
-				hotbar[i] = null
+	lost.assign(_held.filter(func(s: Skill): return s not in now and own_rank(s) == 0))  # one it learned as well isn't lost
+	for s in lost:
+		_seen.erase(s)
+		var i := hotbar.find(s)
+		if i >= 0:
+			hotbar[i] = null
+	if not lost.is_empty():
+		_arrange()
+	if now != _held:
+		_seen_sig = -1
 	_held = now
+	_sync_new()
 	if not lost.is_empty():
 		lost_skills.emit(self, lost)
 
 
 # Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
-# bane: earth), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
+# bane: earth; a passive only while equipped), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
 	return t in tags or items().any(func(it: Item): return t in it.tags) \
-			or slots.any(func(x: Slot): return x.rank > 0 and (t in x.skill.tags or (emblems() and t in mods(x.skill).tags))) \
+			or slots.any(func(x: Slot): return x.rank > 0 and (not x.skill.passive or equipped(x.skill)) and (t in x.skill.tags or (emblems() and t in mods(x.skill).tags))) \
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 
@@ -2160,7 +2372,7 @@ func pools() -> Dictionary[Reserve, int]:
 				out[r] = out.get(r, 0) + t.reserves[r]
 	for x in slots:
 		var r := x.skill.reserve
-		if r and x.skill.passive:
+		if r and x.skill.passive and equipped(x.skill):
 			var m := mods(x.skill)  # its modifiers: the mod is stat impact, the rank rank impact
 			out[r] = out.get(r, 0) + maxi((m.stat(mod(x.skill.reserve_mod), &"stat_impact") if x.skill.reserve_mod else 1) + r.base, 0) * m.irank(x.rank, &"rank_impact")
 	for r in out:
@@ -2173,12 +2385,12 @@ func store(r: Reserve) -> int:
 
 
 # Whether it spends from r now: unless the passive that gives it, or stands in for Energy with it
-# (replacer(): Mana), is switched off (Sweet Nothings' toggle) or disabled.
+# (replacer(): Mana), is switched off (Sweet Nothings' toggle), disabled or not equipped.
 func spends(r: Reserve) -> bool:
 	for x in slots:
-		if x.skill.reserve == r and x.skill.passive and (not x.on or x.skill in disabled):
+		if x.skill.reserve == r and x.skill.passive and (not x.on or x.skill in disabled or not equipped(x.skill)):
 			return false
-		if replacer(x.skill) == r and (not x.on or x.skill in disabled):
+		if replacer(x.skill) == r and (not x.on or x.skill in disabled or not equipped(x.skill)):
 			return false  # Mana switched off: mana it holds pays for nothing
 	return true
 
@@ -2277,7 +2489,7 @@ func trees() -> Array[SkillTab]:
 func _opener(category: StringName) -> Skill:
 	var key := category if category else &"general"
 	for x in slots:
-		if x.skill.waives == key and x.rank > 0:
+		if x.skill.waives == key and x.rank > 0 and equipped(x.skill):
 			return x.skill
 	return null
 
@@ -2319,10 +2531,10 @@ func _general_need(s: Skill, t: int) -> Array:
 
 
 # A general-tree skill learned through a waiver whose waiver isn't working now: removed, disabled, or
-# cursed down to nothing. It stops working too.
+# cursed down to nothing, or unequipped. It stops working too.
 func lapsed(s: Skill) -> bool:
 	var by: Skill = waived.get(s)
-	return by != null and (base_rank(by) == 0 or by in disabled or unranked().get(by, 0) >= base_rank(by))
+	return by != null and (base_rank(by) == 0 or by in disabled or not equipped(by) or unranked().get(by, 0) >= base_rank(by))
 
 
 # The name a skill goes by for it: Strike takes the name of a low-tier upgrade it has learned
@@ -2702,7 +2914,7 @@ func _recover_reserves(how: StringName, rate: float) -> void:
 func giver_rank(r: Reserve) -> int:
 	var best := 0
 	for x in slots:
-		if (x.skill.reserve == r or x.skill.opens == r) and x.skill.passive:
+		if (x.skill.reserve == r or x.skill.opens == r) and x.skill.passive and equipped(x.skill):
 			best = maxi(best, x.rank)
 	return best
 
@@ -2899,9 +3111,9 @@ func pillars() -> Array[Skill]:
 
 # Its skills in the slots a disabling skill reaches, right to left, a slot at a time (each an
 # Array[Skill]): its pillar skills first, as one - they sit in its last sure slots; Foundations (a kind
-# of pillar: Generalist) sit rank / 2 slots further in, unless plain pillars go first and take them along - then the passives
-# that are always on (they fill the bar from the bottom), then what's on its hotbar from the last slot
-# back, then any other actives it has. Skills already disabled are skipped.
+# of pillar: Generalist) sit rank / 2 slots further in, unless plain pillars go first and take them along - then
+# what's on its hotbar from the last slot back (always-on passives fill it from the bottom). Skills it hasn't
+# equipped don't work, so aren't reached; skills already disabled are skipped.
 func disable_order() -> Array[Array]:
 	var out: Array[Array] = []
 	var seen := {}
@@ -2920,15 +3132,8 @@ func disable_order() -> Array[Array]:
 		for x in pillars():
 			seen[x] = true  # placed below, not among the passives
 	var rest: Array[Skill] = []
-	for x in slots:
-		if x.skill.passive and not x.skill.fits_bar():
-			rest.append(x.skill)
-	rest.reverse()
 	for i in range(hotbar.size() - 1, -1, -1):
 		rest.append(hotbar[i])
-	for x in slots:
-		if not x.skill.passive:
-			rest.append(x.skill)
 	for s in rest:
 		group.call([s] as Array[Skill])
 	var deep: Array[Skill] = []
@@ -3134,7 +3339,7 @@ func holds_energy(now: int) -> bool:
 func _take_looks() -> void:
 	for x in slots:
 		var s := x.skill
-		if not s.has_look():
+		if not s.has_look() or not equipped(s):
 			continue
 		if stance == "":
 			stance = s.stance

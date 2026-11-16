@@ -35,7 +35,7 @@ func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
 	var p := 1.0 - Battle.odds(c.target, &"constitution", null, dc(c), save_opts(c))
-	return {notes = ["%d%% to stun" % roundi(p * 100.0)] as Array[String]}
+	return {notes = ["Stuns it (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
 
 
 func describe(rank: int) -> String:
