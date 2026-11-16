@@ -40,26 +40,7 @@ static func outcome(b: Battle, from: Unit, to: Unit) -> Dictionary:
 	return {what = kind(b, at) if at != null else &"beside", at = at}
 
 
-const PUSH := 0.5  # riders a tile it drives its foe is worth (foresee(): the AI weighs a rider at AI.RIDER)
-
-
-# How far driving t n tiles straight away from `from` would really take it (Battle.displace(), read without
-# moving it): {went: tiles, left: tiles unspent, into: the unit it stops against, or null at the map's edge}.
-# Stopped short with tiles to spare it takes Battle.SLAM blunt a tile, and the unit it struck the same.
-static func driven(b: Battle, t: Unit, from: Vector2i, n: int) -> Dictionary:
-	var line := Vector2(t.cell - from).normalized()
-	var went := 0
-	var into: Unit = null
-	for k in range(1, n + 1):
-		var c := Vector2i((Vector2(t.cell) + line * k).round())
-		if c == t.cell:
-			continue
-		var other := b.unit_at(c) if b.on_map(c) else null
-		if not b.on_map(c) or (other and other != t):
-			into = other
-			break
-		went += 1
-	return {went = went, left = n - went, into = into}
+const PUSH := Battle.PUSH  # riders a tile it drives its foe is worth
 
 
 # For the forecast and the AI (Battle.foresee()): the tile's rider, as a hit would give it. A trap's
@@ -97,18 +78,7 @@ func foresee(c: Cast) -> Dictionary:
 		&"loose":
 			out.notes.append("Blinds it (%s)" % turns)
 		&"hole", &"beside":
-			var n := c.impact_rank() if o.what == &"hole" else 1
-			var run := driven(c.battle, c.target, c.caster.cell, n)
-			var line := "Drives it %d tile%s back" % [run.went, "" if run.went == 1 else "s"]
-			if run.left > 0:
-				var slam: int = Battle.SLAM * run.left
-				out.lo = slam
-				out.hi = slam
-				line += ", then slams %s (%d each)" % [run.into.name if run.into else "the edge", slam]
-				if run.into:
-					out.spill = slam * (-1.0 if Faction.friends(run.into.faction, c.caster.faction) else 1.0)
-			out.notes.append(line)
-			out.riders = PUSH * run.went
+			return c.battle.foresee_drive(c.caster, c.target, c.caster.cell, 1, c.impact_rank() if o.what == &"hole" else 1)
 	return out
 
 

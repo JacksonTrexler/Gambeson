@@ -141,3 +141,80 @@ func test_whatever_puts_it_on_drives() -> void:
 	b.lay_mark(Vector2i(5, 3), m)
 	b._trigger(v(3), Vector2i(5, 3), &"enter")
 	ok(v(3).cell == Vector2i(7, 3), "and a mark's effects do, from the one who laid it (%s)" % v(3).cell)
+
+
+# The forecast (docs/plans/forced-forecast.md): foresee() reads a forced move to where it would end, through
+# the one course() that displace() mirrors, so the foreseen tile is the tile it really ends on - for an
+# effect's shove, fear and entrance, and Displace's push, draw and teleport - and a stop short is its slam.
+func test_the_forecast_reads_where_it_ends() -> void:
+	var edge := Vector2i(7, 3)
+	while b.on_map(edge + Vector2i.RIGHT):
+		edge += Vector2i.RIGHT
+	for k in [["shove", 2.0, Vector2i(4, 3)], ["fear", 3.0, Vector2i(4, 3)], ["entrance", 3.0, Vector2i(7, 3)]]:
+		stage(lancin, {v(1): Vector2i(2, 3), v(3): k[2]})
+		soak(v(3))
+		var s := carrying(effect(k[0], k[1]))
+		v(1).refresh()
+		var f := b.foresee(v(1), s, v(3))
+		var end := Vector2i(f.notes[0].split("(")[1].split(",")[0].to_int(), 3)
+		ok(f.notes.size() == 1 and Battle.VERBS[StringName(k[0])] in f.notes[0], "%s is said: %s" % [k[0], f.notes])
+		b.cast(v(1), s, v(3))
+		ok(v(3).cell == end and end != k[2], "%s: foreseen end %s is where it went (%s)" % [k[0], end, v(3).cell])
+
+
+func test_a_stop_short_is_foreseen() -> void:
+	var edge := Vector2i(7, 3)
+	while b.on_map(edge + Vector2i.RIGHT):
+		edge += Vector2i.RIGHT
+	var room := edge.x - 7  # tiles from (7, 3) to the edge
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(7, 3)})
+	soak(v(3), 300)
+	var s := carrying(effect("shove", room + 2.0))
+	v(1).refresh()
+	var f := b.foresee(v(1), s, v(3))
+	ok(f.lo == Battle.SLAM * 2 and f.hi == f.lo and f.riders == Battle.PUSH * room and "slams the edge" in f.notes[0], "driven into the edge: the tiles it has, then the slam (%s)" % [f])
+	var blow: int = Battle.damage_range(v(1), s, v(3), b).get("lo", 0)  # (the carrier's own hit)
+	ok(b.cast(v(1), s, v(3)) and v(3).hp == 300 - blow - f.lo, "and the slam is what it took, on top of the blow (%d: %d + %d)" % [300 - v(3).hp, blow, f.lo])
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3), v(2): Vector2i(5, 3)})
+	soak(v(3), 300)
+	s = carrying(effect("shove", 3.0))
+	f = b.foresee(v(1), s, v(3))
+	ok(f.spill == -float(Battle.SLAM * 3) and f.riders == 0.0, "into its own ally: the ally's slam is against it (%s)" % [f])
+	v(2).faction = nemes
+	ok(b.foresee(v(1), s, v(3)).spill == float(Battle.SLAM * 3), "into a foe: for it")
+	s.dual = true
+	ok(b.foresee(v(1), s, v(3)).is_empty(), "a dual skill's effects skip a foe: nothing foreseen")
+
+
+func test_displace_foresees() -> void:
+	var d := Displace.new()
+	d.tiles = 3
+	var s: Skill = hex.duplicate()
+	s.behaviours = [d] as Array[Behaviour]
+	v(1).learned.append(slot(s))
+	for mode in [[false, false, Vector2i(5, 3)], [true, false, Vector2i(6, 3)], [false, true, Vector2i(7, 3)]]:
+		stage(lancin, {v(1): Vector2i(2, 3), v(3): mode[2]})
+		v(1).refresh()
+		soak(v(3))
+		d.toward = mode[0]
+		d.teleport = mode[1]
+		var f := b.foresee(v(1), s, v(3))
+		var end := Vector2i(f.notes[0].split("(")[1].split(",")[0].to_int(), 3)
+		b.displace(v(3), v(1).cell, -1 if d.toward else 1, d.reach(b.cast_of(v(1), s, v(3), 1, true)), d.teleport)
+		ok(v(3).cell == end and end != mode[2] and f.notes.size() == 1, "toward %s, teleport %s: foreseen %s, went %s" % [d.toward, d.teleport, end, v(3).cell])
+
+
+# Aura and Coordinate put their skill's effects on others as a cast does, so a forced move on them drives.
+func test_aura_and_coordinate_drive() -> void:
+	var s: Skill = load("res://Skills/flamecharm.tres").duplicate()
+	s.effects = [effect("shove", 2.0)] as Array[Effect]
+	v(1).learned.append(slot(s))
+	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
+	v(1).refresh()
+	ok(b.cast(v(1), s, v(1)) and v(2).cell == Vector2i(6, 3) and v(1).cell == Vector2i(3, 3), "an aura's shove drives its allies from the caster (%s)" % v(2).cell)
+	var c: Skill = load("res://Skills/coordinate.tres").duplicate()
+	c.effects = [effect("fear", 2.0)] as Array[Effect]
+	v(1).learned.append(slot(c))
+	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
+	v(1).refresh()
+	ok(b.cast(v(1), c, v(1)) and v(2).cell == Vector2i(6, 3), "and so does a link's fear (%s)" % v(2).cell)

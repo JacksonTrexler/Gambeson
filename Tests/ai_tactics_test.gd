@@ -106,7 +106,7 @@ func test_kick_foreseen() -> void:
 	b.paint(Vector2i(3, 3), load("res://Terrain/shallows.tres"))
 	ok(b.foresee(u, kick, v(3)).notes == ["Soaks it (2 turns)"], "water: Soaked, said so (%s)" % [b.foresee(u, kick, v(3)).notes])
 	b.map.erase_cell(Vector2i(3, 3))
-	ok(b.foresee(u, kick, v(3)).notes == ["Drives it 2 tiles back"], "a hole: 2 tiles back")
+	ok(b.foresee(u, kick, v(3)).notes == ["Drives it 2 tiles back to (6, 3)"], "a hole: 2 tiles back, and where")
 	ok(b.foresee(u, strike, v(3)).is_empty(), "a skill with no behaviours: nothing")
 
 
@@ -262,10 +262,10 @@ func test_kick_spill_and_drive() -> void:
 	ok(is_equal_approx(both.spill, 0.0) and both.notes.size() == 2 and both.riders == 1.0, "a foe in the blast offsets the kicker's own cost (%s)" % [both])
 	b.map.erase_cell(Vector2i(3, 3))  # a hole: drives it 2 back
 	var free := b.foresee(u, kick, v(3))
-	ok(free.notes == ["Drives it 2 tiles back"] and is_equal_approx(free.riders, 2 * load("res://Behaviours/kick.gd").PUSH), "a free drive: its distance in riders (%s)" % [free])
+	ok(free.notes == ["Drives it 2 tiles back to (6, 3)"] and is_equal_approx(free.riders, 2 * load("res://Behaviours/kick.gd").PUSH), "a free drive: its distance in riders (%s)" % [free])
 	b.move(v(2), Vector2i(6, 3))  # an ally of the kicker's behind it
 	var short := b.foresee(u, kick, v(3))
-	ok(short.notes[0].begins_with("Drives it 1 tile back, then slams") and short.lo == Battle.SLAM and short.spill == -float(Battle.SLAM), "stopped by an ally after 1 tile: it slams both (%s)" % [short])
+	ok(short.notes[0].begins_with("Drives it 1 tile back to (5, 3), then slams") and short.lo == Battle.SLAM and short.spill == -float(Battle.SLAM), "stopped by an ally after 1 tile: it slams both (%s)" % [short])
 
 
 # docs/plans/ai-prices.md. Starving a Grudge unit is worth a kill shared by the allies in its reach, nothing
@@ -348,3 +348,34 @@ func test_wear_varies_the_blow() -> void:
 	v(1).ap = [AP.new(100.0, &"")]
 	ok(AI._strike(b, v(1), reads, []), "both worn: a worn blow is still better than none")
 	Exhaustion.on = false
+
+
+# Forced moves are harm to the unit they land on, a rider to the one who lands them (docs/plans/forced-forecast.md):
+# a shove is worth more on a foe than none, less pushed into its own ally, and a support skill that carries one
+# isn't cast on allies.
+func test_forced_moves_are_priced() -> void:
+	var s: Skill = hex.duplicate()
+	s.rolls = false
+	v(1).learned.append(slot(s))
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3), v(2): Vector2i(1, 8)})
+	v(1).refresh()
+	soak(v(3), 300)
+	var bare := score(v(1), s, v(3))
+	s.effects = [effect("shove", 2.0)] as Array[Effect]
+	var shoved := score(v(1), s, v(3))
+	ok(shoved >= bare + 2 * Battle.PUSH * AI.RIDER, "a shove is sought, a rider a tile: %.2f vs %.2f" % [shoved, bare])
+	b.move(v(2), Vector2i(5, 3))
+	var into_ally := score(v(1), s, v(3))
+	v(2).faction = nemes
+	ok(into_ally < score(v(1), s, v(3)), "into its own ally it is worth less than into a foe (%.2f, %.2f)" % [into_ally, score(v(1), s, v(3))])
+	v(2).faction = lancin
+	b.move(v(2), Vector2i(1, 8))
+	var buff: Skill = load("res://Skills/intervention.tres").duplicate()
+	buff.effects = [effect("fear", 1.0)] as Array[Effect]
+	v(1).learned.append(slot(buff))
+	var log: Array[String] = []
+	AI._support(b, v(1), {v(2): b.read(v(1), v(2))}, log)
+	ok(log.is_empty(), "and a support skill carrying fear isn't given to an ally (%s)" % [log])
+	buff.effects = [effect("mitigate", 0.2)] as Array[Effect]
+	AI._support(b, v(1), {v(2): b.read(v(1), v(2))}, log)
+	ok(not log.is_empty(), "though one that helps is (%s)" % [log])
