@@ -13,11 +13,16 @@ func react(r: Reaction, holder: Unit, _rank: int) -> bool:
 	return true
 
 
-const WORTH := 0.25  # of a killing blow on it the AI counts lost: it has its say before it falls (foils())
-
-
-func foils(r: Reaction, holder: Unit, _rank: int) -> float:
-	return WORTH if r.trigger == &"fallen" and r.subject == holder and r.battle.times_reacted(holder, r.skill) == 0 else 0.0
+# Its free action, as the AI weighs a killing blow on it (reprisal()): the best strike it could make at the
+# blow's author, chance to hit x average damage - HP, the unit the AI already counts a blow's worth in.
+func reprisal(r: Reaction, holder: Unit, _rank: int) -> float:
+	if r.trigger != &"fallen" or r.subject != holder or r.battle.times_reacted(holder, r.skill) > 0 or r.by == null:
+		return 0.0
+	var best := 0.0
+	for s in holder.foe_actives():
+		var d := Battle.damage_range(holder, s, r.by, r.battle)
+		best = maxf(best, Battle.hit_chance(holder, s, r.by, r.battle) * float(d.get("avg", 0.0)))
+	return best
 
 
 func terms(t: SkillTerms) -> void:

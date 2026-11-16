@@ -1884,7 +1884,7 @@ func _arrow(landed: bool) -> String:
 
 # Whether the player can make out u's Defense: its own side, or one it can identify (armor shows).
 func _defense_shows(u: Unit) -> bool:
-	return known(u) or view(u).net >= 0
+	return known(u) or view(u).defense != null
 
 
 func _on_energy(was: int, now: int, u: Unit) -> void:
