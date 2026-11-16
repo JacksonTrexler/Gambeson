@@ -85,6 +85,27 @@ func test_level_down_ties_lose() -> void:
 	ok(ties > 0 and took[0] == beats, "%d rolls, %d ties took nothing: %d levels for %d beats" % [rolls.size(), ties, took[0], beats])
 
 
+# The forecast of Level Down (hit_chance(): Battle.level_odds()) is the chance at least one of its rolls beats
+# the bar: one last stand rolled for them all, then each roll's odds against it. It matches what casts take.
+func test_level_down_odds() -> void:
+	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
+	caster(level_down, 3)
+	v(3).charisma = 20  # mod 5 against a bar near level + 0: the dice decide
+	v(1).level = 8
+	v(3).refresh()
+	var p := Battle.hit_chance(v(3), level_down, v(1), b)
+	var each := Battle.odds(v(3), level_down.stat(), null, Battle.level_floor(v(1)) + 10, Battle.level_opts(v(3), level_down, [0, 0, 0, 0, 0.0]))
+	ok(p > 0.2 and p < 0.98 and each > 0.0 and each < 1.0, "neither sure nor hopeless (%.3f)" % p)
+	var took := 0
+	var n := 1500
+	for i in n:
+		v(1).timed.clear()
+		took += 1 if b._level_down(v(3), level_down, v(1), 3) > 0 else 0
+	ok(absf(took / float(n) - p) < 0.04, "a cast takes a level as often as forecast (%.3f vs %.3f)" % [took / float(n), p])
+	var shared := 1.0 - pow(1.0 - Battle.odds(v(3), level_down.stat(), null, Battle.level_floor(v(1)) + 10, Battle.level_opts(v(3), level_down, [0, 0, 0, 0, 0.0])), 3)
+	ok(absf(p - shared) > 0.01, "the one bar they share is not three bars of its mean (%.3f vs %.3f)" % [p, shared])
+
+
 func test_death() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1), v(2): Vector2i(6, 1)})
 	caster(death)
