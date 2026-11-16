@@ -276,7 +276,10 @@ static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	var from: Array[Vector2i] = []
 	for g in owing:
 		from.append(g.cell)
-	if _away(b, u, from):
+	var safe := 0  # beyond the farthest reach among them it is out of all; short of that, room to back off wins
+	for g in owing:
+		safe = maxi(safe, ceili(g.stat(&"movement")) + 2)
+	if _away(b, u, from, safe):
 		log.append("%s keeps from %s's reach, starving it of a blow" % [u.name, owing[0].name])
 		return true
 	return false
@@ -339,9 +342,10 @@ static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
 
 
 # The chance u's s hits t, as the player's own forecast would show it: t's Defense as r has it, or
-# GUESS_DEFENSE where u can't make it out (Read.defense: its armor doesn't show).
+# GUESS_DEFENSE where u can't make it out (Read.defense: its armor doesn't show). A lie about it (Perception._lie())
+# is believed, as the HUD's odds believe it.
 static func _chance(u: Unit, s: Skill, r: Read, b: Battle, t: Unit) -> float:
-	return Battle.hit_chance(u, s, t, b, -1 if r.defense != null else GUESS_DEFENSE)
+	return Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE))
 
 
 # Perceived worth of using a hostile skill on a unit read as `r`. Given the battle and the unit (`t`, the
@@ -882,12 +886,24 @@ static func _keep_away(b: Battle, u: Unit, reads: Dictionary, log: Array[String]
 		log.append("%s keeps away" % u.name)
 
 
-# Walks to the tile it can reach (as it expects the walk to go) furthest from the nearest of `from`.
+# Walks to the tile it can reach (as it expects the walk to go) furthest from the nearest of `from` (_retreat()).
 # False if there's nowhere better.
-static func _away(b: Battle, u: Unit, from: Array[Vector2i]) -> bool:
+static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0) -> bool:
+	var best := _retreat(b, u, from, safe)
+	return best != u.cell and not b.travel(u, best).is_empty()
+
+
+# The tile u would back off to: the one it can reach furthest from the nearest of `from`. `safe` > 0: any
+# tile that far counts as far enough, and of those the one with the most room to back off again next round
+# wins (_room(): a corner is a tile `from` need only close on). Where it stands if nowhere is better.
+static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0) -> Vector2i:
 	var gap := func(c: Vector2i) -> int:
 		return from.map(func(x: Vector2i): return Command.tiles(x, c)).min()
+	var key := func(c: Vector2i) -> Array:
+		var g: int = gap.call(c)
+		return [g if safe <= 0 else mini(g, safe), 0 if safe <= 0 else _room(b, u, c, gap)]
 	var best := u.cell
+	var best_key: Array = key.call(best)
 	var reach := ceili(u.move_left())
 	for dx in range(-reach, reach + 1):
 		for dy in range(-reach, reach + 1):
@@ -895,9 +911,28 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i]) -> bool:
 			if c == u.cell or not b.on_map(c):
 				continue
 			var path: Array = b.walk(u, c, true).path
-			if not path.is_empty() and gap.call(path[-1]) > gap.call(best):
+			if path.is_empty():
+				continue
+			var k: Array = key.call(path[-1])
+			if k[0] > best_key[0] or (k[0] == best_key[0] and k[1] > best_key[1]):
 				best = path[-1]
-	return best != u.cell and not b.travel(u, best).is_empty()
+				best_key = k
+	return best
+
+
+# How many open tiles within u's walk of c lie further from `from` than c does (gap: tile -> its distance):
+# where it could back off to next round. 0 at a corner or an edge, where whatever it keeps from would
+# have it cornered. Straight lines and bare ground stand in for the walk, as in starve_worth().
+static func _room(b: Battle, u: Unit, c: Vector2i, gap: Callable) -> int:
+	var reach := ceili(u.stat(&"movement"))
+	var here: int = gap.call(c)
+	var n := 0
+	for dx in range(-reach, reach + 1):
+		for dy in range(-reach, reach + 1):
+			var o := c + Vector2i(dx, dy)
+			if o != c and b.on_map(o) and (b.unit_at(o) == null or b.unit_at(o) == u) and gap.call(o) > here:
+				n += 1
+	return n
 
 
 # A recovering unit (a Starmote): off the star lattice, it heads for the nearest free lattice tile;

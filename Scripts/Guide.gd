@@ -58,7 +58,7 @@ While planning a move, blue tiles are safe, yellow ones unsure and dark red ones
 A unit's glow comes in four strengths: fully, in reach now; mostly, a sure walk gets there (a click walks, then acts); somewhat, only an unsure walk does (Ctrl-click walks it anyway); barely, not this turn. Foes glow for the attack a click would use; with a support skill selected, the allies it's for glow instead and foes fall back. Your own side glows by how ready each is for an order, and turns grey once it can take no more. Aiming an area skill, whoever it would catch glows fully. Allies of another side glow green.
 
 [color=#e8c547]Odds[/color]
-The brackets on a target say how likely a hit is: solid likely, broken even, faint unlikely; wavering when you can't make out its Defense.
+The brackets on a target say how likely a hit is: solid likely, broken even, faint unlikely; wavering when you can't make out its Defense. Past your reach ring, a dashed ring shows how far a lucky roll might still carry the skill: a bright circle round a unit means your luck would round it in, a faint one that it would not.
 
 [color=#e8c547]Rolls[/color]
 Attacks and the other checks are a d20 plus a mod; the forecast gives the chance to hit when you can make the target out. The Checks page has each kind."""],

@@ -987,6 +987,23 @@ func test_hidden_defense() -> void:
 	h.free()
 
 
+# docs/plans/ai-tuning.md. A liar's Defense is mirrored in its Read (Perception._lie()); the AI's hit chance, the HUD's
+# odds (HUD.odds(): through Read.believed(), and a lied faction takes no odds at all), its card and its log's roll all read that one number, so they agree on what is believed.
+func test_a_lied_defense_is_believed() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(3).afflict(effect("trickery", 20), 99)
+	var h := await hud(v(1))
+	var truth := v(3).defense()
+	var r := h.view(v(3))
+	var lie := maxi(Perception.MIRROR - truth, 0)
+	ok(r.twist == 1.0 and lie != truth and r.defense == lie, "the read has the mirrored Defense (%s, true %d)" % [r.defense, truth])
+	var chance := AI._chance(v(1), strike, r, b, v(3))
+	ok(is_equal_approx(chance, Battle.hit_chance(v(1), strike, v(3), b, lie)) and not is_equal_approx(chance, Battle.hit_chance(v(1), strike, v(3), b)), "the AI's chance is the liar's: %.2f, not the true %.2f" % [chance, Battle.hit_chance(v(1), strike, v(3), b)])
+	ok(h._info(v(3)).rows.any(func(x): return x[0] == "DF" and str(x[1]).begins_with("%d " % lie)), "the card shows it")
+	ok(h._roll_text({total = 15, defense = truth + 1, crit = false}, v(3)).contains("15 - %d" % (lie + 1)), "and the log's roll, with the roll's own tags carried over")
+	h.free()
+
+
 func shrike() -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Shrike"})
 	b.get_node("Units").add_child(u)

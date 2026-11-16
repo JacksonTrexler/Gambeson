@@ -2212,7 +2212,8 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 # 20 always among them. Given the battle, its behaviours' say on the roll too (edge(), guard(): Gank, Spike).
 # A skill whose declared check stands in place of the roll (a save, Drown's drag): the chance it wins
 # that (skill_odds(), the one check helper's odds), a drag's penalty over the tiles to its spot.
-# `guess` >= 0: t's Defense can't be made out (Read.defense), and this stands in for it (AI.score()).
+# `guess` >= 0: the Defense the viewer takes t to have (Read.believed(): what it makes out, a lie too, or a stand-in
+# when it can't; the AI and the HUD both pass it); a tagged Defense (rear, magical) still moves it as it moves t's own.
 static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1) -> float:
 	if s.check and not s.check.suspicion and t != u and not Faction.friends(t.faction, u.faction):
 		var spot: Variant = b.drag_spot(u, s, t) if b and s.drags() else null
@@ -2224,7 +2225,7 @@ static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
 	var req: Array = b.requirement(u, s, t, u.rank(s)) if b else [0, 0, 0, 0, 0.0]  # its contingency, as cast() reads it
 	var tags := c.tags if c else hit_tags(u, s, t, b)
-	var p := clampi(21 - ((t.defense(tags) if guess < 0 else guess) + guard_of(c) - u.attack_mod(s) - s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") - s.roll_bonus - int(req[0]) - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
+	var p := clampi(21 - ((t.defense(tags) if guess < 0 else guess + t.defense(tags) - t.defense()) + guard_of(c) - u.attack_mod(s) - s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") - s.roll_bonus - int(req[0]) - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
 	var edge := clampi(edge_of(s, c) + int(req[2]), -1, 1)
 
 	if edge < 0:

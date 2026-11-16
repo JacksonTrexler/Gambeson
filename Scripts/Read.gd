@@ -77,6 +77,17 @@ func attitude(o: Unit) -> StringName:
 	return &"avoid" if stance == &"aggressive" else &"foe"
 
 
+# The Defense argument Battle.hit_chance() takes for what o reads of t: the Defense it makes out (a lie
+# too), or `unknown` (-1: the truth, for the player's own; AI._chance() passes GUESS_DEFENSE).
+func believed(unknown := -1) -> int:
+	return unknown if defense == null else defense
+
+
+# How far the Defense it makes out lies from t's true one, to carry a roll's own figure (tagged, guarded) over.
+func skew(t: Unit) -> int:
+	return 0 if defense == null else defense - t.defense()
+
+
 func located() -> bool:
 	return cell != null
 

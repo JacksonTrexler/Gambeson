@@ -177,6 +177,32 @@ func test_dc_and_rider_forecasts() -> void:
 	ok(absf(held / 600.0 - p) < 0.06, "Stun lands as often as it said (%.3f vs %.3f)" % [held / 600.0, p])
 
 
+	# Hitch's apply() rolls the same options foresee() weighs: it holds as often as grapple()'s odds say.
+	var hs: Skill = load("res://Skills/hitch.tres")
+	var hc := b.cast_of(v(1), hs, v(3), 4, true)
+	v(1).strength = 14
+	v(3).strength = 10
+	v(3).dexterity = 14
+	v(1).refresh()
+	v(3).refresh()
+	var hp := Battle.odds(v(1), &"strength", v(3), HITCH.FOE_STATS, HITCH.grapple(hc))
+	var hheld := 0
+	for n in 2000:
+		hc.bag.clear()
+		v(3).timed.clear()
+		hs.behaviours[0].apply(hc)
+		hheld += 1 if hc.bag.get(&"hitched", false) else 0
+	ok(hp > 0.2 and hp < 0.8 and absf(hheld / 2000.0 - hp) < 0.035, "Hitch holds as often as its options say (%.3f vs %.3f)" % [hheld / 2000.0, hp])
+
+	# Level Down's branch of hit_chance() alone: a foe gets level_odds() at its rank impact, an ally the plain 1.0.
+	var ld: Skill = load("res://Skills/level_down.tres")
+	v(1).learned.append(slot(ld, 3))
+	v(1).refresh()
+	var lp := Battle.hit_chance(v(1), ld, v(3), b)
+	var want := Battle.level_odds(v(1), ld, v(3), v(1).mods(ld).irank(v(1).rank(ld), &"rank_impact"), b)
+	ok(is_equal_approx(lp, want) and lp > 0.0 and lp < 1.0, "Level Down's chance is level_odds at its rank (%.3f vs %.3f)" % [lp, want])
+	ok(is_equal_approx(Battle.hit_chance(v(1), ld, v(2), b), 1.0), "an ally is not rolled against")
+
 # A declared check (Skill.check) as the helper reads it: + rank when ranked, its edge, a range penalty a
 # tile past the first (1 less a rank past I), its own check tags beside the skill's.
 func test_declared_check() -> void:
