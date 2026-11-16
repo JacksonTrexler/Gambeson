@@ -295,7 +295,7 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.
 - [x] `Skills/clairvoyance.tres`: 3 AP, 3 cost, wisdom + rank range, location only, suspicion added, pings updated and the rank raised at each turn end held. (?89)
 - [x] **The AI never casts it.** Built 2026-11-14: a scryer with nothing to hunt casts it, then acts on the pings (?130).
-- [ ] **No screenshot check** of how pings look in the running game.
+- [x] **Screenshot check** of how pings look: black silhouettes, they follow the foes. Done 2026-11-15 (?149). Suspicion stack counts were not drawn; built (?150).
 - [x] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`). Built 2026-11-14 (?133).
 
 89. **Clairvoyance - answered (2026-11-10), built (`v-channel`, ?97).** There is never a rank cap, but the cost of ranking up rises exponentially, so it gets dear. "Moving does not end the channel" is overruled by the universal channel rule (`docs/todo/systems.md`): channeling has the same requirements as resting, so a unit that can't rest while moving ends the channel by moving. The rest stands as built:
@@ -416,6 +416,28 @@ Plan, readings and what was built: `docs/plans/slayer.md`; done in `docs/done/cl
     - **AI:** `AI._strike()` skips a skill whose behaviours' `fits()` refuse the target (Gank with no ally near); the AI uses all seven actives as ordinary attacks and doesn't weigh Gank's ambush, Poach's advantage, Spike's Defense or Sutemi's Off Balance. Peel works for AI walkers free.
     - **New names to review:** Hitched ?? (the held-and-towed status, `Effects/hitched.tres`). The rest are yours.
 - [ ] **Winded's meaning**: the sentence broke off. (?126)
-- [ ] **A forced unshape or polymorph break** doesn't exist yet; it should call `Battle.neutralize(u, &"unshaped")`. (?126)
-- [ ] **Poach's and Slam Jam's discounts are refunds after paying**, so the HUD shows the full price beforehand; the cost calculator could fold them in. (?126, ?131)
+- [x] **A forced unshape or polymorph break**: `Battle.unshape()` calls `neutralize(u, &"unshaped")`. Built 2026-11-15 (?153). (?126)
+- [x] **Poach's and Slam Jam's discounts** are in the price beforehand (`Behaviour.rebate()`). Built 2026-11-15 (?151). (?126, ?131)
 - [x] **The AI doesn't weigh** Gank's ambush, Poach's advantage and cost cut, Spike's Defense or Sutemi's Off Balance. Built 2026-11-14 (?138): hit chance, `refunds`, `unguarded`.
+
+## Price rebates and forced unshape (2026-11-15)
+
+Plans: `docs/plans/price-refunds.md` (`y-price`) and `docs/plans/unshape.md` (`y-unshape`). Tests: `poach_test.test_price_beforehand`; `slayer_test.test_unshaped` and `test_unshaped_poach`.
+
+151. **Price rebates - built on judgement, open for review (2026-11-15).** My calls:
+    - **One hook, `Behaviour.rebate(c) -> Vector2`:** x the share off before the roll (sure), y the share back on a hit. `refunds(c, p)` (the AI's read) is derived: x + y * p. Poach and Slam Jam override `rebate` only.
+    - **Where the sure share is taken:** `Battle.rebate()` sums the behaviours; `_cast` passes x to `Unit.pay_for(s, cut)`; `ap_cost` and `cost_from` take an optional `cut`. The HUD's `drain()` asks the same `Battle.rebate()` for the hovered target, so forecast and payment can't drift.
+    - **A roll-dependent share stays a refund** (`Unit.refund()`); the card row shows "on hit: -N" beside the drain segment. Slam Jam's energy share floors as the refund does. `Unit.paid_cut` remembers the cut so a later refund is a share of what was paid.
+    - **`Pricing.gd` untouched:** the calculator prices a skill by its terms; the per-cast discount is a target fact.
+    - **New names to review:** none.
+- [ ] **`can_afford` and the AI's affordability use the full price**, so a unit with exactly half of Poach's AP cannot start it though the hover shows the discount. (?151)
+- [ ] **Only `_cast` (a single target) takes the cut**; auto, spread and tile paths pay full (no target to ask). (?151)
+
+153. **Forced unshape - built on judgement, open for review (2026-11-15).** Tied to ?126's open question. My calls:
+    - **One hook, `Battle.unshape(u, by) -> bool`:** ends the form (emits `shaped(u, "", "")` as the voluntary path does) and switches off any toggle whose effects carry `mist`; if anything ended, `neutralize(u, &"unshaped")`; false and silent when u was in no shape. `by` is reserved for reactions. Shapes today: `Unit.form` (Beastshape) and the mist (Vaporize); no polymorph exists.
+    - **Effect stat `unshape ??`** (AI-made name): any skill, item, mark or tile effect carrying it forces the unshape as it is put on, through `Battle.drive()`'s existing call sites, and is erased at once.
+    - **The voluntary unshape stays quiet** (no neutralize); a mist turning itself off is a plain toggle.
+    - **No new skill.** Poach hears it free: its `felled` fires for the cast's target.
+    - **Open, ?126:** should skills that force an unshape exist (a Dispel, a Hex of the beast), and is it a Slayer or anti-druid tool or a general one? Does a mist forced out count as neutralized for Poach-like regains? Built as yes.
+    - **New names to review:** unshape ??.
+- [ ] **No skill forces an unshape**, pending ?126's answer on who owns it. (?153)

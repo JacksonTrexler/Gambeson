@@ -1278,3 +1278,36 @@ func test_help_order_reads_restores() -> void:
 	ok(h.intent_skill(u, &"supportive") == heal and h.intent_skill(u, &"offensive") == null, "the HUD's HELP finds it through what it restores")
 	ok(h.intent_options(u).any(func(o: Array): return o[0] == &"help" and o[1]), "HELP is offered")
 	h.free()
+
+
+# Every role's skills screen, every tab: the view draws each skill its tab lays out (centre, core, roots)
+# once, and nothing else - no tab shows a stale or short count.
+func test_every_tab_draws_its_skills() -> void:
+	var n := 0
+	for f in DirAccess.get_files_at("res://Roles"):
+		if not f.ends_with(".tres"):
+			continue
+		var u := b.starter({faction = lancin, role = load("res://Roles/" + f), name = "T" + f.get_basename()})
+		b.get_node("Units").add_child(u)
+		stage(lancin, {u: Vector2i(1, 2), v(1): Vector2i(1, 3), v(3): Vector2i(8, 2)})
+		var h := await hud(u)
+		h.toggle_skills()
+		await tree.process_frame
+		for i in h.skills.tabs().size():
+			h.skills.tab = i
+			h._refresh()
+			await tree.process_frame
+			var t: SkillTab = h.skills.tabs()[i]
+			var want: Array = [t.center] + t.core
+			for r: SkillRoot in t.roots:
+				if r:
+					want += r.skills()
+			var seen := {}
+			for s in want:
+				if s:
+					seen[s] = true
+			var shown: Array = h.skills.view().skills()
+			ok(shown.size() == seen.size() and shown.all(func(s: Skill): return seen.has(s)), "%s / %s: %d skills drawn, %d laid out" % [f, t.name, shown.size(), seen.size()])
+			n += 1
+		h.free()
+	ok(n >= 13, "tabs swept (%d)" % n)

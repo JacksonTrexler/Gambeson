@@ -251,3 +251,4 @@ Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?
 
 - [x] **Warcry** (Vanguard; `Behaviours/warcry.gd`, `Effects/charge.tres`, `charge_ap.tres`): lays Charge! and Routed! marks on the lines toward the nearest rank foes. `warcry_test.gd`. (?139)
 - [x] **Interject** (Protector, after Shields Up!), **Snapping Turtle** (after Turtle Tactics), **Final Act** and **Gallantry** (Chivalry, after Coordinate): reactions through `Behaviour.react`. (?140)
+- [x] **Price rebates** (`Behaviour.rebate()`, `Battle.rebate()`, `Unit.pay_for(s, cut)`): Poach's and Slam Jam's discounts show in the forecast and are paid beforehand. Plan: `docs/plans/price-refunds.md`. `poach_test`. (?151)
