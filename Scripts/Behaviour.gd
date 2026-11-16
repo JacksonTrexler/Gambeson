@@ -322,6 +322,20 @@ func hurt(_b: Battle, _holder: Unit, _rank: int, d: int) -> int:
 	return d
 
 
+# u was taken out of the fight (Battle.neutralize(): how is &"downed", &"down" or &"killed"; by, who last hit it, may
+# be null), anywhere on the field; the holder is another unit, standing (Deathlust: one dying near it
+# eases its exhaustion).
+func neutralized(_b: Battle, _holder: Unit, _rank: int, _u: Unit, _by: Unit, _how: StringName) -> void:
+	pass
+
+
+# A use of w.skill the holder paid for is over, with its whole cast (Battle._settle_wear()): w.gain is what it added to
+# the holder's exhaustion, w.uses what it keeps - lower it (0: none) to ease it; w.felled holds whom it took out
+# of the fight, and how (w.killed()). Deathlust: a skill that killed gains no exhaustion.
+func wearing(_b: Battle, _holder: Unit, _rank: int, _w: Exhaustion.Wear) -> void:
+	pass
+
+
 # t, any unit but the holder, is about to be healed n (Unit.being_healed): how much of it t still gets
 # (Molothrus siphons some).
 func healing(_b: Battle, _holder: Unit, _rank: int, _t: Unit, n: int) -> int:

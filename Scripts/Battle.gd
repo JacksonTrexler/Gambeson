@@ -90,6 +90,8 @@ var _interrupts: Array = []  # [unit, actions] waiting their turn to interrupt, 
 var _interrupt_left := 0  # actions the interrupter has left
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
 var _picked: Array[Unit] = []  # the units the outermost cast()'s caster picked by hand
+var _wears: Array[Exhaustion.Wear] = []  # uses paid for in the cast under way, settled as the outermost is done (_settle_wear(): Behaviour.wearing())
+var _aims: Array[Unit] = []  # whom each cast() under way is aimed at, innermost last
 var _casting := 0  # cast() / cast_at() calls under way: an interrupt opens once the outermost is done
 var _reacting := 0  # react() calls under way: an interrupt granted in one opens after it
 var _settling: Unit  # falling after its interrupt (_settle())
@@ -474,6 +476,7 @@ func _listen(u: Unit) -> void:
 	u.deferring.connect(_on_deferring)
 	u.falling.connect(_on_falling)
 	u.taking_hit.connect(_on_taking_hit)
+	u.paid.connect(_on_paid)
 	u.lost_skills.connect(_on_lost_skills)
 	u.being_healed.connect(_on_being_healed)
 	u.recovered.connect(_on_recovered)
@@ -832,7 +835,9 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: 
 	if _casting == 0:
 		_picked = picked
 	_casting += 1
+	_aims.append(target)
 	var done := _cast(caster, skill, target, spreading)
+	_aims.pop_back()
 	_casting -= 1
 	if _casting == 0:
 		_picked = []
@@ -846,6 +851,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: 
 func _done_casting(caster: Unit, done: bool) -> void:
 	if _casting > 0:
 		return
+	_settle_wear()
 	if done:
 		_spent_interrupt(caster)
 	_open_interrupt()
@@ -1335,6 +1341,34 @@ func neutralize(u: Unit, how: StringName) -> void:
 		if c.target == u:
 			for bh in c.skill.behaviours:
 				bh.felled(c, how)
+	for w in _wears:  # the use under way that did it: by the blow that struck it, or aimed at it
+		if w.target == u or (w.caster == u.last_hit_by and u.last_hit_by != u):
+			w.felled[u] = how
+	for o: Unit in units.values():
+		if o != u and o.is_alive():
+			for h in o.hooks():
+				h[0].neutralized(self, o, h[1], u, u.last_hit_by, how)  # Deathlust
+
+
+# A use of s was paid for (Unit.paid) inside a cast: held open, aimed at the cast's target, until the
+# outermost cast is done and _settle_wear() lets its caster's passives say what of it is kept.
+func _on_paid(u: Unit, s: Skill, w: Exhaustion.Wear) -> void:
+	if _casting == 0 or w.gain <= 0.0:
+		return
+	w.target = _aims.back() if not _aims.is_empty() else null
+	_wears.append(w)
+
+
+# The outermost cast is over: each use paid in it (Wear) goes through its caster's passives' wearing()
+# hooks, and what they took off its gain is relieved - the one generic place a passive may cancel or
+# lower the exhaustion a skill used would add.
+func _settle_wear() -> void:
+	var open := _wears
+	_wears = []
+	for w in open:
+		for h in w.caster.hooks():
+			h[0].wearing(self, w.caster, h[1], w)
+		w.caster.exhaustion.relieve(w.gain - w.uses, w.skill)
 
 
 # Forces u out of whatever shape it is in - a beast's form (Beastshape) or a mist (Vaporize) - by `by`
