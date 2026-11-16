@@ -21,6 +21,7 @@ func scene() -> void:
 		v(i).refresh()
 		soak(v(i), 300)
 	v(1).hp = 1
+	b.directed = func(_u: Unit): return true  # a person picks the free action here (else Battle's AI takes it: reaction_test.test_ai_interrupts)
 
 
 func test_acts_then_falls() -> void:

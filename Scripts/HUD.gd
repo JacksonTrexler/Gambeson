@@ -60,6 +60,7 @@ var command: Command
 var selected: Unit
 var slot := 0  # the selected hotbar slot of the selected unit: always set (the first, or with keep_slot the last used)
 var aim := false  # an area or trap skill in the slot is aimed: tile clicks cast it (its key again, or a right click, steps back)
+var picked: Array[Unit] = []  # picking(): the foes chosen so far, by click (empty: the skill chooses; Behaviour.picks())
 var keep_slot := false  # Settings: a unit keeps the slot it last used, rather than starting on the first
 var _last_slot: Dictionary[Unit, int] = {}  # keep_slot: each unit's last used slot
 var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing selected)
@@ -74,6 +75,7 @@ var charge := NOWHERE  # the hovered foe a click would walk up to and use a skil
 var hovered := {}  # what a click on the hovered tile means (intent())
 var spend := {}  # what the hovered plan would consume (drain()): drawn on the unit's own bars and card
 var hurt := {}  # what the hovered attack would take off its target, when its HP is known: {unit, lo, hi, notes} (notes: what rides on a hit, Battle.foresee())
+var aspect := {}  # the hovered attack lands on its target's &"rear" or &"flank" (Unit.side_of(), as Battle.hit_tags() reads it): {unit, side}; {} from the front or with no attack
 var foresight_used: Dictionary[Unit, int] = {}  # hazard estimates each unit has acted on this turn (foresight())
 var show_odds := false  # Alt held: the exact chance to hit, in the tip (only when the target's Defense is known)
 var marked: Array[Unit] = []  # what the armed skill could be used on
@@ -204,6 +206,8 @@ func _ready() -> void:
 		_log("%s %s%s" % [_tag(u), u.skill_name(s), " (%d vs %d)" % r.rolled if r.rolled.size() == 2 else ""])
 		overlay.float_text(u, u.skill_name(s), GOLD)
 		_mark())
+	battle.directed = _directs
+	battle.interrupt_began.connect(func(u: Unit): _log("%s acts out of turn" % _tag(u)))  # now, not deferred: Battle's AI acts as it opens
 	battle.interrupt_began.connect(_on_interrupt, CONNECT_DEFERRED)
 	battle.dropped.connect(_on_dropped_item)
 	battle.pulsed.connect(_on_pulsed)
@@ -429,6 +433,10 @@ func _unhandled_input(e: InputEvent) -> void:
 		hover_cell(_cell_at(e.position))
 		return
 	if e is InputEventMouseButton:
+		if e.pressed and e.button_index == MOUSE_BUTTON_MIDDLE:  # a look-over (Shift-click already inspects)
+			look_over(_cell_at(e.position))
+			get_viewport().set_input_as_handled()
+			return
 		if not e.pressed or e.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if _panel_open():
@@ -455,6 +463,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		toggle_party()
 	elif e.is_action_pressed(&"next_unit"):
 		next_unit()
+	elif e.is_action_pressed(&"look_over"):
+		look_over(hover)
 	else:
 		var i := _slot_key(e)
 		if i < 0:
@@ -483,6 +493,7 @@ func _cell_at(p: Vector2) -> Vector2i:
 # Focus: u, or with none given the player's own unit (its leader, while it stands and the battle's on).
 # A new unit starts on its first slot, or with keep_slot the one it last used.
 func select(u: Unit) -> void:
+	picked.clear()
 	if u == null and command and command.leader.is_alive() and battle.phase == Battle.Phase.TURNS:
 		u = command.leader
 	var was := selected
@@ -555,6 +566,8 @@ func use_slot(i: int) -> void:
 			_run(intent(u.cell))  # the second press: used
 		elif s.on_tile():
 			aim = not (again and aim)
+		elif picks_of(u, s) > 0:
+			aim = true  # a skill that takes picks: clicks on foes choose them, until its key again
 		_replan()
 		_mark()
 
@@ -563,6 +576,7 @@ func use_slot(i: int) -> void:
 func _pick_slot(u: Unit, i: int) -> void:
 	if i != slot:
 		aim = false
+		picked.clear()
 	slot = i
 	_last_slot[u] = i
 	_note = ""
@@ -579,9 +593,25 @@ func aiming() -> bool:
 	return aim and armed != null and armed.on_tile()
 
 
+# How many targets the selected unit may pick by hand for s (Behaviour.picks(); 0 for most).
+func picks_of(u: Unit, s: Skill) -> int:
+	return battle.picks_of(u, s) if s and not s.passive and not s.on_tile() and self_skill(u, s) else 0
+
+
+# Whether a skill that takes picks is being aimed: a click on a visible foe toggles it into `picked`.
+func picking() -> bool:
+	return aim and selected != null and picks_of(selected, armed) > 0
+
+
+# The foes a pick could be: those the unit makes out (Battle.read() locates them), as the behaviour will.
+func pickable(u: Unit, t: Unit) -> bool:
+	return t != null and t != u and t.is_alive() and foe(t) and battle.read(u, t).located()
+
+
 # Steps back from aiming (the selected slot stays).
 func disarm() -> void:
 	aim = false
+	picked.clear()
 	_replan()
 	_mark()
 
@@ -601,7 +631,7 @@ func switch(u: Unit, s: Skill) -> void:
 func cancel() -> void:
 	if _panel_open():
 		_close_panels()
-	elif aiming():
+	elif aiming() or picking():
 		disarm()
 	else:
 		select(null)
@@ -683,8 +713,30 @@ func toggle_sheet() -> void:
 		sheet.open(u, _outfits(u))
 
 
+# A look-over of whoever stands on c (middle-click, or the look_over key on the hovered tile): its sheet,
+# read-only, with its bio as the player's eyes make it out (view(): the same Read the unit card goes by).
+# The player's own side reads whole (null); no one made out there, nothing.
+func look_over(c: Vector2i) -> void:
+	var u := unit_seen(c) if c != NOWHERE else null
+	if u == null:
+		return
+	_close_panels()
+	sheet.open(u, false, null if known(u) else view(u))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Save.save()
+
+
 func _outfits(u: Unit) -> bool:
 	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and battle.outfitting(u)))
+
+
+# The player's starter keeps what it has equipped for the next battle, and the save (Game.equipped).
+func _keep_bar(u: Unit) -> void:
+	if u == battle.player:
+		Game.equipped = u.get_equipped()
 
 
 # The player's starter keeps what it has on, and its hearts, for the next battle.
@@ -709,6 +761,7 @@ func _on_equipped(u: Unit, it: Item) -> void:
 		Game.stash.append(old)
 	_log("%s puts on %s" % [_tag(u), it.name])
 	_keep_outfit(u)
+	Save.save()  # the stash and outfit last past the game
 	sheet.open(u, true)
 	_mark()
 
@@ -720,6 +773,7 @@ func _on_unequipped(u: Unit, slot: String) -> void:
 			return
 		Game.stash.append(it)
 		_keep_outfit(u)
+		Save.save()
 		sheet.open(u, true)
 		_mark()
 
@@ -729,6 +783,7 @@ func _on_used_up(u: Unit, it: Item) -> void:
 		Game.stash.erase(it)
 		_log("%s uses %s" % [_tag(u), it.name])
 		_keep_outfit(u)
+		Save.save()
 		sheet.open(u, true)
 		_mark()
 
@@ -865,25 +920,22 @@ func my_turn() -> bool:
 # The unit acting out of turn (Battle.interrupter: Final Act) is the player's to direct: the leader or
 # its party, whoever's turn it is. Others' interrupts their AI takes (AI.interrupt()).
 func _my_interrupt() -> bool:
-	return battle.interrupter != null and command.ours(battle.interrupter) and not autopilot()
+	return battle.interrupter != null and _directs(battle.interrupter)
 
 
-# An interrupt opened (Battle.interrupt_began): the player picks the free action for its own unit (a
-# skill, or End turn to pass); the AI picks for the rest. The turn it interrupted resumes after.
+# Whether the player picks u's interrupt (Battle.directed): its own unit, while it isn't on autopilot.
+func _directs(u: Unit) -> bool:
+	return command.ours(u) and not autopilot()
+
+
+# An interrupt opened (Battle.interrupt_began) for the player's own unit: they pick the free action (a
+# skill, or End turn to pass). The AI picks for the rest, in Battle itself. The turn it interrupted resumes after.
 func _on_interrupt(u: Unit) -> void:
 	if battle.interrupter != u:
 		return  # stale: already done
-	_log("%s acts out of turn" % _tag(u))
 	if _my_interrupt():
 		select(u)
 		_say("%s: one free action, or End turn to pass" % _name(u))
-		return
-	if pace > 0.0:
-		await _wait(pace)
-		if not is_inside_tree() or battle.interrupter != u:
-			return
-	AI.interrupt(battle, u)
-	_mark()
 
 
 # Units on the player's side: everything about them is known.
@@ -1104,6 +1156,11 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 		it.why = why_not(me, s, me)
 		it.ready = it.why == ""
 		return it
+	if mine and picking() and pickable(me, t) and not force and _slot_usable(me, slot):  # a foe toggled in or out of the picks
+		it.kind = &"pick"
+		it.skill = s
+		it.target = t
+		return it
 	if mine and force and not (t and known(t)):  # Ctrl: strike at the tile, whatever seems to be there
 		var p := s if s and s.for_foes() and not s.on_tile() and not self_skill(me, s) else _primary(me)
 		if p:
@@ -1180,9 +1237,9 @@ func foresight(u: Unit) -> int:
 
 # What stepping onto c would cost u that the player's side can foresee, by pool (&"hp", &"ap"): the
 # one estimate behind drain()'s forecast, Battle.hazard() read through tile_view(c) - known traps and
-# their wounds over their length, known ground's afflicts, fire. {}: nothing foreseen.
-func hazard(u: Unit, c: Vector2i) -> Dictionary:
-	return battle.hazard(u, c, tile_view(c))
+# their wounds over their length, known ground's afflicts, fire, its own per_tile tolls (the nth tile of a walk). {}: nothing foreseen.
+func hazard(u: Unit, c: Vector2i, nth := 0) -> Dictionary:
+	return battle.hazard(u, c, tile_view(c), nth)
 
 
 # What carrying out an intent would consume, as the unit expects it - the "will consume" signal, drawn
@@ -1203,8 +1260,8 @@ func drain(it: Dictionary) -> Dictionary:
 		d[&"move"] = w.costs.reduce(func(sum, x): return sum + x, 0.0)
 		if foresight_allowance(u) >= 0:  # below 0 it plans as if the way were safe
 			var ahead := foresight(u) > 0
-			for c: Vector2i in w.path:
-				var owed := hazard(u, c)
+			for i in w.path.size():
+				var owed := hazard(u, w.path[i], i + 1)  # (its own per_tile tolls count by the tile it's the nth of)
 				for key in owed:
 					if ahead:
 						d[key] = d.get(key, 0.0) + owed[key]
@@ -1214,11 +1271,17 @@ func drain(it: Dictionary) -> Dictionary:
 	var s: Skill = it.get("skill")
 	if s and (it.ready or it.kind == &"strike_at"):
 		var fund: Variant = u.funding(s)
-		d[&"ap"] = d.get(&"ap", 0.0) + u.ap_cost(s, fund)
-		var cost := u.cost_from(s, fund)
+		var t: Variant = it.get("target")
+		var rb := battle.rebate(u, s, t, foe(t)) if t is Unit and t != u and it.kind == &"use" else Vector2.ZERO  # the price a behaviour cuts (sure), or gives back on a hit
+		d[&"ap"] = d.get(&"ap", 0.0) + u.ap_cost(s, fund, rb.x)
+		var cost := u.cost_from(s, fund, rb.x)
+		var key: Variant = fund if fund is Reserve else &"energy"
 		if cost:
-			var key: Variant = fund if fund is Reserve else &"energy"
 			d[key] = d.get(key, 0.0) + cost
+		if rb.y > 0.0:  # "on hit: -N" beside each number
+			d[&"on_hit"] = {&"ap": u.ap_cost(s, fund, rb.x) * rb.y}
+			if cost:
+				d[&"on_hit"][key] = floori(cost * rb.y + 0.0001)
 	return d
 
 
@@ -1238,6 +1301,18 @@ func _hurt(it: Dictionary) -> Dictionary:
 		return {}
 	return {unit = t, lo = d.get("lo", 0) + more.get("lo", 0), hi = d.get("hi", 0) + more.get("hi", 0), notes = more.get("notes", [] as Array[String])}
 
+
+
+# Which side of its target the hovered attack would come from, when that isn't the front: {unit, side}.
+# From where the attacker would stand (a plan walks first), by the target's facing; a ranged attack too.
+func _aspect(it: Dictionary) -> Dictionary:
+	var t: Variant = it.get("target")
+	var s: Skill = it.get("skill")
+	var u: Unit = it.get("unit")
+	if it.get("kind") != &"use" or not it.ready or not (t is Unit) or t == u or not s or not (s.attacks() or _checked(s)) or not foe(t):
+		return {}
+	var side: StringName = t.side_of(it.get("dest", u.cell))
+	return {} if side == &"front" else {unit = t, side = side}
 
 
 # How likely the hovered attack is to land, as the target's brackets show it: &"likely" (solid),
@@ -1308,6 +1383,8 @@ func _run(it: Dictionary) -> void:
 			_study(it.cell)
 		&"disarm":
 			disarm()
+		&"pick":
+			_toggle_pick(u, it.target)
 		&"refuse":
 			_refuse(u, it.why)
 		&"select":
@@ -1337,13 +1414,26 @@ func _run(it: Dictionary) -> void:
 			var why := why_not(u, s, target)
 			var took := false
 			if why == "" or not walked:
-				took = battle.cast_at(u, s, it.cell, not it.alt) if s.on_tile() else (target != null and battle.cast(u, s, target))
+				took = battle.cast_at(u, s, it.cell, not it.alt) if s.on_tile() else (target != null and battle.cast(u, s, target, false, picked))
 			if took:
 				_done(u, walked)
 				return
 			_refuse(u, why if why else "%s doesn't take" % s.name)
 			_replan()
 			_mark()
+
+
+# A click on a foe while picking: in or out of the picks, no more than the skill takes.
+func _toggle_pick(u: Unit, t: Unit) -> void:
+	if t in picked:
+		picked.erase(t)
+	elif picked.size() >= picks_of(u, armed):
+		_say("%s takes no more than %d" % [armed.name, picks_of(u, armed)])
+		return
+	else:
+		picked.append(t)
+	_replan()
+	_mark()
 
 
 # Strikes at a tile, whatever seems to be there (Battle.attempt).
@@ -1456,6 +1546,7 @@ func _done(u: Unit, counted := false) -> void:
 	if not counted:
 		command.order(u)
 	aim = false
+	picked.clear()
 	if not keep_slot:
 		slot = 0
 	_note = ""
@@ -1650,6 +1741,21 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 	_mark()
 
 
+# The spoils as icons under the text (UnitCard.item_row()); none: the row goes.
+func _show_spoils(won: Array[Item]) -> void:
+	var col: Node = %OverText.get_parent()
+	var old := col.get_node_or_null("Spoils")
+	if old:
+		col.remove_child(old)
+		old.queue_free()
+	if won.is_empty():
+		return
+	var row := UnitCard.item_row(won)
+	row.name = "Spoils"
+	col.add_child(row)
+	col.move_child(row, %OverText.get_index() + 1)
+
+
 func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if now != Battle.Phase.OVER:
 		return
@@ -1661,6 +1767,8 @@ func _on_phase(_was: Battle.Phase, now: Battle.Phase) -> void:
 	if not won.is_empty():
 		Game.stash.append_array(won)
 		%OverText.text += "\nSpoils: %s" % ", ".join(won.map(func(it: Item): return it.name))
+	_show_spoils(won)
+	Save.save()  # the spoils, and the level and XP the battle gave the starter
 	_log("[color=#e8c547]%s[/color]" % %OverText.text)
 	spellbook.hide()
 	select(null)
@@ -1949,12 +2057,13 @@ func _refresh() -> void:
 	grounds.clear()
 	traps.clear()
 	suspect.clear()
+	var eye := eyes()
 	for c in _shown_cells():
 		var tv := tile_view(c)
 		grounds[c] = ground(c, tv)
 		if tv.trap == true:
 			traps[c] = c in battle.snares and battle.snares[c].faction == command.faction()
-		if tv.hint != "" and c not in dubious:  # concealed ground it suspects is more than it looks
+		if (tv.hint != "" or (eye and tv.net < 0 and eye.suspects(c) > 0)) and c not in dubious:  # concealed ground it suspects is more than it looks (a hidden mark too: Battle.suspicious())
 			suspect[c] = tv.hint
 	marked = targets()
 	sleepers.assign(battle.units.values().filter(func(u: Unit): return unit_seen(u.cell) == u and sleeping(u)))
@@ -2038,7 +2147,7 @@ func _move_label(cost: Variant, suspicious: bool) -> String:
 # The tile is known to be something more than it shows, its effects concealed: a hint read off it,
 # or a spot where something may lurk.
 func _suspicious(c: Vector2i, r: Read) -> bool:
-	return r.hint != "" or c in dubious or r.obscured
+	return r.hint != "" or c in dubious or c in suspect or r.obscured
 
 
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
@@ -2129,6 +2238,9 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 	var out := []
 	if r.hint:
 		out.append([_sentence(r.hint), GROUND[&"unsure"]])
+	var eye := eyes()
+	if eye and eye.suspects(c) > 0 and (c in dubious or c in suspect):
+		out.append(["Suspicious of it: %d" % eye.suspects(c), GROUND[&"unsure"]])  # (each Clairvoyance ping, each look adds one)
 	if c in dubious:
 		out.append(["Something may be here" + (": " + dubious[c] if dubious[c] else ""), GROUND[&"unsure"]])
 	if c in battle.snares and battle.snares[c].faction == command.faction() and tile_view(c).trap == true:
@@ -2272,6 +2384,7 @@ func _on_unlocked(s: Skill) -> void:
 	var u := skills.unit
 	if _can_spend(u) and u.unlock(s):
 		_log("%s learns %s" % [_tag(u), s.name])
+		_keep_bar(u)
 		_rebuild_bar()
 	_mark()
 
@@ -2380,6 +2493,7 @@ func _on_dropped(i: int, s: Skill, _from: int) -> void:
 				_say(SkillSlot.NO_LUCK)
 			elif kind:
 				_say("%s slots hold only %s skills" % [kind, kind.to_lower()])
+		_keep_bar(u)
 		_mark()
 
 
@@ -2388,6 +2502,7 @@ func _on_cleared(i: int) -> void:
 		if i == slot:
 			aim = false
 		selected.bar_clear(i)
+		_keep_bar(selected)
 		_mark()
 
 
@@ -2425,6 +2540,10 @@ func _hint() -> String:
 	if battle.turn != command.faction():
 		return "Waiting for %s." % battle.turn.name
 	var u := selected
+	if picking() and _orders(u):
+		var n := picks_of(u, armed)
+		return "%s: %s (click foes, its key again casts)" % [armed.name,
+				"%d of %d picked" % [picked.size(), n] if not picked.is_empty() else "the nearest %d" % n]
 	if not u or not hand(u) or _orders(u):
 		return ""
 	if u.asleep():
@@ -2679,6 +2798,8 @@ func _card_info() -> Dictionary:
 			r.append("?")
 		elif spend.get(key, 0.0) > 0.0:
 			r.append(spend[key])
+			if spend.get(&"on_hit", {}).get(key, 0.0) > 0.0:
+				r.append(spend[&"on_hit"][key])  # "on hit: -N"
 	return info
 
 
@@ -3243,6 +3364,7 @@ func _replan() -> void:
 		it = intent(selected.cell)  # a self skill selected: its use, previewed
 	spend = drain(it)
 	hurt = _hurt(it)
+	aspect = _aspect(it)
 	if card:
 		card.set_info(_card_info())
 	charge = hovered.cell if hovered.get("kind") == &"use" and hovered.target is Unit and hovered.target != selected else NOWHERE

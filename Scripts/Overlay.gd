@@ -53,10 +53,11 @@ func _draw() -> void:
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
 	var mine := hud.my_turn()
 	var loud := hud.suspicious_marks or hud.high_contrast  # accessibility: a plain, bold ? on every suspicious tile
+	var eye := hud.eyes()
 	for c in hud.dubious:
-		_suspect_mark(c, DUBIOUS, pulse, loud)
+		_suspect_mark(c, DUBIOUS, pulse, loud, eye.suspects(c) if eye else 0)
 	for c in hud.suspect:  # concealed ground it suspects is more than it looks: a translucent ? placeholder
-		_suspect_mark(c, GOLD, pulse, loud)
+		_suspect_mark(c, GOLD, pulse, loud, eye.suspects(c) if eye else 0)
 	_layers(b)
 	_lattice(b, pulse)
 	for c in b.marks:
@@ -85,6 +86,8 @@ func _draw() -> void:
 	_gap(sel)
 	if sel and hud.aiming():
 		_draw_targeting(sel, hud.armed, pulse)
+	if sel and hud.picking():
+		_draw_picks(pulse)
 	for c in hud.traps:
 		_caltrop(c, GOLD if hud.traps[c] else FOE)
 	for u in cmd.party:
@@ -100,11 +103,13 @@ func _draw() -> void:
 # with a line around the area.
 # A ? marking a suspicious tile: faint and tinted by default, bold and fuller in high-contrast /
 # "mark suspicious" mode (an overlay stands in for a real grit texture for now).
-func _suspect_mark(c: Vector2i, tint: Color, pulse: float, loud: bool) -> void:
+func _suspect_mark(c: Vector2i, tint: Color, pulse: float, loud: bool, stacks := 0) -> void:
 	draw_rect(_rect(c, 2), Color(tint, 0.2 if loud else 0.12))
 	var a := (0.85 if loud else 0.25) + 0.2 * pulse
 	draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6,
 			12 if loud else 10, Color(tint if not loud else Color(1, 1, 1), a))
+	if stacks > 1:  # how suspicious it has grown of the tile (a Clairvoyance ping adds one a turn): a small count in the corner
+		draw_string(ThemeDB.fallback_font, _rect(c).position + Vector2(TILE - 6, 8), str(stacks), HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1, 0.5 + 0.3 * pulse))
 
 
 func _draw_reach(sel: Unit) -> void:
@@ -163,6 +168,14 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 		_brackets(_rect(u.cell, 1.5), Color(mark, pulse), 6.0)
 		if u.cell == hud.hover:
 			draw_rect(_rect(u.cell, 1.5), Color(mark, 0.18))
+
+
+# The foes picked by hand (HUD.picked): brackets and their number, of the most the skill takes.
+func _draw_picks(pulse: float) -> void:
+	for i in hud.picked.size():
+		var at: Vector2i = hud.picked[i].cell
+		_brackets(_rect(at, 1.5), Color(FOE, 0.6 + 0.4 * pulse), 6.0)
+		draw_string(ThemeDB.fallback_font, _rect(at).position + Vector2(TILE - 7, TILE - 3), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 0.55, 0.5))
 
 
 # The target's brackets say how likely the hit is (HUD.odds()): solid likely, broken even, faint
@@ -275,6 +288,13 @@ func draw_top() -> void:
 		if t.hp_bar.visible:
 			_drain_bar(t, t.hp_bar, float(hud.hurt.hi), Color(1, 1, 1, 0.45))
 			_drain_bar(t, t.hp_bar, float(hud.hurt.lo), Color.WHITE)
+	if not hud.aspect.is_empty():  # one word over the target: it is hit from its side or behind
+		var t: Unit = hud.aspect.unit
+		var word := String(hud.aspect.side)
+		var w := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+		var at := t.position + Vector2(-w / 2.0, t.trim.position.y - 3.0)
+		top.draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, 2, Color(0, 0, 0, 0.8))
+		top.draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Glossary.colour(hud.aspect.side).lightened(0.35))
 	var col := Color(HUD.SLEEP, 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 3.0))
 	for u in hud.sleepers:
 		var at := u.position + Vector2(13, -TILE / 2.0 + 4)
@@ -445,6 +465,13 @@ func _mark(c: Vector2i, m: Battle.Mark) -> void:
 	var half := (TILE / 2.0 - 1.0) * lerpf(0.2, 1.0, k)
 	var inner := Rect2(_center(c) - Vector2(half, half), Vector2(half, half) * 2.0)
 	draw_rect(inner, Color(m.tint, 0.5 * (1.0 - 0.6 * k) if m.swell >= 0 else 0.5 * (0.4 + 0.6 * k)))
+	var g := _center(c)  # a glyph that reads without the colour: a chevron up for what swells (Charge!), a cross for what drags (Routed!)
+	var ink := Color(1, 1, 1, 0.85)
+	if m.swell > 0:
+		draw_polyline(PackedVector2Array([g + Vector2(-3, 1), g + Vector2(0, -2), g + Vector2(3, 1)]), ink, 1.0)
+	elif m.swell < 0:
+		draw_line(g + Vector2(-3, -3), g + Vector2(3, 3), ink, 1.0)
+		draw_line(g + Vector2(-3, 3), g + Vector2(3, -3), ink, 1.0)
 
 
 func _earth(c: Vector2i) -> void:

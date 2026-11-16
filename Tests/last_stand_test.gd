@@ -63,6 +63,29 @@ func test_level_down() -> void:
 	ok(b.cast(v(3), level_down, v(1)) and v(1).lv() == lv, "every roll short: nothing")
 
 
+# A roll must beat the bar, not meet it: a tie takes no level (the bar is a total rolled before, spent).
+func test_level_down_ties_lose() -> void:
+	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
+	caster(level_down, 3)
+	v(3).charisma = 20  # mod 5 against a bar near level + 0: the dice decide
+	v(1).level = 8
+	v(3).refresh()
+	var rolls := []
+	var took := [0]
+	var spy := func(_c: Unit, _t: Unit, total: int, against: int): rolls.append([total, against])
+	var seen := func(_c: Unit, _t: Unit, n: int): took[0] += n
+	b.contested.connect(spy)
+	b.leveled.connect(seen)
+	for i in 40:
+		v(1).timed.clear()
+		b._level_down(v(3), level_down, v(1), 3)
+	b.contested.disconnect(spy)
+	b.leveled.disconnect(seen)
+	var ties := rolls.filter(func(r): return r[0] == r[1]).size()
+	var beats := rolls.filter(func(r): return r[0] > r[1]).size()
+	ok(ties > 0 and took[0] == beats, "%d rolls, %d ties took nothing: %d levels for %d beats" % [rolls.size(), ties, took[0], beats])
+
+
 func test_death() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1), v(2): Vector2i(6, 1)})
 	caster(death)

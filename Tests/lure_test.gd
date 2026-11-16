@@ -202,6 +202,7 @@ func test_ramuts_ire() -> void:
 
 func test_stall_lifts() -> void:
 	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(1, 1)})
+	siren().extra_dissonance = -2  # its lie as believable as before far lies cost more: Lancin's seeded doubt doesn't see through it
 	b.end_turn()
 	ok(b.stalling.is_empty() and b.stalled_turns[nemes] == 0, "Nemes sees its foes: its turn isn't stalled")
 	b.end_turn()

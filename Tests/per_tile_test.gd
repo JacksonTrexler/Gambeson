@@ -75,3 +75,29 @@ func test_ground_and_tolls_share_the_test() -> void:
 	var t := Terrain.new()
 	t.level = 2
 	ok(v(1).passes_by(t, 1) and v(1).wards(2, 1) and not v(1).wards(3, 1) and not v(1).wards(2, 3), "passes_by() is wards() of the ground's level; past Meander's tiles it wards nothing")
+
+
+# The hazard estimate foresees the toll (Battle.hazard(), nth): each tile of a walk owes what _toll() takes,
+# Meander's wards included; on no walk (route()'s call), nothing.
+func test_hazard_foresees_it() -> void:
+	start(2, 0)
+	var r := b.read(v(1), Vector2i(2, 4))
+	var each: float = footsore.amount * 2.0
+	ok(b.hazard(v(1), Vector2i(2, 4), r, 1).get(&"hp", 0.0) == each, "rank 2 Footsore: its toll, a tile (%s)" % [b.hazard(v(1), Vector2i(2, 4), r, 1)])
+	ok(b.hazard(v(1), Vector2i(2, 4), r).is_empty(), "no walk, no toll: the route isn't steered by what every tile owes")
+	start(1, 2)
+	r = b.read(v(1), Vector2i(2, 4))
+	ok(b.hazard(v(1), Vector2i(2, 4), r, 2).is_empty() and not b.hazard(v(1), Vector2i(4, 4), r, 3).is_empty(), "Meander II passes the first two tiles by, the third owes")
+	var hp := v(1).hp
+	b.travel(v(1), Vector2i(4, 4))
+	ok(hp - v(1).hp <= ceili(b.hazard(v(1), Vector2i(4, 4), r, 3).get(&"hp", 0.0)) + 1 and v(1).hp < hp, "and what it owes is what the walk took (%d)" % (hp - v(1).hp))
+
+
+func test_forecast_sums_it() -> void:
+	start(1, 0)
+	v(1).intelligence = 12
+	var h := await hud(v(1))
+	var walk := {path = [Vector2i(2, 4), Vector2i(3, 4), Vector2i(4, 4)], costs = [1.0, 1.0, 1.0]}
+	var d := h.drain({kind = &"walk", unit = v(1), walk = walk})
+	ok(is_equal_approx(d.get(&"hp", 0.0), 3.0 * footsore.amount) and d.get("estimated", false), "the walk's forecast: a toll for each of three tiles (%s)" % [d])
+	h.free()

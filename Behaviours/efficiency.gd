@@ -21,4 +21,8 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "An efficiency stack on %s trees: +1 Affinity, cheaper rank-ups, for their skills up to tier {r:%d}" % [" and ".join(reaches), rank]
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	return "An efficiency stack on %s trees: +1 Affinity, cheaper rank-ups, for their skills up to tier {r:%d}" % [" and ".join(reaches), c.impact_rank()]

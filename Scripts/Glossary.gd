@@ -48,10 +48,11 @@ const TERMS := {
 	&"true": ["True", &"damage", "Damage nothing reduces or redirects: it goes straight to HP."],
 	&"unblockable": ["Unblockable", &"damage", "Damage mitigation doesn't reduce."],
 	&"drain": ["Drain", &"damage", "Energy damage takes Energy (or Power) first; only what's past it reaches HP."],
-	&"held": ["Held", &"condition", "Grappled: moving away first takes movement and a contest to break free. Each turn it ends held, it takes its holder's grip."],
+	&"held": ["Held", &"condition", "Grappled: moving away first takes movement and a contest to break free. Each turn it ends held while submerged, it drowns (Drown)."],
 	&"wound": ["Wound", &"condition", "A lasting hurt with a rank; a heal clearing at least that rank takes it off."],
 	&"enraptured": ["Enraptured", &"condition", "Fooled by a unit's persona, with no suspicion of it."],
 	&"suspicion": ["Suspicion", &"condition", "Stacks of doubt about a unit's persona: each makes it harder to fool."],
+	&"dissonance": ["Dissonance", &"condition", "How far a unit's persona is from what it is, counting against its own lies. A claim it truly is costs nothing, one near what it is half, one far from it (a monster claiming harmless) 1.5, any other 1; rounded up."],
 	&"pinged": ["Pinged", &"condition", "Sensed by a channeled Clairvoyance: a foe out of sight shown as a black shape where it was last sensed. Only where, not who or what side; gone once the channel ends."],
 	&"concealment": ["Concealment", &"condition", "Levels of hiding: what's under it must be investigated past them to be seen."],
 	&"disabled": ["Disabled", &"condition", "A skill slot switched off for some turns. A cursed one quivers."],
@@ -113,6 +114,9 @@ const TERMS := {
 	&"reaction": ["Reaction", &"check", "Done out of turn, in answer to a moment: an attack, a hit, a fall. Lost while Jammed or helpless; effects tagged reaction count on them."],
 	&"rear": ["Rear ??", &"check", "An attack from behind the target, by the cone test of the way it faces: it needs 1 less to hit. Effects and skills tagged rear count on it."],
 	&"flank": ["Flank ??", &"check", "An attack from the side of its target, by the cone test of the way it faces. Effects and skills tagged flank count on it."],
+	&"shove": ["Shove", &"condition", "Driven straight away from whoever pushed it. A shove that hits a unit or the map's edge does blunt damage. Ends a grapple either side of it. Effects, skills and reactions tagged shove count on it."],
+	&"fear": ["Fear", &"condition", "Driven away from its source, a tile at a time, as it is put on and as each of its turns starts while it lasts. Ends a grapple either side of it. Effects, skills and reactions tagged fear count on it."],
+	&"entrance": ["Entrance", &"condition", "Drawn toward its source, a tile at a time, as it is put on and as each of its turns starts while it lasts. Ends a grapple either side of it. Effects, skills and reactions tagged entrance count on it."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

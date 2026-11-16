@@ -28,7 +28,8 @@ func _init() -> void:
 
 
 # Shows u's sheet; editable: its items can be changed now.
-func open(u: Unit, editable: bool) -> void:
+# r: how the viewing side reads u (Battle.read()), for a unit that isn't its own; null shows u's whole bio.
+func open(u: Unit, editable: bool, r: Read = null) -> void:
 	unit = u
 	for c in _column.get_children():
 		_column.remove_child(c)
@@ -41,11 +42,25 @@ func open(u: Unit, editable: bool) -> void:
 	head.add_child(title)
 	head.add_child(GuideLink.new(&"character"))
 	_column.add_child(head)
-	var who := u.nick if u.nick else String(u.name)
-	var hearts := " · %d of %d hearts left" % [u.lives_left(), u.lives()] if u.lives() > 0 else ""
-	var xp := "max level" if u.level >= Unit.MAX_LEVEL else "%d / %d XP" % [u.xp, Unit.xp_to_next(u.level)]
-	_column.add_child(_muted("%s · Lv %d · %s%s" % [who, u.lv(), xp, hearts]))
-	for slot in SLOTS:
+	if r:  # someone else's: only what the viewer makes out (the unit card's own gates), no hearts, XP or kit
+		var who := r.name if r.name else ("A %s" % r.looks if r.looks else "Something")
+		_column.add_child(_muted("%s · Lv %s" % [who, str(r.level) if r.level != null else "?"]))
+	else:
+		var who := u.nick if u.nick else String(u.name)
+		var hearts := " · %d of %d hearts left" % [u.lives_left(), u.lives()] if u.lives() > 0 else ""
+		var xp := "max level" if u.level >= Unit.MAX_LEVEL else "%d / %d XP" % [u.xp, Unit.xp_to_next(u.level)]
+		_column.add_child(_muted("%s · Lv %d · %s%s" % [who, u.lv(), xp, hearts]))
+	var bio := Bio.line(u, r)
+	if bio:
+		var l := RichTextLabel.new()
+		l.name = "Bio"
+		l.bbcode_enabled = true
+		l.fit_content = true
+		l.scroll_active = false
+		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		l.text = Glossary.rich(bio)
+		_column.add_child(l)
+	for slot in SLOTS if r == null else []:
 		var it: Item = u.get(slot)
 		var row := HBoxContainer.new()
 		row.add_child(UnitCard.trim_mark(it.trim() if it else Color(0, 0, 0, 0), it.name if it else "", it.icon() if it else null))
@@ -67,10 +82,11 @@ func open(u: Unit, editable: bool) -> void:
 		elif it and editable:
 			row.add_child(_button("Take off", func() -> void: unequipped.emit(unit, slot)))
 		_column.add_child(row)
-	_column.add_child(_muted("Stash"))
-	if Game.stash.is_empty():
+	if r == null:
+		_column.add_child(_muted("Stash"))
+	if Game.stash.is_empty() and r == null:
 		_column.add_child(_muted("Nothing yet"))
-	for it in Game.stash:
+	for it in Game.stash if r == null else []:
 		var row := HBoxContainer.new()
 		row.add_child(UnitCard.trim_mark(it.trim(), it.name, it.icon()))
 		var l := Label.new()

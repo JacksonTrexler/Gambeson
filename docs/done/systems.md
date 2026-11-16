@@ -208,3 +208,22 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Damage for moving** (`Effect.per_tile`, `Unit.wards()`, Footsore ??): HP per tile walked; Meander wards it by rank. (?139)
 - [x] **Regain ??** (`Effect.regain`, `Unit.regain()`): an instant AP refund by the effect's tag. (?139)
 - [x] **Reactions and interrupts** (`Behaviour.react`, `Behaviour.Reaction`, `Battle.react()`, `grant_interrupt()`, `end_interrupt()`; `AI.interrupt()`; tag `reaction`): one hook for swaps, held-up falls and free actions out of turn. (?140)
+
+## Checks, facing, items and consolidation (2026-11-15)
+
+- [x] **Checks and contests** (`Battle.check()`, `odds()`, `sides()`, `Check.odds()`, `SkillCheck`, `Skill.check`): one helper for every d20-against-d20 site; skills declare their check; the forecast and the AI read its odds; `doubt()` counts defensive bracing. `FLAG_CEILING` 128 to 126. Plan: `docs/plans/checks.md`. `check_test`. (?141)
+- [x] **Facing** (`Unit.facing`, `face()`, `side_of()`, `striding`, `REAR_EDGE`, Rear ??, Flank ??): walks and actions turn a unit; the shield turns with it; a rear attack needs 1 less; the AI prefers the weaker aspect. Plan: `docs/plans/facing.md`. `facing_test`. (?142)
+- [x] **Skills on items** (`Item.skills`, `Slot.from`, `Unit.granted()`, `lost_skills`; Hobnail Boots ??): lent while worn, never ranked, drawn with a ring; Urlo's enchantment reaches trinkets and skips what can't scale. Plan: `docs/plans/item-skills.md`. `item_skills_test`. (?143)
+- [x] **Test and logic consolidation** (`docs/plans/consolidation.md`): the museum held across a run (150 s to about 60 s), runner words `reverse` and `soak`, script errors fail their test, the `Game` statics reset per test; `sweep_test` over every skill, 19 files deleted; `Behaviour.apply_at` and `Displace`, `Skill.gd` fields 126 to 104. The check count fell about 46k to about 8k, cosmetically. (?144)
+
+## Saving, forced moves, polish, gaps, dissonance, unshape and bio (2026-11-15)
+
+- [x] **Saving** (`Save.gd`, `Game.hero`, Entry's Continue; `user://save.json`, versioned, a bad file set aside as `.bad`; `KeyBinds.SAVE` a `static var`): the hero, level, xp, hearts, outfit and stash survive a restart. Hook for x-equip's equipped set. Plan: `docs/plans/saving.md`. `save_test`. (?145)
+- [x] **Fear, shove and entrance** (Effect stats `shove`, `fear`, `entrance`; `Battle.drive()`, `_frighten()`, `driven`, `SLAM`, `_break_grips()`): forced moves as effects; a push stopped short hurts both; a grapple ends when either moves. Plan: `docs/plans/fear.md`. `forced_test`. (?146)
+- [x] **Polish** (`Behaviour.describe_as` on 22 behaviours, `Cast.at()`, `Cast.mod_text()`; `HUD.aspect`; `Check.fixed()`; `Cast.strength`): modified numbers in texts, a rear or flank word in the forecast, earlier-total rolls on the check helper, distance decay for behaviours and auras. Plan: `docs/plans/polish-11-15.md`. (?148)
+- [x] **Reaction and marks gaps** (`Battle.area_blow()`, `Battle.directed`, `Behaviour.foils()`, `AI._foiled()`, `hazard(..., nth)`, `Mark.helps()`, `Battle.lure()`): area, flame and trap moments; the AI answers interrupts and weighs enemy reactions; `per_tile` and helpful and hidden marks in the estimate, route and HUD. Plan: `docs/plans/gaps-react-marks.md`. (?150)
+- [x] **Dissonance by distance** (`Perception.lie()`, `NATURES ??`, `OPPOSED`; Glossary "Dissonance"): a lie is measured, not tallied. Plan: `docs/plans/dissonance.md`. `persona_test`. (?152)
+- [x] **Forced unshape** (`Battle.unshape()`, Effect stat `unshape ??`): a forced end of a form or mist is neutralized as `unshaped`. Plan: `docs/plans/unshape.md`. `slayer_test`. (?153)
+- [x] **Bio text** (`Bio.line()`, `Bio.TEMPERS`): a line on the character sheet and a Bio paragraph in the Guide. Plan: `docs/plans/bio-text.md`. `bio_test`. (?154)
+- [x] **Screenshot pass**: Clairvoyance pings, the Specialist tree, facing, item rings and Warcry marks checked; findings in `docs/plans/shots-11-15.md`. (?149)
+

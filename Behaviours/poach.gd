@@ -2,7 +2,7 @@ extends Behaviour
 
 # Poach: a quick blow at easy pickings. On a bloodied foe (Unit.bloodied(): half its HP or less) it has
 # never used a skill on this battle (Battle.aimed()), it's made at advantage and half its AP and cost
-# come back (Unit.refund()). Its blow neutralizing the foe (Battle.neutralize(): downed, Downed, killed)
+# come off its price (Behaviour.rebate(), taken before it is paid). Its blow neutralizing the foe (Battle.neutralize(): downed, Downed, killed)
 # gives back 5% x rank of its max Energy, and 10% x rank of its Focus and Stamina, each a recovery
 # (Burnout: RE).
 
@@ -21,16 +21,14 @@ static func easy(c: Cast) -> bool:
 
 func aim(c: Cast) -> void:
 	c.bag[&"poach"] = easy(c)  # asked before this use is remembered
-	if c.bag[&"poach"]:
-		c.caster.refund(c.skill, 0.5)
 
 
 func edge(c: Cast) -> int:
 	return 1 if c.bag.get(&"poach", easy(c)) else 0
 
 
-func refunds(c: Cast, _p: float) -> float:
-	return 0.5 if easy(c) else 0.0
+func rebate(c: Cast) -> Vector2:  # sure: the price shown and paid is half (Battle.rebate())
+	return Vector2(0.5, 0.0) if easy(c) else Vector2.ZERO
 
 
 func felled(c: Cast, _how: StringName) -> void:
@@ -57,6 +55,11 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return "\n".join([
 		"On a bloodied foe (half its HP or less) it hasn't used a skill on this battle: at advantage, and half its AP and cost come back",
 		"Its blow neutralizing the foe (downed, Downed or killed): {r:%d}%% of its max Energy back, and {r:%d}%% of its Focus and Stamina (each a recovery: %s)" % [

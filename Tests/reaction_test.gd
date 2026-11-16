@@ -122,6 +122,7 @@ func test_keyed() -> void:
 
 func test_interrupt() -> void:
 	scene()
+	b.directed = func(_u: Unit): return true  # a person's: nothing picks for it but the test
 	v(1).learned.append(slot(jam))
 	v(1).dexterity = 40
 	v(1).refresh()
@@ -142,6 +143,7 @@ func test_interrupt() -> void:
 
 func test_interrupt_queued() -> void:
 	scene()
+	b.directed = func(_u: Unit): return true  # a person's: nothing picks for it but the test
 	b.grant_interrupt(v(1))
 	b.grant_interrupt(v(2))
 	ok(b.interrupter == v(1), "the first granted goes first")
@@ -153,6 +155,7 @@ func test_interrupt_queued() -> void:
 
 func test_ai_interrupt() -> void:
 	scene()
+	b.directed = func(_u: Unit): return true  # a person's: nothing picks for it but the test
 	v(1).learned.append(slot(jam))
 	v(1).dexterity = 40
 	b.grant_interrupt(v(1))
@@ -162,3 +165,77 @@ func test_ai_interrupt() -> void:
 	b.grant_interrupt(v(1))
 	log = AI.interrupt(b, v(1))
 	ok(b.interrupter == null and "passes" in log.back(), "nothing to do, it passes: %s" % [log])
+
+
+# Left undirected, Battle asks the AI itself as the interrupt opens (item 2 of docs/plans/gaps-react-marks.md):
+# a headless simulation and the real game alike. The directed one (the player's) waits for its person.
+func test_ai_interrupts() -> void:
+	scene()
+	v(1).learned.append(slot(jam))
+	v(1).dexterity = 40
+	var seen := []
+	b.interrupt_ended.connect(func(u: Unit): seen.append(u))
+	b.grant_interrupt(v(1))
+	ok(v(3).hp < 300 and b.interrupter == null and seen == [v(1)], "no one directs it: the AI strikes and the interrupt is over")
+	b.directed = func(u: Unit): return u == v(1)
+	b.grant_interrupt(v(1))
+	ok(b.interrupter == v(1), "directed: it waits for its person")
+	b.end_interrupt()
+	b.grant_interrupt(v(2))
+	ok(b.interrupter == null and seen.back() == v(2), "while another's still the AI's: %s" % [seen])
+
+# Area blows go through the same moments (item 1 of docs/plans/gaps-react-marks.md): Solar's cone asks
+# `attacked` then `hit` for a foe in it, not for an ally, nor the caster; a dodged Wildfire is attacked, not hit;
+# flames and traps, which have no cast to swap, ask `hit`.
+func test_area_moments() -> void:
+	var solar: Skill = load("res://Skills/solar.tres").duplicate(true)
+	solar.ap = 1.0
+	solar.cost = 0
+	var wild: Skill = load("res://Skills/wildfire.tres").duplicate(true)
+	wild.ap = 1.0
+	wild.cost = 0
+	stage(nemes, {v(3): Vector2i(1, 3), v(1): Vector2i(3, 3), v(2): Vector2i(3, 4), v(4): Vector2i(2, 3)})  # v(4) an ally, in the cone's way
+	roomy(v(3))
+	v(3).learned.append(slot(solar))
+	v(3).learned.append(slot(wild))
+	v(3).wisdom = 40  # Solar's reach is its wis mod
+	v(3).refresh()
+	for i in [1, 2, 3, 4]:
+		soak(v(i), 300)
+	var e := Echo.new()
+	e.answer = false
+	echo(v(2), e)  # beside v(1), a foe
+	v(4).faction = nemes
+	ok(b.cast_at(v(3), solar, Vector2i(3, 3)), "Solar cast on a tile")
+	var moments := e.heard.map(func(h: Array): return [h[0], h[2]])
+	ok([&"attacked", v(1)] in moments and [&"hit", v(1)] in moments, "a foe in the cone is attacked, then hit (%s)" % [moments])
+	ok(not moments.any(func(m: Array): return m[1] in [v(3), v(4)]), "not the caster, nor its ally")
+	e.heard.clear()
+	v(1).dexterity = 90  # mod 40: dodges
+	ok(b.cast_at(v(3), wild, Vector2i(3, 3)), "Wildfire cast")
+	moments = e.heard.map(func(h: Array): return [h[0], h[2]])
+	ok([&"attacked", v(1)] in moments and [&"hit", v(1)] not in moments, "dodged: attacked, and not hit (%s)" % [moments])
+	e.heard.clear()
+	b.flame(v(1), Battle.Flame.new(v(3), 1), "test")
+	ok(e.heard.size() == 1 and e.heard[0][0] == &"hit" and e.heard[0][3] == v(3), "a flame's damage is a hit, no cast: %s" % [e.heard])
+
+
+# Interject takes an area blow in the ally's place, as it does a single one.
+func test_area_interject() -> void:
+	var solar: Skill = load("res://Skills/solar.tres").duplicate(true)
+	solar.ap = 1.0
+	solar.cost = 0
+	var interject: Skill = load("res://Skills/interject.tres")
+	stage(nemes, {v(3): Vector2i(1, 3), v(1): Vector2i(3, 3), v(2): Vector2i(3, 4), v(4): Vector2i(8, 8)})
+	v(3).learned.append(slot(solar))
+	v(3).refresh()
+	v(2).learned.append(slot(interject, 5))
+	v(2).dexterity = 90
+	v(2).refresh()
+	for i in [1, 2, 3, 4]:
+		soak(v(i), 300)
+	v(3).wisdom = 40
+	var got := []
+	b.reacted.connect(func(u: Unit, s: Skill, _r): got.append([u, s]))
+	b.cast_at(v(3), solar, Vector2i(3, 3))
+	ok([v(2), interject] in got, "Interject answers an area hit on the ally beside it (%s)" % [got.size()])

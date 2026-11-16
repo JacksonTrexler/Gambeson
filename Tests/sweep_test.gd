@@ -190,6 +190,31 @@ func test_actives() -> void:
 	ok(cast + NOT_CAST.size() == _built.filter(func(s: Skill): return not s.passive).size(), "every built active is cast or named in NOT_CAST")
 
 
+# Skills whose behaviour reads state that may be missing (Retrieve: where the item is; Emergency Exit: a
+# forming portal) are cast here with each state absent and present, so a crash on a missing precondition
+# fails the run (the runner counts script errors) and a no-op shows.
+func test_missing_preconditions() -> void:
+	var bag: Skill = load("res://Skills/burning_bag.tres")
+	var item: Item = bag.behaviours[0].item
+	for where in ["nowhere", "stash", "ally"]:
+		var on: Variant = _pose(bag)
+		Game.stash.clear()
+		v(1).unequip(item.slot)
+		v(2).unequip(item.slot)
+		if where == "stash":
+			Game.stash.append(item.duplicate())
+		elif where == "ally":
+			v(2).equip(item.duplicate())
+		ok(_use(bag, on), "Burning Bag cast with the bag %s" % where)
+		var worn: Item = v(1).get(item.slot)
+		ok(worn != null and worn.name == item.name, "...it ends up on its caster (%s)" % where)
+		ok(v(2).get(item.slot) == null and Game.stash.all(func(x: Item): return x.name != item.name), "...and nowhere else (%s)" % where)
+	Game.stash.clear()
+	var exit: Skill = load("res://Skills/emergency_exit.tres")
+	var on: Variant = _pose(exit)
+	ok(b.get_node_or_null("Meadows") == null and _use(exit, on) and b.pockets.size() == 1, "Emergency Exit with no portal forming makes its pocket")
+
+
 func test_item_skills() -> void:
 	var n := 0
 	for f in DirAccess.get_files_at("res://Items"):
@@ -217,3 +242,28 @@ func test_describes() -> void:
 			ok(d != "" and not regex.search(d) and "STUB" not in d, "%s describes itself at rank %d: %s" % [f, r, d])
 		n += 1
 	ok(n > 0, "behaviours found")
+
+
+# Every behaviour that declares a scaling term (terms(): rank or stat, impact or range) says its numbers as
+# its holder has them: with a modifier on that channel, describe_as() changes (Behaviour.describe_as()).
+# Each is read on a built skill that carries it (some read the skill's own fields).
+func test_describes_as() -> void:
+	var on := {&"rank_impact": &"rho_up", &"rank_range": &"rho_down", &"stat_impact": &"sigma_down", &"stat_range": &"sigma_up"}
+	var n := 0
+	for s in _built:
+		for bh in s.behaviours:
+			var t := SkillTerms.new(Skill.new())
+			t.skill = s  # (some terms() read it)
+			bh.terms(t)
+			for ch: StringName in on:
+				if not t.has(ch):
+					continue
+				var base := Behaviour.Cast.at(3)
+				base.skill = s
+				var held := Behaviour.Cast.at(3)
+				held.skill = s
+				held.mods = Modifiers.new()
+				held.mods.add(on[ch], 2, &"all")
+				ok(bh.describe_as(held) != bh.describe_as(base), "%s / %s: a %s modifier changes what it says of %s" % [_id(s), bh.get_script().resource_path.get_file(), on[ch], ch])
+				n += 1
+	ok(n > 25, "scaling terms swept (%d)" % n)

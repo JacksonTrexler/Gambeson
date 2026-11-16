@@ -44,5 +44,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return "Only on a %s ally: it comes back up at once with {r:%d}%% of its max HP (healed what it's below 0, and that)" % [
 			Glossary.term(&"downed", "Downed"), roundi(SHARE * 100 * rank)]

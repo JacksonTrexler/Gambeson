@@ -122,6 +122,34 @@ func test_rejuvinate_decays() -> void:
 	ok(u.funding(rejuvinate) == mana and is_equal_approx(b.decay(u, rejuvinate, v(1)), 1.0), "paid wholly with mana: no decay")
 
 
+# Any skill's `decays` (Skill.decays) reaches every effect it puts on, whichever way it puts it: its own
+# effects (above), a behaviour's (Cast.put(): Stun's), an aura's (Aura: its share times what's left).
+func test_decay_reaches_behaviours() -> void:
+	var stun: Skill = load("res://Skills/stun.tres").duplicate()
+	stun.decays = 0.1
+	stun.radius = 3.0  # (reach for the distance)
+	var stunned: Effect = load("res://Effects/stunned.tres")
+	v(1).learned.append(slot(stun, 3))
+	v(1).strength = 40
+	stage(lancin, {v(1): Vector2i(1, 3), v(3): Vector2i(3, 3)})
+	v(1).refresh()
+	v(3).constitution = 1
+	soak(v(3), 300)
+	ok(b.cast(v(1), stun, v(3)) and stunned in v(3).timed, "a Stun, 2 tiles off, lands")
+	ok(is_equal_approx(v(3).timed[stunned].scale, 0.9), "what the behaviour put on is 10%% weaker: scale %s" % v(3).timed[stunned].scale)
+	var flamecharm: Skill = load("res://Skills/flamecharm.tres").duplicate()
+	flamecharm.decays = 0.1
+	var c := Behaviour.Cast.new()
+	c.battle = b
+	c.caster = v(1)
+	c.target = v(1)
+	c.skill = flamecharm
+	c.rank = 1
+	c.strength = 0.5
+	flamecharm.behaviours[0].apply(c)
+	ok(is_equal_approx(v(1).timed[flamecharm.effects[0]].scale, 0.5), "an aura's own: its share (1) x what's left (0.5): %s" % v(1).timed[flamecharm.effects[0]].scale)
+
+
 func test_send_off() -> void:
 	var u := pally(send_off, 2)
 	var from := v(1).cell

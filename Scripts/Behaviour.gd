@@ -20,6 +20,7 @@ class Cast:
 	var rank := 1
 	var foe := true
 	var bag := {}
+	var picked: Array[Unit] = []  # the units its caster chose by hand, when a behaviour asks for picks() (empty: it chooses itself)
 	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
 	var mods: Modifiers  # its caster's modifiers on it (Unit.mods()): read scaled values through them
 	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()): modifier tags among them (Unit.skill_tags()), ambush when it ambushes (Battle.ambushes())
@@ -29,6 +30,17 @@ class Cast:
 	func impact_rank() -> int:
 		return mods.irank(rank, &"rank_impact") if mods else rank
 
+	# A cast of no one at rank r: its base, for describe().
+	static func at(r: int) -> Cast:
+		var c := Cast.new()
+		c.rank = r
+		return c
+
+	# Stat x's mod as channel `ch` reads it, in markup: "cha mod", or "1.75 x cha mod" under a modifier
+	# (a describe_as() line's; Skill._mod()).
+	func mod_text(x: StringName, ch := &"stat_impact") -> String:
+		return Skill._mod(x, ch, mods if mods else Modifiers.NONE)
+
 	func range_rank() -> int:
 		return mods.irank(rank, &"rank_range") if mods else rank
 
@@ -37,20 +49,31 @@ class Cast:
 	func stat_mod(m: int, channel := &"stat_impact") -> int:
 		return mods.stat(m, channel) if mods else m
 	var hit := false  # it landed: past its attack roll, if it makes one
+	var strength := 1.0  # what its skill's `decays` leaves of it, set as it was cast (Battle.decay()): every effect it puts on has it (put())
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
 	# cast's, as a skill's own effects are.
 	func put(e: Effect, turns: int) -> Unit.Applied:
 		var a := target.afflict(e, turns + (1 if target.faction == battle.turn else 0), rank)
 		a.total = turns
+		a.scale = strength
 		a.skill = skill
 		a.by = caster
 		a.since = battle.turns_begun
+		battle.drive(target, e, a)  # shove, fear, entrance
 		return a
 
 
 func apply(_c: Cast) -> void:
 	pass
+
+
+# How many targets its caster may pick by hand, beyond the one it is aimed at (0: none). Where it is
+# more than 0 the HUD lets a click on a visible foe toggle it into Cast.picked (up to this many) while the
+# skill is selected, and Battle.cast() carries them; the behaviour reads them in apply() and, with none
+# picked, chooses for itself (Warcry: the nearest), as the AI always does. Pure.
+func picks(_c: Cast) -> int:
+	return 0
 
 
 # What apply() does is the whole of the cast `c` (Battle.cast()): it lands at once, past any reactions,
@@ -70,6 +93,15 @@ func impact() -> StringName:
 # A skill cast on a tile rather than a unit (Battle.cast_at(): Flamewall, Solar, Observe), paid for and
 # aimed at `cell`: what it does there. c has no target. A behaviour that has this says so in tile_target().
 func apply_at(_c: Cast, _cell: Vector2i) -> void:
+	pass
+
+
+# The skill it's on failed (Battle._miss()): its attack roll missed, its save or contest was lost (a drag,
+# a grapple, a level down), its Strike hit nothing, its level or its life wasn't taken. The counterpart
+# of apply(), which runs only when it lands: a refund, a rider on a miss. Not run on a cast that is
+# stopped or refused before it's tried, nor for a foe's dodge of a tile skill's area (area_blow() hands
+# those to missed() too, on a Cast of the victim's own).
+func missed(_c: Cast) -> void:
 	pass
 
 
@@ -126,17 +158,33 @@ func restores(_c: Cast) -> Dictionary:
 	return {}
 
 
-# The share of its AP price the cast gives back (0-1), expected, given p the chance it lands - what the
-# AI weighs as a saving (Poach's discount is sure before the roll, Slam Jam's comes with a hit). Pure:
-# asked before the cast; apply()/aim() still do the giving (Unit.refund()).
-func refunds(_c: Cast, _p: float) -> float:
-	return 0.0
+# What the cast saves its caster of its AP and cost, as shares (0-1): x is sure, known before the roll
+# (Poach's bloodied foe): Battle.rebate() takes it off the price, so the forecast and the payment both
+# show it. y comes back only on a hit (Slam Jam): paid in full, then Unit.refund()ed from apply(); the
+# forecast shows it as "on hit". Pure; the one hook a behaviour declares a conditional discount with.
+func rebate(_c: Cast) -> Vector2:
+	return Vector2.ZERO
+
+
+# The share of its AP price the cast saves, expected, given p the chance it lands: what the AI weighs.
+func refunds(c: Cast, p: float) -> float:
+	var r := rebate(c)
+	return r.x + r.y * p
 
 
 # Defense the cast costs its own caster, through its next turn (Sutemi's Off Balance: a point a tile
 # lunged) - what the AI prices against the blow. Pure.
 func unguarded(_c: Cast) -> int:
 	return 0
+
+
+# How much of a blow the AI plans (r: the moment as it would come, r.skill this passive, r.cast the blow) its
+# holder's reaction would likely take from it (0-1): turning it to itself, or into something its caster
+# didn't count on. The same eligibility react() has, no rolls spent (Reaction.odds()); a reaction that
+# does nothing the caster would mind leaves the default. AI._foiled() asks it for the foes' reactions it can
+# make out, and takes the blow's value down by what's likely to be lost. Pure.
+func foils(_r: Reaction, _holder: Unit, _rank: int) -> float:
+	return 0.0
 
 
 # What a hit would do beyond its damage, foreseen as the cast is planned and as Battle.foresee() reads it
@@ -215,6 +263,11 @@ func describe(_rank: int) -> String:
 # modifier shows wherever it acts; by default, describe() at the rank.
 func describe_as(c: Cast) -> String:
 	return describe(c.rank)
+
+
+# A behaviour whose numbers scale (it declares rank or stat terms) writes its text once, in describe_as(),
+# and has describe() say it at the base: `func describe(rank): return describe_as(Cast.at(rank))`. A sweep
+# (sweep_test) holds each to it: a rho-up modifier must change what it says.
 
 
 
@@ -297,6 +350,10 @@ class Reaction:
 		var vs := battle.check(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
 		rolled = [vs.mine.total, vs.theirs.total]
 		return vs.won
+
+	# The chance (0-1) contest() passes, without rolling: what a reaction's foils() weighs.
+	func odds(holder: Unit, stat: StringName, against: Unit) -> float:
+		return Battle.odds(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
 
 	# Whether holder already reacted to this moment with some passive.
 	func reacted(holder: Unit) -> bool:

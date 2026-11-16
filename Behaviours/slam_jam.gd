@@ -9,7 +9,7 @@ extends "res://Behaviours/jam.gd"
 func apply(c: Cast) -> void:
 	if not c.foe:
 		return
-	c.caster.refund(c.skill, 1.0 / (c.rank + 2))
+	c.caster.refund(c.skill, rebate(c).y)
 	if not c.target.is_alive():
 		return
 	var b := c.battle
@@ -20,8 +20,8 @@ func apply(c: Cast) -> void:
 		super.apply(c)
 
 
-func refunds(c: Cast, p: float) -> float:
-	return p / (c.rank + 2)
+func rebate(c: Cast) -> Vector2:  # on a hit only: a refund after paying
+	return Vector2(0.0, 1.0 / (c.rank + 2))
 
 
 func dealt(_c: Cast, _n: int) -> void:
@@ -37,5 +37,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
 	return "A hit: a %s, {o:str mod} + {r:%d} vs the foe's {d:con mod}; won, it interrupts it and leaves it %s, as Jam does. A hit gives back 1/%d of its AP and cost" % [
-			Glossary.term(&"contest"), rank, Glossary.term(&"jammed", "Jammed"), rank + 2]
+			Glossary.term(&"contest"), c.impact_rank(), Glossary.term(&"jammed", "Jammed"), c.rank + 2]

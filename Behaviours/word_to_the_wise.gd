@@ -20,5 +20,9 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
 	return ("When commanding, use your %s in place of your %s, up to the lower of your and the ally's %s + {r:%d}"
-			% [Glossary.mod(&"wis"), Glossary.mod(&"cha"), Glossary.mod(&"wis"), rank])
+			% [c.mod_text(&"wisdom"), Glossary.mod(&"cha"), Glossary.mod(&"wis"), c.impact_rank()])

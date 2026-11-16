@@ -33,6 +33,14 @@ const KILL := 5.0  # bonus for a hit that should finish the target
 const HATE := 2.0  # per point of ominous aura
 const GUESS_HP := 10.0  # when it can't make out a target's HP
 const OBSERVE := preload("res://Behaviours/observe.gd")  # how far an Observe looks (_search())
+const SUSPICIOUS := 1.0  # what a tile it finds suspicious is worth a look, in foes (clues())
+const DEBRIS := 1.0  # debris a hiding foe left, fresh; halved a round on
+const MARKED := 0.5  # a mark a foe laid that it knows of
+const LAST_SEEN := 0.5  # where its side last made a foe out
+const REACH := 0.5  # shared among the tiles that foe could have reached since
+const HIT := 1.0  # shared among the tiles an unseen attacker could have struck from
+const REACH_TURNS := 3  # the most turns of a foe's walking it reckons on
+const WORTH := 0.5  # the least a look must take in to be cast
 const CRAVEN_REACH := 3  # tiles within which a craven unit wants a higher-level ally before it advances
 const COMMANDER := 0.25  # how much most healers favour a commander
 const PARTY := 1.0  # how much a loyal healer favours its party
@@ -49,6 +57,7 @@ const RIDER := 1.0  # what each thing riding on a hit is worth (Kick's soaking, 
 const RESCUE := 1.0  # what a skill that brings a Downed unit back up (Behaviour.revives()) is worth over one that only heals it, on that unit
 const FLANKING := 0.4  # a tile's pull, a point of Defense the target loses to an attack from there (a rear attack's edge, an effect tagged flank), in tiles of walking (_approach())
 const SHOT := 0.5  # the chance to hit below which a ranged attack isn't worth taking now, when resting for Focus would make it one (_steady())
+const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take off it in its reckoning (_foiled()): a target it can't hit through them is still a target
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -132,8 +141,11 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
-		elif not target and not _search(b, u, log):
-			if not _scry(b, u, log) and not rooted and _emboldened(u, reads):
+		elif not target:
+			var looked := _search(b, u, log)  # it looks where the clues point, then heads for where its side last saw a foe
+			if not looked and _scry(b, u, log):
+				pass
+			elif not rooted and _emboldened(u, reads):
 				_hunt(b, u, reads, log)
 	while _strike(b, u, reads, log):
 		pass
@@ -387,6 +399,8 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if s.drags() and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
 			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
+			if v > 0.0:
+				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -406,30 +420,121 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	return true
 
 
+# The share (0-1, at most FOILED) of a blow of s on t that t's side's reactions would likely take from u: each
+# passive of a unit beside the fight that u reads t's side as having (Read.skills, Read.kit: what it makes out
+# of them; an unread one it can't weigh) is asked, through the hook the reaction itself uses (Behaviour.foils()),
+# about each moment the blow would bring - attacked, hit, and fallen when it would kill - and what each leaves
+# standing multiplies. Cheap: nothing is asked unless such a passive is read.
+static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
+	if not s.hostile or t == u:
+		return 0.0
+	var held := []  # [holder, its slot]
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if o == u or not o.is_alive() or not o.reacts() or not Faction.friends(o.faction, t.faction):
+			continue
+		for x in Battle.reactions_of(o):
+			if x.skill in r.skills or x.skill in r.kit:
+				held.append([o, x])
+	if held.is_empty():
+		return 0.0
+	var moments: Array[StringName] = [&"attacked", &"hit"]
+	var hp: float = maxf(reads[t].hp, 1.0) if reads[t].hp != null else GUESS_HP
+	if float(Battle.damage_range(u, s, t, b).get("avg", 0.0)) >= hp:
+		moments.append(&"fallen")
+	var m := b.cast_of(u, s, t, u.rank(s), true)
+	var keep := 1.0
+	for trigger in moments:
+		var r := Behaviour.Reaction.new()
+		r.battle = b
+		r.trigger = trigger
+		r.subject = t
+		r.by = u
+		r.cast = m
+		for h in held:
+			r.skill = h[1].skill
+			for bh in r.skill.behaviours:
+				keep *= 1.0 - clampf(bh.foils(r, h[0], h[1].rank), 0.0, 1.0)
+	return minf(1.0 - keep, FOILED)
+
+
 # With no foe to go after, it searches (Observe) where the clues point: the tile in reach whose look
-# would take in the most of them - what it finds suspicious (Battle.suspicious()) and the debris enemies
-# left hiding (Battle.evidence()) - nearest itself on a tie. No clues, no search: it can't know where
-# to look. True if it searched.
+# takes in the most of their weight (clues()), nearest itself on a tie, if that is WORTH a look. No clue
+# worth it, no search: it can't know where to look. True if it searched.
 static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
-	var clues := b.suspicious(u) + b.evidence(u)
+	var looks := u.actives.filter(func(x: Skill): return x.behaviour(&"observe") and u.can_afford(x))
+	if looks.is_empty():
+		return false
+	var clues := clues(b, u)
 	if clues.is_empty():
 		return false
-	for s in u.actives.filter(func(x: Skill): return x.behaviour(&"observe") and u.can_afford(x)):
+	for s in looks:
 		var look := OBSERVE.reach(u, u.mods(s).irank(u.rank(s), &"rank_impact"))  # as it looks when cast
 		var reach := b.area_reach(u, s)
 		var best: Variant = null
-		var most := 0
+		var most := 0.0
 		for c in b.map.get_used_cells():
 			if Vector2(u.cell).distance_to(Vector2(c)) > reach + 0.0001:
 				continue
-			var n := clues.filter(func(k: Vector2i): return Command.tiles(c, k) <= look).size()
-			if n > most or (n == most and n > 0 and Command.tiles(u.cell, c) < Command.tiles(u.cell, best)):
+			var n := 0.0
+			for k: Vector2i in clues:
+				if Command.tiles(c, k) <= look:
+					n += clues[k]
+			if n >= WORTH and (best == null or n > most + 0.0001 or (absf(n - most) <= 0.0001 and Command.tiles(u.cell, c) < Command.tiles(u.cell, best))):
 				best = c
 				most = n
 		if best != null and b.cast_at(u, s, best):
 			log.append("%s uses %s at %s" % [u.name, s.name, best])
 			return true
 	return false
+
+
+# What u has to go on in a search: tile -> weight (a foe's worth, about 1), summed over every clue, each
+# read from what u's side knows - Perception's reads, its sightings, the blows it took - never the map. A
+# later clue joins by adding its tiles with `_clue()`. Tiles u's side searched lately (Battle.swept_lately())
+# lose the guesses (last seen, where it could have got, where a blow came from), not the signs left behind.
+#  - what it finds suspicious (Battle.suspicious()): SUSPICIOUS each;
+#  - debris foes left hiding (Battle.evidence()): DEBRIS, less as it ages;
+#  - marks of foes it knows of: MARKED each;
+#  - where its side last made a foe out: LAST_SEEN there, and REACH shared among the tiles that foe could have
+#    reached by now (Battle.reckon_reach(): its movement as read, a turn's worth for each round since, to REACH_TURNS);
+#  - where it was struck from by one it couldn't place (Battle.attacks_on()): HIT shared among the tiles on
+#    the side the blow landed that its skill reached.
+static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
+	var out: Dictionary[Vector2i, float] = {}
+	for c in b.suspicious(u):
+		_clue(out, c, SUSPICIOUS)
+	for c in b.evidence(u):
+		_clue(out, c, DEBRIS / (1.0 + b.rounds_since(b.debris[c].since)))
+	for c in b.marks:
+		for m: Battle.Mark in b.known_marks(u, c):
+			if not Faction.friends(m.faction, u.faction):
+				_clue(out, c, MARKED)
+	var guess: Dictionary[Vector2i, float] = {}
+	var seen := b.last_seen(u.faction) if u.faction else {}
+	for t: Unit in seen:
+		var at: Vector2i = seen[t]
+		var info: Dictionary = b.sighted_when.get(u.faction, {}).get(t, {since = b.turns_begun, moves = 0.0})
+		var moves: float = info.moves if info.moves > 0.0 else u.stat(&"movement")  # as far as it walks itself, unless it read it
+		var tiles := b.reckon_reach(u, t, at, moves * mini(b.rounds_since(info.since), REACH_TURNS))
+		_clue(guess, at, LAST_SEEN)
+		for c in tiles:
+			_clue(guess, c, REACH / tiles.size())
+	for a in b.attacks_on(u.faction) if u.faction else []:
+		for c in a.tiles:
+			_clue(guess, c, HIT / a.tiles.size())
+	for c in guess:
+		if u.faction and b.swept_lately(u.faction, c):
+			continue
+		var there := b.unit_at(c)
+		if there and there != u and b.read(u, there).located():
+			continue  # it sees someone there, and not the one it's after
+		_clue(out, c, guess[c])
+	return out
+
+
+static func _clue(out: Dictionary, c: Vector2i, w: float) -> void:
+	out[c] = out.get(c, 0.0) + w
 
 
 # Its side remembers where it makes out each foe, or something it can't tell the side of (Battle.sightings).
@@ -439,7 +544,7 @@ static func _remember(b: Battle, u: Unit, reads: Dictionary) -> void:
 	for o: Unit in reads:
 		var r: Read = reads[o]
 		if o.is_alive() and (_foe(u, r) or (r.located() and r.faction == null)):
-			b.sighted(u.faction, o, r.cell)
+			b.sighted(u.faction, o, r.cell, float(r.stats.get(&"movement", 0.0)))
 
 
 # No foe in sight: it heads for where its side last made one out, the nearest first. Reaching the spot
@@ -815,10 +920,12 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			if c == r.cell or c == u.cell or not b.on_map(c) or b.unit_at(c):
 				continue
 			var risk := 0
+			var pull := 0.0
 			for p in b.line(u.cell, c, u.luck, u):
 				var tr := b.read(u, p)
 				risk += int(tr.known_bad() or tr.hint != "")
-			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c)
+				pull += b.lure(u, p)  # a known helpful mark on the way (Charge!) draws it a little
+			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) - pull
 			for o in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:

@@ -87,6 +87,10 @@ func _init(s: Skill) -> void:
 		add(&"rank_impact", "tiers opened")
 	if s.downed:  # Downed.gd: rounds, limit, actions x rank
 		add(&"rank_impact", "downed")
+	if s.rifts:  # Battle.open_rift(): its domain's difficulty and its count of turns
+		add(&"rank_impact", "domain")
+	if s.has_look():  # Unit.dissonance_penalty(): the rank of a practised look
+		add(&"rank_impact", "practised look")
 	if s.radius_mod:
 		add(&"stat_range", "radius_mod")
 	if s.radius_stat:
@@ -94,6 +98,8 @@ func _init(s: Skill) -> void:
 	if s.links:  # Coordinate: teammates within its cha mod
 		add(&"stat_range", "links")
 
+	if s.chain:  # Battle._chain(): the element's bonus (imbued, Elemental Mastery) is its caster's highest mental mod
+		add(&"stat_impact", "element")
 	if s.tiers.any(func(t: Tier): return t.stat != &""):
 		add(&"stat_impact", "tier stat")
 	if not s.heal_mods.is_empty():

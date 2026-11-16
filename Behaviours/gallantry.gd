@@ -5,9 +5,18 @@ extends Behaviour
 # else (Battle.react(), &"attacked", before the roll).
 
 
+func _beside(r: Reaction, holder: Unit) -> bool:
+	return r.trigger == &"attacked" and r.subject != holder and r.by != null and r.by != holder and r.cast != null and not r.locked \
+			and Faction.friends(holder.faction, r.subject.faction) and Battle.next_to(holder.cell, r.subject.cell)
+
+
+# The chance it steps in.
+func foils(r: Reaction, holder: Unit, _rank: int) -> float:
+	return r.odds(holder, &"charisma", r.by) if _beside(r, holder) else 0.0
+
+
 func react(r: Reaction, holder: Unit, _rank: int) -> bool:
-	if r.trigger != &"attacked" or r.subject == holder or r.by == null or r.by == holder or r.cast == null or r.locked \
-			or not Faction.friends(holder.faction, r.subject.faction) or not Battle.next_to(holder.cell, r.subject.cell):
+	if not _beside(r, holder):
 		return false
 	if not r.contest(holder, &"charisma", r.by) or not r.retarget(holder):
 		return false

@@ -14,8 +14,7 @@ const GUARD := 0.25  # ...its Defense counts this much more a rank, taking a hit
 func react(r: Reaction, holder: Unit, rank: int) -> bool:
 	match r.trigger:
 		&"hit":
-			if r.subject == holder or r.by == null or r.by == holder or r.cast == null or r.locked \
-					or not Faction.friends(holder.faction, r.subject.faction) or not Battle.next_to(holder.cell, r.subject.cell):
+			if not _beside(r, holder):
 				return false
 			if not r.contest(holder, &"dexterity", r.by) or not r.retarget(holder):
 				return false
@@ -29,6 +28,17 @@ func react(r: Reaction, holder: Unit, rank: int) -> bool:
 			r.locked = true
 			return true
 	return false
+
+
+# An ally beside it is hit by a cast under way that isn't its own and can still be turned.
+func _beside(r: Reaction, holder: Unit) -> bool:
+	return r.subject != holder and r.by != null and r.by != holder and r.cast != null and not r.locked \
+			and Faction.friends(holder.faction, r.subject.faction) and Battle.next_to(holder.cell, r.subject.cell)
+
+
+# The chance it takes the hit.
+func foils(r: Reaction, holder: Unit, _rank: int) -> float:
+	return r.odds(holder, &"dexterity", r.by) if r.trigger == &"hit" and _beside(r, holder) else 0.0
 
 
 # A hit not aimed at it (the cast under way was meant for another: it took it in that one's place).
@@ -47,6 +57,11 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	var out := "{k:reaction|Reaction}: when an ally beside it is hit, a dex {k:check|check} against the attacker; passing, it takes the hit instead. It takes {r:%d%%} less of a hit not aimed at it." \
 			% mini(roundi(CUT * rank * 100), 100)
 	if rank >= GUARD_FROM:

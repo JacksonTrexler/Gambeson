@@ -46,5 +46,10 @@ func terms(t: SkillTerms) -> void:
 
 
 func describe(rank: int) -> String:
-	return "%s on the caster: foes its side can't see within its wisdom + {r:%d} tiles, walls or not, show where they are as black shapes, and nothing more (%s). Each adds a stack of %s of its tile. As each of its turns ends while it holds, they move to where the foes are now, and the rank rises by 1 for the channel. Cast again to stop" % [
-			Glossary.term(&"channeled", "Channeled"), rank, Glossary.term(&"pinged", "pinged"), Glossary.term(&"suspicion", "suspicion")]
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var k: float = c.mods.k[&"stat_range"] if c.mods else 1.0
+	return "%s on the caster: foes its side can't see within its wisdom%s + {r:%d} tiles, walls or not, show where they are as black shapes, and nothing more (%s). Each adds a stack of %s of its tile. As each of its turns ends while it holds, they move to where the foes are now, and the rank rises by 1 for the channel. Cast again to stop" % [
+			Glossary.term(&"channeled", "Channeled"), "" if k == 1.0 else " x %s" % Skill.num(snappedf(k, 0.01)), c.range_rank(), Glossary.term(&"pinged", "pinged"), Glossary.term(&"suspicion", "suspicion")]

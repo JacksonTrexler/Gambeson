@@ -291,3 +291,90 @@ func test_deferred_six() -> void:
 	v(1).trinket = emblem(&"sigma_up", &"crest", 1)
 	learn(v(1), coordinate, 1)
 	ok("within its 1.67 x cha mod in tiles" in coordinate.describe(1, v(1)), coordinate.describe(1, v(1)))
+
+
+class Miss extends Behaviour:
+	var landed := 0
+	var missed_on := 0
+
+	func apply(_c: Cast) -> void:
+		landed += 1
+
+	func missed(c: Cast) -> void:
+		missed_on += 1
+		c.caster.energy += 1  # a rider on a miss: a refund
+
+
+# The one `missed` hook: every path of cast() that fails runs the skill's behaviours' missed() instead of
+# apply() - a missed roll, a lost contest, a chain that hits nothing - and none that lands does.
+func test_missed() -> void:
+	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
+	var spy := Miss.new()
+	var h: Skill = haluca.duplicate()
+	h.behaviours = [spy] as Array[Behaviour]
+	learn(v(3), h, 1)
+	v(1).wisdom = 1
+	v(3).charisma = 60  # it wins: it lands
+	contest_total(v(3), h, v(1))
+	ok(spy.landed == 1 and spy.missed_on == 0, "a save lost by its foe: apply(), no missed()")
+	v(1).wisdom = 60
+	v(3).charisma = 1
+	var before := v(3).energy
+	contest_total(v(3), h, v(1))
+	ok(spy.landed == 1 and spy.missed_on == 1 and v(3).energy == before - h.price(1) + 1, "a save its foe passes: missed() only, and its refund ran (%d)" % v(3).energy)
+	var chain: Skill = strike.duplicate()
+	chain.behaviours = [Miss.new()] as Array[Behaviour]
+	var hit: Miss = chain.behaviours[0]
+	learn(v(3), chain, 1)
+	v(1).trinket = null
+	v(1).afflict(effect("defense", 500), 9)  # only a natural 20 touches it
+	var casts := 0
+	for i in 5:
+		v(3).refresh()
+		casts += int(b.cast(v(3), chain, v(1)))
+	ok(casts == 5 and hit.landed + hit.missed_on == 5 and hit.missed_on >= 3, "Strike's chain: a miss runs missed(), a landing apply() (%d landed, %d missed)" % [hit.landed, hit.missed_on])
+
+
+# Rift's difficulty and turns are rank impact; so is a practised look's rank (Alluring).
+func test_rift_look() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 6)})
+	var rift := sk("rift")
+	v(1).level = 4
+	v(1).energy = 99
+	learn(v(1), rift, 2)
+	ok(b.cast_at(v(1), rift, Vector2i(3, 3), false) and b.pockets[-1].turns == 3, "Rift II unchanneled: 3 x 1.0 turns")
+	v(1).trinket = emblem(&"rho_up", &"insignia", 3)  # rank 2 -> 4: difficulty 1.5, ceil(4.5) = 5
+	ok("5 turns" in rift.describe(2, v(1)) and "3 turns" in rift.describe(2), "described as held: %s" % rift.describe(2, v(1)))
+	v(1).energy = 99
+	v(1).refresh()
+	var again := b.cast_at(v(1), rift, Vector2i(2, 4), false)
+	ok(again and b.pockets[-1].turns == 5, "Density: 5 turns (%s, %d pockets, %d)" % [again, b.pockets.size(), b.pockets[-1].turns])
+	var look := sk("alluring")
+	v(1).trinket = null
+	v(1).extra_dissonance = 20
+	learn(v(1), look, 2)
+	var plain := v(1).dissonance_penalty()
+	v(1).trinket = emblem(&"rho_up", &"badge", 3)
+	ok(plain - v(1).dissonance_penalty() == 2 and "counts 4 less" in look.describe(2, v(1)) and "counts 2 less" in look.describe(2),
+			"a practised look at rank impact: 4 off, not 2 (%d -> %d)" % [plain, v(1).dissonance_penalty()])
+
+
+# Strike's element bonus (imbued: the highest mental mod, the first hit) is stat impact.
+func test_strike_element() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
+	learn(v(1), strike, 1)
+	v(1).strength = 10
+	v(1).intelligence = 20  # +5
+	var dealt := func() -> int:
+		soak(v(3), 999)
+		v(1).imbued = 1
+		v(1).element = &"fire"
+		v(1).refresh()
+		v(3).afflict(effect("defense", -50), 9)  # it hits
+		b.rng.seed = 11
+		b.cast(v(1), strike, v(3))
+		return 999 - v(3).hp
+	var plain: int = dealt.call()
+	v(1).trinket = emblem(&"sigma_down", &"sigil")  # stat impact x1.75: +5 -> +9
+	var dense: int = dealt.call()
+	ok(plain > 0 and dense - plain == 4, "Concentrated: the element's mental mod x1.75 (%d -> %d)" % [plain, dense])

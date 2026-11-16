@@ -115,6 +115,19 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | AI tactics: hit chance, Focus, Resuscitate, Kick's tiles, Grudge (?138) | `ai_tactics_test.gd` |
 | — | Tile marks, Warcry, damage for moving (?139) | `marks_test.gd`, `warcry_test.gd`, `per_tile_test.gd`, `regain_test.gd` |
 | — | Reactions and interrupts: Interject, Gallantry, Final Act, Snapping Turtle (?140) | `reaction_test.gd`, `interject_test.gd`, `gallantry_test.gd`, `final_act_test.gd`, `snapping_turtle_test.gd` |
+| 1 | Checks and contests (?141) | `check_test.gd`, `hud_test.gd`, `haluca_test.gd`, `intervention_test.gd` |
+| 8 | Facing (?142) | `facing_test.gd` |
+| 11 | Skills on items (?143) | `item_skills_test.gd` |
+| — | Test and logic consolidation (?144) | `sweep_test.gd`, `effect_stats_test.gd`, `capstones_test.gd`, `displace_test.gd`, `whole_test.gd`, `runner_test.gd` |
+| 14 | Saving (?145) | `save_test.gd` |
+| 6 | Fear, shove and entrance (?146) | `forced_test.gd` |
+| — | Item tool (?147) | `tooling_test.gd` |
+| — | Polish: describe_as, facing cue, earlier-total rolls, decay (?148) | `sweep_test.gd`, `hud_test.gd`, `check_test.gd`, `paladin_test.gd` |
+| — | Reaction and marks gaps (?150) | `reaction_test.gd`, `gallantry_test.gd`, `per_tile_test.gd`, `marks_test.gd` |
+| — | Price rebates (?151) | `poach_test.gd` |
+| 17 | Dissonance by distance (?152) | `persona_test.gd` |
+| — | Forced unshape (?153) | `slayer_test.gd` |
+| — | Bio text (?154) | `bio_test.gd` |
 
 ## Questions to answer first
 
@@ -127,7 +140,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 
 ## Phase 1: Foundations
 
-1. **Checks and contests** (M)
+1. **Checks and contests** (M) *(built 2026-11-15, ?141)*
    - Approach:
      - Make one `Battle.check(a, stat, b, against, opts)` helper that returns totals and the winner.
      - It takes advantage or disadvantage (the same rule `doubt()` uses), per-tile range penalties, the caster winning ties, and `offensive` / `defensive` tags for Turtle Tactics.
@@ -150,9 +163,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 
 4. **Pushes** (S): the reverse of `pull()`, stopping at blockers and holes. A pushed unit that hits something might take damage; that's a design choice to settle when Shove is designed.
 5. **Teleport** (S): `Battle.place(u, c)`, which skips `walk()`. It springs traps but leaves no debris trail. Unlocks Send Off (?12: who picks the tile, and does it work on enemies).
-6. **Fear, shove and entrance** (M): effects that make a unit move, or let go of a grapple. Fear is a forced move away, built on Pushes (and the AI's `_away()`); entrance is a forced move toward, reusing `pull()`. Each ends a grapple through the existing `_let_go()`.
+6. **Fear, shove and entrance** (M) *(built 2026-11-15, ?146)*: effects that make a unit move, or let go of a grapple. Fear is a forced move away, built on Pushes (and the AI's `_away()`); entrance is a forced move toward, reusing `pull()`. Each ends a grapple through the existing `_let_go()`.
 7. **Damage for moving** (S) *(built 2026-11-14, ?139)*: an effect hurts per tile walked, hooked into `travel()` through tile marks or a `per_tile` effect stat. Meander's top rank wards it off (`passes_by()` already counts tiles).
-8. **Facing** (M)
+8. **Facing** (M) *(built 2026-11-15, ?142)*
    - Approach: `Unit.heading` exists but is only used by Eyes Forward. Add `Unit.facing`, set by moves and by Shields Up!, and a cone test in `Unit.hit()`.
    - Unlocks: Shields Up!.
 
@@ -169,16 +182,16 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 ## Phase 4: Resources and items, the rest
 
 10. **More resources** (S each): Stamina (built), Focus (built), Rage, Hype, Clout, Gold, as `Reserve`s with the fields Sweet Nothings added. Unlocks Field Experience and Everyman. To be designed.
-11. **Skills on items** (M): `Item.skills`, granted while equipped (added to the unit's slots, flagged so they can't be ranked); Urlo's enchantment then covers trinkets and item skills.
-12. **Equipping skills** (L): learned vs equipped; the hotbar becomes the equipped set, passives filling from the bottom (Brainfog's order already assumes it); auto-equip and a Settings toggle; drag-to-slot on the skills screen. Blocked by ?3.
+11. **Skills on items** (M) *(built 2026-11-15, ?143)*: `Item.skills`, granted while equipped (added to the unit's slots, flagged so they can't be ranked); Urlo's enchantment then covers trinkets and item skills.
+12. **Equipping skills** (L) *(in progress on `x-equip`)*: learned vs equipped; the hotbar becomes the equipped set, passives filling from the bottom (Brainfog's order already assumes it); auto-equip and a Settings toggle; drag-to-slot on the skills screen. Blocked by ?3.
 13. **Starting items** (S): built.
-14. **Saving** (M): the stash, the starter's outfit and hearts to a save file.
+14. **Saving** (M) *(built 2026-11-15, ?145)*: the stash, the starter's outfit and hearts to a save file.
 
 ## Phase 5: Perception follow-ups
 
 15. **Investigating on contact** (S): moving next to a hidden unit triggers `investigate()` against its stored roll. Hook it in `travel()`, beside the debris cleanup.
-16. **More contextual clues** (S): last-seen positions, where attacks came from (`_expose`), and the tiles a hidden unit could reach since it was last seen, in `AI._search()`.
-17. **Dissonance by how far the lie is** (M): a distance between the persona's claimed words and tags and the unit's own, from a small similarity table.
+16. **More contextual clues** (S) *(in progress on `z-search`)*: last-seen positions, where attacks came from (`_expose`), and the tiles a hidden unit could reach since it was last seen, in `AI._search()`.
+17. **Dissonance by how far the lie is** (M) *(built 2026-11-15, ?152)*: a distance between the persona's claimed words and tags and the unit's own, from a small similarity table.
 18. **Hard to read, by debuffs** (S): more effects like Haluca's `scrambled`, through `Perception._dim()`.
 19. **Commitment to the bit** (S): a passive that lets a posing traitor really attack its own allies; `cast()`'s whiff branch checks for it.
 20. **Synergy**: built, within command range.

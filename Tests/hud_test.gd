@@ -848,6 +848,29 @@ func test_attack_feedback() -> void:
 	h.free()
 
 
+# The forecast says when a planned attack lands on a foe's flank or rear, by the way it faces and where the
+# attacker would stand (HUD.aspect; docs/plans/facing.md): nothing from the front, nothing for a skill that
+# doesn't attack.
+func test_forecast_side() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var h := await hud(v(1))
+	v(3).facing = Vector2(-1, 0)  # toward the striker
+	h.hover_cell(Vector2i(5, 3))
+	ok(h.aspect.is_empty(), "from the front: no cue (%s)" % h.aspect)
+	v(3).facing = Vector2(0, 1)
+	h._replan()
+	ok(h.aspect.get("side") == &"flank" and h.aspect.unit == v(3), "from its side: flank (%s)" % h.aspect)
+	v(3).facing = Vector2(1, 0)
+	h._replan()
+	ok(h.aspect.get("side") == &"rear", "from behind: rear (%s)" % h.aspect)
+	var it := {kind = &"use", ready = true, unit = v(1), skill = strike, target = v(3), dest = Vector2i(6, 3)}
+	ok(h._aspect(it).is_empty(), "walking round to its front first: no cue")
+	it.skill = load("res://Skills/first_aid.tres")
+	it.dest = v(1).cell
+	ok(h._aspect(it).is_empty(), "a skill that doesn't attack: no cue")
+	h.free()
+
+
 # A save in place of the roll (Haluca): its brackets and Alt's number are the chance it wins its check
 # (Battle.hit_chance() -> skill_odds(), the one check helper; docs/plans/checks.md).
 func test_check_odds() -> void:
@@ -1259,3 +1282,36 @@ func test_help_order_reads_restores() -> void:
 	ok(h.intent_skill(u, &"supportive") == heal and h.intent_skill(u, &"offensive") == null, "the HUD's HELP finds it through what it restores")
 	ok(h.intent_options(u).any(func(o: Array): return o[0] == &"help" and o[1]), "HELP is offered")
 	h.free()
+
+
+# Every role's skills screen, every tab: the view draws each skill its tab lays out (centre, core, roots)
+# once, and nothing else - no tab shows a stale or short count.
+func test_every_tab_draws_its_skills() -> void:
+	var n := 0
+	for f in DirAccess.get_files_at("res://Roles"):
+		if not f.ends_with(".tres"):
+			continue
+		var u := b.starter({faction = lancin, role = load("res://Roles/" + f), name = "T" + f.get_basename()})
+		b.get_node("Units").add_child(u)
+		stage(lancin, {u: Vector2i(1, 2), v(1): Vector2i(1, 3), v(3): Vector2i(8, 2)})
+		var h := await hud(u)
+		h.toggle_skills()
+		await tree.process_frame
+		for i in h.skills.tabs().size():
+			h.skills.tab = i
+			h._refresh()
+			await tree.process_frame
+			var t: SkillTab = h.skills.tabs()[i]
+			var want: Array = [t.center] + t.core
+			for r: SkillRoot in t.roots:
+				if r:
+					want += r.skills()
+			var seen := {}
+			for s in want:
+				if s:
+					seen[s] = true
+			var shown: Array = h.skills.view().skills()
+			ok(shown.size() == seen.size() and shown.all(func(s: Skill): return seen.has(s)), "%s / %s: %d skills drawn, %d laid out" % [f, t.name, shown.size(), seen.size()])
+			n += 1
+		h.free()
+	ok(n >= 13, "tabs swept (%d)" % n)

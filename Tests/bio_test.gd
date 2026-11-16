@@ -116,3 +116,54 @@ func test_clout() -> void:
 	bl.bio = bl.bio.duplicate(true)  # the scene's bio is shared: don't touch it
 	bl.bio.clout.clear()
 	ok(is_equal_approx(Perception.trickery(bl, Read.new(), v(1), b), with_lancin - 3.0), "no clout: 3 less")
+
+
+func test_sheet_line() -> void:
+	ok(Guide.text(&"character").contains("(%s)" % Bio.TEMPERS[Bio.BEHAVIOURS[0]]) and Bio.TEMPERS.size() == Bio.BEHAVIOURS.size(), "the Guide names every temper")
+	var s: Unit = b.get_node("Units/Siren")
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(3, 2)})
+	v(1).bio = bio(&"brave", "Knight", ["Injured"] as Array[String])
+	v(1).bio.properties = [rotting]
+	ok(Glossary.plain(Bio.line(v(1))) == "Brave · Injured Knight · Rotting", "its own bio, whole: %s" % Glossary.plain(Bio.line(v(1))))
+	var sheet := CharacterSheet.new()
+	sheet.open(v(1), false)
+	ok(sheet.find_child("Bio", true, false) != null, "the sheet shows the line")
+	sheet.free()
+	s.bio = bio(&"aggressive", "Beast", ["Horrific"] as Array[String])
+	s.bio.properties = [rotting]
+	v(1).afflict(effect("recon", 1), 9)
+	var r := b.read(v(1), s)
+	var line := Glossary.plain(Bio.line(s, r))
+	ok(r.deceived and "Aggressive" not in line and "Rotting" not in line and "Horrific" not in line and s.alias_noun in line,
+			"a disguised foe shows its persona's bio, not its own: %s" % line)
+	v(1).afflict(effect("recon", -20), 9)
+	ok(Bio.line(s, b.read(v(1), s)) == "", "a foe it can't make out shows nothing")
+
+
+# The HUD's look-over (middle-click / the look_over key) opens the read-only sheet with the player's Read.
+func test_look_over() -> void:
+	var s: Unit = b.get_node("Units/Siren")
+	stage(lancin, {v(1): Vector2i(1, 2), s: Vector2i(3, 2)})
+	v(1).bio = bio(&"brave", "Knight", ["Injured"] as Array[String])
+	s.bio = bio(&"aggressive", "Beast", ["Horrific"] as Array[String])
+	s.bio.properties = [rotting]
+	var h := await hud(v(1))
+	var line := func() -> String:
+		var l := h.sheet.find_child("Bio", true, false) as RichTextLabel
+		return l.get_parsed_text() if h.sheet.visible and l else ""
+	h.look_over(v(1).cell)
+	ok(h.sheet.visible and h.sheet.unit == v(1) and line.call() == "Brave · Injured Knight", "its own unit reads whole: %s" % line.call())
+	h.sheet.hide()
+	v(1).afflict(effect("recon", 1), 9)
+	h.look_over(s.cell)
+	ok(h.sheet.visible and h.sheet.unit == s and "Aggressive" not in line.call() and "Rotting" not in line.call() and "Horrific" not in line.call(), "a disguised foe shows its persona: %s" % line.call())
+	var all := h.sheet.find_children("*", "Label", true, false).map(func(l: Label): return l.text)
+	ok(not " ".join(all).contains("Siren") and not " ".join(all).contains("XP") and not " ".join(all).contains("Weapon"), "and none of its real name, XP or kit: %s" % [all])
+	h.sheet.hide()
+	v(1).afflict(effect("recon", -20), 9)
+	h.look_over(s.cell)
+	ok(line.call() == "" and h.view(s).name == "", "a foe it can't make out shows nothing: %s" % line.call())
+	h.sheet.hide()
+	h.look_over(Vector2i(6, 6))
+	ok(not h.sheet.visible, "an empty tile opens nothing")
+	h.free()

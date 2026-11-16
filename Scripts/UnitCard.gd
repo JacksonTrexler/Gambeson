@@ -9,8 +9,8 @@ var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 var face: Label  # a persona's stand-in sprite (";)"), over the portrait in place of its look
 var effects: HFlowContainer  # what's timed on it, an icon each, under the chips
 const ICON_SIZE := 20  # an item's icon beside its banner (trim_mark), on the character sheet
-const CARD_ICON := 10  # on the card, over the portrait's foot: small, the banner drawn over its corner (no room beside it)
-var trims: HBoxContainer  # a little banner per item it wears with a trim (Item.trim()), over the portrait's foot
+const CARD_ICON := 16  # on the card: smaller than the sheet's, the banner beside it
+var trims: HFlowContainer  # an icon per item it wears with its trim banner (Item.trim()), a row of its own under the head, wrapping so none overlaps another or the name block
 var note: Label  # an insightful read of how true its presentation is, under the rows
 var _shown: Variant = null  # the info last shown (set_info())
 
@@ -28,11 +28,11 @@ func _ready() -> void:
 	face.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	face.add_theme_font_size_override(&"font_size", 12)
 	portrait.add_child(face)
-	trims = HBoxContainer.new()
-	trims.add_theme_constant_override(&"separation", 1)
-	trims.set_anchors_and_offsets_preset(PRESET_BOTTOM_LEFT)
-	trims.grow_vertical = GROW_DIRECTION_BEGIN
-	portrait.add_child(trims)
+	trims = HFlowContainer.new()
+	trims.add_theme_constant_override(&"h_separation", 3)
+	trims.add_theme_constant_override(&"v_separation", 1)
+	add_child(trims)
+	move_child(trims, $Head.get_index() + 1)
 	effects = HFlowContainer.new()
 	effects.add_theme_constant_override(&"h_separation", 2)
 	effects.add_theme_constant_override(&"v_separation", 2)
@@ -46,7 +46,7 @@ func _ready() -> void:
 
 # info: {name, sub, look: Texture2D, face: String, shape: bool, chips: [[text, Color]], effects:
 # [[mark (text, or a Texture2D drawn in the colour), Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String,
-# trims: [[Color, tooltip]] (the items it's seen wearing with a trim: a banner each)}. face: text
+# trims: [[Color, tooltip, icon]] (the items it's seen wearing: an icon each, its trim a banner beside it)}. face: text
 # standing in for the look (a persona's claimed name). shape: its side can't be told (the card's
 # "Unknown" chip says so). silhouette: only a black shape of it shows (Read.silhouette()).
 # roll: the roll an effect was put on with, in its icon's top right ("" when unknown). A row whose
@@ -77,7 +77,7 @@ func set_info(info: Dictionary) -> void:
 		effects.add_child(_effect(e[0], e[1], e[2], e[3]))
 	effects.visible = effects.get_child_count() > 0
 	for r in info.get("rows", []):
-		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null))
+		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null, r[5] if r.size() > 5 else 0))
 	note.text = info.get("note", "")
 	note.visible = note.text != ""
 
@@ -100,13 +100,8 @@ static func trim_mark(c: Color, tip: String, icon: Texture2D = null, size := ICO
 		pic.mouse_filter = MOUSE_FILTER_IGNORE
 		h.add_child(pic)
 		var b := trim_mark(c, "")
-		if size < ICON_SIZE:  # over the icon's top right corner
-			b.position = Vector2(size - 4.0, -4.0)
-			b.scale = Vector2(0.7, 0.7)
-			pic.add_child(b)
-		else:
-			b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			h.add_child(b)
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(b)
 		return h
 	var m := Control.new()
 	m.custom_minimum_size = Vector2(7, 10)
@@ -115,6 +110,16 @@ static func trim_mark(c: Color, tip: String, icon: Texture2D = null, size := ICO
 	if c.a > 0.0:
 		m.draw.connect(func() -> void: Item.draw_banner(m, Vector2(0.5, 0.5), c, Color("#1d1a12")))
 	return m
+
+
+# A wrapping row of items, each an icon with its trim banner (trim_mark()): spoils, any list of loot.
+static func item_row(items: Array, size := CARD_ICON) -> HFlowContainer:
+	var row := HFlowContainer.new()
+	row.alignment = FlowContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override(&"h_separation", 4)
+	for it: Item in items:
+		row.add_child(trim_mark(it.trim(), it.name, it.icon(), size))
+	return row
 
 
 # An effect's icon: its mark in its colour, what it does as a tooltip, and the roll it was put on
@@ -152,7 +157,7 @@ func _effect(mark: Variant, color: Color, tip: String, roll: String) -> Control:
 
 # drain: what a planned action would consume of it (HUD.drain()): a pulsing segment at the end of its
 # bar; "?": it can't be foreseen - the row goes muted and a ? flashes after the number.
-func _row(label: String, value: Variant, top: Variant, color: Color, drain: Variant = null) -> Control:
+func _row(label: String, value: Variant, top: Variant, color: Color, drain: Variant = null, on_hit: Variant = 0) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 3)
 	var k := Label.new()
@@ -193,6 +198,12 @@ func _row(label: String, value: Variant, top: Variant, color: Color, drain: Vari
 		seg.name = &"Drain"
 		bar.add_child(seg)
 		_pulse(seg, 0.25)
+		if (on_hit is float or on_hit is int) and on_hit > 0:
+			var hit := Label.new()  # a refund the roll decides: "on hit: -N"
+			hit.theme_type_variation = &"Muted"
+			hit.text = "on hit: −%s" % Skill.num(on_hit)
+			hit.name = &"OnHit"
+			h.add_child(hit)
 	elif drain == "?":
 		k.modulate = Color(1, 1, 1, 0.55)
 		bar.modulate = Color(1, 1, 1, 0.55)

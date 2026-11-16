@@ -23,6 +23,8 @@ const RING := preload("res://Items/red_spinel_ring.tres")  # every player starts
 @onready var starter_name: LineEdit = %Name
 @onready var level: SpinBox = %Level
 @onready var play: Button = %Play
+@onready var wipe: Button = %Delete  # New game: clears the save, after a second press
+@onready var resume: Button = %Continue  # the saved starter, as it was left (Save)
 
 
 func _ready() -> void:
@@ -37,6 +39,10 @@ func _ready() -> void:
 	role.changed.connect(_check.unbind(2))
 	starter_name.text_submitted.connect(_submit.unbind(1))
 	play.pressed.connect(_play)
+	resume.pressed.connect(_continue)
+	wipe.pressed.connect(_delete)
+	Save.load_once()
+	_show_save()
 	side.pick(default_side)
 	role.pick(default_role)
 	starter_name.placeholder_text = default_name
@@ -66,13 +72,50 @@ func chosen_name() -> String:
 	return typed if typed else default_name
 
 
+# Continue is offered when there's a saved starter: "Shrike, Adventurer, level 3".
+func _show_save() -> void:
+	wipe.text = "New game: delete the save"
+	wipe.visible = not Game.hero.is_empty() or FileAccess.file_exists(Save.PATH)
+	resume.visible = not Game.hero.is_empty()
+	if resume.visible:
+		resume.text = "Continue: %s, %s, level %d" % [Game.hero.name, Game.hero.role.name, Game.level]
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Save.save()
+
+
+# Delete save: the first press asks, the second clears the save and Game (a new game).
+func _delete() -> void:
+	if wipe.text.begins_with("Sure"):
+		Save.erase()
+		_show_save()
+	else:
+		wipe.text = "Sure? Press again to delete the save"
+
+
+# The saved starter again, with its level, outfit, hearts and the stash as they were.
+func _continue() -> void:
+	Game.starter = Game.hero.duplicate()
+	Game.starter.prep = true
+	_enter()
+
+
 func _play() -> void:
 	Game.starter = {faction = side.value, role = role.value, name = chosen_name(), prep = true}  # it opens with a look round (Battle.prep)
+	Game.hero = {faction = side.value, role = role.value, name = chosen_name()}
 	Game.outfit = role.value.outfit()  # a new starter, in its class's starting items
 	Game.hearts = 0
 	Game.level = clampi(roundi(level.value), 1, Unit.MAX_LEVEL)  # a new starter starts over, at the level picked
 	Game.xp = 0
+	Game.equipped = []  # its class's default bar
 	if not Game.stash.any(func(it: Item): return it == RING):
 		Game.stash.append(RING)  # the player's own trinket: a life once a battle
+	Save.save()
+	_enter()
+
+
+func _enter() -> void:
 	if next_scene:  # empty: stay (tests)
 		get_tree().change_scene_to_file(scenario.value if scenario.value else next_scene)
