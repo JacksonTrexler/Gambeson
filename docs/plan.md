@@ -128,6 +128,15 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | 17 | Dissonance by distance (?152) | `persona_test.gd` |
 | — | Forced unshape (?153) | `slayer_test.gd` |
 | — | Bio text (?154) | `bio_test.gd` |
+| — | Item icons on the card and spoils (?155) | `item_icons_test.gd` |
+| — | Test tidy and the `_lose_cover` rename (?156) | `hud_test.gd`, `sweep_test.gd` |
+| — | Warcry's foe picker, a pick-N aim mode (?157) | `warcry_test.gd` |
+| — | Save follow-ups (?158) | `save_test.gd` |
+| 16 | AI search clues (?159) | `evidence_test.gd` |
+| — | Param tail and the `missed` hook (?160) | `route_test.gd` |
+| — | Look-over (?161) | `bio_test.gd` |
+| — | AI prices what it ignores (?162) | `ai_tactics_test.gd` |
+| 12 | Equipping skills (?163) | `equip_test.gd`, `save_test.gd`, `sweep_test.gd` |
 
 ## Questions to answer first
 
@@ -183,14 +192,14 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 
 10. **More resources** (S each): Stamina (built), Focus (built), Rage, Hype, Clout, Gold, as `Reserve`s with the fields Sweet Nothings added. Unlocks Field Experience and Everyman. To be designed.
 11. **Skills on items** (M) *(built 2026-11-15, ?143)*: `Item.skills`, granted while equipped (added to the unit's slots, flagged so they can't be ranked); Urlo's enchantment then covers trinkets and item skills.
-12. **Equipping skills** (L) *(in progress on `x-equip`)*: learned vs equipped; the hotbar becomes the equipped set, passives filling from the bottom (Brainfog's order already assumes it); auto-equip and a Settings toggle; drag-to-slot on the skills screen. Blocked by ?3.
+12. **Equipping skills** (L) *(built 2026-11-15, ?163)*: learned vs equipped; the hotbar becomes the equipped set, passives filling from the bottom (Brainfog's order already assumes it); auto-equip and a Settings toggle; drag-to-slot on the skills screen. Blocked by ?3.
 13. **Starting items** (S): built.
 14. **Saving** (M) *(built 2026-11-15, ?145)*: the stash, the starter's outfit and hearts to a save file.
 
 ## Phase 5: Perception follow-ups
 
 15. **Investigating on contact** (S): moving next to a hidden unit triggers `investigate()` against its stored roll. Hook it in `travel()`, beside the debris cleanup.
-16. **More contextual clues** (S) *(in progress on `z-search`)*: last-seen positions, where attacks came from (`_expose`), and the tiles a hidden unit could reach since it was last seen, in `AI._search()`.
+16. **More contextual clues** (S) *(built 2026-11-15, ?159)*: last-seen positions, where attacks came from (`_expose`), and the tiles a hidden unit could reach since it was last seen, in `AI._search()`.
 17. **Dissonance by how far the lie is** (M) *(built 2026-11-15, ?152)*: a distance between the persona's claimed words and tags and the unit's own, from a small similarity table.
 18. **Hard to read, by debuffs** (S): more effects like Haluca's `scrambled`, through `Perception._dim()`.
 19. **Commitment to the bit** (S): a passive that lets a posing traitor really attack its own allies; `cast()`'s whiff branch checks for it.

@@ -14,7 +14,7 @@ Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees:
 - [ ] **Grind** (passive): str mod can count toward martial limits; max HP drops by the % overage. *Now:* a stub on the core ring. (?2 ?11)
   - Rank 2+: bonus slots, each −10 × (rank − 1)% max HP while in use.
   - Rank 11+: bonus slots also cut max energy the same way.
-- [ ] If a skill that grants slots is unequipped, its slots disappear, skills and all (Losing a slot). *Now:* skills can't be unequipped; a level buff's slots already go that way.
+- [x] If a skill that grants slots is unequipped, its slots disappear, skills and all (Losing a slot). Built 2026-11-15 (?163).
 - [x] **Igna** and **Aetha**: built as starter spells (`docs/done/classes.md`), the AP at once.
 - [ ] **Martial root**: not designed yet. *Now:* Wary, then the capstone; the general Martial tree helps. (?15)
 - [ ] **Specialist root**: more specialist skills to come.
@@ -258,7 +258,7 @@ Down but not out: one condition any skill configures by data. Plan: `docs/plans/
 - [x] The card chip, log lines and floats ("Downed", "Saved") say so; the AI takes no turn for a helpless unit, strikes a helpless foe last, and closes in with a Grudge unit's last blows.
 - [x] **Draw a Downed unit differently on the map.** Built 2026-11-14: it lies on its side (?128). Before, nothing did: only the card chip, the log and the float text say so (unit drawing was being reworked elsewhere).
 - [x] **The AI starves a Grudge unit of melee, and a Grudge unit heals itself back up** (2026-11-14, ?138): the last-foe case, for one round.
-- [ ] **Starving Grudge with allies in its reach, or over more than one round.** (?138)
+- [x] **Starving Grudge with allies in its reach, or over more than one round.** Built 2026-11-15 (?162). (?138)
 - [x] **Bug, noticed and not fixed:** (fixed 2026-11-14, ?127) a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
 - [x] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before. Built 2026-11-14 (?127): a stopped leader gives no orders and a helpless unit loses its reactions (`Unit.reacts()`); it still watches.
 
