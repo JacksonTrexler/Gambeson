@@ -83,7 +83,7 @@ func foresee(c: Cast) -> Dictionary:
 			var foes := 0
 			var own := 0
 			for x: Unit in c.battle.units.values():
-				if x != c.target and x.is_alive() and (x == c.caster or Vector2(x.cell).distance_to(Vector2(o.at)) <= t.blast + 0.0001):
+				if x != c.target and x.is_alive() and Vector2(x.cell).distance_to(Vector2(o.at)) <= t.blast + 0.0001:
 					if Faction.friends(x.faction, c.caster.faction):
 						own += 1
 					else:

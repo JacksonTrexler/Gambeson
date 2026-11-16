@@ -204,3 +204,114 @@ func test_grudge_heals_itself() -> void:
 	b.end_turn()
 	var log := AI.act(b, v(3))
 	ok(v(3).dbno == null and v(3).hp > 0 and log.any(func(l: String): return "heals itself back up" in l), "it heals itself back above 0 rather than spend itself (%d, %s)" % [v(3).hp, log])
+
+
+# docs/plans/ai-prices.md. A foe's Defense is what its Read has (armor shows at net 0), else a guess.
+func test_defense_from_read() -> void:
+	duel(strike)
+	v(1).refresh()
+	soak(v(3), 300)
+	v(3).afflict(effect("defense", 14), 5)  # a hard target the AI can see is one
+	var seen := b.read(v(1), v(3))
+	ok(seen.defense == v(3).defense(), "its armor shows: the read has its Defense (%s)" % [seen.defense])
+	var hidden := b.read(v(1), v(3))
+	hidden.defense = null
+	var known := AI.score(v(1), strike, seen, b, v(3))
+	ok(AI.score(v(1), strike, hidden, b, v(3)) > known, "unseen, it is guessed (%d) lower than a 14 more than a plain one is: the blow is worth more" % AI.GUESS_DEFENSE)
+	v(3).afflict(effect("concealment", 4), 5)
+	ok(b.read(v(1), v(3)).defense == null, "concealed past net 0: no Defense in the read, as the HUD's odds can't show it either")
+
+
+# docs/plans/ai-prices.md. What a blow's behaviours add that damage doesn't: Poach's cost back, its regain on
+# a felling blow, Slam Jam's interrupt at its contest's odds, a trap's blast and a drive's real distance.
+func test_prices_the_rest() -> void:
+	v(1).learned.append(slot(poach))
+	duel(slam_jam, 2)
+	v(1).refresh()
+	soak(v(3), 300)
+	v(3).hp = 140  # bloodied, so Poach halves its price
+	var cp := b.cast_of(v(1), poach, v(3), 1, true)
+	var d := Battle.damage_range(v(1), poach, v(3), b)
+	var fund: Variant = v(1).funding(poach)
+	var saved := 0.5 * (v(1).ap_cost(poach, fund) * AI.AP + v(1).cost_from(poach, fund) * AI.POINT)
+	ok(v(1).cost_from(poach, fund) > 0 and is_equal_approx(score(v(1), poach, v(3)), Battle.hit_chance(v(1), poach, v(3), b) * d.avg + saved), "Poach's half price counts its cost beside its AP (%.2f)" % saved)
+	ok(b.foresee(v(1), poach, v(3)).is_empty(), "a blow that leaves it standing regains nothing")
+	v(3).hp = 1
+	var f := b.foresee(v(1), poach, v(3))
+	ok(f.riders == 1.0 and "regains" in f.notes[0], "one that fells it does (%s)" % [f.notes])
+	var js := b.foresee(v(1), slam_jam, v(3))
+	var odds := Battle.odds(v(1), &"strength", v(3), &"constitution", {bonus = 2, tags = cp.tags, their_tags = slam_jam.tags, kind = Check.Kind.SAVE})
+	ok(is_equal_approx(js.riders, odds) and odds > 0.0 and odds < 1.0, "Slam Jam's interrupt is a rider as likely as its contest (%.2f)" % js.riders)
+
+
+func trap_blast(radius: float) -> void:
+	var t: Terrain = load("res://Terrain/trap.tres").duplicate()
+	t.blast = radius
+	b.paint(Vector2i(3, 3), t)
+
+
+func test_kick_spill_and_drive() -> void:
+	var u := kicker()
+	trap_blast(1.0)
+	var plain := b.foresee(u, kick, v(3))
+	ok(plain.spill < 0.0, "the kicker beside the trap is in its blast: it costs (%s)" % [plain.spill])  # the kicker at (2,3) is a tile from the trap
+	v(4).faction = nemes
+	b.move(v(4), Vector2i(3, 4))  # a foe a tile from the trap
+	var both := b.foresee(u, kick, v(3))
+	ok(is_equal_approx(both.spill, 0.0) and both.notes.size() == 2 and both.riders == 1.0, "a foe in the blast offsets the kicker's own cost (%s)" % [both])
+	b.map.erase_cell(Vector2i(3, 3))  # a hole: drives it 2 back
+	var free := b.foresee(u, kick, v(3))
+	ok(free.notes == ["Drives it 2 tiles back"] and is_equal_approx(free.riders, 2 * load("res://Behaviours/kick.gd").PUSH), "a free drive: its distance in riders (%s)" % [free])
+	b.move(v(2), Vector2i(6, 3))  # an ally of the kicker's behind it
+	var short := b.foresee(u, kick, v(3))
+	ok(short.notes[0].begins_with("Drives it 1 tile back, then slams") and short.lo == Battle.SLAM and short.spill == -float(Battle.SLAM), "stopped by an ally after 1 tile: it slams both (%s)" % [short])
+
+
+# docs/plans/ai-prices.md. Starving a Grudge unit is worth a kill shared by the allies in its reach, nothing
+# when it dies of its rounds anyway, and is weighed against the strikes it gives up.
+func test_starve_worth() -> void:
+	var g := grudged(Vector2i(3, 3))
+	ok(g.dbno.left > 1, "Grudge II lingers %d rounds" % g.dbno.left)
+	var alone := AI.starve_worth(b, v(1), g)
+	ok(alone == AI.STARVE, "alone in its reach: a whole kill (%.2f)" % alone)
+	b.move(v(2), Vector2i(2, 2))
+	ok(AI.starve_worth(b, v(1), g) == AI.STARVE / 2.0, "an ally in its reach shares it")
+	g.dbno.left = 1
+	ok(AI.starve_worth(b, v(1), g) == 0.0, "its last round: it dies anyway, nothing to starve")
+	g.dbno.left = 2
+	b.move(v(2), Vector2i(9, 9))
+	v(4).faction = nemes
+	b.move(v(4), Vector2i(4, 3))  # a standing foe beside it, a blow worth more than the starving
+	v(1).strength = 30
+	v(1).refresh()
+	var log := AI.act(b, v(1))
+	ok(not log.any(func(l: String): return "starving" in l) and log.any(func(l: String): return "uses" in l), "another foe worth striking: it does not give that up (%s)" % [log])
+
+
+# docs/plans/ai-prices.md. Finishing a unit with a Final Act left hands it a free action: the blow is worth that
+# less, though never nothing (it is left for last, not left alone).
+func test_final_act_is_priced() -> void:
+	var final_act: Skill = load("res://Skills/final_act.tres")
+	v(3).learned.append(slot(final_act))
+	duel(strike)
+	v(1).refresh()
+	v(3).refresh()
+	v(3).hp = 1
+	var reads := {v(3): b.read(v(1), v(3))}
+	var cost := AI._reprisal(b, v(1), strike, v(3), reads)
+	ok(cost == 0.0, "its Final Act unread: nothing to weigh (%.2f)" % cost)
+	sharp(v(1))
+	reads = {v(3): b.read(v(1), v(3))}
+	cost = AI._reprisal(b, v(1), strike, v(3), reads)
+	ok(cost > 0.0, "read, its free action is a cost (%.2f)" % cost)
+	v(4).faction = nemes
+	b.move(v(4), Vector2i(4, 4))
+	v(4).hp = 1
+	reads[v(4)] = b.read(v(1), v(4))
+	var log: Array[String] = []
+	ok(AI._strike(b, v(1), reads, log) and "Villager4" in log[0], "of two alike foes about to fall, it takes the one with no free action to give (%s)" % [log])
+	b.move(v(4), Vector2i(-99, -99))
+	reads.erase(v(4))
+	v(3).hp = 1
+	log.clear()
+	ok(AI._strike(b, v(1), reads, log), "alone it is still finished: left for last, not left alone (%s)" % [log])
