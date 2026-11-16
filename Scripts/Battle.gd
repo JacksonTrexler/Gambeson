@@ -215,7 +215,7 @@ const CLEAN_HIDE := 15  # a hiding roll this high or more is a good job: little 
 const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
 const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
-const HAZARD_TILES := 0.5  # steering: movement a point of foreseen HP loss weighs as (a 7 damage trap is a 3.5 tile detour); AP loss weighs 1 a point
+const HAZARD_TILES := 2.0  # steering: movement a point of foreseen HP loss weighs as (a 3.5 damage trap, a 1d6, is a 7 tile detour; tuned by the sims, docs/plans/path-foresight.md); AP loss weighs 1 a point
 const SUSPECT_TILES := 3.0  # movement a tile it suspects hides something (Read.hint: "disturbed earth?") weighs, at least; the AI used to count one as 10
 const HELP_PULL := 0.75  # movement a tile with a known helpful mark (Charge!) takes off a step onto it, in route() and the AI's approach: less than a tile, so it only tips a choice
 const STEER_MARGIN := 2  # tiles either side of its straight run that a steered route may wander (route())

@@ -83,8 +83,8 @@ func test_a_long_way_round_isnt_worth_it() -> void:
 	# known ground that drags it, either side of the trap: the way round costs more than the trap weighs
 	var mud := Terrain.new()
 	mud.name = "Mud ??"
-	mud.drag = 4.0
-	for c in [Vector2i(4, 3), Vector2i(5, 3), Vector2i(6, 3), Vector2i(4, 5), Vector2i(5, 5), Vector2i(6, 5)]:
+	mud.drag = 12.0  # (dearer than a 1d6 trap's weight, HAZARD_TILES x 3.5 + the tile)
+	for c in [Vector2i(4, 3), Vector2i(5, 3), Vector2i(6, 3), Vector2i(4, 5), Vector2i(5, 5), Vector2i(6, 5), Vector2i(4, 2), Vector2i(5, 2), Vector2i(6, 2), Vector2i(4, 6), Vector2i(5, 6), Vector2i(6, 6)]:
 		b.lay_layer(c, mud, false)
 	var path: Array = b.walk(v(1), Vector2i(7, 4), true).path
 	ok(path.back() == TRAP, "a detour dearer than the hazard's weight isn't taken (%s)" % [path])
@@ -188,3 +188,13 @@ func test_the_approach_pays_the_walks_price() -> void:
 	var line := b.line(v(1).cell, dest, v(1).luck, v(1))
 	ok(b.read(v(1), TRAP).hint != "" and TRAP in b.route(v(1), dest, line, {}), "ground it only suspects (a hint) isn't steered round by a walk, which goes by what it knows")
 	ok(TRAP not in b.route(v(1), dest, line, {&"wary": true}), "...but when it's wary (the AI choosing where to head) it counts")
+
+
+func test_the_ai_heads_for_the_cheaper_cell() -> void:
+	walker(8)  # blind: the walk won't bend round, so it picks where to head by the line's price
+	stage(nemes, {v(3): Vector2i(4, 4), v(1): Vector2i(6, 4)})
+	v(3).intelligence = 8
+	v(3).refresh()
+	b.revealed[TRAP] = true
+	var reads := {v(1): b.read(v(3), v(1))}
+	ok(AI._approach(b, v(3), v(1), reads) != TRAP, "not the trap's own tile, though it's the nearest (%s)" % AI._approach(b, v(3), v(1), reads))
