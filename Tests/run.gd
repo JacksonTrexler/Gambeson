@@ -68,9 +68,11 @@ func _initialize() -> void:
 			Game.hero = {}
 			Game.outfit = {}
 			Game.level = 1
+			Unit.auto_equip = true  # a test that switches it off doesn't leave it off
 			Game.xp = 0
 			Game.hearts = 0
 			Game.stash = []
+			Game.equipped = []
 			var scene: Node = museum.instantiate()
 			scene.get_node("Battle").rng.seed = 1
 			root.add_child(scene)

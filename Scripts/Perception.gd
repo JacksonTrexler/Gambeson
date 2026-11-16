@@ -98,6 +98,7 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		return r.net >= tier or (p >= persona_tier and r.net >= -1)
 	if shown.call(0, 99):
 		r.name = t.nick if t.nick else String(t.name)
+		r.defense = t.defense()
 	if shown.call(0, 2):
 		r.faction = t.faction
 		r.hp = t.hp

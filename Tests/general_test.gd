@@ -14,7 +14,7 @@ func sk(n: String) -> Skill:
 func unit_of(role: String) -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/%s.tres" % role), name = role})
 	b.get_node("Units").add_child(u)
-	return u
+	return roomy(u, 8)
 
 
 func names(u: Unit) -> Array:

@@ -20,6 +20,14 @@ func apply(c: Cast) -> void:
 		super.apply(c)
 
 
+# Its contest's odds (as apply() rolls it): the interrupt is a rider that lands that often.
+func foresee(c: Cast) -> Dictionary:
+	if not c.foe:
+		return {}
+	var p := Battle.odds(c.caster, &"strength", c.target, &"constitution", {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, kind = Check.Kind.SAVE})
+	return {notes = ["Interrupts it, Jammed (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
+
+
 func rebate(c: Cast) -> Vector2:  # on a hit only: a refund after paying
 	return Vector2(0.0, 1.0 / (c.rank + 2))
 

@@ -133,11 +133,12 @@ func test_eligibility() -> void:
 
 func test_symbols() -> void:
 	var s := scaler()
+	roomy(v(1))
 	v(1).learned.append(slot(s, 2))
 	v(1).intelligence = 16  # +3
 	v(1).charisma = 14  # +2
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
-	v(1).hotbar.assign([s])  # a Sigil's skill: the leftmost it fits
+	v(1).set_equipped([s])  # a Sigil's skill: the leftmost it fits
 	var r := v(1).rank(s)
 	ok(s.span(v(1)) == 1 + 2 + 3 and s.lasts(r, v(1)) == 2 + 2, "unmodified: range 1 + rank + int mod, turns rank + cha mod")
 	v(1).trinket = emblem(&"rho_up", &"sigil", 1)  # x1.75
@@ -170,7 +171,7 @@ func test_requirement() -> void:
 	s.requires.hit = 2
 	v(1).learned.append(slot(s, 1))
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
-	v(1).hotbar.assign([s])
+	v(1).set_equipped([s])
 	v(1).max_energy = 100
 	v(1).energy = 90
 	ok(b.requirement(v(1), s, v(3), 1).slice(0, 3) == [2, 0, 0], "met at 90% Energy: +2 to hit")
@@ -192,7 +193,7 @@ func test_emblem_scopes() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	var plain := Skill.new()
 	plain.name = "Plain"
-	v(1).hotbar.assign([plain, c, a])
+	v(1).set_equipped([plain, c, a])
 	v(1).trinket = emblem(&"rho_up", &"sigil")
 	ok(v(1).mods(c).label() == "ρ↑" and v(1).mods(a).empty() and v(1).mods(plain).empty(), "a Sigil: the leftmost eligible skill on the hotbar (Plain scales by nothing): %s / %s / %s" % [v(1).mods(plain).label(), v(1).mods(c).label(), v(1).mods(a).label()])
 	v(1).trinket = emblem(&"fire", &"insignia")
@@ -221,7 +222,7 @@ func test_tags_everywhere() -> void:
 	v(1).afflict(effect("damage", 0.5, [&"fire"]), 3)
 	ok(is_equal_approx(v(1).skill_stat(&"damage", strike), 0.5), "effects keyed on fire reach its skills")
 	v(1).trinket = load("res://Items/execute_sigil.tres")
-	v(1).hotbar.assign([haluca, strike])
+	v(1).set_equipped([haluca, strike])
 	v(3).max_hp = 100
 	v(3).hp = 10
 	ok(&"execute" in v(1).skill_tags(haluca) and is_equal_approx(Battle.executed(v(3), v(1).skill_tags(haluca), 2), 0.05), "Execute Sigil: Haluca's save is an execute (its leftmost eligible: a save)")

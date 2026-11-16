@@ -40,8 +40,33 @@ static func outcome(b: Battle, from: Unit, to: Unit) -> Dictionary:
 	return {what = kind(b, at) if at != null else &"beside", at = at}
 
 
+const PUSH := 0.5  # riders a tile it drives its foe is worth (foresee(): the AI weighs a rider at AI.RIDER)
+
+
+# How far driving t n tiles straight away from `from` would really take it (Battle.displace(), read without
+# moving it): {went: tiles, left: tiles unspent, into: the unit it stops against, or null at the map's edge}.
+# Stopped short with tiles to spare it takes Battle.SLAM blunt a tile, and the unit it struck the same.
+static func driven(b: Battle, t: Unit, from: Vector2i, n: int) -> Dictionary:
+	var line := Vector2(t.cell - from).normalized()
+	var went := 0
+	var into: Unit = null
+	for k in range(1, n + 1):
+		var c := Vector2i((Vector2(t.cell) + line * k).round())
+		if c == t.cell:
+			continue
+		var other := b.unit_at(c) if b.on_map(c) else null
+		if not b.on_map(c) or (other and other != t):
+			into = other
+			break
+		went += 1
+	return {went = went, left = n - went, into = into}
+
+
 # For the forecast and the AI (Battle.foresee()): the tile's rider, as a hit would give it. A trap's
-# damage is its dice, before the target's mitigation; the note names the rest.
+# damage is its dice, before the target's mitigation; the note names the rest. Beyond the target: a trap's
+# blast takes its dice off each other unit within it (foes' count for the kicker, its own side's, itself
+# among them, against: `spill`), and a drive is read to where it really stops (driven()): its tiles are
+# riders at PUSH each, stopped short it slams (`lo`, `hi`, `spill` for the unit it struck).
 func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
@@ -54,14 +79,36 @@ func foresee(c: Cast) -> Dictionary:
 			out.lo = t.dice.x * t.times + t.bonus
 			out.hi = t.dice.x * t.dice.y * t.times + t.bonus
 			out.notes.append("Kicks the trap onto it: it springs")
+			var mean: float = (out.lo + out.hi) / 2.0
+			var foes := 0
+			var own := 0
+			for x: Unit in c.battle.units.values():
+				if x != c.target and x.is_alive() and Vector2(x.cell).distance_to(Vector2(o.at)) <= t.blast + 0.0001:
+					if Faction.friends(x.faction, c.caster.faction):
+						own += 1
+					else:
+						foes += 1
+					out.spill = out.get("spill", 0.0) + (-mean if Faction.friends(x.faction, c.caster.faction) else mean)
+			if foes + own > 0:
+				out.notes.append("Its blast catches %d foe%s and %d of its own" % [foes, "" if foes == 1 else "s", own])
+			out.riders = 1.0
 		&"water":
 			out.notes.append("Soaks it (%s)" % turns)
 		&"loose":
 			out.notes.append("Blinds it (%s)" % turns)
-		&"hole":
-			out.notes.append("Drives it %d tile%s back" % [c.impact_rank(), "" if c.impact_rank() == 1 else "s"])
-		&"beside":
-			out.notes.append("Drives it 1 tile back")
+		&"hole", &"beside":
+			var n := c.impact_rank() if o.what == &"hole" else 1
+			var run := driven(c.battle, c.target, c.caster.cell, n)
+			var line := "Drives it %d tile%s back" % [run.went, "" if run.went == 1 else "s"]
+			if run.left > 0:
+				var slam: int = Battle.SLAM * run.left
+				out.lo = slam
+				out.hi = slam
+				line += ", then slams %s (%d each)" % [run.into.name if run.into else "the edge", slam]
+				if run.into:
+					out.spill = slam * (-1.0 if Faction.friends(run.into.faction, c.caster.faction) else 1.0)
+			out.notes.append(line)
+			out.riders = PUSH * run.went
 	return out
 
 

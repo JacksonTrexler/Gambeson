@@ -41,6 +41,7 @@ skill = ExtResource("7_sing")
 rank = 1
 
 [node name="Siren" instance=ExtResource("1_unit")]
+extra_slots = 2
 look = ExtResource("2_look")
 tags = Array[StringName]([&"monster", &"siren"])
 vibe = "Briny, hungry"
