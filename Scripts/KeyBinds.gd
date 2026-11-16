@@ -10,7 +10,8 @@ static var SAVE := "user://keybinds_driver.cfg" if not Engine.get_main_loop() or
 const NAMES := {&"hotbar_1": "Hotbar 1", &"hotbar_2": "Hotbar 2", &"hotbar_3": "Hotbar 3", &"hotbar_4": "Hotbar 4",
 		&"hotbar_5": "Hotbar 5", &"hotbar_6": "Hotbar 6", &"hotbar_7": "Hotbar 7", &"hotbar_8": "Hotbar 8", &"hotbar_9": "Hotbar 9",
 		&"hotbar_10": "Hotbar 10", &"spellbook": "Spellbook", &"skills": "Skills", &"end_turn": "End turn", &"hold": "Hold",
-		&"party": "Party", &"cancel": "Back out", &"next_unit": "Next unit", &"camera_home": "Camera: focus", &"hurry": "Hurry (hold)", &"look_over": "Look over"}
+		&"party": "Party", &"cancel": "Back out", &"next_unit": "Next unit", &"camera_home": "Camera: focus", &"camera_left": "Camera: pan left", &"camera_right": "Camera: pan right", &"camera_up": "Camera: pan up", &"camera_down": "Camera: pan down",
+		&"hurry": "Hurry (hold)", &"look_over": "Look over"}
 
 var pick: OptionButton
 var key_label: Label

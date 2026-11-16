@@ -170,4 +170,29 @@ func test_camera() -> void:
 	ok(cam.target() == other, "Home's pick: kept to")
 	cam.home()
 	ok(cam.focus == null and cam.target() == mb.player, "Home again: back to the player's unit")
+	cam.hud = Eyes.new(mb)
+	mb.move(other, mb.player.cell + Vector2i(8, 0))
+	mb.traveled.emit(other, other.cell, [other.cell] as Array[Vector2i])
+	ok(cam.target() == other, "follows the active unit once it's far off centre")
+	var lurker: Unit = mb.summon(load("res://Scenes/siren.tscn"), demons, mb.player.cell + Vector2i(30, 0))
+	mb.traveled.emit(lurker, lurker.cell, [lurker.cell] as Array[Vector2i])
+	ok(cam.target() == other, "not to a demon acting out of sight")
+	var at := cam.global_position
+	cam.pan(Vector2(40, 0))
+	ok(cam.target() == null and cam.global_position == at + Vector2(40, 0), "panned: it holds there")
+	ok(InputMap.has_action(&"camera_left") and &"camera_down" in KeyBinds.actions() and KeyBinds.key_of(&"camera_up") == "Up", "the arrow keys, rebindable")
+	mb.turn_changed.emit(lancin, demons)
+	ok(not cam.panned and cam.target() == mb.player, "a new turn: back to the player's unit")
+	cam.hud.free()
 	m.free()
+
+
+# Stands in for the HUD: the player's unit's eyes.
+class Eyes:
+	extends Node
+	var selected: Unit = null
+	var b: Battle
+	func _init(battle: Battle) -> void:
+		b = battle
+	func view(u: Unit) -> Read:
+		return b.read(b.player, u)
