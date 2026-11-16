@@ -244,3 +244,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **AI support 2** (`Behaviour.strides()`, `AI._stretch()`, `AI._wear()`, `Skill.serves(posture, u)`, `Skill.restoring()`): plan `docs/plans/ai-support-2.md`. `ai_tactics_test`, `move_test`, `ai_support_test`. (?167)
 - [x] **Param rest** (`Skill.markup()`, `Unit.giver_rank()`, `Unit.carry()` read modifiers): plan `docs/plans/param-rest.md`. `route_test.test_reserve_text`. (?169)
 
+## Forced moves, Warcry preview, AI tuning (2026-11-16)
+
+- [x] **Forced moves: forecast and AI** (`Battle.course()`, `foresee_drive()`, `DRIVES`, `Displace.moves()`/`foresee()`; Aura and Coordinate call `drive()`; `_support` skips a harming skill): plan `docs/plans/forced-forecast.md`. `forced_test`, `ai_tactics_test`. (?170)
+- [x] **Warcry's default-pick preview** (`Behaviour.defaults()`, `Battle.defaults_of()`, `HUD.preview()`): plan `docs/plans/warcry-preview.md`. `warcry_test`. (?171)
+- [x] **AI tuning** (`Read.believed()`, `Perception.MIRROR`, `AI._retreat()`/`_room()`; Defense through a lie; Grudge retreat; no constant changed, the museum cannot tell them apart): plan `docs/plans/ai-tuning.md`. `hud_test`, `ai_tactics_test`. (?173)
