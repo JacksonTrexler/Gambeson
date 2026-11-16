@@ -1337,7 +1337,7 @@ func odds(it: Dictionary) -> StringName:
 		return &""
 	if not _defense_shows(t):
 		return &"unknown"
-	var p := Battle.hit_chance(it.unit, s, t, battle)
+	var p := Battle.hit_chance(it.unit, s, t, battle, view(t).believed())
 	return &"likely" if p >= 0.65 else (&"even" if p >= 0.35 else &"unlikely")
 
 
@@ -1897,7 +1897,7 @@ func _roll_text(roll: Dictionary, target: Unit) -> String:
 		return _rolls(roll.total, roll.against)
 	if roll.crit:
 		return " [color=#6b7180](nat 20)[/color]"
-	return _rolls(roll.total, roll.defense if _defense_shows(target) else null)
+	return _rolls(roll.total, roll.defense + view(target).skew(target) if _defense_shows(target) else null)
 
 
 # The log's rolls: " (ours - theirs)", or " (ours)" where theirs is unknown to the player.
@@ -2775,7 +2775,7 @@ func _info(u: Unit) -> Dictionary:
 		rows.append(["AP", u.ap_left() - battle.free_ap(u), u.full_ap(), AP_COLOR])  # its own: not an interrupt's free pool
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 	if r.net >= 0:
-		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])
+		rows.append(["DF", _defense_line(u, r.defense), null, MOVE_COLOR])
 	if not r.stats.is_empty():
 		rows.append(["ST", _bst_line(Unit.CORE.slice(0, 6).map(func(x): return r.stats[x])), null, MUTED])
 	info.rows = rows
@@ -2919,8 +2919,8 @@ func _bst_line(stats: Array) -> String:
 
 
 # "11 · Gambeson", "2 · unarmored", with tagged Defense after: "+2 vs magical".
-func _defense_line(u: Unit) -> String:
-	var text := "%d · %s" % [u.defense(), u.armor.name if u.armor else "unarmored"]
+func _defense_line(u: Unit, shown: Variant = null) -> String:
+	var text := "%d · %s" % [u.defense() if shown == null else shown, u.armor.name if u.armor else "unarmored"]
 	var tagged := u.tagged_defense()
 	for t in tagged:
 		text += ", %+d vs %s" % [tagged[t], t]
@@ -2950,7 +2950,7 @@ func _tip_text() -> String:
 		return ""
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
-		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0), "win" if _contests(it.skill) else "hit"]
+		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle, view(u).believed()) * 100.0), "win" if _contests(it.skill) else "hit"]
 	var seen := _seen(it, u)
 	if show_odds and seen >= 0:
 		line += "\n%d%% to be seen through" % seen

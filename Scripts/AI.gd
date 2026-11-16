@@ -339,9 +339,10 @@ static func _defend(b: Battle, u: Unit, log: Array[String]) -> void:
 
 
 # The chance u's s hits t, as the player's own forecast would show it: t's Defense as r has it, or
-# GUESS_DEFENSE where u can't make it out (Read.defense: its armor doesn't show).
+# GUESS_DEFENSE where u can't make it out (Read.defense: its armor doesn't show). A lie about it (Perception._lie())
+# is believed, as the HUD's odds believe it.
 static func _chance(u: Unit, s: Skill, r: Read, b: Battle, t: Unit) -> float:
-	return Battle.hit_chance(u, s, t, b, -1 if r.defense != null else GUESS_DEFENSE)
+	return Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE))
 
 
 # Perceived worth of using a hostile skill on a unit read as `r`. Given the battle and the unit (`t`, the

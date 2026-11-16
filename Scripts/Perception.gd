@@ -14,6 +14,7 @@ const KINDS := {
 	&"sound": {sense = &"hearing", hints = ["muffled steps?", "a silence that feels deliberate"]},
 	&"fog": {sense = &"sight", hints = ["a shape in the mist?", "damp, cloying air"]},
 }
+const MIRROR := 20  # the Defense a lie flips about: a point under it reads as a point over (Read.defense)
 const BENEVOLENT := "Serene, warm"
 const TRAPS_SET := "traps were set here"
 const OMINOUS := "Menacing, cold"
@@ -563,6 +564,8 @@ static func _lie(b: Battle, o: Unit, t: Unit, r: Read, p: int) -> void:
 	if r.hp != null and flips.call(&"hp"):
 		r.hp = maxi(r.max_hp - r.hp, 1)
 		r.energy = t.max_energy - t.energy
+	if r.defense != null and flips.call(&"defense"):  # mirrored about MIRROR: plate reads as bare cloth (the AI and the HUD both read r.defense)
+		r.defense = maxi(MIRROR - r.defense, 0)
 	if r.healthy != null and flips.call(&"healthy"):
 		r.healthy = not r.healthy
 	if not r.strengths.is_empty() and flips.call(&"strengths"):
