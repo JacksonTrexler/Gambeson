@@ -93,7 +93,9 @@ func _mode(moving: bool, n: int, rounds: int, wis: int) -> void:
 		var found := {}  # hider -> round found
 		var t0 := Time.get_ticks_usec()
 		for r in rounds:
-			f.play(f.lancin)
+			var played: Dictionary = f.play(f.lancin)
+			if _debug:
+				print("  %s r%d rangers at %s, acts %.0f ms, end_turn %.0f ms" % [name, r + 1, seekers.map(func(s: Unit): return s.cell.x), played.acts.reduce(func(a: int, x: int): return a + x, 0) / 1000.0, played.end / 1000.0])
 			for h in hiders:
 				if not found.has(h) and seekers.any(func(s: Unit): return f.b.read(s, h).located()):
 					found[h] = r + 1
