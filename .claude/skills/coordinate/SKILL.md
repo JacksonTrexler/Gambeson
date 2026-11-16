@@ -78,6 +78,12 @@ Builders hit the session or weekly limit often, and the error names the reset ti
 - Brief them to commit early; committed work survives.
 - After the reset, resume each one with SendMessage ("limit reset; commit what you have first, then continue"). A resumed agent keeps its context; a fresh one starts cold.
 - To keep agents busy up to the limit, queue the next wave as soon as a slot frees. If the host goes idle, a one-shot `CronCreate` at the reset time can resume them.
+- Be mindful of the limit (the user, 2026-11-16: "use delegate sessions mindful of session limits"):
+  - run 2-4 builders at once, not 6+. A wide wave dies all at once at the limit and loses uncommitted work;
+  - default to Sonnet, keeping Opus for design-heavy work;
+  - tell builders to commit after each step;
+  - tune by simulation on the default 8 seeds and `soak` only once to confirm;
+  - batch docs passes, one keeper per several merges.
 
 ## House rules every brief carries (see brief-common.md)
 
