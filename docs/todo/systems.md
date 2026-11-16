@@ -832,9 +832,10 @@ Plan and what was built: `docs/plans/unbounded-maps.md`. Built on `z-maps`. Test
     - **A UI bug seen in passing, not fixed:** the turn clock's number draws over the end of the Meadows' "Demons slain" tally at the top centre.
     - **New names to review:** none.
 - [ ] **The 30-kill escape-portal battle** stays as it is, a later battle. (?175)
-- [ ] **Edge-pan and drag for the camera** (the HUD's edge panels and the mouse buttons are taken). (?175)
-- [ ] **A cheaper first guess for an unseen `summon()` starting inside sight** (~170 ms), if something summons often near the party. (?175)
-- [ ] **The turn clock's number overlaps the "Demons slain" tally** at the top centre of the Meadows. (?175)
+- [x] **Edge-pan and drag for the camera** (the HUD's edge panels and the mouse buttons are taken). (?175) Edge-pan built 2026-11-16 (?179): `BattleCamera.edge_dir()`, a Setting. (?179)
+- [ ] **Drag to pan the camera** (the mouse buttons are taken). (?175, ?179)
+- [x] **A cheaper first guess for an unseen `summon()` starting inside sight** (~170 ms), if something summons often near the party. (?175) Built 2026-11-16 (?179): `beyond_sight()`, ~125 -> ~14 ms. (?179)
+- [x] **The turn clock's number overlaps the "Demons slain" tally** at the top centre of the Meadows. (?175) Built 2026-11-16 (?179): the tally is right-aligned and ends left of the clock. (?179)
 
 ## AI walks (2026-11-16)
 
@@ -849,8 +850,8 @@ Plan and what was built: `docs/plans/ai-walks.md`. Built on `q2-aiwalks`. Tests:
     - **`SUSPECT_TILES` stays 3.0:** 8 museum seeds, 12 or 30 hinted traps: springs 29 / 27 / 25 / 24 / 24 / 24 at 0 / 1 / 2 / 3 / 5 / 8 (12 traps); 59 / 55 / 58 / 51 / 52 / 51 (30 traps). The knee is 3.
     - **Survived mutation:** the line-up's gain threshold (`PUSH x RIDER`), left as a one-line choice.
     - **New names to review:** none.
-- [ ] **Allies coordinate a retreat** (don't crowd the one tile out; back off in turn). (?176)
-- [ ] **A test for the line-up's gain threshold** (`PUSH x RIDER`: no test stages a gain between 0 and one tile's drive). (?176)
+- [x] **Allies coordinate a retreat** (don't crowd the one tile out; back off in turn). (?176) Built 2026-11-16 (?178) as a tie-break only: `AI._claimed()`; no crowded battle shows a gain yet. (?178)
+- [x] **A test for the line-up's gain threshold** (`PUSH x RIDER`: no test stages a gain between 0 and one tile's drive). (?176) Built 2026-11-16 (?178): `test_line_up_gain_threshold`, three mutants fail it. (?178)
 
 ## AI sim and tuning (2026-11-16)
 
@@ -862,6 +863,56 @@ Plan, scenarios and the full table: `docs/plans/ai-sim.md`. Built on `q2-sim`. O
     - **Left unmoved, with results recorded** (`docs/plans/ai-sim.md`): `SUSPICIOUS`, `MARKED`, `REACH`, `HIT`, `REACH_TURNS` (nothing moved); `LAST_SEEN` .5 (a plateau above .25); `SWEEP_TURNS` 4 (monotone but inside the noise, and 1 would break `evidence_test`); `GUESS_DEFENSE` 12; `POINT` .5; `RIDER` 1; `PUSH` .5; `STARVE` 5 (flips between 10 and 20); `AI.SEEN` .9; `AI.WORN` .8.
     - **Findings, not constants:** an Observe user that has swept its last clue stands beside a hider and never looks again; Poach is never chosen over Strike or Slam Jam in the rider set; Kick beats Strike on price even in the open, so `PUSH` and `RIDER` can't be tuned without a rival at par; after ?176 the Grudge set's Lancin HP lost fell 3.75 to 2.00.
     - **New names to review:** none.
-- [ ] **An Observe user that has swept its last clue stands next to a hider and never looks again** (hunt-still, seed 1: adjacent for 8 rounds). (?177)
-- [ ] **Poach is never chosen** over Strike or Slam Jam in the rider set; look at its price. (?177)
+- [x] **An Observe user that has swept its last clue stands next to a hider and never looks again** (hunt-still, seed 1: adjacent for 8 rounds). (?177) Built 2026-11-16 (?178): `AI.LOST`, a clue at the hunter's own tile. (?178)
+- [x] **Poach is never chosen** over Strike or Slam Jam in the rider set; look at its price. (?177) Read 2026-11-16 (?178): the sim's foe was never bloodied; the price was right. (?178)
 - [ ] **`PUSH` and `RIDER` can't be tuned until Kick has a rival at par on price.** (?177)
+
+## AI findings, Meadows tails, dictionary, Deathlust, big sims (2026-11-16)
+
+Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlust.md`, `r-sims.md`. Built on `q3-ai`, `q3-meadows`, `r-docs`, `r-deathlust`, `r-sims` (Skeleton is under the Wizard / Mage notes in `docs/todo/classes.md`, ?181). Names to review in all of these: none.
+
+178. **AI findings from the sim - built on judgement, open for review (2026-11-16).** Cards from ?176, ?177. My calls:
+    - **Hunt-still fixed with one more clue:** `_hunt` forgets a sighting within a tile of it, so a hider seen once and missed leaves `clues()` empty and the hunter stands beside it forever. Now a living foe its side once made out (`sighted_when`), placed by no sighting, is a clue at the hunter's own tile, worth `AI.LOST` 0.5 (= WORTH, not tuned): a look there rules it out for `SWEEP_TURNS`, then it looks again. hunt-still 5.07 -> 4.67 rounds to find; about one more Observe a battle.
+    - **Poach was never mispriced:** its condition is a foe at half HP that the caster never aimed a skill at; the sim's foe started at three quarters HP. The sim now starts it bloodied; Poach is used once a run, as the opener, never again on that foe (the card's text). No AI change.
+    - **Line-up threshold tested:** `test_line_up_gain_threshold` stages the least real gain (0.5) and none; `<` to `<=`, `< 0` and `< 2 x PUSH x RIDER` each fail it.
+    - **Allies and a retreat: a tie-break, not a reservation.** `_claimed()` runs `_retreat()` for each able ally that hasn't moved and is within reach, and a claimed tile loses a tie on shove, gap and room (a fourth key element, only on the starve walk). No state kept between units; "yet to move" is `move_left() >= movement`. The `grudge` sim is identical before and after (the two Lancin start apart); kept because a seam test can tell it from `_room()` and it is never worse on the first three keys. Drop it (`_claimed`, the key, the test) if no crowded battle shows a gain.
+- [ ] **Does the ally tie-break pay in a crowded battle?** `_claimed()` costs one `_retreat` per ally in reach on a starve turn; drop it if a busy-fight sim shows nothing. (?178)
+- [ ] **A hunter's `LOST` clue after the line-up** is a guess at 0.5; tune it with a hunt sim where hiders start in range. (?178)
+
+179. **Meadows tails - built on judgement, open for review (2026-11-16).** Three cards from ?175. My calls:
+    - **Tally vs clock:** the "Demons slain" tally is a right-aligned label x 80..226 (`Meadows.TALLY_LEFT/RIGHT`), growing leftward and ending clear of the clock (the HUD's clock is untouched; other tests pin it). Test: `meadows_test.test_plane`.
+    - **Edge-pan:** `BattleCamera.edge_dir(pointer, view, clear)`, pure: a pointer within 3 design pixels of an edge pans that way (corners diagonal), unless over `Root/Left` or `Root/Right` (the panels fill the side edges, so in practice top and bottom pan). Arrow keys win when held; none while a panel (Settings, skills) is open, with the pointer out of the window, the app unfocused, or before the pointer first moved. Speed is the arrow keys' (`PAN`); it lets go of the unit as the keys do. The Setting `BattleCamera.edge_pan` (static), default on, "Edge-pan the camera" in Settings, Prefs `edge_pan`.
+    - **Summon search:** the first guess is the nearest free tile past every watcher's perception range (`beyond_sight()`, a distance, no read), confirmed by one read; only if none reads unseen does the old nearest-unseen search run. A call: a nearer concealed tile (brush, fog) used to win; now a tile past sight does. Five Siren summons 111-145 ms -> 13-14 ms (M3).
+- [ ] **Edge-pan reaches only the top and bottom edges** while the HUD's side panels fill the left and right; a way to pan sideways by the mouse. (?179)
+
+180. **Dictionary and glossary - built on judgement, open for review (2026-11-16).** Docs only. My calls:
+    - **`g-dictionary.md`**: preferred terms for stubbing and naming, 20 rows, read from `Glossary.gd`, `Reserve.gd`, `Battle.gd` (`neutralized`), `Exhaustion.gd` and the plans; "use instead of" filled only where the code or you draw the line. The "Arcalís" rows are your rule (no ` ??`).
+    - **`g-glossary.md`**: the Center entry verbatim; **the builder added its own one-line readings of Lancin, Lancela and Lancin Proper** under it, outside the verbatim paragraph. Delete them if wrong.
+    - **CLAUDE.md** gained one naming line.
+- [ ] **Check the three Lancin readings in `g-glossary.md`** against what you meant (delete or correct). (?180)
+
+182. **Deathlust and its hooks - built on judgement, open for review (2026-11-16).** Your words: "Units dying in rank range remove a small amount of exhaustion. Prevents specific skill exhaustion on skills used to kill (not down) a unit." The name is yours. My calls:
+    - **Where:** Eros (after Impassioned Fighter, so it is not a Paladin's free first skill; free at the root it changed `progress_test.test_unlock`), Slayer and Vanguard (roots, open from the start), General Martial (tier 5 with the bracings; "Fighter martial" read as this tree). Tags `martial`.
+    - **Reach:** 2 tiles a rank (2 / 4 / 6), through `rank_range`. "Rank range" as "rank tiles" was too tight (1 tile at rank I).
+    - **Amount:** "small" is 0.25 of a use a rank (0.25 / 0.5 / 0.75), off every skill's count; a turn's end takes 1, and several deaths stack.
+    - **Either side:** any unit killed in reach counts, ally, foe or the holder's victim; the holder's own death gets nothing. Downed never counts, nor unshaping.
+    - **"Used to kill":** the unit's last hit came from the caster during that cast, or the cast was aimed at it (so executes count); a cast that kills one and downs another is a kill skill. A bleed's kill is no skill's. A channel's later strike (Metea) is not (its use was paid at the start). The kill skill's own use gains nothing, flat at every rank; other skills' share is derived from the count.
+    - **Settled at the outermost cast's end**, so reactions inside it settle too.
+    - **Generic pieces:** `Exhaustion.relieve(n, skill = null)` (turn-end `recover()` uses it), `Exhaustion.Wear`, `Unit.paid` signal, `Battle._settle_wear()`; Behaviour hooks `neutralized(b, holder, rank, u, by, how)` and `wearing(b, holder, rank, wear)` (`Util/skill.py` `HOOKS`). No HUD float or log line.
+    - **Tests:** `Tests/deathlust_test.gd` (two tests, 11 checks); five mutations fail them.
+- [ ] **The AI doesn't seek kills for Deathlust's discount**, and has no word of it. (?182)
+- [ ] **Deathlust gives no HUD float or log line** when it eases a count. (?182)
+- [ ] **A channel's later strike (Metea) and an area skill's kills** don't count as a skill's kill (only `last_hit_by` and the cast's aim do). (?182)
+
+183. **Big sims and AI cost - built on judgement, open for review (2026-11-16).** Your brief: M3 test box, a target 4x stronger, larger zoomed-out hunts, busy fights. My calls (full tables in `docs/plans/r-sims.md`):
+    - **Outside the suite:** `Tests/sims/hunt_10v10.gd`, `busy_fight.gd` and the shared `field.gd` (an open grass field of any size); one smoke test in the suite, `Tests/sims_test.gd` (3v3, 557 ms), so a break in the field builder shows there.
+    - **Hunt, 10 Rangers vs 10 hiders (60 x 40, n = 8, 20 rounds):** still 0.56 found, moving 0.39; the first find never before round 11 (the Rangers walk ten rounds to the last sighting). Not tuned.
+    - **Busy fights, 15v15 and 20v20 (level 1, four skills each):** a unit's AI turn 84 / 103 ms mean, p95 268 / 318 on the M3.
+    - **Budgets are mine:** 100 ms a unit's AI turn (a visible hitch), 1000 ms a side's `end_turn` (a freeze), at M3 x 4. Both are **over today**: a mean turn 3-4x the budget, p95 ten times; 15v15 `end_turn` mean 731 ms but p95 2.5 s; 20v20 mean 1.4 s. Constants at the top of `busy_fight.gd`.
+    - **One change in Scripts:** `Perception._seem` asks only t's own side for Brood, same result, about 16% off a unit turn and 20% off `end_turn` (`persona_test.test_brood` catches it).
+    - **Profile:** `Battle.read()` is about 215 calls a unit turn (0.33 ms each); `_line_up` 137 x 28 ms; `travel`, `_approach`, `suspicious` and `_watch` follow.
+    - **Level 1 with four skills leans low** against a real party's turn.
+    - **Load order:** a sim script must name `Test` before `Role`, `Branch` or `Effect` or the scripts hang in a cycle; `field.gd` has no `class_name`.
+- [ ] **AI turn cost over budget** (100 ms a unit turn, 1000 ms an `end_turn` on M3 x 4): a per-act read cache, `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up`'s foresee over every tile, a Brood-free fast path in `Unit.stat`, `travel`/`_approach`. In flight as `r-aiperf`. (?183)
+- [ ] **Frame times unmeasured:** `busy_fight.gd`'s windowed path is written, not run. (?183)
+- [ ] **A hunt where hiders are in range from round 1**, to measure the search apart from the walk. (?183)

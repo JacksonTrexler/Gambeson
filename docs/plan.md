@@ -151,6 +151,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | 27 | Unbounded maps, camera and spawning (?175) | `meadows_test.gd` |
 | — | AI walks: heal wear, shove positioning, route() retreats, Grudge approach (?176) | `ai_tactics_test.gd` |
 | — | AI sim and tuning (?177) | `Tests/sims/ai_sim.gd` (outside the suite) |
+| — | AI findings: hunt-still, Poach, line-up test, retreat tie-break (?178) | `evidence_test.gd`, `ai_tactics_test.gd` |
+| — | Meadows tails: tally, edge-pan, cheaper summon (?179) | `meadows_test.gd`, `hud_test.gd` |
+| — | Dictionary and glossary (?180) | none (docs) |
+| — | Skeleton and Mortis Arcalís (?181) | `summon_test.gd` |
+| — | Deathlust, the `neutralized` and `wearing` hooks (?182) | `deathlust_test.gd` |
+| — | Big sims and AI cost budgets (?183) | `sims_test.gd`, `Tests/sims/` |
 
 ## Questions to answer first
 

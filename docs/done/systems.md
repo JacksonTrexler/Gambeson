@@ -252,3 +252,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Unbounded maps, camera and spawning** (`Battle.cells_near()`, `summon(.., unseen_by)`, `unseen_at()`, `BattleCamera.pan()`, camera actions, `Meadows._explore()` on `traveled` and `driven`): plan `docs/plans/unbounded-maps.md`. `meadows_test`. (?175)
 - [x] **AI walks** (`AI._fresh`, `_line_up`, `_shoved`, `_retreat` on `route()`'s price, `_reachable`, `Battle.standing()`): plan `docs/plans/ai-walks.md`. `ai_tactics_test`. (?176)
 - [x] **AI sim and tuning** (`Tests/sims/ai_sim.gd`, `sweep.sh`; `DEBRIS` 1 to 3, the rest unmoved): plan `docs/plans/ai-sim.md`. Outside the suite. (?177)
+- [x] **AI findings from the sim** (`AI.LOST`, `clues()`, `_claimed()`, `_retreat`'s claim key): plan `docs/plans/ai-findings.md`. `evidence_test`, `ai_tactics_test`. (?178)
+- [x] **Meadows tails** (`Meadows.TALLY_LEFT/RIGHT`, `BattleCamera.edge_dir()`, `edge_pan` Setting, `Battle.beyond_sight()`): plan `docs/plans/meadows-tails.md`. `meadows_test`, `hud_test`. (?179)
+- [x] **Dictionary and glossary** (`g-dictionary.md`, `g-glossary.md`, a CLAUDE.md line): plan `docs/plans/r-docs.md`. (?180)
+- [x] **Deathlust and its hooks** (`Behaviours/deathlust.gd`, `Behaviour.neutralized()`, `wearing()`, `Exhaustion.relieve()`, `Wear`, `Unit.paid`): plan `docs/plans/r-deathlust.md`. `deathlust_test`. (?182)
+- [x] **Big sims** (`Tests/sims/hunt_10v10.gd`, `busy_fight.gd`, `field.gd`; `Perception._seem`): plan `docs/plans/r-sims.md`. `sims_test`. (?183)
