@@ -532,10 +532,10 @@ Plan and what was built: `docs/plans/fear.md`. Built on `x-fear`. Tests: new `Te
     - **No skills:** none in the todo docs wants one; the effects are data-ready.
     - **The AI** neither seeks nor avoids them (its `_away()` spends the unit's own movement).
     - **New names to review:** none.
-- [ ] **The AI doesn't read fear, shove or entrance**, nor foresee the move or slam in the forecast. (?146)
+- [x] **The AI doesn't read fear, shove or entrance**, nor foresee the move or slam in the forecast. Built 2026-11-15 (?170): `Battle.course()`, `foresee_drive()`; the AI reads it through `foresee()`. (?146)
 - [ ] **No skill carries fear, shove or entrance yet.** Needs a design. (?146)
-- [ ] **Aura and Coordinate's effect loops don't call `drive()`** (neither carries one today). (?146)
-- [ ] **The tags aren't on skills' own `tags`** (the cast's tag set), only on the move. (?146)
+- [x] **Aura and Coordinate's effect loops call `drive()`.** Built 2026-11-15 (?170). (?146)
+- [ ] **The tags aren't on skills' own `tags`** (the cast's tag set), only on the move. Decided not to in ?170, for the user to reverse (asked at the top of `todo.md`). (?146, ?170)
 
 ## Polish (2026-11-15)
 
@@ -628,7 +628,7 @@ Plan and what was built: `docs/plans/warcry-picker.md`. Built on `z-warcry`. Tes
     - **Only picked foes are drawn** (red brackets and a number; the hint "Warcry: 2 of 3 picked"); the default is not, the hint says "the nearest N". Pickable is what the caster `read()`s as located, the filter Warcry uses.
     - **Warcry's static `picks(b, caster, n)` renamed `nearest`**; `Skill.describe` says "you choose them, else the nearest first".
     - **New names to review:** none.
-- [ ] **The default "nearest N" isn't previewed** before picking; only picked foes are drawn. (?157)
+- [x] **The default "nearest N" isn't previewed** before picking. Built 2026-11-15 (?171): `Behaviour.defaults()`. (?157)
 - [ ] **No other skill overrides `picks()` yet.** (?157)
 
 ## Save follow-ups (2026-11-15)
@@ -655,7 +655,7 @@ Plan and what was built: `docs/plans/search-clues.md`. Built on `z-search`. Test
     - **After searching it still hunts** where its side last saw a foe (it used to hunt only if it hadn't searched).
     - **Combat sims shift:** an Observe user with old sightings and no clue now searches at battle start.
     - **New names to review:** none.
-- [ ] **Tune the clue weights and turn caps by the sims** (all guesses). (?159)
+- [ ] **Tune the clue weights and turn caps by the sims** (all guesses). Tried in ?173 on the museum: every value gave identical fights, so none changed; needs a purpose-built sim (an Observe user hunting a hider, over the seeds). (?159, ?173)
 
 ## Param tail (2026-11-15)
 
@@ -693,9 +693,9 @@ Plan and what was built: `docs/plans/ai-prices.md`. Built on `z-aiprice`. Tests 
     - **Grudge:** `_starve` no longer needs the Grudge unit to be the last foe; `starve_worth` = `STARVE` 5.0 (a kill) / the units of its side in the foe's reach; 0 once it dies of its rounds anyway; it starves when that beats `_best_strike()`. Judged afresh each round; allies don't coordinate.
     - **Final Act:** a second generic hook `Behaviour.reprisal(r, holder, rank)`: HP the holder's reaction costs the blow's author. `_strike` takes it off the blow's worth but never below `1 - FOILED`, so a lone Final Act unit is left for last. Replaces Final Act's `foils` share.
     - **New names to review:** none.
-- [ ] **Defense through a lie** (`_lie`/`twist`) isn't read, by the AI or the HUD. (?162)
-- [ ] **A Grudge unit plans no retreat tile** so as not to be cornered next round. (?162)
-- [ ] **Tune `GUESS_DEFENSE`, `POINT`, `RIDER`, `PUSH`, `STARVE` by the sims.** (?162)
+- [x] **Defense through a lie** (`_lie`/`twist`) is read, by the AI and the HUD. Built 2026-11-16 (?173): `Read.believed()`. (?162)
+- [x] **A Grudge unit plans a retreat tile** so as not to be cornered next round. Built 2026-11-16 (?173): `AI._retreat()`, `_room()`. (?162)
+- [ ] **Tune `GUESS_DEFENSE`, `POINT`, `RIDER`, `PUSH`, `STARVE` by the sims.** Tried in ?173: no change on the museum (it never uses STARVE or PUSH); needs a purpose-built sim (a Kick against a wall; a Grudge unit in a corner). (?162, ?173)
 
 ## Equipping skills (2026-11-15)
 
@@ -728,8 +728,8 @@ Plan and what was built: `docs/plans/checks-tail.md`. Built on `z-checkstail`. S
     - **Affordability pays the rebate:** `Unit.can_afford(s, cut)`, `can_afford_after`, `funding`; `Battle.price_cut()` is the smallest sure share across the targets (a price paid once for a spread must be granted by all); used by the HUD (`why_not`, reach, readiness, drain's fund) and the AI (`_strike`, `_could_strike`, `_steady`, `_starve`, which no longer prefilter with `foe_actives(true)`). Slot-press checks with no target keep the full price.
     - **New names to review:** none.
 - [ ] **No forecast for Death's chance**, and the initiative d20 and the two last-stand rolls have no DC. (?164)
-- [ ] **Unproven by mutation:** Hitch's `apply()` options (only `foresee`'s are tested) and `hit_chance`'s Level Down branch alone. (?164)
-- [ ] **Tune `AI.SEEN` (0.9)** by the sims; it is a guess. (?164)
+- [x] **Unproven by mutation:** Hitch's `apply()` options and `hit_chance`'s Level Down branch. Built 2026-11-15 (?172): four mutations each fail `check_test`. (?164)
+- [ ] **Tune `AI.SEEN` (0.9)** by the sims; it is a guess. Tried in ?173 (0.8 / 0.95): no change on the museum; needs the purpose-built sim. (?164, ?173)
 
 ## Equip follow-ups (2026-11-15)
 
@@ -762,7 +762,7 @@ Plan and what was built: `docs/plans/ai-support-2.md`. Built on `z-aisupport`. S
     - **Help orders:** `Skill.serves(posture, u)`: "supportive" also holds for a skill whose behaviour `restores()` (new `Skill.restoring(u)`). So Energize is supportive despite `self_only`, serves both HELP and DEFEND, a Berserker's Affinity for it nets -2, and Heal and Resuscitate now get Unsupportive -1 like Second Wind. `HUD.intent_skill` and `AI.restoring` are gone.
     - **?87 is not fixed by the AI alone:** 30 museum seeds, Lancin 27 / Nemes 3 became 26 / 4; Icor Hex 126 to 125, Strike 95 to 92. Hex still outscores Strike enough that Nemes leans on it; WORN was not tuned to hit a quota. Cost tuning is the user's call (Needs the user).
     - **New names to review:** none.
-- [ ] **Tune `AI.WORN` (0.8)** by the sims; weigh heals and supports for wear too. (?167)
+- [ ] **Tune `AI.WORN` (0.8)** by the sims; weigh heals and supports for wear too. Tried in ?173 (0.6 / 0.9): no change; heals and supports still not weighed for wear (`_wear` prices strikes only). (?167, ?173)
 - [ ] **Hex outscores Strike in the museum** (?87): needs cost tuning from the user. (?167)
 
 ## Param rest (2026-11-15)
@@ -775,3 +775,45 @@ Plan and what was built: `docs/plans/param-rest.md`. Built on `z-paramrest`. Tes
     - **Stays concrete:** the build-time gates (`waives`, Dabblings' `studies`, the guest-tree rank caps), which gate what is learned; an emblem coming off would strand picks.
     - **`missed()` still has no first user:** no recorded skill design wants a rider on a miss (Poach's and Slam Jam's refunds are on a hit, Grudge counts hit or miss as any use, "Commitment to the bit" is the posing whiff `missed()` doesn't run on); no skill was invented to exercise it.
     - **New names to review:** none.
+
+## Forced moves: forecast and AI (2026-11-15)
+
+Plan and what was built: `docs/plans/forced-forecast.md`. Built on `z-forced`. Tests: `Tests/forced_test.gd` (4 new), `ai_tactics_test.test_forced_moves_are_priced`; two Kick notes in `ai_tactics_test` now end "to (6, 3)" / "to (5, 3)".
+
+170. **Forced moves: forecast and AI - built on judgement, open for review (2026-11-15).** My calls:
+    - **One reader, `Battle.course()`**, the read-only twin of `displace()` (`{went, left, into, end}`); `Battle.foresee_drive()` makes a `foresee` dict: a line ("Shoves it 2 tiles back to (6, 3), then slams X (N each)"), `lo`/`hi` the slam, `riders` = `PUSH` (0.5, moved from Kick) a tile, `spill` the slam on the unit struck (an ally of the pusher counts against). Kick's own `driven()` is gone.
+    - **Who foresees:** `Battle.foresee()` reads a skill's own `shove`/`fear`/`entrance` effects as `cast()` would put them on (not on a foe for a `dual` skill); `Displace.foresee()` (Sing, Send Off, any carrier) uses `moves()`, the test `apply()` makes. A behaviour's own `Cast.put()` effects are its to foresee. The HUD needed no change.
+    - **Fear and entrance foresee the first move only**, not each repeat; flat mitigation, boosts and reactions on the slam aren't counted.
+    - **The AI gets no new scoring:** `foresee()`'s riders and spill reach `AI.score()` (a tile is worth `PUSH x RIDER`; a slam into an ally nets against the foe's damage). `_support` skips a support skill whose effects harm, so a fear-carrying "buff" never goes on an ally.
+    - **`drive()` in Aura's and Coordinate's (`Battle._link`) loops**, after `a.by` is set; an aura's shove drives each ally from its caster.
+    - **Tags on skills' own `tags`: not added** (a skill's tags are the whole cast's; a `shove` tag on Send Off would make its blow, cost and effects read as a shove). Asked of you, at the top of `todo.md`.
+    - **New names to review:** none.
+- [ ] **The AI doesn't walk to a tile to line up a shove against a wall**, nor weigh being shoved by foes in its own positioning (`_away` etc.). (?170)
+- [ ] **Fear and entrance's repeat moves aren't foreseen**; neither are mitigation, boosts or reactions on a slam. (?170)
+- [ ] **No skill carries fear, shove or entrance yet** (still needs a design). (?146)
+- [ ] **Turning**: a unit hit or moved by force still faces as it did. (?142)
+
+## Warcry's default-pick preview (2026-11-15)
+
+Plan and what was built: `docs/plans/warcry-preview.md`. Built on `z-wcpreview`. Test: `warcry_test.test_the_hud_toggles_picks` extended.
+
+171. **Warcry preview - built on judgement, open for review (2026-11-15).** My calls:
+    - **A hook `Behaviour.defaults(c) -> Array[Unit]`** (default empty), the counterpart of `picks()`: what the skill takes when nothing is picked. `Battle.defaults_of()` unions the answers; `HUD.preview()` is that while `picking()` with nothing picked. Warcry's `chosen()` falls back to the same `defaults_of(c)`, so preview and cast cannot drift.
+    - **Not drawn through `Behaviour.footprint()`:** that answers for a hovered cell; the default is units with no cell to hover.
+    - **Look:** the picked foes' red brackets, thin and faint (alpha 0.25 plus a pulse) and no number; the first pick clears it.
+    - **New names to review:** none.
+- [ ] **No other skill overrides `picks()` or `defaults()` yet.** (?157, ?171)
+
+## AI tuning and the last prices (2026-11-16)
+
+Plan and what was built: `docs/plans/ai-tuning.md`. Built on `z-aitune`. Tests: `hud_test.test_a_lied_defense_is_believed`, `ai_tactics_test.test_starving_keeps_room_to_retreat`.
+
+173. **AI tuning - built on judgement, open for review (2026-11-16).** My calls:
+    - **Defense through a lie:** `Perception._lie` mirrors `Read.defense` about `MIRROR` 20 with chance `twist` (plate reads as cloth); 20 is a guess. The armor's name and trims stay true. One reader, `Read.believed(unknown)`, feeds `Battle.hit_chance()`'s guess for `AI._chance` and `HUD.odds`; the DF card row and the log's roll show the lie. `HUD.odds` itself has no test (a liar whose faction flips is read as an ally).
+    - **Grudge retreat:** `_starve` backs off through `AI._retreat()`: with `safe` (movement + 2 of the Grudge unit) every tile past it counts the same, and the one with the most `_room()` (free tiles in its own movement further from the Grudge unit) wins. Other `_away` callers are unchanged. Not done: the Grudge unit's own approach; allies don't coordinate; next turn's position isn't foreseen.
+    - **No constant tuned:** a scratch sim ran each of 15 constants low and high over the museum's 8 seeds, all identical to base (extremes moved only the turn count); 30 seeds before and after: Lancin 26 / Nemes 4, 413 turns. The museum has no Observe user, hider, Kick, Grudge or rider skill, so it cannot tell them apart. All stay at their guesses; the sim is not in the suite.
+    - **Not done:** weighing heals and supports for exhaustion wear (`_wear` prices strikes only).
+    - **New names to review:** none.
+- [ ] **A purpose-built AI sim** (an Observe user hunting a hider; a Kick against a wall; a Grudge unit in a corner) to tune the clue weights, `STARVE`, `PUSH`, `SEEN`, `WORN`. (?173)
+- [ ] **Heals and supports weigh exhaustion wear** (`AI._wear` prices strikes only). (?167, ?173)
+- [ ] **Other Grudge retreat parts**: the Grudge unit's approach, allies coordinating, foreseeing its next position. (?173)

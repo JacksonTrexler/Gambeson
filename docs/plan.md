@@ -143,6 +143,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | AI support 2: Move, wear, help orders (?167) | `ai_tactics_test.gd`, `move_test.gd`, `ai_support_test.gd` |
 | — | HUD glow and Guide (?168) | `hud_test.gd`, `ui_small_test.gd` |
 | — | Param rest (?169) | `route_test.gd` |
+| — | Forced moves: forecast and AI (?170) | `forced_test.gd`, `ai_tactics_test.gd` |
+| — | Warcry's default-pick preview (?171) | `warcry_test.gd` |
+| — | Guide rings and check tests (?172) | `check_test.gd` |
+| — | AI tuning: Defense through a lie, Grudge retreat (?173) | `hud_test.gd`, `ai_tactics_test.gd` |
+| — | Path foresight (?174) | `path_test.gd`, `facing_test.gd`, `marks_test.gd` |
 
 ## Questions to answer first
 

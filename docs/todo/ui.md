@@ -180,14 +180,14 @@ Plan, readings and what was built: `docs/plans/path.md`; done in `docs/done/ui.m
 
 137. **Paths round hazards - built on judgement, open for review (2026-11-14).** Two open items from ?132. My calls, each for you to confirm or change:
     - **Steering is in `Battle.walk()`** (`Battle.route(u, dest, line)`): the HUD preview, the reach overlay and `AI.travel` all go through it, so the preview is the walk. Only if the straight line crosses a tile with dread above 0 does it search (8-neighbour Dijkstra, the box of start and destination widened by `STEER_MARGIN` 2), and it keeps the line unless the route is strictly cheaper.
-    - **Dread** (`Battle.dread`): `HAZARD_TILES` 0.5 movement per HP foreseen, 1 per AP, and any known trap or detrimental ground at least 1; a 7-damage trap is worth a 3.5 tile detour, a 1d8 fire about 2.25. The weights are my guess; one constant to turn. Confirm?
+    - **Dread** (`Battle.dread`): `HAZARD_TILES` 0.5 (since 2.0, ?174) movement per HP foreseen, 1 per AP, and any known trap or detrimental ground at least 1; a 7-damage trap is worth a 3.5 tile detour, a 1d8 fire about 2.25. The weights are my guess; one constant to turn. Confirm?
     - **One price, `Battle.stride()`:** ground, wading, obstruction, the passives' `step_cost` hooks (Peel) and `pass_cost`. `Battle.hazard(u, c, read)` moved from the HUD, which delegates with the player's eyes; steering uses the walker's own read, never the true map.
     - **A negative foresight allowance doesn't steer** (your "negative int mod plans optimistically"); a bonus lifting it to 0 steers again. **Steering is free** and doesn't spend a foresight: allowance 0 steers round what it sees without a number ("?"). Confirm?
     - **Fuller estimate:** wounds count each tick that takes HP: bleed (dice average + setter's mod, at least 1) and poison (share of max HP) times the wound's turns; `winded` takes AP once. Ground's `afflicts` come from the `Read`, so only ground read at net 0 or better counts.
     - **New names to review:** none.
-- [ ] **Meander (`passes_by`) isn't foreseen**, and `at_end` effects aren't counted. (?137)
-- [ ] **`AI._approach`** still scores approach cells by its own line risk; unit-blocked routes use `pass_cost` only. (?137)
-- [ ] **`HAZARD_TILES` and `STEER_MARGIN`** are first guesses to tune. (?137)
+- [x] **Meander (`passes_by`) is foreseen**, and `at_end` effects counted. Built 2026-11-16 (?174). (?137)
+- [x] **`AI._approach`** weighs a cell by `route()`'s price (`pass_cost` for units in the way). Built 2026-11-16 (?174). (?137)
+- [x] **`HAZARD_TILES` and `STEER_MARGIN`** tuned by the sims: `HAZARD_TILES` 0.5 to 2.0, `STEER_MARGIN` stays 2. Built 2026-11-16 (?174). (?137)
 
 ## HUD glow and Guide (2026-11-15)
 
@@ -203,5 +203,31 @@ Plan and what was built: `docs/plans/hud-glow-guide.md`. Built on `z-hudglow`. T
     - **Jammed ?? chip** takes two letters and keeps the " ??" ("Ja ??"); the full name stays in the tooltip. **Skills-screen note** "Costs more now: exhausted x2" (`Skill.base_note()`).
     - **Profile of the reach map** (Meadows, 14,400 cells, debug build, headless): `HUD._find_reach` (on a `_mark`, cached per unit) move 5: 90 ms (29 tiles); move 10: 320 ms (198 tiles); a hover (`_replan`) 0.3 ms; per walk 0.7 ms (224 walks 155 ms), of which `line()` 23 ms, `route()` 8 ms, strides 18 ms, the rest (about 100 ms) `read()` per step. Left alone: bounded to a box, cached, only a boosted unit in a debug build. If it bites: a per-refresh read cache or one flood fill.
     - **New names to review:** the jammed chip's " ??" only.
-- [ ] **The Guide has no line for the near-miss rings.** (?168)
+- [x] **The Guide has no line for the near-miss rings.** Built 2026-11-15 (?172). (?168)
 - [ ] **Speed up the reach map** (a read cache or one flood fill) if it is felt in a release build. (?168)
+
+## Guide rings (2026-11-15)
+
+Plan and what was built: `docs/plans/tails-11-15.md`. Built on `z-tails`. Tests: `check_test.test_dc_and_rider_forecasts` extended (systems.md, ?164).
+
+172. **Guide rings and check tests - built on judgement, open for review (2026-11-15).** My calls:
+    - **One sentence in `Guide.gd`'s brackets paragraph** on the near-miss rings: the dashed `Luck.MARGIN` ring past the reach ring; a unit's circle bright when the caster's luck rounds it in, faint when not. No separate Guide test (`ui_small_test.test_guide_key` covers the substitution; the line is prose).
+    - **Check tests in one seam** (no new file): Hitch's `apply()` rolled 2000 times at rank 4 holds as often as `Battle.odds` with `FOE_STATS` and `grapple(c)` (foe's dex above str); Level Down's `hit_chance` equals `level_odds`, and an ally gets 1.0. Rank 4 and stats 14 vs str 10 / dex 14 so each dropped option moves the chance by more than the 0.035 tolerance. Four mutations (Hitch `{}` options; `&"strength"` for `FOE_STATS`; Level Down at rank 1; the branch removed) each failed, reverted.
+    - **New names to review:** none.
+
+## Path foresight (2026-11-16)
+
+Plan, readings and the sim table: `docs/plans/path-foresight.md`. Built on `z-pathfore`. Tests: `Tests/path_test.gd` (4 new); `facing_test.test_ai`, `marks_test.test_helpful_marks_draw_the_approach` and `path_test.test_a_long_way_round_isnt_worth_it` restaged. Suite 8565 checks, 0 failed.
+
+174. **Path foresight - built on judgement, open for review (2026-11-16).** Follows ?137. My calls:
+    - **Meander in `hazard()`:** for the nth tile, `passes_by(terrain, nth)` leaves out the trap and the ground's afflicts (as `travel()` does); `route()` knows each tile's depth (a `[tile, nth]` key in its dread cache, only for a unit with Meander); a passed-by trap isn't "at least a tile". The per_tile toll stays out of routing.
+    - **`at_end` is counted on the walk's last tile** (`ends`): the HUD's `drain()` passes it for the previewed path's last tile, `route()` for `dest`; "if it ends its turn there" is the best guess.
+    - **`route(u, dest, ln, price)`** fills `{cost}` (movement via `stride()`, `pass_cost()` for units, plus dread, less marks' draw). `AI._approach` weighs a cell by it (plus euclid minus chebyshev as the tie-break, flanking and wary as before); its own risk count and lure sum are gone. A straight approach now beats a diagonal one by up to a tile (it was 0.16).
+    - **Blind units still price the line with dread** (they don't search round it, but choose where to head); without that the sim sprang twice the known traps.
+    - **Suspicion:** a hinted tile counts at least `SUSPECT_TILES` 3.0 (a guess, not swept) when `price.wary`, in the price and the search; the walk itself still goes only by what it knows.
+    - **`HAZARD_TILES` 0.5 to 2.0, `STEER_MARGIN` stays 2** (1 vs 2 is within noise; 3 is identical on this map). A 1d6 trap now weighs 7 tiles, a fire about 9. Sim, traps sprung over 8 museum seeds (known in brackets), 30 scattered: old AI 27 (24); route() price at 0.5 41 (36); 1.0 35 (31); **2.0 27 (22)**; 3.0 24 (19) with units dithering (280 turns); 5.0 23 (18). Plain battles go 4 to 8 sprung, mostly hinted hidden traps (5 of 8), left. Soak 30 seeds: Lancin 28 / Nemes 2.
+    - **Three tests restaged** (listed above) as the premises moved.
+    - **New names to review:** none.
+- [ ] **The walk's real line draws from the rng later than the AI's `line()` call**, so on a tie the approach's line can differ from the walk's. (?174)
+- [ ] **Other AI walks (flee, kite, retreat) pick cells without `route()`'s price.** (?174)
+- [ ] **Tune `SUSPECT_TILES` (3.0)** by a sim with hinted traps. (?174)
