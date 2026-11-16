@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Mortis Arcalís"
+tag = &"magical"
+branches = Array[ExtResource("2_branch")]([])
