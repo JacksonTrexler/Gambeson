@@ -12,6 +12,7 @@ signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", 
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
 signal lost_skills(u: Unit, skills: Array[Skill])  # skills stopped being equipped (an item taken off, a slot lost, unequipped: _sync_granted(), _arrange(), bar_clear()): Battle ends a channel on one
+signal paid(u: Unit, s: Skill, wear: Exhaustion.Wear)  # pay_for(): one use of s, now counted in its exhaustion (Battle holds it open until its cast is over: Behaviour.wearing())
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
@@ -2708,12 +2709,18 @@ func pay_for(s: Skill, cut := 0.0) -> bool:
 	else:
 		energy -= cost
 	emptied = fund is Reserve and store(fund) == 0
-	exhaustion.used(s)
+	var gain := exhaustion.used(s)
 	paid_for = s
 	paid_with = fund
 	if dbno:
 		dbno.acted += 1  # Downed: a skill use against its allowance (Grudge)
 	_count_fury()
+	var wear := Exhaustion.Wear.new()
+	wear.skill = s
+	wear.caster = self
+	wear.gain = gain
+	wear.uses = gain
+	paid.emit(self, s, wear)
 	return true
 
 

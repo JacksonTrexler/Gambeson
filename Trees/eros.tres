@@ -68,6 +68,7 @@ tier = 8
 [sub_resource type="Resource" id="Branch_deathlust"]
 script = ExtResource("7_branch")
 skill = ExtResource("s_deathlust")
+after = Array[ExtResource("20_skill")]([ExtResource("s_impassioned_fighter")])
 
 [resource]
 script = ExtResource("6_root")

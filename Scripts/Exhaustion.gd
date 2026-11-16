@@ -12,7 +12,8 @@ extends RefCounted
 # (Sing) is one, a free recast (Jugular) none - and a channeled skill is one from its start to its
 # strike, the strike paid at the rate the channel began at (strike_rate()).
 # As each of its side's turns ends a unit gets over RECOVERY uses of every skill, and over more for
-# a turn it rested through (resting()).
+# a turn it rested through (resting()). relieve() is the one way uses come off: that, and Wear, the
+# use as Battle settles it once its cast is over, are what passives' hooks (Behaviour.wearing()) work on.
 
 const STEP := 0.5  # of a skill's AP and of its cost, more for each use counted against it
 const KIND := 0.5  # what a use counts against the other skills of its broad kind
@@ -24,6 +25,21 @@ static var on := true  # off: nothing wears anyone out (staged tests: Test.calm(
 var uses: Dictionary[Skill, float] = {}  # its uses of each skill it hasn't got over yet
 var ease := func() -> float: return 1.0  # what the counts are divided by: 1 + its holder's Stamina rank (Unit sets it: the Effect stat stamina)
 var begun: Dictionary[Skill, float] = {}  # what each skill's last use multiplied its costs by (a channel's strike pays the same)
+
+
+# One use as it was paid for, held open by Battle until the cast it was paid in is over: what it added
+# to the count (gain), what of that it keeps (uses: a passive's wearing() hook may lower it, to 0 to cancel
+# it), and who was taken out of the fight meanwhile (felled: Unit -> how, as Battle.neutralized has it).
+class Wear:
+	var skill: Skill
+	var caster: Unit
+	var target: Unit  # who it was aimed at
+	var gain := 0.0
+	var uses := 0.0
+	var felled := {}
+
+	func killed() -> bool:
+		return felled.values().has(&"killed")
 
 
 # The broad kinds a skill is of, from the trees it sits on (Skill.kinds(): Strike general, a Cleric's
@@ -49,12 +65,24 @@ static func resting(con: int) -> float:
 	return float(con) if con >= 1 else 1.0 / (1 - con)
 
 
-# One use of s, as it's paid for.
-func used(s: Skill) -> void:
+# One use of s, as it's paid for: what it added to the count (0 with exhaustion off).
+func used(s: Skill) -> float:
 	if not on:
-		return
+		return 0.0
 	begun[s] = rate(s)
 	uses[s] = uses.get(s, 0.0) + 1.0
+	return 1.0
+
+
+# Takes n uses off the count of s, or of every skill: it gets over them (recover(), Deathlust).
+func relieve(n: float, s: Skill = null) -> void:
+	if n <= 0.0:
+		return
+	for k in uses.keys():
+		if s == null or k == s:
+			uses[k] -= n
+			if uses[k] < 0.0001:
+				uses.erase(k)
 
 
 # The uses that count against s now: its own, KIND of those of the other skills of its kind, GENERAL
@@ -86,11 +114,7 @@ func strike_rate(s: Skill) -> float:
 
 # As its side's turn ends: RECOVERY off every count, and resting() more if it rested the turn through.
 func recover(rested: bool, con: int) -> void:
-	var n := RECOVERY + (resting(con) if rested else 0.0)
-	for s in uses.keys():
-		uses[s] -= n
-		if uses[s] < 0.0001:
-			uses.erase(s)
+	relieve(RECOVERY + (resting(con) if rested else 0.0))
 
 
 # Why s costs more now, for a tooltip or a cost line: "exhausted x2" (the uses counted against it),
