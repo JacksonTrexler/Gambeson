@@ -4141,7 +4141,10 @@ func _check_stall() -> void:
 	var side := members(turn)
 	var foes: Array = units.values().filter(func(t: Unit): return not Faction.friends(t.faction, turn) and t.is_alive())
 	stalling.clear()
-	if side.is_empty() or foes.is_empty() or foes.any(func(t: Unit): return side.any(_sees_foe.bind(t))):
+	Unit.begin_read()  # only reads until the count below: each unit's effects are found once (Unit._effects())
+	var seen := not side.is_empty() and not foes.is_empty() and foes.any(func(t: Unit): return side.any(_sees_foe.bind(t)))
+	Unit.end_read()
+	if side.is_empty() or foes.is_empty() or seen:
 		stalled_turns[turn] = 0
 		return
 	stalled_turns[turn] = stalled_turns.get(turn, 0) + 1
