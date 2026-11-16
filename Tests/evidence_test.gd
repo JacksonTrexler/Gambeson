@@ -121,10 +121,12 @@ func watcher(at := Vector2i(3, 3)) -> void:
 	forget()
 
 
-# Neither side remembers seeing anyone (the battle's start put every unit down).
+# Neither side remembers seeing anyone, nor searching anywhere or being struck (the battle's start put every unit down).
 func forget() -> void:
 	b.sightings.clear()
 	b.sighted_when.clear()
+	b.swept.clear()
+	b.attacks.clear()
 
 
 # Where v(1) cast Observe on its turn, or null.
