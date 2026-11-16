@@ -333,7 +333,7 @@ func _grudge(n: int) -> void:
 		var c := Vector2i(4 + t.rng.randi() % 3, 1 + t.rng.randi() % 3)
 		t.v(1).strength = 20  # a blow worth giving up
 		t.v(2).strength = 20
-		t.stage(t.lancin, {t.v(1): a, t.v(2): c, t.v(3): Vector2i(0, 0), t.v(4): Vector2i(3, 1)})
+		t.stage(t.lancin, {t.v(1): a, t.v(2): c, t.v(3): Vector2i(0, 0), t.v(4): a + Vector2i(1, -1)})  # a foe at the first Lancin's shoulder: a blow to take or a Grudge to starve
 		t.v(4).faction = t.nemes
 		t.v(4).hp = maxi(t.v(4).max_hp / 2, 1)
 		t.v(1).refresh()
@@ -367,15 +367,16 @@ func _rider(n: int) -> void:
 	var hp := 0.0
 	for seed in n:
 		var t := await _fresh(seed)
-		t.v(1).strength = 20
+		t.v(1).strength = 12
 		t.v(1).learned.append(t.slot(t.sk("poach")))
 		t.v(1).learned.append(t.slot(t.sk("slam_jam"), 2))
 		t.roomy(t.v(1))
 		t.v(1).refresh()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(3, 4), t.v(3): Vector2i(5, 3), t.v(4): Vector2i(5, 4)})
-		t.v(3).max_hp *= 2  # sturdy: a fight of several rounds, the cheap kill and the slam each in turn
+		t.v(3).max_hp *= 4  # sturdy: a fight of several rounds, the cheap kill and the slam each in turn
 		t.v(3).hp = t.v(3).max_hp
-		t.v(4).hp = maxi(t.v(4).max_hp / 2, 1)
+		t.v(4).max_hp *= 2
+		t.v(4).hp = t.v(4).max_hp * 3 / 4
 		var done := ROUNDS
 		for r in ROUNDS:
 			t.turn([t.v(1), t.v(2)])
