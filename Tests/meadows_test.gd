@@ -108,6 +108,7 @@ func test_spawning() -> void:
 	ok(plain.cell == asked and mb.read(mb.player, plain).located(), "summon(): where it's asked, in plain view")
 	var hid := mb.summon(siren, demons, asked, lancin)
 	ok(md.party().all(func(o: Unit): return not mb.read(o, hid).located()), "summoned unseen by a side: none of it makes it out (Battle.read())")
+	ok(mb.beyond_sight(hid.cell, md.party()) and not mb.beyond_sight(asked, md.party()), "it guessed past the party's perception range first (read only to confirm)")
 	ok(hid.cell.distance_to(asked) < 30.0, "the nearest such tile, not just anywhere: %s" % [hid.cell])
 	mb.conditions.append(&"fog")
 	var nearer := mb.summon(siren, demons, asked, lancin)

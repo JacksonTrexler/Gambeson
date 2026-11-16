@@ -3922,7 +3922,15 @@ func summon(scene: PackedScene, f: Faction, c: Vector2i, unseen_by: Faction = nu
 	u.faction = f
 	$Units.add_child(u, true)
 	var eyes: Array[Unit] = members(unseen_by) if unseen_by and sight else ([] as Array[Unit])
-	var spot: Variant = free_near(c, func(x: Vector2i) -> bool: return unseen_at(u, x, eyes)) if not eyes.is_empty() else free_near(c)
+	var spot: Variant
+	if eyes.is_empty():
+		spot = free_near(c)
+	else:
+		# The first guess is the nearest tile past every one's perception range (a distance, cheap), read only
+		# to confirm; a nearer spot (concealed, hidden) is found only if no such guess reads unseen.
+		spot = free_near(c, func(x: Vector2i) -> bool: return beyond_sight(x, eyes) and unseen_at(u, x, eyes))
+		if spot == null:
+			spot = free_near(c, func(x: Vector2i) -> bool: return unseen_at(u, x, eyes))
 	if spot == null:
 		$Units.remove_child(u)
 		u.free()
@@ -3954,6 +3962,14 @@ func free_near(c: Vector2i, ok := Callable()) -> Variant:
 			return null
 		n *= 2
 	return null
+
+
+# Whether c is past every one of `eyes`' perception range: a distance, no read.
+func beyond_sight(c: Vector2i, eyes: Array[Unit]) -> bool:
+	for o in eyes:
+		if Vector2(c).distance_to(Vector2(o.cell)) <= perception_range(o):
+			return false
+	return true
 
 
 # Whether none of `eyes` would make u out were it standing on c (read(): located or not).
