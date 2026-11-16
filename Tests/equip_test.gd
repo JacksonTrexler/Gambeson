@@ -85,3 +85,15 @@ func test_losing_slots() -> void:
 	u.bar_clear(u.hotbar.find(other))
 	ok(u.bar_size() == 7 and hex not in u.hotbar and not u.equipped(hex), "the last Magic slot goes, taking Hex off the bar")
 	ok(hex in lost and magic_slot in lost and other in lost, "what came off is announced (lost_skills: Battle ends a channel on one)")
+
+
+# The hotbar slot shows the on/off dot for a toggle only; an always-on passive just works.
+func test_slot_switch_dot() -> void:
+	var sl := SkillSlot.new()
+	sl.skill = load("res://Skills/stamina.tres")
+	ok(sl.shows_switch(), "a toggle shows its dot")
+	sl.skill = wary
+	ok(not sl.shows_switch(), "an always-on passive doesn't")
+	sl.skill = null
+	ok(not sl.shows_switch(), "an empty slot doesn't")
+	sl.free()

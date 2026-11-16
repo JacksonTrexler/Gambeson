@@ -179,6 +179,13 @@ func refunds(c: Cast, p: float) -> float:
 	return r.x + r.y * p
 
 
+# The tiles of movement the cast gives its caster this turn, as it would be paid for now (Move; a
+# payment that counts as Stamina gives more). What the AI weighs a skill by when its foe is a few tiles
+# out of reach on foot (AI._stretch()). Pure.
+func strides(_c: Cast) -> int:
+	return 0
+
+
 # Defense the cast costs its own caster, through its next turn (Sutemi's Off Balance: a point a tile
 # lunged) - what the AI prices against the blow. Pure.
 func unguarded(_c: Cast) -> int:

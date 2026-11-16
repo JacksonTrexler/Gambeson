@@ -121,6 +121,15 @@ static func odds(a: Check, b: Check, a_wins_ties := true) -> float:
 	return p
 
 
+# The totals c may come to, each with its chance: [[total, p], ...], summing to 1 (odds()'s weighing, for a
+# caller whose bar is a roll of its own: a Level Down's last stand, a hider's guise).
+static func totals(c: Check) -> Array:
+	var out := []
+	for i in _faces(c):
+		out.append([_total(c, i), _face(c, i)])
+	return out
+
+
 # The faces c may roll: 1 to 20, or the one "face" 0 of a side that doesn't roll.
 static func _faces(c: Check) -> Array:
 	return [0] if c.is_fixed else range(1, 21)

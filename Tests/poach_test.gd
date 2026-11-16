@@ -66,6 +66,47 @@ func test_price_beforehand() -> void:
 	h.free()
 
 
+# Affordability asks the cut too (Battle.can_afford(): Unit.can_afford(s, cut)): with half of Poach's AP, a
+# bloodied foe lets it start, a hale one doesn't - the HUD's reason, the AI's strike, a walk's reach, an
+# auto or tile cast's payment all ask the same.
+func test_afford_the_cut() -> void:
+	poacher()
+	v(1).energy = 10
+	v(1).pay(v(1).ap_for(&"skill") - 2.0, &"skill")  # 2 AP of the 4 it costs
+	ok(not v(1).can_afford(poach) and not b.can_afford(v(1), poach, v(3)), "a hale foe: the full price is out of reach")
+	var reads := {v(3): b.read(v(1), v(3))}
+	var log: Array[String] = []
+	ok(not AI._strike(b, v(1), reads, log), "and the AI doesn't strike")
+	var h := await hud(v(1))
+	ok("Not enough" in h.why_not(v(1), poach, v(3)), "the HUD says so (%s)" % h.why_not(v(1), poach, v(3)))
+	ok(not h._approach(v(1), poach, v(3).cell).ready, "a walk plan says not ready")
+	v(3).hp = 150
+	ok(not v(1).can_afford(poach) and b.can_afford(v(1), poach, v(3)) and v(1).can_afford(poach, 0.5), "bloodied: half the price, so it can")
+	ok(h.why_not(v(1), poach, v(3)) == "", "the HUD lets it (%s)" % h.why_not(v(1), poach, v(3)))
+	ok(h._approach(v(1), poach, v(3).cell).ready, "and a walk plan calls it ready")
+	ok(AI._strike(b, v(1), reads, log) and "Poach" in log[0], "the AI strikes (%s)" % [log])
+	ok(is_equal_approx(v(1).ap_for(&"skill"), 0.0), "and paid the 2 AP")
+	h.free()
+	b._aimed.clear()  # (it has aimed at it now)
+	ok(b.price_cut(v(1), poach, [v(3)] as Array[Unit]) == 0.5 and b.price_cut(v(1), poach, [] as Array[Unit]) == 0.0, "the cut a target grants, none with none to ask")
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(3, 3)})
+	soak(v(2), 300)
+	ok(b.price_cut(v(1), poach, [v(3), v(2)] as Array[Unit]) == 0.0, "a price shared by a hale foe too: no cut")
+	for how in [&"auto", &"tile"]:  # the one price of an auto cast, or a cast at the foe's tile, takes the cut
+		var s: Skill = load("res://Skills/poach.tres").duplicate()
+		s.auto = how == &"auto"
+		s.channel = how == &"tile"
+		v(1).learned.append(slot(s, 1))
+		v(1).refresh()
+		v(1).energy = 10
+		v(1).pay(v(1).ap_for(&"skill") - 2.0, &"skill")
+		v(3).hp = 150
+		b._aimed.clear()
+		ok((b.cast_at(v(1), s, v(3).cell) if s.channel else b.cast(v(1), s, v(1))) and is_equal_approx(v(1).ap_for(&"skill"), 0.0), "%s: 2 AP paid of 4" % how)
+		v(1).learned.erase(v(1).learned.back())
+		v(1).refresh()
+
+
 func test_regain() -> void:
 	poacher(2)
 	v(1).learned.append(slot(stamina, 1))

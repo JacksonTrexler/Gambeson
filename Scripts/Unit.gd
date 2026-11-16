@@ -641,7 +641,7 @@ func own_rank(s: Skill) -> int:
 func affinity(s: Skill) -> int:
 	var ps: Array[StringName] = []
 	for p in POSTURES:
-		if s.serves(p):
+		if s.serves(p, self):
 			ps.append(p)
 	return (roundi(stat(&"affinity", ps)) if not ps.is_empty() else 0) + guest_affinity(s)
 
@@ -1298,7 +1298,7 @@ func options() -> Dictionary:
 # way now. Null when it has none - the commander's intent order would be wasted (HUD.issue_intent).
 func intent_skill(posture: StringName) -> Skill:
 	for sk in hotbar:
-		if sk and sk.serves(posture) and can_afford(sk):
+		if sk and sk.serves(posture, self) and can_afford(sk):
 			return sk
 	return null
 
@@ -1382,7 +1382,7 @@ func reached(r: SkillRoot, x: Skill) -> bool:
 # A step on its trees it may pass over (Reckless Abandon: defensive and supportive skills that don't
 # also attack).
 func _skippable(x: Skill) -> bool:
-	return stat(&"abandon") > 0 and (x.serves(&"supportive") or x.serves(&"defensive")) and not x.serves(&"offensive")
+	return stat(&"abandon") > 0 and (x.serves(&"supportive", self) or x.serves(&"defensive", self)) and not x.serves(&"offensive", self)
 
 
 # The devoting tabs it has picked (a Warlock's patron, a Cleric's god; a Wizard may have a pact and a
@@ -2578,32 +2578,32 @@ func _spend_overcharge(fund: Variant, n: int) -> int:
 # (Reserve.bars), no spell that costs anything can be paid at all. Overcharge doesn't change that order:
 # only when nothing can pay without it does it look again counting Overcharge (covers()); whatever pays,
 # Overcharge is spent first (pay_for()).
-func funding(s: Skill) -> Variant:
+func funding(s: Skill, cut := 0.0) -> Variant:
 	var on: Variant = runs_on()
 	if on is Reserve and on.bars.any(func(t): return s.tagged(t)) and (price(s) > 0 or s.needs):
 		return null  # running on Stamina: nothing pays for a spell
-	var fund: Variant = _funding(s, false)
-	return fund if fund != null or overcharge <= 0 else _funding(s, true)
+	var fund: Variant = _funding(s, false, cut)
+	return fund if fund != null or overcharge <= 0 else _funding(s, true, cut)
 
 
-func _funding(s: Skill, buffered: bool) -> Variant:
+func _funding(s: Skill, buffered: bool, cut: float) -> Variant:
 	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
-		return s.needs if s.needs in allowed and covers(s.needs, cost_from(s, s.needs), buffered) else null
+		return s.needs if s.needs in allowed and covers(s.needs, cost_from(s, s.needs, cut), buffered) else null
 	if ranged(s):
 		for r: Reserve in allowed:
-			if r.aims and covers(r, cost_from(s, r), buffered):
+			if r.aims and covers(r, cost_from(s, r, cut), buffered):
 				return r  # Focus: first for a ranged attack, what it's built for
 	for r: Reserve in allowed:
-		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and covers(r, cost_from(s, r), buffered):
+		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and covers(r, cost_from(s, r, cut), buffered):
 			return r
 	for r: Reserve in allowed:
-		if not r.only.is_empty() and r.whole == 0 and covers(r, cost_from(s, r), buffered):
+		if not r.only.is_empty() and r.whole == 0 and covers(r, cost_from(s, r, cut), buffered):
 			return r
-	if covers(&"energy", cost_from(s, &"energy"), buffered):
+	if covers(&"energy", cost_from(s, &"energy", cut), buffered):
 		return &"energy"
 	for r: Reserve in allowed:
-		if covers(r, cost_from(s, r), buffered):
+		if covers(r, cost_from(s, r, cut), buffered):
 			return r  # Focus, for anything but a ranged attack: only once Energy can't
 	return null
 
@@ -2671,14 +2671,15 @@ func foe_actives(affordable := false) -> Array[Skill]:
 	return out
 
 
-func can_afford(s: Skill) -> bool:
-	return can_afford_after(s, 0.0)
+# `cut`: the share of its price a behaviour takes off before it's paid (Battle.rebate(), Poach's bloodied foe).
+func can_afford(s: Skill, cut := 0.0) -> bool:
+	return can_afford_after(s, 0.0, cut)
 
 
 # Whether it could still pay for s after walking `steps` movement first (which takes move-only AP,
 # then general AP the skill might have needed).
-func can_afford_after(s: Skill, steps: float) -> bool:
-	var fund: Variant = funding(s)
+func can_afford_after(s: Skill, steps: float, cut := 0.0) -> bool:
+	var fund: Variant = funding(s, cut)
 	if fund == null:
 		return false
 	var general := 0.0
@@ -2690,13 +2691,13 @@ func can_afford_after(s: Skill, steps: float) -> bool:
 			move_only += p.amount
 	var use := s.pays_with if s.pays_with else &"skill"  # Meditate: movement first
 	var left := ap_for(use) - (steps if use == &"move" else maxf(steps - move_only, 0.0))
-	return general >= maxf(steps - move_only, 0.0) - 0.0001 and left >= ap_cost(s, fund) - 0.0001
+	return general >= maxf(steps - move_only, 0.0) - 0.0001 and left >= ap_cost(s, fund, cut) - 0.0001
 
 
 # Pays a skill's AP and cost from its funding: one use of it (Exhaustion.used()). False (and nothing
 # spent) if it can't.
 func pay_for(s: Skill, cut := 0.0) -> bool:
-	var fund: Variant = funding(s)
+	var fund: Variant = funding(s, cut)
 	if fund == null or not pay(ap_cost(s, fund, cut), s.pays_with if s.pays_with else &"skill"):
 		return false
 	paid_ap = ap_cost(s, fund, cut)

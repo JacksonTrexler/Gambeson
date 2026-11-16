@@ -264,7 +264,10 @@ func behaviour(file: StringName) -> Behaviour:
 # context tags in docs/plan-composability.md): &"offensive" an attack on a foe, &"supportive" help for
 # an ally, &"defensive" protecting oneself. A skill can serve more than one (a dual spell attacks and
 # supports); a passive serves none - it's not a move to order. A posture tag on it decides outright.
-func serves(posture: StringName) -> bool:
+# Given the unit that would use it, "supportive" also counts any skill a behaviour of which restores
+# something to that unit (Behaviour.restores(): Heal, Energize, Resuscitate), as heals() does for the
+# skills whose fields heal - so Affinity and a HELP order see them alike; without one it can't ask.
+func serves(posture: StringName, u: Unit = null) -> bool:
 	if passive:
 		return false
 	if tags.any(func(t: StringName): return t in Unit.POSTURES):  # tagged with its posture outright (Frenzy: offensive)
@@ -273,10 +276,24 @@ func serves(posture: StringName) -> bool:
 		&"offensive":
 			return for_foes() and (attacks() or contests() or not tiers.is_empty() or Displace.draws(self) != null or disables)
 		&"supportive":
-			return for_allies() and not self_only and (heals() or grants != null or behaviour(&"boost") != null or behaviour(&"aura") != null or not effects.is_empty())
+			return for_allies() and (restoring(u) or not self_only and (heals() or grants != null or behaviour(&"boost") != null or behaviour(&"aura") != null or not effects.is_empty()))
 		&"defensive":
 			return self_only
 	return false
+
+
+# Whether one of its behaviours would give u something back used by u on itself (Behaviour.restores(),
+# whatever the pool, however little: only that it is a restorer). False with no unit to ask.
+func restoring(u: Unit) -> bool:
+	if u == null or behaviours.is_empty():
+		return false
+	var c := Behaviour.Cast.new()
+	c.caster = u
+	c.target = u
+	c.skill = self
+	c.rank = 1  # not u.rank(): a unit's rank reads its Affinity, which asks serves()
+	c.foe = false
+	return behaviours.any(func(x: Behaviour): return x != null and not x.restores(c).is_empty())
 
 
 # Can be used on foes: hostile skills, and dual ones.

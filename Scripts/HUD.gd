@@ -1116,7 +1116,8 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 			return "Can't set a trap there"
 	else:
 		return "Pick a unit"
-	return _short(u, s) if not u.can_afford(s) else ""
+	var at: Unit = target if target is Unit else (unit_seen(target) if target is Vector2i else null)  # whom to ask for a cut
+	return _short(u, s) if not battle.can_afford(u, s, at) else ""
 
 
 # --- Acting
@@ -1274,9 +1275,9 @@ func drain(it: Dictionary) -> Dictionary:
 						d.get_or_add("unsure", []).append(key)
 	var s: Skill = it.get("skill")
 	if s and (it.ready or it.kind == &"strike_at"):
-		var fund: Variant = u.funding(s)
 		var t: Variant = it.get("target")
 		var rb := battle.rebate(u, s, t, foe(t)) if t is Unit and t != u and it.kind == &"use" else Vector2.ZERO  # the price a behaviour cuts (sure), or gives back on a hit
+		var fund: Variant = u.funding(s, rb.x)
 		d[&"ap"] = d.get(&"ap", 0.0) + u.ap_cost(s, fund, rb.x)
 		var cost := u.cost_from(s, fund, rb.x)
 		var key: Variant = fund if fund is Reserve else &"energy"
@@ -1326,7 +1327,7 @@ func _aspect(it: Dictionary) -> Dictionary:
 func odds(it: Dictionary) -> StringName:
 	var t: Variant = it.get("target")
 	var s: Skill = it.get("skill")
-	if it.get("kind") != &"use" or not (t is Unit) or not s or not (s.attacks() or _checked(s)) or not foe(t):
+	if it.get("kind") != &"use" or not (t is Unit) or not s or not (s.attacks() or _contests(s)) or not foe(t):
 		return &""
 	if not _defense_shows(t):
 		return &"unknown"
@@ -1337,6 +1338,22 @@ func odds(it: Dictionary) -> StringName:
 # Whether s rolls its declared check in place of an attack roll (Skill.check, not Sing's).
 static func _checked(s: Skill) -> bool:
 	return s.check != null and not s.check.suspicion
+
+
+# Whether s rolls a check of its own on a foe that hit_chance() forecasts: a declared one, or Level Down's.
+static func _contests(s: Skill) -> bool:
+	return _checked(s) or s.levels_down
+
+
+# What the hovered investigated skill (Hide) would be seen through by, in %, to the foes the player can
+# make out beside it (Battle.seen_odds()); -1 for none: not that skill, or no one to see through it.
+func _seen(it: Dictionary, t: Unit) -> int:
+	var s: Skill = it.get("skill")
+	if it.get("kind") != &"use" or not s or not s.investigated or t == null or foe(t):
+		return -1
+	var eyes: Array[Unit] = []
+	eyes.assign(battle.watchers(t).filter(func(o: Unit): return unit_seen(o.cell) == o))
+	return roundi(Battle.seen_odds(it.unit, s, t, eyes, battle) * 100.0) if not eyes.is_empty() else -1
 
 
 # A refused order: the unit shakes and one word floats off it ("Too far", "Spent"); the full reason
@@ -1614,14 +1631,15 @@ func _slot_usable(u: Unit, i: int) -> bool:
 func _approach(u: Unit, s: Skill, c: Vector2i, sure := false) -> Dictionary:
 	var span := battle.skill_range(u, s, unit_seen(c))
 	var near := func(at: Vector2i) -> bool: return Vector2(at).distance_to(Vector2(c)) <= span + 0.0001
+	var whom := unit_seen(c)  # who may grant a cut on its price
 	if near.call(u.cell):
-		return {dest = u.cell, ready = u.can_afford(s)}
+		return {dest = u.cell, ready = battle.can_afford(u, s, whom)}
 	_find_reach()
 	var best := u.cell
 	var best_cost := INF
 	var closest := u.cell
 	for at in reach:
-		if near.call(at) and u.can_afford_after(s, reach[at]) and reach[at] < best_cost and (not sure or _sure_walk(u, _ways[at])):
+		if near.call(at) and battle.can_afford(u, s, whom, reach[at]) and reach[at] < best_cost and (not sure or _sure_walk(u, _ways[at])):
 			best = at
 			best_cost = reach[at]
 		var d := Vector2(at).distance_to(Vector2(c))
@@ -2926,7 +2944,10 @@ func _tip_text() -> String:
 		return ""
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
-		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0), "win" if _checked(it.skill) else "hit"]
+		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle) * 100.0), "win" if _contests(it.skill) else "hit"]
+	var seen := _seen(it, u)
+	if show_odds and seen >= 0:
+		line += "\n%d%% to be seen through" % seen
 	if not hurt.is_empty() and hurt.unit == u:
 		for note: String in hurt.notes:
 			line += "\n" + note
@@ -2979,22 +3000,9 @@ func _nag(why: String) -> void:
 const INTENTS := {&"attack": &"offensive", &"defend": &"defensive", &"help": &"supportive"}
 
 
-# u's default skill for a posture: Unit.intent_skill(), and for HELP any skill that restores something
-# (AI.restoring(): Heal, Energize...) too - Skill.serves() only knows the fields a heal sets, not what a
-# behaviour restores.
-func intent_skill(u: Unit, posture: StringName) -> Skill:
-	var s := u.intent_skill(posture)
-	if s or posture != &"supportive":
-		return s
-	for sk in u.hotbar:
-		if sk and u.can_afford(sk) and AI.restoring(battle, u, sk):
-			return sk
-	return null
-
-
 # The commander can't give u a specific skill order - either it can't convey complex strategy (cha mod
 # <= 0: no hotbar slot is open to orders) or it can't read what u can do (low wisdom). It commands by
-# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (intent_skill()).
+# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (Unit.intent_skill(): HELP counts what it restores, Skill.serves()).
 func uses_intents(u: Unit) -> bool:
 	return _orders(u) and u != command.leader and (command.slots(u) <= 0 or command.leader.mod(&"wisdom") < 0)
 
@@ -3011,7 +3019,7 @@ func intent_options(u: Unit) -> Array:
 	var guessing := _command_read(u) <= -5
 	var out := []
 	for intent in [&"attack", &"defend", &"help"]:
-		var has := intent_skill(u, INTENTS[intent]) != null
+		var has := u.intent_skill(INTENTS[intent]) != null
 		if has or guessing:
 			out.append([intent, has, guessing])
 	return out
@@ -3022,7 +3030,7 @@ func intent_options(u: Unit) -> Array:
 func issue_intent(u: Unit, intent: StringName) -> bool:
 	if not uses_intents(u):
 		return false
-	if intent_skill(u, INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
+	if u.intent_skill(INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
 		_say("%s can't %s that way - a wasted order" % [_name(u), String(intent)])
 		command.lock(u)
 		_mark()

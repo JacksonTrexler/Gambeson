@@ -34,6 +34,7 @@ const HATE := 2.0  # per point of ominous aura
 const GUESS_HP := 10.0  # when it can't make out a target's HP
 const OBSERVE := preload("res://Behaviours/observe.gd")  # how far an Observe looks (_search())
 const SUSPICIOUS := 1.0  # what a tile it finds suspicious is worth a look, in foes (clues())
+const SEEN := 0.9  # a hiding skill foes would see through at least this often isn't worth casting (Battle.seen_odds())
 const DEBRIS := 1.0  # debris a hiding foe left, fresh; halved a round on
 const MARKED := 0.5  # a mark a foe laid that it knows of
 const LAST_SEEN := 0.5  # where its side last made a foe out
@@ -61,6 +62,7 @@ const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take o
 const GUESS_DEFENSE := 12  # the Defense it takes a foe to have when it can't make it out (Read.defense null): a medium armor's floor
 const POINT := 0.5  # what a point of Energy or other cost it gets back is worth, in the HP a blow takes (a 3 AP strike costs a few)
 const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
+const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -141,6 +143,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
 			_rally(b, u, log)  # lay its marks first, then walk onto them
+			_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
@@ -259,8 +262,8 @@ static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	if owing.is_empty() or _rooted(b, u):
 		return false
 	for g in owing:
-		for s in u.foe_actives(true):
-			if b.in_reach(u, s, g) and Battle.damage_range(u, s, g, b).get("lo", 0) > g.hp + g.dbno.limit:
+		for s in u.foe_actives():
+			if b.in_reach(u, s, g) and b.can_afford(u, s, g) and Battle.damage_range(u, s, g, b).get("lo", 0) > g.hp + g.dbno.limit:
 				return false  # one blow ends it
 	var worth := 0.0
 	for g in owing:
@@ -439,7 +442,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	for s in u.foe_actives().filter(func(x: Skill): return not (attacks_only and x.dual)):
 		for t in reads:
 			var r: Read = reads[t]
-			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not u.can_afford(s):
+			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not b.can_afford(u, s, t):
 				continue
 			if not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
 				continue  # not one it can be used on (Gank: no ally near it; Sutemi: no way through)
@@ -449,6 +452,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if v > 0.0:
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
+				v = maxf(v - _wear(u, s), v * (1.0 - WORN))  # and what its own wear adds to the price
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -466,6 +470,17 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	log.append("%s uses %s on %s -> %d" % [u.name, best[0].name, best[1].name, best[1].hp])
 	reads[best[1]] = b.read(u, best[1])
 	return true
+
+
+# What s's cost has risen by since it was fresh (Exhaustion), in the HP a blow takes: the AP and the cost
+# points it pays beyond the first-use price, weighed as score() weighs a rebate (AP, POINT). It takes the
+# worn skill's share off the score, so a unit with another blow nearly as good varies its skills.
+static func _wear(u: Unit, s: Skill) -> float:
+	var rate := u.exhaustion.rate(s)
+	if rate <= 1.0001:
+		return 0.0
+	var fund: Variant = u.funding(s)
+	return (1.0 - 1.0 / rate) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
 
 
 # Each reaction moment a blow of s on t would bring that a passive of t's side u can make out (Read.skills,
@@ -651,7 +666,7 @@ static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 		for t: Unit in reads.keys() + [u]:
 			var r: Read = b.read(u, u) if t == u else reads[t]
 			if t.is_alive() and (t == u or r.attitude(u) == &"ally") and e not in r.effects and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)) \
-					and b.cast(u, s, t):
+					and not (s.investigated and Battle.seen_odds(u, s, t, b.watchers(t), b) >= SEEN) and b.cast(u, s, t):
 				log.append("%s gives %s to %s" % [u.name, s.name, t.name])
 				return
 
@@ -773,12 +788,6 @@ static func _restores(b: Battle, u: Unit, s: Skill, t: Unit) -> Dictionary:
 		for k in more:
 			out[k] = out.get(k, 0) + more[k]
 	return out
-
-
-# Whether s is help u gives, because it restores something (_restores()): not hostile, not a passive,
-# and some pool comes back. What the HUD's HELP order reads, since Skill.serves() can't see behaviours.
-static func restoring(b: Battle, u: Unit, s: Skill) -> bool:
-	return not s.passive and not s.hostile and not _restores(b, u, s, u).is_empty()
 
 
 # A skill for an ally that mends HP: a heal, or whatever declares it restores some (_restores()).
@@ -1070,9 +1079,9 @@ static func _pays(u: Unit, pool: Variant, s: Skill) -> bool:
 
 # Whether it could strike a foe it reads from where it stands, with a skill it can pay for.
 static func _could_strike(b: Battle, u: Unit, reads: Dictionary) -> bool:
-	for s in u.foe_actives(true):
+	for s in u.foe_actives():
 		for t: Unit in reads:
-			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t):
+			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
 				return true
 	return false
 
@@ -1087,9 +1096,9 @@ static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	if not u.idle():
 		return false
 	var weak := false
-	for s in u.foe_actives(true):
+	for s in u.foe_actives():
 		for t: Unit in reads:
-			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t):
+			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
 				if not u.ranged(s) or _chance(u, s, reads[t], b, t) >= SHOT:
 					return false
 				weak = true
@@ -1111,6 +1120,40 @@ static func _rally(b: Battle, u: Unit, log: Array[String]) -> bool:
 		if b.cast(u, s, u):
 			log.append("%s uses %s" % [u.name, s.name])
 			return true
+	return false
+
+
+# About to walk on t, which no blow of its reaches this turn on foot: it casts a skill that gives it tiles
+# (Behaviour.strides(): Move, doubled paid with Stamina - as funding() would pay it now) when they close the
+# gap with AP to spare for the blow, the cheapest AP of those that do. Straight-line tiles stand in for the
+# walk, as in starve_worth(). True if it did.
+static func _stretch(b: Battle, u: Unit, t: Unit, log: Array[String]) -> bool:
+	var blows := u.foe_actives(true).filter(func(x: Skill): return x.behaviours.all(func(bh: Behaviour): return bh.fits(b, u, t)))
+	if blows.is_empty() or _rooted(b, u):
+		return false
+	var gaps: Array[int] = []  # the tiles to walk to bring each blow in reach
+	var costs: Array[float] = []
+	for x: Skill in blows:
+		gaps.append(maxi(ceili(Vector2(u.cell).distance_to(Vector2(t.cell)) - b.skill_range(u, x, t) - 0.0001), 0))
+		costs.append(u.ap_cost(x, u.funding(x)))
+	if gaps.any(func(g: int): return g <= u.move_left()):
+		return false  # it can walk into one's reach as it is
+	var best: Skill = null
+	var best_ap := INF
+	for s in u.actives.filter(func(x: Skill): return not x.hostile and x.self_only and u.can_afford(x)):
+		var c := b.cast_of(u, s, u, u.rank(s), false)
+		var n := 0
+		for bh in s.behaviours:
+			n += bh.strides(c)
+		var ap := u.ap_cost(s, u.funding(s))
+		if n > 0 and ap < best_ap:
+			for i in blows.size():
+				if gaps[i] <= u.move_left() + n and u.ap_left() - ap + n - gaps[i] >= costs[i] - 0.0001:
+					best = s
+					best_ap = ap
+	if best and b.cast(u, best, u):
+		log.append("%s uses %s" % [u.name, best.name])
+		return true
 	return false
 
 
