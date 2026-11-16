@@ -6,6 +6,7 @@ extends SceneTree
 # Prints one `SIM <scenario> key=value ...` line per scenario. Constants are `const`, so a sweep edits the source and
 # reruns: Tests/sims/sweep.sh CONSTANT low high [scenario words].
 #   hunt     an Observe user after a hider that was seen once (Hide's debris, last seen, reach), still and moving
+#   clash    two clues pull apart (debris at one end, a sighting at the other): rounds to find it when each is the true one
 #   ambush   an Observe user struck by a hider it can't place (the blows)
 #   kick     Kick against a wall behind the foe, 0..3 tiles off, and in the open: Kick or Strike
 #   grudge   a Grudge unit in a corner, two foes near it and one more to fight: who starves, who is hit
@@ -95,7 +96,7 @@ func _initialize() -> void:
 	var keys: GDScript = load("res://Scripts/KeyBinds.gd")
 	keys.set("SAVE", "user://keybinds_sim_%d.cfg" % pid)
 	_museum = load(MUSEUM)
-	for sc in ["hunt", "ambush", "kick", "grudge", "rider", "armor", "worn", "hide"]:
+	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "armor", "worn", "hide"]:
 		if words.is_empty() or words.any(func(w: String): return w in sc):
 			await call("_" + sc, n)
 	for p in [Prefs.SAVE, keys.get("SAVE"), save.get("PATH"), save.get("PATH") + ".bad", save.get("PATH") + ".tmp"]:
@@ -181,6 +182,50 @@ func _hunt(n: int) -> void:
 			looks += t.uses("Villager1", "Observe")
 			_drop(t)
 		_say("hunt-" + ("moving" if moving else "still"), {found_rounds = float(found) / maxi(n - lost, 1), lost = lost, looks = float(looks) / n})
+	await process_frame
+
+
+# Debris at (8, 6) and a sighting at (8, 1), two rounds old, equally far from v1 at (1, 6); the hider is really where the
+# debris is ("debris"), or near the sighting while the debris is a stranger's, a second hider's ("seen"). Rounds to find it.
+func _clash(n: int) -> void:
+	for truth in ["debris", "seen"]:
+		var found := 0
+		var lost := 0
+		var looks := 0
+		for seed in n:
+			var t := await _fresh(seed)
+			var y := Vector2i(8, 6)
+			var x := Vector2i(8, 1)
+			var real := y if truth == "debris" else x + Vector2i(0, 1 + t.rng.randi() % 2)
+			t.stage(t.lancin, {t.v(1): Vector2i(1, 6), t.v(3): real, t.v(4): Vector2i(9, 9)})
+			t.v(4).faction = t.nemes
+			t.observer(t.v(1))
+			t.v(1).wisdom = 12  # a look of 2 tiles: it can't take in both ends
+			t.cover = t.effect("concealment", 6)
+			t.b.revealed[Vector2i(4, 4)] = true
+			t.forget_all()
+			t.b.sighted(t.lancin, t.v(3), x, 2.0)
+			t.b.debris[y] = Battle.Debris.new("Disturbed foliage, twigs", t.v(3) if truth == "debris" else t.v(4), t.b.turns_begun)
+			t.b.turns_begun += 2
+			t.hiding(t.v(3))
+			t.hiding(t.v(4))
+			var rounds := ROUNDS
+			for r in ROUNDS:
+				t.turn([t.v(1)])
+				if _debug:
+					print("  clash %s r%d v1 %s located %s | %s" % [truth, r, t.v(1).cell, t.b.read(t.v(1), t.v(3)).located(), t.logs.slice(-2)])
+				if t.b.read(t.v(1), t.v(3)).located():
+					rounds = r + 1
+					break
+				t.hiding(t.v(3))
+				t.turn([])
+			if rounds < ROUNDS:
+				found += rounds
+			else:
+				lost += 1
+			looks += t.uses("Villager1", "Observe")
+			_drop(t)
+		_say("clash-" + truth, {found_rounds = float(found) / maxi(n - lost, 1), lost = lost, looks = float(looks) / n})
 	await process_frame
 
 
