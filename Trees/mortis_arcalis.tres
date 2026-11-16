@@ -2,9 +2,14 @@
 
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/skeleton.tres" id="s_skeleton"]
+
+[sub_resource type="Resource" id="Branch_skeleton"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_skeleton")
 
 [resource]
 script = ExtResource("1_skillroot")
 name = "Mortis Arcalís"
 tag = &"magical"
-branches = Array[ExtResource("2_branch")]([])
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_skeleton")])
