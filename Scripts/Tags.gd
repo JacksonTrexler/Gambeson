@@ -94,6 +94,7 @@ const COLOR := {
 	&"fear": Color("#6b5b95"),
 	&"entrance": Color("#b565a7"),
 	&"dissonance": Color("#c9a0dc"),
+	&"undead": Color("#9aa98a"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
