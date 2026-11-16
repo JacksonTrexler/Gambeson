@@ -13,18 +13,24 @@ func apply(c: Cast) -> void:
 	if not c.target.is_alive():
 		return
 	var b := c.battle
-	var vs := b.check(c.caster, &"strength", c.target, &"constitution", {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, kind = Check.Kind.SAVE})
+	var vs := b.check(c.caster, &"strength", c.target, &"constitution", contest(c))
 	b.contested.emit(c.caster, c.target, vs.mine.total, vs.theirs.total)
 	c.bag[&"slammed"] = vs.won
 	if vs.won:
 		super.apply(c)
 
 
+# The contest's helper options (apply() rolls them, foresee() weighs them): + rank, the caster's tags on its
+# side and the skill's on the foe's, rolled as a save.
+static func contest(c: Cast) -> Dictionary:
+	return {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, kind = Check.Kind.SAVE}
+
+
 # Its contest's odds (as apply() rolls it): the interrupt is a rider that lands that often.
 func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
-	var p := Battle.odds(c.caster, &"strength", c.target, &"constitution", {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, kind = Check.Kind.SAVE})
+	var p := Battle.odds(c.caster, &"strength", c.target, &"constitution", contest(c))
 	return {notes = ["Interrupts it, Jammed (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
 
 

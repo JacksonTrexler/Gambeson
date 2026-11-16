@@ -23,7 +23,7 @@ func lets_word(b: Battle, holder: Unit, rank: int, teller: Unit, _listener: Unit
 	var m := mods_on(holder)
 	if doubters(b, holder) > m.irank(rank, &"rank_impact") + 1:
 		return true
-	return b.resolve(Check.check(teller.check_mod(&"charisma", &"offensive"), dc(holder, rank, m))).hit
+	return b.check(teller, &"charisma", null, dc(holder, rank, m)).won
 
 
 # Its terms: rank raises the DC and how many may doubt it (impact); its cha mod adds to the DC (impact).

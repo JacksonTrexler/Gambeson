@@ -227,3 +227,11 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Bio text** (`Bio.line()`, `Bio.TEMPERS`): a line on the character sheet and a Bio paragraph in the Guide. Plan: `docs/plans/bio-text.md`. `bio_test`. (?154)
 - [x] **Screenshot pass**: Clairvoyance pings, the Specialist tree, facing, item rings and Warcry marks checked; findings in `docs/plans/shots-11-15.md`. (?149)
 
+## Tidy, saves, search, param, prices and equipping (2026-11-15)
+
+- [x] **Test tidy and `_lose_cover`** (`hud_test.test_every_tab_draws_its_skills`, `sweep_test.test_missing_preconditions`; `Battle._lose_cover()`): plan `docs/plans/tidy-11-15.md`. (?156)
+- [x] **Save follow-ups** (`Save.erase()`, `Game.reset()`, Entry's New game, `GamutsTower` saving on close, the `Save.PATH` driver guard): plan `docs/plans/save-followups.md`. `save_test`. (?158)
+- [x] **AI search clues** (`AI.clues()`, `_clue()`, `Battle.reckon_reach()`, `swept`, `_note_attack`): plan `docs/plans/search-clues.md`. `evidence_test`. (?159)
+- [x] **Param tail** (`Behaviour.missed()`, `Battle._miss()`, `Unit.dissonance_penalty()`; Rift, Look and Strike's element through modifiers): plan `docs/plans/param-tail.md`. `route_test`. (?160)
+- [x] **AI prices** (`Read.defense`, `Behaviour.reprisal()`, `foresee` riders and spill, `AI.starve_worth()`, `Kick.driven()`): plan `docs/plans/ai-prices.md`. `ai_tactics_test`. (?162)
+- [x] **Equipping skills** (`Unit.equipped()`, `auto_equip`, `_arrange()`, `SkillSlot.drag_learned`, `Save._equipped_out()`; Settings "Auto-equip new skills"): the hotbar is the equipped set, actives too. Plan: `docs/plans/equipping.md`. `equip_test`, `save_test`. (?163)

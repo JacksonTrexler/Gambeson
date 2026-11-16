@@ -36,4 +36,4 @@ static func recovered(b: Battle, u: Unit, pool: Variant, n: int) -> void:
 
 
 static func _passes(b: Battle, u: Unit, dc: int) -> bool:
-	return b.resolve(Check.check(u.check_mod(&"constitution", &"defensive"), dc, Check.Kind.SAVE)).hit
+	return b.check(u, &"constitution", null, dc, {role = &"defensive", kind = Check.Kind.SAVE}).won
