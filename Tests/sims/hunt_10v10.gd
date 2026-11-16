@@ -71,9 +71,9 @@ func _mode(moving: bool, n: int, rounds: int, wis: int) -> void:
 		var hiders: Array[Unit] = []
 		var taken := {}
 		for i in HIDERS:
-			var c := Vector2i(16 + f.rng.randi() % (FIELD.x - 19), 3 + f.rng.randi() % (FIELD.y - 6))
+			var c := Vector2i(12 + f.rng.randi() % (FIELD.x - 15), 3 + f.rng.randi() % (FIELD.y - 6))
 			while c in taken:
-				c = Vector2i(16 + f.rng.randi() % (FIELD.x - 19), 3 + f.rng.randi() % (FIELD.y - 6))
+				c = Vector2i(12 + f.rng.randi() % (FIELD.x - 15), 3 + f.rng.randi() % (FIELD.y - 6))
 			taken[c] = true
 			var h: Unit = f.add(f.nemes, load("res://Roles/rogue.tres"), c, "Hider%d" % i)
 			h.learned.append(f.slot(hide, 1))

@@ -205,8 +205,10 @@ static func _seem(b: Battle, o: Unit, t: Unit, r: Read) -> Dictionary:
 	var down := 0.25 * t.stat(&"brood") if r.deceived else 0.0
 	var aura := 0.0
 	for a: Unit in b.units.values():
+		if a == t or a.faction != t.faction:
+			continue  # only t's own side broods over it: asked first, so no stat is read for every foe (a big fight made 30 of these a read)
 		var k := a.stat(&"brood") - 4
-		if a != t and a.faction == t.faction and k > 0 and Command.tiles(a.cell, t.cell) <= k and fools(b, o, a):
+		if k > 0 and Command.tiles(a.cell, t.cell) <= k and fools(b, o, a):
 			aura = maxf(aura, 0.1 * k)
 	var out := {}
 	for s in Unit.CORE.slice(0, 6):

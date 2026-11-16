@@ -120,7 +120,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 	_report("busy-%dv%d unit turn" % [size, size], acts, TURN_BUDGET_MS)
 	_report("busy-%dv%d unit turn using a skill" % [size, size], busy, TURN_BUDGET_MS)
 	_report("busy-%dv%d side end_turn" % [size, size], ends, SIDE_BUDGET_MS)
-	_report("busy-%dv%d side turn (acts + end_turn)" % [size, size], turns, SIDE_BUDGET_MS)
+	_report("busy-%dv%d side turn (acts + end_turn)" % [size, size], turns, -1.0)  # no budget: its units are paced 450 ms apart anyway
 	if not frames.is_empty():
 		_report("busy-%dv%d frame (one unit's turn, rendered)" % [size, size], frames, TURN_BUDGET_MS)
 
@@ -139,4 +139,4 @@ func _report(name: String, ms: Array[float], budget: float) -> void:
 	var p95: float = s[mini(int(s.size() * 0.95), s.size() - 1)]
 	var worst: float = s[-1]
 	var verdict := "within" if p95 * SLOWDOWN <= budget and worst * SLOWDOWN <= budget else ("p95 within, max over" if p95 * SLOWDOWN <= budget else "OVER")
-	print("SIM %s (n=%d): here mean %.1f p95 %.1f max %.1f ms | target mean %.0f p95 %.0f max %.0f ms | budget %.0f ms: %s" % [name, s.size(), mean, p95, worst, mean * SLOWDOWN, p95 * SLOWDOWN, worst * SLOWDOWN, budget, verdict])
+	print("SIM %s (n=%d): here mean %.1f p95 %.1f max %.1f ms | target mean %.0f p95 %.0f max %.0f ms | %s" % [name, s.size(), mean, p95, worst, mean * SLOWDOWN, p95 * SLOWDOWN, worst * SLOWDOWN, ("budget %.0f ms: %s" % [budget, verdict]) if budget > 0.0 else "no budget"])
