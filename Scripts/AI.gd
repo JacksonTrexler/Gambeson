@@ -536,16 +536,17 @@ static func _driven(b: Battle, u: Unit, s: Skill, t: Unit) -> float:
 # Only a tile it can walk to at the price route() puts on it (no more than the movement it has: not through
 # ground it dreads) and still pay its blow from. True if it walked.
 static func _line_up(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	Unit.begin_read()  # planning only until it walks (Battle.standing() puts it back): each unit's effects are found once (Unit._effects())
 	var skills := u.foe_actives(true).filter(func(s: Skill): return not s.behaviours.is_empty() or s.effects.any(func(e: Effect): return Battle.DRIVES.has(StringName(e.stat))))
 	var foes: Array[Unit] = []
 	for t: Unit in reads:
 		if t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located():
 			foes.append(t)
 	if skills.is_empty() or foes.is_empty() or u.move_left() < 1.0:
+		Unit.end_read()
 		return false
 	var state := b.rng.state  # planning mustn't use up the battle's rng
 	var worth := {}  # tile -> [the most a blow from it adds, that skill]
-	Unit.begin_read()  # planning only (Battle.standing() puts it back): each unit's effects, there, are found once (Unit._effects())
 	for c in b.cells_near(u.cell, ceili(u.move_left())):
 		var best: Variant = b.standing(u, c, func() -> Variant:
 			var top: Variant = null
@@ -1163,6 +1164,13 @@ static func _keep_up(b: Battle, u: Unit, log: Array[String]) -> void:
 # The foe to go after: the nearest, the hated last - and by its strategy, the strongest (or weakest) it
 # reads, a level against STRONG tiles.
 static func _best_target(u: Unit, reads: Dictionary) -> Unit:
+	Unit.begin_read()  # weighing only (see _steady())
+	var out := _targeting(u, reads)
+	Unit.end_read()
+	return out
+
+
+static func _targeting(u: Unit, reads: Dictionary) -> Unit:
 	var best: Unit = null
 	var best_score := -INF
 	for t in reads:
@@ -1282,6 +1290,13 @@ static func _pays(u: Unit, pool: Variant, s: Skill) -> bool:
 
 # Whether it could strike a foe it reads from where it stands, with a skill it can pay for.
 static func _could_strike(b: Battle, u: Unit, reads: Dictionary) -> bool:
+	Unit.begin_read()  # weighing only (see _steady())
+	var out := _striking(b, u, reads)
+	Unit.end_read()
+	return out
+
+
+static func _striking(b: Battle, u: Unit, reads: Dictionary) -> bool:
 	for s in u.foe_actives():
 		for t: Unit in reads:
 			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
@@ -1296,6 +1311,13 @@ static func _could_strike(b: Battle, u: Unit, reads: Dictionary) -> bool:
 # for one it can't pay for from Focus now (and a Focus stat to add). Bounded: a rest or two fills it.
 # True if it rested.
 static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	Unit.begin_read()  # weighing only: each unit's effects are found once (Unit._effects())
+	var out := _steadying(b, u, reads, log)
+	Unit.end_read()
+	return out
+
+
+static func _steadying(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
 	if not u.idle():
 		return false
 	var weak := false
