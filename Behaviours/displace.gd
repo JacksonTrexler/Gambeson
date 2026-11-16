@@ -31,12 +31,25 @@ func reach(c: Cast) -> int:
 	return n
 
 
-func apply(c: Cast) -> void:
+# Whether it would move c's target at all: a foe (or any, not foes_only), another unit, and one its song
+# enraptures if it is Sing's.
+func moves(c: Cast) -> bool:
 	if (foes_only and not c.foe) or not c.target.is_alive() or c.target == c.caster:
-		return
+		return false
 	var check := c.skill.check
-	if check and check.suspicion and not c.battle.lured(c.caster, c.skill, c.target):
-		return  # its song moves only one it enraptures (Sing)
+	return not (check and check.suspicion and not c.battle.lured(c.caster, c.skill, c.target))
+
+
+# For the forecast and the AI (Battle.foresee_drive()): where it would leave the target, and the slam.
+func foresee(c: Cast) -> Dictionary:
+	if not moves(c):
+		return {}
+	return c.battle.foresee_drive(c.caster, c.target, c.caster.cell, -1 if toward else 1, reach(c), teleport, "Draws it" if toward else ("Sends it" if teleport else "Shoves it"))
+
+
+func apply(c: Cast) -> void:
+	if not moves(c):
+		return
 	c.battle.displace(c.target, c.caster.cell, -1 if toward else 1, reach(c), teleport, [&"entrance" if toward else &"shove"] as Array[StringName], c.caster)
 
 

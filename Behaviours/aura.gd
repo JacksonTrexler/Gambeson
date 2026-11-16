@@ -32,6 +32,7 @@ func apply(c: Cast) -> void:
 			a.skill = c.skill
 			a.by = caster
 			a.since = b.turns_begun
+			b.drive(o, e, a)  # shove, fear, entrance
 
 
 # Its effects are what it does: no unique effect of its own.

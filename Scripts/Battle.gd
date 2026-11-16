@@ -2255,15 +2255,25 @@ static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) ->
 
 
 # What a hit with s by u on t would do beyond damage_range(), as its behaviours foresee it
-# (Behaviour.foresee(): Kick's tile): {lo, hi: more HP off t, notes: a line for each rider, riders, spill: for the AI}. The HUD's
+# (Behaviour.foresee(): Kick's tile, Displace's move) and its own forced-move effects (shove, fear, entrance:
+# foresee_drive()): {lo, hi: more HP off t, notes: a line for each rider, riders, spill: for the AI}. The HUD's
 # forecast (HUD._hurt()) and the AI's score (AI.score()) both read it. Empty: nothing more.
 func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
-	if s.behaviours.is_empty() or not t:
+	if not t or (s.behaviours.is_empty() and not s.effects.any(func(e: Effect): return DRIVES.has(StringName(e.stat)))):
 		return {}
-	var c := cast_of(u, s, t, u.rank(s), t != u and not Faction.friends(t.faction, u.faction))
+	var foe := t != u and not Faction.friends(t.faction, u.faction)
+	var c := cast_of(u, s, t, u.rank(s), foe)
 	var out := {lo = 0, hi = 0, notes = [] as Array[String], riders = 0.0, spill = 0.0}
+	var found: Array[Dictionary] = []
 	for bh in s.behaviours:
-		var f := bh.foresee(c)
+		found.append(bh.foresee(c))
+	if t != u and not (s.dual and foe):  # its effects land on the target (cast()); a forced move is read where it would end
+		for e in s.effects:
+			var dir: int = DRIVES.get(StringName(e.stat), 0)
+			if dir != 0:
+				var n := roundi(e.amount * (c.impact_rank() if e.per_rank else c.rank) * (c.mods.statf(maxf(u.mod(e.by_mod), 0.0), &"stat_impact") if e.by_mod else 1.0))
+				found.append(foresee_drive(u, t, u.cell, dir, n, false, VERBS.get(StringName(e.stat), "Drives it")))
+	for f in found:
 		var notes: Array = f.get("notes", [])
 		out.lo += int(f.get("lo", 0))
 		out.hi += int(f.get("hi", 0))
@@ -2271,6 +2281,61 @@ func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
 		out.riders += float(f.get("riders", notes.size()))
 		out.spill += float(f.get("spill", 0.0))
 	return out if out.hi > 0 or not out.notes.is_empty() or out.spill != 0.0 else {}
+
+
+const PUSH := 0.5  # riders a tile a forced move takes its foe is worth (foresee_drive(): the AI weighs a rider at AI.RIDER)
+const VERBS := {&"shove": "Shoves it", &"fear": "Frightens it", &"entrance": "Draws it"}  # a forced-move effect's line in the forecast
+
+
+# Where displace() (the same arguments) would take t, read without moving it: {went: tiles, left: tiles
+# unspent, into: the unit it stops against (null: the edge, or it went all the way), end: the tile it ends on}.
+func course(t: Unit, from: Vector2i, dir: int, n: int, teleport := false) -> Dictionary:
+	var line := Vector2(t.cell - from).normalized() * signf(dir)
+	var at := t.cell
+	var went := 0
+	var into: Unit = null
+	if teleport:
+		for k in range(n, 0, -1):
+			var c := Vector2i((Vector2(t.cell) + line * k).round())
+			if c != t.cell and c != from and on_map(c) and not unit_at(c) and (dir > 0 or Command.tiles(t.cell, c) < Command.tiles(t.cell, from)):
+				return {went = k, left = n - k, into = null, end = c}
+		return {went = 0, left = n, into = null, end = at}
+	for k in range(1, n + 1):
+		var c: Vector2i
+		if dir < 0:
+			if next_to(at, from):
+				break
+			var d := from - at
+			c = at + Vector2i(signi(d.x), signi(d.y))
+		else:
+			c = Vector2i((Vector2(t.cell) + line * k).round())
+			if c == at:
+				continue
+		var other := unit_at(c) if on_map(c) else null
+		if not on_map(c) or (other and other != t):
+			into = other
+			break
+		at = c
+		went += 1
+	return {went = went, left = n - went, into = into, end = at}
+
+
+# The forecast of a forced move by `by` (Behaviour.foresee()'s shape, from course()): a line saying how far
+# and where t ends; its tiles are riders at PUSH each; a push stopped short slams (`lo`, `hi`, as _slam()
+# deals it, and `spill` for the unit it struck, an ally of `by` counting against).
+func foresee_drive(by: Unit, t: Unit, from: Vector2i, dir: int, n: int, teleport := false, verb := "Drives it") -> Dictionary:
+	var run := course(t, from, dir, n, teleport)
+	var out := {lo = 0, hi = 0, notes = [] as Array[String], riders = PUSH * run.went}
+	var line := "%s %d tile%s %s to (%d, %d)" % [verb, run.went, "" if run.went == 1 else "s", "toward the caster" if dir < 0 else ("away" if teleport else "back"), run.end.x, run.end.y]
+	if dir > 0 and not teleport and run.left > 0:
+		var slam: int = SLAM * run.left
+		out.lo = slam
+		out.hi = slam
+		line += ", then slams %s (%d each)" % [run.into.name if run.into else "the edge", slam]
+		if run.into:
+			out.spill = slam * (-1.0 if Faction.friends(run.into.faction, by.faction) else 1.0)
+	out.notes.append(line)
+	return out
 
 
 # A hostile skill aimed at a tile rather than at a unit the caster can make out (the player's
@@ -2683,6 +2748,7 @@ func _link(caster: Unit, skill: Skill, r: int) -> void:
 				a.skill = skill
 				a.by = caster
 				a.since = turns_begun
+				drive(o, e, a)  # shove, fear, entrance
 
 
 # Each takes the other for a teammate (Command: only teammates give each other orders or share a

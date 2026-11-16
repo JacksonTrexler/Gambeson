@@ -659,9 +659,10 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 
 # Support skills on allies it reads as allies (itself too, for one that reaches itself) that don't have
 # the effect yet: one that grants an effect (Stonegift), or a buff for allies with effects of its own
-# (Intervention, Rally; not self_only or dual ones).
+# (Intervention, Rally; not self_only or dual ones). Not one whose effects harm (Effect.helps(): fear, shove,
+# entrance drive the ally about): that lands on foes, through score().
 static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
-	for s in u.actives.filter(func(x: Skill): return not x.hostile and (x.grants or (not x.for_foes() and not x.self_only and not x.effects.is_empty())) and u.can_afford(x)):
+	for s in u.actives.filter(func(x: Skill): return not x.hostile and (x.grants or (not x.for_foes() and not x.self_only and not x.effects.is_empty())) and not x.effects.any(func(e: Effect): return e.helps() < 0) and u.can_afford(x)):
 		var e: Effect = s.grants.effects[0] if s.grants else s.effects[0]
 		for t: Unit in reads.keys() + [u]:
 			var r: Read = b.read(u, u) if t == u else reads[t]
