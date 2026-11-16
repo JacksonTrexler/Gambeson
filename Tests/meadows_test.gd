@@ -192,6 +192,11 @@ func test_camera() -> void:
 	cam.pan(Vector2(40, 0))
 	ok(cam.target() == null and cam.global_position == at + Vector2(40, 0), "panned: it holds there")
 	ok(InputMap.has_action(&"camera_left") and &"camera_down" in KeyBinds.actions() and KeyBinds.key_of(&"camera_up") == "Up", "the arrow keys, rebindable")
+	var view := Vector2(480, 270)
+	var side: Array[Rect2] = [Rect2(0, 0, 77, 270)]
+	ok(BattleCamera.edge_dir(Vector2(240, 1), view, side) == Vector2(0, -1) and BattleCamera.edge_dir(Vector2(300, 269), view, side) == Vector2(0, 1), "the mouse at the top or bottom edge pans that way")
+	ok(BattleCamera.edge_dir(Vector2(479, 100), view, side).x == 1.0 and BattleCamera.edge_dir(Vector2(240, 135), view, side) == Vector2.ZERO, "the right edge pans; the middle doesn't")
+	ok(BattleCamera.edge_dir(Vector2(1, 100), view, side) == Vector2.ZERO and BattleCamera.edge_dir(Vector2(1, 1), view, side) == Vector2.ZERO, "over a HUD panel at the edge: no pan")
 	mb.turn_changed.emit(lancin, demons)
 	ok(not cam.panned and cam.target() == mb.player, "a new turn: back to the player's unit")
 	cam.hud.free()

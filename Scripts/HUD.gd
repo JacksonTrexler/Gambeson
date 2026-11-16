@@ -311,6 +311,11 @@ func _ready() -> void:
 	%AutoEquip.toggled.connect(func(on: bool) -> void:
 		Unit.auto_equip = on
 		Prefs.put("auto_equip", on))
+	BattleCamera.edge_pan = Prefs.get_pref("edge_pan", true)  # on by default
+	%EdgePan.set_pressed_no_signal(BattleCamera.edge_pan)
+	%EdgePan.toggled.connect(func(on: bool) -> void:
+		BattleCamera.edge_pan = on
+		Prefs.put("edge_pan", on))
 	hand_over = Prefs.get_pref("hand_over", hand_over)
 	%HandOver.button_pressed = hand_over
 	%HandOver.toggled.connect(func(on: bool) -> void:

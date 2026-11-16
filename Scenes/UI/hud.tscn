@@ -652,6 +652,13 @@ focus_mode = 0
 tooltip_text = "Skills your units learn or are lent, and skills for slots they gain, go on the hotbar by themselves"
 text = "Auto-equip new skills"
 
+[node name="EdgePan" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Pushing the mouse to the edge of the screen pans the camera (the arrow keys always do)"
+text = "Edge-pan the camera"
+
 [node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
 unique_name_in_owner = true
 layout_mode = 2

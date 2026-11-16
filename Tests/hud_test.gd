@@ -782,6 +782,11 @@ func test_skills_screen() -> void:
 	ok(h.skills.visible, "the dock's branch opens skills")
 	h.get_node("%CogIcon").pressed.emit()
 	ok(h.settings.visible and not h.skills.visible, "the cog opens Settings, closing skills")
+	var edge: CheckButton = h.get_node("%EdgePan")
+	ok(edge.button_pressed and BattleCamera.edge_pan, "Settings: edge-pan is on by default")
+	edge.button_pressed = false
+	ok(not BattleCamera.edge_pan and Prefs.get_pref("edge_pan", true) == false, "switched off, it's saved")
+	edge.button_pressed = true
 	ok("Ctrl-click a tile" in h.get_node("%Guide").text and not h.hint.visible, "with the Guide; no instructions sit on screen")
 	h.get_node("%CogIcon").pressed.emit()
 	h.get_node("%SkillsIcon").pressed.emit()

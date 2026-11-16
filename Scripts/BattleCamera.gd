@@ -5,12 +5,16 @@ extends Camera2D
 # side's commander, once the player's down), or on the active unit once it's far enough off centre -
 # the one the player selects, or the last to act that the player's side makes out (one acting unseen
 # doesn't draw the view: that would give it away). The arrow keys pan it (camera_left/right/up/down,
-# rebindable in KeyBinds); a panned view stays put until someone acts, the turn or the selection
+# rebindable in KeyBinds), and so does the mouse pushed to the screen's edge (edge_pan, a Setting; not
+# over the HUD's side panels, nor with one open); a panned view stays put until someone acts, the turn or the selection
 # changes, or Home. Home refocuses on the selected unit; Home again goes back to the player's unit.
 
 const FAR := 110.0  # how far off centre (world pixels) the active unit gets before the view goes to it
 const EASE := 8.0  # how quickly it glides there
 const PAN := 360.0  # how fast the keys pan it, world pixels a second
+const EDGE := 3.0  # how close to the screen's edge (design pixels) the mouse pans it
+
+static var edge_pan := true  # Settings: the mouse at the screen's edge pans (HUD sets it from Prefs)
 
 var hud: Node  # HUD: who's the player's, who's selected
 var battle: Battle
@@ -20,6 +24,7 @@ var panned := false  # moved by hand: it holds there
 var _chasing: Unit  # the active unit it went to once far off centre, kept to till another takes over
 var _selected: Unit  # the HUD's pick, as last seen
 var _arrived := false
+var _mouse: Variant = null  # the pointer in screen (HUD) space; null when it's left the window or hasn't moved
 
 
 func _ready() -> void:
@@ -41,6 +46,8 @@ func _process(delta: float) -> void:
 		if picked:
 			acted(picked)
 	var v := Input.get_vector(&"camera_left", &"camera_right", &"camera_up", &"camera_down")
+	if v == Vector2.ZERO and edge_pan and _mouse != null and hud and not (hud.has_method("_panel_open") and hud._panel_open()):
+		v = edge_dir(_mouse, get_viewport_rect().size, hud_panels())
 	if v != Vector2.ZERO:
 		pan(v * PAN * delta / zoom.x)
 	var to := target()
@@ -50,6 +57,43 @@ func _process(delta: float) -> void:
 			global_position = at
 			_arrived = true
 		global_position = global_position.lerp(at, 1.0 - exp(-EASE * delta))
+
+
+# Which way a pointer at p pushes the view (a unit vector's worth, or zero): toward a screen edge it's
+# within EDGE of, unless it's over one of `clear` (the HUD's panels sit on the edges).
+static func edge_dir(p: Vector2, view: Vector2, clear: Array[Rect2]) -> Vector2:
+	for r in clear:
+		if r.grow(EDGE).has_point(p):  # a panel sits a few pixels in from the edge: its margin counts
+			return Vector2.ZERO
+	var v := Vector2.ZERO
+	if p.x <= EDGE:
+		v.x = -1.0
+	elif p.x >= view.x - EDGE:
+		v.x = 1.0
+	if p.y <= EDGE:
+		v.y = -1.0
+	elif p.y >= view.y - EDGE:
+		v.y = 1.0
+	return v.normalized()
+
+
+func hud_panels() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for n in ["Root/Left", "Root/Right"]:
+		var c := hud.get_node_or_null(n) as Control
+		if c and c.visible:
+			out.append(c.get_global_rect())
+	return out
+
+
+func _input(e: InputEvent) -> void:
+	if e is InputEventMouse:
+		_mouse = e.position
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_MOUSE_EXIT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_mouse = null
 
 
 # Moves the view by hand; it holds there (target() is null) until something draws it back.
