@@ -5,7 +5,8 @@ extends HBoxContainer
 # key on the one picked, and Rebind: a panel asks for the new key, and the next key pressed takes the
 # action (Escape backs out). Saved to the user's settings and loaded as the game starts (load_saved()).
 
-static var SAVE := "user://keybinds.cfg"  # tests point it elsewhere (Tests/run.gd)
+# A -s script (a driver) keeps to a file of its own, as Save.PATH; Tests/run.gd sets its own too.
+static var SAVE := "user://keybinds_driver.cfg" if not Engine.get_main_loop() or Engine.get_main_loop().get_script() else "user://keybinds.cfg"
 const NAMES := {&"hotbar_1": "Hotbar 1", &"hotbar_2": "Hotbar 2", &"hotbar_3": "Hotbar 3", &"hotbar_4": "Hotbar 4",
 		&"hotbar_5": "Hotbar 5", &"hotbar_6": "Hotbar 6", &"hotbar_7": "Hotbar 7", &"hotbar_8": "Hotbar 8", &"hotbar_9": "Hotbar 9",
 		&"hotbar_10": "Hotbar 10", &"spellbook": "Spellbook", &"skills": "Skills", &"end_turn": "End turn", &"hold": "Hold",

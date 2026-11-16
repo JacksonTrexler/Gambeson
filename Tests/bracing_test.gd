@@ -92,6 +92,30 @@ func test_investigate_close() -> void:
 	ok(avg.call(true) > avg.call(false) + 1.5, "near: the better of two d20s (%.1f vs %.1f)" % [avg.call(true), avg.call(false)])
 
 
+# What investigating forecasts (Battle.seen_odds()): the hider's guise is one roll for every watcher, so a
+# lone watcher's chance is that contest's odds, and several watchers' is not the independent chain of them.
+func test_seen_odds() -> void:
+	var hide: Skill = load("res://Skills/hide.tres")
+	v(1).learned.append(slot(hide, 2))
+	v(1).refresh()
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(8, 3), v(4): Vector2i(9, 3)})
+	for i in [3, 4]:
+		v(i).wisdom = 12
+	var eyes: Array[Unit] = [v(3)]
+	var solo := Battle.seen_odds(v(1), hide, v(1), eyes, b)
+	var contest := Battle.odds(v(3), &"wisdom", v(1), hide.stat(), {role = &"offensive", their_bonus = 2 - v(1).dissonance_penalty(), their_tags = v(1).skill_tags(hide)})
+	ok(solo > 0.1 and solo < 0.9 and is_equal_approx(solo, contest), "one watcher: that contest's odds (%.3f vs %.3f)" % [solo, contest])
+	eyes = [v(3), v(4)]
+	var both := Battle.seen_odds(v(1), hide, v(1), eyes, b)
+	ok(both > solo and both < 1.0 - pow(1.0 - solo, 2) - 0.01, "two: likelier, but not as the chance each would alone chained (%.3f)" % both)
+	var seen := 0
+	var n := 1500
+	for i in n:
+		var g := b.resolve(Battle.guise(v(1), hide, v(1), 2))
+		seen += 1 if eyes.any(func(o: Unit): return b.check(o, &"wisdom", null, g.total).won) else 0
+	ok(absf(seen / float(n) - both) < 0.04, "and the shared roll rolled as often (%.3f vs %.3f)" % [seen / float(n), both])
+
+
 # Bracing and other check effects reach investigations (offensive), hiding (defensive) and last stands
 # (the best defensive bonus over its stats).
 func test_more_checks() -> void:

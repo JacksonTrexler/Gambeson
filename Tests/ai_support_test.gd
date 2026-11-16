@@ -196,3 +196,27 @@ func test_restorers_serve_help() -> void:
 	u.hotbar[0] = null
 	u.hotbar[1] = heal
 	ok(u.intent_skill(&"supportive") == heal, "its default HELP skill is the heal")
+
+# Hiding an ally (Invisibility) is weighed by the odds the foes in sight see through it (Battle.seen_odds()):
+# not cast where they nearly always would, cast where none can see it.
+func test_hides_where_unseen() -> void:
+	var invisibility: Skill = load("res://Skills/invisibility.tres")
+	v(1).learned.append(slot(invisibility, 1))
+	v(1).intelligence = 20
+	v(1).refresh()
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(6, 3)})
+	v(2).intelligence = 1
+	v(3).wisdom = 40
+	var eyes := b.watchers(v(2))
+	ok(v(3) in eyes and Battle.seen_odds(v(1), invisibility, v(2), eyes, b) >= AI.SEEN, "a sharp foe beside it: seen through (%.2f)" % Battle.seen_odds(v(1), invisibility, v(2), eyes, b))
+	var reads := {v(2): b.read(v(1), v(2)), v(3): b.read(v(1), v(3))}
+	var log: Array[String] = []
+	AI._support(b, v(1), reads, log)
+	ok(log.is_empty() and invisibility.effects[0] not in v(2).timed, "so it doesn't (%s)" % [log])
+	b.move(v(3), Vector2i(1, 8))
+	b.move(v(4), Vector2i(1, 9))
+	for o in [v(3), v(4)]:
+		o.afflict(effect("sleep", 1), 9)
+	ok(b.watchers(v(2)).is_empty(), "no one watching")
+	AI._support(b, v(1), reads, log)
+	ok(not log.is_empty() and "Invisibility" in log[0], "it does (%s)" % [log])

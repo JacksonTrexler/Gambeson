@@ -124,9 +124,9 @@ Plan, readings and what was built: `docs/plans/item-icons.md`; done in `docs/don
     - **Process lines:** `.claude/skills/new-mechanic/SKILL.md` says a new item needs `icon.py item <id>` (new-unit has no item step); `.claude/skills/new-class/SKILL.md` got the one line about `role.py god` you authorised through the coordinator.
     - **The stash lists items with icons; the post-battle "Spoils" stays a text line.**
     - **New names to review:** none.
-- [ ] **The card's third icon** touches the word under the portrait. (?135)
+- [x] **The card's third icon** touched the word under the portrait. Built 2026-11-15 (?155): trims are a wrapping row of their own under the head.
 - [x] **Item tool:** `Util/item.py new` and `check`, `.claude/skills/new-item`. Built 2026-11-15 (?147) (`docs/done/world.md`). (?135)
-- [ ] **Spoils** and any loot list are text, no icons. (?135)
+- [x] **Spoils** show icons with banners (`UnitCard.item_row()`). Built 2026-11-15 (?155). (?135)
 
 ## Item tool (2026-11-15)
 
@@ -138,4 +138,14 @@ Plan and what was built: `docs/plans/item-tool.md`. Built on `y-itemtool`. Tests
     - **`check` validates every item and loot table:** icons present and none orphaned, properties real, slot and rarity in `Item.gd`'s enums, tags known and coloured, enchanted and honed exclusive, emblem and scope paired, lent skills real, every `res://` path exists, loot entries real and weights no more than items.
     - **`skill.py check` now runs the item checks** (a superset of its icon lines), so the house rule covers items; `mechanic.py check` keeps exclusivity for Skills only. `tooling_test.test_checks` runs `item.py check`.
     - **No new items;** the test is a dry run saved under `user://`.
+    - **New names to review:** none.
+
+## Item icons on the card and in spoils (2026-11-15)
+
+Plan and what was built: `docs/plans/icons-card-spoils.md`. Built on `z-icons`. Tests: `item_icons_test.test_card_icons_never_overlap_and_spoils_show_them`.
+
+155. **Item icons on the card and spoils - built on judgement, open for review (2026-11-15).** Closes ?135's two open items. My calls:
+    - **Card trims leave the portrait:** an HFlowContainer row of their own under the head (`UnitCard.trims`), a 16px icon with its banner beside it, wrapping, so nothing overlaps however many items; the corner-overlay branch of `trim_mark` is gone. Costs about 30px of card height.
+    - **Spoils:** a wrapping row of icons with banners (`UnitCard.item_row()`, reusable for any loot list) under the Over panel's text; tooltips carry the name. The text line "Spoils: a, b" stays, since the log and Save read it and it names what icons cannot.
+    - **Other lists:** the sheet's stash already shows icons; `Loot.gd` draws nothing, so no change.
     - **New names to review:** none.
