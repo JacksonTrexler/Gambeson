@@ -3164,6 +3164,13 @@ func dread(owed: Dictionary, r: Read, bad := false, passed := false, wary := fal
 # way included - stride()'s pass_cost() - plus dread, less what marks draw it): the AI's approach weighs
 # the cells it might head for by it (AI._approach()), so it and the walk read one price.
 func route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null) -> Array[Vector2i]:
+	Unit.begin_read()  # planning only: each unit's effects are found once (Unit._effects())
+	var out := _route(u, dest, ln, price)
+	Unit.end_read()
+	return out
+
+
+func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null) -> Array[Vector2i]:
 	var blind := foresight_allowance(u) < 0
 	if (ln.size() < 2 or blind) and price == null:
 		return ln

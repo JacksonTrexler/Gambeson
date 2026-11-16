@@ -467,6 +467,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	var best := []
 	var best_score := least
 	var spared := []
+	Unit.begin_read()  # weighing only, nothing changes until it casts: each unit's effects are found once (Unit._effects())
 	for s in u.foe_actives().filter(func(x: Skill): return not (attacks_only and x.dual)):
 		for t in reads:
 			var r: Read = reads[t]
@@ -491,6 +492,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	if best.is_empty() and not spared.is_empty() and reads.keys().all(
 			func(t: Unit): return not t.is_alive() or not _foe(u, reads[t]) or _hate(reads[t]) > 0.0):
 		best = spared
+	Unit.end_read()
 	if best.is_empty():
 		return false
 	if not b.cast(u, best[0], best[1]):
@@ -543,6 +545,7 @@ static func _line_up(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 		return false
 	var state := b.rng.state  # planning mustn't use up the battle's rng
 	var worth := {}  # tile -> [the most a blow from it adds, that skill]
+	Unit.begin_read()  # planning only (Battle.standing() puts it back): each unit's effects, there, are found once (Unit._effects())
 	for c in b.cells_near(u.cell, ceili(u.move_left())):
 		var best: Variant = b.standing(u, c, func() -> Variant:
 			var top: Variant = null
@@ -555,6 +558,7 @@ static func _line_up(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 			return top)
 		if best != null:
 			worth[c] = best
+	Unit.end_read()
 	if worth.is_empty():
 		b.rng.state = state
 		return false
@@ -1192,6 +1196,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 	var state := b.rng.state
 	var best: Vector2i = r.cell
 	var best_cost := INF
+	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
 	for dx in [-1, 0, 1]:
 		for dy in [-1, 0, 1]:
 			var c: Vector2i = r.cell + Vector2i(dx, dy)
@@ -1208,6 +1213,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			if v < best_cost:
 				best = c
 				best_cost = v
+	Unit.end_read()
 	b.rng.state = state
 	return best
 
