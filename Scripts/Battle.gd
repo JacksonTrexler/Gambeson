@@ -3897,13 +3897,19 @@ func _revive() -> void:
 
 
 # Brings a unit of `scene` onto side f, on the free tile nearest c. Null if there's no room.
-func summon(scene: PackedScene, f: Faction, c: Vector2i) -> Unit:
-	var spot: Variant = free_near(c)
-	if spot == null:
-		return null
+# `unseen_by`: a side that mustn't see it arrive - it lands on the nearest free tile where none of that
+# side make it out (read(): perception, concealment, its own hiding, a partner's eyes), or doesn't come
+# (null). Where sight isn't limited every unit is seen, so there it's ignored.
+func summon(scene: PackedScene, f: Faction, c: Vector2i, unseen_by: Faction = null) -> Unit:
 	var u: Unit = scene.instantiate()
 	u.faction = f
 	$Units.add_child(u, true)
+	var eyes: Array[Unit] = members(unseen_by) if unseen_by and sight else ([] as Array[Unit])
+	var spot: Variant = free_near(c, func(x: Vector2i) -> bool: return unseen_at(u, x, eyes)) if not eyes.is_empty() else free_near(c)
+	if spot == null:
+		$Units.remove_child(u)
+		u.free()
+		return null
 	move(u, spot)
 	_listen(u)
 	if f == turn:
@@ -3917,17 +3923,29 @@ func free_near(c: Vector2i, ok := Callable()) -> Variant:
 	var used := map.get_used_rect()
 	var far := maxi(maxi(absi(c.x - used.position.x), absi(c.x - used.end.x)), maxi(absi(c.y - used.position.y), absi(c.y - used.end.y)))
 	var n := 2
+	var tried := {}
 	while true:
-		var best: Variant = null
-		for x in cells_near(c, n):
-			if not unit_at(x) and (not ok.is_valid() or ok.call(x)) and (best == null or Vector2(x).distance_to(Vector2(c)) < Vector2(best).distance_to(Vector2(c))):
-				best = x
-		if best != null and Vector2(best).distance_to(Vector2(c)) <= n:  # nothing nearer outside the box
-			return best
+		var free := cells_near(c, n).filter(func(x: Vector2i): return x not in tried and not unit_at(x))
+		free.sort_custom(func(x: Vector2i, y: Vector2i): return Vector2(x).distance_to(Vector2(c)) < Vector2(y).distance_to(Vector2(c)))
+		for x: Vector2i in free:
+			if Vector2(x).distance_to(Vector2(c)) > n and n <= far:
+				break  # something nearer may lie outside this box
+			tried[x] = true
+			if not ok.is_valid() or ok.call(x):  # nearest first: `ok` asked as few times as it can be
+				return x
 		if n > far:
-			return best
+			return null
 		n *= 2
 	return null
+
+
+# Whether none of `eyes` would make u out were it standing on c (read(): located or not).
+func unseen_at(u: Unit, c: Vector2i, eyes: Array[Unit]) -> bool:
+	var was := u.cell
+	u.cell = c
+	var seen := eyes.any(func(o: Unit): return o != u and read(o, u).located())
+	u.cell = was
+	return not seen
 
 
 # The turn passes. A channel held since an earlier turn holds through this one only if its unit met

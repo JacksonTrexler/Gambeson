@@ -101,6 +101,16 @@ func test_spawning() -> void:
 	ok(group.size() == 3 and group[0].tags.has(&"undine"), "an Undine and its two Sirens")
 	ok(load("res://Formations/undine_and_sirens.tres").count(1.5) == 5 and load("res://Formations/sirens_by_water.tres").count(0.5) == 1, "harder areas bring more, easier fewer")
 	ok(mb.last_seen(demons).size() == 7 and mb.last_seen(demons).keys().all(func(u: Unit): return u.faction == lancin), "they arrive knowing where the living are")
+	var siren: PackedScene = load("res://Scenes/siren.tscn")
+	var asked := mb.player.cell + Vector2i(3, 0)
+	var plain := mb.summon(siren, demons, asked)
+	ok(plain.cell == asked and mb.read(mb.player, plain).located(), "summon(): where it's asked, in plain view")
+	var hid := mb.summon(siren, demons, asked, lancin)
+	ok(md.party().all(func(o: Unit): return not mb.read(o, hid).located()), "summoned unseen by a side: none of it makes it out (Battle.read())")
+	ok(hid.cell.distance_to(asked) < 30.0, "the nearest such tile, not just anywhere: %s" % [hid.cell])
+	mb.conditions.append(&"fog")
+	var nearer := mb.summon(siren, demons, asked, lancin)
+	ok(nearer.cell.distance_to(asked) < hid.cell.distance_to(asked), "fog halves sight: it comes nearer")
 	m.free()
 
 

@@ -132,7 +132,8 @@ func cap() -> int:
 	return maxi(ceili(party().size() * battle.difficulty), 1) * (2 if portal != null and not opened else 1)
 
 
-# Out of the whole party's perception: every one of them farther away than it perceives.
+# Out of the whole party's perception: every one of them farther away than it perceives. A first
+# guess at where to look; summon() checks the real sight rules where each one lands.
 func unseen(c: Vector2i) -> bool:
 	for u in party():
 		var reach := battle.perception_range(u)
@@ -173,7 +174,8 @@ func _beside(c: Vector2i, tag: StringName) -> bool:
 	return false
 
 
-# Spawns formation f at its spot: its roster, at their offsets (else the nearest free tiles).
+# Spawns formation f at its spot: its roster, at their offsets (else the nearest free tiles out of
+# the party's sight: Battle.summon()).
 func spawn(f: Formation) -> Array[Unit]:
 	var out: Array[Unit] = []
 	var at: Variant = spot_for(f)
@@ -182,7 +184,7 @@ func spawn(f: Formation) -> Array[Unit]:
 	var roster := f.roster(battle.difficulty)
 	for i in roster.size():
 		var off: Vector2i = f.offsets[i] if i < f.offsets.size() else Vector2i(i % 3, i / 3)
-		var u := battle.summon(roster[i], demons, at + off)
+		var u := battle.summon(roster[i], demons, at + off, battle.player.faction if battle.player else null)  # out of the party's sight
 		if u:
 			u.died.connect(_on_kill)
 			out.append(u)

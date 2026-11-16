@@ -37,6 +37,16 @@ portal stays as it is (a later battle).
    is skipped (spawning would otherwise be impossible) - a call.
 
 ## Tests and mutation spot-checks
+All in `Tests/meadows_test.gd` (one seam each, no new files):
+- `test_streaming`: a chunk is the same ground whichever order it's reached in (mutation: reseeding the
+  noise per chunk fails it); `cells_near()` matches a brute-force filter; a forced move (`driven`) to the
+  plane's edge grows it (mutation: unhooking it fails); no `get_used_cells()` loop in Battle, AI, HUD or
+  Overlay (mutation: putting the explosion's loop back fails it).
+- `test_camera` (extended): follows a far-off ally that acts; not a demon acting out of sight
+  (mutation: dropping the located check fails it); a pan holds; the pan actions exist and read "Up" etc.;
+  a new turn lets go (mutation: not resetting `panned` fails it).
+- `test_spawning` (extended): `summon()` plain lands where asked, seen; with `unseen_by` none of the
+  party makes it out; fog brings it nearer (mutation: `unseen_at()` always true fails both).
 
 ## Timings
 Meadows (seed 7, headless debug, `S/zmaps/perf.gd`): three rounds of every side's AI, on the plane as
@@ -45,4 +55,23 @@ it starts (2,304 tiles) and grown to 76,176 tiles (chunks out to 120 each way).
 - After streaming's bounds: small 342 / 513 / 1,049 ms; grown 1,021 / 743 / 960 ms (rounds vary with
   how many demons are up). `free_near` 0.02 ms -> 0.01 ms. `suspicious()` ~6 ms either way.
 
+- Spawning (after): `summon()` near the party with `unseen_by` (the worst case: it starts inside sight
+  and reads its way out) 164-176 ms; a Meadows formation spawn (its spot guessed beyond perception
+  first) 9-10 ms. Grown plane, after all three steps: 1,464-1,765 ms a round with 12 demons up (small
+  plane, 9 demons: 336-1,205 ms).
+- HUD `_mark()` after streaming 36 tiles east: 0.002 ms (the reach map is cached per unit).
+
 ## As built
+- `Battle.cells_near(c, r)`: the box walk; `free_near(c, ok)` widens boxes and asks `ok` nearest first;
+  `_maybe_hidden(around, r)`; `unseen_at(u, c, eyes)`; `summon(..., unseen_by)`.
+- `Meadows._explore()` on `traveled` and `driven`; spawns pass the party's side to `summon()`.
+- `BattleCamera`: `pan()`, `acted()`, `_let_go()`; `target()` keeps to the active unit once far off
+  centre. Actions `camera_left/right/up/down` (arrow keys) in project.godot and KeyBinds.NAMES.
+- Frames: `S/shot_z-maps/` (m00000033 start, m00000098 streamed 36 tiles east and followed,
+  m00000148 panned down-right). Seen in passing: the turn clock's number draws over the end of the
+  Meadows' "Demons slain" tally at the top centre (not this card's; left alone).
+
+## Undone
+- The 30-kill portal battle (out of scope). Edge-pan and drag (call 4).
+- An unseen summon starting inside sight costs ~170 ms; fine for a spawn a turn, worth a cheaper first
+  guess if something summons often near the party.
