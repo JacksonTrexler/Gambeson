@@ -192,6 +192,9 @@ var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, u
 var marks: Dictionary[Vector2i, Array] = {}  # cell -> the Marks laid on it, oldest first (lay_mark()): one-use tile effects, disturbed earth
 @export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
 @export var sight := true  # units perceive only within their wisdom total in tiles, and make out appearances within half that, the range shared across their side (in_range(); Perception.unit()). Off: no limit
+var sighted_when: Dictionary[Faction, Dictionary] = {}  # side -> {foe: {since: turns_begun then, moves: its movement as read, 0 unread}}: how stale a sighting is, and how far the foe could have got since (AI.clues())
+var attacks: Dictionary[Faction, Array] = {}  # side -> [{tiles: where an attacker it couldn't place could have struck from, since}] (_note_attack())
+var swept: Dictionary[Faction, Dictionary] = {}  # side -> {tile: turns_begun when one of its units last searched it} (search())
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
 @export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
@@ -206,6 +209,8 @@ const DEBRIS_KINDS := [
 	[[&"grass", &"shrubbery", &"forest"], "Disturbed foliage, twigs"],
 	[[&"mud", &"snow", &"sand", &"mountains", &"desert", &"taiga"], "Depressions"],
 ]
+const HIT_TURNS := 6  # turns an attack from an unseen foe stays a clue to where it is (attacks_on())
+const SWEEP_TURNS := 4  # turns a tile its side searched counts as looked over: no guessing there (AI.clues())
 const CLEAN_HIDE := 15  # a hiding roll this high or more is a good job: little debris, further off
 const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
@@ -475,6 +480,7 @@ func _listen(u: Unit) -> void:
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
+	_note_attack(u, blow)
 	for h in u.hooks():
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
 
@@ -924,8 +930,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 					return true
 	var before := target.hp
 	# Every path below that lands runs the behaviours' apply() (_land()); one that fails (a save or
-	# contest lost) is a miss, as a missed attack roll is, and runs none; so is a channel stopped by using
-	# it again (recast_stops(), above: nothing lands). docs/plans/route.md.
+	# contest lost, a roll missed) runs their missed() instead (_miss()); a channel stopped by using
+	# it again (recast_stops(), above) lands nothing and misses nothing. docs/plans/route.md, param-tail.md.
 	if acts and skill.behaviours.any(func(x: Behaviour): return x.whole(acts)):
 		_land(acts)  # its behaviours are the whole of it (Beastshape, Emergency Exit, an aura, Igna on an ally): no roll, effects or damage of its own
 		used.emit(caster, skill, target, before - target.hp)
@@ -949,6 +955,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		if not vs.won:
 			_lose_cover(target)
 			_lose_cover(caster)
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 		drag(caster, target, spot, skill.drags())
@@ -957,6 +964,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		contested.emit(caster, target, vs.mine.total, vs.theirs.total)
 		if not vs.won:
 			_lose_cover(caster)
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 		engulf(caster, target)
@@ -969,17 +977,22 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_lose_cover(caster)
 			if read(target, caster).located():
 				suspect(target, caster)  # it felt something try
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 		saved_against = mine
 	if foe and skill.levels_down:
 		if _level_down(caster, skill, target, ri, req) > 0:
 			_land(acts)
+		else:
+			_miss(acts)
 		used.emit(caster, skill, target, 0)
 		return true
 	if foe and skill.kills:
 		if _death(caster, skill, target, ri, req):
 			_land(acts)
+		else:
+			_miss(acts)
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	for g in fog:
@@ -995,6 +1008,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			_land(acts)
 			for bh in skill.behaviours:
 				bh.dealt(acts, before - target.hp)
+		elif landed == 0:
+			_miss(acts)
 		if target.hp < before:
 			expose(target.cell, tags, caster)  # blows land on what it stands on too
 		_lose_cover(target)
@@ -1022,6 +1037,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		rolled = hit
 		if not hit.hit:
 			_lose_cover(target)
+			_miss(acts)
 			used.emit(caster, skill, target, 0)
 			return true
 	if foe and skill.hostile and target != caster:  # hit: reactions before its damage (Interject)
@@ -1033,6 +1049,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			if rolled and not rolled.crit and rolled.total < target.defense(tags) + guard_of(acts) + rh.guard:
 				attacked.emit(caster, target, rolled.d20, rolled.total, target.defense(tags) + guard_of(acts) + rh.guard)
 				_lose_cover(target)
+				_miss(acts)
 				used.emit(caster, skill, target, 0)  # the roll that hit its first target misses its new one
 				return true
 	if acts:
@@ -1157,6 +1174,17 @@ func _land(c: Behaviour.Cast, at: Variant = null) -> void:
 			bh.apply(c)
 
 
+# The skill a Cast is for failed: a roll missed, a save or contest lost, a Strike with no hit, a level
+# or a life not taken. The counterpart of _land(): its behaviours' missed() run (a refund, a rider on a
+# miss), and c.hit stays false. Called before `used`, on every path of cast() that lost.
+func _miss(c: Behaviour.Cast) -> void:
+	if not c:
+		return
+	c.hit = false
+	for bh in c.skill.behaviours:
+		bh.missed(c)
+
+
 # Whether reaction r swapped its cast's target: the cast's tags are taken afresh for the new one
 # (an ambush is against whom it lands on).
 func _swapped(c: Behaviour.Cast, r: Behaviour.Reaction) -> bool:
@@ -1189,6 +1217,8 @@ func area_blow(c: Behaviour.Cast, u: Unit, strike: Callable, tries := Callable()
 		if _swapped(rc, react(&"hit", u, caster, rc)):
 			u = rc.target
 		rc.hit = true
+	else:
+		_miss(rc)  # it dodged: the skill's behaviours hear of it
 	strike.call(u, share)
 	_resolving.resize(depth)
 
@@ -1818,7 +1848,11 @@ func survey(o: Unit, center: Vector2i, rested: int) -> int:
 # at +bonus, from `center`. How many it grew suspicious of.
 func search(o: Unit, cells: Array, center: Variant = null, bonus := 0) -> int:
 	var found := 0
+	if o.faction and o.faction not in swept:
+		swept[o.faction] = {}
 	for c: Vector2i in cells:
+		if o.faction and c != o.cell:
+			swept[o.faction][c] = turns_begun
 		if c != o.cell and inspect(o, c, center, bonus):
 			o.noticed[c] = true
 			found += 1
@@ -3931,10 +3965,95 @@ func in_range(o: Unit, t: Unit) -> int:
 
 
 # Side f made out foe t at c: where its units will look for it once it's out of sight (AI._hunt()).
-func sighted(f: Faction, t: Unit, c: Vector2i) -> void:
+# `moves`: how far it makes the foe's walk, when it could read that (0: it couldn't).
+func sighted(f: Faction, t: Unit, c: Vector2i, moves := 0.0) -> void:
 	if f not in sightings:
 		sightings[f] = {}
 	sightings[f][t] = c
+	if f not in sighted_when:
+		sighted_when[f] = {}
+	sighted_when[f][t] = {since = turns_begun, moves = moves}
+
+
+# How many whole rounds ago (turns of all the sides) turn `since` of turns_begun was.
+func rounds_since(since: int) -> int:
+	var sides := {}
+	for u: Unit in units.values():
+		sides[u.faction] = true
+	return ceili((turns_begun - since) / float(maxi(sides.size(), 1)))
+
+
+# The tiles foe t could have reached from `from` on `budget` movement, as viewer o can reckon it:
+# ground o makes out (known_ground(); the rest plain), every step priced by stride() as t's walk would be
+# paid (its movement effects, Peel), no one standing in its way, within `budget` tiles as the crow flies
+# (walk() goes in lines). Includes `from`.
+func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vector2i]:
+	var best := {from: 0.0}
+	var bags := {from: {}}
+	var grounds := {}
+	var ground_of := func(c: Vector2i) -> Terrain:
+		if c not in grounds:
+			grounds[c] = known_ground(o, c)
+		return grounds[c]
+	var open: Array[Vector2i] = [from]
+	var done := {}
+	while not open.is_empty():
+		var at: Vector2i = open[0]
+		for c in open:
+			if best[c] < best[at]:
+				at = c
+		open.erase(at)
+		if at in done:
+			continue
+		done[at] = true
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				var c := at + Vector2i(dx, dy)
+				if (dx == 0 and dy == 0) or c in done or not on_map(c):
+					continue
+				var bag: Dictionary = bags[at].duplicate()
+				var g: float = best[at] + stride(t, at, c, ground_of.call(at), ground_of.call(c), bag, null, true)
+				if g <= budget + 0.0001 and g < best.get(c, INF) - 0.000001:
+					best[c] = g
+					bags[c] = bag
+					if c not in open:
+						open.append(c)
+	var out: Array[Vector2i] = []
+	for c: Vector2i in best:
+		if Vector2(c).distance_to(Vector2(from)) <= budget + 0.0001:  # a walk goes in a line: ceil(distance) tiles, not a diagonal's two
+			out.append(c)
+	return out
+
+
+# A unit took a blow in a cast from a foe it can't place: its side knows which side of it the blow landed
+# on (the hit's tags: flank, rear; else front) and how far that skill reaches, not the tile: every tile
+# on that side within the skill's reach is where it could have come from. Kept for HIT_TURNS of turns.
+func _note_attack(u: Unit, blow: Dictionary) -> void:
+	var by: Unit = blow.by
+	var cast := resolving()
+	if not u.faction or _casting == 0 or not cast or cast.caster != by or not is_instance_valid(by) or by == u or Faction.friends(by.faction, u.faction) or read(u, by).located():
+		return
+	var side: StringName = &"rear" if &"rear" in blow.tags else (&"flank" if &"flank" in blow.tags else &"front")
+	var reach := skill_range(by, cast.skill, u)
+	var tiles: Array[Vector2i] = []
+	for c in _box(u.cell, ceili(reach)):
+		if c != u.cell and Vector2(c).distance_to(Vector2(u.cell)) <= reach + 0.0001 and u.side_of(c) == side:
+			tiles.append(c)
+	if not attacks.has(u.faction):
+		attacks[u.faction] = []
+	attacks[u.faction].append({tiles = tiles, since = turns_begun})
+
+
+# The attacks on side f in the last HIT_TURNS turns that it couldn't place the attacker of.
+func attacks_on(f: Faction) -> Array:
+	var kept: Array = attacks.get(f, []).filter(func(a: Dictionary): return turns_begun - a.since <= HIT_TURNS)
+	attacks[f] = kept
+	return kept
+
+
+# Whether one of f's units searched c within SWEEP_TURNS of turns.
+func swept_lately(f: Faction, c: Vector2i) -> bool:
+	return turns_begun - swept.get(f, {}).get(c, -999) <= SWEEP_TURNS
 
 
 # Where side f last made out each foe still standing (forgetting the fallen).
@@ -4025,7 +4144,7 @@ func _new_pocket(kind: StringName, by: Unit, skill: Skill, origin: Vector2i) -> 
 # turns infinite), its count (rift_turns()) starting once it stops; cast unchanneled, the count starts
 # at once. Demons wait there - a formation at the rift's difficulty, at the caster's level.
 func open_rift(by: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
-	var r := by.rank(skill)
+	var r := by.mods(skill).irank(by.rank(skill), &"rank_impact")  # its difficulty and its count are what rank does
 	if not can_rift(by, skill, c):
 		return false
 	var p := _new_pocket(&"domain", by, skill, c)
@@ -4145,7 +4264,7 @@ func close_rift(by: Unit) -> bool:
 	by.channel = null
 	for p in pockets:
 		if p.by == by and p.kind == &"domain" and p.turns < 0:
-			p.turns = rift_turns(by.rank(s) if s else 1)
+			p.turns = rift_turns(by.mods(s).irank(by.rank(s), &"rank_impact") if s else 1)
 			for m in p.marks:
 				m.turns = p.turns
 	return true
@@ -4698,7 +4817,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	var blow := tags.duplicate()
 	if (imbued or elemental) and element not in blow:
 		blow.append(element)
-	var mental := maxi(maxi(caster.mod(&"intelligence"), caster.mod(&"wisdom")), caster.mod(&"charisma"))
+	var mental := m.stat(maxi(maxi(caster.mod(&"intelligence"), caster.mod(&"wisdom")), caster.mod(&"charisma")), &"stat_impact")  # the element's bonus: stat impact
 	var zeal := passion(caster, t)  # Impassioned Fighter
 	var landed := 0
 	var gross := 0

@@ -23,6 +23,7 @@ const RING := preload("res://Items/red_spinel_ring.tres")  # every player starts
 @onready var starter_name: LineEdit = %Name
 @onready var level: SpinBox = %Level
 @onready var play: Button = %Play
+@onready var wipe: Button = %Delete  # New game: clears the save, after a second press
 @onready var resume: Button = %Continue  # the saved starter, as it was left (Save)
 
 
@@ -39,6 +40,7 @@ func _ready() -> void:
 	starter_name.text_submitted.connect(_submit.unbind(1))
 	play.pressed.connect(_play)
 	resume.pressed.connect(_continue)
+	wipe.pressed.connect(_delete)
 	Save.load_once()
 	_show_save()
 	side.pick(default_side)
@@ -72,6 +74,8 @@ func chosen_name() -> String:
 
 # Continue is offered when there's a saved starter: "Shrike, Adventurer, level 3".
 func _show_save() -> void:
+	wipe.text = "New game: delete the save"
+	wipe.visible = not Game.hero.is_empty() or FileAccess.file_exists(Save.PATH)
 	resume.visible = not Game.hero.is_empty()
 	if resume.visible:
 		resume.text = "Continue: %s, %s, level %d" % [Game.hero.name, Game.hero.role.name, Game.level]
@@ -80,6 +84,15 @@ func _show_save() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		Save.save()
+
+
+# Delete save: the first press asks, the second clears the save and Game (a new game).
+func _delete() -> void:
+	if wipe.text.begins_with("Sure"):
+		Save.erase()
+		_show_save()
+	else:
+		wipe.text = "Sure? Press again to delete the save"
 
 
 # The saved starter again, with its level, outfit, hearts and the stash as they were.
