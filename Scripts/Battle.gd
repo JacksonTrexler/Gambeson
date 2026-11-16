@@ -2303,6 +2303,23 @@ func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
 	return out if out.hi > 0 or not out.notes.is_empty() or out.spill != 0.0 else {}
 
 
+# What f reads with u standing on c, where it could walk to, rather than where it is (foresee() from there: the AI
+# lining up a shove), u put back where it was; null if c is taken or u is sharing a tile. A planning question: nothing
+# is felt, spoken or sprung on the way.
+func standing(u: Unit, c: Vector2i, f: Callable) -> Variant:
+	var home := u.cell
+	if c == home:
+		return f.call()
+	if inside.has(u) or unit_at(c) or not on_map(c):
+		return null
+	var steadied: Variant = u.steadied
+	move(u, c)
+	var out: Variant = f.call()
+	move(u, home)
+	u.steadied = steadied
+	return out
+
+
 const PUSH := 0.5  # riders a tile a forced move takes its foe is worth (foresee_drive(): the AI weighs a rider at AI.RIDER)
 const VERBS := {&"shove": "Shoves it", &"fear": "Frightens it", &"entrance": "Draws it"}  # a forced-move effect's line in the forecast
 

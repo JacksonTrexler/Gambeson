@@ -139,6 +139,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			return log
 	if posture == &"" and (_steady(b, u, reads, log) or _starve(b, u, reads, log)):
 		return log
+	if temper != &"stoic" and not rooted and _emboldened(u, reads):
+		_line_up(b, u, reads, log)  # to the tile its shoves tell most from, if there is one
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
@@ -211,7 +213,7 @@ static func _tend(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 static func _last_blows(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
 	if _save_self(b, u, log):
 		return
-	var target := _best_target(u, reads)
+	var target := _best_target(u, _reachable(b, u, reads))
 	if target and not Battle.next_to(u.cell, reads[target].cell) and not _rooted(b, u):
 		log.append("%s closes in %s" % [u.name, b.travel(u, _approach(b, u, target, reads))])
 	var near := {}
@@ -220,6 +222,25 @@ static func _last_blows(b: Battle, u: Unit, reads: Dictionary, log: Array[String
 			near[o] = b.read(u, o)
 	while u.dbno and (u.dbno.spare() != 0 or u.dbno.left <= 1) and _strike(b, u, near, log, true):
 		pass
+
+
+# The foes it could walk up to this round, of reads: the ones beside it, and those with a tile beside them its walk (as
+# it expects it) ends on (_approach()). A Grudge unit makes its blow this round or dies of it, so it goes for what it
+# can reach rather than the foe it would otherwise want most (the nearest, the strongest). With none in reach: all of them.
+static func _reachable(b: Battle, u: Unit, reads: Dictionary) -> Dictionary:
+	var out := {}
+	for t: Unit in reads:
+		var r: Read = reads[t]
+		if not t.is_alive() or not _foe(u, r) or not r.located():
+			continue
+		if Battle.next_to(u.cell, r.cell):
+			out[t] = r
+			continue
+		var c := _approach(b, u, t, reads)
+		var path: Array = b.walk(u, c, true).path
+		if not path.is_empty() and path[-1] == c:
+			out[t] = r
+	return reads if out.is_empty() else out
 
 
 # Downed and acting (Grudge) with a heal that, by what it declares it restores, would bring it back above 0
@@ -279,7 +300,7 @@ static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 	var safe := 0  # beyond the farthest reach among them it is out of all; short of that, room to back off wins
 	for g in owing:
 		safe = maxi(safe, ceili(g.stat(&"movement")) + 2)
-	if _away(b, u, from, safe):
+	if _away(b, u, from, safe, reads):
 		log.append("%s keeps from %s's reach, starving it of a blow" % [u.name, owing[0].name])
 		return true
 	return false
@@ -430,7 +451,7 @@ static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 		var r: Read = reads[o]
 		if o.is_alive() and not o.stopped() and r.located() and r.attitude(u) == &"avoid" and Command.tiles(r.cell, u.cell) <= CRAVEN_REACH:
 			scary.append(r.cell)
-	if scary.is_empty() or not _away(b, u, scary):
+	if scary.is_empty() or not _away(b, u, scary, 0, reads):
 		return false
 	log.append("%s backs away" % u.name)
 	return true
@@ -492,6 +513,67 @@ static func _wear(u: Unit, s: Skill) -> float:
 # to take it off, so these weigh it as a share): of two skills that do alike, the fresher is picked.
 static func _fresh(u: Unit, s: Skill) -> float:
 	return maxf(1.0 / maxf(u.exhaustion.rate(s), 1.0), 1.0 - WORN)
+
+
+# What s's blow on t would add beyond its damage, from where u stands, in score()'s terms: the riders (Kick's
+# soaking, a shove's tiles), the slam of a push stopped short, the unit struck if it is its side's against it.
+static func _driven(b: Battle, u: Unit, s: Skill, t: Unit) -> float:
+	var more := b.foresee(u, s, t)
+	return 0.0 if more.is_empty() else RIDER * more.riders + (more.lo + more.hi) / 2.0 + more.spill
+
+
+# Before it strikes, it walks to the tile where a blow it holds does the most beyond its damage (_driven(): a shove
+# that ends against a wall slams, one into the open only moves it, one into its own side costs it), if that is a
+# tile's drive (Battle.PUSH x RIDER) better than where it stands - or, with nothing in reach from here, than the
+# poorest tile in reach of a foe it could walk to: what every tile alike gives (a rider that needs no lining up)
+# cancels out. Read through Battle.foresee() from each tile (Battle.standing()), so a behaviour's own foresee
+# (Kick's ground, Displace) and a shove effect are asked alike, and any skill that tells more from one side joins.
+# Only a tile it can walk to at the price route() puts on it (no more than the movement it has: not through
+# ground it dreads) and still pay its blow from. True if it walked.
+static func _line_up(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	var skills := u.foe_actives(true).filter(func(s: Skill): return not s.behaviours.is_empty() or s.effects.any(func(e: Effect): return Battle.DRIVES.has(StringName(e.stat))))
+	var foes: Array[Unit] = []
+	for t: Unit in reads:
+		if t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located():
+			foes.append(t)
+	if skills.is_empty() or foes.is_empty() or u.move_left() < 1.0:
+		return false
+	var state := b.rng.state  # planning mustn't use up the battle's rng
+	var worth := {}  # tile -> [the most a blow from it adds, that skill]
+	for c in b.cells_near(u.cell, ceili(u.move_left())):
+		var best: Variant = b.standing(u, c, func() -> Variant:
+			var top: Variant = null
+			for s: Skill in skills:
+				for t in foes:
+					if Vector2(u.cell).distance_to(Vector2(t.cell)) <= b.skill_range(u, s, t) + 0.0001 and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
+						var v := _driven(b, u, s, t)
+						if top == null or v > top[0]:
+							top = [v, s]
+			return top)
+		if best != null:
+			worth[c] = best
+	if worth.is_empty():
+		b.rng.state = state
+		return false
+	var base: float = worth[u.cell][0] if u.cell in worth else worth.values().map(func(w: Array): return w[0]).min()
+	var tiles := worth.keys()
+	tiles.sort_custom(func(x: Vector2i, y: Vector2i): return worth[x][0] > worth[y][0] or (worth[x][0] == worth[y][0] and Command.tiles(u.cell, x) < Command.tiles(u.cell, y)))
+	b.rng.state = state
+	for c: Vector2i in tiles:
+		if c == u.cell or worth[c][0] - base < Battle.PUSH * RIDER:
+			return false
+		var walk := b.walk(u, c, true)
+		if walk.path.is_empty() or walk.path[-1] != c:
+			continue
+		var price := {&"wary": true}
+		b.route(u, c, b.line(u.cell, c, u.luck, u), price)
+		var steps: float = walk.costs.reduce(func(a: float, x: float): return a + x, 0.0)
+		b.rng.state = state
+		if price.cost > u.move_left() + 0.0001 or not u.can_afford_after(worth[c][1], steps):
+			continue
+		log.append("%s lines up %s %s" % [u.name, worth[c][1].name, b.travel(u, c)])
+		return true
+	return false
 
 
 # Each reaction moment a blow of s on t would bring that a passive of t's side u can make out (Read.skills,
@@ -893,42 +975,85 @@ static func _keep_away(b: Battle, u: Unit, reads: Dictionary, log: Array[String]
 	for o: Unit in reads:
 		if o.is_alive() and _foe(u, reads[o]):
 			foes.append(reads[o].cell)
-	if not foes.is_empty() and _away(b, u, foes):
+	if not foes.is_empty() and _away(b, u, foes, 0, reads):
 		log.append("%s keeps away" % u.name)
 
 
 # Walks to the tile it can reach (as it expects the walk to go) furthest from the nearest of `from` (_retreat()).
 # False if there's nowhere better.
-static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0) -> bool:
-	var best := _retreat(b, u, from, safe)
+static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}) -> bool:
+	var best := _retreat(b, u, from, safe, reads)
 	return best != u.cell and not b.travel(u, best).is_empty()
 
 
-# The tile u would back off to: the one it can reach furthest from the nearest of `from`. `safe` > 0: any
-# tile that far counts as far enough, and of those the one with the most room to back off again next round
-# wins (_room(): a corner is a tile `from` need only close on). Where it stands if nowhere is better.
-static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0) -> Vector2i:
+# The tile u would back off to, by (in order): the least the foes it reads could drive it into (_shoved(), `reads`),
+# the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
+# on it, as _approach() does: dread of ground it knows or suspects, marks), then room to back off again. `safe` > 0:
+# any tile that far counts as far enough, and of those the one with the most room to back off again next round wins (_room(): a
+# corner is a tile `from` need only close on). Where it stands if nowhere is better.
+static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}) -> Vector2i:
 	var gap := func(c: Vector2i) -> int:
 		return from.map(func(x: Vector2i): return Command.tiles(x, c)).min()
-	var key := func(c: Vector2i) -> Array:
+	var key := func(c: Vector2i, extra: float) -> Array:
 		var g: int = gap.call(c)
-		return [g if safe <= 0 else mini(g, safe), 0 if safe <= 0 else _room(b, u, c, gap)]
+		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap)]
 	var best := u.cell
-	var best_key: Array = key.call(best)
+	var best_key: Array = key.call(best, 0.0)
+	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
+	var seen := {}
 	var reach := ceili(u.move_left())
 	for dx in range(-reach, reach + 1):
 		for dy in range(-reach, reach + 1):
 			var c := u.cell + Vector2i(dx, dy)
 			if c == u.cell or not b.on_map(c):
 				continue
-			var path: Array = b.walk(u, c, true).path
+			var walk := b.walk(u, c, true)
+			var path: Array = walk.path
 			if path.is_empty():
 				continue
-			var k: Array = key.call(path[-1])
-			if k[0] > best_key[0] or (k[0] == best_key[0] and k[1] > best_key[1]):
+			if path[-1] in seen:
+				continue  # several tiles' walks end on the same one
+			seen[path[-1]] = true
+			var price := {&"wary": true}
+			b.route(u, path[-1], b.line(u.cell, path[-1], u.luck, u), price)
+			var k: Array = key.call(path[-1], price.cost - walk.costs.reduce(func(a: float, x: float): return a + x, 0.0))
+			if _later(k, best_key):
 				best = path[-1]
 				best_key = k
+	b.rng.state = state
 	return best
+
+
+# Whether key a beats key b: the first place they differ, a's is greater.
+static func _later(a: Array, b: Array) -> bool:
+	for i in a.size():
+		if a[i] != b[i]:
+			return a[i] > b[i]
+	return false
+
+
+# What the foes u reads could do to it at c beyond their blow by driving it, with the blows it has read of theirs
+# (Read.skills): the HP a slam would take off it, and the unit it would be driven into if that is its side's (what
+# Battle.foresee() calls lo, hi and spill), by the worst blow of a foe that could walk up beside c, on the side it
+# comes from (squarely: a diagonal's tile between them is the kick's ground). A forced move is read
+# where it would end (Battle.course()): a tile against a wall or a unit is dearer than one in the open.
+static func _shoved(b: Battle, u: Unit, c: Vector2i, reads: Dictionary) -> float:
+	var worst := 0.0
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if not o.is_alive() or o.helpless() or not _foe(u, r) or not r.located():
+			continue
+		var away := Vector2(o.cell - c)
+		for s in r.skills:
+			if not s.hostile or s.on_tile() or not (not s.behaviours.is_empty() or s.effects.any(func(e: Effect): return Battle.DRIVES.has(StringName(e.stat)))):
+				continue
+			var at := o.cell if away.length() < 1.5 and (away.x == 0.0 or away.y == 0.0) else c + (Vector2i(signi(roundi(away.x)), 0) if absf(away.x) >= absf(away.y) else Vector2i(0, signi(roundi(away.y))))  # square beside it, from the way it comes
+			if at != o.cell and (not b.on_map(at) or b.unit_at(at) or Vector2(at).distance_to(Vector2(o.cell)) > ceili(o.stat(&"movement")) + 0.0001):
+				continue  # it can't get to where it would shove from
+			var more: Variant = b.standing(o, at, func(): return b.standing(u, c, func(): return b.foresee(o, s, u)))
+			if more != null and not more.is_empty():
+				worst = maxf(worst, (more.lo + more.hi) / 2.0 + maxf(more.spill, 0.0))
+	return worst
 
 
 # How many open tiles within u's walk of c lie further from `from` than c does (gap: tile -> its distance):
@@ -962,7 +1087,7 @@ static func _recover(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 		if o.is_alive() and _foe(u, reads[o]):
 			foes.append(reads[o].cell)
 	var near := foes.any(func(c: Vector2i): return Command.tiles(c, u.cell) <= 1)
-	if near and (b.on_lattice(u.cell) or not _away(b, u, foes)):
+	if near and (b.on_lattice(u.cell) or not _away(b, u, foes, 0, reads)):
 		while _strike(b, u, reads, log):
 			pass
 

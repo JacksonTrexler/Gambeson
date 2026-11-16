@@ -291,6 +291,72 @@ func test_kick_spill_and_drive() -> void:
 	ok(short.notes[0].begins_with("Drives it 1 tile back to (5, 3), then slams") and short.lo == Battle.SLAM and short.spill == -float(Battle.SLAM), "stopped by an ally after 1 tile: it slams both (%s)" % [short])
 
 
+# docs/plans/ai-walks.md. Lining up a shove: it walks to the tile its Kick tells most from (a foe's own side behind it,
+# so the slam lands on them), by Battle.foresee() from each tile; with nothing to gain, or it would cost its own side, it stays.
+func test_lines_up_a_shove() -> void:
+	v(1).learned.append(slot(kick, 2))
+	roomy(v(1))
+	v(1).strength = 40
+	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(5, 4), v(4): Vector2i(5, 5)})
+	v(4).faction = nemes  # the foe's own side below it: a kick from above slams them
+	v(1).refresh()
+	soak(v(3), 300)
+	var log: Array[String] = []
+	var reads := {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	ok(AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(5, 3), "from where it can drive it into the foe behind it (%s, %s)" % [v(1).cell, log])
+	ok(b.foresee(v(1), kick, v(3)).hi == Battle.SLAM, "which slams them (%s)" % [b.foresee(v(1), kick, v(3))])
+	v(4).faction = lancin  # its own side behind the foe now: that tile costs it
+	b.move(v(1), Vector2i(4, 4))
+	v(1).refresh()
+	reads = {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	ok(not AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(4, 4), "into its own side: it stays where it is (%s)" % [v(1).cell])
+	b.move(v(4), Vector2i(9, 0))
+	reads = {v(3): b.read(v(1), v(3))}
+	ok(not AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(4, 4), "nothing to line up in the open: it stays")
+
+
+# docs/plans/ai-walks.md. Its retreat weighs being driven: a tile on the map's edge is one a foe's Kick slams it against
+# (Battle.course() through foresee()), so with the blow read it stops a tile short; and it prices the way there by
+# route(), so it won't back onto a trap it knows of when another tile is as far.
+func test_retreat_weighs_shoves_and_price() -> void:
+	v(3).learned.append(slot(kick, 2))
+	stage(lancin, {v(1): Vector2i(6, 3), v(3): Vector2i(5, 3)})
+	v(1).refresh()
+	sharp(v(1))
+	var from: Array[Vector2i] = [Vector2i(5, 3)]
+	var reads := {v(3): b.read(v(1), v(3))}
+	ok(kick in reads[v(3)].skills, "it has read the foe's Kick")
+	var edge := Vector2i(9, 3)
+	ok(AI._shoved(b, v(1), edge, reads) > 0.0 and AI._shoved(b, v(1), Vector2i(8, 3), reads) == 0.0, "the edge is a wall to be slammed into (%.1f), a tile in is not" % AI._shoved(b, v(1), edge, reads))
+	var plain := AI._retreat(b, v(1), from)
+	var wary := AI._retreat(b, v(1), from, 0, reads)
+	ok(AI._shoved(b, v(1), plain, reads) > 0.0 and AI._shoved(b, v(1), wary, reads) == 0.0, "the furthest tile %s is on the edge; with the Kick read it takes %s" % [plain, wary])
+	var trap: Terrain = load("res://Terrain/trap.tres")
+	b.paint(plain, trap)
+	var again := AI._retreat(b, v(1), from)
+	ok(again != plain and again != Vector2i(6, 3), "a trap on the furthest tile: it backs off to another (%s, not %s)" % [again, plain])
+
+
+# docs/plans/ai-walks.md. A Downed Grudge unit makes its blow this round or dies of it: it goes for the foe it can
+# walk up to, not the one it would otherwise want most (the strongest, here, out of its reach).
+func test_grudge_goes_for_what_it_reaches() -> void:
+	var g := grudged(Vector2i(2, 3))
+	roomy(g)
+	g.strategy = [&"strongest"]
+	g.refresh()
+	v(4).faction = lancin
+	b.move(v(4), Vector2i(9, 7))
+	v(4).level = 20
+	sharp(g)
+	b.end_turn()  # its side's turn
+	var reads := {v(1): b.read(g, v(1)), v(4): b.read(g, v(4))}
+	ok(AI._best_target(g, reads) == v(4), "of the two it would want the strong one, far off")
+	ok(AI._best_target(g, AI._reachable(b, g, reads)) == v(1), "but it can only walk up to the near one this round")
+	var log: Array[String] = []
+	AI._last_blows(b, g, reads, log)
+	ok(Battle.next_to(g.cell, v(1).cell), "and it closes with it (%s at %s)" % [log, g.cell])
+
+
 # docs/plans/ai-prices.md. Starving a Grudge unit is worth a kill shared by the allies in its reach, nothing
 # when it dies of its rounds anyway, and is weighed against the strikes it gives up.
 func test_starve_worth() -> void:
