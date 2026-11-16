@@ -69,3 +69,8 @@ func test_ai_stretches() -> void:
 	ok(move.behaviours[0].strides(b.cast_of(v(1), move, v(1), 1, false)) == 2, "paid with Stamina: 2")
 	log = AI.act(b, v(1))
 	ok(log.any(func(l: String): return "uses Move" in l) and v(3).hp < 900, "with Stamina it closes the gap and strikes (%s)" % [log])
+	stage(lancin, {v(1): cell, v(3): cell + Vector2i(mv + 3, 0)})
+	v(1).refresh()
+	v(1).set_store(pool, v(1).pools()[pool])
+	v(1).ap = [AP.new(float(mv), &"")]  # enough to cast Move, and to reach with it, but not to walk the gap and strike after
+	ok(not AI.act(b, v(1)).any(func(l: String): return "uses Move" in l), "no AP to spare for the blow after it: it doesn't")

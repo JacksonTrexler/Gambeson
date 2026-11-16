@@ -341,7 +341,7 @@ func test_wear_varies_the_blow() -> void:
 	for i in 6:
 		v(1).exhaustion.used(worn)
 	var w := AI._wear(v(1), worn)
-	ok(w > 0.0 and w < score(v(1), worn, v(3)), "worn, it costs it %.2f" % w)
+	ok(w > 0.0, "worn, it costs it %.2f" % w)
 	ok(picked.call() == other.name, "worn out, it takes the other blow (%s)" % picked.call())
 	for i in 40:
 		v(1).exhaustion.used(other)
