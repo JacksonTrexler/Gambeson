@@ -35,6 +35,8 @@ var _chunks := {}  # chunk -> true: generated
 var _water := FastNoiseLite.new()
 var _streams := FastNoiseLite.new()
 var _brush := FastNoiseLite.new()
+const TALLY_LEFT := 80.0  # the tally spans these x (design pixels): right of the left panel, left of the turn clock
+const TALLY_RIGHT := 226.0
 var _tally: Label
 
 
@@ -66,7 +68,10 @@ func _ready() -> void:
 	battle.turn_changed.connect(_on_turn)
 	_tally = Label.new()
 	_tally.add_theme_font_size_override(&"font_size", 7)
-	_tally.position = Vector2(170, 2)
+	_tally.position = Vector2(TALLY_LEFT, 2)  # right-aligned to end clear of the HUD's turn clock (top middle, centred on 240)
+	_tally.size = Vector2(TALLY_RIGHT - TALLY_LEFT, 11)
+	_tally.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_tally.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var layer := CanvasLayer.new()
 	layer.layer = 5
 	layer.add_child(_tally)

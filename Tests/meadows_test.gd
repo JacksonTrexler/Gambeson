@@ -27,6 +27,7 @@ func test_plane() -> void:
 	var mb: Battle = m.get_node("Battle")
 	var md: Meadows = mb.get_node("Meadows")
 	ok(mb.on_map(Vector2i.ZERO) and mb.on_map(Vector2i(12, 12)) and not mb.on_map(Vector2i(60, 60)), "generated around the party, not beyond")
+	ok(md._tally.get_rect().end.x <= 240.0 - 8.0, "the tally ends left of the HUD's turn clock (top middle, a two-digit number is ~12 wide)")
 	ok(mb.terrain(Vector2i.ZERO).name == "Grass" and mb.depth(Vector2i(1, 0)) == 0, "the landing kept dry")
 	var kinds := {}
 	for x in range(-150, 150, 3):
