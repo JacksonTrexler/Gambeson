@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/deathlust.gd" id="b_deathlust"]
+
+[sub_resource type="Resource" id="Behaviour_deathlust"]
+script = ExtResource("b_deathlust")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Deathlust"
+glyph = "Dl"
+passive = true
+tags = Array[StringName]([&"martial"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_deathlust")])
