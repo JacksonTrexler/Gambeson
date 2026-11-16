@@ -383,7 +383,7 @@ func _rider(n: int) -> void:
 		t.v(3).max_hp *= 4  # sturdy: a fight of several rounds, the cheap kill and the slam each in turn
 		t.v(3).hp = t.v(3).max_hp
 		t.v(4).max_hp *= 2
-		t.v(4).hp = t.v(4).max_hp * 3 / 4
+		t.v(4).hp = t.v(4).max_hp / 2
 		var done := ROUNDS
 		for r in ROUNDS:
 			t.turn([t.v(1), t.v(2)])
