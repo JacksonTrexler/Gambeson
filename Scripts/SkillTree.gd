@@ -43,6 +43,25 @@ func _ready() -> void:
 	grid.picked.connect(pick)
 	grid.chose.connect(choose)
 	detail.acted.connect(_act)
+	wheel.lifted.connect(_step_aside)
+	grid.lifted.connect(_step_aside)
+
+
+# A skill dragged out toward the hotbar (equipping it): the screen hides while the drag lasts, so the bar
+# underneath takes the drop, and comes back as it ends showing what's equipped now.
+var _aside := false
+
+
+func _step_aside() -> void:
+	_aside = true
+	hide.call_deferred()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END and _aside:
+		_aside = false
+		show()
+		fill(_title, can_spend)
 
 
 func open(u: Unit, title: String, spend: bool) -> void:
@@ -103,12 +122,14 @@ func fill(title: String, spend: bool) -> void:
 	level_button.disabled = unit.level >= Unit.MAX_LEVEL
 
 
-# Trees grow from the bottom: open on tier 0, once the scroll box has taken the tree's new height (its
-# bar's range settles a frame or two later).
+# Trees grow from the bottom: open on the lowest tier that holds a skill (SkillGrid.floor_y()), at the
+# bottom of the view, once the scroll box has taken the tree's new height (its bar's range settles a
+# frame or two later).
 func _scroll_to_bottom() -> void:
 	for i in 2:
 		await get_tree().process_frame
-	scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
+	var most := int(scroll.get_v_scroll_bar().max_value)
+	scroll.scroll_vertical = clampi(ceili(grid.floor_y() - scroll.size.y), 0, most)
 
 
 # A tab per part of its trees, like a browser's: each in its tree's colour (general trees by category),

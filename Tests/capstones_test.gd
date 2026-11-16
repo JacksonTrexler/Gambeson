@@ -22,7 +22,7 @@ func make(role: Role) -> Unit:
 	var u := b.starter({faction = lancin, role = role, name = "Wren"})
 	b.get_node("Units").add_child(u)
 	u.skill_points = 20
-	return u
+	return roomy(u, 8)
 
 
 func test_capstone_table() -> void:
@@ -40,6 +40,7 @@ func test_capstone_table() -> void:
 			for r in role.roots:
 				for s in r.skills():
 					if s != cap and not s.stub and u.tier(s) < u.tier(cap):
+						roomy(u)
 						u.learned.append(slot(s))
 			ok(u.missing(cap) == "" and u.unlock(cap), "%s; learned midway up its root (%s, tier %d)" % [who, u.missing(cap), u.tier(cap)])
 			var guest: SkillTab

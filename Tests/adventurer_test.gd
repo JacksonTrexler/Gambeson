@@ -42,7 +42,7 @@ func test_starting_skills() -> void:
 	var u := shrike()
 	ok([strike, field_experience, working_knowledge, everyman].all(func(s: Skill): return u.rank(s) == 1),
 			"starts with Strike, Field Experience, Working Knowledge and Everyman")
-	ok(u.hotbar[0] == strike and u.hotbar.count(null) == u.hotbar.size() - 1, "only Strike goes on the bar")
+	ok(same(u.hotbar, [strike, everyman, working_knowledge, field_experience, null]), "Strike from the left, its starting passives from the bottom (the last slot, its clover slot, holds no passive)")
 	var offered: Array = u.options()[&"class"]
 	ok([hex, rejuvinate, sola, nadira, astera, igna, aetha, terestera, hydera, wary, snare, darkvision].all(func(s): return s in offered),
 			"on offer: Hex and Rejuvinate at the core, the starter spells, and the first skill of each path")
@@ -83,6 +83,7 @@ func test_ranks() -> void:
 func test_starter_spells_on_allies() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3), v(3): Vector2i(8, 6)})
+	roomy(u)
 	u.learned.append(slot(sola))
 	u.refresh()
 	ok(sola.for_allies() and sola.for_foes() and not sola.hostile, "Sola works on allies and foes alike")
@@ -104,6 +105,7 @@ func test_starter_spells_on_allies() -> void:
 func test_starter_spells_on_foes() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	roomy(u)
 	u.learned.append(slot(sola))
 	v(3).max_hp = 200
 	v(3).heal(200)
@@ -127,6 +129,7 @@ func test_starter_spells_on_foes() -> void:
 func test_defense_spells() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3)})
+	roomy(u)
 	u.learned.append(slot(terestera, 2))
 	u.learned.append(slot(hydera, 1))
 	u.refresh()
@@ -142,6 +145,7 @@ func test_defense_spells() -> void:
 func test_shadow_and_luck_spells() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3)})
+	roomy(u)
 	u.learned.append(slot(nadira))
 	u.learned.append(slot(astera, 2))
 	u.refresh()
@@ -153,6 +157,7 @@ func test_shadow_and_luck_spells() -> void:
 
 func test_working_knowledge() -> void:
 	var u := shrike()
+	roomy(u)
 	u.learned.append(slot(hex))
 	v(1).learned.append(slot(hex))
 	ok(u.energy_tags() == [&"martial", &"magical", &"specialist"], "Field Experience, Working Knowledge, Everyman")
@@ -177,22 +182,26 @@ func test_working_knowledge() -> void:
 func test_typed_slots() -> void:
 	var u := shrike()
 	u.skill_points = 20
+	for i in [1, 2, 3]:
+		u.bar_clear(i)  # its starting passives off the bar, for room
 	for s in [sola, nadira, astera]:
 		u.unlock(s)
-	ok(same(u.hotbar, [strike, sola, nadira, astera, null]), "spells fill the free slots (the fifth, a clover, needs luck)")
-	ok(u.unlock(magic_slot) and u.granted_slots() == [&"magical"], "the capstone grants a Magic slot")
+	ok(same(u.hotbar, [strike, sola, nadira, astera, null]), "spells fill the free slots from the left (the fifth, a clover, needs luck)")
+	u.bar_clear(3)  # Astera off: room for the capstone
+	ok(u.unlock(magic_slot) and u.hotbar[3] == magic_slot and u.granted_slots() == [&"magical"], "the capstone, a passive, takes the last free sure slot and grants a Magic slot")
 	ok(u.slot_kinds() == [&"", &"", &"", &"", &"magical", &"clover"] and u.clover() == 5, "after the sure slots, before the clover one")
-	ok(same(u.hotbar, [strike, sola, nadira, astera, null, null]), "nothing moved")
-	ok(not u.bar_place(strike, 4) and u.bar_place(sola, 4), "it holds only magical skills")
+	ok(same(u.hotbar, [strike, sola, nadira, magic_slot, astera, null]), "nothing moved; auto-equip fills the new slot (Astera)")
+	ok(not u.bar_place(strike, 4) and u.bar_place(sola, 4), "it holds only magical skills (Sola and Astera swap)")
+	u.bar_clear(1)
 	ok(u.unlock(terestera) and u.hotbar[1] == terestera, "the next spell takes the free sure slot first")
 	u.level_up()
 	u.level_up()
 	u.level_up()
-	ok(same(u.hotbar, [strike, terestera, nadira, astera, null, sola]), "level 4: a plain fifth slot; the Magic slot moves along, keeping Sola")
+	ok(same(u.hotbar, [strike, terestera, nadira, magic_slot, null, sola]), "level 4: a plain fifth slot; the Magic slot moves along, keeping Sola")
 	u.level_up()
-	ok(same(u.hotbar, [strike, terestera, nadira, astera, null, sola, null]) and u.clover() == 6, "level 5: the clover slot comes back, last")
-	ok(u.bar_place(nadira, 5) and same(u.hotbar, [strike, terestera, sola, astera, null, nadira, null]), "a swap: Sola fits the sure slot")
-	ok(u.bar_place(nadira, 0) and same(u.hotbar, [nadira, terestera, sola, astera, null, null, null]), "...Strike doesn't fit the Magic slot: off the bar")
+	ok(same(u.hotbar, [strike, terestera, nadira, magic_slot, astera, sola, null]) and u.clover() == 6, "level 5: the clover slot comes back, last; auto-equip fills the free sure slot")
+	ok(u.bar_place(nadira, 5) and same(u.hotbar, [strike, terestera, sola, magic_slot, astera, nadira, null]), "a swap: Sola fits the sure slot")
+	ok(u.bar_place(nadira, 0) and same(u.hotbar, [nadira, terestera, sola, magic_slot, astera, null, null]), "...Strike doesn't fit the Magic slot: off the bar")
 	ok("Skill slots: +1 Magic" in magic_slot.describe(), "described (%s)" % magic_slot.describe())
 	u.free()
 
@@ -235,13 +244,14 @@ func test_tiers() -> void:
 func ember() -> Unit:
 	var u := b.starter({faction = lancin, role = wizard, name = "Ember"})
 	b.get_node("Units").add_child(u)
-	return u
+	return roomy(u)
 
 
 func test_mana_casting() -> void:
 	var u := ember()
 	ok(u.rank(mana_skill) == 1 and mana_skill in wizard.options and u.store(mana) == 10 and u.opened(mana) == 1,
 			"a Wizard starts with Mana I and 10 mana")
+	roomy(u)
 	u.learned.append(slot(sola, 2))
 	ok(u.price(sola) == 4 and u.cost_from(sola, &"energy") == 4 and u.cost_from(sola, mana) == 2, "Sola II: 4 Energy, or 2 mana")
 	ok(u.funding(sola) == mana, "mana pays first")
@@ -270,7 +280,7 @@ func test_mana_casting() -> void:
 			"described (%s)" % sola.describe())
 	ok("skills up to T2 get the savings they list for it" in mana_skill.describe(2), "Mana described by rank (%s)" % mana_skill.describe(2))
 	u.free()
-	var s := shrike()
+	var s := roomy(shrike())
 	s.reserves[mana] = 10
 	s.set_store(mana, 10)
 	s.learned.append(slot(sola))

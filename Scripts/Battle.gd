@@ -532,6 +532,8 @@ func starter(s: Dictionary) -> Unit:
 		u.set(slot, Game.outfit[slot])
 	refill(u)
 	u.hearts += Game.hearts
+	if not Game.equipped.is_empty():  # what it had equipped, once its bar is set up
+		u.ready.connect(func(): u.set_equipped(Game.equipped), CONNECT_ONE_SHOT)
 	assert(s.faction in spawns, "no spawn for %s" % s.faction.name)
 	u.cell = spawns[s.faction]
 	return u
@@ -5268,6 +5270,7 @@ func _pay(o: Unit, n: int, from: Unit, saved: bool) -> void:
 	if o == player:
 		Game.level = o.level
 		Game.xp = o.xp
+		Game.equipped = o.get_equipped()  # a level may have auto-equipped something
 	gained_xp.emit(o, n, levels, from, saved)
 
 

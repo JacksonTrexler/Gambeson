@@ -107,6 +107,9 @@ def unit_tscn(a, sprite):
         slots.append(d.sub("Slot_%s" % sid, SLOT, ["skill = " + d.res("Resource", "res://Skills/%s.tres" % sid), "rank = %d" % int(rank or 1)]))
     if slots:
         p.append("learned = " + typed(SLOT, d, slots))
+        room = 4 + (a.level or 1) // 4
+        if len(slots) > room and not any(kv.startswith("extra_slots=") for kv in a.set):
+            p.append("extra_slots = %d" % (len(slots) - room))  # room for all its skills: only equipped ones work
     if a.hp:
         p.append("max_hp = %d" % a.hp)
     if a.energy:
@@ -208,6 +211,37 @@ def new_faction(a):
     return 0
 
 
+# A unit's skills must fit its hotbar: only equipped skills work (Unit.equipped()), and NPCs come
+# pre-configured. Every unit node that lists learned skills: those (less inherent ones, which take no
+# slot) against 4 + level / 4 + extra_slots.
+def _slot_room(p, text):
+    out = []
+    paths = {i: pth for pth, i in re.findall(r'path="([^"]+)" id="(\w+)"', text)}
+    subs = {}
+    for m in re.finditer(r'\[sub_resource [^\]]*id="(\w+)"\]\n((?:.+\n?)*)', text):
+        k = re.search(r'^skill = ExtResource\("(\w+)"\)', m.group(2), re.M)
+        if k:
+            subs[m.group(1)] = paths.get(k.group(1), "")
+    for node in text.split("\n[node ")[1:]:
+        lm = re.search(r'^learned = .*$', node, re.M)
+        if not lm:
+            continue
+        skills = [subs.get(i, "") for i in re.findall(r'SubResource\("(\w+)"\)', lm.group(0))]
+        need = 0
+        for sp in skills:
+            f = sp.replace("res://", "")
+            if not (f and exists(f) and re.search(r"^inherent = true", read(f), re.M)):
+                need += 1
+        lv = re.search(r'^level = (\d+)', node, re.M)
+        ex = re.search(r'^extra_slots = (\d+)', node, re.M)
+        room = 4 + (int(lv.group(1)) if lv else 1) // 4 + (int(ex.group(1)) if ex else 0)
+        if need > room and not re.search(r'^role = ', node, re.M):
+            name = re.match(r'name="([^"]+)"', node)
+            out.append("%s: %s has %d skills for %d slots: set extra_slots = %d (only equipped skills work)"
+                       % (p, name.group(1) if name else "?", need, room, need - room + (int(ex.group(1)) if ex else 0)))
+    return out
+
+
 def check(_a=None):
     problems = []
     for p in files("Scenes", ".tscn"):
@@ -235,6 +269,7 @@ def check(_a=None):
         b = re.search(r'^behaviour = &"(\w+)"', text, re.M)
         if b and "Bio_" in text and b.group(1) not in BEHAVIOURS:
             problems.append('%s: behaviour "%s" isn\'t one the AI knows (%s)' % (p, b.group(1), ", ".join(BEHAVIOURS)))
+        problems.extend(_slot_room(p, text))
     known = set(re.findall(r'&"(\w+)"', read("Scripts/Bio.gd")))
     for x in BEHAVIOURS:
         x in known or problems.append("Util/unit.py: behaviour %s is gone from Bio.BEHAVIOURS - keep the two together" % x)

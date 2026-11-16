@@ -71,6 +71,7 @@ func test_sweet_nothings() -> void:
 func test_dialysis() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(3, 1)})
 	sweeten(v(3), 18)  # 4
+	roomy(v(3))
 	v(3).learned.append(slot(dialysis))
 	v(3).set_store(sn, 0)
 	v(1).afflict(effect("concealment", 3), 9)

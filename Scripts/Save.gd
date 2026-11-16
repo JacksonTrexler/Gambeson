@@ -40,15 +40,16 @@ static func pack() -> Dictionary:
 	return out
 
 
-# HOOK (x-equip, learned vs equipped skills): the equipped set. Fill _equipped_out() with the ids of the
-# skills equipped (Skills/<id>.tres) and _equipped_in() with putting them back; pack() and unpack() already
-# call them, and a file from before the hook has no "equipped" key. Nothing is kept until then.
+# The starter's equipped set (Game.equipped, Unit.get_equipped()): each slot's skill id (Skills/<id>.tres),
+# "" where it's empty. A file from before it has no "equipped" key: the class's default bar.
 static func _equipped_out() -> Array:
-	return []
+	return Game.equipped.map(func(s): return s.resource_path.get_file().get_basename() if s is Skill and s.resource_path.begins_with("res://Skills/") else "")
 
 
-static func _equipped_in(_ids: Array) -> void:
-	pass
+# Back into Game.equipped, slot by slot: an id with no file is an empty slot (Unit.set_equipped() skips
+# what the unit doesn't have).
+static func _equipped_in(ids: Array) -> void:
+	Game.equipped = ids.map(func(id): return load("res://Skills/%s.tres" % id) if id is String and id != "" and ResourceLoader.exists("res://Skills/%s.tres" % id) else null)
 
 
 # d (from pack(), or a file) into Game. What it can't make sense of is left out, with a line in the log.

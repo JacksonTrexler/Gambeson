@@ -142,8 +142,8 @@ func test_spellbook_and_bar() -> void:
 	h.free()
 	var h2: HUD = await hud(v(1))
 	h2._unhandled_input(key(KEY_B))
-	ok(not (h2.spellbook.passives.get_child(0) as SkillEntry).draggable, "a passive without a toggle can't go on the bar")
-	ok(not (h2.bar.get_child(0) as SkillSlot)._can_drop_data(Vector2.ZERO, {skill = favour, from = -1}), "nor be dropped there")
+	ok((h2.spellbook.passives.get_child(0) as SkillEntry).draggable, "a passive without a toggle goes on the bar too: equipped, it works")
+	ok((h2.bar.get_child(0) as SkillSlot)._can_drop_data(Vector2.ZERO, {skill = favour, from = -1}), "and drops there")
 	h2.free()
 
 
@@ -969,7 +969,7 @@ func test_adventurer_skills_screen() -> void:
 
 
 func test_dual_spell_ui() -> void:
-	var u := shrike()
+	var u := roomy(shrike())
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3), v(3): Vector2i(4, 4)})
 	var sola: Skill = load("res://Skills/sola.tres")
 	u.skill_points = 1
@@ -994,8 +994,12 @@ func test_typed_slot_bar() -> void:
 	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(8, 6)})
 	var sola: Skill = load("res://Skills/sola.tres")
 	u.skill_points = 10
-	for k in ["sola", "nadira", "astera", "magic_slot"]:
+	for i in [1, 2, 3]:
+		u.bar_clear(i)  # its starting passives off, for room
+	for k in ["sola", "nadira", "astera"]:
 		u.unlock(load("res://Skills/%s.tres" % k))
+	u.bar_clear(3)  # Astera too: the capstone takes the last sure slot, and auto-equip puts Astera in its Magic slot
+	u.unlock(load("res://Skills/magic_slot.tres"))
 	var h := await hud(u)
 	h.select(u)
 	h._refresh()
@@ -1003,9 +1007,9 @@ func test_typed_slot_bar() -> void:
 	ok(h.bar.get_child_count() == 5 and m.kind == &"magical" and "Magic slot: holds only magic skills" in m.tooltip_text,
 			"a Magic slot on the bar; the unlucky clover slot after it is hidden")
 	h._on_dropped(4, strike, 0)
-	ok(u.hotbar[4] == null and h._note == "Magic slots hold only magic skills", "Strike won't go in (%s)" % h._note)
+	ok(u.hotbar[4] != strike and h._note == "Magic slots hold only magic skills", "Strike won't go in (%s)" % h._note)
 	h._on_dropped(4, sola, 1)
-	ok(u.hotbar[4] == sola and u.hotbar[1] == null, "Sola will")
+	ok(u.hotbar[4] == sola and u.hotbar[1] == load("res://Skills/astera.tres"), "Sola will, swapping with Astera")
 	h.free()
 
 

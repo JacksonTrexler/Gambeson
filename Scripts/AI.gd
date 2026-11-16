@@ -695,7 +695,7 @@ static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], r
 		return true  # holding on inside its prey
 	var vapor: Slot = null
 	for x in u.slots:
-		if x.skill.toggle and x.skill.effects.any(func(e: Effect): return e.stat == "mist"):
+		if x.skill.toggle and u.equipped(x.skill) and x.skill.effects.any(func(e: Effect): return e.stat == "mist"):
 			vapor = x
 	if vapor and not vapor.on and u.hp * 2 < u.max_hp:
 		u.toggle(vapor.skill)
@@ -1061,7 +1061,7 @@ static func _switch(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 		return false
 	for x in u.slots:
 		var to: Variant = &"energy" if x.on else Unit.replacer(x.skill)
-		if Unit.replacer(x.skill) and x.skill not in u.disabled and worth.any(func(w: Skill): return _pays(u, to, w)) and u.toggle(x.skill):
+		if Unit.replacer(x.skill) and x.skill not in u.disabled and u.equipped(x.skill) and worth.any(func(w: Skill): return _pays(u, to, w)) and u.toggle(x.skill):
 			log.append("%s switches to %s" % [u.name, to.name if to is Reserve else "Energy"])
 			return true
 	return false

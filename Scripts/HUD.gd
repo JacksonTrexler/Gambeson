@@ -305,6 +305,11 @@ func _ready() -> void:
 	%KeepSlot.toggled.connect(func(on: bool) -> void:
 		keep_slot = on
 		Prefs.put("keep_slot", on))
+	Unit.auto_equip = Prefs.get_pref("auto_equip", true)  # on by default
+	%AutoEquip.set_pressed_no_signal(Unit.auto_equip)
+	%AutoEquip.toggled.connect(func(on: bool) -> void:
+		Unit.auto_equip = on
+		Prefs.put("auto_equip", on))
 	hand_over = Prefs.get_pref("hand_over", hand_over)
 	%HandOver.button_pressed = hand_over
 	%HandOver.toggled.connect(func(on: bool) -> void:
@@ -525,7 +530,9 @@ func use_slot(i: int) -> void:
 		return
 	var s: Skill = u.hotbar[i]
 	var again := i == slot
-	if not _orders(u):
+	if s.passive and not s.toggle and not s.hybrid:
+		_say("%s works while it's equipped: nothing to use" % s.name)
+	elif not _orders(u):
 		_refuse(u, _why_no_orders(u))
 	elif skill_sense(u, s, view(u) if u != command.leader else null) == 0:
 		_say("Your side can't make out what %s could do there" % _name(u))
@@ -724,6 +731,12 @@ func _notification(what: int) -> void:
 
 func _outfits(u: Unit) -> bool:
 	return command.ours(u) and not busy and (battle.phase == Battle.Phase.OVER or (my_turn() and battle.outfitting(u)))
+
+
+# The player's starter keeps what it has equipped for the next battle, and the save (Game.equipped).
+func _keep_bar(u: Unit) -> void:
+	if u == battle.player:
+		Game.equipped = u.get_equipped()
 
 
 # The player's starter keeps what it has on, and its hearts, for the next battle.
@@ -2371,6 +2384,7 @@ func _on_unlocked(s: Skill) -> void:
 	var u := skills.unit
 	if _can_spend(u) and u.unlock(s):
 		_log("%s learns %s" % [_tag(u), s.name])
+		_keep_bar(u)
 		_rebuild_bar()
 	_mark()
 
@@ -2424,6 +2438,8 @@ func _bar_slots(u: Unit) -> int:
 
 
 func _refresh_bar() -> void:
+	if selected:
+		selected.get_equipped()  # its bar up to date with what it has newly got (auto-equip)
 	_rebuild_bar()
 	var u := selected if selected and hand(selected) else null
 	bar.visible = u != null or not selected  # other sides' skills aren't the player's to see
@@ -2477,6 +2493,7 @@ func _on_dropped(i: int, s: Skill, _from: int) -> void:
 				_say(SkillSlot.NO_LUCK)
 			elif kind:
 				_say("%s slots hold only %s skills" % [kind, kind.to_lower()])
+		_keep_bar(u)
 		_mark()
 
 
@@ -2485,6 +2502,7 @@ func _on_cleared(i: int) -> void:
 		if i == slot:
 			aim = false
 		selected.bar_clear(i)
+		_keep_bar(selected)
 		_mark()
 
 
