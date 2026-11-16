@@ -3946,7 +3946,8 @@ func rounds_since(since: int) -> int:
 
 # The tiles foe t could have reached from `from` on `budget` movement, as viewer o can reckon it:
 # ground o makes out (known_ground(); the rest plain), every step priced by stride() as t's walk would be
-# paid (its movement effects, Peel), no one standing in its way. Includes `from`.
+# paid (its movement effects, Peel), no one standing in its way, within `budget` tiles as the crow flies
+# (walk() goes in lines). Includes `from`.
 func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vector2i]:
 	var best := {from: 0.0}
 	var bags := {from: {}}
@@ -3979,7 +3980,9 @@ func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vect
 					if c not in open:
 						open.append(c)
 	var out: Array[Vector2i] = []
-	out.assign(best.keys())
+	for c: Vector2i in best:
+		if Vector2(c).distance_to(Vector2(from)) <= budget + 0.0001:  # a walk goes in a line: ceil(distance) tiles, not a diagonal's two
+			out.append(c)
 	return out
 
 
