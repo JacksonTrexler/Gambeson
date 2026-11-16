@@ -65,6 +65,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 	var played := 0
 	var left_l := 0
 	var left_n := 0
+	var digest := 0  # a hash of every act's log: two runs of the same code decide the same iff it matches
 	for seed in n:
 		var f: Variant = load(FIELD_SCRIPT).new()
 		await f.open(self, seed, FIELD.x, FIELD.y)
@@ -90,6 +91,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 					var t0 := Time.get_ticks_usec()
 					var log: Array[String] = AI.act(f.b, u)
 					var us := Time.get_ticks_usec() - t0
+					digest = hash(str(digest) + "|".join(log))
 					side_us += us
 					acts.append(us / 1000.0)
 					if log.any(func(l: String): return " uses " in l):
@@ -116,7 +118,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		left_n += f.b.members(f.nemes).filter(func(u: Unit): return u.is_alive()).size()
 		f.close()
 		await process_frame
-	print("SIM busy-%dv%d fights=%d rounds_played=%.1f alive_at_end=%.1f v %.1f (of %d a side)" % [size, size, n, float(played) / n, float(left_l) / n, float(left_n) / n, size])
+	print("SIM busy-%dv%d fights=%d rounds_played=%.1f alive_at_end=%.1f v %.1f (of %d a side) digest=%d" % [size, size, n, float(played) / n, float(left_l) / n, float(left_n) / n, size, digest])
 	_report("busy-%dv%d unit turn" % [size, size], acts, TURN_BUDGET_MS)
 	_report("busy-%dv%d unit turn using a skill" % [size, size], busy, TURN_BUDGET_MS)
 	_report("busy-%dv%d side end_turn" % [size, size], ends, SIDE_BUDGET_MS)
