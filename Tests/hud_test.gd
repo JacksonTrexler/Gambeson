@@ -469,6 +469,27 @@ func test_skill_glow() -> void:
 	h.free()
 
 
+# An aimed area skill: whoever it would catch at the hovered tile glows fully; hovering elsewhere moves it.
+func test_area_glow() -> void:
+	var solar: Skill = load("res://Skills/solar.tres")
+	v(1).wisdom = 40  # Solar's reach is its wis mod
+	v(1).learned.append(slot(solar))
+	v(1).hotbar[1] = solar
+	v(1).refresh()
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(4, 4), v(3): Vector2i(4, 3), v(4): Vector2i(2, 7)})
+	var h := await hud(v(1))
+	h.use_slot(1)
+	ok(h.aiming() and h.caught.is_empty(), "aimed, nowhere hovered: no one caught")
+	h.hover_cell(Vector2i(4, 3))
+	var a := func(u: Unit) -> float: return u.glow.modulate.a
+	ok(h.caught.size() == 2 and v(2) in h.caught and v(3) in h.caught and not v(4) in h.caught, "the cone's units are caught (%s)" % [h.caught])
+	ok(h.glow_of(v(3)) == Unit.Intensity.FULLY and a.call(v(3)) > Unit.GLOW and h.glow_of(v(4)) != Unit.Intensity.FULLY, "and glow fully, the rest as before")
+	h.hover_cell(Vector2i(2, 7))
+	ok(h.caught == ([v(4)] as Array[Unit]) and h.glow_of(v(3)) != Unit.Intensity.FULLY and is_equal_approx(a.call(v(3)), Unit.GLOW),
+			"aimed elsewhere, it moves with the hover (%s %d %.3f)" % [h.caught, h.glow_of(v(3)), a.call(v(3))])
+	h.free()
+
+
 # With no skill armed, on the player's turn, its own side glows by how ready each is for an order:
 # fully in reach of the leader's orders; out of reach it stays in colour, glowing mostly when the
 # leader's sure walk toward it brings it into reach, somewhat when only an unsure one does, barely

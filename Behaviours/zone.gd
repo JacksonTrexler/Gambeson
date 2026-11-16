@@ -11,6 +11,10 @@ func apply_at(c: Cast, cell: Vector2i) -> void:
 	b.zones.append(Battle.Zone.new(kind, b.zone_levels(c.impact_rank(), cell), c.skill.turns, c.caster.faction))
 
 
+func footprint(c: Cast, cell: Vector2i) -> Array[Vector2i]:
+	return c.battle.zone_levels(c.impact_rank(), cell).keys()
+
+
 func tile_target() -> StringName:
 	return &"area"
 

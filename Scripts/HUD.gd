@@ -70,6 +70,7 @@ var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing 
 var hover := NOWHERE
 var busy := false  # units are acting on their own; the player waits
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
+var caught: Array[Unit] = []  # the units an aimed area skill would catch at the hovered tile (_caught()): they glow fully
 var reach: Dictionary[Vector2i, float] = {}  # tiles the selected unit expects to reach, and the cost
 var charge := NOWHERE  # the hovered foe a click would walk up to and use a skill on
 var hovered := {}  # what a click on the hovered tile means (intent())
@@ -3165,7 +3166,7 @@ func glow_of(u: Unit) -> int:
 	var me := selected if _orders(selected) else null
 	var s := armed
 	if me and aiming():
-		return command_glow(u)
+		return Unit.Intensity.FULLY if u in caught else command_glow(u)
 	if me and s and support_view():  # the support view: the units it's for glow by reach, foes fall back
 		if unit_seen(u.cell) != u:
 			return -1
@@ -3358,6 +3359,26 @@ func _replan() -> void:
 	if card:
 		card.set_info(_card_info())
 	charge = hovered.cell if hovered.get("kind") == &"use" and hovered.target is Unit and hovered.target != selected else NOWHERE
+	var now := _caught()
+	if now != caught:
+		caught = now
+		for u: Unit in battle.get_node("Units").get_children():
+			if u.is_alive() and u.visible:
+				_apply_look(u, look_of(u))
+
+
+# The units an aimed area skill would catch, cast on the hovered tile: those made out standing in its
+# footprint (Skill.footprint()). None while it couldn't be cast there, or isn't aimed.
+func _caught() -> Array[Unit]:
+	var out: Array[Unit] = []
+	var me := selected
+	if not me or hover == NOWHERE or not _orders(me) or not aiming() or why_not(me, armed, hover) != "":
+		return out
+	for c in armed.footprint(battle, me, hover):
+		var t := unit_seen(c)
+		if t and t not in out:
+			out.append(t)
+	return out
 
 
 # Without a starter (the scene run on its own) the player leads the highest-level unit.

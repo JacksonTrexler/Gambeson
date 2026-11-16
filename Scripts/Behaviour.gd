@@ -96,6 +96,13 @@ func apply_at(_c: Cast, _cell: Vector2i) -> void:
 	pass
 
 
+# The tiles apply_at() would cover were its skill cast on `cell` (a Battle.cast_of() with no target), for
+# the HUD's preview: who stands in them glows, and the overlay shades them. Empty: no area of its own.
+# Pure.
+func footprint(_c: Cast, _cell: Vector2i) -> Array[Vector2i]:
+	return []
+
+
 # The skill it's on failed (Battle._miss()): its attack roll missed, its save or contest was lost (a drag,
 # a grapple, a level down), its Strike hit nothing, its level or its life wasn't taken. The counterpart
 # of apply(), which runs only when it lands: a refund, a rider on a miss. Not run on a cast that is

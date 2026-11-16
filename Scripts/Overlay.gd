@@ -157,6 +157,9 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 			elif s.behaviour(&"observe"):  # what it would look over: wis mod (at least 1) + rank tiles around c
 				_ring(_center(c), (maxi(sel.mod(&"wisdom"), 1) + sel.rank(s)) * TILE, Color(FRIEND, 0.4 + 0.3 * pulse), false)
 				_brackets(_rect(c, 1.5), Color(FRIEND, pulse), 6.0)
+			elif s.behaviour(&"cone"):  # the cone itself; whoever stands in it glows (HUD.caught)
+				for at in s.footprint(b, sel, c):
+					draw_rect(_rect(at, 1), Color(ZONE, 0.22))
 			else:
 				var levels := b.zone_levels(sel.rank(s), c)
 				for at in levels:

@@ -55,7 +55,7 @@ A unit a persona fools takes it at its word: enraptured while it has no suspicio
 While planning a move, blue tiles are safe, yellow ones unsure and dark red ones known to be bad; a '?' on a move cost means the walk crosses unsure ground. A unit with a grey glow and no bars is one you can't identify; a black shape is one that hides, stands where you can't make it out, or that you suspect. A marked area is where something is only suspected. Hover a tile for its effects.
 
 [color=#e8c547]Glow[/color]
-A unit's glow comes in four strengths: fully, in reach now; mostly, a sure walk gets there (a click walks, then acts); somewhat, only an unsure walk does (Ctrl-click walks it anyway); barely, not this turn. Foes glow for the attack a click would use; with a support skill selected, the allies it's for glow instead and foes fall back. Your own side glows by how ready each is for an order, and turns grey once it can take no more. Allies of another side glow green.
+A unit's glow comes in four strengths: fully, in reach now; mostly, a sure walk gets there (a click walks, then acts); somewhat, only an unsure walk does (Ctrl-click walks it anyway); barely, not this turn. Foes glow for the attack a click would use; with a support skill selected, the allies it's for glow instead and foes fall back. Your own side glows by how ready each is for an order, and turns grey once it can take no more. Aiming an area skill, whoever it would catch glows fully. Allies of another side glow green.
 
 [color=#e8c547]Odds[/color]
 The brackets on a target say how likely a hit is: solid likely, broken even, faint unlikely; wavering when you can't make out its Defense.

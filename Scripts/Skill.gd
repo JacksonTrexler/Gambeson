@@ -236,6 +236,20 @@ func on_tile() -> bool:
 	return lays != null or channel or rifts or behaviours.any(func(b: Behaviour): return b and b.tile_target() != &"")
 
 
+# The tiles it would cover, cast on `cell` by `caster` (its behaviours' footprint()): who stands there
+# glows as it's aimed. Empty for a skill with no area.
+func footprint(b: Battle, caster: Unit, cell: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if not on_tile():
+		return out
+	var c := b.cast_of(caster, self, null, caster.rank(self), hostile)
+	for h in behaviours:
+		for at in h.footprint(c, cell) if h else []:
+			if at not in out:
+				out.append(at)
+	return out
+
+
 # Its behaviour from Behaviours/<file>.gd (&"guard": Shields Up!), or null: what a reader asks when it
 # acts on one kind (AI._search(): an Observe).
 func behaviour(file: StringName) -> Behaviour:
