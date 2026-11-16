@@ -1157,11 +1157,11 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 	if mine and t and s and _slot_usable(me, slot) and not s.on_tile() and not self_skill(me, s) and t != me and not (inspect and foe(t)):
 		var why := why_not(me, s, t)
 		if why == "" or why == "Out of reach":  # the selected skill is for it
-			return _use_intent(it, s, t)
+			return _use_intent(it, s, t, force)
 	if mine and t and not inspect and foe(t):
 		var p := _primary(me)
 		if p:
-			return _use_intent(it, p, t)
+			return _use_intent(it, p, t, force)
 	if mine and t == me:  # itself: rest, keep a channel going, or (having acted) stand down for the turn
 		it.target = me
 		it.kind = (&"continue" if me.channel else &"rest") if me.idle() else &"done"
@@ -1189,8 +1189,9 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 
 
 # Using s on t: from here; after a walk it can count on into reach; refused when only a walk it can't
-# count on gets there (unsure); or, out of reach this turn, a walk as close as it gets (not ready).
-func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
+# count on gets there (unsure: a click refuses, a forced one (Ctrl) walks it anyway); or, out of reach this
+# turn, a walk as close as it gets (not ready).
+func _use_intent(it: Dictionary, s: Skill, t: Unit, force := false) -> Dictionary:
 	var me: Unit = it.unit
 	it.skill = s
 	it.target = t
@@ -1206,6 +1207,8 @@ func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
 	a = _approach(me, s, t.cell)
 	if a.ready:
 		it.unsure = true  # only a walk it can't count on gets there: a click doesn't walk
+		if force:
+			return _walk_to(it, &"use", a.dest, true)
 		return _refusal(it, why)
 	it.why = why
 	return _walk_to(it, &"use", a.dest, false)
@@ -3219,7 +3222,7 @@ func command_glow(u: Unit) -> int:
 # walk is one it can count on (_sure_walk()); {dest = the leader's own cell} if none does this turn.
 func _into_command(u: Unit) -> Dictionary:
 	var lead := command.leader
-	var span := command.party_reach() if u in command.party else float(command.reach())
+	var span := maxf(command.party_reach() if u in command.party else float(command.reach()), command.reach_for(u))  # (a stand-in mod: Word to the Wise)
 	var path: Array[Vector2i] = []
 	for c in battle.walk(lead, u.cell, true).path:
 		path.append(c)

@@ -454,6 +454,16 @@ func test_skill_glow() -> void:
 	h._refresh()
 	ok(h.armed == aid and h.skill_glow(v(1), aid, v(2)) == Unit.Intensity.MOSTLY and h.skill_glow(v(1), aid, v(3)) == -1,
 			"First Aid armed: the ally a walk away glows mostly, the foe not at all")
+	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))  # every way to the ally across ground it can't make out
+	h._mark()
+	h._refresh()
+	var plain: Dictionary = h.intent(Vector2i(4, 3))
+	var forced: Dictionary = h.intent(Vector2i(4, 3), true)
+	ok(h.skill_glow(v(1), aid, v(2)) == Unit.Intensity.SOMEWHAT and plain.kind == &"refuse" and forced.kind == &"use" and forced.ready and forced.dest == Vector2i(3, 3),
+			"somewhat: a click refuses, Ctrl-click walks the unsure way and uses it (%s)" % [forced])
+	b.zones.clear()
+	h._mark()
+	h._refresh()
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(3, 3) and v(2).hp > 3 and h.slot == 0, "any selected skill walks up and is used, not only Strike; the slot goes back to the first")
 	h.free()
@@ -506,6 +516,21 @@ func test_command_glow() -> void:
 	b.end_turn()
 	h._refresh()
 	ok(h.command_glow(v(2)) == -1 and is_equal_approx(a.call(v(2)), Unit.GLOW), "off the player's turn, everyone glows plainly")
+	h.free()
+
+
+# The command glow's walk goes by the reach the leader commands that ally by (a stand-in mod), as in_range() does.
+func test_command_glow_stand_in() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(1, 3), al: Vector2i(7, 3), v(3): Vector2i(9, 7)})
+	v(1).charisma = 8  # -1: orders reach 1
+	v(1).wisdom = 18
+	al.wisdom = 16
+	var h := await hud(v(1))
+	ok(h._into_command(al).dest == Vector2i(6, 3), "by charisma, the walk ends 1 tile off")
+	v(1).learned.append(slot(load("res://Skills/word_to_the_wise.tres"), 2))
+	ok(h.command.reach_for(al) == 4 and h._into_command(al).dest == Vector2i(3, 3),
+			"by wisdom (reach 4), it ends 3 tiles sooner")
 	h.free()
 
 
