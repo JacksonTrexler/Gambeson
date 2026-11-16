@@ -705,7 +705,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	for e in effects:
 		lines.append(ally + e.markup(ri if e.per_rank else rank) + ("" if passive else _lasting(rank, u)))
 	if downed:
-		lines.append(downed.markup(rank))
+		lines.append(downed.markup(ri))  # the rule at the rank its modifiers read (Downed.takes())
 	var as_cast := Behaviour.Cast.new()  # what its behaviours are told: the holder, rank and modifiers, no battle
 	as_cast.caster = u
 	as_cast.skill = self
@@ -733,12 +733,12 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		lines.append("Energy paid for %s skills counts as their own resources, with the bonuses those give" %
 				" or ".join(energy_as.map(func(t): return CATEGORIES.get(t, String(t)).to_lower())))
 	if reserve and passive:  # Stamina: (con mod + 2) x rank
-		var per := (Glossary.mod(reserve_mod) if reserve_mod else "1") + (" + %d" % reserve.base if reserve.base else "")
-		lines.append("Gives its holder %s: (%s) x {r:%d} at most, %s as each battle starts" % [reserve.name, per, rank, "empty" if reserve.empty else "full"])
+		var per := (_mod(reserve_mod, &"stat_impact", m) if reserve_mod else "1") + (" + %d" % reserve.base if reserve.base else "")  # Unit.pools(): the mod and the rank as its modifiers read them
+		lines.append("Gives its holder %s: (%s) x {r:%d} at most, %s as each battle starts" % [reserve.name, per, ri, "empty" if reserve.empty else "full"])
 		if reserve.only and reserve.whole == 0:
 			lines.append("%s pays before Energy for %s skills" % [reserve.name, ", ".join(reserve.only)])
 		if reserve.with_energy:
-			lines.append(_comes_back(reserve, rank))
+			lines.append(_comes_back(reserve, ri))
 		if reserve.builds > 0.0:
 			lines.append("It builds %d%% of its max back on each turn it rests - no AP spent, no move - and only then (not while holding a %s)" % [roundi(reserve.builds * 100), Glossary.term(&"channeled", "channel")])
 		if reserve.aims:
@@ -757,17 +757,17 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	if studies:
 		lines.append("Dabblings: pick up to {r:%d} of the %s on your tree" % [rank, studies])
 	if opens:
-		lines.append("Cheaper casting with %s: skills up to {r:T%d} get the savings they list for it" % [opens.name, rank])
+		lines.append("Cheaper casting with %s: skills up to {r:T%d} get the savings they list for it" % [opens.name, ri])  # Unit.opened()
 	var stands: Reserve = reserve if reserve and reserve.replaces else (opens if opens and opens.replaces else null)
 	if stands and toggle and passive:  # Mana, Stamina: what its holder runs on (Unit.runs_on())
 		if opens == stands:
 			lines.append("%s pays only for %s skills" % [stands.name, ", ".join(stands.only)])
 			if stands.with_energy:
-				lines.append(_comes_back(stands, rank))
+				lines.append(_comes_back(stands, ri))
 		lines.append("On as it's learned: its holder runs on %s, its own Energy emptied and not coming back; Energy it gets some other way still pays%s"
 				% [stands.name, (", but nothing pays for a %s skill that costs anything" % " or ".join(stands.bars)) if stands.bars else ""])
 		lines.append("Switching it on or off is %s: of what it leaves, it keeps {r:%d}%% of that one's max a turn held, into what it runs on next; the rest is lost. Switch again to finish early"
-				% [Glossary.term(&"channeled", "channeled"), 10 * rank])
+				% [Glossary.term(&"channeled", "channeled"), 10 * ri])  # Unit.carry()
 	if stand_in:
 		lines.append("%s stands in for %s on %s skills" % [stand_in.capitalize(),
 				", ".join(replaces.map(func(x): return String(x).capitalize())), ", ".join(tags)])
