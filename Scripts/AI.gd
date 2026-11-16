@@ -38,6 +38,7 @@ const SEEN := 0.9  # a hiding skill foes would see through at least this often i
 const DEBRIS := 3.0  # debris a hiding foe left, fresh; halved a round on
 const MARKED := 0.5  # a mark a foe laid that it knows of
 const LAST_SEEN := 0.5  # where its side last made a foe out
+const LOST := 0.5  # a foe its side made out once and has lost track of (the sighting forgotten at the spot): a look where the hunter stands, after the sweep lapses
 const REACH := 0.5  # shared among the tiles that foe could have reached since
 const HIT := 1.0  # shared among the tiles an unseen attacker could have struck from
 const REACH_TURNS := 3  # the most turns of a foe's walking it reckons on
@@ -675,6 +676,8 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 #  - marks of foes it knows of: MARKED each;
 #  - where its side last made a foe out: LAST_SEEN there, and REACH shared among the tiles that foe could have
 #    reached by now (Battle.reckon_reach(): its movement as read, a turn's worth for each round since, to REACH_TURNS);
+#  - a foe its side once made out, living, that no sighting places now (the hunter reached the spot and found no one): LOST, where u stands.
+#    A guess like the rest, so a look there rules it out for SWEEP_TURNS and it looks again after, not standing by a hider for good;
 #  - where it was struck from by one it couldn't place (Battle.attacks_on()): HIT shared among the tiles on
 #    the side the blow landed that its skill reached.
 static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
@@ -700,6 +703,11 @@ static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
 	for a in b.attacks_on(u.faction) if u.faction else []:
 		for c in a.tiles:
 			_clue(guess, c, HIT / a.tiles.size())
+	if u.faction:
+		for t: Unit in b.sighted_when.get(u.faction, {}):
+			if is_instance_valid(t) and t.is_alive() and not Faction.friends(t.faction, u.faction) and not seen.has(t):
+				_clue(guess, u.cell, LOST)
+				break
 	for c in guess:
 		if u.faction and b.swept_lately(u.faction, c):
 			continue
@@ -990,13 +998,17 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads :=
 # the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
 # on it, as _approach() does: dread of ground it knows or suspects, marks), then room to back off again. `safe` > 0:
 # any tile that far counts as far enough, and of those the one with the most room to back off again next round wins (_room(): a
-# corner is a tile `from` need only close on). Where it stands if nowhere is better.
-static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}) -> Vector2i:
+# corner is a tile `from` need only close on); on a tie, one an ally still to back off wouldn't choose for itself (_claimed();
+# `claim` is off for that ally's own reckoning). Where it stands if nowhere is better.
+static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}, claim := true) -> Vector2i:
 	var gap := func(c: Vector2i) -> int:
 		return from.map(func(x: Vector2i): return Command.tiles(x, c)).min()
+	var claimed: Array[Vector2i] = []
+	if safe > 0 and claim:
+		claimed = _claimed(b, u, from, safe, reads)
 	var key := func(c: Vector2i, extra: float) -> Array:
 		var g: int = gap.call(c)
-		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap)]
+		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
 	var best := u.cell
 	var best_key: Array = key.call(best, 0.0)
 	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
@@ -1022,6 +1034,18 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 				best_key = k
 	b.rng.state = state
 	return best
+
+
+# The tiles u's allies that are yet to move this turn, and within `safe` of `from` too, would back off to (_retreat(), each
+# on its own: the choice they would make if u weren't there to take one first). What coordinates a retreat: u leaves them theirs when it can.
+static func _claimed(b: Battle, u: Unit, from: Array[Vector2i], safe: int, reads: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for o: Unit in b.units.values():
+		if o != u and o.is_alive() and not o.helpless() and Faction.friends(o.faction, u.faction) and o.move_left() >= o.stat(&"movement") and from.any(func(x: Vector2i): return Command.tiles(x, o.cell) < safe):
+			var c := _retreat(b, o, from, safe, reads, false)
+			if c != o.cell:
+				out.append(c)
+	return out
 
 
 # Whether key a beats key b: the first place they differ, a's is greater.

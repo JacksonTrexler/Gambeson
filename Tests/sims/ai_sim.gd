@@ -165,9 +165,16 @@ func _hunt(n: int) -> void:
 			t.b.move(t.v(3), step)
 			var rounds := ROUNDS
 			for r in ROUNDS:
+				var before := t.logs.size()
+				if _debug:
+					var cl := AI.clues(t.b, t.v(1))
+					var tot := 0.0
+					for k in cl:
+						tot += cl[k]
+					print("  clues r%d n=%d total=%.2f max=%.2f swept=%s turns=%d" % [r, cl.size(), tot, cl.values().max() if not cl.is_empty() else 0.0, t.b.swept.get(t.lancin, {}).size(), t.b.turns_begun])
 				t.turn([t.v(1)])
 				if _debug:
-					print("  hunt r%d v1 %s hider %s located %s | %s" % [r, t.v(1).cell, t.v(3).cell, t.b.read(t.v(1), t.v(3)).located(), t.logs.slice(-2)])
+					print("  hunt r%d v1 %s hider %s located %s | %s" % [r, t.v(1).cell, t.v(3).cell, t.b.read(t.v(1), t.v(3)).located(), t.logs.slice(before)])
 				if t.b.read(t.v(1), t.v(3)).located():
 					rounds = r + 1
 					break
@@ -376,7 +383,7 @@ func _rider(n: int) -> void:
 		t.v(3).max_hp *= 4  # sturdy: a fight of several rounds, the cheap kill and the slam each in turn
 		t.v(3).hp = t.v(3).max_hp
 		t.v(4).max_hp *= 2
-		t.v(4).hp = t.v(4).max_hp * 3 / 4
+		t.v(4).hp = t.v(4).max_hp / 2
 		var done := ROUNDS
 		for r in ROUNDS:
 			t.turn([t.v(1), t.v(2)])

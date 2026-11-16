@@ -216,6 +216,31 @@ func test_starving_keeps_room_to_retreat() -> void:
 	ok(log.any(func(l: String): return "starving" in l) and went == v(1).cell and went != start, "the starving turn backs off there (%s, %s from %s, to %s)" % [log, went, start, wise])
 
 
+# docs/plans/ai-findings.md. Backing off a Grudge unit together: among tiles alike in distance and room, u leaves the one an ally
+# still to move would choose for itself (the room count can't say it: the ally stands elsewhere now), and an ally that has moved claims none.
+func test_retreat_leaves_an_allys_tile() -> void:
+	var g := grudged(Vector2i(5, 3))
+	v(1).strength = 0
+	var from: Array[Vector2i] = [g.cell]
+	var safe := ceili(g.stat(&"movement")) + 2
+	var alone := AI._retreat(b, v(1), from, safe)
+	var theirs := Vector2i(-1, -1)
+	for c in b.cells_near(v(1).cell, 3):  # an ally standing where its own retreat is that same tile
+		if c == v(1).cell or not b.on_map(c) or b.unit_at(c) or Command.tiles(g.cell, c) >= safe:
+			continue
+		stage(lancin, {v(1): Vector2i(5, 3), v(2): c, v(3): Vector2i(1, 1)})
+		if AI._retreat(b, v(2), from, safe, {}, false) == alone:
+			theirs = c
+			break
+	ok(theirs != Vector2i(-1, -1), "an ally position whose own retreat is the same tile %s (%s)" % [alone, theirs])
+	var gap := func(c: Vector2i) -> int: return Command.tiles(g.cell, c)
+	var shared := AI._retreat(b, v(1), from, safe)
+	ok(shared != alone and mini(gap.call(shared), safe) == mini(gap.call(alone), safe) and AI._room(b, v(1), shared, gap) == AI._room(b, v(1), alone, gap),
+			"it takes another as good (%s for %s: gap %d, room %d)" % [shared, alone, gap.call(shared), AI._room(b, v(1), shared, gap)])
+	v(2).moved = v(2).stat(&"movement")
+	ok(AI._retreat(b, v(1), from, safe) == alone, "an ally that has already moved claims nothing")
+
+
 func test_grudge_heals_itself() -> void:
 	roomy(v(3))
 	v(3).learned.append(slot(grudge, 2))
@@ -313,6 +338,31 @@ func test_lines_up_a_shove() -> void:
 	b.move(v(4), Vector2i(9, 0))
 	reads = {v(3): b.read(v(1), v(3))}
 	ok(not AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(4, 4), "nothing to line up in the open: it stays")
+
+
+# docs/plans/ai-findings.md. The line-up's threshold is one tile of shove (Battle.PUSH x AI.RIDER), the least a drive can
+# differ by: a tile that tells exactly that much more is worth the walk, one that tells no more isn't.
+func test_line_up_gain_threshold() -> void:
+	v(1).learned.append(slot(kick, 2))
+	roomy(v(1))
+	v(1).strength = 40
+	stage(lancin, {v(1): Vector2i(6, 3), v(3): Vector2i(6, 4), v(2): Vector2i(0, 0), v(4): Vector2i(0, 1)})
+	v(1).refresh()
+	soak(v(3), 300)
+	b.paint(Vector2i(5, 4), load("res://Terrain/shallows.tres"))  # kicked from (4, 4): Soaks it, a rider; from beside, a 1-tile push is half of one
+	var reads := {v(3): b.read(v(1), v(3))}
+	var here: float = b.standing(v(1), v(1).cell, func() -> float: return AI._driven(b, v(1), kick, v(3)))
+	var there: float = b.standing(v(1), Vector2i(4, 4), func() -> float: return AI._driven(b, v(1), kick, v(3)))
+	ok(is_equal_approx(there - here, Battle.PUSH * AI.RIDER), "the water tile tells one tile of shove more (%.2f vs %.2f)" % [there, here])
+	var log: Array[String] = []
+	ok(AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(4, 4), "exactly that much more: it walks there (%s, %s)" % [v(1).cell, log])
+	b.paint(Vector2i(5, 4), Battle.PLAIN)
+	b.move(v(3), Vector2i(5, 4))
+	b.move(v(1), Vector2i(2, 4))
+	v(1).movement = 1  # the one tile it can walk to is in Kick's reach, bare ground between: no better than the poorest tile in reach, itself
+	v(1).refresh()
+	reads = {v(3): b.read(v(1), v(3))}
+	ok(not AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(2, 4), "no more to be had from any tile in reach: it stays (%s)" % [v(1).cell])
 
 
 # docs/plans/ai-walks.md. Its retreat weighs being driven: a tile on the map's edge is one a foe's Kick slams it against
