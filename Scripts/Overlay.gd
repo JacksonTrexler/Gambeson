@@ -175,6 +175,8 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 
 # The foes picked by hand (HUD.picked): brackets and their number, of the most the skill takes.
 func _draw_picks(pulse: float) -> void:
+	for t in hud.preview():  # nothing picked yet: the default targets, faint
+		_brackets(_rect(t.cell, 1.5), Color(FOE, 0.25 + 0.15 * pulse), 6.0, 1.0)
 	for i in hud.picked.size():
 		var at: Vector2i = hud.picked[i].cell
 		_brackets(_rect(at, 1.5), Color(FOE, 0.6 + 0.4 * pulse), 6.0)

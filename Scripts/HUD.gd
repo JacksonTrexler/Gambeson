@@ -604,6 +604,12 @@ func picking() -> bool:
 	return aim and selected != null and picks_of(selected, armed) > 0
 
 
+# The foes a quick cast would take while the skill is aimed and nothing is picked yet (Behaviour.defaults()).
+func preview() -> Array[Unit]:
+	var none: Array[Unit] = []
+	return battle.defaults_of(selected, armed) if picking() and picked.is_empty() else none
+
+
 # The foes a pick could be: those the unit makes out (Battle.read() locates them), as the behaviour will.
 func pickable(u: Unit, t: Unit) -> bool:
 	return t != null and t != u and t.is_alive() and foe(t) and battle.read(u, t).located()
