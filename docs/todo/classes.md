@@ -441,3 +441,21 @@ Plans: `docs/plans/price-refunds.md` (`y-price`) and `docs/plans/unshape.md` (`y
     - **Open, ?126:** should skills that force an unshape exist (a Dispel, a Hex of the beast), and is it a Slayer or anti-druid tool or a general one? Does a mist forced out count as neutralized for Poach-like regains? Built as yes.
     - **New names to review:** unshape ??.
 - [ ] **No skill forces an unshape**, pending ?126's answer on who owns it. (?153)
+
+## Skeleton and Mortis Arcalís (2026-11-16)
+
+Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_test.gd` (one seam), `sweep_test` casts it; suite 8632 checks, 0 failed.
+
+181. **Skeleton and Mortis Arcalís - built on judgement, open for review (2026-11-16).** Your words: "new spell Skeleton, it creates 2 undead weak skeletons per rank", "Mortis Arcalís:" (nothing followed). Names are yours (`--human`). My calls:
+    - **Mortis Arcalís is a school (a tree)**, tag magical, on the **Mage's School choice**; the Wizard borrows "School" through Mastery, so one place offers it to both. "Arcalís" read as your word for arcane/magic broadly. Tab colour a placeholder pale green.
+    - **Control:** the skeletons are the caster's faction, ordinary units: a player's are commanded by the leader or act through the AI as any ally does (no `uncontrolled` flag, no owner field).
+    - **Permanence:** they last until killed (`neutralized` fires as for any unit) and do not die with the caster.
+    - **No cap** on how many a side holds; the cost and the turns are the limit.
+    - **Placement:** each on the free tile nearest the tile aimed at (`free_near`), so the first is on it and the rest around it; the tile is within range 3. A full map just brings fewer; the cast and its price stand.
+    - **Cost:** a tile skill, range 3, tags magical, dark, int, priced by the calculator at AP 4, cost 3 (rank impact "summon"); price does not grow with rank, the count does (2 x rank, through `impact_rank()`).
+    - **They arrive with AP spent** (act from their side's next turn). `Behaviours/summon_per_rank.gd` zeroes it; Battle.gd untouched.
+    - **The Skeleton unit** (`Scenes/skeleton.tscn`): tag undead (already a Unit tag; only its colour `#9aa98a` was missing), vibe Hollow, aura -1, temper aggressive, class-less, level 1, HP 6, Energy 4, str 10 dex 10 con 8 int 3 wis 6 cha 2, Strike only. Weaker than the Pike (HP 8, level 2).
+    - **Generic behaviour:** `summon_per_rank` exports `scene` and `per_rank`; any later summon sets another scene and number.
+- [ ] **The AI never casts Skeleton** (no tile-summon plan in `AI.gd`). (?181)
+- [ ] **No cap or duration on skeletons**; a Wizard tab or a limit if they swarm. (?181)
+- [ ] **Mortis Arcalís has one skill**; the rest of the school and real art. (?181)

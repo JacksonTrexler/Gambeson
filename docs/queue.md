@@ -1,52 +1,53 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-16. Reconciled against the code after ?175 to ?177.
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-16. Reconciled against the code after ?178 to ?183.
 
-Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: unbounded maps, AI walks (wear, shove positioning, route() retreats, Grudge approach), the AI sim and tuning, forced moves (forecast and AI), Warcry's default-pick preview, Guide rings and check tests, AI tuning, path foresight, the checks tail and rebate affordability, equip follow-ups, tooling guards, AI support 2, the HUD glow and Guide bundle, param rest, param, save follow-ups, the foe look-over, AI prices, equipping and the test tidy, search clues, Warcry's picker and card icons, besides the item tool, dissonance, rebates, forced unshape, bio text and the older cards. Run cards in parallel only where "Collides with" says none.
+Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), Skeleton, Deathlust, the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-Nothing.
+- `r-aiperf`: AI turn cost (`Scripts/AI.gd`, `Battle.read` callers). Cards below that touch AI.gd or `read()` collide with it; wait.
 
-## Wave 1: follow-ups from ?175 to ?177 (all small; the files differ, so they can run together)
+## Wave 1: follow-ups from ?178 to ?183 (all need nothing from the user)
 
-### Meadows HUD: the turn clock over "Demons slain"
-- Source: docs/todo/systems.md (?175)
-- Scope: the turn clock's number draws over the end of the Meadows' "Demons slain" tally at the top centre; lay them out so they don't overlap (check by a screenshot, `visual-check-godot-ui`).
-- Files: Scripts/HUD.gd (or the clock's scene), Tests/hud_test.gd
+### AI turn cost: a per-act read cache and `_line_up`'s foresee
+- Source: docs/todo/systems.md (?183)
+- Scope: only if `r-aiperf` leaves it over budget (100 ms a unit turn, 1000 ms an `end_turn` at M3 x 4; `Tests/sims/busy_fight.gd`). A per-act cache of a unit's reads (invalidated by any state change), `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up` foreseeing fewer tiles, a Brood-free fast path in `Unit.stat`.
+- Read: docs/plans/r-sims.md
+- Files: Scripts/AI.gd, Scripts/Battle.gd, Scripts/Unit.gd, Tests/ai_tactics_test.gd
+- Model: sonnet/high
+- Collides with: `r-aiperf`
+
+### The AI casts Skeleton
+- Source: docs/todo/classes.md (?181)
+- Scope: a tile-summon plan in `AI.gd`: when a side has room and a foe is in reach, cast a summon skill (`summon_per_rank`) at a tile near itself; price it by the bodies it adds. Sim before and after.
+- Read: docs/plans/r-skeleton.md
+- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd, Tests/summon_test.gd
+- Model: sonnet/high
+- Collides with: `r-aiperf` (AI.gd), the next card
+
+### Deathlust AI awareness
+- Source: docs/todo/systems.md (?182)
+- Scope: the AI weighs a kill's exhaustion discount (the kill skill gains no use; a death in reach eases every count) and Deathlust's float or log line on the HUD. Use the `wearing` and `neutralized` hooks, not a Deathlust special case.
+- Read: docs/plans/r-deathlust.md
+- Files: Scripts/AI.gd, Scripts/HUD.gd, Tests/deathlust_test.gd
+- Model: sonnet/medium
+- Collides with: `r-aiperf` (AI.gd), the card above
+
+### Hunt sim: hiders in range from round 1
+- Source: docs/todo/systems.md (?178, ?183)
+- Scope: a variant of `hunt_10v10.gd` with hiders placed within the Rangers' reach, to measure the search apart from the ten-round walk; tune `AI.LOST` with it (`sweep.sh`).
+- Read: docs/plans/r-sims.md, docs/plans/ai-findings.md
+- Files: Tests/sims/hunt_10v10.gd, Tests/sims/ai_sim.gd
 - Model: sonnet/medium
 - Collides with: none
 
-### Camera: edge-pan
-- Source: docs/todo/systems.md (?175)
-- Scope: pan the camera by pushing the mouse to the screen edge, clear of the HUD's edge panels; a setting to turn it off. Arrow-key pan exists.
-- Read: docs/plans/unbounded-maps.md
-- Files: Scripts/BattleCamera.gd, Scripts/Settings (as found), Tests/meadows_test.gd
-- Model: sonnet/medium
-- Collides with: the HUD card above only if it touches the same panel
-
-### A cheaper first guess for summons inside sight
-- Source: docs/todo/systems.md (?175)
-- Scope: an unseen `summon()` that starts inside sight takes ~170 ms reading its way out; guess a tile past perception range first (as the Meadows' formation spawn does, 9-10 ms) and read only to confirm. Measure before and after.
-- Read: docs/plans/unbounded-maps.md
-- Files: Scripts/Battle.gd, Tests/meadows_test.gd
+### Edge-pan sideways and drag
+- Source: docs/todo/systems.md (?179, ?175)
+- Scope: the HUD's side panels cover the left and right edges, so edge-pan only works top and bottom; find a way to pan sideways (a thin margin past the panels, or a middle-drag) without taking the mouse buttons others use.
+- Read: docs/plans/meadows-tails.md
+- Files: Scripts/BattleCamera.gd, Tests/meadows_test.gd
 - Model: sonnet/medium
 - Collides with: none
-
-### Allies coordinate a retreat
-- Source: docs/todo/systems.md (?176)
-- Scope: allies backing off from one Grudge unit shouldn't crowd the same tile out. The rule tried in ?176 (don't end beside an ally still to back off) was no better than `_room()`; find one a seam test can tell apart, or drop the card.
-- Read: docs/plans/ai-walks.md
-- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd
-- Model: sonnet/high
-- Collides with: the next card (AI.gd)
-
-### AI findings from the sim
-- Source: docs/todo/systems.md (?177, ?176)
-- Scope: an Observe user that has swept its last clue stands beside a hider and never looks again (sim `hunt-still`, seed 1); Poach is never chosen over Strike or Slam Jam (sim `rider`); a test for the line-up's gain threshold (`PUSH x RIDER`). Fix what the sim shows and re-run it (`Tests/sims/ai_sim.gd`, `sweep.sh`).
-- Read: docs/plans/ai-sim.md, docs/plans/ai-walks.md
-- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd
-- Model: sonnet/high
-- Collides with: allies coordinate a retreat (AI.gd)
 
 ## Needs the user (not queued)
 - Test stubs, Option A or B: ?144.
