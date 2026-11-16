@@ -171,9 +171,19 @@ func foils(_r: Reaction, _holder: Unit, _rank: int) -> float:
 
 # What a hit would do beyond its damage, foreseen as the cast is planned and as Battle.foresee() reads it
 # for the HUD's forecast and the AI: {lo, hi: more HP it takes off the target, notes: Array[String]: one
-# line for each rider it puts on it}. Pure (no rolls spent). Empty: nothing more.
+# line for each rider it puts on it}. Optionally for the AI alone: `riders` (how many of its notes it can
+# count on, expected: a rider that lands one time in two is 0.5, a note that only reports is 0; default,
+# one for each note) and `spill` (HP it takes off others net, the caster's foes' less its friends': Kick's
+# trap blast and slam). Pure (no rolls spent). Empty: nothing more.
 func foresee(_c: Cast) -> Dictionary:
 	return {}
+
+
+# What the holder's reaction (r: the moment, as foils() has it) would cost the blow's author in HP, expected
+# and on top of what foils() takes off the blow (Final Act's free action, taken against whoever finished it).
+# The AI takes it off the blow's worth (AI._reprisal()), never below what FOILED leaves. Pure.
+func reprisal(_r: Reaction, _holder: Unit, _rank: int) -> float:
+	return 0.0
 
 
 # Whether the cast brings a Downed target back up (Resuscitate): the AI prefers it to a plain heal on one

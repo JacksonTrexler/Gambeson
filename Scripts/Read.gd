@@ -23,6 +23,7 @@ var name := ""  # unit name, tile name (or what the tile looks like)
 var face := ""  # text standing in for the sprite a persona's name claims (";)"); empty: its own
 var faction: Faction
 var assumed := false  # its side is only what it seemed before it vanished before the observer's eyes (Unit.assumed)
+var defense: Variant = null  # its Defense, once its armor shows (net 0 up): what the player's odds read (HUD._defense_shows()), and the AI's hit chance (AI.score())
 var hp: Variant = null
 var max_hp: Variant = null
 var energy: Variant = null
