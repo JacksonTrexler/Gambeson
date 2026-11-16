@@ -98,3 +98,8 @@ Plans and calls: `docs/plans/ui-small.md` (`ui_small_test`, 5 tests), `docs/plan
 - [x] **Screenshots** of tapped saturation and Jam's "Jm" chip taken. (?136)
 - [x] **Routes steer round known hazards** (`Battle.route()`, `stride()`, `dread()`, `HAZARD_TILES`, `STEER_MARGIN`; `walk()`): preview, reach overlay and AI share it; steering reads the walker's own knowledge. (?137)
 - [x] **The fuller hazard estimate** (`Battle.hazard()`, `foresight_allowance()`; `HUD.hazard()` delegates): every tick of a bleed or poison, winded's AP, ground's `afflicts`. (?137)
+
+## Warcry picker and look-over (2026-11-15)
+
+- [x] **Warcry's foe picker** (`Behaviour.picks()`, `Cast.picked`, `Battle.picks_of()`, `HUD.picking()`, intent `pick`): a generic pick-N aim mode; picked foes show red brackets and a number. Plan: `docs/plans/warcry-picker.md`. `warcry_test`. (?157)
+- [x] **Look-over** (`HUD.look_over()`, input action `look_over`, middle-click): the sheet opens read-only with the viewer's Read; the sheet shows only what the Read gives. Plan: `docs/plans/lookover.md`. `bio_test.test_look_over`. (?161)

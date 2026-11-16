@@ -1,99 +1,69 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-15. Reconciled against the code after ?145 to ?154.
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-15. Reconciled against the code after ?155 to ?163.
 
-Before launching a wave, drop any card whose source line is now `[x]`. The old cards for the item tool, dissonance, screenshot checks, price rebates, forced unshape, bio text, foresight as an Effect stat, Pace's hurry and one-line log, the third-reserve drain and the map AP and movement drain are built and gone. Waves are ordered by the files they share (Battle.gd, AI.gd, HUD.gd): run a wave's cards in parallel only where "Collides with" says none.
+Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: param, save follow-ups, the foe look-over, AI prices, equipping and the test tidy, search clues, Warcry's picker and card icons, besides the item tool, dissonance, rebates, forced unshape, bio text and the older cards. Waves are ordered by the files they share (Battle.gd, AI.gd, HUD.gd): run a wave's cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-- `x-equip`: equipping skills (SkillGrid, Settings, Unit slots, HUD).
-- `z-search`: more contextual clues for searching (AI.gd, Perception.gd).
-- `z-warcry`: choose Warcry's foes (warcry.gd, HUD.gd).
-- `z-tidy`: test tidy and the `_expose` rename (hud_test, sweep_test, Battle._expose, Glossary).
-- `z-icons`: item icons on the card and in spoils (HUD.gd, Loot.gd).
+- `z-checkstail`: the checks tail and rebate affordability (Battle.gd, Unit.gd, Check.gd, hitch, slam_jam, poach).
+- `z-hudglow`: HUD glow and Guide bundle (HUD.gd, Overlay.gd, Guide.gd, Spellbook.gd, SkillDetail.gd).
+- `z-aisupport`: AI support and weighing (AI.gd, Skill.gd, HUD.gd, sim tests).
+- `z-equipfu`: equip follow-ups (the lent ring baseline, Settings, SkillSlot; what is left of the equip card).
 
 ## Wave 1: free of the in-flight areas
-Why first: no AI.gd, HUD.gd or equip files. Start once `z-tidy` has merged (it renames in Battle.gd).
 
-### Param: the deferred skills
-- Source: docs/plans/param.md:97; docs/plans/route.md:65; docs/todo/systems.md (?133, ?134)
-- Scope: parameterize the 6 deferred Battle.gd skills; `terms()` for Strike and the elemental reads; markup for the 7 UNSAID entries; route Rift turns and the Look dissonance rank's text; a "missed" hook so a lost save or contest can run behaviours (record the call). (`describe_as` is done, ?148.)
-- Read: docs/plans/param.md, docs/plans/route.md, docs/plans/skill-modifiers.md
-- Files: Scripts/Battle.gd, Scripts/Skill.gd, Scripts/SkillTerms.gd, Scripts/Behaviour.gd, Util/skill.py
-- Model: opus/medium
-- Collides with: Checks tail, Forced moves, Rebate affordability (Battle.gd)
-
-### Save follow-ups
-- Source: docs/todo/systems.md (Saving, ?145)
-- Scope: a "delete save" / "new game" button on the entry screen; a save when quitting from inside Gamut's Tower; the HUD marker picker's setting kept in `Prefs`. Not the equipped-set hook (that waits on `x-equip`).
-- Read: docs/plans/saving.md, docs/plans/hud-markers.md
-- Files: Scripts/Save.gd, Scripts/Entry.gd, Scripts/GamutsTower.gd, Scripts/Prefs.gd, Tests/save_test.gd
+### Skill tree wiring check
+- Source: docs/todo/systems.md (Test tidy, ?156)
+- Scope: `skill.py check` fails a skill (not a lent or inherent one) that no tree or role offers, and one a test names but a tree dropped; then the two tree-wiring tests (`trickster_test`, `slam_jam` `test_tree`) can go if the check covers them.
+- Read: docs/plans/tidy-11-15.md, docs/plans/skill-tooling.md
+- Files: Util/skill.py, Tests/tooling_test.gd
 - Model: sonnet/medium
 - Collides with: none
 
-### Foe bio look-over
-- Source: docs/todo/systems.md (?154)
-- Scope: a shift-click look-over of a foe or ally that opens the sheet with the viewer's `Read` (`open(u, false, r)`), showing `Bio.line()` as built; nothing new in the text.
-- Read: docs/plans/bio-text.md, docs/plans/ui-small.md
-- Files: Scripts/HUD.gd, Scripts/CharacterSheet.gd, Tests/bio_test.gd
+### Driver paths for Prefs and KeyBinds
+- Source: docs/todo/systems.md (Save follow-ups, ?158)
+- Scope: guard `Prefs` and `KeyBinds` paths for a `-s` driver script as `Save.PATH` is (a driver never writes the real settings or binds); `run.gd` keeps its own.
+- Read: docs/plans/save-followups.md
+- Files: Scripts/Prefs.gd, Scripts/KeyBinds.gd, Tests/run.gd
 - Model: sonnet/medium
-- Collides with: `z-warcry`, `z-icons` (HUD.gd): start after they merge
+- Collides with: none
 
-## Wave 2: the AI and forced moves
-Why second: they touch AI.gd and Battle.gd, so they follow `z-search` and `z-tidy`.
+## Wave 2: the AI and Battle, after `z-aisupport` and `z-checkstail` merge
+Why: they touch AI.gd and Battle.gd.
 
-### AI prices what it ignores
-- Source: docs/todo/systems.md (?138, ?150)
-- Scope: AI estimates a foe's Defense from `Read` as the player does; prices Poach's Energy/Focus refund and its regain on a neutralizing blow, and Slam Jam's interrupt; Kick's trap blast on bystanders and its push distance (forecast says "back"); Starving Grudge with allies in reach or over several rounds; holding a Final Act unit back as such (today the discount only lowers the kill's pull). AP refunds are priced already.
-- Read: docs/plans/ai-tactics.md, docs/plans/gaps-react-marks.md
-- Files: Scripts/AI.gd, Behaviours/(poach, slam_jam, kick, final_act), Tests/ai_*
+### Forced moves: forecast and AI
+- Source: docs/todo/systems.md (?146); docs/plans/fear.md
+- Scope: the forecast shows a fear, shove or entrance move and its slam (`Behaviour.foresee`/`Battle.foresee`); the AI treats fear, shove and entrance as harm and seeks or avoids them (no new skill); `drive()` in Aura and Coordinate's effect loops; the three tags on a skill's own `tags` only if a skill carries one (else record why not). Turning (a hit or a forced move turns the unit) is held for the user: ?142.
+- Read: docs/plans/fear.md, docs/plans/facing.md
+- Files: Scripts/Battle.gd, Scripts/AI.gd, Scripts/HUD.gd
 - Model: sonnet/high
-- Collides with: AI support and weighing, Path foresight (AI.gd)
+- Collides with: AI tuning, Param rest (Battle.gd, AI.gd)
 
-### Forced moves: forecast, AI and turning
-- Source: docs/todo/systems.md (?142, ?146); docs/plans/facing.md:40; docs/plans/fear.md
-- Scope: the forecast shows a fear, shove or entrance move and its slam (`Behaviour.foresee`/`Battle.foresee`); the AI treats fear, shove and entrance as harm and seeks or avoids them (no new skill); a unit that is hit turns toward the attacker; push, pull, send and teleport turn the moved unit (record the call); `drive()` in Aura and Coordinate's effect loops; the three tags on a skill's own `tags` only if a skill carries one (else record why not).
-- Read: docs/plans/fear.md, docs/plans/facing.md, docs/plans/reactions.md
-- Files: Scripts/Battle.gd, Scripts/Unit.gd, Scripts/AI.gd, Scripts/HUD.gd
+### AI tuning and the last prices
+- Source: docs/todo/systems.md (?159, ?162)
+- Scope: run the sims and tune the clue weights and caps (`SUSPICIOUS` ... `HIT`, `REACH_TURNS`, `SWEEP_TURNS`) and the price constants (`GUESS_DEFENSE`, `POINT`, `RIDER`, `PUSH`, `STARVE`); read Defense through a lie (`_lie`/`twist`) in the AI and the HUD together; a Grudge unit plans a retreat tile so as not to be cornered next round. Record each choice.
+- Read: docs/plans/search-clues.md, docs/plans/ai-prices.md
+- Files: Scripts/AI.gd, Scripts/Read.gd, Scripts/HUD.gd, Tests/ai_tactics_test.gd, Tests/evidence_test.gd
 - Model: sonnet/high
-- Collides with: AI prices (AI.gd), Param, Checks tail (Battle.gd)
+- Collides with: Forced moves, Path foresight (AI.gd)
 
-## Wave 3: AI support, checks and HUD follow-ups
-Why third: smaller wins on the same files, after wave 2.
-
-### AI support and weighing
-- Source: docs/todo/systems.md:101,107,286,288 (?98, ?87, ?130)
-- Scope: prices a `stamina` skill's extra effect (Move ??); weighs a raised exhaustion cost and varies (museum balance, ?87); HUD "help" orders count Heal (fold `Skill.heals()` into `Skill.serves()`); a switch where no pool holds enough. Heal as a heal, Resuscitate over Heal, resting for Focus and Grudge are built.
-- Read: docs/plans/ai-support.md, docs/plans/ai-tactics.md, docs/plans/exhaustion.md
-- Files: Scripts/AI.gd, Scripts/Skill.gd, Scripts/HUD.gd, Tests/museum/sim tests
-- Model: opus/medium
-- Collides with: AI prices, Path foresight
-
-### Checks tail and rebate affordability
-- Source: docs/todo/systems.md (?141, ?148, ?151)
-- Scope: a forecast for Level Down's bar and investigating; the DC rolls (Burnout, Stun, Bandwagon, dodges) on `check(.., against: dc)`; Hitch and Slam Jam as a declared `SkillCheck`; `can_afford` and the AI's affordability using the rebated price (a unit with half of Poach's AP can start it), and auto, spread and tile casts taking the cut where there is a target to ask.
-- Read: docs/plans/checks.md, docs/plans/polish-11-15.md, docs/plans/price-refunds.md
-- Files: Scripts/Battle.gd, Scripts/Unit.gd, Scripts/Check.gd, Behaviours/(hitch, slam_jam, poach), Tests/check_test.gd
+### Param rest
+- Source: docs/todo/systems.md (?134, ?160)
+- Scope: route the text of reserves, opens and Downed rules through the modifier reader (the build-time gates stay concrete); a first user of `Behaviour.missed()` only if a skill already wants a rider on a miss (else none: record why).
+- Read: docs/plans/param-tail.md, docs/plans/route.md
+- Files: Scripts/Skill.gd, Scripts/SkillTerms.gd, Scripts/Battle.gd, Scripts/Behaviour.gd
 - Model: sonnet/high
-- Collides with: Param, Forced moves (Battle.gd)
+- Collides with: Forced moves (Battle.gd)
 
-### HUD glow and Guide bundle
-- Source: docs/todo/ui.md:43-46,172-175 (?84, ?136); docs/plans/silhouettes-glow.md:58; docs/plans/exhaustion.md:51
-- Scope: a glow for area skills; "somewhat" offers the unsure walk on a forced click (as Strike's forced charge); the command glow walks a party member with its own reach; profile the reach map on big maps; the Guide spells P, H, Space, Tab as keys; near-miss circles to scale and Luck.MARGIN shown; fix the museum tile hover "No TileSet atlas source with id -1" in `HUD._tile_icon`; the Jammed ?? name on the chip; the allied glow stronger on grass maps; static skill descriptions (skills screen, spellbook) show the exhaustion-adjusted cost note; re-check Warcry's marks on a busy board by screenshot.
-- Read: docs/plans/silhouettes-glow.md, docs/plans/ui-v2.md
-- Files: Scripts/HUD.gd, Scripts/Overlay.gd, Scripts/Guide.gd, Scripts/Spellbook.gd, Scripts/SkillDetail.gd
-- Model: sonnet/high
-- Collides with: Foe bio look-over (HUD.gd); `x-equip`
+## Wave 3: after the AI wave and `z-hudglow`
 
-## Wave 4: after `x-equip` merges
-Why: they read the equip plumbing and sit on SkillGrid, Unit slots and Settings.
-
-### Equip follow-ups
-- Source: docs/todo/ui.md:16; docs/todo/classes.md:17; docs/todo/systems.md (?145, ?149)
-- Scope: fill `Save._equipped_out()` and `_equipped_in()` (and save on equipping); the Settings > Gameplay toggle for auto-equip; unequipping a slot-granting skill removes its slots (skills and all); the Specialist tree opens scrolled to its lowest filled tier; the lent ring on the same baseline as the rank pip.
-- Read: docs/plans/item-skills.md, docs/plans/saving.md, docs/plans/shots-11-15.md
-- Files: Scripts/Settings.gd, Scripts/Unit.gd, Scripts/Save.gd, Scripts/SkillGrid.gd, Scripts/SkillSlot.gd
-- Model: sonnet/high
-- Collides with: Save follow-ups
+### Warcry's preview
+- Source: docs/todo/systems.md (?157)
+- Scope: draw the default "nearest N" faintly before any pick, so the player sees what a quick cast does; no change to the cast or the AI.
+- Read: docs/plans/warcry-picker.md
+- Files: Scripts/HUD.gd, Scripts/Overlay.gd, Tests/warcry_test.gd
+- Model: sonnet/medium
+- Collides with: `z-hudglow` (HUD.gd, Overlay.gd)
 
 ### Path foresight
 - Source: docs/todo/ui.md:188-190 (?137); docs/plans/path.md:47
@@ -101,9 +71,9 @@ Why: they read the equip plumbing and sit on SkillGrid, Unit slots and Settings.
 - Read: docs/plans/path.md, docs/plans/tile-marks.md
 - Files: Scripts/AI.gd, Scripts/Battle.gd, Scripts/HUD.gd
 - Model: sonnet/high
-- Collides with: AI prices, AI support (AI.gd)
+- Collides with: AI tuning, Forced moves (AI.gd)
 
-## Wave 5: the large piece, alone
+## Wave 4: the large piece, alone
 
 ### Unbounded maps, camera and spawning
 - Source: docs/todo/systems.md:46; docs/plan.md Phase 7 item 27
@@ -115,6 +85,9 @@ Why: they read the equip plumbing and sit on SkillGrid, Unit slots and Settings.
 
 ## Needs the user (not queued)
 - Test stubs, Option A or B: ?144.
+- Actives must be equipped to work (AI included), the green "on" dot on always-on passives, a global auto-equip toggle: ?163.
+- Forced moves: turning. A unit that is hit turns toward its attacker, and push, pull, send and teleport turn the moved unit: facing's call that hits and forced moves turn nobody is open as ?142; the Forced moves card is held to the forecast and the AI until it is answered.
+- The AI's "nowhere to switch" case (a unit with one toggle and no pool holding enough): ?130.
 - The Siren's balance: dissonance by distance doubts its lure more (7 to 9, penalty 3 to 5); keep, or `LIE_FAR` 1.25: ?152.
 - Does a weapon or armor enchant raise the item's rank (armor drag), or only its lent skills'? ?143. Lent skills as prerequisites: ?143.
 - Skills that force an unshape (a Dispel, a Hex of the beast), and whose tool it is: ?126, ?153. Skills carrying fear, shove or entrance: ?146.
