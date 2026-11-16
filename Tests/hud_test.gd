@@ -896,6 +896,35 @@ func test_check_odds() -> void:
 	h.free()
 
 
+# Level Down's bar and investigating are forecast too (Battle.level_odds(), seen_odds()): brackets and Alt's
+# "N% to win" on a foe; "N% to be seen through" over the unit a hiding skill is used on, by the foes in sight.
+func test_forecast_bar_and_sight() -> void:
+	var down: Skill = load("res://Skills/level_down.tres")
+	var hide: Skill = load("res://Skills/hide.tres")
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(1).learned.append(slot(down, 2))
+	v(1).learned.append(slot(hide, 1))
+	v(1).charisma = 20
+	v(1).refresh()
+	var h := await hud(v(1))
+	var it := {kind = &"use", unit = v(1), skill = down, target = v(3)}
+	ok(h.odds(it) != &"" and h.odds(it) != &"unknown", "a bracket for Level Down (%s)" % h.odds(it))
+	h.hovered = it
+	h.hover = Vector2i(5, 3)
+	h.show_odds = true
+	h._update_tip()
+	ok("to win" in h.tip_label.text, "Alt: its chance (%s)" % h.tip_label.text)
+	ok(not ("seen through" in h.tip_label.text), "no sight line on a foe")
+	v(3).wisdom = 20
+	var eyes := {kind = &"use", unit = v(1), skill = hide, target = v(1)}
+	h.hovered = eyes
+	h.hover = v(1).cell
+	h._update_tip()
+	var seen := h._seen(eyes, v(1))
+	ok(seen > 0 and seen == roundi(Battle.seen_odds(v(1), hide, v(1), [v(3)] as Array[Unit], b) * 100.0) and "%d%% to be seen through" % seen in h.tip_label.text, "the foe it can make out: %d%% (%s)" % [seen, h.tip_label.text])
+	h.free()
+
+
 func test_hidden_defense() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).afflict(effect("concealment", 1), 9)

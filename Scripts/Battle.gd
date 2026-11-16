@@ -857,7 +857,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return false
 	if skill.auto and not spreading:
 		var to := auto_targets(caster, skill)
-		if to.is_empty() or not caster.pay_for(skill):
+		if to.is_empty() or not caster.pay_for(skill, price_cut(caster, skill, to)):
 			return false
 		for t in to:
 			cast(caster, skill, t, true)
@@ -1083,8 +1083,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		meditated.emit(caster, caster.respec_room)
 	if skill.investigated:
 		var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
-		var g := resolve(Check.side(target.check_mod(skill.stat(), &"defensive", stags) + ri - target.dissonance_penalty(), Check.Kind.CHECK)
-				.edge(1 if hiding and covered(target.cell) else 0))  # cover (Leaves): advantage to hide
+		var g := resolve(guise(caster, skill, target, ri, hiding and covered(target.cell)))  # cover (Leaves): advantage to hide
 		var guise := g.total
 		var seen := _evaluate(target, skill, g.d20, guise)
 		for a in put:
@@ -1270,6 +1269,26 @@ func rebate(caster: Unit, skill: Skill, target: Unit, foe: bool) -> Vector2:
 		for bh in skill.behaviours:
 			r += bh.rebate(c)
 	return Vector2(clampf(r.x, 0.0, 1.0), clampf(r.y, 0.0, 1.0))
+
+
+# The share of skill's price that using it on `targets` takes off before it's paid: what every one of
+# them grants (rebate().x), as the one price paid for a spread cast is shared by them all. 0 where there
+# is no unit to ask (a tile cast on thin air).
+func price_cut(caster: Unit, skill: Skill, targets: Array[Unit]) -> float:
+	var cut := 1.0
+	var asked := false
+	for t in targets:
+		if t != null and t != caster:
+			asked = true
+			cut = minf(cut, rebate(caster, skill, t, not Faction.friends(t.faction, caster.faction)).x)
+	return cut if asked else 0.0
+
+
+# Whether caster could pay for skill on target (after walking `steps` first): at the price a behaviour
+# takes a share off (price_cut(), Poach), the one _cast() would pay. What the HUD's reach and the AI's
+# strike both ask, with a target to ask.
+func can_afford(caster: Unit, skill: Skill, target: Unit, steps := 0.0) -> bool:
+	return caster.can_afford_after(skill, steps, price_cut(caster, skill, [target] as Array[Unit]))
 
 
 # Defense a cast's behaviours give its target against it (Spike).
@@ -2123,9 +2142,8 @@ func _feel(o: Unit, h: Unit) -> void:
 # the better of two d20s within (wis mod - rank) tiles of u - against the roll u made using it.
 # Meeting it, it sees through the skill's effects on u for as long as they last.
 func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void:
-	var r := u.rank(skill)
 	for o in eyes:
-		var close := Command.tiles(o.cell, u.cell) <= o.mod(&"wisdom") - r
+		var close := is_close(o, u, skill)
 		var look := check(o, &"wisdom", null, against, {edge = 1 if close else 0})  # against the hider's roll, spent
 		var total := look.mine.total
 		if look.won:
@@ -2133,6 +2151,32 @@ func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void
 				if e in u.timed:
 					u.timed[e].known_to.append(o)
 		investigated.emit(o, u, skill, total, against, close)
+
+
+# The roll `target` makes using `skill` cast by `caster` (cast()): d20 + its mod in the skill's stat (as the
+# caster's skill tags check it) + the caster's rank impact `ri` - its dissonance, at advantage under cover.
+static func guise(caster: Unit, skill: Skill, target: Unit, ri: int, cover := false) -> Check:
+	return Check.side(target.check_mod(skill.stat(), &"defensive", caster.skill_tags(skill)) + ri - target.dissonance_penalty(), Check.Kind.CHECK).edge(1 if cover else 0)
+
+
+# Whether o is near enough to u to look at what `skill` did to it at advantage: within (wis mod - rank) tiles.
+static func is_close(o: Unit, u: Unit, skill: Skill) -> bool:
+	return Command.tiles(o.cell, u.cell) <= o.mod(&"wisdom") - u.rank(skill)
+
+
+# The chance (0-1) at least one of `eyes` sees through `skill` as caster uses it on target (investigate()):
+# the guise is one roll for them all, so each of its totals is weighed in turn, then each watcher's look
+# against it (their odds are independent after it). The HUD's forecast and the AI read this.
+static func seen_odds(caster: Unit, skill: Skill, target: Unit, eyes: Array[Unit], b: Battle = null) -> float:
+	var ri := caster.mods(skill).irank(caster.rank(skill), &"rank_impact")
+	var hiding := skill.effects.any(func(e: Effect): return e.stat == "concealment")
+	var p := 0.0
+	for f in Check.totals(guise(caster, skill, target, ri, hiding and b != null and b.covered(target.cell))):
+		var unseen := 1.0
+		for o in eyes:
+			unseen *= 1.0 - odds(o, &"wisdom", null, f[0], {edge = 1 if is_close(o, target, skill) else 0})
+		p += f[1] * (1.0 - unseen)
+	return p
 
 
 # u's awake allies, itself among them, whose Self-evaluation reaches it: they see the rolls it makes.
@@ -2161,6 +2205,8 @@ static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1
 	if s.check and not s.check.suspicion and t != u and not Faction.friends(t.faction, u.faction):
 		var spot: Variant = b.drag_spot(u, s, t) if b and s.drags() else null
 		return skill_odds(u, s, t, b, {tiles = Command.tiles(t.cell, spot)} if spot != null else {})
+	if s.levels_down and t != u and not Faction.friends(t.faction, u.faction):
+		return level_odds(u, s, t, u.mods(s).irank(u.rank(s), &"rank_impact"), b)
 	if not s.attacks():
 		return 1.0
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
@@ -2272,7 +2318,8 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		return false
 	if skill.rifts and not can_rift(caster, skill, c):
 		return false
-	if not caster.pay_for(skill):
+	var at := unit_at(c)
+	if not caster.pay_for(skill, price_cut(caster, skill, [at] as Array[Unit])):
 		return false
 	caster.face(c)
 	_burn(caster, skill)
@@ -2459,9 +2506,10 @@ func unshackle(u: Unit, how: StringName) -> bool:
 	var done := true
 	if how != &"unlock":
 		var stat := &"dexterity" if how == &"pick" else &"strength"
-		var roll := resolve(Check.versus(u.check_mod(stat, &"offensive"), diff, it.ranked()))
-		done = roll.hit
-		freed.emit(u, how, roll.total, roll.target, done)
+		var dc := Difficulty.dc(diff, it.ranked())
+		var roll := check(u, stat, null, dc)
+		done = roll.won
+		freed.emit(u, how, roll.mine.total, dc, done)
 	else:
 		freed.emit(u, how, 0, 0, true)
 	if done:
@@ -3448,10 +3496,10 @@ func _teeter(u: Unit, rested: bool) -> void:
 	if not glass or rested or u.steps <= maxi(u.mod(&"dexterity"), 0):
 		return
 	var dc := u.inertia()  # how badly it screwed up: how far and how heavy it came
-	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc).edge(-1 if u.blind_on == u.cell else 0))
+	var roll := check(u, &"dexterity", null, dc, {role = &"defensive", edge = -1 if u.blind_on == u.cell else 0})
 	break_layer(u.cell, glass)
-	teetered.emit(u, roll.total, dc, roll.hit)
-	if roll.hit:
+	teetered.emit(u, roll.mine.total, dc, roll.won)
+	if roll.won:
 		u.steadied = u.cell
 		u.steady_turn = u.turns_taken
 	else:
@@ -3630,7 +3678,7 @@ func _on_downed(u: Unit) -> void:
 # levels as the ally hides from it by (studied, _read()), which normally shows its side. False: it
 # didn't catch itself (or can't pay), and the cast goes on.
 func _holds_fire(caster: Unit, skill: Skill, ally: Unit) -> bool:
-	if not resolve(Check.check(caster.check_mod(&"wisdom", &"offensive"), Difficulty.dc(&"standard"))).hit:
+	if not check(caster, &"wisdom", null, Difficulty.dc(&"standard")).won:
 		return false
 	if not caster.pay_for(skill):
 		return false
@@ -4985,9 +5033,9 @@ func evade(u: Unit, dc: int) -> float:
 	if not u.reacts():
 		evaded.emit(u, 0, dc, 1.0)
 		return 1.0
-	var roll := resolve(Check.check(u.check_mod(&"dexterity", &"defensive"), dc))
-	var share := 0.0 if roll.hit else (0.5 if roll.total >= ceili(dc * 0.75) else 1.0)
-	evaded.emit(u, roll.total, dc, share)
+	var roll := check(u, &"dexterity", null, dc, {role = &"defensive"})
+	var share := 0.0 if roll.won else (0.5 if roll.mine.total >= ceili(dc * 0.75) else 1.0)
+	evaded.emit(u, roll.mine.total, dc, share)
 	return share
 
 
@@ -5109,10 +5157,10 @@ func requirement(caster: Unit, skill: Skill, target: Unit, r: int) -> Array:
 # `r`: its rank impact (Battle.cast()); `req`: its contingency's payoff (+ to each roll, its edge). How
 # many levels it took.
 func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 0, 0.0]) -> int:
-	var bar := maxi(t.average_mod() + t.lv(), last_stand(t))
+	var bar := maxi(level_floor(t), last_stand(t))
 	var hits := 0
 	for i in r:
-		var roll := check(caster, skill.stat(), null, bar, {bonus = int(req[0]), edge = int(req[2]), tags = caster.skill_tags(skill), ties = false})
+		var roll := check(caster, skill.stat(), null, bar, level_opts(caster, skill, req))
 		contested.emit(caster, t, roll.mine.total, bar)
 		if roll.won:  # beating the bar, not meeting it
 			hits += 1
@@ -5128,6 +5176,30 @@ func _level_down(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0
 	leveled.emit(caster, t, hits)
 	return hits
 
+
+
+# What Level Down's bar never falls below: t's average stat mod + its level (the rest is its last stand).
+static func level_floor(t: Unit) -> int:
+	return t.average_mod() + t.lv()
+
+
+# The helper's options for one of Level Down's rolls: its contingency's + hit and edge, the caster's skill
+# tags; a roll must beat the bar, not meet it.
+static func level_opts(caster: Unit, skill: Skill, req: Array) -> Dictionary:
+	return {bonus = int(req[0]), edge = int(req[2]), tags = caster.skill_tags(skill), ties = false}
+
+
+# The chance (0-1) Level Down by caster takes at least a level off t (_level_down()): the bar is one last
+# stand rolled for all `ri` rolls, so each of its totals is weighed in turn and the rolls, each its odds
+# against that bar, are independent after it. The HUD's forecast and the AI read this (hit_chance()).
+static func level_odds(caster: Unit, skill: Skill, t: Unit, ri: int, b: Battle = null) -> float:
+	var req: Array = b.requirement(caster, skill, t, caster.rank(skill)) if b else [0, 0, 0, 0, 0.0]
+	var opts := level_opts(caster, skill, req)
+	var p := 0.0
+	for f in Check.totals(Check.check(stand_bonus(t), 0, Check.Kind.LAST_STAND)):
+		var each := odds(caster, skill.stat(), null, maxi(level_floor(t), f[0]), opts)
+		p += f[1] * (1.0 - pow(1.0 - each, ri))
+	return p
 
 
 # Impassioned Fighter: what its holder adds to a skill's primary mod used on a unit beside it.

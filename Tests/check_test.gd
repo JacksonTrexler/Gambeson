@@ -1,5 +1,9 @@
 extends Test
 
+const STUN := preload("res://Behaviours/stun.gd")
+const HITCH := preload("res://Behaviours/hitch.gd")
+const SLAM_JAM := preload("res://Behaviours/slam_jam.gd")
+
 # The Check resolver (Check, Battle.resolve): the one definition of a d20 roll - attack vs Defense, a
 # natural 20, advantage, and a forced-sure hit (docs/plan-composability.md, seam 1).
 
@@ -127,6 +131,50 @@ func test_check_against_a_total() -> void:
 		if b.check(null, &"", null, 15, {bonus = 5}).won:
 			won += 1
 	ok(absf(won / 2000.0 - 0.55) < 0.05, "odds() matches what it rolls (%.3f)" % (won / 2000.0))
+
+
+# Rolls against a fixed DC (a dodge, Stun's save, Burnout's, Bandwagon's) and the checks after a hit (Hitch's
+# grapple, Slam Jam's contest) are the helper's, so its odds forecast them: Stun, Hitch and Slam Jam say what a
+# hit would bring (Behaviour.foresee()) from the odds of the very roll apply() makes; an evade rolls as odds say.
+func test_dc_and_rider_forecasts() -> void:
+	for f in ["Battle.gd", "Burnout.gd"]:  # (Battle's: the initiative d20, and the two last stands)
+		var src := FileAccess.get_file_as_string("res://Scripts/" + f)
+		ok(src.count("Check.check(") == (3 if f == "Battle.gd" else 0), "%s: no DC roll builds its own Check" % f)
+	for f in DirAccess.get_files_at("res://Behaviours"):
+		ok("Check.check(" not in FileAccess.get_file_as_string("res://Behaviours/" + f), "%s: nor a behaviour's" % f)
+	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var braced := effect("check", 6.0)
+	braced.kind = &"defensive"
+	v(3).afflict(braced, 9)  # a defensive check bonus only: a dodge is a defensive roll
+	var dex := Battle.odds(v(3), &"dexterity", null, 12, {role = &"defensive"})
+	var got := 0
+	for n in 1500:
+		got += 1 if b.evade(v(3), 12) == 0.0 else 0
+	ok(dex > 0.2 and dex < 0.9 and absf(got / 1500.0 - dex) < 0.04, "a dodge passes as often as its odds say (%.3f vs %.3f)" % [got / 1500.0, dex])
+	for pair in [["stun", "Stuns it"], ["hitch", "Holds it"], ["slam_jam", "Interrupts it, Jammed"]]:
+		var s: Skill = load("res://Skills/%s.tres" % pair[0])
+		v(1).learned.append(slot(s, 2))
+		v(1).refresh()
+		var more := b.foresee(v(1), s, v(3))
+		var note: String = more.get("notes", [""])[0]
+		var c := b.cast_of(v(1), s, v(3), 2, true)
+		var p := Battle.odds(v(3), &"constitution", null, STUN.dc(c), STUN.save_opts(c))
+		match pair[0]:
+			"stun": p = 1.0 - p
+			"hitch": p = Battle.odds(v(1), &"strength", v(3), HITCH.FOE_STATS, HITCH.grapple(c))
+			"slam_jam": p = Battle.odds(v(1), &"strength", v(3), &"constitution", SLAM_JAM.contest(c))
+		ok(note == "%s (%d%%)" % [pair[1], roundi(p * 100.0)] and is_equal_approx(more.riders, p) and p > 0.0 and p < 1.0, "%s: \"%s\" is the odds of its roll" % [pair[0], note])
+	var s: Skill = load("res://Skills/stun.tres")
+	var c := b.cast_of(v(1), s, v(3), 2, true)
+	var held := 0
+	for n in 600:
+		v(3).timed.clear()
+		b.interrupt(v(3))
+		c.bag.clear()
+		s.behaviours[0].apply(c)
+		held += 1 if c.bag.get(&"stunned", false) else 0
+	var p := 1.0 - Battle.odds(v(3), &"constitution", null, STUN.dc(c), STUN.save_opts(c))
+	ok(absf(held / 600.0 - p) < 0.06, "Stun lands as often as it said (%.3f vs %.3f)" % [held / 600.0, p])
 
 
 # A declared check (Skill.check) as the helper reads it: + rank when ranked, its edge, a range penalty a
