@@ -315,6 +315,31 @@ func test_lines_up_a_shove() -> void:
 	ok(not AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(4, 4), "nothing to line up in the open: it stays")
 
 
+# docs/plans/ai-findings.md. The line-up's threshold is one tile of shove (Battle.PUSH x AI.RIDER), the least a drive can
+# differ by: a tile that tells exactly that much more is worth the walk, one that tells no more isn't.
+func test_line_up_gain_threshold() -> void:
+	v(1).learned.append(slot(kick, 2))
+	roomy(v(1))
+	v(1).strength = 40
+	stage(lancin, {v(1): Vector2i(6, 3), v(3): Vector2i(6, 4), v(2): Vector2i(0, 0), v(4): Vector2i(0, 1)})
+	v(1).refresh()
+	soak(v(3), 300)
+	b.paint(Vector2i(5, 4), load("res://Terrain/shallows.tres"))  # kicked from (4, 4): Soaks it, a rider; from beside, a 1-tile push is half of one
+	var reads := {v(3): b.read(v(1), v(3))}
+	var here: float = b.standing(v(1), v(1).cell, func() -> float: return AI._driven(b, v(1), kick, v(3)))
+	var there: float = b.standing(v(1), Vector2i(4, 4), func() -> float: return AI._driven(b, v(1), kick, v(3)))
+	ok(is_equal_approx(there - here, Battle.PUSH * AI.RIDER), "the water tile tells one tile of shove more (%.2f vs %.2f)" % [there, here])
+	var log: Array[String] = []
+	ok(AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(4, 4), "exactly that much more: it walks there (%s, %s)" % [v(1).cell, log])
+	b.paint(Vector2i(5, 4), Battle.PLAIN)
+	b.move(v(3), Vector2i(5, 4))
+	b.move(v(1), Vector2i(2, 4))
+	v(1).movement = 1  # the one tile it can walk to is in Kick's reach, bare ground between: no better than the poorest tile in reach, itself
+	v(1).refresh()
+	reads = {v(3): b.read(v(1), v(3))}
+	ok(not AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(2, 4), "no more to be had from any tile in reach: it stays (%s)" % [v(1).cell])
+
+
 # docs/plans/ai-walks.md. Its retreat weighs being driven: a tile on the map's edge is one a foe's Kick slams it against
 # (Battle.course() through foresee()), so with the blow read it stops a tile short; and it prices the way there by
 # route(), so it won't back onto a trap it knows of when another tile is as far.
