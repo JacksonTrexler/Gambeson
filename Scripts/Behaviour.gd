@@ -20,6 +20,7 @@ class Cast:
 	var rank := 1
 	var foe := true
 	var bag := {}
+	var picked: Array[Unit] = []  # the units its caster chose by hand, when a behaviour asks for picks() (empty: it chooses itself)
 	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
 	var mods: Modifiers  # its caster's modifiers on it (Unit.mods()): read scaled values through them
 	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()): modifier tags among them (Unit.skill_tags()), ambush when it ambushes (Battle.ambushes())
@@ -67,6 +68,14 @@ func apply(_c: Cast) -> void:
 	pass
 
 
+# How many targets its caster may pick by hand, beyond the one it is aimed at (0: none). Where it is
+# more than 0 the HUD lets a click on a visible foe toggle it into Cast.picked (up to this many) while the
+# skill is selected, and Battle.cast() carries them; the behaviour reads them in apply() and, with none
+# picked, chooses for itself (Warcry: the nearest), as the AI always does. Pure.
+func picks(_c: Cast) -> int:
+	return 0
+
+
 # What apply() does is the whole of the cast `c` (Battle.cast()): it lands at once, past any reactions,
 # with no roll, contest, effects or damage of the skill's own (Beastshape, Emergency Exit, an aura, Igna
 # on an ally). Pure: asked once the skill is paid for and aimed.
@@ -84,6 +93,15 @@ func impact() -> StringName:
 # A skill cast on a tile rather than a unit (Battle.cast_at(): Flamewall, Solar, Observe), paid for and
 # aimed at `cell`: what it does there. c has no target. A behaviour that has this says so in tile_target().
 func apply_at(_c: Cast, _cell: Vector2i) -> void:
+	pass
+
+
+# The skill it's on failed (Battle._miss()): its attack roll missed, its save or contest was lost (a drag,
+# a grapple, a level down), its Strike hit nothing, its level or its life wasn't taken. The counterpart
+# of apply(), which runs only when it lands: a refund, a rider on a miss. Not run on a cast that is
+# stopped or refused before it's tried, nor for a foe's dodge of a tile skill's area (area_blow() hands
+# those to missed() too, on a Cast of the victim's own).
+func missed(_c: Cast) -> void:
 	pass
 
 
