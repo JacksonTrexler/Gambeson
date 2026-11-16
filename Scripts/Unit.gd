@@ -636,7 +636,7 @@ func own_rank(s: Skill) -> int:
 func affinity(s: Skill) -> int:
 	var ps: Array[StringName] = []
 	for p in POSTURES:
-		if s.serves(p):
+		if s.serves(p, self):
 			ps.append(p)
 	return (roundi(stat(&"affinity", ps)) if not ps.is_empty() else 0) + guest_affinity(s)
 
@@ -1121,7 +1121,7 @@ func options() -> Dictionary:
 # way now. Null when it has none - the commander's intent order would be wasted (HUD.issue_intent).
 func intent_skill(posture: StringName) -> Skill:
 	for sk in hotbar:
-		if sk and sk.serves(posture) and can_afford(sk):
+		if sk and sk.serves(posture, self) and can_afford(sk):
 			return sk
 	return null
 
@@ -1205,7 +1205,7 @@ func reached(r: SkillRoot, x: Skill) -> bool:
 # A step on its trees it may pass over (Reckless Abandon: defensive and supportive skills that don't
 # also attack).
 func _skippable(x: Skill) -> bool:
-	return stat(&"abandon") > 0 and (x.serves(&"supportive") or x.serves(&"defensive")) and not x.serves(&"offensive")
+	return stat(&"abandon") > 0 and (x.serves(&"supportive", self) or x.serves(&"defensive", self)) and not x.serves(&"offensive", self)
 
 
 # The devoting tabs it has picked (a Warlock's patron, a Cleric's god; a Wizard may have a pact and a

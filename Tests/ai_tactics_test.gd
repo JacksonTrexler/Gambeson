@@ -315,3 +315,35 @@ func test_final_act_is_priced() -> void:
 	v(3).hp = 1
 	log.clear()
 	ok(AI._strike(b, v(1), reads, log), "alone it is still finished: left for last, not left alone (%s)" % [log])
+
+
+# docs/plans/ai-support-2.md. What a worn skill's raised cost takes off its worth in _strike(), so a unit with
+# another blow nearly as good varies - and the floor, so a lone worn skill is still used.
+func test_wear_varies_the_blow() -> void:
+	duel(spike)
+	v(1).refresh()
+	soak(v(3), 900)
+	Exhaustion.on = true
+	var reads := {v(3): b.read(v(1), v(3))}
+	var first := ""
+	var picked := func() -> String:
+		var log: Array[String] = []
+		v(1).refresh()
+		AI._strike(b, v(1), reads, log)
+		return log[0].split(" uses ")[1].split(" on ")[0]
+	ok(AI._wear(v(1), strike) == 0.0, "fresh: no wear")
+	var a: String = picked.call()
+	var skills := {"Strike": strike, "Spike": spike}
+	var worn: Skill = skills[a]
+	var other: Skill = skills["Spike" if a == "Strike" else "Strike"]
+	ok(score(v(1), worn, v(3)) > score(v(1), other, v(3)), "the %s it picks fresh scores higher (%s)" % [a, [score(v(1), strike, v(3)), score(v(1), spike, v(3))]])
+	for i in 6:
+		v(1).exhaustion.used(worn)
+	var w := AI._wear(v(1), worn)
+	ok(w > 0.0 and w < score(v(1), worn, v(3)), "worn, it costs it %.2f" % w)
+	ok(picked.call() == other.name, "worn out, it takes the other blow (%s)" % picked.call())
+	for i in 40:
+		v(1).exhaustion.used(other)
+	v(1).ap = [AP.new(100.0, &"")]
+	ok(AI._strike(b, v(1), reads, []), "both worn: a worn blow is still better than none")
+	Exhaustion.on = false

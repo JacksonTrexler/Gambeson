@@ -1274,8 +1274,8 @@ func test_help_order_reads_restores() -> void:
 	stage(lancin, {v(1): Vector2i(2, 2), u: Vector2i(2, 3), v(3): Vector2i(8, 1)})
 	u.refresh()
 	var h := await hud(v(1))
-	ok(u.intent_skill(&"supportive") == null and not heal.serves(&"supportive"), "Skill.serves() can't see Heal as help")
-	ok(h.intent_skill(u, &"supportive") == heal and h.intent_skill(u, &"offensive") == null, "the HUD's HELP finds it through what it restores")
+	ok(not heal.serves(&"supportive") and heal.serves(&"supportive", u), "Skill.serves() sees Heal as help, asked of the unit that would cast it")
+	ok(u.intent_skill(&"supportive") == heal and u.intent_skill(&"offensive") == null, "so HELP finds it through what it restores")
 	ok(h.intent_options(u).any(func(o: Array): return o[0] == &"help" and o[1]), "HELP is offered")
 	h.free()
 

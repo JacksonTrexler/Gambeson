@@ -2952,22 +2952,9 @@ func _nag(why: String) -> void:
 const INTENTS := {&"attack": &"offensive", &"defend": &"defensive", &"help": &"supportive"}
 
 
-# u's default skill for a posture: Unit.intent_skill(), and for HELP any skill that restores something
-# (AI.restoring(): Heal, Energize...) too - Skill.serves() only knows the fields a heal sets, not what a
-# behaviour restores.
-func intent_skill(u: Unit, posture: StringName) -> Skill:
-	var s := u.intent_skill(posture)
-	if s or posture != &"supportive":
-		return s
-	for sk in u.hotbar:
-		if sk and u.can_afford(sk) and AI.restoring(battle, u, sk):
-			return sk
-	return null
-
-
 # The commander can't give u a specific skill order - either it can't convey complex strategy (cha mod
 # <= 0: no hotbar slot is open to orders) or it can't read what u can do (low wisdom). It commands by
-# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (intent_skill()).
+# intent instead (ATTACK / DEFEND / HELP) and u uses its own default skill (Unit.intent_skill(): HELP counts what it restores, Skill.serves()).
 func uses_intents(u: Unit) -> bool:
 	return _orders(u) and u != command.leader and (command.slots(u) <= 0 or command.leader.mod(&"wisdom") < 0)
 
@@ -2984,7 +2971,7 @@ func intent_options(u: Unit) -> Array:
 	var guessing := _command_read(u) <= -5
 	var out := []
 	for intent in [&"attack", &"defend", &"help"]:
-		var has := intent_skill(u, INTENTS[intent]) != null
+		var has := u.intent_skill(INTENTS[intent]) != null
 		if has or guessing:
 			out.append([intent, has, guessing])
 	return out
@@ -2995,7 +2982,7 @@ func intent_options(u: Unit) -> Array:
 func issue_intent(u: Unit, intent: StringName) -> bool:
 	if not uses_intents(u):
 		return false
-	if intent_skill(u, INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
+	if u.intent_skill(INTENTS[intent]) == null:  # ineligible: it has no skill for this posture
 		_say("%s can't %s that way - a wasted order" % [_name(u), String(intent)])
 		command.lock(u)
 		_mark()
