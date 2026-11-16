@@ -131,12 +131,12 @@ func test_line_up() -> void:
 
 
 func test_ai() -> void:
-	stage(nemes, {v(1): Vector2i(5, 9), v(3): Vector2i(5, 5), v(4): Vector2i(5, 6)})
+	stage(nemes, {v(1): Vector2i(5, 7), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	v(3).facing = Vector2(-1, -1).normalized()
-	ok(AI._opening(v(3), Vector2i(6, 6)) == Unit.REAR_EDGE and AI._opening(v(3), Vector2i(4, 6)) == 0 and AI._opening(v(3), Vector2i(6, 4)) == 0, "the opening a tile gives: the rear's edge, no more")
+	ok(AI._opening(v(3), Vector2i(6, 4)) == Unit.REAR_EDGE and AI._opening(v(3), Vector2i(4, 4)) == 0 and AI._opening(v(3), Vector2i(6, 2)) == 0, "the opening a tile gives: the rear's edge, no more")
 	var reads := {v(3): b.read(v(1), v(3))}
-	ok(AI._approach(b, v(1), v(3), reads) == Vector2i(6, 6), "of two tiles as far off, it takes the one behind its target (%s)" % AI._approach(b, v(1), v(3), reads))
+	ok(AI._approach(b, v(1), v(3), reads) == Vector2i(6, 4), "of two tiles as far off, it takes the one behind its target (%s)" % AI._approach(b, v(1), v(3), reads))
 	v(3).facing = Vector2(1, -1).normalized()
-	ok(AI._approach(b, v(1), v(3), reads) == Vector2i(4, 6), "the other way, the other tile")
+	ok(AI._approach(b, v(1), v(3), reads) == Vector2i(4, 4), "the other way, the other tile")
 	v(3).facing = Vector2.ZERO
-	ok(AI._approach(b, v(1), v(3), reads) == Vector2i(4, 6), "no facing: the plain pick")
+	ok(AI._approach(b, v(1), v(3), reads) == Vector2i(4, 4), "no facing: the plain pick")

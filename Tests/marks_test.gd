@@ -229,12 +229,12 @@ func test_helpful_marks_pull() -> void:
 
 
 func test_helpful_marks_draw_the_approach() -> void:
-	stage(lancin, {v(2): Vector2i(8, 2), v(3): Vector2i(4, 2)})
+	stage(lancin, {v(2): Vector2i(5, 3), v(3): Vector2i(1, 3), v(1): Vector2i(2, 3)})  # the straight way in is taken; the two diagonal tiles cost the same
 	var reads := {v(3): b.read(v(2), v(3))}
 	var first := AI._approach(b, v(2), v(3), reads)
 	var m := Battle.Mark.new(&"test", v(1))
 	m.who = &"allies"
 	m.effects.assign([effect("damage", 0.1)])
-	b.lay_mark(Vector2i(5, 3), m)
+	b.lay_mark(Vector2i(2, 2), m)
 	var drawn := AI._approach(b, v(2), v(3), reads)
-	ok(first == Vector2i(5, 2) and drawn == Vector2i(5, 3), "it closes by the tile with a mark that helps it, over a nearer one (%s, %s)" % [first, drawn])
+	ok(first == Vector2i(2, 4) and drawn == Vector2i(2, 2), "it closes by the tile with a mark that helps it, over one as near (%s, %s)" % [first, drawn])

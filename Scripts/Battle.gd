@@ -216,6 +216,7 @@ const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 # By how well it hid (good, middling, poor): [fewest, most] debris left, and [nearest, furthest] tiles off.
 const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
 const HAZARD_TILES := 0.5  # steering: movement a point of foreseen HP loss weighs as (a 7 damage trap is a 3.5 tile detour); AP loss weighs 1 a point
+const SUSPECT_TILES := 3.0  # movement a tile it suspects hides something (Read.hint: "disturbed earth?") weighs, at least; the AI used to count one as 10
 const HELP_PULL := 0.75  # movement a tile with a known helpful mark (Charge!) takes off a step onto it, in route() and the AI's approach: less than a tile, so it only tips a choice
 const STEER_MARGIN := 2  # tiles either side of its straight run that a steered route may wander (route())
 const EARTHWORK_COST := 1.5  # disturbed earth (earthwork()): what entering it costs its side's enemies, times the usual
@@ -3064,12 +3065,18 @@ func _owe(out: Dictionary, key: StringName, n: float) -> void:
 
 # What a hazard() weighs against the way round, in movement: HAZARD_TILES a point of HP, 1 a point of
 # anything else. A known trap, detrimental ground or `bad` (a known mark that would harm the walker:
-# Mark.harms()) counts at least a tile, whatever the estimate says - but not a trap `passed` by (Meander).
-func dread(owed: Dictionary, r: Read, bad := false, passed := false) -> float:
+# Mark.harms()) counts at least a tile, whatever the estimate says - but not a trap `passed` by (Meander) - and
+# a tile it suspects something of (Read.hint) at least SUSPECT_TILES, if `wary` (a walk goes only by what it
+# knows; the AI choosing where to head is wary too: route()'s price).
+func dread(owed: Dictionary, r: Read, bad := false, passed := false, wary := false) -> float:
 	var n := 0.0
 	for key in owed:
 		n += owed[key] * (HAZARD_TILES if key == &"hp" else 1.0)
-	return maxf(n, 1.0) if n > 0.0 or (r.known_bad() and not (passed and r.trap == true)) or bad else 0.0
+	if (r.known_bad() and not (passed and r.trap == true)) or bad:
+		n = maxf(n, 1.0)
+	if wary and r.hint != "":
+		n = maxf(n, SUSPECT_TILES)
+	return n
 
 
 # The walk's tiles: the straight line `ln` from u to dest, or - when it crosses ground u knows to be
@@ -3079,16 +3086,21 @@ func dread(owed: Dictionary, r: Read, bad := false, passed := false) -> float:
 # the true map; unseen ground counts as plain, units it can't locate aren't in the way), and one with
 # a negative foresight allowance plans optimistically, regardless of hazards. Costs come from stride(),
 # which walk() pays too, so the plan and the walk can't disagree. Leaves the rng as it was.
-func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
-	if ln.size() < 2 or foresight_allowance(u) < 0:
+# `price`, a Dictionary if given (`wary`: true in it also weighs ground it suspects something of, dread()), is filled with {cost}: what the tiles returned cost it in all (movement, units in the
+# way included - stride()'s pass_cost() - plus dread, less what marks draw it): the AI's approach weighs
+# the cells it might head for by it (AI._approach()), so it and the walk read one price.
+func route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null) -> Array[Vector2i]:
+	var blind := foresight_allowance(u) < 0
+	if (ln.size() < 2 or blind) and price == null:
 		return ln
 	var dreads := {}  # tile (and, for one that stands still, how far along: Meander passes ground by) -> its dread, read once
 	var wards := u.meander()
+	var wary: bool = price != null and price.get(&"wary", false)
 	var dread_of := func(c: Vector2i, nth: int) -> float:
 		var key: Variant = c if wards <= 0 else [c, mini(nth, wards + 1)]
 		if key not in dreads:
 			var r := read(u, c)
-			dreads[key] = dread(hazard(u, c, r, nth if wards > 0 else 0, c == dest, false), r, r.marks.any(func(m: Mark): return m.harms(u)), wards > 0 and u.passes_by(terrain(c), nth))
+			dreads[key] = dread(hazard(u, c, r, nth if wards > 0 else 0, c == dest, false), r, r.marks.any(func(m: Mark): return m.harms(u)), wards > 0 and u.passes_by(terrain(c), nth), wary)
 		return dreads[key]
 	var danger := 0.0
 	var pulled := false  # a known helpful mark on the line's ground, or near enough to bend it
@@ -3100,7 +3112,8 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 			break
 	for i in ln.size():
 		danger += dread_of.call(ln[i], i + 1) if on_map(ln[i]) else 0.0
-	if danger <= 0.0 and not pulled:
+	var searching := (danger > 0.0 or pulled) and ln.size() >= 2 and not blind
+	if not searching and price == null:
 		return ln
 	var grounds := {}
 	var ground_of_known := func(c: Vector2i) -> Terrain:
@@ -3117,6 +3130,10 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 	for i in ln.size():
 		bound += cost_of.call(prev, ln[i], bag, i + 1) if on_map(ln[i]) else INF
 		prev = ln[i]
+	if price != null:
+		price.cost = bound
+	if not searching:
+		return ln
 	var lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
 	var hi := Vector2i(maxi(u.cell.x, dest.x), maxi(u.cell.y, dest.y)) + Vector2i(STEER_MARGIN, STEER_MARGIN)
 	var best := {u.cell: 0.0}
@@ -3152,6 +3169,8 @@ func route(u: Unit, dest: Vector2i, ln: Array[Vector2i]) -> Array[Vector2i]:
 						open.append(c)
 	if dest not in came or best[dest] >= bound - 0.001:
 		return ln
+	if price != null:
+		price.cost = best[dest]
 	var out: Array[Vector2i] = []
 	var step := dest
 	while step != u.cell:

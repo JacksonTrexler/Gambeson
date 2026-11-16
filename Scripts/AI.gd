@@ -985,9 +985,11 @@ static func _leaning(u: Unit) -> int:
 	return {&"brave": 1, &"aggressive": -1}.get(u.temper(), 0)
 
 
-# Where to head for a target: a cell beside it (side-on first: diagonals can be near misses) whose
-# path crosses the least ground it knows or suspects is bad, then the nearest, away from units it
-# takes for aggressive. Never where it already stands. Planning mustn't use up the battle's rng, so it's restored.
+# Where to head for a target: a cell beside it (side-on first: diagonals can be near misses) that is the
+# cheapest to reach - the price of the route the walk would take there (Battle.route(): movement, the
+# units in the way, and the dread of ground it knows or suspects is bad, less what helpful marks draw it) -
+# then the nearest, away from units it takes for aggressive. Never where it already stands. Planning
+# mustn't use up the battle's rng, so it's restored.
 static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2i:
 	var r: Read = reads[t]
 	var state := b.rng.state
@@ -998,13 +1000,10 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			var c: Vector2i = r.cell + Vector2i(dx, dy)
 			if c == r.cell or c == u.cell or not b.on_map(c) or b.unit_at(c):
 				continue
-			var risk := 0
-			var pull := 0.0
-			for p in b.line(u.cell, c, u.luck, u):
-				var tr := b.read(u, p)
-				risk += int(tr.known_bad() or tr.hint != "")
-				pull += b.lure(u, p)  # a known helpful mark on the way (Charge!) draws it a little
-			var v := risk * 10.0 + Vector2(u.cell).distance_to(Vector2(c)) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) - pull
+			var price := {&"wary": true}  # it weighs what it only suspects, too
+			b.route(u, c, b.line(u.cell, c, u.luck, u), price)
+			var away := Vector2(u.cell).distance_to(Vector2(c))
+			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c)
 			for o in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:

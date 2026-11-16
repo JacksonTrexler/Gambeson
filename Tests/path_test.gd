@@ -165,3 +165,26 @@ func test_at_end_counts_where_it_ends() -> void:
 	ok(is_equal_approx(b.hazard(v(1), c, r, 2, true).get(&"hp", 0.0), 6.0), "ending there: 3 a turn for 2 turns (%s)" % [b.hazard(v(1), c, r, 2, true)])
 	var w := b.walk(v(1), c, true)
 	ok(w.path.back() == c, "route(): nothing to bend round for a destination, it still goes (%s)" % [w.path])
+
+
+# route()'s price is what the walk pays (stride()), units in the way included (pass_cost()), plus dread: the one
+# cost the AI's approach weighs its cells by (AI._approach()). Suspected ground counts only for the AI (`wary`).
+func test_the_approach_pays_the_walks_price() -> void:
+	walker()
+	var dest := Vector2i(8, 4)
+	var price := {}
+	b.route(v(1), dest, b.line(v(1).cell, dest, v(1).luck, v(1)), price)
+	var paid := func() -> float: return b.walk(v(1), dest, true).costs.reduce(func(sum, x): return sum + x, 0.0)
+	ok(is_equal_approx(price.cost, paid.call()), "plain ground: the price is the walk's movement (%s, %s)" % [price.cost, paid.call()])
+	var plain: float = price.cost
+	b.units[Vector2i(6, 4)] = v(3)  # a foe it can see, in the way
+	v(3).cell = Vector2i(6, 4)
+	price = {}
+	b.route(v(1), dest, b.line(v(1).cell, dest, v(1).luck, v(1)), price)
+	ok(price.cost > plain + 0.5 and is_equal_approx(price.cost, paid.call()), "a unit in the way: pass_cost() is in it, as in the walk (%s, %s)" % [price.cost, paid.call()])
+	walker()
+	price = {}
+	b.route(v(1), dest, b.line(v(1).cell, dest, v(1).luck, v(1)), price)
+	var line := b.line(v(1).cell, dest, v(1).luck, v(1))
+	ok(b.read(v(1), TRAP).hint != "" and TRAP in b.route(v(1), dest, line, {}), "ground it only suspects (a hint) isn't steered round by a walk, which goes by what it knows")
+	ok(TRAP not in b.route(v(1), dest, line, {&"wary": true}), "...but when it's wary (the AI choosing where to head) it counts")
