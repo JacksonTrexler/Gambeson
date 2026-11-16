@@ -2140,7 +2140,7 @@ func _suspicious(c: Vector2i, r: Read) -> bool:
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
 # effects (auto-scrolling when long), and notes on what's uncertain about it.
 func _show_pane() -> void:
-	pane.visible = hover != NOWHERE and not _panel_open()
+	pane.visible = hover != NOWHERE and battle.on_map(hover) and not _panel_open()  # a tile that has gone (a pocket ended) shows nothing
 	if not pane.visible:
 		_pane_list = ""
 		return
@@ -2348,7 +2348,7 @@ func _tile_icon(c: Vector2i) -> Texture2D:
 	var map := battle.map
 	var key := [map.get_cell_source_id(c), map.get_cell_atlas_coords(c)]
 	if key not in _icons:
-		var src := map.tile_set.get_source(key[0]) as TileSetAtlasSource
+		var src := map.tile_set.get_source(key[0]) as TileSetAtlasSource if map.tile_set.has_source(key[0]) else null  # no cell: source -1
 		if not src:
 			return null
 		var tex := AtlasTexture.new()
@@ -2823,10 +2823,15 @@ func effect_icons(u: Unit, only: Variant = null) -> Array:
 			continue
 		at[key] = out.size()
 		var known_roll := a.evaluated and a.roll != 0 and u.faction == command.faction()
-		out.append([a.skill.mark() if a.skill else e.label().left(2), FRIEND if e.helps() > 0 else FOE,
+		out.append([a.skill.mark() if a.skill else _chip_mark(e.label()), FRIEND if e.helps() > 0 else FOE,
 				(a.skill.name + "\n" if a.skill else "") + line + ("\nRolled %d" % a.roll if known_roll else ""),
 				str(a.roll) if known_roll else ""])
 	return out
+
+
+# A condition's two letters on its chip, with the ?? a name made up by an AI still wears ("Jm ??").
+static func _chip_mark(label: String) -> String:
+	return label.left(2) + (" ??" if label.ends_with(" ??") else "")
 
 
 # Suspicion (Battle.suspect()) as one utility status, a purple eye, whatever u has grown suspicious of:

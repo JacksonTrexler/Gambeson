@@ -626,6 +626,11 @@ func test_tile_effects() -> void:
 	h.hover_cell(Vector2i(5, 2))
 	ok(h._scroll_t == 0.0, "a newly hovered tile starts over")
 	shrine.effects.assign(kept)
+	var gone := Vector2i(5, 3)
+	h.hover_cell(gone)
+	b.map.erase_cell(gone)  # a pocket ending: the hovered tile's cell is gone
+	h._show_pane()
+	ok(not h.pane.visible and h._tile_icon(gone) == null, "a hovered tile that has gone shows no pane (and no atlas error)")
 	h.free()
 
 
