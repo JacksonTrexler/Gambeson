@@ -17,3 +17,14 @@ Branch `z-aitune`. Card "AI tuning and the last prices" in `docs/queue.md` (?159
 ### Tests
 - `hud_test.test_a_lied_defense_is_believed`: the read is mirrored; the AI's chance is the lied one; the card and the log's roll show it.
   Mutations (each fails it, reverted): AI ignoring the lie; log without skew; card without it; `_lie` without the flip.
+
+### 2. Grudge retreat
+Read as: the unit *starving* a Grudge unit of its melee (`_starve`) backs off to a tile it can back off from again next round, not the corner furthest
+away (ai-prices.md "Not done"). Kept small: `AI._away(b, u, from, safe := 0)` now picks through `_retreat()`. With `safe` > 0 every tile at least
+that far counts the same (gap capped at `safe`), and of those the one with the most `_room()` wins: free tiles within the unit's own movement of it that lie
+further from the Grudge unit than it does (straight lines and bare ground, as `starve_worth` does; a corner has 0). `_starve` passes
+`safe = movement + 2` of the Grudge unit (one tile past its reach, `movement + 1`). Without `safe` (every other `_away` caller, `_keep_away`, `_recover`)
+nothing changes. *Not done:* Grudge units' own approach; allies don't coordinate who retreats where; the turn after, g's new position isn't foreseen
+(room is against where it stands now).
+Test: `ai_tactics_test.test_starving_keeps_room_to_retreat` (the wiser tile is out of reach and has more room than the furthest tile; a corner has
+none; the starving turn walks to it). Mutations (each fails it, reverted): `_starve` not passing `safe`; `_room` counting equal-distance tiles.

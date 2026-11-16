@@ -193,6 +193,28 @@ func test_starves_grudge() -> void:
 	ok(not log.any(func(l: String): return "starving" in l), "...no keeping away")
 
 
+# docs/plans/ai-tuning.md. Keeping from a Grudge unit's reach, it backs into a tile it can back off from again next
+# round, not the corner furthest away (where the next round has it cornered, handing over the blow).
+func test_starving_keeps_room_to_retreat() -> void:
+	var g := grudged(Vector2i(4, 3))
+	v(1).strength = 0
+	var from: Array[Vector2i] = [g.cell]
+	var gap := func(c: Vector2i) -> int: return Command.tiles(g.cell, c)
+	var reach := ceili(g.stat(&"movement")) + 1
+	var far := AI._retreat(b, v(1), from)
+	var wise := AI._retreat(b, v(1), from, reach + 1)
+	ok(gap.call(wise) > reach, "out of its reach (%s, %d tiles, its reach %d)" % [wise, gap.call(wise), reach])
+	ok(AI._room(b, v(1), wise, gap) > AI._room(b, v(1), far, gap), "with more room to back off again than the furthest tile (%s: %d, against %s: %d)" % [wise, AI._room(b, v(1), wise, gap), far, AI._room(b, v(1), far, gap)])
+	ok(AI._room(b, v(1), Vector2i(9, 7), gap) == 0 and AI._room(b, v(1), Vector2i(0, 0), func(c: Vector2i) -> int: return Command.tiles(Vector2i(9, 7), c)) == 0, "a corner has none")
+	var start := v(1).cell
+	var log := AI.act(b, v(1))
+	var went := v(1).cell
+	b.move(v(1), start)
+	v(1).refresh()
+	b.travel(v(1), wise)
+	ok(log.any(func(l: String): return "starving" in l) and went == v(1).cell and went != start, "the starving turn backs off there (%s, %s from %s, to %s)" % [log, went, start, wise])
+
+
 func test_grudge_heals_itself() -> void:
 	roomy(v(3))
 	v(3).learned.append(slot(grudge, 2))
