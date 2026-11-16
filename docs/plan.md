@@ -137,6 +137,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Look-over (?161) | `bio_test.gd` |
 | — | AI prices what it ignores (?162) | `ai_tactics_test.gd` |
 | 12 | Equipping skills (?163) | `equip_test.gd`, `save_test.gd`, `sweep_test.gd` |
+| — | Checks tail and rebate affordability (?164) | `poach_test.gd`, `last_stand_test.gd`, `bracing_test.gd`, `check_test.gd` |
+| — | Equip follow-ups (?165) | `equip_test.gd` |
+| — | Tooling guards (?166) | `slam_jam_test.gd`, `tooling_test.gd` |
+| — | AI support 2: Move, wear, help orders (?167) | `ai_tactics_test.gd`, `move_test.gd`, `ai_support_test.gd` |
+| — | HUD glow and Guide (?168) | `hud_test.gd`, `ui_small_test.gd` |
+| — | Param rest (?169) | `route_test.gd` |
 
 ## Questions to answer first
 

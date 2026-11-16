@@ -76,6 +76,12 @@ func picks(_c: Cast) -> int:
 	return 0
 
 
+# The targets it takes when nothing is picked (a skill with picks()): the HUD draws them faintly before the
+# first pick, so a quick cast is no surprise. Warcry: the nearest foes. Pure; apply() should choose the same.
+func defaults(_c: Cast) -> Array[Unit]:
+	return []
+
+
 # What apply() does is the whole of the cast `c` (Battle.cast()): it lands at once, past any reactions,
 # with no roll, contest, effects or damage of the skill's own (Beastshape, Emergency Exit, an aura, Igna
 # on an ally). Pure: asked once the skill is paid for and aimed.
@@ -94,6 +100,13 @@ func impact() -> StringName:
 # aimed at `cell`: what it does there. c has no target. A behaviour that has this says so in tile_target().
 func apply_at(_c: Cast, _cell: Vector2i) -> void:
 	pass
+
+
+# The tiles apply_at() would cover were its skill cast on `cell` (a Battle.cast_of() with no target), for
+# the HUD's preview: who stands in them glows, and the overlay shades them. Empty: no area of its own.
+# Pure.
+func footprint(_c: Cast, _cell: Vector2i) -> Array[Vector2i]:
+	return []
 
 
 # The skill it's on failed (Battle._miss()): its attack roll missed, its save or contest was lost (a drag,

@@ -26,6 +26,22 @@ func apply_at(c: Cast, cell: Vector2i) -> void:
 		_plain(c, cell)
 
 
+func footprint(c: Cast, cell: Vector2i) -> Array[Vector2i]:
+	var b := c.battle
+	var from := c.caster.cell
+	var half := deg_to_rad(width(c.rank, c.mods)) / 2.0
+	var long := b.area_reach(c.caster, c.skill)
+	var aim := Vector2(cell - from).angle()
+	var out: Array[Vector2i] = []
+	var r := ceili(long)
+	for dx in range(-r, r + 1):
+		for dy in range(-r, r + 1):
+			var at := from + Vector2i(dx, dy)
+			if at != from and b.on_map(at) and b.in_cone(from, at, aim, half, long):
+				out.append(at)
+	return out
+
+
 func _evadable(c: Cast, cell: Vector2i) -> void:
 	var b := c.battle
 	var caster := c.caster

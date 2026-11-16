@@ -9,6 +9,8 @@ extends Node2D
 # Floating numbers and sleepers' "zZ" go on `top`, above the units; walking is animated here too.
 
 const TILE := 32.0
+const CASTER_SIZE := 0.05  # tiles a point of the caster's size adds to a skill's range (Battle.skill_range()), drawn as its circle
+const TARGET_SIZE := 0.02  # and of the target's
 const STEP_TIME := 0.07  # seconds per tile when a unit walks
 const GOLD := Color("#e8c547")
 const MOVE := Color("#7cc4ff")
@@ -31,8 +33,6 @@ var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
 var _walk_len: Dictionary[Unit, float] = {}  # each walk's length, in seconds at speed 1 (walking_left())
-const NEAR := 1.0  # a miss by less than this many tiles shows its gap (_near_miss())
-const SIZE_SCALE := 0.17  # tiles a point of size draws as, in the near-miss circles
 var _floats: Array[Tween] = []  # the floating numbers' tweens, hurried with the walks
 var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
@@ -157,6 +157,9 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 			elif s.behaviour(&"observe"):  # what it would look over: wis mod (at least 1) + rank tiles around c
 				_ring(_center(c), (maxi(sel.mod(&"wisdom"), 1) + sel.rank(s)) * TILE, Color(FRIEND, 0.4 + 0.3 * pulse), false)
 				_brackets(_rect(c, 1.5), Color(FRIEND, pulse), 6.0)
+			elif s.behaviour(&"cone"):  # the cone itself; whoever stands in it glows (HUD.caught)
+				for at in s.footprint(b, sel, c):
+					draw_rect(_rect(at, 1), Color(ZONE, 0.22))
 			else:
 				var levels := b.zone_levels(sel.rank(s), c)
 				for at in levels:
@@ -172,6 +175,8 @@ func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 
 # The foes picked by hand (HUD.picked): brackets and their number, of the most the skill takes.
 func _draw_picks(pulse: float) -> void:
+	for t in hud.preview():  # nothing picked yet: the default targets, faint
+		_brackets(_rect(t.cell, 1.5), Color(FOE, 0.25 + 0.15 * pulse), 6.0, 1.0)
 	for i in hud.picked.size():
 		var at: Vector2i = hud.picked[i].cell
 		_brackets(_rect(at, 1.5), Color(FOE, 0.6 + 0.4 * pulse), 6.0)
@@ -219,21 +224,22 @@ func _gap(sel: Unit) -> void:
 	_near_miss(sel, it.target, reach_tiles)
 
 
-# A miss by less than NEAR tiles: a small circle for each unit's size (drawn at SIZE_SCALE tiles a point of
-# size; the range itself counts 0.05 of the caster's and 0.02 of the target's), and the gap itself, a
-# short line from the reach ring's edge to the target's circle. A near miss isn't plain luck (Luck.MARGIN):
-# here is how far.
+# A miss by less than Luck.MARGIN tiles, where luck decides: each unit's circle at the size it adds to
+# the range (Battle.skill_range(): 0.05 a point of the caster's, 0.02 of the target's), the margin as a
+# dashed ring past the reach ring (bright if the caster is the luckier, so it rounds in), and the gap
+# itself, a short line from the reach ring's edge to the target's circle.
 func _near_miss(sel: Unit, target: Unit, reach_tiles: float) -> void:
 	var a := _center(sel.cell)
 	var b := _center(target.cell)
 	var gap := a.distance_to(b) / TILE - reach_tiles
-	if gap <= 0.0 or gap >= NEAR:
+	if gap <= 0.0 or gap >= Luck.MARGIN:
 		return
-	var col := Color(FOE, 0.6)
-	var rs := sel.stat(&"size") * SIZE_SCALE * TILE
-	var rt := target.stat(&"size") * SIZE_SCALE * TILE
-	_ring(a, rs, col, false)
+	var lucky := sel.luck - target.luck > 0
+	var col := Color(FOE, 0.6 if lucky else 0.3)
+	var rt := target.stat(&"size") * TARGET_SIZE * TILE
+	_ring(a, sel.stat(&"size") * CASTER_SIZE * TILE, col, false)
 	_ring(b, rt, col, false)
+	_ring(a, (reach_tiles + Luck.MARGIN) * TILE, col, true)
 	var dir := (b - a).normalized()
 	draw_dashed_line(a + dir * reach_tiles * TILE, b - dir * rt, Color(FOE, 0.5), 1.0, 2.0)
 

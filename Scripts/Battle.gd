@@ -1250,6 +1250,17 @@ func picks_of(caster: Unit, skill: Skill) -> int:
 	return n
 
 
+# What the skill takes of its own accord with nothing picked (its behaviours' defaults()), for the HUD's preview.
+func defaults_of(caster: Unit, skill: Skill) -> Array[Unit]:
+	var c := cast_of(caster, skill, caster, caster.rank(skill), false)
+	var out: Array[Unit] = []
+	for bh in skill.behaviours:
+		for t in bh.defaults(c):
+			if t not in out:
+				out.append(t)
+	return out
+
+
 # The edge on a skill's attack roll: its own advantage or disadvantage, plus its behaviours' (Gank),
 # no more than one either way.
 static func edge_of(skill: Skill, c: Behaviour.Cast) -> int:

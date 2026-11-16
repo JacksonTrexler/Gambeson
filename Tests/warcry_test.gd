@@ -112,7 +112,9 @@ func test_the_hud_toggles_picks() -> void:
 	v(1).hotbar[1] = warcry
 	h._unhandled_input(key_of(KEY_2))
 	ok(h.picking() and h.picked.is_empty() and "nearest 1" in h._hint(), "its key aims it: nothing picked is the nearest foe (%s)" % h._hint())
+	ok(h.preview() == Array([v(4)], TYPE_OBJECT, "Node", null), "nothing picked: the preview is the nearest foe (%s)" % [h.preview()])
 	h.click(Vector2i(7, 3))
+	ok(h.preview().is_empty(), "the first pick clears the preview")
 	ok(h.picked == Array([v(3)], TYPE_OBJECT, "Node", null) and "1 of 1" in h._hint(), "clicking a visible foe picks it, with a count (%s)" % h._hint())
 	h.click(Vector2i(1, 7))
 	ok(h.picked == Array([v(3)], TYPE_OBJECT, "Node", null), "never more than rank")

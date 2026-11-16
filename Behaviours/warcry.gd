@@ -29,7 +29,15 @@ static func chosen(c: Cast) -> Array[Unit]:
 	for o in c.picked:
 		if out.size() < n and o.is_alive() and not Faction.friends(o.faction, c.caster.faction) and c.battle.read(c.caster, o).located() and o not in out:
 			out.append(o)
-	return out if not out.is_empty() else nearest(c.battle, c.caster, n)
+	return out if not out.is_empty() else defaults_of(c)
+
+
+func defaults(c: Cast) -> Array[Unit]:
+	return defaults_of(c)
+
+
+static func defaults_of(c: Cast) -> Array[Unit]:
+	return nearest(c.battle, c.caster, c.range_rank())
 
 
 # The tiles it marks toward foe t: the first `n` of the line, short of the foe's own tile.

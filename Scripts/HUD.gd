@@ -70,6 +70,7 @@ var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing 
 var hover := NOWHERE
 var busy := false  # units are acting on their own; the player waits
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
+var caught: Array[Unit] = []  # the units an aimed area skill would catch at the hovered tile (_caught()): they glow fully
 var reach: Dictionary[Vector2i, float] = {}  # tiles the selected unit expects to reach, and the cost
 var charge := NOWHERE  # the hovered foe a click would walk up to and use a skill on
 var hovered := {}  # what a click on the hovered tile means (intent())
@@ -601,6 +602,12 @@ func picks_of(u: Unit, s: Skill) -> int:
 # Whether a skill that takes picks is being aimed: a click on a visible foe toggles it into `picked`.
 func picking() -> bool:
 	return aim and selected != null and picks_of(selected, armed) > 0
+
+
+# The foes a quick cast would take while the skill is aimed and nothing is picked yet (Behaviour.defaults()).
+func preview() -> Array[Unit]:
+	var none: Array[Unit] = []
+	return battle.defaults_of(selected, armed) if picking() and picked.is_empty() else none
 
 
 # The foes a pick could be: those the unit makes out (Battle.read() locates them), as the behaviour will.
@@ -1171,11 +1178,11 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 	if mine and t and s and _slot_usable(me, slot) and not s.on_tile() and not self_skill(me, s) and t != me and not (inspect and foe(t)):
 		var why := why_not(me, s, t)
 		if why == "" or why == "Out of reach":  # the selected skill is for it
-			return _use_intent(it, s, t)
+			return _use_intent(it, s, t, force)
 	if mine and t and not inspect and foe(t):
 		var p := _primary(me)
 		if p:
-			return _use_intent(it, p, t)
+			return _use_intent(it, p, t, force)
 	if mine and t == me:  # itself: rest, keep a channel going, or (having acted) stand down for the turn
 		it.target = me
 		it.kind = (&"continue" if me.channel else &"rest") if me.idle() else &"done"
@@ -1203,8 +1210,9 @@ func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dict
 
 
 # Using s on t: from here; after a walk it can count on into reach; refused when only a walk it can't
-# count on gets there (unsure); or, out of reach this turn, a walk as close as it gets (not ready).
-func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
+# count on gets there (unsure: a click refuses, a forced one (Ctrl) walks it anyway); or, out of reach this
+# turn, a walk as close as it gets (not ready).
+func _use_intent(it: Dictionary, s: Skill, t: Unit, force := false) -> Dictionary:
 	var me: Unit = it.unit
 	it.skill = s
 	it.target = t
@@ -1220,6 +1228,8 @@ func _use_intent(it: Dictionary, s: Skill, t: Unit) -> Dictionary:
 	a = _approach(me, s, t.cell)
 	if a.ready:
 		it.unsure = true  # only a walk it can't count on gets there: a click doesn't walk
+		if force:
+			return _walk_to(it, &"use", a.dest, true)
 		return _refusal(it, why)
 	it.why = why
 	return _walk_to(it, &"use", a.dest, false)
@@ -2171,7 +2181,7 @@ func _suspicious(c: Vector2i, r: Read) -> bool:
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
 # effects (auto-scrolling when long), and notes on what's uncertain about it.
 func _show_pane() -> void:
-	pane.visible = hover != NOWHERE and not _panel_open()
+	pane.visible = hover != NOWHERE and battle.on_map(hover) and not _panel_open()  # a tile that has gone (a pocket ended) shows nothing
 	if not pane.visible:
 		_pane_list = ""
 		return
@@ -2379,7 +2389,7 @@ func _tile_icon(c: Vector2i) -> Texture2D:
 	var map := battle.map
 	var key := [map.get_cell_source_id(c), map.get_cell_atlas_coords(c)]
 	if key not in _icons:
-		var src := map.tile_set.get_source(key[0]) as TileSetAtlasSource
+		var src := map.tile_set.get_source(key[0]) as TileSetAtlasSource if map.tile_set.has_source(key[0]) else null  # no cell: source -1
 		if not src:
 			return null
 		var tex := AtlasTexture.new()
@@ -2859,10 +2869,15 @@ func effect_icons(u: Unit, only: Variant = null) -> Array:
 			continue
 		at[key] = out.size()
 		var known_roll := a.evaluated and a.roll != 0 and u.faction == command.faction()
-		out.append([a.skill.mark() if a.skill else e.label().left(2), FRIEND if e.helps() > 0 else FOE,
+		out.append([a.skill.mark() if a.skill else _chip_mark(e.label()), FRIEND if e.helps() > 0 else FOE,
 				(a.skill.name + "\n" if a.skill else "") + line + ("\nRolled %d" % a.roll if known_roll else ""),
 				str(a.roll) if known_roll else ""])
 	return out
+
+
+# A condition's two letters on its chip, with the ?? a name made up by an AI still wears ("Ja ??").
+static func _chip_mark(label: String) -> String:
+	return label.left(2) + (" ??" if label.ends_with(" ??") else "")
 
 
 # Suspicion (Battle.suspect()) as one utility status, a purple eye, whatever u has grown suspicious of:
@@ -3183,7 +3198,7 @@ func glow_of(u: Unit) -> int:
 	var me := selected if _orders(selected) else null
 	var s := armed
 	if me and aiming():
-		return command_glow(u)
+		return Unit.Intensity.FULLY if u in caught else command_glow(u)
 	if me and s and support_view():  # the support view: the units it's for glow by reach, foes fall back
 		if unit_seen(u.cell) != u:
 			return -1
@@ -3240,7 +3255,7 @@ func command_glow(u: Unit) -> int:
 # walk is one it can count on (_sure_walk()); {dest = the leader's own cell} if none does this turn.
 func _into_command(u: Unit) -> Dictionary:
 	var lead := command.leader
-	var span := command.party_reach() if u in command.party else float(command.reach())
+	var span := maxf(command.party_reach() if u in command.party else float(command.reach()), command.reach_for(u))  # (a stand-in mod: Word to the Wise)
 	var path: Array[Vector2i] = []
 	for c in battle.walk(lead, u.cell, true).path:
 		path.append(c)
@@ -3376,6 +3391,26 @@ func _replan() -> void:
 	if card:
 		card.set_info(_card_info())
 	charge = hovered.cell if hovered.get("kind") == &"use" and hovered.target is Unit and hovered.target != selected else NOWHERE
+	var now := _caught()
+	if now != caught:
+		caught = now
+		for u: Unit in battle.get_node("Units").get_children():
+			if u.is_alive() and u.visible:
+				_apply_look(u, look_of(u))
+
+
+# The units an aimed area skill would catch, cast on the hovered tile: those made out standing in its
+# footprint (Skill.footprint()). None while it couldn't be cast there, or isn't aimed.
+func _caught() -> Array[Unit]:
+	var out: Array[Unit] = []
+	var me := selected
+	if not me or hover == NOWHERE or not _orders(me) or not aiming() or why_not(me, armed, hover) != "":
+		return out
+	for c in armed.footprint(battle, me, hover):
+		var t := unit_seen(c)
+		if t and t not in out:
+			out.append(t)
+	return out
 
 
 # Without a starter (the scene run on its own) the player leads the highest-level unit.

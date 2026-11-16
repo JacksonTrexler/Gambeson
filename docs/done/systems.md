@@ -235,3 +235,12 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Param tail** (`Behaviour.missed()`, `Battle._miss()`, `Unit.dissonance_penalty()`; Rift, Look and Strike's element through modifiers): plan `docs/plans/param-tail.md`. `route_test`. (?160)
 - [x] **AI prices** (`Read.defense`, `Behaviour.reprisal()`, `foresee` riders and spill, `AI.starve_worth()`, `Kick.driven()`): plan `docs/plans/ai-prices.md`. `ai_tactics_test`. (?162)
 - [x] **Equipping skills** (`Unit.equipped()`, `auto_equip`, `_arrange()`, `SkillSlot.drag_learned`, `Save._equipped_out()`; Settings "Auto-equip new skills"): the hotbar is the equipped set, actives too. Plan: `docs/plans/equipping.md`. `equip_test`, `save_test`. (?163)
+
+## Checks, equip, guards, AI support and param (2026-11-15)
+
+- [x] **Checks tail and rebate affordability** (`Check.totals()`, `Battle.level_odds()`, `seen_odds()`, `price_cut()`, `Unit.can_afford(s, cut)`; DC rolls through `check(.., against)`): plan `docs/plans/checks-tail.md`. `poach_test`, `last_stand_test`, `bracing_test`, `check_test`. (?164)
+- [x] **Equip follow-ups** (lent ring baseline, `SkillSlot.shows_switch()`, a dashed rim for an unequipped skill): plan `docs/plans/equip-followups.md`. `equip_test.test_slot_switch_dot`. (?165)
+- [x] **Tooling guards** (`Prefs.SAVE` and `KeyBinds.SAVE` driver paths; two tree tests folded since `skill.py check` covers the wiring): plan `docs/plans/guards.md`. (?166)
+- [x] **AI support 2** (`Behaviour.strides()`, `AI._stretch()`, `AI._wear()`, `Skill.serves(posture, u)`, `Skill.restoring()`): plan `docs/plans/ai-support-2.md`. `ai_tactics_test`, `move_test`, `ai_support_test`. (?167)
+- [x] **Param rest** (`Skill.markup()`, `Unit.giver_rank()`, `Unit.carry()` read modifiers): plan `docs/plans/param-rest.md`. `route_test.test_reserve_text`. (?169)
+

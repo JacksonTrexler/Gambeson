@@ -454,8 +454,39 @@ func test_skill_glow() -> void:
 	h._refresh()
 	ok(h.armed == aid and h.skill_glow(v(1), aid, v(2)) == Unit.Intensity.MOSTLY and h.skill_glow(v(1), aid, v(3)) == -1,
 			"First Aid armed: the ally a walk away glows mostly, the foe not at all")
+	b.zones.append(Battle.Zone.new(&"dark", dark, 9, nemes))  # every way to the ally across ground it can't make out
+	h._mark()
+	h._refresh()
+	var plain: Dictionary = h.intent(Vector2i(4, 3))
+	var forced: Dictionary = h.intent(Vector2i(4, 3), true)
+	ok(h.skill_glow(v(1), aid, v(2)) == Unit.Intensity.SOMEWHAT and plain.kind == &"refuse" and forced.kind == &"use" and forced.ready and forced.dest == Vector2i(3, 3),
+			"somewhat: a click refuses, Ctrl-click walks the unsure way and uses it (%s)" % [forced])
+	b.zones.clear()
+	h._mark()
+	h._refresh()
 	h.click(Vector2i(4, 3))
 	ok(v(1).cell == Vector2i(3, 3) and v(2).hp > 3 and h.slot == 0, "any selected skill walks up and is used, not only Strike; the slot goes back to the first")
+	h.free()
+
+
+# An aimed area skill: whoever it would catch at the hovered tile glows fully; hovering elsewhere moves it.
+func test_area_glow() -> void:
+	var solar: Skill = load("res://Skills/solar.tres")
+	v(1).wisdom = 40  # Solar's reach is its wis mod
+	v(1).learned.append(slot(solar))
+	v(1).hotbar[1] = solar
+	v(1).refresh()
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(4, 4), v(3): Vector2i(4, 3), v(4): Vector2i(2, 7)})
+	var h := await hud(v(1))
+	h.use_slot(1)
+	ok(h.aiming() and h.caught.is_empty(), "aimed, nowhere hovered: no one caught")
+	h.hover_cell(Vector2i(4, 3))
+	var a := func(u: Unit) -> float: return u.glow.modulate.a
+	ok(h.caught.size() == 2 and v(2) in h.caught and v(3) in h.caught and not v(4) in h.caught, "the cone's units are caught (%s)" % [h.caught])
+	ok(h.glow_of(v(3)) == Unit.Intensity.FULLY and a.call(v(3)) > Unit.GLOW and h.glow_of(v(4)) != Unit.Intensity.FULLY, "and glow fully, the rest as before")
+	h.hover_cell(Vector2i(2, 7))
+	ok(h.caught == ([v(4)] as Array[Unit]) and h.glow_of(v(3)) != Unit.Intensity.FULLY and is_equal_approx(a.call(v(3)), Unit.GLOW),
+			"aimed elsewhere, it moves with the hover (%s %d %.3f)" % [h.caught, h.glow_of(v(3)), a.call(v(3))])
 	h.free()
 
 
@@ -506,6 +537,21 @@ func test_command_glow() -> void:
 	b.end_turn()
 	h._refresh()
 	ok(h.command_glow(v(2)) == -1 and is_equal_approx(a.call(v(2)), Unit.GLOW), "off the player's turn, everyone glows plainly")
+	h.free()
+
+
+# The command glow's walk goes by the reach the leader commands that ally by (a stand-in mod), as in_range() does.
+func test_command_glow_stand_in() -> void:
+	var al := unit("Alabaster")
+	stage(lancin, {v(1): Vector2i(1, 3), al: Vector2i(7, 3), v(3): Vector2i(9, 7)})
+	v(1).charisma = 8  # -1: orders reach 1
+	v(1).wisdom = 18
+	al.wisdom = 16
+	var h := await hud(v(1))
+	ok(h._into_command(al).dest == Vector2i(6, 3), "by charisma, the walk ends 1 tile off")
+	v(1).learned.append(slot(load("res://Skills/word_to_the_wise.tres"), 2))
+	ok(h.command.reach_for(al) == 4 and h._into_command(al).dest == Vector2i(3, 3),
+			"by wisdom (reach 4), it ends 3 tiles sooner")
 	h.free()
 
 
@@ -626,6 +672,11 @@ func test_tile_effects() -> void:
 	h.hover_cell(Vector2i(5, 2))
 	ok(h._scroll_t == 0.0, "a newly hovered tile starts over")
 	shrine.effects.assign(kept)
+	var gone := Vector2i(5, 3)
+	h.hover_cell(gone)
+	b.map.erase_cell(gone)  # a pocket ending: the hovered tile's cell is gone
+	h._show_pane()
+	ok(not h.pane.visible and h._tile_icon(gone) == null, "a hovered tile that has gone shows no pane (and no atlas error)")
 	h.free()
 
 
@@ -1088,6 +1139,9 @@ func test_self_evaluation_ui() -> void:
 	var card: UnitCard = h.card
 	ok(card.effects.visible and card.effects.get_child_count() == 1 and card.effects.get_child(0).get_child(0).get_child(1).text == str(a.roll),
 			"on the card: the disguise's icon, its roll in the corner")
+	v(1).afflict(load("res://Effects/jammed.tres"), 2)
+	var jm: Array = h.effect_icons(v(1)).filter(func(i: Array) -> bool: return not i[0].begins_with("C"))
+	ok(jm.size() == 1 and jm[0][0] == "Ja ??", "a made-up condition's chip keeps its ?? (%s)" % [jm])
 	h.free()
 
 

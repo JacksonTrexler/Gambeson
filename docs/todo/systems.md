@@ -98,13 +98,13 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Stamina recovers in battle** (2026-11-11): answered "stamina recovers alongside energy, rank bonus if resting"; built (`docs/plans/stamina.md`, "Amended"). (?98, ?100)
 - [x] **The HUD shows only a unit's largest reserve**: a Ranger with Energy, Stamina and Focus sees one bar. Built 2026-11-14: the map draws a sliver bar for each reserve beyond two (?128). (?100)
 - [x] **A save-Stamina toggle**: Stamina and Mana are now toggles on the hotbar (2026-11-11, ?116); switching is a channel. (?98, ?116)
-- [ ] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). (?98)
+- [x] **The AI has no idea of a `stamina` skill's extra effect** (Move ??). Built 2026-11-15 (?167): `Behaviour.strides()` and `AI._stretch()`. (?98)
 - [x] **`tapped` and `helpless`** (2026-11-12, built 2026-11-14, ?119): `tapped` is a utility effect other effects may apply; a tapped unit can't act or take orders. It is not a debuff and can't be cleansed, but its sources can be addressed (healing off a stun, a wound), which removes it, and the unit is free to use AP and reactions on its turn. Tapped when: out of AP; it has received cha mod orders this turn (until the commander ends the command phase; afterward it may use remaining AP on autopilot); downed or stunned with no effect or skill letting it act (see Mindless Fury). `helpless` is for stun and other full action-disabling spells. (?65, ?90)
 - [x] **Tapped saturation** (2026-11-12, built 2026-11-14, ?119): a unit acting in a reduced capacity is drawn at 50% saturation, instead of 0% for tapped or 75% for low AP / command limit.
 - [x] **Stun** (2026-11-12, built 2026-11-14, ?119): a wound-type cause of `tapped`/`helpless`; healing it off removes the tap.
 - [x] **Mindless Fury** (2026-11-12, built 2026-11-14, ?119): Berserker passive, tier 5. A unit may take rank actions in a reduced capacity when it would otherwise be interrupted or incapacitated; its effective mental stats are 1 while acting this way. It can't power through `tapped` to take unlimited actions in a turn, and needs blanket mitigation of unit-inflicted disabling effects.
 - [x] **Drone** (2026-11-12, built 2026-11-14, ?119): tier 4, Mage general / Specialist Merchant. The unit does not tap when the command limit is exceeded; its mental stat mods are capped at +rank when acting this way.
-- [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. (?87)
+- [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. After ?167's wear weighing: Lancin 26 / Nemes 4 (scratch sim); Hex still outscores Strike, so the AI alone does not fix it: cost tuning is the user's call. (?87, ?167)
 - [x] **Nothing on the hotbar shows a worn skill until hovered.** Built 2026-11-14: a small gold diamond on the slot when the unit's worn emblem modifies that skill (`SkillSlot.modded`; `docs/plans/ui-small.md`, ?136).
 - [x] **Static skill descriptions** (skills screen, spellbook) show base costs only. Built 2026-11-14 (?134): the hotbar tooltip, spellbook and its detail read what the holder pays (`Skill.markup(rank, with_spec, u)`); the skills screen stays base on purpose, with a "Base values" note when modifiers change them.
 
@@ -368,7 +368,8 @@ Plan, readings and what was built: `docs/plans/route.md`; done in `docs/done/sys
     - **New names to review:** none.
 - [x] **Behaviours' `describe()` lines** show modified numbers: `describe_as` on the 22 behaviours with terms. Built 2026-11-15 (?148). (?134)
 - [x] **Routed:** Rift turns and difficulty and Look's dissonance rank (`domain`, `practised look`). Built 2026-11-15 (?160). (?134)
-- [ ] **Still not routed:** the text of reserves, opens and Downed rules, and the build-time gates (Dabblings, waives). (?134, ?160)
+- [x] **The text of reserves, opens and Downed rules** now reads the modifiers; built 2026-11-15 (?169). (?134, ?160)
+- [ ] **Still concrete on purpose:** the build-time gates (Dabblings' picks, `waives`, the guest-tree rank caps), since they gate what is learned. (?169)
 - [x] **A lost save or contest runs behaviours**: `Behaviour.missed()`, run by `Battle._miss()`. Built 2026-11-15 (?160); no skill uses it yet. (?134)
 
 ## AI tactics (2026-11-14)
@@ -443,7 +444,7 @@ Plan and what was built: `docs/plans/checks.md`. Built on `u-checks`. Tests: new
     - **Forecast:** `hit_chance()` answers a declared check's odds (a drag's to its spot), so the HUD's brackets, Alt's "N% to win" and `AI.score()` now see a save skill's chance, which was always 1.0 before.
     - **New names to review:** none.
 - [x] **Rolls against an earlier total** (investigating, the last-stand fall, Level Down's bar) go through `Battle.check()` with a fixed side. Built 2026-11-15 (?148). The DC rolls (Burnout, Stun, Bandwagon, dodges) stay on `resolve()`: see the ?148 items. (?141)
-- [ ] **Hitch and Slam Jam pass their stats to the helper in code**, not as a `SkillCheck`, because their check follows a hit. (?141)
+- [x] **Hitch and Slam Jam pass their stats to the helper in code**, not as a `SkillCheck`, because their check follows a hit. Decided 2026-11-15 (?164): kept, each with one static options function the roll and the forecast share. (?141)
 
 ## Facing (2026-11-15)
 
@@ -546,9 +547,9 @@ Plan and what was built: `docs/plans/polish-11-15.md`. Built on `x-polish`. Test
     - **Earlier totals:** `Check.fixed(n)` is a side that rolls no die; `Battle.check/odds/sides` take a number as `against`. Moved: `investigate()`, `inspect()`, `_borrowed()`, `_level_down()` (a roll must beat the bar). rng order unchanged.
     - **Decay generic:** `Cast.strength` is read by `Cast.put()` and by Aura, so every behaviour's effects decay with distance. It is computed against the original target; a reaction that swaps the target doesn't recompute it. Instant HP and damage don't decay.
     - **New names to review:** none.
-- [ ] **Level Down and investigating have no forecast**: Level Down's bar is rolled per cast and declares no `SkillCheck`. The helper can answer them when one is wanted. (?148)
-- [ ] **The DC rolls** (Burnout, Stun, Bandwagon, dodges) could use `check(.., against: dc)`; left. (?148)
-- [ ] **Hitch and Slam Jam pass their stats to the helper in code**, not as a `SkillCheck`. (?141)
+- [x] **Level Down and investigating have no forecast.** Built 2026-11-15 (?164): `Battle.level_odds()`, `seen_odds()`. (?148)
+- [x] **The DC rolls** (Burnout, Stun, Bandwagon, dodges) use `check(.., against: dc)`. Built 2026-11-15 (?164). (?148)
+- [x] **Hitch and Slam Jam pass their stats to the helper in code**, not as a `SkillCheck`. Decided 2026-11-15 (?164). (?141)
 - [ ] **`_borrowed()`'s `bonus = r` is unproven by mutation**: its rank barely changes the outcome. (?148)
 - [ ] **The facing word sits a little right of the foe's centre.** Cosmetic. (?148)
 
@@ -558,8 +559,8 @@ Plan and findings: `docs/plans/shots-11-15.md`. Built on `y-shots`. No code chan
 
 149. **Screenshot pass - findings only (2026-11-15).** Clairvoyance pings read clearly and stay with the foes after End turn; the Specialist tree reads, with T3 holding four skills, not three (Ds, St, Ta, Ww); the facing chevron was low-contrast; the lent ring and emblem diamond read; Warcry marks read, but Routed!'s blue blended with movement outlines and water. Fixed since: the chevron (?148), the rear / flank label (?148), suspicion stacks and Routed!'s colour and glyphs (?150). Left:
 - [x] **The Specialist tree opens at its lowest filled tier** (`SkillGrid.floor_y()`). Built 2026-11-15 (?163). (?149)
-- [ ] **The lent ring sits a little lower than the rank pip**, so they don't share a baseline. Cosmetic (SkillSlot). (?149)
-- [ ] **Re-check the Warcry marks on a busy board** now Routed! is magenta with glyphs, and a mark has no on-tile text. (?149, ?150)
+- [x] **The lent ring sits a little lower than the rank pip.** Built 2026-11-15 (?165): drawn on the numeral's baseline. (?149)
+- [x] **Re-check the Warcry marks on a busy board.** Checked by screenshot 2026-11-15 (?168): they read over the glow, rings and cone. (?149, ?150)
 
 ## Reaction and marks gaps (2026-11-15)
 
@@ -614,7 +615,7 @@ Plan and what was built: `docs/plans/tidy-11-15.md`. Built on `z-tidy`. Tests: `
     - **`KeyBinds.SAVE`** was already a static var that `run.gd` redirects; nothing to finish.
     - **No test file deleted:** `trickster_test` and `slam_jam`'s `test_tree` restate tree wiring, and removing a skill from a tree passes `skill.py check`, so they stay as the only guard.
     - **New names to review:** none.
-- [ ] **`skill.py check` doesn't catch a skill dropped from its tree**, so two tests are the only guard of that wiring. (?156)
+- [x] **`skill.py check` doesn't catch a skill dropped from its tree.** It does (`check_reachable`, verified by mutation); the two tree tests are folded (?166). (?156)
 
 ## Warcry's foe picker (2026-11-15)
 
@@ -640,7 +641,7 @@ Plan and what was built: `docs/plans/save-followups.md`. Built on `z-savefu`. Te
     - **Allied glow picker:** already in `Prefs`; nothing to do.
     - **Driver save path:** a code guard in `Save.PATH` (a `-s` script gets `user://save_driver.json`) over a memory note; `Prefs` and `KeyBinds` are not guarded.
     - **New names to review:** none.
-- [ ] **`Prefs` and `KeyBinds` paths aren't guarded for driver scripts**, only `Save.PATH`. (?158)
+- [x] **`Prefs` and `KeyBinds` paths aren't guarded for driver scripts.** Built 2026-11-15 (?166): `*_driver.cfg`. (?158)
 
 ## More contextual clues for searching (2026-11-15)
 
@@ -666,7 +667,7 @@ Plan and what was built: `docs/plans/param-tail.md`. Built on `z-param`. Tests e
     - **Rift's difficulty and turns, and Look's dissonance rank and text,** read rank through the caster's modifiers as rank_impact (SkillTerms: `domain`, `practised look`). The "over walls from rank III" gate and the reach stay on real rank; the 1.5 difficulty clamp still caps what a modifier buys.
     - **`Behaviour.missed(c)`**, a generic hook, the counterpart of `apply()`: `Battle._miss(c)` runs it (and sets `c.hit` false) before `used` on every failing path: a lost drag, engulf or contest, a passed save, a missed attack roll, a Strike chain with no hit, Level Down taking no level, Death not killing, and in `area_blow` a victim that dodged. Not run on a cast refused before it is tried, nor on tile skills with no victim. **No skill uses it yet** (no content invented).
     - **New names to review:** none.
-- [ ] **No skill uses `Behaviour.missed()` yet**; a refund or rider on a miss is the first. (?160)
+- [ ] **No skill uses `Behaviour.missed()` yet**; a refund or rider on a miss is the first. Grepped again in ?169: no recorded skill design wants one. (?160)
 - [ ] **Elemental Strike has no sigma read**; it would need a stored mental bonus on the unit. (?160)
 
 ## Foe look-over and the sheet's leak (2026-11-15)
@@ -711,7 +712,66 @@ Plan and what was built: `docs/plans/equipping.md`. Built on `x-equip`. Tests: n
     - **Skills screen:** drag a skill from the wheel or grid onto the hotbar (the screen steps aside for the drag); "Equipped" or "Not equipped: drag it onto the hotbar"; an unequipped rank numeral dulled. Grid tabs open at their lowest filled tier. Settings' options row wraps. The Guide's Hotbar page says all this.
     - **Save:** the starter's bar is written as skill ids (`Save._equipped_out()`, `_equipped_in()`, `Unit.set_equipped()`); learned skills themselves aren't saved yet, so this mostly keeps the class's arrangement.
     - **New names to review:** none.
-- [ ] **Always-on passives on the bar show the green "on" dot** toggles use. Left as is; should they? (?163)
-- [ ] **Skill Slot +1 (?3) is still a stub.** (?163)
+- [x] **Always-on passives on the bar show the green "on" dot** toggles use. Built 2026-11-15 (?165): the dot shows only for toggles. (?163)
+- [ ] **Skill Slot +1 (?3) is still a stub.** Not built in ?165: it waits on ?3 ("the hotbar's center or the tree's?"). (?163)
 - [ ] **The auto-equip toggle is global**, not player-only. (?163)
 - [ ] **NPC-side equipping choices** beyond `extra_slots`. (?163)
+
+## Checks tail and rebate affordability (2026-11-15)
+
+Plan and what was built: `docs/plans/checks-tail.md`. Built on `z-checkstail`. Suite 8391 to 8744 checks, 0 failed. Tests: `poach_test.test_afford_the_cut`, `last_stand_test.test_level_down_odds`, `bracing_test.test_seen_odds`, `check_test.test_dc_and_rider_forecasts`.
+
+164. **Checks tail and rebate affordability - built on judgement, open for review (2026-11-15).** My calls:
+    - **Forecast through one helper:** `Check.totals(c)`; `Battle.level_odds()` weighs each last-stand total (rolled once per cast, shared by all `rank` rolls) then `1 - (1-p)^rank`; `hit_chance()` answers it, so brackets, Alt's "N% to win" and `AI.score()` read it. `Battle.seen_odds()` does the same over the hider's guise totals (`Battle.guise()`, what `cast()` rolls) and each watcher's odds. HUD: Alt tooltip "N% to be seen through". **The AI rule is mine, change if unwanted:** `_support` skips an investigated skill foes see through at least `AI.SEEN` 0.9 of the time. Death's chance is not forecast (not asked).
+    - **Fixed-DC rolls** go through `check(.., against = dc)` (Burnout's con save, Stun, Bandwagon, glass's dex check, `evade`, pick/pry, the held-fire wis check); the rng order is unchanged. Stun says its chance as a rider.
+    - **Hitch and Slam Jam are not a declared `SkillCheck`** (`Skill.check` stands in place of the attack roll in five readers; "after a hit" would be a flag each must branch on): each keeps one static options function (`HITCH.grapple()`, `SLAM_JAM.contest()`) that `apply()` rolls and `foresee()` weighs, with `riders = p`.
+    - **Affordability pays the rebate:** `Unit.can_afford(s, cut)`, `can_afford_after`, `funding`; `Battle.price_cut()` is the smallest sure share across the targets (a price paid once for a spread must be granted by all); used by the HUD (`why_not`, reach, readiness, drain's fund) and the AI (`_strike`, `_could_strike`, `_steady`, `_starve`, which no longer prefilter with `foe_actives(true)`). Slot-press checks with no target keep the full price.
+    - **New names to review:** none.
+- [ ] **No forecast for Death's chance**, and the initiative d20 and the two last-stand rolls have no DC. (?164)
+- [ ] **Unproven by mutation:** Hitch's `apply()` options (only `foresee`'s are tested) and `hit_chance`'s Level Down branch alone. (?164)
+- [ ] **Tune `AI.SEEN` (0.9)** by the sims; it is a guess. (?164)
+
+## Equip follow-ups (2026-11-15)
+
+Plan and what was built: `docs/plans/equip-followups.md`. Built on `z-equipfu`. Test: `equip_test.test_slot_switch_dot`.
+
+165. **Equip follow-ups - built on judgement, open for review (2026-11-15).** The Save hooks, the Settings toggle, losing slots and the Specialist tab's scroll were already built by ?163. My calls:
+    - **Lent ring** drawn on the numeral's baseline, just left of the rank numeral; the toggle dot and name shift left.
+    - **The on/off dot shows only for toggles** (`SkillSlot.shows_switch()`); always-on passives have none. This answers ?163's open question as "no dot"; say if you want it back.
+    - **An unequipped learned skill** (wheel and grid) has a dashed rim and a darker fill beside the dulled numeral (stubs share the dashes but are muted grey and unlearned).
+    - **Skill Slot +1 (?3) not built:** the design is unresolved ("the hotbar's center or the tree's?"); see "Needs the user". The slot-granting path (`slots`, `Unit._grants`) already makes an untyped slot once decided.
+    - **New names to review:** none.
+
+## Tooling guards (2026-11-15)
+
+Plan and what was built: `docs/plans/guards.md`. Built on `z-guards`.
+
+166. **Tooling guards - built on judgement, open for review (2026-11-15).** My calls:
+    - **Tree wiring:** `skill.py check_reachable` already fails a skill nothing offers (tree, role, item, another's grant); mutation (Switcheroo off `Trees/legerdemain.tres`) failed `check`. No new check.
+    - **Folded tests:** `trickster_test` (a name and order snapshot of the Rogue tab) deleted; `slam_jam_test.test_tree` folded to **one check, Slam Jam placed uptree from Jam** (the coordinator's call, so the one prerequisite edge that shapes the tree is kept). The exact layout snapshots are no longer guarded.
+    - **Driver paths:** `Prefs.SAVE` and `KeyBinds.SAVE` get `*_driver.cfg` when the main loop has a script (or none yet), the same expression as `Save.PATH`; `run.gd` still overrides all three. Verified by a `-s` script printing the paths.
+    - **New names to review:** none.
+
+## AI support 2 (2026-11-15)
+
+Plan and what was built: `docs/plans/ai-support-2.md`. Built on `z-aisupport`. Suite 8416 to 8644 checks, 0 failed. Tests: `ai_tactics_test.test_wear_varies_the_blow`, `move_test.test_ai_stretches`, `ai_support_test.test_restorers_serve_help`.
+
+167. **AI support 2 - built on judgement, open for review (2026-11-15).** My calls:
+    - **Move ??'s extra effect:** a generic hook `Behaviour.strides(c)` (in `Util/skill.py` HOOKS); `Move.strides` reads `pays_as`, so Stamina doubles it in the forecast as in `apply()`. `AI._stretch()` casts the cheapest self-only `strides` skill only to bring a blow in reach this turn, with AP left to walk and pay (straight-line gap, AP priced; not for hunting, fleeing or reaching a heal).
+    - **Exhaustion:** `AI._wear(u, s)`, the part of the cost exhaustion added, taken off a strike's worth, never below `1 - WORN` (**WORN 0.8**, as FOILED). Strikes only. Heals and supports are not weighed.
+    - **Help orders:** `Skill.serves(posture, u)`: "supportive" also holds for a skill whose behaviour `restores()` (new `Skill.restoring(u)`). So Energize is supportive despite `self_only`, serves both HELP and DEFEND, a Berserker's Affinity for it nets -2, and Heal and Resuscitate now get Unsupportive -1 like Second Wind. `HUD.intent_skill` and `AI.restoring` are gone.
+    - **?87 is not fixed by the AI alone:** 30 museum seeds, Lancin 27 / Nemes 3 became 26 / 4; Icor Hex 126 to 125, Strike 95 to 92. Hex still outscores Strike enough that Nemes leans on it; WORN was not tuned to hit a quota. Cost tuning is the user's call (Needs the user).
+    - **New names to review:** none.
+- [ ] **Tune `AI.WORN` (0.8)** by the sims; weigh heals and supports for wear too. (?167)
+- [ ] **Hex outscores Strike in the museum** (?87): needs cost tuning from the user. (?167)
+
+## Param rest (2026-11-15)
+
+Plan and what was built: `docs/plans/param-rest.md`. Built on `z-paramrest`. Test: `route_test.test_reserve_text`.
+
+169. **Param rest - built on judgement, open for review (2026-11-15).** My calls:
+    - **Text now reads the modifiers:** `Unit.pools()`, `opened()` and `Downed.takes()` were already routed; `Skill.markup()` showed raw rank and the raw reserve mod. It now reads rank impact and `_mod(reserve_mod, stat_impact, m)` for a reserve's size, the tier a skill opens ("up to T3") and the Downed rule. Focus is the same path.
+    - **The rates are routed too (my call):** `Unit.giver_rank()` (Stamina's and Mana's resting rate) and `Unit.carry()` (a switch's held carry) read the modifiers' rank; before, a Density emblem on Stamina grew the pool but not its rate, so the text would have lied one way or the other.
+    - **Stays concrete:** the build-time gates (`waives`, Dabblings' `studies`, the guest-tree rank caps), which gate what is learned; an emblem coming off would strand picks.
+    - **`missed()` still has no first user:** no recorded skill design wants a rider on a miss (Poach's and Slam Jam's refunds are on a hit, Grudge counts hit or miss as any use, "Commitment to the bit" is the posing whiff `missed()` doesn't run on); no skill was invented to exercise it.
+    - **New names to review:** none.

@@ -40,9 +40,9 @@ All built this pass except two bits of polish:
     - The drain: 1 - 0.45 x (AP spent share)^2, so full colour at a fresh turn, about 89% at half, 55% on the last AP; then grey. Grey covers every reason it can't take an order now - out of AP, out of reach, asleep, a wasted intent, past the limits - so an ally out of reach is grey from the start of the turn and colours up as the leader comes close. The leader greys only when out of AP.
     - Limits: cha mod allies a turn and cha mod orders each, at least 1 of each (a cha 8 villager leads one ally, one order); the command and party effects (Quartz Ring) don't raise them. Every order counts - a move, a skill, a hold, an intent - but a charge's walk and strike count as one. The leader's own actions are unlimited. A unit's card shows "Ordered 1/2" while it can take more, and "Command spent" once the limits bar it; clicking one says why ("Brick gives an ally 2 orders a turn (charisma +2)").
 - [x] **Silhouettes and the four strengths of glow** (2026-11-09): built (`docs/done/ui.md`; plan and calls in `docs/plans/silhouettes-glow.md`). (?84)
-- [ ] **Area skills give no glow**; the tiles in range stay the overlay's job.
+- [x] **Area skills give no glow.** Built 2026-11-15 (?168): `Behaviour.footprint()`, `HUD.caught`; Cone and Zone implement it.
 - [ ] **"Somewhat" could offer the unsure walk on a forced click**, as Strike's forced charge does. Not built. (?84)
-- [ ] **The command glow follows the leader only**: a party member with its own reach isn't walked.
+- [x] **The command glow follows the leader only.** Built 2026-11-15 (?168): it reads `command.reach_for(u)` too.
 - [ ] **Watch the cost of the reach map on big maps**: it is now computed while a skill is armed (it was skipped).
 - [x] **Suspicion marks** (2026-11-10): built (`docs/done/ui.md`; the plan's "Revised" section). (?84, ?96)
 - [x] **Suspicion held only by allies other than the leader shows no mark**: answered 2026-11-11, built; while a unit is commanded its own read shows (`HUD.eyes()`). (?96, ?99)
@@ -169,9 +169,9 @@ Plan, readings and what was built: `docs/plans/ui-small.md`; done in `docs/done/
     - **"Worn skill"** read as a skill changed by a worn emblem (`Unit.mods()`), not exhausted (the exhaustion pips were built already, 356ebb1): a small gold diamond left of the slot's type stripe. Confirm?
     - **Screenshots:** the saturation at 0, 50 and 75% reads as intended, 75% subtle (faint on a dark sprite); a Jammed unit shows a red "Jm" chip and the name "Jammed ??" is only in its tooltip and the Glossary.
     - **New names to review:** none.
-- [ ] **The other fixed keys in the Guide** (P, H, Space, Tab) are still words. (?136)
-- [ ] **The near-miss circles' radius isn't to scale**, and Luck.MARGIN isn't shown. (?136)
-- [ ] **Hovering a tile in the museum logs "No TileSet atlas source with id -1"** (`HUD._tile_icon`); older than this branch. (?136)
+- [x] **The other fixed keys in the Guide** are bound-key placeholders (`Guide.keys()`). Built 2026-11-15 (?168). (?136)
+- [x] **The near-miss circles' radius isn't to scale**, and Luck.MARGIN isn't shown. Built 2026-11-15 (?168). (?136)
+- [x] **Hovering a tile in the museum logs "No TileSet atlas source with id -1"** (`HUD._tile_icon`). Fixed 2026-11-15 (?168). (?136)
 - [ ] **The Jammed ?? name shows only in the chip's tooltip**, not on the chip. (?136)
 
 ## Paths round hazards (2026-11-14)
@@ -188,3 +188,20 @@ Plan, readings and what was built: `docs/plans/path.md`; done in `docs/done/ui.m
 - [ ] **Meander (`passes_by`) isn't foreseen**, and `at_end` effects aren't counted. (?137)
 - [ ] **`AI._approach`** still scores approach cells by its own line risk; unit-blocked routes use `pass_cost` only. (?137)
 - [ ] **`HAZARD_TILES` and `STEER_MARGIN`** are first guesses to tune. (?137)
+
+## HUD glow and Guide (2026-11-15)
+
+Plan and what was built: `docs/plans/hud-glow-guide.md`. Built on `z-hudglow`. Tests: `hud_test` (`test_area_glow`, `test_skill_glow`, `test_command_glow_stand_in`, `test_tile_effects`, `test_self_evaluation_ui`), `ui_small_test` (`test_near_miss_scale`, `test_guide_key`), `exhaustion_test.test_costs`.
+
+168. **HUD glow and Guide - built on judgement, open for review (2026-11-15).** Already built and only checked: the allied glow picker, exhaustion-adjusted prices on holder views, Strike's forced charge, Warcry's marks (re-checked by screenshot). My calls:
+    - **Area glow:** a hook `Behaviour.footprint(cast, cell)` (Cone and Zone implement it; Flamewall, Well-up, Guard, Observe, Rifts and traps keep the old overlay), `HUD.caught` from the hovered tile; a caught unit glows fully whatever its side (the glow says "caught", its colour who). The overlay shades the cone's tiles.
+    - **Somewhat, forced:** Ctrl-click on an ally whose only way is an unsure walk walks it and uses the skill; foes already did.
+    - **Command glow reach:** "a party member with its own reach" read as the command reach the leader has for that ally (`reach_for`), not a party member walking.
+    - **Guide keys:** `{action}` placeholders replaced with the key bound now (next_unit, cancel, party, hold, end_turn, spellbook, hurry) and Guide text for Ctrl-click, aiming and "caught" glow.
+    - **Near-miss circles to scale** (0.05 a point of the caster's size, 0.02 of the target's); Luck.MARGIN a dashed ring past the reach ring; the near miss shows only within `Luck.MARGIN` (0.5) instead of one tile, since beyond it luck cannot help.
+    - **Museum tile hover:** the pane hides when the hovered tile is off the map and `_tile_icon` guards source -1.
+    - **Jammed ?? chip** takes two letters and keeps the " ??" ("Ja ??"); the full name stays in the tooltip. **Skills-screen note** "Costs more now: exhausted x2" (`Skill.base_note()`).
+    - **Profile of the reach map** (Meadows, 14,400 cells, debug build, headless): `HUD._find_reach` (on a `_mark`, cached per unit) move 5: 90 ms (29 tiles); move 10: 320 ms (198 tiles); a hover (`_replan`) 0.3 ms; per walk 0.7 ms (224 walks 155 ms), of which `line()` 23 ms, `route()` 8 ms, strides 18 ms, the rest (about 100 ms) `read()` per step. Left alone: bounded to a box, cached, only a boosted unit in a debug build. If it bites: a per-refresh read cache or one flood fill.
+    - **New names to review:** the jammed chip's " ??" only.
+- [ ] **The Guide has no line for the near-miss rings.** (?168)
+- [ ] **Speed up the reach map** (a read cache or one flood fill) if it is felt in a release build. (?168)
