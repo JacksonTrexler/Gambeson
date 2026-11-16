@@ -998,13 +998,17 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads :=
 # the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
 # on it, as _approach() does: dread of ground it knows or suspects, marks), then room to back off again. `safe` > 0:
 # any tile that far counts as far enough, and of those the one with the most room to back off again next round wins (_room(): a
-# corner is a tile `from` need only close on). Where it stands if nowhere is better.
-static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}) -> Vector2i:
+# corner is a tile `from` need only close on); on a tie, one an ally still to back off wouldn't choose for itself (_claimed();
+# `claim` is off for that ally's own reckoning). Where it stands if nowhere is better.
+static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}, claim := true) -> Vector2i:
 	var gap := func(c: Vector2i) -> int:
 		return from.map(func(x: Vector2i): return Command.tiles(x, c)).min()
+	var claimed: Array[Vector2i] = []
+	if safe > 0 and claim:
+		claimed = _claimed(b, u, from, safe, reads)
 	var key := func(c: Vector2i, extra: float) -> Array:
 		var g: int = gap.call(c)
-		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap)]
+		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
 	var best := u.cell
 	var best_key: Array = key.call(best, 0.0)
 	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
@@ -1030,6 +1034,18 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 				best_key = k
 	b.rng.state = state
 	return best
+
+
+# The tiles u's allies that are yet to move this turn, and within `safe` of `from` too, would back off to (_retreat(), each
+# on its own: the choice they would make if u weren't there to take one first). What coordinates a retreat: u leaves them theirs when it can.
+static func _claimed(b: Battle, u: Unit, from: Array[Vector2i], safe: int, reads: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for o: Unit in b.units.values():
+		if o != u and o.is_alive() and not o.helpless() and Faction.friends(o.faction, u.faction) and o.move_left() >= o.stat(&"movement") and from.any(func(x: Vector2i): return Command.tiles(x, o.cell) < safe):
+			var c := _retreat(b, o, from, safe, reads, false)
+			if c != o.cell:
+				out.append(c)
+	return out
 
 
 # Whether key a beats key b: the first place they differ, a's is greater.

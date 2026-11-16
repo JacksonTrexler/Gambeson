@@ -216,6 +216,31 @@ func test_starving_keeps_room_to_retreat() -> void:
 	ok(log.any(func(l: String): return "starving" in l) and went == v(1).cell and went != start, "the starving turn backs off there (%s, %s from %s, to %s)" % [log, went, start, wise])
 
 
+# docs/plans/ai-findings.md. Backing off a Grudge unit together: among tiles alike in distance and room, u leaves the one an ally
+# still to move would choose for itself (the room count can't say it: the ally stands elsewhere now), and an ally that has moved claims none.
+func test_retreat_leaves_an_allys_tile() -> void:
+	var g := grudged(Vector2i(5, 3))
+	v(1).strength = 0
+	var from: Array[Vector2i] = [g.cell]
+	var safe := ceili(g.stat(&"movement")) + 2
+	var alone := AI._retreat(b, v(1), from, safe)
+	var theirs := Vector2i(-1, -1)
+	for c in b.cells_near(v(1).cell, 3):  # an ally standing where its own retreat is that same tile
+		if c == v(1).cell or not b.on_map(c) or b.unit_at(c) or Command.tiles(g.cell, c) >= safe:
+			continue
+		stage(lancin, {v(1): Vector2i(5, 3), v(2): c, v(3): Vector2i(1, 1)})
+		if AI._retreat(b, v(2), from, safe, {}, false) == alone:
+			theirs = c
+			break
+	ok(theirs != Vector2i(-1, -1), "an ally position whose own retreat is the same tile %s (%s)" % [alone, theirs])
+	var gap := func(c: Vector2i) -> int: return Command.tiles(g.cell, c)
+	var shared := AI._retreat(b, v(1), from, safe)
+	ok(shared != alone and mini(gap.call(shared), safe) == mini(gap.call(alone), safe) and AI._room(b, v(1), shared, gap) == AI._room(b, v(1), alone, gap),
+			"it takes another as good (%s for %s: gap %d, room %d)" % [shared, alone, gap.call(shared), AI._room(b, v(1), shared, gap)])
+	v(2).moved = v(2).stat(&"movement")
+	ok(AI._retreat(b, v(1), from, safe) == alone, "an ally that has already moved claims nothing")
+
+
 func test_grudge_heals_itself() -> void:
 	roomy(v(3))
 	v(3).learned.append(slot(grudge, 2))
