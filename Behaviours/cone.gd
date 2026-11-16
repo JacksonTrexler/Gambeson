@@ -48,12 +48,12 @@ func _evadable(c: Cast, cell: Vector2i) -> void:
 		var dice := Vector2i(t.dice.x * (Difficulty.scaled(skill.dice_scale, ri) if skill.dice_scale else 1), t.dice.y)
 		var power := (t.power + b.roll(dice) + (c.stat_mod(caster.mod(t.stat, tags)) if t.stat else 0) + int(b.requirement(caster, skill, w, c.rank)[1])) * (2 if bane else 1)
 		hit[w] = hit.get(w, 0) + w.hit(power * share * (1.0 + caster.stat(&"damage", tags)), tags, caster)
-		b._expose(w)
+		b._lose_cover(w)
 	for u: Unit in b.units.values():
 		if u == caster or not u.is_alive() or not b.in_cone(caster.cell, u.cell, aim, half, long):
 			continue
 		b.area_blow(c, u, strike, tries)
-	b._expose(caster)
+	b._lose_cover(caster)
 	for at in b.map.get_used_cells():
 		if at != caster.cell and b.in_cone(caster.cell, at, aim, half, long):
 			b.expose(at, tags, caster)

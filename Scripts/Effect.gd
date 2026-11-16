@@ -8,7 +8,7 @@ extends Resource
 # regen / poison: that fraction of max HP healed / lost as the unit's side starts a turn.
 # bleed: HP lost as the unit's side ends a turn: `dice` + the mod in `dice_mod` of whoever put it
 # on, at least 1 (Snare's Bleeding: 1d4 + the setter's dex mod).
-# grappled: held - it must break free to move, and takes its holder's grip each turn it ends held
+# grappled: held - it must break free to move, and drowns while submerged each turn it ends held
 # (Drown; Battle._break_free(), Battle._grip()).
 # sleep: above 0, the unit can't act (Battle wakes it when an ally ends the turn beside it).
 # ap / dex_ap: that fraction more AP each turn - the general and wis pools / the dex pool (Haste).
@@ -306,7 +306,7 @@ func value(rank := 1) -> String:
 	elif stat == "bleed":
 		text = "%dd%d%s HP as each of its turns ends" % [dice.x, dice.y, " + %s mod" % String(dice_mod).left(3) if dice_mod else ""] if dice != Vector2i.ZERO else "%s HP as each of its turns ends" % Skill.num(x)
 	elif stat == "grappled":
-		text = "held: must break free to move; its holder's grip, and drowning while submerged, hurt it each turn it ends held"
+		text = "held: must break free to move; drowning while submerged hurts it each turn it ends held"
 	elif stat == "ire":
 		text = "%s rank%s of its concealment and trickery defeated, against everyone" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat in ["ap", "dex_ap", "damage"]:
