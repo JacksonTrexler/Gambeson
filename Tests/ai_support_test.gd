@@ -184,6 +184,19 @@ func test_scries() -> void:
 	ok(v(1).channel == null, "a foe it sees: it doesn't")
 
 
+# Skill.serves() with the unit that would cast it: what a behaviour restores is help, for Affinity and a HELP order alike.
+func test_restorers_serve_help() -> void:
+	var u := v(1)
+	for s: Skill in [heal, megaheal, resuscitate, energize]:
+		ok(s.serves(&"supportive", u) and not s.serves(&"offensive", u), "%s serves HELP" % s.name)
+		ok(not s.serves(&"supportive"), "%s: with no unit to ask, it can't tell" % s.name)
+	ok(energize.serves(&"defensive", u), "a self-only restorer still guards too")
+	ok(not strike.serves(&"supportive", u) and not crushing.serves(&"supportive", u), "a blow isn't help")
+	u.learned.append(slot(heal))
+	u.hotbar[0] = null
+	u.hotbar[1] = heal
+	ok(u.intent_skill(&"supportive") == heal, "its default HELP skill is the heal")
+
 # Hiding an ally (Invisibility) is weighed by the odds the foes in sight see through it (Battle.seen_odds()):
 # not cast where they nearly always would, cast where none can see it.
 func test_hides_where_unseen() -> void:

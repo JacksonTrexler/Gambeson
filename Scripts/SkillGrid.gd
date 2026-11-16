@@ -282,8 +282,11 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 		&"stub":
 			edge = Color(STUB, 0.7)
 			ink = STUB
+	var unworn := state == &"learned" and not unit.equipped(s)  # learned, not on the bar: a dashed edge, a darker fill
+	if unworn:
+		fill = fill.darkened(0.35)
 	draw_rect(box, fill)
-	if state == &"stub":
+	if state == &"stub" or unworn:
 		for i in int(box.size.x / 4.0):  # dashed all round: not built yet
 			var a := i * 4.0
 			draw_line(box.position + Vector2(a, 0), box.position + Vector2(a + 2.0, 0), edge, 1.0)

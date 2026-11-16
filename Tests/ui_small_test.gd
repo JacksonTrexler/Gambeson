@@ -40,11 +40,25 @@ func test_floats_hurry() -> void:
 	h.free()
 
 
+func test_near_miss_scale() -> void:
+	var r0 := b.skill_range(v(1), hex, v(2))
+	v(2).afflict(effect("size", 4.0), 9)
+	ok(is_equal_approx(b.skill_range(v(1), hex, v(2)) - r0, Overlay.TARGET_SIZE * 4.0), "the target's circle: the size it adds to the range")
+	v(1).afflict(effect("size", 4.0), 9)
+	ok(is_equal_approx(b.skill_range(v(1), hex, v(2)) - r0, (Overlay.TARGET_SIZE + Overlay.CASTER_SIZE) * 4.0), "and the caster's")
+
+
 func test_guide_key() -> void:
 	ok("Hold F " in Guide.text(&"play"), "the Hurry key as bound (F)")
 	KeyBinds.bind(&"hurry", KEY_G)
 	ok("Hold G " in Guide.text(&"play") and not "Hold F " in Guide.text(&"play"), "rebound, the Guide follows")
 	KeyBinds.bind(&"hurry", KEY_F)
+	var play := Guide.text(&"play")
+	ok("%s invites one" % KeyBinds.key_of(&"party") in play and "%s ends the turn" % KeyBinds.key_of(&"end_turn") in play and not "{" in play,
+			"P, H, Space and Tab read as bound, no placeholder left")
+	KeyBinds.bind(&"end_turn", KEY_J)
+	ok("J ends the turn" in Guide.text(&"play"), "rebound")
+	KeyBinds.bind(&"end_turn", KEY_SPACE)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(KeyBinds.SAVE))
 
 

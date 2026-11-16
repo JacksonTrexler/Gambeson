@@ -4,7 +4,8 @@ class_name Prefs
 # way KeyBinds keeps its binds in user://keybinds.cfg. Read with get_pref(key, default) as a screen
 # opens; put() saves at once. Tests point SAVE somewhere else.
 
-static var SAVE := "user://settings.cfg"
+# A -s script (a driver) keeps to a file of its own, as Save.PATH; Tests/run.gd sets its own too.
+static var SAVE := "user://settings_driver.cfg" if not Engine.get_main_loop() or Engine.get_main_loop().get_script() else "user://settings.cfg"
 
 
 static func get_pref(key: String, default: Variant) -> Variant:

@@ -241,8 +241,11 @@ func _node(s: Skill, at: Vector2, tone: Color, font: Font) -> void:
 		&"stub":
 			edge = Color(STUB, 0.7)
 			ink = STUB
+	var unworn := state == &"learned" and not unit.equipped(s)  # learned, not on the bar: a dashed rim, a darker fill
+	if unworn:
+		fill = fill.darkened(0.35)
 	draw_circle(at, R, fill)
-	if state == &"stub":
+	if state == &"stub" or unworn:
 		for i in 8:  # dashed: not built yet
 			draw_arc(at, R, TAU * i / 8.0, TAU * (i + 0.5) / 8.0, 3, edge, 1.0)
 	else:

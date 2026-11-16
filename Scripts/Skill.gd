@@ -237,6 +237,20 @@ func on_tile() -> bool:
 	return lays != null or channel or rifts or behaviours.any(func(b: Behaviour): return b and b.tile_target() != &"")
 
 
+# The tiles it would cover, cast on `cell` by `caster` (its behaviours' footprint()): who stands there
+# glows as it's aimed. Empty for a skill with no area.
+func footprint(b: Battle, caster: Unit, cell: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if not on_tile():
+		return out
+	var c := b.cast_of(caster, self, null, caster.rank(self), hostile)
+	for h in behaviours:
+		for at in h.footprint(c, cell) if h else []:
+			if at not in out:
+				out.append(at)
+	return out
+
+
 # Its behaviour from Behaviours/<file>.gd (&"guard": Shields Up!), or null: what a reader asks when it
 # acts on one kind (AI._search(): an Observe).
 func behaviour(file: StringName) -> Behaviour:
@@ -250,7 +264,10 @@ func behaviour(file: StringName) -> Behaviour:
 # context tags in docs/plan-composability.md): &"offensive" an attack on a foe, &"supportive" help for
 # an ally, &"defensive" protecting oneself. A skill can serve more than one (a dual spell attacks and
 # supports); a passive serves none - it's not a move to order. A posture tag on it decides outright.
-func serves(posture: StringName) -> bool:
+# Given the unit that would use it, "supportive" also counts any skill a behaviour of which restores
+# something to that unit (Behaviour.restores(): Heal, Energize, Resuscitate), as heals() does for the
+# skills whose fields heal - so Affinity and a HELP order see them alike; without one it can't ask.
+func serves(posture: StringName, u: Unit = null) -> bool:
 	if passive:
 		return false
 	if tags.any(func(t: StringName): return t in Unit.POSTURES):  # tagged with its posture outright (Frenzy: offensive)
@@ -259,10 +276,24 @@ func serves(posture: StringName) -> bool:
 		&"offensive":
 			return for_foes() and (attacks() or contests() or not tiers.is_empty() or Displace.draws(self) != null or disables)
 		&"supportive":
-			return for_allies() and not self_only and (heals() or grants != null or behaviour(&"boost") != null or behaviour(&"aura") != null or not effects.is_empty())
+			return for_allies() and (restoring(u) or not self_only and (heals() or grants != null or behaviour(&"boost") != null or behaviour(&"aura") != null or not effects.is_empty()))
 		&"defensive":
 			return self_only
 	return false
+
+
+# Whether one of its behaviours would give u something back used by u on itself (Behaviour.restores(),
+# whatever the pool, however little: only that it is a restorer). False with no unit to ask.
+func restoring(u: Unit) -> bool:
+	if u == null or behaviours.is_empty():
+		return false
+	var c := Behaviour.Cast.new()
+	c.caster = u
+	c.target = u
+	c.skill = self
+	c.rank = 1  # not u.rank(): a unit's rank reads its Affinity, which asks serves()
+	c.foe = false
+	return behaviours.any(func(x: Behaviour): return x != null and not x.restores(c).is_empty())
 
 
 # Can be used on foes: hostile skills, and dual ones.
@@ -515,12 +546,18 @@ func summary() -> String:
 	return Glossary.plain(spec_line())
 
 
-# A line for a static view of s (the skills screen) that shows its base values while u's modifiers
-# change it: "" when they don't.
+# Lines for a static view of s (the skills screen) that shows its base values: that u's modifiers change
+# them, and that u has used it lately and pays more now (Exhaustion.note()); "" when neither.
 static func base_note(u: Unit, s: Skill) -> String:
-	if not u or u.mods(s).empty():
+	if not u:
 		return ""
-	return "\nBase values: %s changes them (the spellbook and hotbar show them as %s has it)" % [u.mods(s).label(), u.name]
+	var note := ""
+	if not u.mods(s).empty():
+		note = "\nBase values: %s changes them (the spellbook and hotbar show them as %s has it)" % [u.mods(s).label(), u.name]
+	var worn := u.exhaustion.note(s) if u.exhaustion and not s.passive else ""
+	if worn:
+		note += "\nCosts more now: " + worn
+	return note
 
 
 # Everything it does at this rank, as plain text (as u holds it, given u: markup()).

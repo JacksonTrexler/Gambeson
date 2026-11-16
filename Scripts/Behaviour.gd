@@ -96,6 +96,13 @@ func apply_at(_c: Cast, _cell: Vector2i) -> void:
 	pass
 
 
+# The tiles apply_at() would cover were its skill cast on `cell` (a Battle.cast_of() with no target), for
+# the HUD's preview: who stands in them glows, and the overlay shades them. Empty: no area of its own.
+# Pure.
+func footprint(_c: Cast, _cell: Vector2i) -> Array[Vector2i]:
+	return []
+
+
 # The skill it's on failed (Battle._miss()): its attack roll missed, its save or contest was lost (a drag,
 # a grapple, a level down), its Strike hit nothing, its level or its life wasn't taken. The counterpart
 # of apply(), which runs only when it lands: a refund, a rider on a miss. Not run on a cast that is
@@ -170,6 +177,13 @@ func rebate(_c: Cast) -> Vector2:
 func refunds(c: Cast, p: float) -> float:
 	var r := rebate(c)
 	return r.x + r.y * p
+
+
+# The tiles of movement the cast gives its caster this turn, as it would be paid for now (Move; a
+# payment that counts as Stamina gives more). What the AI weighs a skill by when its foe is a few tiles
+# out of reach on foot (AI._stretch()). Pure.
+func strides(_c: Cast) -> int:
+	return 0
 
 
 # Defense the cast costs its own caster, through its next turn (Sutemi's Off Balance: a point a tile

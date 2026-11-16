@@ -46,3 +46,31 @@ func test_adventurer() -> void:
 	v(1).exhaustion.used(strike)
 	ok(is_equal_approx(v(1).exhaustion.of(strike), 1.0), "but no exhaustion cut: that's the passive's")
 	Exhaustion.on = false
+
+
+# docs/plans/ai-support-2.md. The AI casts Move when its foe is out of reach on foot but within what Move adds,
+# and weighs what the payment would give (Behaviour.strides(): doubled paid with Stamina) - and so strikes.
+func test_ai_stretches() -> void:
+	v(1).learned.append(slot(move, 1))
+	var mv := int(v(1).stat(&"movement"))
+	var cell := Vector2i(1, 3)
+	stage(lancin, {v(1): cell, v(3): cell + Vector2i(mv + 3, 0)})  # reach 1.x: mv + 2 tiles to walk, 2 over
+	v(1).refresh()
+	soak(v(3), 900)
+	var cast := b.cast_of(v(1), move, v(1), 1, false)
+	ok(move.behaviours[0].strides(cast) == 1, "Move I paid with Energy: 1 tile")
+	var log := AI.act(b, v(1))
+	ok(not log.any(func(l: String): return "uses Move" in l) and v(3).hp == 900, "a tile short: it doesn't (%s)" % [log])
+	duel(stamina)
+	stage(lancin, {v(1): cell, v(3): cell + Vector2i(mv + 3, 0)})
+	v(1).refresh()
+	soak(v(3), 900)
+	v(1).set_store(pool, v(1).pools()[pool])
+	ok(move.behaviours[0].strides(b.cast_of(v(1), move, v(1), 1, false)) == 2, "paid with Stamina: 2")
+	log = AI.act(b, v(1))
+	ok(log.any(func(l: String): return "uses Move" in l) and v(3).hp < 900, "with Stamina it closes the gap and strikes (%s)" % [log])
+	stage(lancin, {v(1): cell, v(3): cell + Vector2i(mv + 3, 0)})
+	v(1).refresh()
+	v(1).set_store(pool, v(1).pools()[pool])
+	v(1).ap = [AP.new(float(mv), &"")]  # enough to cast Move, and to reach with it, but not to walk the gap and strike after
+	ok(not AI.act(b, v(1)).any(func(l: String): return "uses Move" in l), "no AP to spare for the blow after it: it doesn't")
