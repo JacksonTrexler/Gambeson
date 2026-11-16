@@ -157,6 +157,8 @@ func test_look_over() -> void:
 	v(1).afflict(effect("recon", 1), 9)
 	h.look_over(s.cell)
 	ok(h.sheet.visible and h.sheet.unit == s and "Aggressive" not in line.call() and "Rotting" not in line.call() and "Horrific" not in line.call(), "a disguised foe shows its persona: %s" % line.call())
+	var all := h.sheet.find_children("*", "Label", true, false).map(func(l: Label): return l.text)
+	ok(not " ".join(all).contains("Siren") and not " ".join(all).contains("XP") and not " ".join(all).contains("Weapon"), "and none of its real name, XP or kit: %s" % [all])
 	h.sheet.hide()
 	v(1).afflict(effect("recon", -20), 9)
 	h.look_over(s.cell)

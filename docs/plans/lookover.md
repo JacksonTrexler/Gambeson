@@ -8,3 +8,4 @@ Calls
 Tests: bio_test.test_look_over (own unit, disguised foe, unknown foe, empty tile). Mutation: passing null for foes too failed the disguised check.
 
 As built: see commits.
+- The sheet itself leaked: its header named the unit's real name, XP, hearts, and showed its kit. With a Read (r != null) it now shows only the Read's name (else looks, else "Something"), level (or ?), and the bio line; no equipment or stash. Mutation: the old sheet failed the new header check.
