@@ -428,6 +428,10 @@ func _unhandled_input(e: InputEvent) -> void:
 		hover_cell(_cell_at(e.position))
 		return
 	if e is InputEventMouseButton:
+		if e.pressed and e.button_index == MOUSE_BUTTON_MIDDLE:  # a look-over (Shift-click already inspects)
+			look_over(_cell_at(e.position))
+			get_viewport().set_input_as_handled()
+			return
 		if not e.pressed or e.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if _panel_open():
@@ -454,6 +458,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		toggle_party()
 	elif e.is_action_pressed(&"next_unit"):
 		next_unit()
+	elif e.is_action_pressed(&"look_over"):
+		look_over(hover)
 	else:
 		var i := _slot_key(e)
 		if i < 0:
@@ -698,6 +704,17 @@ func toggle_sheet() -> void:
 	if open:
 		var u := selected if selected and hand(selected) else command.leader
 		sheet.open(u, _outfits(u))
+
+
+# A look-over of whoever stands on c (middle-click, or the look_over key on the hovered tile): its sheet,
+# read-only, with its bio as the player's eyes make it out (view(): the same Read the unit card goes by).
+# The player's own side reads whole (null); no one made out there, nothing.
+func look_over(c: Vector2i) -> void:
+	var u := unit_seen(c) if c != NOWHERE else null
+	if u == null:
+		return
+	_close_panels()
+	sheet.open(u, false, null if known(u) else view(u))
 
 
 func _notification(what: int) -> void:
