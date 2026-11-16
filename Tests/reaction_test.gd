@@ -32,6 +32,7 @@ func echo(u: Unit, e: Echo) -> Skill:
 
 # v(3) (Nemes) Jams v(1), sure to hit; v(2) beside v(1), v(4) further off.
 func scene() -> void:
+	roomy(v(3))
 	v(3).learned.append(slot(jam))
 	v(3).dexterity = 40
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3), v(4): Vector2i(8, 3)})

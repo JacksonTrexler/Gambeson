@@ -20,7 +20,7 @@ func emblem(word: StringName, scope: StringName, rank := 1) -> Item:
 
 func learn(u: Unit, s: Skill, r: int) -> void:
 	u.learned.append(slot(s, r))
-	u.hotbar.assign([s])  # a Sigil's skill: the leftmost it fits
+	u.set_equipped([s])  # a Sigil's skill: the leftmost it fits
 	u.refresh()
 
 

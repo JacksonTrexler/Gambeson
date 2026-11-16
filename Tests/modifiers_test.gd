@@ -133,6 +133,7 @@ func test_eligibility() -> void:
 
 func test_symbols() -> void:
 	var s := scaler()
+	roomy(v(1))
 	v(1).learned.append(slot(s, 2))
 	v(1).intelligence = 16  # +3
 	v(1).charisma = 14  # +2

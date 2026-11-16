@@ -12,7 +12,7 @@ var hardy: Skill = load("res://Skills/hardy.tres")
 func shrike() -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Shrike"})
 	b.get_node("Units").add_child(u)
-	return u
+	return roomy(u)
 
 
 func test_path() -> void:

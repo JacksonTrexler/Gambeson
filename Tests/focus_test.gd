@@ -74,6 +74,7 @@ func test_not_busy_or_channeling() -> void:
 
 
 func test_pays() -> void:
+	roomy(v(1))
 	v(1).learned.append(slot(crushing))
 	focused()
 	v(1).set_store(pool, 2)

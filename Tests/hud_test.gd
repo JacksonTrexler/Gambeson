@@ -946,7 +946,7 @@ func test_adventurer_skills_screen() -> void:
 
 
 func test_dual_spell_ui() -> void:
-	var u := shrike()
+	var u := roomy(shrike())
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3), v(3): Vector2i(4, 4)})
 	var sola: Skill = load("res://Skills/sola.tres")
 	u.skill_points = 1

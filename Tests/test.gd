@@ -49,6 +49,13 @@ func hurt_to(u: Unit, left := 2) -> Unit:
 	return u
 
 
+# Gives u n more sure slots, so skills a test hands it go on the bar (only equipped skills work: Unit.equipped()).
+func roomy(u: Unit, n := 4) -> Unit:
+	u.extra_slots += n
+	u._arrange()
+	return u
+
+
 func slot(s: Skill, r := 1) -> Slot:
 	var x := Slot.new()
 	x.skill = s

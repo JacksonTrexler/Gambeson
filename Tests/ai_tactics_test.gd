@@ -194,6 +194,7 @@ func test_starves_grudge() -> void:
 
 
 func test_grudge_heals_itself() -> void:
+	roomy(v(3))
 	v(3).learned.append(slot(grudge, 2))
 	v(3).learned.append(slot(heal, 2))
 	stage(lancin, {v(1): Vector2i(5, 3), v(3): Vector2i(4, 3)})

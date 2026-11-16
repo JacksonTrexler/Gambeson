@@ -1614,6 +1614,14 @@ func _arrange() -> void:
 		var queues := {}
 		for i in hotbar.size():
 			queues.get_or_add(_key_name(_keys[i] if i < _keys.size() else &""), []).append(hotbar[i])
+		var sure: Array = queues.get_or_add("", [])
+		var more: int = now.count(&"") - sure.size() - (queues.get("clover", []).size() if &"clover" not in now else 0)
+		if more > 0:  # new sure slots go in above the passives and pillars at the bottom, which stay there
+			var at := sure.size()
+			while at > 0 and (sure[at - 1] == null or (sure[at - 1].passive and not sure[at - 1].toggle) or sure[at - 1].pillar()):
+				at -= 1
+			for n in more:
+				sure.insert(at, null)
 		var out: Array[Skill] = []
 		for k in now:
 			var from: Array = queues.get(_key_name(k), [])
