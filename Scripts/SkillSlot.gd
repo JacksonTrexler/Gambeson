@@ -179,7 +179,10 @@ func _draw() -> void:
 	var nw := font.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	draw_string(font, Vector2(right - nw, mid), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, GOLD * Color(1, 1, 1, dim))
 	right -= nw + 2
-	if skill.passive:
+	if lent != "" and sense == 2:  # the item's ring sits on the numeral's baseline, just left of it
+		draw_arc(Vector2(right - 1.7, mid - 1.9), 1.7, 0.0, TAU, 10, Color(LENT, 0.95), 1.0)
+		right -= 5
+	if shows_switch():  # only a switch shows on/off; an always-on passive just works
 		var dot := Vector2(right - 2, size.y / 2.0)
 		draw_circle(dot, 1.6, ON if on else Color(1, 1, 1, 0.25))
 		if switching:  # the switch turns: a ring round the dot, with an arc running round it
@@ -199,12 +202,15 @@ func _draw() -> void:
 	if modded and sense == 2:
 		var at := Vector2(size.x - 10.0, 4.0)
 		draw_colored_polygon(PackedVector2Array([at + Vector2(0, -2), at + Vector2(2, 0), at + Vector2(0, 2), at + Vector2(-2, 0)]), Color(GOLD, 0.85))
-	if lent != "" and sense == 2:
-		draw_arc(Vector2(size.x - 8.5, size.y - 3.5), 1.7, 0.0, TAU, 10, Color(LENT, 0.95), 1.0)
 	if switching:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(GOLD, 0.35 + 0.25 * sin(Time.get_ticks_msec() / 220.0)), false, 1.0)
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
+
+
+# Whether the slot shows the on/off dot: a toggled passive only.
+func shows_switch() -> bool:
+	return skill != null and skill.passive and skill.toggle
 
 
 func set_exhausted(n: float) -> void:
