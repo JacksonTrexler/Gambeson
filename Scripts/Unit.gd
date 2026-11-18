@@ -1917,10 +1917,17 @@ func hooks() -> Array:
 	return out
 
 
-# Turns to face tile c (not its own).
+# The one place facing is recorded (docs/plans/w2-facing.md): it faces along v, the vector of its last move
+# (start to finish, forced ones too) or of its last aim (from its tile to the target's), whichever came
+# latest. A zero vector changes nothing.
+func turn(v: Vector2i) -> void:
+	if v != Vector2i.ZERO:
+		facing = Vector2(v).normalized()
+
+
+# Turns to face tile c (its own changes nothing).
 func face(c: Vector2i) -> void:
-	if c != cell:
-		facing = Vector2(c - cell).normalized()
+	turn(c - cell)
 
 
 # Which side of it tile c is on, by the cone test: &"front" (within 45 degrees of the way it faces),

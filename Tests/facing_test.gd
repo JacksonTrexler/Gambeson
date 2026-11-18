@@ -22,8 +22,21 @@ func test_moves() -> void:
 	ok(v(1).facing.is_equal_approx(Vector2(-1, 0)), "two west: the last step's way")
 	stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(8, 8)})
 	var way := b.travel(v(1), Vector2i(4, 4))
-	var last := Vector2(way[-1] - (way[-2] if way.size() > 1 else Vector2i(3, 3))) if not way.is_empty() else Vector2.ZERO
-	ok(not way.is_empty() and v(1).facing.is_equal_approx(last.normalized()), "whatever way it went, the last step's (%s)" % [way])
+	ok(not way.is_empty() and v(1).facing.is_equal_approx(Vector2(way[-1] - Vector2i(3, 3)).normalized()), "a walk faces start to finish, however it bent (%s)" % [way])
+
+
+# Whichever came latest wins: a move, then an aim, then a forced move (a push), each turns it.
+func test_latest_wins() -> void:
+	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(5, 5)})
+	b.travel(v(1), Vector2i(4, 4))
+	ok(v(1).facing.is_equal_approx(Vector2(1, 0)), "moved east: east")
+	ok(b.cast(v(1), strike, v(3)), "a Strike at the foe")
+	ok(v(1).facing.is_equal_approx(Vector2(1, 1).normalized()), "aimed after: that way (%s)" % v(1).facing)
+	ok(b.push(v(1), v(3), 1) == 1, "pushed")
+	ok(v(1).facing.is_equal_approx(Vector2(-1, -1).normalized()), "forced move after: along the push (%s)" % v(1).facing)
+	var kept := v(1).facing
+	v(1).turn(Vector2i.ZERO)
+	ok(v(1).facing == kept, "a zero vector changes nothing")
 
 
 func test_attacks() -> void:
@@ -104,7 +117,7 @@ func test_shields_up() -> void:
 	ok(not v(1).guarding(Vector2i(2, 3)), "down, it blocks nothing")
 
 
-func test_interjector_turns() -> void:
+func test_interjector_stays() -> void:
 	v(2).learned.append(slot(interject, 1))
 	v(3).learned.append(slot(jam))
 	v(3).dexterity = 40
@@ -116,7 +129,7 @@ func test_interjector_turns() -> void:
 		soak(v(i), 300)
 	v(2).facing = Vector2(0, 1)  # looking south, the attacker north-east of it
 	ok(b.cast(v(3), jam, v(1)) and v(2).hp < 300, "it takes the hit")
-	ok(v(2).facing.is_equal_approx(Vector2(1, -1).normalized()), "and turns to face the attacker (%s)" % v(2).facing)
+	ok(v(2).facing == Vector2(0, 1), "and doesn't turn (a block is no move or aim of its own)")
 	ok(v(1).facing == Vector2.ZERO, "the one it covered for doesn't turn")
 
 
