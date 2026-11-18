@@ -261,4 +261,4 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Glance and crit range** (`Check.outcome()`, `Check.outcomes()`, `Battle.attack_check()`, `crit_range`, `attack_rolled`, `Behaviour.striking`, `Unit.rolls_made`): plan `docs/plans/w2-glance.md`. `check_test`. (?186)
 - [x] **Test stubs, Option A** (`skill.py`, `unit.py`, `mechanic.py` stub a test only for a new behaviour or on `--test`): plan `docs/plans/w2-teststubs.md`. (?187)
 - [x] **Facing by move or aim** (`Unit.turn()`, `displace()` turns, no stand-in turn): plan `docs/plans/w2-facing.md`. `facing_test`, `displace_test`. (?188)
-
+- [x] **Cost profiles** (`Skill.costs` in place of `priced`, `Pricing.profile()`, `Unit._funding()` preference, `skill.py new --cost`, `cost`, `migrate`, `Util/terms.gd infer`): a cost in words skews the computed baseline across AP, resource and rank; 48 hand prices migrated. Plan: `docs/plans/w2-cost.md`. `costs_test`. (?190)

@@ -161,6 +161,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Glance, Backstab, Glancing Strike, Heavy Strike (?186) | `check_test.gd`, `heavy_strike_test.gd` |
 | — | Test stubs, Option A (?187) | none (tooling) |
 | — | Facing by move or aim (?188) | `facing_test.gd`, `displace_test.gd` |
+| — | Striking Features and Intellect, `attack_stat` (?189) | `general_test.gd` |
+| — | Cost profiles (?190) | `costs_test.gd` |
+| — | Parameterizing the concrete skills (?191) | `param_test.gd` |
 
 ## Questions to answer first
 

@@ -474,8 +474,18 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **No balancing** (you said so): Glancing Strike's disadvantage is its cost.
     - **Tests:** `check_test` (`test_crit_and_sure`, `test_no_inline_d20` updated; new `test_glance_outcomes`, `test_crit_range_glances`, `test_glancing_and_opening`), new `heavy_strike_test`, `hud_test.test_tabbed_skills_screen` counts Backstab. Eight mutation spot-checks (plan).
     - **New names to review:** Crit range ??, Glancing ??, Opening attacks ??. (Skill names Backstab, Glancing Strike, Heavy Strike are yours, built `--human`.)
-- [ ] **Striking Features and Striking Intellect** (use cha or int for strike attacks if higher): in flight (`w2-striking`, `docs/queue.md` card 4); the attacker's modifier is `Unit.attack_mod(skill)`. (?186)
+- [x] **Striking Features and Striking Intellect** (use cha or int for strike attacks if higher): built 2026-11-18 (?189).
 - [ ] **Tier placement of Backstab, Glancing Strike and Heavy Strike** (no tiers on class trees): confirm the places. (?186)
 - [ ] **Does a natural 20 that misses glance, and a hit crit, as built?** (?186)
 - [ ] **The AI doesn't plan around a glance or Heavy Strike's last roll** beyond halving by the glance share. (?186)
 
+189. **Striking Features and Striking Intellect - built on judgement, open for review (2026-11-18).** Your words: "2 skills: Specialist/Caster general Striking Features/Intellect: Unit may use `cha/int` for their strike attack mod, if it's higher." Plan: `docs/plans/w2-striking.md`. Calls, those marked (lead) are the lead's readings of your words:
+    - **One generic hook, no flag per skill:** Effect stat `attack_stat` ("Attack stat ??"); `checks` names the stats offered, `skills` or `tags` say which attacks. `Unit.attack_stat(skill)` takes the best mod among the skill's own stat, a weapon's and every offered one; `Unit.attack_mod()` and the three `check_bonus` sites (cast, `_chain`, `attack_odds`) read it, so Bracing on cha or int follows the stat used, and the forecast, hit chance and AI see it. Another skill can offer another stat or name other skills or tags in data.
+    - **"Strike" means the one chain skill** (`Skills/strike.tres`), as in ?186 (lead). No new tag: Strike's tags are shared by other skills.
+    - **Striking Features already existed** (Specialist general tree, tier 4, the `featured` effect: first hits add cha mod damage). Kept it and added `attack_stat` to it rather than replacing it; its name is yours, so no ??.
+    - **Striking Intellect is new** (`--human`; passive, magical): Caster general tree, tier 4, after Record Striker, beside Striking Features' tier. **Its tier and tree placement are the builder's pick.**
+    - **Not balanced** (you said so); prices are the calculator's.
+    - **Tests:** `general_test.test_attack_stat`, one table row per stat (higher wins, forecast rises, lower or unequipped unchanged, non-Strike untouched). Two mutation spot-checks (comparison flipped, `skills` filter ignored).
+    - **New names to review:** Attack stat ??.
+- [ ] **Placement of Striking Intellect** (tier 4 after Record Striker on the Caster general tree): confirm. (?189)
+- [ ] **Does `attack_stat` apply to other strike-like attacks** (Gank, Jugular, a Hex)? Now only Strike; a skill opts in by `skills` or `tags`. (?189)

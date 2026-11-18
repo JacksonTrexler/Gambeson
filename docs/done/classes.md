@@ -109,7 +109,7 @@ Four trees beside every class's own, on the far right of the skills screen (`Tre
 
 **Specialist** (green): Synergy, Decisive Strike (II), Striking Features (IV), Agility and Balanced Bracing (V), Decisive Mastery (VII).
 - [x] **Decisive Strike** (low tier, exclusive): Strike becomes Decisive Strike. After a critical, the rest of its hits land; damage by the higher of dex and str mod.
-- [x] **Striking Features** (mid): its first rank hits add cha mod, up to rank.
+- [x] **Striking Features** (mid): its first rank hits add cha mod, up to rank; Strike may also use cha for its attack mod if higher (?189).
 - [x] **Decisive Mastery** (high, stacks): the same as Decisive Strike, as a passive.
 - [x] **Kick** (Martial, tier 1; 4 AP, 1 Energy; `Behaviours/kick.gd`): an attack at rank range for 1d4 + str, and what the tile at the kicker's feet does, rank turns: a trap springs on the foe (and stays, revealed); water Soaks (movement -rank); leaves, sand or debris Blind (offensive checks -rank); a hole, edge or off-map tile pushes rank tiles; bare ground is plain damage; adjacent, a 1-tile push. (?88)
 - [x] **Strategist** and **Tactician** (tier 3, passives, beside Discipline; the usual point curve, no rank cap): rank more allies a turn, rank more orders per ally. Only the Adventurer, Bard, Rogue and Ranger have this tree natively. (?86)
@@ -254,4 +254,5 @@ Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?
 - [x] **Price rebates** (`Behaviour.rebate()`, `Battle.rebate()`, `Unit.pay_for(s, cut)`): Poach's and Slam Jam's discounts show in the forecast and are paid beforehand. Plan: `docs/plans/price-refunds.md`. `poach_test`. (?151)
 - [x] **Skeleton and Mortis Arcalís** (`Skills/skeleton.tres`, `Scenes/skeleton.tscn`, `Trees/mortis_arcalis.tres`, `Behaviours/summon_per_rank.gd`): plan `docs/plans/r-skeleton.md`. `summon_test`. (?181)
 - [x] **Backstab, Glancing Strike, Heavy Strike** (`Skills/backstab.tres`, `glancing_strike.tres`, `heavy_strike.tres`, `Behaviours/heavy_strike.gd`): plan `docs/plans/w2-glance.md`. `check_test`, `heavy_strike_test`. (?186)
-
+- [x] **Striking Features and Striking Intellect** (`Skills/striking_features.tres`, `striking_intellect.tres`, Effect stat `attack_stat`, `Unit.attack_stat()`, `attack_mod()`; Striking Intellect on the Caster general tree, tier 4): cha or int for Strike's attack mod if higher. Plan: `docs/plans/w2-striking.md`. `general_test.test_attack_stat`. (?189)
+- [x] **Concrete skills parameterized** (Favour, Hazard Expert, Move +1, the three Skill Slot +1, Final Act, Gallantry, Stonegift: `per_rank`, `Unit._grants()`, `Reaction` `bonus`): 29 ineligible became 22. Plan: `docs/plans/w2-param.md`. `param_test`. (?191)
