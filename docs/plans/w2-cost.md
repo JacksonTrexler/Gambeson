@@ -60,3 +60,43 @@ Read: skill-modifiers.md, param.md, param-rest.md, ai-prices.md, Pricing.gd, Ski
   synonyms, refusals); every skill's profile parses and its named reserve can pay it; preference in funding.
 - skill.py check: profile parse + only/needs (tool check).
 - Mutations: listed in "As built".
+
+## As built
+- `Scripts/Skill.gd`: `costs` (String) replaces `priced`; `priced()` a func. `Util/skill.py` FLAG_CEILING 104 -> 103 (the true count).
+- `Scripts/Pricing.gd`: TABLE `levels`, `rank`, `generic`, `reserves`; `profile(text)` (cached parse, `error` on a bad
+  word), `profile_of(s)`, `budget(s, r, m)` (rank growth), `ap()`/`energy()` by the weights, `reserve_of(s)`.
+- `Scripts/Unit.gd` `_funding()`: a preferred reserve pays first (after a needed one).
+- `Util/skill.py`: `profile()` (mirror of Pricing's), `check_costs` (parses, active only, "X only" <-> `needs`),
+  `new --cost "<profile>"` (default "even"; `--hand-priced --ap N --cost N` still hand), `cost <id> "<profile>"`
+  / `cost <id> hand --ap --points`, `migrate`. `Util/terms.gd`: `infer` mode; `terms` prints the profile and AP/cost at I-III.
+- `.claude/skills/new-skill/SKILL.md`: the vocabulary, examples, `skill.py cost`.
+- Migrated (exact at every rank, so play unchanged without emblems): 48 + the 3 already priced (now "even").
+  Writing a profile drops the hand `ap`/`cost` lines.
+- **Kept hand-priced (no profile reproduces them at every rank; 38):** burning_bag, cindering, clairvoyance,
+  coordinate, darkstone, death, elemental_strike, flamecharm, flamedance, flamewall, gank, heal, hitch,
+  invisibility, judgement, jugular, level_up, meditate, megaheal, metea, mirror_image, pray, rake, ramuts_ire
+  (0 AP), rejuvinate, resuscitate, savage_swing, send_off, slam_jam, smite, snare, solar, spike, stonegift, strike,
+  stun, well_up, wildfire; and the 7 cost-x-rank starter spells (aetha, astera, hydera, igna, nadira, sola,
+  terestera: a profile has no "x rank" word; their rank I hand price matches "even"). For the next card: set one
+  with `python3 Util/skill.py cost <id> "<profile>"` once a skill's terms are parameterized (it prints the price
+  at I-III to compare), or leave it hand-set.
+- Tests: new `Tests/costs_test.gd` (test_profiles: words -> weights table, refusals, AP/cost at ranks for
+  even/skewed/flat/steep/no-ap; test_every_profile; test_prefers). Changed to the new rule: `modifiers_test.test_priced`
+  (`costs = "even"`), `energize_test` (reads Pricing, not the removed fields), `route_test.test_missed` (reads
+  `v(3).price(h)`), `route_test.test_requirement_paths` (its Haluca copy hand-priced 4/2 as before: the payoff it
+  adds would price a priced copy past v(3)'s AP).
+- Mutations (each failed its test, reverted): energy ignoring w_cost; budget ignoring the rank word; funding
+  ignoring the preference; `only` never set. Tool: a "high health" profile and a "mana only" without `needs`
+  each give a `skill.py check` problem.
+- Suite: 9522 checks, 0 failed (931 tests) -> 9702 checks, 0 failed (934 tests).
+
+## Calls to review
+- `priced` -> `costs` (a string of words, not new fields per dimension); "even" the baseline.
+- Absolute words, unstated = moderate; levels 0 / 0.5 / 1 / 1.5 / 2.
+- A plainly named reserve is a preference with teeth (paid first), not only a label; "only" compiles to `needs`.
+- Rank word on the whole price (flat 0, scaled 1, steep 2), not per dimension.
+- Migration exact at every rank 1..max (5 uncapped), no emblems: with emblems on, a migrated skill now prices by
+  its profile under modifiers rather than hand x points ratio (small differences).
+- 26 of the 48 migrated profiles carry "flat rank" (their terms grow with rank but their hand price didn't):
+  the user may want those to scale; that would be balancing, so not done.
+- `skill.py cost` refuses to drop an existing `needs` silently (say "X only" or remove it first).
