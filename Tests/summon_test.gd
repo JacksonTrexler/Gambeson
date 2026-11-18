@@ -16,12 +16,23 @@ func test_summon_per_rank() -> void:
 	ok(b.cast_at(caster, skeleton, Vector2i(6, 3)), "cast on a tile 2 away")
 	var raised := b.members(lancin).filter(func(u: Unit): return &"undead" in u.tags)
 	ok(raised.size() == 4 and b.members(lancin).size() == before + 4, "rank 2: 2 x 2 skeletons, on the caster's side (%d)" % raised.size())
-	ok(raised.all(func(u: Unit): return Command.tiles(u.cell, Vector2i(6, 3)) <= 1 and u.ap_left() == 0.0), "each by the tile aimed at, with its turn's AP spent")
+	# the AP rule: they keep rank + cast mod (+ Wake and Rake's rank, by the summon tag), the rest spent
+	var keep: int = 2 + caster.mod(&"intelligence", caster.skill_tags(skeleton))
+	ok(raised.all(func(u: Unit): return &"summon" in u.tags and Command.tiles(u.cell, Vector2i(6, 3)) <= 1 and is_equal_approx(u.ap_left(), minf(keep, u._ap_start.reduce(func(a, x): return a + x, 0.0)))), "each by the tile aimed at, keeping rank + mod AP (%d), the rest spent" % keep)
+	ok(raised[0].ap_left() > 0.0 or keep <= 0, "it keeps some")
 	ok(skeleton.describe(2).contains("4 Skeletons") or skeleton.describe(2).contains("{r:4} Skeletons"), "it says the count: %s" % skeleton.describe(2))
 	var got := []
 	b.neutralized.connect(func(u: Unit, _by: Unit, how: StringName): got.append([u, how]))
 	raised[0].hp = 0
 	ok(got == [[raised[0], &"killed"]], "a skeleton dies like any unit: %s" % [got])
+	var wake: Skill = load("res://Skills/wake_and_rake.tres")
+	caster.learned.append(slot(wake, 3))
+	ok(wake.describe(3).contains("3"), "Wake and Rake says its rank: %s" % wake.describe(3))
+	caster.ap[0].amount = 99.0
+	ok(b.cast_at(caster, skeleton, Vector2i(6, 4)), "a second cast, with Wake and Rake III")
+	var more := b.members(lancin).filter(func(u: Unit): return &"undead" in u.tags and u not in raised)
+	ok(more.size() == 4 and more.all(func(u: Unit): return is_equal_approx(u.ap_left(), minf(keep + 3, u._ap_start.reduce(func(a, x): return a + x, 0.0)))), "Wake and Rake adds its rank (3) to what they keep")
+	ok(more.all(func(u: Unit): return u.ap_left() > raised[1].ap_left()), "more than the first batch kept")
 	b.end_turn()
 	b.end_turn()
 	ok(raised[1].ap_left() > 0.0, "next turn it has its AP")
