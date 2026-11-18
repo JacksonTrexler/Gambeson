@@ -133,6 +133,34 @@ func test_features() -> void:
 	ok(got[0][0] == 11 + 1 or got[1][0] == 20, "Striking Features I: + cha mod, up to 1, on the first hit (%s)" % [got[0]])
 
 
+# The attack_stat effect (Unit.attack_stat()): a table row per stat and passive. Strikes read the higher of
+# str and the stat; lower or unequipped changes nothing; a skill the effect doesn't name is untouched; the
+# forecast (Battle.attack_odds(), shared by the hit chance and the AI) sees it.
+func test_attack_stat() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var kick := sk("kick")
+	v(3).constitution = 30  # Defense 12: a bigger bonus shows in the odds
+	v(1).learned.append(slot(strike, 1))
+	for row in [["striking_features", &"charisma"], ["striking_intellect", &"intelligence"]]:
+		var u := v(1)
+		u.strength = 12
+		u.set(row[1], 18)
+		var odds0 := Battle.attack_odds(u, strike, v(3), b)[0]
+		var kick0 := u.attack_mod(kick)
+		ok(u.attack_mod(strike) == 1 and u.attack_stat(strike) == &"strength", "%s unequipped: str (+1)" % row[0])
+		var slot_ := slot(sk(row[0]), 1)
+		u.learned.append(slot_)
+		u.refresh()
+		ok(u.attack_mod(strike) == 4 and u.attack_stat(strike) == row[1], "%s: %s mod (+4) beats str" % [row[0], row[1]])
+		ok(Battle.attack_odds(u, strike, v(3), b)[0] > odds0, "...and the forecast sees it")
+		ok(u.attack_mod(kick) == kick0, "...only for Strikes")
+		u.set(row[1], 8)
+		ok(u.attack_mod(strike) == 1, "%s lower than str: unchanged" % row[1])
+		u.learned.erase(slot_)
+		u.refresh()
+		u.set(row[1], 10)
+
+
 func test_record() -> void:
 	v(1).learned.append(slot(sk("record_striker"), 1))
 	v(1).intelligence = 40

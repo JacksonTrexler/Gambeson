@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="3_strike"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "attack_stat"
+checks = Array[StringName]([&"intelligence"])
+skills = Array[ExtResource("1_skill")]([ExtResource("3_strike")])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Striking Intellect"
+glyph = "Si"
+passive = true
+tags = Array[StringName]([&"magical"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])

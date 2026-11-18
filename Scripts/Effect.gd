@@ -167,6 +167,9 @@ extends Resource
 # no_traits: above 0, its traits (skills tagged trait) are suppressed: they stop working as if
 # unequipped, then come back (Unit.traits_suppressed(), Unit.equipped()); read from its timed
 # statuses only, never its passives. Unused by any skill yet
+# attack_stat: its attacks (of its tags and skills, if it names any) may use the stat in checks
+# for their attack mod where it is higher (Unit.attack_stat(); Striking Features, Striking
+# Intellect)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -177,7 +180,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -216,7 +219,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
 		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
-		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??"}
+		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??", "attack_stat": "Attack stat ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -312,6 +315,8 @@ func value(rank := 1) -> String:
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":
 		text = "no reactions: it can't dodge, guard or obstruct"
+	elif stat == "attack_stat":
+		text = "%s attacks may use %s for the attack mod if it is higher" % ["its" if skills.is_empty() else ", ".join(skills.map(func(k): return k.name + "s")), ", ".join(checks.map(func(k): return String(k).left(3) + " mod"))] if not checks.is_empty() else "attacks use a stat of its choice"
 	elif stat == "no_traits":
 		text = "its traits are suppressed: they do nothing while it lasts"
 	elif stat == "helpless":

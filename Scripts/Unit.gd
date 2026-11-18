@@ -2052,7 +2052,28 @@ func scrambles(t: Unit) -> bool:
 # What it adds to s's attack roll: its mod in the skill's stat (Skill.stat()), or in a stat its
 # weapon lets it use instead.
 func attack_mod(s: Skill) -> int:
-	return mod(wielded(s.stat(), s.tags), s.tags)
+	return mod(attack_stat(s), s.tags)
+
+
+# The stat s's attack roll reads: its own, or a weapon's (wielded()), or the best of those and any an
+# attack_stat effect offers (checks: the stats; skills / tags: which attacks; Striking Features: cha,
+# Striking Intellect: int, on Strikes) - whichever mod is highest.
+func attack_stat(s: Skill) -> StringName:
+	var best := wielded(s.stat(), s.tags)
+	var t: Array[StringName] = []
+	for pair in _stat_fx(&"attack_stat", null) if reading > 0 else _effects(null):
+		var e: Effect = pair[0]
+		if e.stat != "attack_stat" or pair[2] <= 0.0 or pair[1] < e.min_rank or (not e.skills.is_empty() and s not in e.skills):
+			continue
+		if not e.tags.is_empty():
+			if t.is_empty():
+				t = Tags.expand(s.tags)
+			if not e.tags.any(func(x): return x in t):
+				continue
+		for x in e.checks:
+			if mod(x, s.tags) > mod(best, s.tags):
+				best = x
+	return best
 
 
 # The stat it really uses where one is asked for: for strength, a weapon may allow others, and it

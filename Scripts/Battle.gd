@@ -1039,7 +1039,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var natural := false  # a natural 20 (Jugular recasts on one)
 	var rolled: Check.Roll = null
 	if foe and skill.attacks():
-		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * ri + skill.roll_bonus + int(req[0]) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
+		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * ri + skill.roll_bonus + int(req[0]) + zeal + caster.check_bonus(caster.attack_stat(skill), &"offensive") \
 				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
 		var hit := roll_attack(caster, target, attack_check(caster, skill, bonus, target.defense(tags) + guard_of(acts), edge_of(skill, acts) + int(req[2]), tags))
 		overage = maxi(hit.margin(), 0)
@@ -2334,7 +2334,7 @@ static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -
 	var req: Array = b.requirement(u, s, t, u.rank(s)) if b else [0, 0, 0, 0, 0.0]  # its contingency, as cast() reads it
 	var tags := c.tags if c else hit_tags(u, s, t, b)
 	var defense := (t.defense(tags) if guess < 0 else guess + t.defense(tags) - t.defense()) + guard_of(c)
-	var bonus := u.attack_mod(s) + s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") + s.roll_bonus + int(req[0]) + passion(u, t) + u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") + u.focus_forecast(s)
+	var bonus := u.attack_mod(s) + s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") + s.roll_bonus + int(req[0]) + passion(u, t) + u.check_bonus(u.attack_stat(s), &"offensive") + u.focus_forecast(s)
 	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags))
 
 
@@ -5189,7 +5189,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		v.bonus = caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), tags), &"offensive") + discipline_hit(caster) + int(req[0])
+		v.bonus = caster.attack_mod(skill) + zeal + caster.check_bonus(caster.attack_stat(skill), &"offensive") + discipline_hit(caster) + int(req[0])
 		v.defense = t.defense(blow) + guard_of(acts)
 		v.edge = edge_of(skill, acts) + int(req[2])
 		var hit := roll_attack(caster, t, attack_check(caster, skill, v.bonus - penalty, v.defense, v.edge, blow).sure(sure))
