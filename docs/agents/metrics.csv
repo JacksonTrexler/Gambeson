@@ -15,3 +15,4 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-18,w2-docs1,sonnet,medium,93372,14,106593,landed
 2026-11-18,w2-striking,sonnet,medium,83378,35,369000,landed
 2026-11-18,w2-cost,opus,medium,156207,62,951675,landed
+2026-11-18,w2-param,sonnet,high,137849,58,587081,landed
