@@ -96,7 +96,7 @@ func test_passives() -> void:
 		var r := u.rank(s)
 		ok(r > 0, "%s: learned at rank 2" % s.name)
 		weighed += _weigh(u, s.effects, before, func(_e): return r, func(_e): return 1.0, s.name)
-		if not s.inherent and not s.pillar():  # off the bar it does nothing: every stat back where it was (Unit.equipped()); pillars can't come off
+		if not s.is_trait() and not s.pillar():  # off the bar it does nothing: every stat back where it was (Unit.equipped()); pillars can't come off
 			ok(u.equipped(s), "%s: auto-equipped" % s.name)
 			u.bar_clear(u.hotbar.find(s))
 			ok(not u.equipped(s) and _readings(u, s.effects) == before, "%s: unequipped, inert" % s.name)

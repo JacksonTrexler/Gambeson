@@ -12,6 +12,5 @@ per_rank = true
 script = ExtResource("1_skill")
 name = "Starkind"
 passive = true
-inherent = true
-tags = Array[StringName]([&"astral"])
+tags = Array[StringName]([&"astral", &"trait"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_starkind")])

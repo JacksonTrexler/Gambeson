@@ -157,6 +157,9 @@ extends Resource
 # names ride on the move and on any damage it does.
 # unshape: forced out of any shape, form or mist as it is put on (Battle.unshape(), via drive()):
 # neutralized as &"unshaped"; nothing stays on the unit
+# no_traits: above 0, its traits (skills tagged trait) are suppressed: they stop working as if
+# unequipped, then come back (Unit.traits_suppressed(), Unit.equipped()); read from its timed
+# statuses only, never its passives. Unused by any skill yet
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -167,7 +170,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "no_traits") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -205,11 +208,11 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
-		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??"}
+		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??", "no_traits": "Traits suppressed ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove", "no_traits"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -301,6 +304,8 @@ func value(rank := 1) -> String:
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":
 		text = "no reactions: it can't dodge, guard or obstruct"
+	elif stat == "no_traits":
+		text = "its traits are suppressed: they do nothing while it lasts"
 	elif stat == "helpless":
 		text = "helpless: it can't act, move or take orders"
 	elif stat == "bleed":

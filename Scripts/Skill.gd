@@ -4,7 +4,6 @@ extends Resource
 @export var name := ""
 @export var passive := false  # works while its slot is on; costs nothing, can't be cast
 @export var toggle := false  # passive: its holder switches it on and off (from the hotbar)
-@export var inherent := false  # part of what its holder is (Starkind): it can't be disabled or removed, and takes no slot
 @export var min_tier := 0  # its tier is at least this (Synergy: 2), wherever it's offered (Unit.tier())
 @export var hybrid := false  # passive with an active part: using it costs its AP (Personify: adjusting its persona; Battle.personify())
 @export var tags: Array[StringName] = []  # e.g. physical, dark, magical, str, wis; martial, magical, specialist: its category
@@ -210,10 +209,18 @@ func tier(rank: int) -> Tier:
 	return best
 
 
-# Goes on the hotbar to work: everything but an inherent skill (Starkind), which takes no slot. Actives
-# and toggles are worked by hand from it; an always-on passive just sits there, working (Unit.equipped()).
+# A trait (the tag): part of what its holder is (Starkind, a Siren's Alluring), not something it learned.
+# Always equipped, takes no hotbar slot, and no skill-disabling effect or hotbar ordering reaches it -
+# only a status that suppresses traits turns it off (Unit.traits_suppressed()). A trait is an always-on
+# passive: nothing to cast or switch.
+func is_trait() -> bool:
+	return &"trait" in tags
+
+
+# Goes on the hotbar to work: everything but a trait, which takes no slot. Actives and toggles are
+# worked by hand from it; an always-on passive just sits there, working (Unit.equipped()).
 func fits_bar() -> bool:
-	return not inherent
+	return not is_trait()
 
 
 # Its holder's build stands on it (Powerful): it's the easiest to disable, and one going takes every
@@ -505,7 +512,7 @@ func spec(u: Unit = null, rank := 1) -> Array:
 	if stub:
 		return [["", "Not built yet"]]
 	if passive:
-		var how := [["", "Passive"], ["", "Toggle" if toggle else ("Inherent" if inherent else "Always on")]]
+		var how := [["", "Passive"], ["", "Toggle" if toggle else ("Trait" if is_trait() else "Always on")]]
 		if hybrid:  # its active part costs AP (Personify: adjusting its persona)
 			how.append(["AP", num(Pricing.ap_at(u, self, rank) if u else ap)])
 		return how
@@ -585,7 +592,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	var ri := m.irank(rank, &"rank_impact")  # rank for what it does
 	var rr := m.irank(rank, &"rank_range")  # rank for how far it reaches
 	if with_spec:
-		lines.append(spec_line(u, rank) if not passive or not inherent else "Inherent: can't be removed or disabled, and takes no slot")
+		lines.append(spec_line(u, rank) if not passive or not is_trait() else "Trait: always equipped at the far right of the hotbar, takes no slot, and can't be disabled")
 	if requires:
 		lines.append(requires.markup(rank, m))
 	if not passive:

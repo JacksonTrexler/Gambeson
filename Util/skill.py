@@ -146,6 +146,15 @@ def check_check_tags(problems):
             problems.append('%s: it executes (kills) but has no "execute" tag - what helps against executes would miss it' % p)
 
 
+def check_traits(problems):
+    """A trait (Unit.equipped(): always on, no hotbar slot) has nothing to cast or switch: a passive, not a toggle."""
+    for p in sorted(files("Skills", ".tres")):
+        text = read(p)
+        if '&"trait"' in next((x["props"].get("tags", "") for x in sections(text) if x["kind"] == "resource"), ""):
+            if not re.search(r"^passive = true", text, re.M) or re.search(r"^toggle = true", text, re.M):
+                problems.append("%s: tagged trait but not an always-on passive (a trait takes no slot, so it can't be cast or switched)" % p)
+
+
 def check_flags(problems):
     n = len(re.findall(r"^@export var ", read("Scripts/Skill.gd"), re.M))
     if n > FLAG_CEILING:
@@ -175,7 +184,7 @@ def check_icons(problems):
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_flags, check_stubs, check_icons):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_stubs, check_icons):
         f(problems)
     for p in problems:
         print(p)
