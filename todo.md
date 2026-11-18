@@ -11,9 +11,22 @@ Open work and questions, split by scope so each can be read on its own. What's d
 - **Option B:** keep a file per skill, but make it a 3-line stub that calls the shared helpers (`duel()`, the sweep).
 Until you choose, the tools write one file per item as before. (?144)
 
+**A, 20/80 it.
+
+If there are functionally identical skills with different flavoring (and we should be applying DRY when possible: basic tagged attack/heal/buff skills, or skills that are easily composable of other effects / skills / mechanics), should depend on tests targeting the actual core skills and mechanics**
+
 **Asked of you (2026-11-15), from ?152: is the Siren's lure now doubted too often?** Dissonance now measures how far a lie is, so the Siren (a briny, hungry monster claiming harmless, serene, safe, beautiful, holy) goes from dissonance 7 to 9 and its penalty after Alluring IV from 3 to 5: the wolf in sheep's clothing, doubted more. Left as built. If it is too much, the knobs are `Perception.LIE_FAR` 1.5 to 1.25 (softens it) or a practised look cutting more. Say which. (?152)
 
+**?152: don't focus on balance at present, but if in doubt for a skill that isn't properly paramaterized with difficulty, scaling / it's overly concrete, that's a signal that it needs to be parmeterized or scaled better on rank and stats**
+
+**any underpowered skill should be easy to tweak using check difficulty**
+**when balancing be mindful of effects that prevent units from taking useful actions on their turn, those should be precious / considered highly valuable**
+
+
 **Asked of you (2026-11-15), from ?163: must actives be equipped to work?** Equipping skills is built with the hotbar as the equipped set: a learned active that is not on the bar can't be cast, by a player or the AI (before, the AI could use any active it had). NPCs keep their kit by `extra_slots` (Siren 2, Undine 1), checked by `unit.py check`. Also: always-on passives on the bar show the green "on" dot toggles use, and the auto-equip toggle is global. Say if actives should work off the bar (a bar only for passives and quick keys), or keep as built. (?163)
+
+**Yup any active or passive skill does *nothing* unless it is equipped (and if relevant, toggled), either automatically on learn when there is space or manually if the hotbar is full.**
+
 
 **Asked of you (2026-11-15), from ?163 and ?165: always-on passives no longer show the green "on" dot.** The dot now shows only for toggles (`SkillSlot.shows_switch()`), which answers ?163's "should they?" as no. Say if you want it back. (?165)
 
@@ -97,6 +110,12 @@ Until you choose, the tools write one file per item as before. (?144)
 - 129 Pace (2026-11-14): when a unit is spent (can take no more orders) the focus passes to the next unit that hasn't acted, wrapping, on the player's turn only and only if the spent one is selected (Settings "Next unit when one is spent", on); hold F ("Hurry", bindable) for x4 on the turn change, the wait between units, the end of their turn and animated walks, read every frame; floating numbers, shakes and the opening roll not hurried; the log collapsed to its last whole entry above End Turn, a click on it or the LOG title opens it; "the same slot stays selected" left to `keep_slot`; two Guide sentences. Confirm or change?
 - 130 AI support (2026-11-14): one hook, `Behaviour.restores()` (pool and expected amount), so the AI heals with Heal, Megaheal and Resuscitate and feeds Energize, and any later restorer joins free (`Skill.heals()` untouched, it would heal twice); the AI picks the best (skill, ally) by want; Energize is cast last in a turn once the pool is at half or less, never costing a blow; Intervention and other non-hostile skills with effects of their own are cast on an ally in reach (self-only buffs left alone); it toggles Mana / Stamina when it can strike nothing and pay for nothing, finishing the switch next turn; it rests to build Focus when only a ranged blow is left and nothing to strike, and a strike scores up by Focus it would spend; a scryer with nothing to hunt casts Clairvoyance, then acts on the pings the same turn (no longer holding still for the channel). Confirm or change?
 - 131 Skill terms, cost and modifiers (2026-11-14): `SkillTerms`, `Modifiers` and `Pricing` read a skill's four channels (rank or stat to range or impact) from existing fields; nullify is rank I or stat 0; the RSC factor 1 + f(r), f = (2 + r)/(3 + r) one skill, (1 + r)/(2 + r) a subset, r/(1 + r) all; lambda p^(1+f) on the permissive share and payoff x(1+f); intensity on the Difficulty.MAGNITUDE words; tags eligible by Glossary kind; emblems in the trinket slot and Alabaster's loot; **five new declarative `Skill.gd` fields, FLAG_CEILING 125 to 130, against the no-new-flags rule: please OK**; hand costs kept, Poach priced, **tune the table or adopt the computed prices?** (71 of 89 drift). `r-route` and `r-param` built (?133, ?134).
+
+**Should be fine? doesn't seem to be overly concrete / these are good for long-term development and growth of skill system correct?**
+
+**I will say as far as computed costs go: skill cost is part of its identity (ap heavy / resource heavy / specific resouce needed or preferred). Skills *should* have an algorithm they can use looking at which tags are included, which paramaters are scaled how far (rank may scale cost, potentially a lot) as a baseline. Consider expanding how skill costs can be configured. a natural language description: "high mana cost, low ap cost" should be trivial for a sonnet or haiku model to implement via skill**
+
+
 - 132 Forecast (2026-11-14): AP and movement as pips over the selected unit's bars, no bar or text; foresight a stat (allowance int mod + foresight); one `HUD.hazard()` estimate counting fire and a trap's wounds; the drain on every reserve bar; HELP reads `restores()` (Energize counts, `_replenish()`).
 - 133 Parameterizing skills (2026-11-14): parameterized means the skill declares its channels and every read goes through the holder's modifiers; no tags added (none would be read); 21 made eligible, 27 left concrete (flat, binary, or build-time gates); passive hooks get the holder, not a Cast (`mods_on()`); Clairvoyance's `pings` a behaviour with three generic hooks; `Coalescing` and `Drown`'s dead `grapples` removed; FLAG_CEILING 128 with ?134. 54 ineligible became 27.
 - 134 Routing through the modifier reader (2026-11-14): rank as a distance is rank range, as an effect rank impact; one payoff set read on every outcome path (new `turns` and `strength`); descriptions read as held, **the skills screen stays base**; `describe_as()` for behaviours; one `Battle.damage_range()` for the AI and HUD; behaviours run on every landing path, **a lost save or contest runs none**; UNSAID emptied; `Skill.cinders` removed.
