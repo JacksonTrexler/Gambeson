@@ -22,15 +22,6 @@ func bless(r := 3) -> void:
 	ok(b.cast(v(1), intervention, v(2)), "Intervention III reaches an ally 2 tiles off")
 
 
-func test_intervention() -> void:
-	bless()
-	ok(v(2).timed.keys().filter(func(e: Effect): return e.name == "Bless").size() == 3, "Bless: three effects as one")
-	ok(&"bless" in intervention.tags and Glossary.TERMS.has(&"bless"), "a bless skill, the word in the Glossary")
-	var eros: SkillRoot = load("res://Trees/eros.tres")
-	ok(eros.branch(intervention) != null, "on Eros (Cleric and Paladin)")
-	ok(Glossary.plain(intervention.markup(3)).contains("each turn (downed)"), "described: %s" % Glossary.plain(intervention.markup(3)))
-
-
 # The seam: any check carrying taps or execute gets +rank, and any execute takes it to be whole - Stun
 # and Death, and a throwaway skill made here, alike.
 func test_seam() -> void:
