@@ -7,6 +7,21 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 ## In flight (not here to launch)
 Nothing.
 
+## Wave 3: the user's answers of 2026-11-18, second batch (docs/agents/answers-2026-11-18b.md; next question is 192)
+Builders read the answers file for exact wording. The user's names go in with `--human` (no ??); `glance`, `curse`, `cc`, `equipment`, `summon`, Pillar and Burnout are the user's tags. Order: 1, 2, 3 and 10 first; 4 and 7 next; 5, 6 after 3 and 4; 8 after 7; 9 after 3 and 5; 11 is the docs keeper's first task.
+
+1. **Intentional facing and control tags (?142, ?146)**: only a unit's own intentional actions turn it; revert ?188's forced-move turn (push, warp, teleport do not turn). Fear is the unit moving itself: it faces where it goes and spends movement AP for it. `shove` only on skills whose force moves a unit; tag `cc` on every skill and status that impairs a unit's ability to act (stun, fear, entrance, sleep, grapple, disables). Sonnet/high. Files: Unit facing, Battle.drive, Skills/*.tres tags, Statuses. Collides with: none.
+2. **Per-use strike rules and Chaser**: Glancing Strike's +rank goes on the first rank attack rolls of each skill use; Heavy Strike works on one skill use (any skill), pooling every attack roll in that use including automatic repeats an effect triggers, a manual re-target being a new use. Chaser (Rogue t8, after Backstab): on a crit, use an active skill within rank actives of the rightmost active on the hotbar, at a rank no higher than Chaser's. Opus/medium. Files: Battle attack roll, Behaviours/heavy_strike.gd, glancing strike. Collides with: none.
+3. **Traits by tooling, Skill Slot +1, ?165**: traits declared explicitly through the tools (`skill.py new --trait`, `unit.py` innate traits) and checked, not inferred. Skill Slot +1: learned, a trait (far right, no slot used) adding one hotbar slot, costing points the first time; on an item an equipment effect, disabled like others. Always-on passives show no on/off indication. Sonnet/high. Files: Util/skill.py, Util/unit.py, HUD hotbar, Unit.equipped. Collides with: 5, 6.
+4. **Exhaustion retune, Burnout, Deathlust (?182)**: mild on a first use; bites from the 2nd cast of the same regular ability, the 3rd caster skill in a row, or the 4th different active in a turn. `Burnout` a child of exhaustion for every `int` skill: harsher penalties, harsher on `mana`. Reconcile with Burnout.gd (?121). Deathlust radius rank 1 self and adjacent, +1 a rank; relief curved, as a percentage. Opus/medium. Files: Exhaustion, Burnout.gd, deathlust behaviour. Collides with: 5.
+5. **Cram, Pillar, caster bonus slots** (after 3 and 4): Cram (Mage, Specialist Student t7): Caster Skill Slot +1 + rank, a Pillar (rightmost slot; disabled if any other Pillar skill is). Converts rank regular slots into caster bonus slots, disabled if a non-caster skill is slotted there or a slotted Pillar is disabled. Burnout penalty times rank in those slots. Opus/medium.
+6. **Student tree inside the Mage general tree** (after 3): Mage general = its own skills plus every skill of the Specialist Student tree (a Specialist flex tree any class can pick), by tree composition in data. Create Student if missing. Sonnet/high. Files: Trees/, Util/skill.py tree wiring.
+7. **Enchanted items and lent prereqs (?143)**: enchanting an item enchants the skills it lends (+1 rank unless a lent skill has its own enchant effect). An item's armor becomes an `equipment` skill it lends (generally +armor). Lent skills count as prerequisites; losing one disables its dependents. Sonnet/high. Files: Item.gd, enchant, prerequisites. Collides with: 8, 9.
+8. **Power Armor, Scrap Plating** (after 7): Power Armor (martial protection prowess, caster abjuration, astral capstone): extra armor slot, on while power is at least 100% - rank x 10%; blows it blocks hit power for damage / rank. Scrap Plating (martial protection prowess, specialist smith t5): an armor slot giving at most rank Defense; armor AP penalties stack additively. Stub missing trees with the tools. Sonnet/high.
+9. **Coyote set** (after 3, 5): Coyote Charm (epic trinket) and Coyote Scepter (epic weapon) with the Curse of the Coyote `curse`; generic "disable" and "instant death" hooks, Borrowed Time when enchanted. Opus/medium. Use `Util/item.py`.
+10. **Skeleton AP, Wake and Rake (?181)**: summoned units spend all but up to rank + cast mod AP on arrival; Wake and Rake (Caster general) adds rank to the AP `summon` units keep; tag Skeleton `summon`. Sonnet/medium.
+11. **Glossary (?180)**: Lancin and Lancela get their own headings in docs/g-glossary.md; light formatting only. Sonnet/low (docs keeper).
+
 ## Wave 2 follow-ups (the user's answers of 2026-11-18 are all built, ?185 to ?191; the rules stand: no balancing now, tune by check difficulty, price effects that stop actions high)
 
 ### Interject's and Snapping Turtle's checks take the reaction bonus
@@ -63,15 +78,12 @@ Nothing.
 - Retuning colours: ?125.
 - Closed 2026-11-18: ?87, ?167, ?152, ?173 keep as built (the user: no balancing now); ?144, ?163, ?142 answered and built (?185 to ?188); ?131 and ?133 answered and built (?190, ?191).
 - Open from Wave 2: which more skills are traits, and whether `insignia` and `badge` reach a trait (?185); tier placement of Backstab, Glancing Strike and Heavy Strike and the natural-20 reading (?186); Striking Intellect's placement and whether `attack_stat` reaches other attacks (?189); whether the 26 "flat rank" profiles should scale, the 38 hand-set prices, health costs (?190); the 22 skills left concrete and Gallantry's check difficulty (?191).
-- Skill Slot +1: is its slot the hotbar's center or the tree's? ?3, ?165.
-- Should a skill that carries a forced move be tagged `shove` (Send Off, Kick)? ?146, ?170.
 - The AI's "nowhere to switch" case (a unit with one toggle and no pool holding enough): ?130.
-- Does a weapon or armor enchant raise the item's rank (armor drag), or only its lent skills'? ?143. Lent skills as prerequisites: ?143.
-- Skills that force an unshape (a Dispel, a Hex of the beast), and whose tool it is: ?126, ?153. Skills carrying fear, shove or entrance: ?146.
+- Skills that force an unshape (a Dispel, a Hex of the beast), and whose tool it is: ?126, ?153.
 - Winded's meaning: ?126. Burnout: burnt max, out-of-combat, other gains: ?121. A Life tree: ?121, ?122, ?124.
 - `Unit.guard` on helpless: ?127. 0-AP actions while tapped: ?119. Merchant tree for Drone: ?119.
 - Item rank-up, sources for the Habergeon family: ?118.
 - Snapped forms (Gallantry, Final Act): ?140. A flank or rear rider skill: ?142.
-- Gods and classes not designed: Divinity trees for Ramut, Urlo, Drael, Vetruvis, Survival skills, Paladin leadership Flex, burn tier cap (?122, ?81); Wizard and Mage real trees (?70); Martial and Specialist roots (?15); more Rogue, Bard, Luun, Elmon and Hogel skills; the cut-off Demon / Warlock / Dark Magic skill; Skill Slot +1, Trade Skills, Grind (?2, ?3, ?11).
+- Gods and classes not designed: Divinity trees for Ramut, Urlo, Drael, Vetruvis, Survival skills, Paladin leadership Flex, burn tier cap (?122, ?81); Wizard and Mage real trees (?70); Martial and Specialist roots (?15); more Rogue, Bard, Luun, Elmon and Hogel skills; the cut-off Demon / Warlock / Dark Magic skill; Trade Skills, Grind (?2, ?11).
 - Inspire, Sundering, Silent Strike and Sunder (?13); Charm (?14); Discipline's initiative half and the Pike unit (?80, ?82, ?120).
 - Energize and Power Transfer (siphon-sorcerer plan: named, not defined); Commitment to the bit (a Cultist tree); clout earned in play and more tempers (?91, ?93); more resources (Rage, Hype, Clout, Gold) and shops; round and initiative lines using the arrow (ui.md:8); Astral Envoy tuning (?29).
