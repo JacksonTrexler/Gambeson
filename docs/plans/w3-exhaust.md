@@ -28,5 +28,5 @@ The user's words: `docs/agents/answers-2026-11-18b.md` item 5 (Burnout and exhau
 
 ## As built / not done
 
-- Suite: started 9756 checks, 0 failed (936 tests); after: 9767 checks, 0 failed (937 tests), before merging adventurer-skills.
+- Suite: started 9756 checks, 0 failed (936 tests); after: 9767 checks, 0 failed (937 tests), before merging adventurer-skills; after the merge 9807 checks, 0 failed (942 tests).
 - Not done: no museum-sim retune check (AI reads `rate()` unchanged); Cram's multiplier is the later card's.
