@@ -104,7 +104,7 @@ Plan and rules: `docs/plans/exhaustion.md`.
 - [x] **Stun** (2026-11-12, built 2026-11-14, ?119): a wound-type cause of `tapped`/`helpless`; healing it off removes the tap.
 - [x] **Mindless Fury** (2026-11-12, built 2026-11-14, ?119): Berserker passive, tier 5. A unit may take rank actions in a reduced capacity when it would otherwise be interrupted or incapacitated; its effective mental stats are 1 while acting this way. It can't power through `tapped` to take unlimited actions in a turn, and needs blanket mitigation of unit-inflicted disabling effects.
 - [x] **Drone** (2026-11-12, built 2026-11-14, ?119): tier 4, Mage general / Specialist Merchant. The unit does not tap when the command limit is exceeded; its mental stat mods are capped at +rank when acting this way.
-- [ ] **Rebalance the museum** (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. After ?167's wear weighing: Lancin 26 / Nemes 4 (scratch sim); Hex still outscores Strike, so the AI alone does not fix it: cost tuning is the user's call. (?87, ?167)
+- [ ] **Rebalance the museum** (kept as built, 2026-11-18: you said no balancing now) (Nemes leans on Hex), or teach the AI to weigh a raised cost and vary. Now Lancin 27 / Nemes 3 with exhaustion on (13 / 17 off); Stamina and Move ?? change none of it. After ?167's wear weighing: Lancin 26 / Nemes 4 (scratch sim); Hex still outscores Strike, so the AI alone does not fix it: cost tuning is the user's call. (?87, ?167)
 - [x] **Nothing on the hotbar shows a worn skill until hovered.** Built 2026-11-14: a small gold diamond on the slot when the unit's worn emblem modifies that skill (`SkillSlot.modded`; `docs/plans/ui-small.md`, ?136).
 - [x] **Static skill descriptions** (skills screen, spellbook) show base costs only. Built 2026-11-14 (?134): the hotbar tooltip, spellbook and its detail read what the holder pays (`Skill.markup(rank, with_spec, u)`); the skills screen stays base on purpose, with a "Base values" note when modifiers change them.
 
@@ -327,7 +327,7 @@ Plan, readings and what was built: `docs/plans/skill-modifiers.md`; done in `doc
 - [x] **The Rank Scaling Calculation** (`Modifiers.rsc()`), once, shared by every emblem. Built. (?131)
 - [x] **Sigil, Insignia, Crest and Badge** items, trimmed through ?125 (`Item.emblem`, `scope`, `trim_tag()`). Built. (?131)
 - [x] **Authoring:** `skill.py new --intensity --impact --penalty --requires --hand-priced`, `terms`, `modifiers`, `drift`, with `check`. `.claude/skills/new-skill` not edited (house rule: skills aren't edited without you). (?131)
-- [ ] **Tune the price table or adopt the computed prices**; 71 of 89 hand-priced actives drift. (?131)
+- [ ] **Tune the price table or adopt the computed prices**; 71 of 89 hand-priced actives drift. You answered (2026-11-18): cost is part of a skill's identity; the computed price is the baseline and a skill declares a cost profile in words ("high mana, low ap"); `skill.py new --cost`. In progress, branch `w2-cost` (`docs/queue.md` card 6); no balancing. (?131)
 - [ ] **Ineligible for every modifier** (`skill.py modifiers`): 54 skills became 27 after ?133 and ?134 (`docs/plans/param.md` has each call); the 27 are left concrete (flat, binary or build-time gates). (?131, ?133)
 - [x] **Not routed through the reader yet:** saves, executes, DCs, reach, requirements on every outcome, descriptions, AI estimates, behaviour hooks and `Unit.mod()`. Built 2026-11-14 (?134).
 - [x] **Behaviours on cast's early-return paths** now run. Built 2026-11-14 (?134). (?131)
@@ -350,7 +350,7 @@ Plan, readings and what was built: `docs/plans/param.md`; done in `docs/done/sys
     - **Clairvoyance's pings are a behaviour** (`Behaviours/clairvoyance.gd`), with three generic hooks, `recast_stops()`, `held(b, holder)` and `senses()` (the AI's scry); `Battle.ping(u, reach)` and `pinged()` stay as the perception side; reach is wisdom score + channel rank through the reader. `FLAG_CEILING` 130 to 129 (later 128).
     - **UNSAID:** Sweet Nothings' two were already said; Coalescing's and Drown's `grapples` were dead (`holds()` is true by `drowns`) and are removed from their .tres, `water_test` asserting `holds()`. The other seven's markup went to ?134.
     - **New names to review:** none.
-- [ ] **The 27 left concrete**: confirm the reading, or say which should scale (Favour per rank would rebalance). (?133)
+- [ ] **The 27 left concrete**: you answered (2026-11-18): an over-concrete skill should be parameterized on rank, stats and check difficulty, where it can be. Queued as `docs/queue.md` card 7, after ?131's cost card. (?133)
 - [x] **Strike's and the elemental reads** have a `terms()` (`element` on a `chain` skill). Built 2026-11-15 (?160). (?133)
 
 ## Routing through the reader (2026-11-14)
@@ -460,7 +460,7 @@ Plan and what was built: `docs/plans/facing.md`. Built on `u-facing`. Tests: new
     - **Draw and AI:** a faint chevron on the sprite; `AI._approach` prefers the tile whose aspect lowers the foe's Defense (0.4 tiles a point, ties and near-ties only).
     - **New names to review:** Rear ??, Flank ??.
 - [x] **The hit forecast labels a rear or flank blow** (`HUD.aspect`). Built 2026-11-15 (?148). (?142)
-- [ ] **A unit that is hit doesn't turn**, and forced moves (push, pull, send, teleport) don't turn anyone. (?142)
+- [ ] **A unit that is hit doesn't turn** (kept: under your rule only a move or an aim turns it). Forced moves now turn the unit (?188). (?142)
 - [ ] **No skill carries a flank or rear rider yet** (Gank's ambush analogue). (?142)
 - [ ] **The AI doesn't walk to a side for a better shot**; the pull only breaks ties. (?142)
 
@@ -494,7 +494,7 @@ Plan, survey and what each part built: `docs/plans/consolidation.md` (survey, th
     - **My calls:** fewer seeds not fewer invariants; no extra roster battle (astral and meadows don't fit the invariants); pure queries (`tile_target()`, `whole()`, `impact()`) beside the hooks rather than a hook per skill; Sutemi's lunge, `channel`, Strike's chain, the Look and Terms groups left alone.
     - **Asked of you:** the per-item test file question at the top of `todo.md`.
     - **New names to review:** none.
-- [ ] **Should `skill.py new`, `unit.py new` and `mechanic.py` keep writing one test file per item?** Option A (recommended): a table row for data-only skills, a file only with a behaviour. Option B: keep a file, a 3-line stub on the shared helpers. Either needs a `CLAUDE.md` and `.claude/skills/` change. (?144)
+- [x] **Should `skill.py new`, `unit.py new` and `mechanic.py` keep writing one test file per item?** You answered Option A (2026-11-18, `docs/agents/answers-2026-11-18.md`). Built 2026-11-18 (?187). (?144)
 - [x] **`KeyBinds.SAVE`** is now a `static var` the runner points elsewhere. Built 2026-11-15 (?145). (?144)
 - [x] **Behaviours that crash on a missing precondition**: `sweep_test.test_missing_preconditions` casts them with the thing nowhere. Built 2026-11-15 (?156). (?144)
 - [x] **Rename `Battle._expose()`** to `_lose_cover()`; Glossary and Effect text fixed. Built 2026-11-15 (?156). (?144)
@@ -589,7 +589,7 @@ Plan and what was built: `docs/plans/dissonance.md`. Built on `y-dissonance`. Te
     - **Glossary term "Dissonance"** (an existing in-game word); Alluring links it.
     - **Balance, asked of you:** the Siren goes from dissonance 7 to 9 and its penalty after Alluring IV from 3 to 5, so its lure is doubted more often. Left as built. If it is too much: `LIE_FAR` 1.25 (softens it), or a practised look cutting more. `lure_test.test_stall_lifts` pins the Siren's lie 2 easier so its seeded roll still tests stalls.
     - **New names to review:** the 17 natures above.
-- [ ] **The Siren balance** (above, top of `todo.md`). (?152)
+- [ ] **The Siren balance** (kept as built, 2026-11-18: no balancing now; tune by check difficulty if ever). (?152)
 - [ ] **Stance has no nature to measure**, so a side claimed falsely is always 1. (?152)
 
 ## Bio text (2026-11-15)
@@ -763,7 +763,7 @@ Plan and what was built: `docs/plans/ai-support-2.md`. Built on `z-aisupport`. S
     - **?87 is not fixed by the AI alone:** 30 museum seeds, Lancin 27 / Nemes 3 became 26 / 4; Icor Hex 126 to 125, Strike 95 to 92. Hex still outscores Strike enough that Nemes leans on it; WORN was not tuned to hit a quota. Cost tuning is the user's call (Needs the user).
     - **New names to review:** none.
 - [x] **Tune `AI.WORN` (0.8)** by the sims; weigh heals and supports for wear too. Tried in ?173 (0.6 / 0.9): no change; heals and supports still not weighed for wear (`_wear` prices strikes only). (?167, ?173) Swept in ?177: kept 0.8; heals and supports now weigh wear (?176). (?176, ?177)
-- [ ] **Hex outscores Strike in the museum** (?87): needs cost tuning from the user. (?167)
+- [ ] **Hex outscores Strike in the museum** (?87): kept as built, 2026-11-18 (no balancing now). (?167)
 
 ## Param rest (2026-11-15)
 
@@ -791,7 +791,7 @@ Plan and what was built: `docs/plans/forced-forecast.md`. Built on `z-forced`. T
 - [x] **The AI doesn't walk to a tile to line up a shove against a wall**, nor weigh being shoved by foes in its own positioning (`_away` etc.). (?170) Built 2026-11-16 (?176): `AI._line_up`, `_shoved`. (?176)
 - [ ] **Fear and entrance's repeat moves aren't foreseen**; neither are mitigation, boosts or reactions on a slam. (?170)
 - [ ] **No skill carries fear, shove or entrance yet** (still needs a design). (?146)
-- [ ] **Turning**: a unit hit or moved by force still faces as it did. (?142)
+- [x] **Turning**: a unit moved by force now faces along the move. Built 2026-11-18 (?188). A unit that is hit still doesn't turn. (?142)
 
 ## Warcry's default-pick preview (2026-11-15)
 
@@ -924,3 +924,38 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
 - Tools: `land.sh <branch>...` (merge main and the others in, union the appended docs, verify, ff, push, remove); `metrics.sh` and `docs/agents/metrics.csv`; `floater.md`, a brief to hand a whole prompt to one delegate. The haiku-timer idea: not used, since notifications carry tokens, tool uses and time.
 - [ ] **Unit turn still over budget** (151 ms at target vs 100): `suspicious()` reads every unit (~5 ms a call); `_look_harder` unscoped (`doubt` emits signals); `Perception.unit`, `skill_range`. (?184)
 - [ ] **land.sh on a failed push** stops after the fast-forward, leaving the worktrees: push again by hand, then remove them. (?184)
+
+185. **Traits - built on judgement, open for review (2026-11-18).** Your answer to ?163: traits are always on the hotbar, take no slot, can't be disabled the way skills are, don't order the hotbar, sit furthest right; suppression stays open. Plan: `docs/plans/w2-traits.md`. Calls for you to confirm or change:
+    - **`trait` is a tag and replaced the `inherent` flag** (your word, no ??; made with `mechanic.py tag trait --human`, colour `#d6c8a0`, in `Tags.PLAIN`). `Skill.is_trait()` reads it; `Skill.inherent` is gone. Most of the rule was already built as `inherent` (?163); what was new is the word, the HUD column, suppression and the set of traits.
+    - **Traits are always-on passives**, never actives or toggles; `skill.py check` (`check_traits`) fails one that isn't.
+    - **Suppression:** one Effect stat `no_traits` (id has no ??) read by `Unit.traits_suppressed()`; the reusable status `Effects/traits_suppressed.tres` ("Traits Suppressed ??", harmful), used by nothing yet. It is read from timed statuses only (as `shackled()` is), so an item or passive can't suppress traits, only a status. Suppressed means as if unequipped: effects, hooks, reactions, tags and looks all stop until it ends.
+    - **Which skills are traits:** Starkind and Reckless Abandon (were `inherent`), and **Alluring**, the Siren's alone; **Alluring now takes no slot, so the Siren's `extra_slots` goes 2 to 1** (`command_test.test_default_bar` updated). Left alone on purpose: Powerful and Physical Intelligence (pillars the curse should reach), Oceanic, Regeneration Pulse, Stoneskin, Hardy, Starsap (also on player trees), the Druid's FORMS (data of a shape, not skills; "aquatic" is a Property), species options (choices, not innates).
+    - **Open: items' `insignia` and `badge` scopes can still modify a trait** (they don't order the hotbar; only the Sigil does, and it can't see a trait). Built as yes; say if a trait should be out of their reach.
+    - **HUD:** a read-only `Traits` column under the hotbar (the hotbar is vertical here, so "far right" is its far end): a diamond where the number would be, trait-colour frame, no drag, drop, clear or key, dimmed with "Suppressed" while suppressed.
+    - **Unequipped does nothing, audited for passives too:** one leak found and fixed (`Unit.skill_name()` renamed Strike for a learned but unequipped upgrade). Auto-equip and manual equip left as built.
+    - **Spec text** reads "Trait" (was "Inherent").
+    - **`FLAG_CEILING` in `Util/skill.py` should drop by one** (the `inherent` field went away); the host will do it.
+    - **New names to review:** Traits Suppressed ??.
+- [ ] **Which more skills are traits** (Oceanic, Regeneration Pulse, Stoneskin, Hardy, Starsap, the Powerful pair, the FORMS): confirm the reading above. (?185)
+- [ ] **Should `insignia` and `badge` reach a trait?** (?185)
+- [ ] **No skill applies Traits Suppressed ??** yet (a utility effect for later). (?185)
+- [ ] **Lower `FLAG_CEILING` by one** in `Util/skill.py`. Host to do. (?185)
+
+187. **Test stubs, Option A - built on judgement, open for review (2026-11-18).** Your answer to ?144: "A, 20/80 it", with tests of the core skills and mechanics where skills are functionally identical. Plan: `docs/plans/w2-teststubs.md`. Calls:
+    - **Stub rule:** `skill.py new` writes a test only when it also stubs a NEW `Behaviours/<b>.gd` (a skill that reuses heal, boost, etc. is data-only); `--test` forces one. `unit.py` and `mechanic.py`: opt-in `--test` (replacing mechanic.py's `--no-test`); a mechanic's rule still gets a test beside the system that reads it.
+    - **`item.py`, `role.py`, `tile.py` untouched** (item.py stubs nothing; role.py and tile.py only print a hint).
+    - **Data pins that restate your placement stay** (tree tiers, `after`/`needs`: megaheal `test_gated`, slam_jam `test_uptree_from_jam`, persona `test_trees`); rule tests that only use a skill as vehicle stay (coordinate, drone, mindless_fury, stamina, focus, brainfog, haluca, smite, borrowed_time, prestidigitation).
+    - **Folded or deleted** (each proved by a mutation): `double_bluff_test.gd` deleted (persona's `test_embellish` pins the rule); `megaheal_test` heal and megaheal merged into one table `test_dice`; `intervention_test.test_intervention` deleted (the sweep, `skill.py check` and `tag_colors_test` cover its data).
+    - **Authorised edits:** CLAUDE.md's test line and `.claude/skills/new-skill`, `new-unit`, `new-mechanic` say the rule.
+    - **Suite:** 8663 checks / 927 tests before, 8655 / 924 after (all 0 failed).
+    - **New names to review:** none.
+- [ ] **A wider sweep for per-skill data pins** (tree tiers, describe strings) moved into one table: left, since they encode your placement. (?187)
+
+188. **Facing, wave 2 - built on judgement, open for review (2026-11-18).** Your answer to ?142: "a unit faces whichever direction they last moved (draw a vector from start to finish) or last targeted with a skill (draw a vector from position to targeted tile)". Plan: `docs/plans/w2-facing.md`. Calls:
+    - **Whichever is latest** is the lead's reading of your "or": each event overwrites. One recorder, `Unit.turn(v)`; `face(c)` is `turn(c - cell)`; a zero vector changes nothing.
+    - **A walk faces start to finish of the whole walk**, not its last step; a walk ending where it began changes nothing.
+    - **Forced moves count as moves** (push, pull, send, teleport, effect shoves; the lead's reading): `displace()` turns the unit along the move; a push stopped at once changes nothing.
+    - **Removed: the Interject/Gallantry stand-in turning toward the attacker** (`_swapped`): neither a move nor its own aim, so under the rule it doesn't turn.
+    - **Kept:** `AI._line_up`, the opening line-up toward the nearest foe, Shields Up! and aimed-at-tile skills facing the tile.
+    - **Tests changed to the new rule:** `facing_test.test_moves`, the Interject test (now `test_interjector_stays`), `displace_test.test_any_skill_knocks_back`; new `facing_test.test_latest_wins`. Mutation: dropping the turn in `displace()` fails two.
+    - **New names to review:** none.

@@ -253,3 +253,5 @@ Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?
 - [x] **Interject** (Protector, after Shields Up!), **Snapping Turtle** (after Turtle Tactics), **Final Act** and **Gallantry** (Chivalry, after Coordinate): reactions through `Behaviour.react`. (?140)
 - [x] **Price rebates** (`Behaviour.rebate()`, `Battle.rebate()`, `Unit.pay_for(s, cut)`): Poach's and Slam Jam's discounts show in the forecast and are paid beforehand. Plan: `docs/plans/price-refunds.md`. `poach_test`. (?151)
 - [x] **Skeleton and Mortis Arcalís** (`Skills/skeleton.tres`, `Scenes/skeleton.tscn`, `Trees/mortis_arcalis.tres`, `Behaviours/summon_per_rank.gd`): plan `docs/plans/r-skeleton.md`. `summon_test`. (?181)
+- [x] **Backstab, Glancing Strike, Heavy Strike** (`Skills/backstab.tres`, `glancing_strike.tres`, `heavy_strike.tres`, `Behaviours/heavy_strike.gd`): plan `docs/plans/w2-glance.md`. `check_test`, `heavy_strike_test`. (?186)
+

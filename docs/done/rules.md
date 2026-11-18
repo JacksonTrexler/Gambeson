@@ -11,7 +11,7 @@ Every skill follows these, so skill descriptions don't repeat them.
 - **Attack rolls.** Most `offensive` skills roll d20 + an attack mod against the target's Defense; meeting it hits. A skill whose nature calls for something else checks that instead (a Siren's charm: cha against wis). (?5)
   - The attack mod is the skill's stat, from its stat tag (Strike: str; Hex: wis).
   - Weapons can let strength attacks use another stat: dex for bows, daggers and rapiers; a spellcasting stat for enchanted weapons. The unit uses whichever is best.
-  - A natural 20 hits and doubles the damage.
+  - A natural 20 on a hit doubles the damage (a critical); on a miss it is a glance: a hit for half damage (rounded down, at least 1). Crit range can widen (Backstab). (?186)
   - A miss does nothing to the target. The target still loses a level of concealment, since it was aimed at; the attacker loses one only on a hit.
   - Skills, passives and equipment can change any of this.
 - **Defense** (AC means the same thing) is set by armor, then raised or lowered by skills and equipment (Mage Armor, Sundered).
@@ -138,3 +138,10 @@ Every skill follows these, so skill descriptions don't repeat them.
 - [x] **Evadable**: a negative effect - a skill's, a tile's - can be dodged with a dex check against its difficulty: passing, none of it; failing by a quarter of the DC or less, half; otherwise all (`Battle.evade()`).
 - [x] **Weight and inertia**: a unit's weight is its size rounded up + its equipped items' (an item's own `weight`, else armor light 0 / medium 1 / heavy 2, a weapon medium 1 unless light or heavy). Its inertia, worked out when asked, is the tiles it moved this turn + its weight - glass's check is against it: the faster and heavier it came, the worse it screwed up.
 - [x] **Class units' base max HP is 5**; their levels bring the rest (a level 1 Fighter: 10).
+- [x] **Underpowered skills are tuned by check difficulty.** A weak skill should be easy to tweak by the difficulty of its check, not by a bespoke number. (the user, 2026-11-18, ?152)
+- [x] **Effects that stop a unit taking useful actions are precious.** Price them high: stun, helpless, anything that costs a turn. (the user, 2026-11-18, ?152)
+- [x] **No balancing passes for now.** Say what a number is for and leave it; ?87, ?167, ?152 and ?173 keep as built. (the user, 2026-11-18)
+- [x] **An over-concrete skill is a signal it needs to be parameterized** on rank, stats and check difficulty. (the user, 2026-11-18, ?152, ?133)
+- [x] **A skill's cost is part of its identity.** AP heavy, resource heavy or a specific resource: a computed baseline from tags, parameters and rank (rank may scale cost a lot), skewed by a cost profile in words. (the user, 2026-11-18, ?131; being built)
+- [x] **Traits** (`trait` tag): always equipped, no slot, never disabled, far right, outside hotbar ordering; suppression is a status, not a skill-disable. (the user, 2026-11-18, ?163, ?185)
+- [x] **Facing:** a unit faces along its last move (start to finish) or last aim, whichever is latest. (the user, 2026-11-18, ?142, ?188)

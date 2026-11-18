@@ -157,6 +157,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Skeleton and Mortis Arcalís (?181) | `summon_test.gd` |
 | — | Deathlust, the `neutralized` and `wearing` hooks (?182) | `deathlust_test.gd` |
 | — | Big sims and AI cost budgets (?183) | `sims_test.gd`, `Tests/sims/` |
+| — | Traits: the `trait` tag, suppression, HUD column (?185) | `equip_test.gd` |
+| — | Glance, Backstab, Glancing Strike, Heavy Strike (?186) | `check_test.gd`, `heavy_strike_test.gd` |
+| — | Test stubs, Option A (?187) | none (tooling) |
+| — | Facing by move or aim (?188) | `facing_test.gd`, `displace_test.gd` |
 
 ## Questions to answer first
 
