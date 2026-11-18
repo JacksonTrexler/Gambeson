@@ -417,16 +417,16 @@ class Reaction:
 		cast.target = to
 		return true
 
-	# A reaction's check: holder's mod in stat (a defensive check, with the passive's tags: effects tagged
+	# A reaction's check: holder's mod in stat + bonus (a defensive check, with the passive's tags: effects tagged
 	# reaction count on it) against `against`'s (an offensive one), holder winning ties. Kept for the log.
-	func contest(holder: Unit, stat: StringName, against: Unit) -> bool:
-		var vs := battle.check(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
+	func contest(holder: Unit, stat: StringName, against: Unit, bonus := 0) -> bool:
+		var vs := battle.check(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = [], bonus = bonus})
 		rolled = [vs.mine.total, vs.theirs.total]
 		return vs.won
 
 	# The chance (0-1) contest() passes, without rolling: what a reaction's foils() weighs.
-	func odds(holder: Unit, stat: StringName, against: Unit) -> float:
-		return Battle.odds(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = []})
+	func odds(holder: Unit, stat: StringName, against: Unit, bonus := 0) -> float:
+		return Battle.odds(holder, stat, against, stat, {role = &"defensive", tags = holder.skill_tags(skill), their_tags = [], bonus = bonus})
 
 	# Whether holder already reacted to this moment with some passive.
 	func reacted(holder: Unit) -> bool:

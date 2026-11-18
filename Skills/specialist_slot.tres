@@ -8,6 +8,7 @@ script = ExtResource("2_effect")
 stat = "slots"
 amount = 1.0
 tags = Array[StringName]([&"specialist"])
+per_rank = true
 
 [resource]
 script = ExtResource("1_skill")

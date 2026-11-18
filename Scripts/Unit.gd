@@ -945,7 +945,8 @@ func granted_slots() -> Array[StringName]:
 # unequipped takes its own slots with it, and the skills in them (_arrange()).
 func _grants() -> Array:
 	var out := []
-	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, x.rank, x.skill]) + items().map(func(it: Item): return [it.effects, it.ranked(), &"item"])
+	var modded := emblems()
+	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, mods(x.skill).irank(x.rank, &"rank_impact") if modded else x.rank, x.skill]) + items().map(func(it: Item): return [it.effects, it.ranked(), &"item"])
 	for t in sources:
 		for e: Effect in t[0]:
 			if e.stat == "slots":

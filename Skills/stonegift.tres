@@ -12,4 +12,5 @@ cost = 2
 radius = 2.0
 hostile = false
 grants = ExtResource("4_stoneskin")
-turns = 3
+turns = 2
+turns_per_rank = 1

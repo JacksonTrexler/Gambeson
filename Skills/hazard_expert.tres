@@ -7,6 +7,7 @@
 script = ExtResource("2_effect")
 stat = "trap_word"
 amount = 1.0
+per_rank = true
 
 [resource]
 script = ExtResource("1_script")

@@ -7,7 +7,8 @@ extends Test
 # Every skill parameterized here: eligible for at least one modifier.
 const PARAMETERIZED := ["acceptance", "bargaining", "quarry", "survivalist", "wildcaller", "bandwagon", "illusionist",
 		"molothrus", "telepathy", "word_to_the_wise", "energize", "heal", "megaheal", "move", "resuscitate", "clairvoyance",
-		"manifest", "sweet_nothings", "mana", "grudge", "tenacity"]
+		"manifest", "sweet_nothings", "mana", "grudge", "tenacity",
+		"favour", "hazard_expert", "move_plus_one", "magic_slot", "martial_slot", "specialist_slot", "final_act", "gallantry", "stonegift"]
 
 
 func emblem(word: StringName, scope: StringName, rank := 1) -> Item:
@@ -82,3 +83,77 @@ func test_passives() -> void:
 	v(1).refresh()
 	v(1).trinket = emblem(&"rho_up", &"badge", 1)
 	ok(v(1).opened(mana.opens) == 2, "Density Badge: Mana I opens up to tier 2 (%d)" % v(1).opened(mana.opens))
+
+
+# The concrete skills made to scale (docs/plans/w2-param.md), one table: each reads its number off its
+# holder at rank I as it always did, at rank II more, and a Density insignia (rank impact x1.5: I reads as II)
+# moves rank I the same way.
+func test_concrete_scaled() -> void:
+	var gal: Skill = load("res://Skills/gallantry.tres")
+	var stone: Skill = load("res://Skills/stonegift.tres")
+	# id -> [what it reads off a holder with the skill in its first slot, what rank I adds to a holder without it]
+	var reads := {
+		&"favour": [func(u: Unit): return u.stat(&"luck"), 1.0],
+		&"hazard_expert": [func(u: Unit): return u.stat(&"trap_word"), 1.0],
+		&"move_plus_one": [func(u: Unit): return u.stat(&"movement"), 1.0],
+		&"magic_slot": [func(u: Unit): return u.granted_slots().size(), 1],
+		&"martial_slot": [func(u: Unit): return u.granted_slots().size(), 1],
+		&"specialist_slot": [func(u: Unit): return u.granted_slots().size(), 1],
+		&"stonegift": [func(u: Unit): return stone.lasts(u.learned[0].rank, u), 3],  # absolute: 3 turns at I, as before
+		&"final_act": [func(u: Unit): return _free_actions(u), 1],
+		&"gallantry": [func(u: Unit): return gal.behaviours[0].check_bonus(u, u.learned[0].rank), 0],
+	}
+	for id in reads:
+		var s: Skill = load("res://Skills/%s.tres" % id)
+		var read: Callable = reads[id][0]
+		var absolute: bool = id in [&"stonegift", &"final_act", &"gallantry"]
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).refresh()
+		var none = 0 if absolute else read.call(v(1))
+		var got := []
+		for r in [1, 2]:
+			v(1).learned.clear()
+			v(1).learned.append(slot(s, r))
+			v(1).refresh()
+			got.append(read.call(v(1)))
+		ok(got[0] - none == reads[id][1], "%s at rank I: %s (as it was)" % [id, reads[id][1]])
+		ok(got[1] > got[0], "%s: rank II reads more than rank I (%s -> %s)" % [id, got[0], got[1]])
+		v(1).learned.clear()
+		v(1).learned.append(slot(s, 1))
+		v(1).refresh()
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1)
+		ok(read.call(v(1)) == got[1], "%s: Density makes rank I read as II (%s)" % [id, read.call(v(1))])
+		v(1).trinket = null
+	# Favour's mitigation grows with its luck: 1% a rank.
+	var tags: Array[StringName] = [&"physical"]
+	var mit := []
+	for r in [1, 3]:
+		v(1).learned.clear()
+		v(1).learned.append(slot(favour, r))
+		mit.append(v(1).mitigation(tags))
+	ok(is_equal_approx(mit[1] - mit[0], 0.02), "Favour III: 2%% more mitigation than I (%s)" % (mit[1] - mit[0]))
+	var r := Behaviour.Reaction.new()
+	r.battle = b
+	r.skill = gal
+	ok(r.odds(v(1), &"charisma", v(3), 8) > r.odds(v(1), &"charisma", v(3)), "a reaction's check takes a bonus (Reaction.odds)")
+	ok(not gal.markup(1).contains("at +") and gal.markup(2).contains("at +"), "Gallantry's text names its bonus from rank II")
+
+
+# What a Final Act in u's first slot would give u falling to a blow (Behaviour.react() on a made Reaction).
+func _free_actions(u: Unit) -> int:
+	var fa: Skill = u.learned[0].skill
+	var r := Behaviour.Reaction.new()
+	r.battle = b
+	r.trigger = &"fallen"
+	r.subject = u
+	r.skill = fa
+	b.directed = func(_x: Unit): return true
+	b._interrupts.clear()
+	b.interrupter = null
+	var n := 0
+	if fa.behaviours[0].react(r, u, u.learned[0].rank):
+		n = b._interrupt_left if b.interrupter == u else b._interrupts.back()[1]
+	b.interrupter = null
+	b._interrupts.clear()
+	return n
