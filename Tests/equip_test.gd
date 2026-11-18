@@ -175,4 +175,13 @@ func test_slot_switch_dot() -> void:
 	ok(not sl.shows_switch(), "an always-on passive doesn't")
 	sl.skill = null
 	ok(not sl.shows_switch(), "an empty slot doesn't")
+	sl.skill = wary
+	sl.usable = false  # its unit can't act now (another's turn): an always-on passive is still just working
+	sl.on = false
+	ok(is_equal_approx(sl.brightness(), 1.0), "an always-on passive is drawn the same unusable or not: nothing says on or off")
+	sl.off = 2
+	ok(sl.brightness() < 0.5, "only a disabling dims it")
+	sl.off = 0
+	sl.skill = load("res://Skills/stamina.tres")
+	ok(sl.brightness() < 1.0 and not is_equal_approx(sl.brightness(), 1.0), "a toggle that's off is dimmed, as an unusable active is")
 	sl.free()
