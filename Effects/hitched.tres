@@ -8,3 +8,4 @@ stat = "tow"
 amount = 1.0
 per_rank = true
 name = "Hitched ??"
+bears = Array[StringName]([&"cc"])

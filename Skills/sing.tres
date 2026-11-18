@@ -24,7 +24,7 @@ toward = true
 [resource]
 script = ExtResource("1_script")
 name = "Sing"
-tags = Array[StringName]([&"sound", &"cha"])
+tags = Array[StringName]([&"sound", &"cha", &"cc"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_movement")])
 radius_per_rank = 1.0
 radius_mod = &"charisma"

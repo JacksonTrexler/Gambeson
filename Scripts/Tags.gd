@@ -97,6 +97,7 @@ const COLOR := {
 	&"undead": Color("#9aa98a"),
 	&"trait": Color("#d6c8a0"),
 	&"summon": Color("#8fb0c8"),
+	&"cc": Color("#a5a1c9"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

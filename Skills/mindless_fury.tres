@@ -8,12 +8,13 @@ script = ExtResource("2_effect")
 stat = "mindless"
 amount = 1.0
 per_rank = true
+bears = Array[StringName]([&"cc"])
 
 [resource]
 script = ExtResource("1_skill")
 name = "Mindless Fury"
 glyph = "MF"
 passive = true
-tags = Array[StringName]([&"martial", &"con", &"offensive"])
+tags = Array[StringName]([&"martial", &"con", &"offensive", &"cc"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
 classes = Array[StringName]([&"berserker"])

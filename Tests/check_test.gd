@@ -268,11 +268,15 @@ func test_crit_range_glances() -> void:
 	var glances := seen.filter(func(r: Check.Roll): return r.glance)
 	ok(seen.size() == 80 and seen.all(func(r: Check.Roll): return r.hit == (r.d20 >= 16) and not r.crit), "16 and up land, never a critical against it")
 	ok(glances.size() > 0 and dealt.size() == glances.size() and dealt.all(func(n: int): return n == 5), "each glance deals half of 10: %s" % [dealt])
-	ok(v(1).rolls_made == 80, "each roll counted (%d)" % v(1).rolls_made)
+	var uses := {}
+	for r in seen:
+		uses[r.use] = true
+	ok(uses.size() == 80 and not uses.has(0) and v(1).rolls_made == 1, "each cast its own skill use, its roll counted in it (%d uses, %d)" % [uses.size(), v(1).rolls_made])
 
 
 # Glancing Strike's two stats as attack_check() reads them: its Strikes (chain skills) at disadvantage and
-# glancing, other attacks as they were; + rank to its first rank attack rolls a battle (Unit.rolls_made).
+# glancing, other attacks as they were; + rank to its first rank attack rolls of each skill use (Unit.rolls_made,
+# zeroed as a use opens: a real Strike III makes three rolls in one use, and the next Strike starts again).
 func test_glancing_and_opening() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var plain: Skill = strike.duplicate()
@@ -287,3 +291,15 @@ func test_glancing_and_opening() -> void:
 	ok(Battle.attack_check(v(1), strike, 3, 15, 0).bonus == 5, "the second of rank 2's")
 	v(1).rolls_made = 2
 	ok(Battle.attack_check(v(1), strike, 3, 15, 0).bonus == 3, "then no more")
+	v(1).learned.append(slot(strike, 3))
+	v(1).strength = 30  # (str mod 10 at Defense 2: every hit lands)
+	v(1).weapon = null
+	soak(v(3), 5000)
+	var counts := []
+	b.attack_rolled.connect(func(_c, _t, r: Check.Roll): counts.append([r.use, v(1).rolls_made]))
+	for i in 2:
+		v(1).refresh()
+		b.cast(v(1), strike, v(3))
+	var ids := counts.map(func(x: Array): return x[0])
+	ok(counts.size() == 6 and counts.map(func(x: Array): return x[1]) == [1, 2, 3, 1, 2, 3] and ids[0] == ids[2] and ids[3] == ids[5] and ids[0] != ids[3],
+			"a Strike's three rolls are one use, counted 1-3; the next Strike a new use (%s)" % [counts])

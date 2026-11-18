@@ -8,6 +8,7 @@
       [--tags undead] [--text "Fire takes it apart."] [--name Rotting] [--human]
   python3 Util/mechanic.py effect scorched --effect "stat=poison amount=0.05" [--name Scorched] [--human]
   python3 Util/mechanic.py stat word_reach --doc "tiles more its word carries (Battle.spread())"
+  python3 Util/mechanic.py carry cc --skills stun,jam --effects stunned --inline drown:grappled
   python3 Util/mechanic.py check
 
 tag: a word skills, tiles and units carry (Skill.tags, Terrain.tags, Unit.tags), defined once in the
@@ -19,6 +20,9 @@ property: what a unit is made of (Properties/<id>.tres, Bio.properties): effects
 effect: a reusable status (Effects/<id>.tres) skills and tiles put on units.
 stat: a new Effect stat (Effect.gd's list and its doc line). Read it with unit.stat(&"name") where it acts:
   a behaviour (Behaviours/*.gd) for a skill's own verb, else the one system it changes - never a Skill.gd flag.
+carry: puts a tag on what exists - skills (Skill.tags), reusable statuses (Effects/<id>.tres) and a status written inside
+  a skill (--inline skill:stat). A status carries a tag in Effect.bears, never Effect.tags (that one filters what the
+  effect's stat counts on). Read with Unit.afflicted(tag). Tags only: nothing here makes a rule.
 An AI-made name gets " ??" (CLAUDE.md). .claude/skills/new-mechanic has the process.
 """
 import argparse, re, sys, textwrap
@@ -108,6 +112,53 @@ def tag(a):
     test_stub(a, "The %s tag (Glossary.TERMS)" % t)
     print('\nnext: put it on what carries it (skill.py --tags, tile.py --tags, unit.py --tags), and make the rules ask for '
           '&"%s" where it acts; a test that it does. The Glossary page shows it now.' % t)
+    return 0
+
+
+def _add_name(lines, start, end, key, tag):
+    """Put &"tag" on the `key = Array[StringName]([...])` line of the section lines[start:end], making the line if need be."""
+    for i in range(start, end):
+        if lines[i].startswith(key + " = "):
+            if '&"%s"' % tag in lines[i]:
+                return False
+            lines[i] = lines[i].rstrip()[:-2] + (", " if "([&" in lines[i] else "") + '&"%s"])' % tag
+            return True
+    at = end
+    while at > start + 1 and not lines[at - 1].strip():
+        at -= 1
+    lines.insert(at, '%s = Array[StringName]([&"%s"])' % (key, tag))
+    return True
+
+
+def _span(lines, first):
+    """The section whose header is lines[first]: its (start, end)."""
+    end = first + 1
+    while end < len(lines) and not tres.HEADER.match(lines[end]):
+        end += 1
+    return first, end
+
+
+def carry(a):
+    t = a.id
+    re.search(r'^\t&"%s": \[' % t, read("Scripts/Glossary.gd"), re.M) or die("%s has no Glossary term: mechanic.py tag %s first" % (t, t))
+    a.skills or a.effects or a.inline or die("--skills, --effects or --inline: what carries it")
+    done = []
+    jobs = [("Skills/%s.tres" % x, None, "tags") for x in a.skills] + [("Effects/%s.tres" % x, None, "bears") for x in a.effects]
+    jobs += [("Skills/%s.tres" % x.partition(":")[0], x.partition(":")[2], "bears") for x in a.inline]
+    for path, stat_, key in jobs:
+        exists(path) or die("%s doesn't exist" % path)
+        lines = read(path).split("\n")
+        heads = [i for i, l in enumerate(lines) if tres.HEADER.match(l)]
+        if stat_ is None:
+            first = [i for i in heads if lines[i].startswith("[resource]")]
+        else:
+            first = [i for i in heads if lines[i].startswith("[sub_resource") and any(
+                l == 'stat = "%s"' % stat_ for l in lines[_span(lines, i)[0]:_span(lines, i)[1]])]
+        len(first) == 1 or die("%s: %s section%s found for %s" % (path, len(first) or "no", "" if len(first) == 1 else "s", stat_ or "[resource]"))
+        if _add_name(lines, *_span(lines, first[0]), key, t):
+            write(path, "\n".join(lines), a.dry_run)
+            done.append(path)
+    print("%s on %d file(s)" % (t, len(done)))
     return 0
 
 
@@ -240,9 +291,15 @@ def main():
         x.add_argument("--human", action="store_true", help="a person named it: no ??")
         x.add_argument("--dry-run", action="store_true")
         x.add_argument("--test", action="store_true", help="stub Tests/<id>_test.gd (default none: test the rule that reads it, in the file beside that system, or its own for a new seam)")
+    k = sub.add_parser("carry", help="put a tag on skills and statuses that exist")
+    k.add_argument("id", help="the tag")
+    k.add_argument("--skills", type=lambda v: [x for x in v.split(",") if x], default=[], help="skill ids: Skill.tags")
+    k.add_argument("--effects", type=lambda v: [x for x in v.split(",") if x], default=[], help="Effects/<id>.tres ids: Effect.bears")
+    k.add_argument("--inline", type=lambda v: [x for x in v.split(",") if x], default=[], help="skill:stat, an effect written inside the skill: Effect.bears")
+    k.add_argument("--dry-run", action="store_true")
     sub.add_parser("check")
     a = ap.parse_args()
-    sys.exit({"tag": tag, "color": color, "property": property_, "effect": effect, "stat": stat, "check": check}[a.cmd](a))
+    sys.exit({"tag": tag, "color": color, "property": property_, "effect": effect, "stat": stat, "carry": carry, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":

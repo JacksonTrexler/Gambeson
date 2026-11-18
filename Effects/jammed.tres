@@ -7,3 +7,4 @@ script = ExtResource("1_effect")
 stat = "jammed"
 amount = 1.0
 name = "Jammed ??"
+bears = Array[StringName]([&"cc"])

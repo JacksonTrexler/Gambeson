@@ -25,15 +25,21 @@ func test_moves() -> void:
 	ok(not way.is_empty() and v(1).facing.is_equal_approx(Vector2(way[-1] - Vector2i(3, 3)).normalized()), "a walk faces start to finish, however it bent (%s)" % [way])
 
 
-# Whichever came latest wins: a move, then an aim, then a forced move (a push), each turns it.
+# Whichever came latest wins: a move, then an aim, then fear (the unit moving itself), each turns it; a push
+# (a force on it, not its own doing) turns nobody.
 func test_latest_wins() -> void:
 	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(5, 5)})
 	b.travel(v(1), Vector2i(4, 4))
 	ok(v(1).facing.is_equal_approx(Vector2(1, 0)), "moved east: east")
 	ok(b.cast(v(1), strike, v(3)), "a Strike at the foe")
 	ok(v(1).facing.is_equal_approx(Vector2(1, 1).normalized()), "aimed after: that way (%s)" % v(1).facing)
-	ok(b.push(v(1), v(3), 1) == 1, "pushed")
-	ok(v(1).facing.is_equal_approx(Vector2(-1, -1).normalized()), "forced move after: along the push (%s)" % v(1).facing)
+	var aimed := v(1).facing
+	ok(b.push(v(1), v(3), 1) == 1 and b.pull(v(1), v(3), 1) == 1 and b.send(v(1), v(3), 2), "pushed, pulled, sent")
+	ok(v(1).facing == aimed, "a force on it turns it nowhere (%s)" % v(1).facing)
+	b.move(v(3), Vector2i(1, 4))
+	var from := v(1).cell
+	ok(b.displace(v(1), v(3).cell, 1, 2, false, [&"fear"] as Array[StringName], v(3)) == 2, "frightened")
+	ok(v(1).facing.is_equal_approx(Vector2(v(1).cell - from).normalized()) and v(1).facing != aimed, "fear is it moving itself: it faces where it went (%s)" % v(1).facing)
 	var kept := v(1).facing
 	v(1).turn(Vector2i.ZERO)
 	ok(v(1).facing == kept, "a zero vector changes nothing")

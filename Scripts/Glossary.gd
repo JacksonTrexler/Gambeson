@@ -115,11 +115,12 @@ const TERMS := {
 	&"reaction": ["Reaction", &"check", "Done out of turn, in answer to a moment: an attack, a hit, a fall. Lost while Jammed or helpless; effects tagged reaction count on them."],
 	&"rear": ["Rear ??", &"check", "An attack from behind the target, by the cone test of the way it faces: it needs 1 less to hit. Effects and skills tagged rear count on it."],
 	&"flank": ["Flank ??", &"check", "An attack from the side of its target, by the cone test of the way it faces. Effects and skills tagged flank count on it."],
-	&"shove": ["Shove", &"condition", "Driven straight away from whoever pushed it. A shove that hits a unit or the map's edge does blunt damage. Ends a grapple either side of it. Effects, skills and reactions tagged shove count on it."],
-	&"fear": ["Fear", &"condition", "Driven away from its source, a tile at a time, as it is put on and as each of its turns starts while it lasts. Ends a grapple either side of it. Effects, skills and reactions tagged fear count on it."],
-	&"entrance": ["Entrance", &"condition", "Drawn toward its source, a tile at a time, as it is put on and as each of its turns starts while it lasts. Ends a grapple either side of it. Effects, skills and reactions tagged entrance count on it."],
+	&"shove": ["Shove", &"condition", "Driven straight away from whoever pushed it: a force on the unit, so it doesn't turn it. A shove that hits a unit or the map's edge does blunt damage. Ends a grapple either side of it. Effects, skills and reactions tagged shove count on it."],
+	&"fear": ["Fear", &"condition", "Flees its source, a tile at a time, as it is put on and as each of its turns starts while it lasts: the unit moving itself, so it faces where it goes and spends movement AP. Ends a grapple either side of it. Effects, skills and reactions tagged fear count on it."],
+	&"entrance": ["Entrance", &"condition", "Walks toward its source, a tile at a time, as it is put on and as each of its turns starts while it lasts: the unit moving itself, so it faces where it goes and spends movement AP. Ends a grapple either side of it. Effects, skills and reactions tagged entrance count on it."],
 	&"trait": ["Trait", &"target", "What a unit is rather than what it has learned: always equipped, shown at the far right of the hotbar, takes no slot, and can't be disabled the way skills are, nor reached by anything that counts hotbar slots (Brainfog, a Sigil). Only a status that suppresses traits switches it off."],
 	&"summon": ["Summon", &"target", "A unit that was summoned or raised, not recruited: a summoner's skills that read it (the AP it keeps on arriving) find it by this tag."],
+	&"cc": ["CC", &"condition", "Crowd control: a skill or status that takes from a unit's ability to act (stun, sleep, fear, entrance, a grapple, a jam, a disabled skill). Gear, skills and reactions tagged cc count on it: they make it easier or harder to deal with."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

@@ -6,6 +6,8 @@
       --range-per-rank 1 --behaviour kick --tree general_martial --after brutal_strike \\
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
       [--set rolls=false] [--passive] [--test] [--no-import] [--dry-run]
+  python3 Util/skill.py new alluring --trait --tags siren ...  # a trait: always on, no hotbar slot (Unit.equipped()); declared, never inferred
+  python3 Util/skill.py trait starsap [--off]   # declare an existing passive a trait (or take the declaration off)
   python3 Util/skill.py check       # cheap, plain text: run before every commit (Tests/skills_test.gd runs it too)
   python3 Util/skill.py drift       # information: hand-set AP / cost against the cost calculator's (Scripts/Pricing.gd)
   python3 Util/skill.py modifiers   # information: skills no modifier fits, and why - to parameterize (Scripts/Modifiers.gd)
@@ -155,13 +157,37 @@ def check_check_tags(problems):
             problems.append('%s: it executes (kills) but has no "execute" tag - what helps against executes would miss it' % p)
 
 
+def trait_tagged(text):
+    return '&"trait"' in next((x["props"].get("tags", "") for x in sections(text) if x["kind"] == "resource"), "")
+
+
 def check_traits(problems):
-    """A trait (Unit.equipped(): always on, no hotbar slot) has nothing to cast or switch: a passive, not a toggle."""
+    """A trait (Unit.equipped(): always on, no hotbar slot) is declared, never inferred (docs/plans/w3-traits.md): the tag
+    `trait`, written by `skill.py new --trait` / `skill.py trait`. It has nothing to cast, switch or disable, so it is
+    a plain always-on passive: not a toggle, hybrid or pillar. And a unit scene holds one as innate (unit.py new --trait),
+    never among what it learned, where a trait isn't one of its slotted skills."""
     for p in sorted(files("Skills", ".tres")):
         text = read(p)
-        if '&"trait"' in next((x["props"].get("tags", "") for x in sections(text) if x["kind"] == "resource"), ""):
-            if not re.search(r"^passive = true", text, re.M) or re.search(r"^toggle = true", text, re.M):
+        if trait_tagged(text):
+            res = next(x for x in sections(text) if x["kind"] == "resource")["props"]
+            if res.get("passive") != "true" or any(res.get(k) == "true" for k in ("toggle", "hybrid")):
                 problems.append("%s: tagged trait but not an always-on passive (a trait takes no slot, so it can't be cast or switched)" % p)
+            elif '&"pillar"' in res.get("tags", "") or '&"foundation"' in res.get("tags", ""):
+                problems.append("%s: tagged trait but a pillar (pillars sit on the hotbar for a curse to reach; a trait is out of its reach)" % p)
+    for p in sorted(files("Scenes", ".tscn")):
+        text = read(p)
+        paths = {i: pth for pth, i in re.findall(r'path="([^"]+)" id="(\w+)"', text)}
+        subs = {}
+        for m in re.finditer(r'\[sub_resource [^\]]*id="(\w+)"\]\n((?:.+\n?)*)', text):
+            k = re.search(r'^skill = ExtResource\("(\w+)"\)', m.group(2), re.M)
+            if k:
+                subs[m.group(1)] = paths.get(k.group(1), "").replace("res://", "")
+        for node in text.split("\n[node ")[1:]:
+            lm = re.search(r'^learned = .*$', node, re.M)
+            for i in re.findall(r'SubResource\("(\w+)"\)', lm.group(0)) if lm else []:
+                f = subs.get(i, "")
+                if f and os.path.exists(os.path.join(ROOT, f)) and trait_tagged(read(f)):
+                    problems.append("%s: %s is a trait but listed as learned: a unit's trait is innate (python3 Util/unit.py trait <unit> %s)" % (p, f, os.path.basename(f)[:-5]))
 
 
 def check_flags(problems):
@@ -500,7 +526,11 @@ def new(a):
     a.title = a.title or sid.replace("_", " ").title()
     if os.path.exists(os.path.join(ROOT, "Skills/%s.tres" % sid)):
         die("Skills/%s.tres exists" % sid)
-    a.tree or a.role or die("give --tree (and --after or --root) and/or --role, or nobody can learn it")
+    if a.trait:  # declared here, never inferred: always on, no slot (Unit.equipped())
+        a.passive = True
+        a.tags = ",".join(filter(None, [a.tags, "trait"])) if "trait" not in (a.tags or "").split(",") else a.tags
+        any(re.match(r"(toggle|hybrid)=true", x) for x in a.set) and die("--trait: a trait is a plain always-on passive (no toggle or hybrid)")
+    a.tree or a.role or a.trait or die("give --tree (and --after or --root) and/or --role, or nobody can learn it (a --trait may go to a unit instead: python3 Util/unit.py trait <unit> <id>)")
     out = [("Skills/%s.tres" % sid, skill_tres(a))]
     own_rule = a.test  # a test file only for a behaviour of its own (a new Behaviours/*.gd), or when asked: data-only skills ride the sweep (CLAUDE.md)
     for b in a.behaviour:
@@ -564,6 +594,25 @@ def set_cost(sid, text, ap=None, points=None, dry=False):
     write(p, head + body, dry)
 
 
+def set_trait(a):
+    """Add (or with --off, take off) the trait tag on skill a.id: the one declaration of what always works with no slot."""
+    p = "Skills/%s.tres" % a.id
+    os.path.exists(os.path.join(ROOT, p)) or die("no %s" % p)
+    text = read(p)
+    res = next(x for x in sections(text) if x["kind"] == "resource")["props"]
+    m = re.search(r"^tags = Array\[StringName\]\(\[(.*)\]\)$", text, re.M) or die("%s: no tags line to edit" % p)
+    tags = re.findall(r'&"(\w+)"', m.group(1))
+    if a.off:
+        tags = [t for t in tags if t != "trait"]
+    else:
+        res.get("passive") == "true" or die("%s is not a passive: a trait is always on, with nothing to cast" % a.id)
+        any(res.get(k) == "true" for k in ("toggle", "hybrid")) and die("%s is a toggle or hybrid: a trait can't be switched or used" % a.id)
+        tags = tags if "trait" in tags else tags + ["trait"]
+    write(p, text[:m.start()] + "tags = Array[StringName]([%s])" % ", ".join('&"%s"' % t for t in tags) + text[m.end():], a.dry_run)
+    print("%s: %s" % (a.id, "no longer a trait: slotted again" if a.off else "a trait: always on, no hotbar slot (give it to a unit: python3 Util/unit.py trait <unit> %s)" % a.id))
+    return 0 if a.dry_run else check()
+
+
 def cost(a):
     set_cost(a.id, a.profile, a.ap, a.points, a.dry_run)
     if not a.dry_run:
@@ -604,6 +653,7 @@ def main():
     n.add_argument("--glyph", help="up to 2 characters for its placeholder icon (default: its initials)")
     n.add_argument("--tags", help="comma separated: physical,blunt,str,martial")
     n.add_argument("--passive", action="store_true")
+    n.add_argument("--trait", action="store_true", help="a trait: an always-on passive (implies --passive, adds the trait tag) that takes no hotbar slot and sits at the hotbar's far right; may go on no tree (a unit's innate: unit.py trait)")
     n.add_argument("--ap", help="a hand price, with --hand-priced (default: the cost calculator's)")
     n.add_argument("--cost", help='its cost profile: "high mana, low ap", "very high ap, no cost, flat rank" (default "even"); with --hand-priced, the Energy cost')
     n.add_argument("--hand-priced", action="store_true", help="keep --ap/--cost (a number) rather than the cost calculator's price")
@@ -629,6 +679,10 @@ def main():
     n.add_argument("--role", help="Roles/<x>.tres it's offered by outright (Role.options)")
     n.add_argument("--no-import", action="store_true")
     n.add_argument("--dry-run", action="store_true", help="print what it would write")
+    tr = sub.add_parser("trait", help="declare an existing passive a trait (always on, no hotbar slot), or --off")
+    tr.add_argument("id")
+    tr.add_argument("--off", action="store_true", help="take the declaration off: it is slotted again")
+    tr.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="catch the wiring pitfalls")
     sub.add_parser("drift", help="hand-set prices against the cost calculator's (information)")
     sub.add_parser("modifiers", help="skills no modifier fits, and why (information)")
@@ -643,6 +697,8 @@ def main():
     mg = sub.add_parser("migrate", help="hand prices a profile reproduces exactly at every rank -> that profile")
     mg.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    if a.cmd == "trait":
+        sys.exit(set_trait(a))
     if a.cmd == "cost":
         sys.exit(cost(a))
     if a.cmd == "migrate":

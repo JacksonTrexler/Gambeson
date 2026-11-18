@@ -151,7 +151,8 @@ extends Resource
 # (Unit.afflict(), Unit.regain(); Warcry's Charge!)
 # shove / fear / entrance: forced moves, as it is put on (Battle.drive(); amount tiles, x rank with per_rank,
 # x its strength), driving its holder straight away from whoever put it on (shove, fear) or drawing it
-# toward them (entrance) - no movement spent, nobody turns, a grapple on either side ends. Shove is instant
+# toward them (entrance) - a grapple on either side ends. Shove is a force on the unit: no movement spent, it doesn't turn. Fear and
+# entrance are the unit moving itself: it faces where it goes and pays the tiles in movement and AP. Shove is instant
 # (nothing stays on, and one that hits a unit or the edge hurts: Battle.displace()); fear and entrance last
 # their turns, and move it again as each of its own turns starts (Battle._frighten()). The tags of the same
 # names ride on the move and on any damage it does.
@@ -162,8 +163,8 @@ extends Resource
 # glancing: its Strikes (chain skills) roll at disadvantage, and any attack of its rolled at
 # disadvantage whose better d20 would have hit glances instead of missing (Battle.attack_check();
 # Glancing Strike)
-# opening_rolls: + this to each of its first this attack rolls a battle (Unit.rolls_made;
-# Battle.attack_check(); Glancing Strike: rank)
+# opening_rolls: + this to each of its first this attack rolls in each skill use (a Strike's many hits,
+# its restrikes; Unit.rolls_made, Battle.use_of(); Battle.attack_check(); Glancing Strike: rank)
 # no_traits: above 0, its traits (skills tagged trait) are suppressed: they stop working as if
 # unequipped, then come back (Unit.traits_suppressed(), Unit.equipped()); read from its timed
 # statuses only, never its passives. Unused by any skill yet
@@ -184,6 +185,7 @@ extends Resource
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
+@export var bears: Array[StringName] = []  # tags the status itself bears, as a skill's tags (cc: it impairs the unit's ability to act): what rules and gear that deal with a kind of status read (Unit.afflicted()). Not `tags`, which filters what its stat counts on
 @export var skills: Array[Skill] = []
 @export var checks: Array[StringName] = []  # brace: the stats of the checks it adds to (mental: int, wis, cha)
 @export var kind := &""  # brace: offensive or defensive checks only; empty: both
@@ -310,7 +312,7 @@ func value(rank := 1) -> String:
 	elif stat == "regain":
 		text = "%s AP back at once" % Skill.num(x)
 	elif stat in ["shove", "fear", "entrance"]:
-		return "driven %s tile%s %s it, no movement spent%s" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s", "toward whoever put it on" if stat == "entrance" else "straight away from whoever put it on", "; it hurts if it hits something" if stat == "shove" else ", and again as each of its turns starts while it lasts"]
+		return "%s %s tile%s %s it%s" % ["driven" if stat == "shove" else "walks", Skill.num(x), "" if is_equal_approx(x, 1.0) else "s", "toward whoever put it on" if stat == "entrance" else "straight away from whoever put it on", ", no movement spent; it hurts if it hits something" if stat == "shove" else ", spending its movement, and again as each of its turns starts while it lasts"]
 	elif stat == "sleep":
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":
@@ -374,7 +376,7 @@ func value(rank := 1) -> String:
 	elif stat == "glancing":
 		return "Strikes are made at {k:disadvantage}; an attack at disadvantage that its better die would land is a {k:glance} instead of a miss"
 	elif stat == "opening_rolls":
-		return "+%s to hit on each of its first %s attacks each battle" % [Skill.num(x), Skill.num(x)]
+		return "+%s to hit on each of its first %s attacks each time it uses a skill" % [Skill.num(x), Skill.num(x)]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "abandon":

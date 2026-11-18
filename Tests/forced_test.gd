@@ -47,10 +47,15 @@ func test_the_three_effects() -> void:
 	var f := effect("fear", 2.0)
 	f.per_rank = true
 	s = carrying(f, 2)
+	v(3).refresh()
+	var ap := v(3).ap_for(&"move")
+	v(3).facing = Vector2(-1, 0)
 	ok(b.cast(v(1), s, v(3)) and v(3).cell == Vector2i(7, 3) and moves[0][2] == [&"fear"], "fear drives it away, x rank (%s)" % v(3).cell)
+	ok(v(3).facing == Vector2(1, 0) and is_equal_approx(v(3).ap_for(&"move"), ap - 2.0) and is_equal_approx(v(3).moved, 2.0), "it fled by itself: it faces the way it went and paid 2 tiles of movement AP (%s, %s of %s)" % [v(3).facing, v(3).ap_for(&"move"), ap])
 	b.move(v(1), Vector2i(7, 4))
 	b.end_turn()
 	ok(v(3).cell == Vector2i(7, 2) or v(3).cell.y < 3, "and again as its turn starts, from where its source stands then (%s)" % v(3).cell)
+	ok(v(3).moved > 0.0 and v(3).facing.y < 0.0, "that one a fresh turn's movement, spent and faced (%s)" % v(3).facing)
 	ok(Effect.HARMFUL.has("fear") and f.helps() < 0 and "away" in f.describe(), f.describe())
 
 
@@ -218,3 +223,37 @@ func test_aura_and_coordinate_drive() -> void:
 	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
 	v(1).refresh()
 	ok(b.cast(v(1), c, v(1)) and v(2).cell == Vector2i(6, 3), "and so does a link's fear (%s)" % v(2).cell)
+
+
+# The audit of what impairs a unit's ability to act (cc) and what forces a unit itself (shove): Skills/*.tres and the
+# statuses they put on, by what they do - a new one that stuns, sleeps, grapples or drives a unit joins the table.
+func test_cc_and_shove_are_tagged() -> void:
+	var cc_stats := ["sleep", "helpless", "grappled", "jammed", "no_traits", "winded", "mindless", "fear", "entrance"]
+	var cc_skills := [&"stun", &"jam", &"slam_jam", &"hitch", &"drown", &"coalescing", &"brainfog", &"interdict", &"bludgeon", &"sing", &"mindless_fury"]
+	var seen := 0
+	var bad := []
+	for f in DirAccess.get_files_at("res://Skills"):
+		if not f.ends_with(".tres"):
+			continue
+		var s: Skill = load("res://Skills/" + f)
+		var id := StringName(f.get_basename())
+		var forces := s.behaviours.any(func(h: Behaviour): return (h is Displace and not h.toward) or h.get_script().resource_path.ends_with("/kick.gd"))
+		if (&"shove" in s.tags) != forces:
+			bad.append("%s: shove only where its own force moves a unit (%s)" % [id, forces])
+		var impairs := s.effects.any(func(e: Effect): return &"cc" in e.bears) or s.disables or Displace.draws(s) != null or id in cc_skills
+		if (&"cc" in s.tags) != impairs:
+			bad.append("%s: cc where it impairs a unit's ability to act (%s)" % [id, impairs])
+		for e in s.effects:
+			if &"cc" not in e.bears and e.stat in cc_stats or &"cc" in e.tags:
+				bad.append("%s's %s status: cc borne where it impairs, never a filter (%s)" % [id, e.stat, e.bears])
+		seen += 1
+	for f in DirAccess.get_files_at("res://Effects"):
+		if f.ends_with(".tres"):
+			var e: Effect = load("res://Effects/" + f)
+			if (&"cc" in e.bears) != (e.stat in cc_stats or e.stat == "tow"):
+				bad.append("%s: cc where it impairs a unit's ability to act (%s)" % [f, e.stat])
+	ok(seen > 200 and bad.is_empty(), "every skill and status audited (%d): %s" % [seen, bad])
+	var stunned: Effect = load("res://Effects/stunned.tres")
+	v(1).afflict(stunned, 2)
+	v(1).afflict(effect("mitigate", 0.5), 2)
+	ok(v(1).afflicted(&"cc").size() == 1 and v(1).afflicted(&"cc")[0] == stunned and &"cc" in Glossary.TERMS and Tags.coloured(&"cc"), "Unit.afflicted() finds the statuses that bear it; cc has its term and colour")

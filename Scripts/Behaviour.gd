@@ -342,31 +342,36 @@ func wearing(_b: Battle, _holder: Unit, _rank: int, _w: Exhaustion.Wear) -> void
 	pass
 
 
-# A Strike the holder makes (Battle._chain()), as it goes - the payload its passives read and change. At
-# stage &"hit", once for each hit that lands, before its damage: `dealt` is that hit's (0 deals none), `roll`
-# its roll (crit, glance), `landed` the hits before it. At stage &"end", once its hits are all rolled (Strike!'s
-# restrikes too): `landed` is how many landed, `dealt` 0 - what it's set to lands on `target` as one more blow;
-# `missed` set, the Strike missed after all (none of its hits count). `bonus`, `defense` and `edge` are what its
-# last hit rolled with, before a row's penalty (Battle.attack_check() takes them). Heavy Strike: every hit's
-# damage held back, then landed as one blow on a last roll.
+# A skill use the holder makes (Battle.use_of()): its outermost cast() or cast_at() and everything inside it -
+# every attack roll, an automatic repeat an effect sets off (Strike!'s restrike, Jugular's recast) - until it
+# returns; a use chosen afresh (re-aimed by hand, or picked in an interrupt: Chaser) is another. Its rolls carry
+# its `id` (Check.Roll.use); opening_rolls counts within it. The payload its passives read and change: at stage
+# &"hit", once for each attack that lands (each Strike hit, any attacking skill's blow), before its damage:
+# `dealt` is that hit's (0 deals none), `roll` its roll (crit, glance), `landed` the hits on `target` before it
+# this use, `skill` the skill hitting, `bonus`, `defense` and `edge` what it rolled with (before a Strike row's
+# penalty: Battle.attack_check() takes them). At stage &"end", as the use closes, once for each unit it landed
+# on (`struck`): `landed` the hits on it, `dealt` 0 - what it's set to lands on `target` as one more blow, with
+# `tags`; `missed` set, it missed. Heavy Strike: every hit's damage held back, then landed as one blow on a last roll.
 class Volley:
 	var battle: Battle
 	var caster: Unit
+	var id := 0  # the use's token: its rolls carry it (Check.Roll.use)
 	var target: Unit
 	var skill: Skill
 	var tags: Array[StringName] = []
 	var stage := &"hit"
 	var dealt := 0
 	var landed := 0
+	var struck := {}  # Unit -> attacks of this use that landed on it
 	var roll: Check.Roll
 	var bonus := 0
 	var defense := 0
 	var edge := 0
 	var missed := false
-	var bag := {}  # scratch its passives share across its stages
+	var bag := {}  # scratch its passives share across the use (Heavy Strike's pools, Chaser's once)
 
 
-# The holder's Strike (v: a Volley), as each hit lands and once it's done: change what lands (Heavy Strike).
+# The holder's skill use (v: a Volley), as each attack lands and once it's done: change what lands (Heavy Strike).
 func striking(_b: Battle, _holder: Unit, _rank: int, _v: Volley) -> void:
 	pass
 
@@ -405,7 +410,7 @@ func ordered(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> void:
 # unit up, or give the holder an interrupt (Battle.grant_interrupt()).
 class Reaction:
 	var battle: Battle
-	var trigger: StringName  # &"attacked" (a hostile skill aimed at subject, before its roll), &"hit" (it landed on subject, before damage), &"fallen" (subject reached 0 HP), &"snap" (Snapping Turtle: subject, its holder, uses an offensive skill on by)
+	var trigger: StringName  # &"attacked" (a hostile skill aimed at subject, before its roll), &"hit" (it landed on subject, before damage), &"crit" (by rolled a critical hit on subject: Chaser), &"fallen" (subject reached 0 HP), &"snap" (Snapping Turtle: subject, its holder, uses an offensive skill on by)
 	var subject: Unit
 	var by: Unit  # who brought it about: the attacker (null: nobody, a flame)
 	var cast: Cast  # the cast under way (its target is what retarget() swaps), or null
