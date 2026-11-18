@@ -298,6 +298,12 @@ func marks(_b: Battle, _u: Unit) -> bool:
 	return false
 
 
+# A passive's: the AP a summoned unit `who` keeps on arriving, beyond what the summon gives (Behaviours/summon_per_rank.gd
+# asks every passive its summoner has); `rank` is the holder's rank in it. Pure (Wake and Rake: its rank, for a `summon` unit).
+func summon_ap(_holder: Unit, _rank: int, _who: Unit) -> int:
+	return 0
+
+
 # What apply() does at this rank, in Glossary markup: one or more lines of the skill's description.
 func describe(_rank: int) -> String:
 	return ""
