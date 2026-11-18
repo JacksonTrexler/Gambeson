@@ -412,6 +412,7 @@ var chant_up := false  # a Chant primed: its next Warlock skill is used a rank h
 var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_turn(): Spike)
 var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
+var rolls_made := 0  # attack rolls it has made this battle (Battle.roll_attack(): opening_rolls, Glancing Strike)
 
 # Every skill entry, its own (_own()) and what its items lend (granted()): a skill listed twice keeps its
 # highest rank, its own first on a tie.

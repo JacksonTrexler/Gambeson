@@ -10,6 +10,7 @@ signal sprung(c: Vector2i, by: Unit)
 signal marked(c: Vector2i, u: Unit, mark: Mark)  # u triggered a mark on c (_trigger()): its effects went on
 signal toll_paid(u: Unit, hp: int)  # u lost hp walking (a per_tile effect, travel())
 signal attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int)  # an attack roll (cast())
+signal attack_rolled(caster: Unit, target: Unit, roll: Check.Roll)  # the same roll's whole outcome, right after: hit, crit or glance (roll_attack())
 signal layer_broke(c: Vector2i, what: Terrain, by: Unit)  # a brittle layer broke (expose(), _teeter())
 signal layer_lifted(c: Vector2i, what: Terrain, why: StringName)  # a layer burned (fire) or blew (wind) away
 signal teetered(u: Unit, total: int, dc: int, kept: bool)  # glass gave way under u; kept: it caught itself
@@ -615,7 +616,8 @@ func initiative_bonus(f: Faction) -> int:
 # dexterity; a coin decides only sides still tied after all of that.
 # A side is a Unit, a Faction, an Array of Units (e.g. "Company A"), or anything the keys rank.
 # Resolves a Check against this battle's rng: rolls a d20 (the better or worse of two with edge),
-# adds the bonus, and decides the hit - met the target, a natural 20 on an attack, or forced sure.
+# adds the bonus, and decides the outcome (Check.outcome()) - met the target or forced sure, a hit; an
+# attack's face in crit range, a critical on a hit and a glance (a hit for half) on a miss.
 # The one place a d20 roll is defined (docs/plan-composability.md, seam 1).
 func resolve(c: Check) -> Check.Roll:
 	if c.is_fixed:  # no die
@@ -623,16 +625,18 @@ func resolve(c: Check) -> Check.Roll:
 		f.total = c.bonus if is_equal_approx(c.share, 1.0) else floori(c.bonus * c.share)
 		return f
 	var d := rng.randi_range(1, 20)
-	if c.advantage > 0:
-		d = maxi(d, rng.randi_range(1, 20))
-	elif c.advantage < 0:
-		d = mini(d, rng.randi_range(1, 20))
+	var other := 0  # the d20 that doesn't count, with advantage or disadvantage
+	if c.advantage != 0:
+		var d2 := rng.randi_range(1, 20)
+		other = mini(d, d2) if c.advantage > 0 else maxi(d, d2)
+		d = maxi(d, d2) if c.advantage > 0 else mini(d, d2)
 	var r := Check.Roll.new()
+	r.check = c
 	r.d20 = d
+	r.other = other
 	r.total = d + c.bonus if is_equal_approx(c.share, 1.0) else floori((d + c.bonus) * c.share)
 	r.target = c.target
-	r.crit = c.crits and d >= c.crit_on
-	r.hit = c.floor_hit or r.crit or r.total >= c.target
+	r.judge(Check.outcome(c, d, maxi(d, r.other), c.target))
 	return r
 
 
@@ -816,7 +820,8 @@ func _flip(g: Array) -> Array:
 
 # Uses an active skill on a target in reach, paying its AP and cost. Used on a foe, an attack
 # (Skill.attacks()) rolls first: d20 + the caster's attack mod against the target's Defense for the
-# skill's tags. A natural 20 always hits and doubles the damage; a miss does nothing but give the
+# skill's tags (attack_check()). A natural 20 (a face in crit range) doubles the damage of a hit and turns a
+# miss into a glance, a hit for half (as_rolled()); a miss does nothing but give the
 # target away (it was aimed at). Damage comes from the skill's tier for the caster's rank - at least
 # 1 before the target's mitigation - once per rank for multi-hit skills (Strike III). A dual skill
 # (the starter spells) puts its effects only on allies, and deals its damage only to foes. Effects
@@ -952,7 +957,6 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		used.emit(caster, skill, target, before - target.hp)
 		return true
 	var zeal := passion(caster, target)  # Impassioned Fighter: + to the skill's primary mod, beside its target
-	var crit := false
 	var tags := acts.tags if acts else hit_tags(caster, skill, target if foe else null, self)
 	var stags := caster.skill_tags(skill)  # its own tags and its modifiers' (checks, executes)
 	var req := requirement(caster, skill, target, r)  # its contingency's payoff, met: [hit, damage, edge, turns, strength]
@@ -1037,11 +1041,11 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * ri + skill.roll_bonus + int(req[0]) + zeal + caster.check_bonus(caster.wielded(skill.stat(), skill.tags), &"offensive") \
 				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
-		var hit := resolve(Check.attack(bonus, target.defense(tags) + guard_of(acts)).edge(clampi(edge_of(skill, acts) + int(req[2]), -1, 1)).keen(discipline_keen(caster)))
+		var hit := roll_attack(caster, target, attack_check(caster, skill, bonus, target.defense(tags) + guard_of(acts), edge_of(skill, acts) + int(req[2]), tags))
 		overage = maxi(hit.margin(), 0)
-		crit = hit.crit or (skill.sure_crit and hit.hit)  # Jugular: a hit is a critical
-		natural = hit.crit
-		attacked.emit(caster, target, hit.d20, hit.total, hit.target)
+		natural = hit.crit  # (in crit range and a hit: Jugular's recast)
+		if skill.sure_crit and hit.hit and not hit.glance:  # Jugular: a hit is a critical (a glance stays one)
+			hit.crit = true
 		_evaluate(caster, skill, hit.d20, hit.total)
 		rolled = hit
 		if not hit.hit:
@@ -1055,8 +1059,9 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			target = acts.target
 			before = target.hp
 			tags = acts.tags
-			if rolled and not rolled.crit and rolled.total < target.defense(tags) + guard_of(acts) + rh.guard:
-				attacked.emit(caster, target, rolled.d20, rolled.total, target.defense(tags) + guard_of(acts) + rh.guard)
+			if rolled and not rolled.against(target.defense(tags) + guard_of(acts) + rh.guard).hit:
+				attacked.emit(caster, target, rolled.d20, rolled.total, rolled.target)
+				attack_rolled.emit(caster, target, rolled)
 				_lose_cover(target)
 				_miss(acts)
 				used.emit(caster, skill, target, 0)  # the roll that hit its first target misses its new one
@@ -1124,7 +1129,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			if acts:
 				for bh in skill.behaviours:
 					bonus += bh.bonus(acts)  # Spike: + rank
-			var power := maxi(roundi((t.power + roll(t.dice) + bonus + int(req[1])) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
+			var power := maxi(roundi((t.power + roll(t.dice) + bonus + int(req[1])) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1)
+			power = as_rolled(power, rolled)
 			gross += power
 			if &"siphon" in tags:
 				var got := target.siphon(power, tags, caster)  # off its resources, never its HP
@@ -1266,6 +1272,46 @@ func defaults_of(caster: Unit, skill: Skill) -> Array[Unit]:
 			if t not in out:
 				out.append(t)
 	return out
+
+
+# The one place an attack roll is built (cast(), _chain(), Heavy Strike's last roll; attack_odds() unrolled):
+# d20 + bonus against defense, at edge (summed, then held to one either way), with what its roller's stats
+# say of any attack it makes: its crit range (crit_range(): Backstab, Discipline), glancing (Glancing Strike:
+# its Strikes at disadvantage, a miss whose better die would land a glance) and opening_rolls (+ that to its
+# first that many rolls a battle). The attacker's modifier itself is the caller's: Unit.attack_mod(skill).
+static func attack_check(u: Unit, s: Skill, bonus: int, defense: int, edge: int, tags: Array[StringName] = []) -> Check:
+	var glancing := u.stat(&"glancing", tags) > 0.0
+	if glancing and s and s.chain:
+		edge -= 1
+	var opening := roundi(u.stat(&"opening_rolls", tags))
+	var c := Check.attack(bonus + (opening if u.rolls_made < opening else 0), defense).edge(clampi(edge, -1, 1)).keen(crit_range(u, tags))
+	c.glancing = glancing
+	return c
+
+
+# Faces below a natural 20 u's attack rolls crit on (and glance on, missing): crit_range (Backstab: rank)
+# and the points of Discipline it's burning.
+static func crit_range(u: Unit, tags: Array[StringName] = []) -> int:
+	return discipline_keen(u) + maxi(roundi(u.stat(&"crit_range", tags)), 0)
+
+
+# Rolls attack c by caster on target (attack_check()), counted among the caster's rolls this battle, and
+# tells who listens: attacked (the faces) and attack_rolled (the whole outcome: a Check.Roll, hit, crit or glance).
+func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
+	var hit := resolve(c)
+	caster.rolls_made += 1
+	attacked.emit(caster, target, hit.d20, hit.total, hit.target)
+	attack_rolled.emit(caster, target, hit)
+	return hit
+
+
+# What a hit for `power` deals as roll r landed: double on a critical, half (rounded down, at least 1) on a glance.
+static func as_rolled(power: int, r: Check.Roll) -> int:
+	if r and r.crit:
+		return power * 2
+	if r and r.glance:
+		return maxi(floori(power / 2.0), 1)
+	return power
 
 
 # The edge on a skill's attack roll: its own advantage or disadvantage, plus its behaviours' (Gank),
@@ -2264,8 +2310,8 @@ func _evaluate(u: Unit, skill: Skill, d20: int, total: int) -> bool:
 	return true
 
 
-# The chance (0-1) an attack with s by u hits t: the d20 rolls that reach t's Defense, a natural
-# 20 always among them. Given the battle, its behaviours' say on the roll too (edge(), guard(): Gank, Spike).
+# The chance (0-1) an attack with s by u hits t: the d20 rolls that reach t's Defense, and those in crit
+# range that don't (a glance: attack_odds()). Given the battle, its behaviours' say on the roll too (edge(), guard(): Gank, Spike).
 # A skill whose declared check stands in place of the roll (a save, Drown's drag): the chance it wins
 # that (skill_odds(), the one check helper's odds), a drag's penalty over the tiles to its spot.
 # `guess` >= 0: the Defense the viewer takes t to have (Read.believed(): what it makes out, a lie too, or a stand-in
@@ -2278,15 +2324,19 @@ static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1
 		return level_odds(u, s, t, u.mods(s).irank(u.rank(s), &"rank_impact"), b)
 	if not s.attacks():
 		return 1.0
+	return attack_odds(u, s, t, b, guess)[0]
+
+
+# The chances (0-1) of an attack with s by u on t, unrolled as cast() rolls it (attack_check(): its crit range,
+# glancing, opening rolls): [hit (glances among them), critical, glance]. hit_chance()'s first; the HUD's
+# forecast and the AI read the glance share (half damage). `guess` as hit_chance()'s.
+static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1) -> Array[float]:
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
 	var req: Array = b.requirement(u, s, t, u.rank(s)) if b else [0, 0, 0, 0, 0.0]  # its contingency, as cast() reads it
 	var tags := c.tags if c else hit_tags(u, s, t, b)
-	var p := clampi(21 - ((t.defense(tags) if guess < 0 else guess + t.defense(tags) - t.defense()) + guard_of(c) - u.attack_mod(s) - s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") - s.roll_bonus - int(req[0]) - passion(u, t) - u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") - u.focus_forecast(s)), 1, 20) / 20.0
-	var edge := clampi(edge_of(s, c) + int(req[2]), -1, 1)
-
-	if edge < 0:
-		return p * p
-	return 1.0 - (1.0 - p) * (1.0 - p) if edge > 0 else p
+	var defense := (t.defense(tags) if guess < 0 else guess + t.defense(tags) - t.defense()) + guard_of(c)
+	var bonus := u.attack_mod(s) + s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") + s.roll_bonus + int(req[0]) + passion(u, t) + u.check_bonus(u.wielded(s.stat(), s.tags), &"offensive") + u.focus_forecast(s)
+	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags))
 
 
 # What s deals in u's hands, before the target's Defense, mitigation and damage effects: {lo, hi, avg}
@@ -5106,7 +5156,7 @@ func _choke(caster: Unit, t: Unit) -> void:
 # `r` is its rank as it hits (rank_impact, through its caster's modifiers: Battle.cast()); `acts` its
 # behaviours' Cast (their guard, edge and bonus on each roll); `req` its contingency's payoff
 # (requirement(): + to hit, damage, edge).
-func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0, acts: Behaviour.Cast = null, req: Array = [0, 0, 0, 0, 0.0]) -> int:
+func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0, acts: Behaviour.Cast = null, req: Array = [0, 0, 0, 0, 0.0], v: Behaviour.Volley = null) -> int:
 	var tier := skill.tier(r)
 	if not tier:
 		return 0
@@ -5129,14 +5179,20 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	var gross := 0
 	var row := 0  # hits in a row so far
 	var sure := false
+	if not v:
+		v = Behaviour.Volley.new()
+		v.battle = self
+		v.caster = caster
+		v.skill = skill
+	var hooks := caster.hooks()
 	for i in hits:
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), tags), &"offensive") - penalty + discipline_hit(caster) + int(req[0])
-		var hit := resolve(Check.attack(bonus, t.defense(blow) + guard_of(acts)).edge(clampi(edge_of(skill, acts) + int(req[2]), -1, 1)).sure(sure).keen(discipline_keen(caster)))
-		var crit := hit.crit
-		attacked.emit(caster, t, hit.d20, hit.total, hit.target)
+		v.bonus = caster.attack_mod(skill) + zeal + caster.check_bonus(caster.wielded(skill.stat(), tags), &"offensive") + discipline_hit(caster) + int(req[0])
+		v.defense = t.defense(blow) + guard_of(acts)
+		v.edge = edge_of(skill, acts) + int(req[2])
+		var hit := roll_attack(caster, t, attack_check(caster, skill, v.bonus - penalty, v.defense, v.edge, blow).sure(sure))
 		_evaluate(caster, skill, hit.d20, hit.total)
 		if hit.hit and acts and skill.hostile and t != caster:  # hit: reactions before its damage (Interject)
 			var rh := react(&"hit", t, caster, acts)
@@ -5147,16 +5203,15 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 				if (imbued or elemental) and element not in blow:
 					blow.append(element)
 				zeal = passion(caster, t)
-				hit.target = t.defense(blow) + guard_of(acts) + rh.guard
-				hit.hit = hit.crit or hit.total >= hit.target
-				if not hit.hit:
+				if not hit.against(t.defense(blow) + guard_of(acts) + rh.guard).hit:
 					attacked.emit(caster, t, hit.d20, hit.total, hit.target)
+					attack_rolled.emit(caster, t, hit)
 		if not hit.hit:
 			row = 0
 			if i < steady:
 				continue
 			break
-		if crit and decisive:
+		if hit.crit and decisive:
 			sure = true
 		var stat := tier.stat
 		if decisive and stat and caster.mod(&"dexterity", tags) > caster.mod(caster.wielded(stat, tags), tags):
@@ -5172,9 +5227,18 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		if i == 0:
 			power += (brutal + (caster.weapon.ranked() if caster.weapon else 0)) if brutal > 0 else 0
 			power += mental * (int(imbued) + int(elemental))
-		var dealt := maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + discipline_damage(caster, skill))), 1) * (2 if crit else 1)
-		t.hit(dealt, blow, caster)
-		gross += dealt
+		var dealt := as_rolled(maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + discipline_damage(caster, skill))), 1), hit)
+		v.stage = &"hit"
+		v.target = t
+		v.tags = blow
+		v.roll = hit
+		v.landed = landed
+		v.dealt = dealt
+		for h in hooks:
+			h[0].striking(self, caster, h[1], v)  # Heavy Strike holds it back
+		if v.dealt > 0:
+			t.hit(v.dealt, blow, caster)
+		gross += v.dealt
 		landed += 1
 		row += 1
 		if i < recording and t.is_alive():
@@ -5185,7 +5249,21 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		caster.imbued -= 1
 	var again := roundi(caster.stat(&"restrike"))
 	if landed >= 12 and again > 0 and depth < 3 and t.is_alive():  # Strike!: a strike, bowled
-		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1, acts, req)
+		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1, acts, req, v)
+	if depth == 0 and not hooks.is_empty():  # its hits rolled: what the holder's passives make of the whole (Heavy Strike)
+		v.stage = &"end"
+		v.target = t
+		v.tags = blow
+		v.landed = landed
+		v.dealt = 0
+		for h in hooks:
+			h[0].striking(self, caster, h[1], v)
+		if v.dealt > 0 and t.is_alive():
+			t.hit(v.dealt, blow, caster)
+			if next_to(caster.cell, t.cell):
+				_refill(caster, t, v.dealt)
+		if v.missed:
+			landed = 0
 	if depth == 0 and landed >= PERFECT_HITS:  # three strikes in a row: a perfect game
 		caster.heal(PERFECT_HEAL)
 		perfect.emit(caster)

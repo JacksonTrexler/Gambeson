@@ -17,24 +17,44 @@ var kind := Kind.CHECK
 var bonus := 0  # the roller's whole modifier, added to the d20
 var advantage := 0  # +1 the better of two d20s, -1 the worse, 0 a single roll
 var target := 0  # the number to meet or beat (Defense, a DC, the other side's total)
-var crits := false  # a natural 20 always hits and crits, a miss aside (attacks)
-var crit_on := 20  # the lowest face that crits, where it crits at all (Discipline: 1 lower a point burned)
+var crits := false  # attacks: a face in crit range (crit_on and up) crits on a hit, and glances where it would miss
+var crit_on := 20  # the lowest face in crit range, where it crits at all (Discipline: 1 lower a point burned; crit_range)
+var glancing := false  # at disadvantage, a miss whose better d20 would have hit (or glanced) glances instead (Glancing Strike)
 var floor_hit := false  # a hit is forced regardless of the roll (decisive Strike after a crit)
 var is_fixed := false  # no die: its total is its bonus (a number rolled earlier, the other side of a check against it: Check.fixed())
 var share := 1.0  # only this share of the total counts, rounded down (an execute: HP left / max HP / rank)
 
 
-# The outcome of a resolved Check.
+enum { MISS, HIT, CRIT, GLANCE }  # an attack roll's outcomes (outcome())
+
+
+# The outcome of a resolved Check: the payload what reads a roll gets (Battle.attack_rolled), one of
+# MISS, HIT, CRIT or GLANCE in `hit`, `crit` and `glance`.
 class Roll:
 	extends RefCounted
 	var d20 := 0  # the face rolled (after advantage)
+	var other := 0  # with advantage or disadvantage, the other d20 (0: one die)
 	var total := 0  # d20 + bonus
 	var target := 0
-	var crit := false  # a natural 20 on an attack
-	var hit := false  # met the target, or crit, or forced
+	var crit := false  # a hit in crit range: double damage
+	var glance := false  # a miss in crit range (or a glancing one's better die would hit): a hit for half damage
+	var hit := false  # met the target, or forced, or a glance
+	var check: Check  # what was rolled (null: a fixed side)
 
 	func margin() -> int:  # how far the total beat the target (negative: fell short)
 		return total - target
+
+	# Judged again against a new target (a reaction swapped who it's aimed at: Interject), the same faces.
+	func against(t: int) -> Roll:
+		target = t
+		if check:
+			judge(Check.outcome(check, d20, maxi(d20, other), t))
+		return self
+
+	func judge(o: int) -> void:
+		hit = o != MISS
+		crit = o == CRIT
+		glance = o == GLANCE
 
 
 # The outcome of a Contest: each side's roll, and whether the first side (`mine`, the one acting) won.
@@ -105,6 +125,37 @@ func keen(n: int) -> Check:
 func sure(on := true) -> Check:
 	floor_hit = on
 	return self
+
+
+# What face d (the better of its two d20s `best`, where it rolled two) comes to against `target`: MISS,
+# HIT, CRIT (a hit in crit range) or GLANCE (a miss in crit range; glancing, at disadvantage, a miss
+# whose better die would land). The one place an attack's outcome is decided: Battle.resolve() and
+# outcomes() both ask it.
+static func outcome(c: Check, d: int, best: int, target: int) -> int:
+	var keen := c.crits and d >= c.crit_on
+	if c.floor_hit or _total(c, d) >= target:
+		return CRIT if keen else HIT
+	if keen:
+		return GLANCE
+	if c.glancing and c.advantage < 0 and best != d and outcome(c, best, best, target) != MISS:
+		return GLANCE
+	return MISS
+
+
+# The chances (0-1) of each outcome() of attack c against its target, unrolled: [hit (a glance among
+# them), crit, glance]. What Battle.attack_odds() forecasts with.
+static func outcomes(c: Check) -> Array[float]:
+	var n: Array[int] = [0, 0, 0]  # faces (or pairs of faces) counted, divided once at the end: a sure thing is exactly 1
+	var pairs := c.advantage != 0
+	for i in range(1, 21):
+		for j in (range(1, 21) if pairs else [i]):
+			var d: int = i if not pairs else (maxi(i, j) if c.advantage > 0 else mini(i, j))
+			var o := outcome(c, d, maxi(i, j), c.target)
+			n[0] += int(o != MISS)
+			n[1] += int(o == CRIT)
+			n[2] += int(o == GLANCE)
+	var all := 400.0 if pairs else 20.0
+	return [n[0] / all, n[1] / all, n[2] / all]
 
 
 # The chance (0-1) side `a` wins a Contest against `b` (Battle.beats()), without rolling: every pair of

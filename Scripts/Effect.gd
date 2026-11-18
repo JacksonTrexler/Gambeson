@@ -157,6 +157,13 @@ extends Resource
 # names ride on the move and on any damage it does.
 # unshape: forced out of any shape, form or mist as it is put on (Battle.unshape(), via drive()):
 # neutralized as &"unshaped"; nothing stays on the unit
+# crit_range: faces below a natural 20 its attack rolls also land in crit range, never below 2
+# (Battle.attack_check(); Backstab: rank; Discipline's points add beside it)
+# glancing: its Strikes (chain skills) roll at disadvantage, and any attack of its rolled at
+# disadvantage whose better d20 would have hit glances instead of missing (Battle.attack_check();
+# Glancing Strike)
+# opening_rolls: + this to each of its first this attack rolls a battle (Unit.rolls_made;
+# Battle.attack_check(); Glancing Strike: rank)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -167,7 +174,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -205,7 +212,8 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"impassioned": "Impassioned", "regen_hp": "Heal", "mist": "Mist",
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
-		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??"}
+		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
+		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening rolls ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -351,6 +359,12 @@ func value(rank := 1) -> String:
 				"recording": "Strike's first %s hits try to curse the target's leftmost skill a rank down (its wis against your highest mental mod)" % Skill.num(x),
 				"restrike": "landing 12 Strike hits in one use strikes again at once%s, up to three times; 36 in a row is a Perfect: %d HP healed" % [", with %s more" % Skill.num(x - 1.0) if x > 1.0 else "", Battle.PERFECT_HEAL],
 				"elemental": "Strike carries your element; its first hit adds your highest mental mod"}[stat]
+	elif stat == "crit_range":
+		return "attack rolls crit on %s and up; one in that range that would miss {k:glance|glances} instead" % maxi(20 - roundi(x), 2)
+	elif stat == "glancing":
+		return "Strikes are rolled at {k:disadvantage}; an attack at disadvantage whose better roll would hit {k:glance|glances} instead of missing"
+	elif stat == "opening_rolls":
+		return "+%s to each of its first %s attack rolls each battle" % [Skill.num(x), Skill.num(x)]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "abandon":

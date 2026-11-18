@@ -19,16 +19,17 @@ func test_roll_invariants() -> void:
 func test_crit_and_sure() -> void:
 	ok(not b.resolve(Check.check(-50, 10)).hit, "a plain check far below its DC misses (no crit to save it)")
 	ok(b.resolve(Check.attack(-50, 10).sure()).hit, "a sure() attack hits however the die falls")
-	var crits := 0
+	var nat := 0
 	var hopeless_hits := 0
 	for n in 400:
 		var r := b.resolve(Check.attack(-50, 10))  # only a natural 20 can land this
 		if r.hit:
 			hopeless_hits += 1
-			ok(r.crit, "the only way a hopeless attack lands is a crit")
+			ok(r.glance and not r.crit, "the only way a hopeless attack lands is a glance (a miss in crit range)")
 		if r.d20 == 20:
-			crits += 1
-	ok(hopeless_hits == crits and crits > 0, "a natural 20 always hits, even far below Defense (%d crits)" % crits)
+			nat += 1
+	ok(hopeless_hits == nat and nat > 0, "a natural 20 always lands, even far below Defense: as a glance (%d)" % nat)
+	ok(Check.outcome(Check.attack(5, 10), 20, 20, 10) == Check.CRIT, "a natural 20 that would hit anyway is a critical")
 
 
 func test_advantage() -> void:
@@ -56,7 +57,7 @@ func test_beats() -> void:
 
 func test_no_inline_d20() -> void:
 	var src := FileAccess.get_file_as_string("res://Scripts/Battle.gd")
-	ok(src.count("randi_range(1, 20)") == 3, "every d20 in Battle goes through resolve() (its own three rolls: one die, the edge's two)")
+	ok(src.count("randi_range(1, 20)") == 2, "every d20 in Battle goes through resolve() (its own two rolls: one die, the edge's second)")
 
 
 func test_cut() -> void:

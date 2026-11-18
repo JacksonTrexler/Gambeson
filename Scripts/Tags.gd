@@ -59,7 +59,7 @@ const COLOR := {
 	&"obscuring": Color("#b9cf8a"), &"cover": Color("#7d9a3c"), &"brittle": Color("#cfeaff"), &"unstable": Color("#c9a66b"),
 	&"flammable": Color("#f0a070"), &"windswept": Color("#cfe8d8"), &"repairing": Color("#ffe48a"), &"turn_end": Color("#b9cf8a"),
 	# checks (Glossary kind check: #f0d48a); the difficulties run green to red
-	&"attack": Color("#f0d48a"), &"critical": Color("#ffd75e"), &"advantage": Color("#9fe08a"), &"disadvantage": Color("#ff8a7a"),
+	&"attack": Color("#f0d48a"), &"critical": Color("#ffd75e"), &"glance": Color("#e6c98a"), &"advantage": Color("#9fe08a"), &"disadvantage": Color("#ff8a7a"),
 	&"save": Color("#f0d48a"), &"contest": Color("#f0d48a"), &"check": Color("#f0d48a"), &"last_stand": Color("#f0d48a"),
 	&"investigate": Color("#62b6e8"), &"defense": Color("#74b4e8"), &"mod": Color("#f0d48a"), &"evadable": Color("#f0d48a"),
 	&"trivial": Color("#9fe08a"), &"easy": Color("#c6e07a"), &"approachable": Color("#e8d870"), &"standard": Color("#f0c060"),

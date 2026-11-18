@@ -336,6 +336,35 @@ func wearing(_b: Battle, _holder: Unit, _rank: int, _w: Exhaustion.Wear) -> void
 	pass
 
 
+# A Strike the holder makes (Battle._chain()), as it goes - the payload its passives read and change. At
+# stage &"hit", once for each hit that lands, before its damage: `dealt` is that hit's (0 deals none), `roll`
+# its roll (crit, glance), `landed` the hits before it. At stage &"end", once its hits are all rolled (Strike!'s
+# restrikes too): `landed` is how many landed, `dealt` 0 - what it's set to lands on `target` as one more blow;
+# `missed` set, the Strike missed after all (none of its hits count). `bonus`, `defense` and `edge` are what its
+# last hit rolled with, before a row's penalty (Battle.attack_check() takes them). Heavy Strike: every hit's
+# damage held back, then landed as one blow on a last roll.
+class Volley:
+	var battle: Battle
+	var caster: Unit
+	var target: Unit
+	var skill: Skill
+	var tags: Array[StringName] = []
+	var stage := &"hit"
+	var dealt := 0
+	var landed := 0
+	var roll: Check.Roll
+	var bonus := 0
+	var defense := 0
+	var edge := 0
+	var missed := false
+	var bag := {}  # scratch its passives share across its stages
+
+
+# The holder's Strike (v: a Volley), as each hit lands and once it's done: change what lands (Heavy Strike).
+func striking(_b: Battle, _holder: Unit, _rank: int, _v: Volley) -> void:
+	pass
+
+
 # t, any unit but the holder, is about to be healed n (Unit.being_healed): how much of it t still gets
 # (Molothrus siphons some).
 func healing(_b: Battle, _holder: Unit, _rank: int, _t: Unit, n: int) -> int:
