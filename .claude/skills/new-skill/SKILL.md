@@ -53,12 +53,16 @@ Follow the steps in order; each ends in something you can check.
    `--help` lists the rest (`--root`, `--dry-run`). `--after` places it in the file; `--prereq` is what must
    be learned first. It writes the skill, its icon
    (`Icons/Skills/<id>.png`: its glyph or initials, white on clear - replace the PNG with art any time,
-   same path), the behaviour and test stubs, wires it onto the tree, imports, shows its terms, price and
+   same path), the behaviour stub (and, only for a new behaviour, its test stub), wires it onto the tree, imports, shows its terms, price and
    the modifiers it fits (`python3 Util/skill.py terms <id>` any time), then checks. The first
    skill on a new, empty tree needs no `--after`.
 
-5. **Fill in the stubs** (`STUB(skill.py)` in the behaviour and `Tests/<id>_test.gd`), in the style of a
-   neighbouring test: `describe()` says in Glossary markup what `apply()`/the hooks do, at a rank (a
+5. **Fill in the stubs** (`STUB(skill.py)` in the behaviour and, if it has one, `Tests/<id>_test.gd`), in the style of a
+   neighbouring test. **Tests are lean:** a data-only skill (fields and effects, or an existing behaviour such as
+   `heal` or `boost`) gets no test file - `Tests/sweep_test.gd` casts or applies every built skill, and a rule it
+   shares with another skill (a basic tagged attack, heal or buff) is tested once, on the core mechanic, not per
+   skill. Only a skill with a new `Behaviours/*.gd` gets `Tests/<id>_test.gd` (stubbed for you; `--test` asks for one
+   anyway), for that behaviour's rule. Mind that the rule's existing test may be the better home. Then: `describe()` says in Glossary markup what `apply()`/the hooks do, at a rank (a
    passive's too). Markup (`Scripts/Glossary.gd`): `{k:attack}` a term (`{k:check|Checks}` in other
    words), `{o:str mod}` the user's mod, `{d:wis mod}` the target's, `{r:3}` a number growing with rank,
    `{t:3 turns}` a duration, `{x:fire}` a damage tag. Data-only skills describe themselves from their

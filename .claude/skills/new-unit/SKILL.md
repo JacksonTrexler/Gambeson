@@ -34,8 +34,10 @@ description: Add a unit (an NPC, monster or champion) to Gambeson - writes Scene
    its class's sprite unless given `--color` (a 20x25 placeholder, `Units/<Name>.png`, replaceable) or
    `--look`. `--into` places it in a battle scene - think twice about `museum`: every test starts from it.
 
-4. **Fill in its test** (`Tests/<id>_test.gd`, stubbed by the tool, `STUB(unit.py)` until done; the tool
-   already imported). `bring()` summons it (it hears hits and heals: Battle._listen) and stages its
+4. **Test it only if it needs one.** A unit is data (its bio, stats and skills are tested as rules, and
+   `unit.py check` and the sweeps cover its wiring), so the tool writes no test file; `--test` stubs
+   `Tests/<id>_test.gd` (`STUB(unit.py)` until done) for a unit with behaviour of its own. Fill that in; the tool
+   already imported. `bring()` summons it (it hears hits and heals: Battle._listen) and stages its
    side's turn. Check its bio, what reads of it show (`b.read(o, u)`) and how its AI acts (`AI.act(b, u)`
    returns its log). Recipes (`bio_test.gd`, `blinthe_test.gd` are the neighbours):
    - **reads**: an observer without recon can't make out levels or classes - it sees `looks`; give it

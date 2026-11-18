@@ -52,16 +52,16 @@ func test_trim() -> void:
 func test_tool() -> void:
 	var py := ProjectSettings.globalize_path("res://Util/mechanic.py")
 	var out := []
-	var code := OS.execute("python3", [py, "tag", "zz_probe", "--kind", "damage", "--define", "A probe.", "--dry-run", "--no-test"], out, true)
+	var code := OS.execute("python3", [py, "tag", "zz_probe", "--kind", "damage", "--define", "A probe.", "--dry-run"], out, true)
 	if code == -1 or code == 127:
 		print("tag_colors_test: no python3, skipped")
 		return
 	ok(code != 0 and "--color" in "".join(out), "a new tag without a colour or parent is refused")
 	out.clear()
-	code = OS.execute("python3", [py, "tag", "zz_probe", "--kind", "damage", "--define", "A probe.", "--color", "#7fd04a", "--dry-run", "--no-test"], out, true)
+	code = OS.execute("python3", [py, "tag", "zz_probe", "--kind", "damage", "--define", "A probe.", "--color", "#7fd04a", "--dry-run"], out, true)
 	ok(code == 0 and '&"zz_probe": Color("#7fd04a")' in "".join(out), "with --color it goes into Tags.COLOR")
 	out.clear()
-	code = OS.execute("python3", [py, "tag", "zz_probe", "--kind", "damage", "--define", "A probe.", "--parent", "physical", "--dry-run", "--no-test"], out, true)
+	code = OS.execute("python3", [py, "tag", "zz_probe", "--kind", "damage", "--define", "A probe.", "--parent", "physical", "--dry-run"], out, true)
 	ok(code == 0, "a child may take its parent's colour")
 	out.clear()
 	code = OS.execute("python3", [py, "color", "fire", "red", "--dry-run"], out, true)
