@@ -8,3 +8,7 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-16,r-sims,sonnet,high,175881,77,2011722,landed
 2026-11-16,r-docs2,sonnet,medium,76132,11,99555,landed
 2026-11-16,r-aiperf,sonnet,high,149279,63,3180461,landed
+2026-11-18,w2-traits,sonnet,high,161989,81,645781,landed
+2026-11-18,w2-glance,opus,medium,187115,87,1377832,landed
+2026-11-18,w2-teststubs,sonnet,high,133487,43,532609,landed
+2026-11-18,w2-facing,sonnet,medium,54481,16,179135,landed
