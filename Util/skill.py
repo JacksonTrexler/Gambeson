@@ -5,15 +5,15 @@
       [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--check "against=wisdom save=true ranked=true"] [--hand-priced --ap 4 --cost 1] \\
       --range-per-rank 1 --behaviour kick --tree general_martial --after brutal_strike \\
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
-      [--set rolls=false] [--passive] [--no-import] [--dry-run]
+      [--set rolls=false] [--passive] [--test] [--no-import] [--dry-run]
   python3 Util/skill.py check       # cheap, plain text: run before every commit (Tests/skills_test.gd runs it too)
   python3 Util/skill.py drift       # information: hand-set AP / cost against the cost calculator's (Scripts/Pricing.gd)
   python3 Util/skill.py modifiers   # information: skills no modifier fits, and why - to parameterize (Scripts/Modifiers.gd)
   python3 Util/skill.py terms kick  # one skill's terms: channels, intensity, impact, contingencies, price, modifiers
 
 `new` writes a skill in terms (intensity, impact, penalty, a requirement: Scripts/SkillTerms.gd), priced by the cost
-calculator (Scripts/Pricing.gd) unless --hand-priced, then shows its terms and the modifiers it fits. It writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist, a test
-stub (Tests/<id>_test.gd), puts the skill on a tree (Trees/ or Roles/ <file>, beside --after's branch or at the
+calculator (Scripts/Pricing.gd) unless --hand-priced, then shows its terms and the modifiers it fits. It writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist (and then,
+and only then, a test stub, Tests/<id>_test.gd: a data-only skill is covered by Tests/sweep_test.gd; --test forces one), puts the skill on a tree (Trees/ or Roles/ <file>, beside --after's branch or at the
 end of --root's) and in --role's options, imports, then checks. It edits text by anchors and stops if one is
 missing. Stubs carry STUB: check fails until they're filled in. Plain python3, no dependencies.
 """
@@ -396,10 +396,12 @@ def new(a):
         die("Skills/%s.tres exists" % sid)
     a.tree or a.role or die("give --tree (and --after or --root) and/or --role, or nobody can learn it")
     out = [("Skills/%s.tres" % sid, skill_tres(a))]
+    own_rule = a.test  # a test file only for a behaviour of its own (a new Behaviours/*.gd), or when asked: data-only skills ride the sweep (CLAUDE.md)
     for b in a.behaviour:
         if not os.path.exists(os.path.join(ROOT, "Behaviours/%s.gd" % b)):
             out.append(("Behaviours/%s.gd" % b, BEHAVIOUR_STUB % {"title": a.title, "stub": STUB}))
-    if not os.path.exists(os.path.join(ROOT, "Tests/%s_test.gd" % sid)):
+            own_rule = True
+    if own_rule and not os.path.exists(os.path.join(ROOT, "Tests/%s_test.gd" % sid)):
         out.append(("Tests/%s_test.gd" % sid, TEST_STUB % {"title": a.title, "id": sid, "stub": STUB}))
     if a.tree:
         out.append(put_on_tree(a, sid))
@@ -418,6 +420,7 @@ def new(a):
         subprocess.run(["godot", "--headless", "--path", ROOT, "--import"], capture_output=True)
     report("terms", sid)  # its channels, price and the modifiers it fits: none listed means too concrete
     print("\nnext: fill in the stubs, then `python3 Util/skill.py check` and the tests (CLAUDE.md)")
+    own_rule or print("no test file: Tests/sweep_test.gd casts it; a rule of its own is tested where that rule lives")
     return check()
 
 
@@ -452,6 +455,7 @@ def main():
     n.add_argument("--tier", action="append", default=[], help="damage by rank: 1:1d4+strength, 3:2+1d6+direct")
     n.add_argument("--effect", action="append", default=[], help='"stat=luck amount=-1 per_rank=true name=Hexed"')
     n.add_argument("--behaviour", action="append", default=[], help="Behaviours/<name>.gd, stubbed if missing")
+    n.add_argument("--test", action="store_true", help="stub Tests/<id>_test.gd though it has no behaviour of its own (a new behaviour always gets one)")
     n.add_argument("--set", action="append", default=[], help="any other Skill field: key=value (a .tres literal)")
     n.add_argument("--tree", help="Trees/<x>.tres or Roles/<x>.tres it goes on")
     n.add_argument("--after", help="the skill whose branch it goes beside (and whose root)")

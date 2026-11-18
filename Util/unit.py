@@ -180,7 +180,7 @@ def new(a):
     sprite = a.look or (None if a.role and not a.color else re.sub(r"\W", "", a.name.title()))  # a class's sprite unless told otherwise
     text, node = unit_tscn(a, sprite)
     out = [("Scenes/%s.tscn" % a.id, text)]
-    if not exists("Tests/%s_test.gd" % a.id):
+    if a.test and not exists("Tests/%s_test.gd" % a.id):  # opt-in: a unit is data; its skills, bio and AI are tested as rules (CLAUDE.md)
         out.append(("Tests/%s_test.gd" % a.id, TEST_STUB % {"name": a.name, "id": a.id, "side": a.faction or a.side or "nemes"}))
     if a.into:
         out.append(place(a, node))
@@ -191,8 +191,9 @@ def new(a):
     if a.dry_run:
         return 0
     import_project()
-    print("\nnext: fill in Tests/%s_test.gd (STUB(unit.py)): its bio, what others read of it, how its AI acts; then "
-          "`python3 Util/unit.py check`, `python3 Util/skill.py check` and the tests (.claude/skills/new-unit)" % a.id)
+    print("\nnext: %s; then `python3 Util/unit.py check`, `python3 Util/skill.py check` and the tests (.claude/skills/new-unit)"
+          % ("fill in Tests/%s_test.gd (STUB(unit.py)): its bio, what others read of it, how its AI acts" % a.id if a.test
+             else "no test file (a unit is data: its rules are tested where they live; --test stubs one for a bespoke unit)"))
     return check()
 
 
@@ -313,6 +314,7 @@ def main():
     n.add_argument("--into", help="a battle scene to place it in (museum, meadows)")
     n.add_argument("--at", help="x,y: its cell there")
     n.add_argument("--side", help="its side there (default --faction)")
+    n.add_argument("--test", action="store_true", help="stub Tests/<id>_test.gd (default none: a unit is data)")
     n.add_argument("--dry-run", action="store_true")
     f = sub.add_parser("faction", help="a side: Factions/<id>.tres")
     f.add_argument("id")
