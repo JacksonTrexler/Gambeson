@@ -5,9 +5,10 @@ placed in a battle.
   python3 Util/unit.py new blinthe --name Blinthe --human --role bard --level 16 --faction blinthe \\
       --behaviour timid --appearance Bard --adjectives Charming,Rotten --properties rotting \\
       --clout lancin=2,nemes=1 --skill bandwagon:3 --skill molothrus:2 --stats "cha=18,wis=12" \\
-      [--bio "A line or two."] [--tags monster] [--vibe "Smouldering"] [--aura -1] [--tends loyal] \\
+      [--trait alluring:4] [--bio "A line or two."] [--tags monster] [--vibe "Smouldering"] [--aura -1] [--tends loyal] \\
       [--strategy weakest] [--intention "Purge evil"] [--hp 30] [--energy 12] [--look Doebour | --color "#b07acc"] \\
       [--into museum --at 5,3 [--side nemes]] [--dry-run]
+  python3 Util/unit.py trait siren alluring[:4] [--off]   # a unit's innate trait: always on, no slot (declared, never inferred)
   python3 Util/unit.py faction blinthe --name "Blinthe's Own" --color "#b07acc" [--allies lancin] [--human]
   python3 Util/unit.py check
 
@@ -104,7 +105,16 @@ def unit_tscn(a, sprite):
     for spec in a.skill:
         sid, _, rank = spec.partition(":")
         exists("Skills/%s.tres" % sid) or die("--skill %s: no Skills/%s.tres" % (sid, sid))
+        is_trait(sid) and die("--skill %s: it is a trait, which a unit holds innate and takes no slot: --trait %s" % (sid, spec))
         slots.append(d.sub("Slot_%s" % sid, SLOT, ["skill = " + d.res("Resource", "res://Skills/%s.tres" % sid), "rank = %d" % int(rank or 1)]))
+    innate = []
+    for spec in a.trait:
+        sid, _, rank = spec.partition(":")
+        exists("Skills/%s.tres" % sid) or die("--trait %s: no Skills/%s.tres" % (sid, sid))
+        is_trait(sid) or die("--trait %s: not declared a trait (python3 Util/skill.py trait %s, or skill.py new --trait)" % (sid, sid))
+        innate.append(d.sub("Slot_%s" % sid, SLOT, ["skill = " + d.res("Resource", "res://Skills/%s.tres" % sid), "rank = %d" % int(rank or 1)]))
+    if innate:
+        p.append("innate = " + typed(SLOT, d, innate))
     if slots:
         p.append("learned = " + typed(SLOT, d, slots))
         room = 4 + (a.level or 1) // 4
@@ -195,6 +205,69 @@ def new(a):
           % ("fill in Tests/%s_test.gd (STUB(unit.py)): its bio, what others read of it, how its AI acts" % a.id if a.test
              else "no test file (a unit is data: its rules are tested where they live; --test stubs one for a bespoke unit)"))
     return check()
+
+
+def is_trait(sid):
+    return exists("Skills/%s.tres" % sid) and bool(re.search(r"^tags = .*&\"trait\"", read("Skills/%s.tres" % sid), re.M))
+
+
+def set_trait(a):
+    """Make skill (id[:rank]) one of unit a.unit's innate traits (Scenes/<unit>.tscn `innate`), moving it off `learned` if it
+    was there; --off puts it back among what it learned (a slotted skill)."""
+    sid, _, rank = a.skill.partition(":")
+    p = "Scenes/%s.tscn" % a.unit
+    exists(p) or die("no %s" % p)
+    exists("Skills/%s.tres" % sid) or die("no Skills/%s.tres" % sid)
+    a.off or is_trait(sid) or die("%s isn't declared a trait: python3 Util/skill.py trait %s" % (sid, sid))
+    text = read(p)
+    node_at = text.rindex("\n[node ") + 1
+    head, node = text[:node_at], text[node_at:]
+    skill_path = "res://Skills/%s.tres" % sid
+    ext = re.search(r'\[ext_resource [^\]]*path="%s" id="(\w+)"\]' % re.escape(skill_path), head)
+    slot_ext = re.search(r'\[ext_resource [^\]]*path="res://Scripts/Slot.gd" id="(\w+)"\]', head)
+    slot_ext or die("%s: no Slot script among its resources: not a unit scene?" % p)
+    if not ext:
+        i = "%s_%s" % (len(re.findall(r"^\[ext_resource ", head, re.M)) + 1, sid)
+        head = head.replace(slot_ext.group(0), '[ext_resource type="Resource" path="%s" id="%s"]\n%s' % (skill_path, i, slot_ext.group(0)), 1)
+        ext_id = i
+    else:
+        ext_id = ext.group(1)
+    sub = next((m.group(1) for m in re.finditer(r'\[sub_resource [^\]]*id="(\w+)"\]\n((?:.+\n?)*)', head)
+                if re.search(r'^skill = ExtResource\("%s"\)' % ext_id, m.group(2), re.M)), None)
+    if not sub:
+        sub = "Slot_%s" % sid
+        head = head.rstrip("\n") + '\n\n[sub_resource type="Resource" id="%s"]\nscript = ExtResource("%s")\nskill = ExtResource("%s")\nrank = %d\n\n' % (sub, slot_ext.group(1), ext_id, int(rank or 1))
+    elif rank:
+        head = re.sub(r'(\[sub_resource [^\]]*id="%s"\]\n(?:(?!\n\[).*\n)*?rank = )\d+' % sub, r"\g<1>" + rank, head, count=1)
+    here, there = ("learned", "innate") if not a.off else ("innate", "learned")
+
+    def items(node, key):
+        m = re.search(r"^%s = Array\[ExtResource\(\"\w+\"\)\]\(\[(.*)\]\)$" % key, node, re.M)
+        return (m, re.findall(r'SubResource\("(\w+)"\)', m.group(1))) if m else (None, [])
+
+    def put(node, key, ids):
+        line = "%s = Array[ExtResource(\"%s\")]([%s])" % (key, slot_ext.group(1), ", ".join('SubResource("%s")' % i for i in ids))
+        m, _ = items(node, key)
+        if m:
+            return node[:m.start()] + line + node[m.end():]
+        at = re.search(r"^(learned|innate) = .*$", node, re.M)
+        return node[:at.start()] + line + "\n" + node[at.start():] if at else node.rstrip("\n") + "\n" + line + "\n"
+
+    _, ids_here = items(node, here)
+    _, ids_there = items(node, there)
+    if sub in ids_there and sub not in ids_here:
+        print("%s is already %s on %s" % (sid, "innate" if not a.off else "learned", a.unit))
+        return 0
+    if sub in ids_here:
+        node = put(node, here, [i for i in ids_here if i != sub])
+        node = re.sub(r"^%s = Array\[[^\n]*\(\[\]\)\n" % here, "", node, flags=re.M)
+    _, ids_there = items(node, there)
+    node = put(node, there, ids_there + [sub])
+    write(p, head + node, a.dry_run)
+    if not a.dry_run:
+        print("%s: %s is now %s" % (a.unit, sid, "an innate trait (no slot)" if not a.off else "a learned skill (back on the hotbar: check its extra_slots)"))
+        return check()
+    return 0
 
 
 def new_faction(a):
@@ -299,6 +372,7 @@ def main():
     n.add_argument("--clout", help="standing with sides: lancin=2,nemes=1")
     n.add_argument("--bio", help="a line or two about it")
     n.add_argument("--skill", action="append", default=[], help="a skill it has learned: id[:rank]")
+    n.add_argument("--trait", action="append", default=[], help="an innate trait (a skill declared one: skill.py trait): always on, takes no slot; id[:rank]")
     n.add_argument("--stats", help='"str=12,cha=18"')
     n.add_argument("--hp", type=int)
     n.add_argument("--energy", type=int)
@@ -316,6 +390,11 @@ def main():
     n.add_argument("--side", help="its side there (default --faction)")
     n.add_argument("--test", action="store_true", help="stub Tests/<id>_test.gd (default none: a unit is data)")
     n.add_argument("--dry-run", action="store_true")
+    t = sub.add_parser("trait", help="a unit's innate trait: Scenes/<unit>.tscn")
+    t.add_argument("unit")
+    t.add_argument("skill", help="id[:rank]")
+    t.add_argument("--off", action="store_true", help="back among what it learned")
+    t.add_argument("--dry-run", action="store_true")
     f = sub.add_parser("faction", help="a side: Factions/<id>.tres")
     f.add_argument("id")
     f.add_argument("--name")
@@ -325,7 +404,7 @@ def main():
     f.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="sprites there, behaviours known")
     a = ap.parse_args()
-    sys.exit({"new": new, "faction": new_faction, "check": check}[a.cmd](a))
+    sys.exit({"new": new, "faction": new_faction, "trait": set_trait, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":
