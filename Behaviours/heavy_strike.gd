@@ -37,5 +37,5 @@ func describe(rank: int) -> String:
 
 
 func describe_as(c: Cast) -> String:
-	return "Strike's hits are rolled as usual but their damage is held as one {k:attack}: a last roll, + the hits that landed + {r:%d}, must hit or it all misses; hitting, it deals their damage + the hits that landed + {r:%d}." \
+	return "Strike's hits are made as usual but their damage is held as one {k:attack}: a last attack, + the hits that landed + {r:%d} to hit, must hit or it all misses; hitting, it deals their damage + the hits that landed + {r:%d}." \
 			% [c.impact_rank(), c.impact_rank()]

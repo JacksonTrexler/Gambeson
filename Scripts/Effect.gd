@@ -213,7 +213,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
 		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
-		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening rolls ??"}
+		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -360,11 +360,11 @@ func value(rank := 1) -> String:
 				"restrike": "landing 12 Strike hits in one use strikes again at once%s, up to three times; 36 in a row is a Perfect: %d HP healed" % [", with %s more" % Skill.num(x - 1.0) if x > 1.0 else "", Battle.PERFECT_HEAL],
 				"elemental": "Strike carries your element; its first hit adds your highest mental mod"}[stat]
 	elif stat == "crit_range":
-		return "attack rolls crit on %s and up; one in that range that would miss {k:glance|glances} instead" % maxi(20 - roundi(x), 2)
+		return "attacks are {k:critical} on a natural %s and up; one there that would miss is a {k:glance} instead" % maxi(20 - roundi(x), 2)
 	elif stat == "glancing":
-		return "Strikes are rolled at {k:disadvantage}; an attack at disadvantage whose better roll would hit {k:glance|glances} instead of missing"
+		return "Strikes are made at {k:disadvantage}; an attack at disadvantage that its better die would land is a {k:glance} instead of a miss"
 	elif stat == "opening_rolls":
-		return "+%s to each of its first %s attack rolls each battle" % [Skill.num(x), Skill.num(x)]
+		return "+%s to hit on each of its first %s attacks each battle" % [Skill.num(x), Skill.num(x)]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "abandon":
