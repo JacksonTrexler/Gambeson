@@ -8,7 +8,7 @@ signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
 signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage (from blow.by, tagged blow.tags); listeners may change it (Battle: Molothrus)
 signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp back; listeners may take a cut (Battle: Molothrus)
-signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: Burnout)
+signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: RecoveryEndurance)
 signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up again as the turn ends (Battle._on_downed())
 signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
 signal lost_skills(u: Unit, skills: Array[Skill])  # skills stopped being equipped (an item taken off, a slot lost, unequipped: _sync_granted(), _arrange(), bar_clear()): Battle ends a channel on one
@@ -382,8 +382,8 @@ static var auto_equip := true  # Settings: new skills, and skills for new slots,
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
 var dbno: Downed.State  # Downed, down but not out (a Downed skill on its last life: Tenacity, Grudge): its rounds left and what it has done since; null while it isn't
-var endurance := 0  # Recovery Endurance (RE): recoveries it takes before Burnout bites (Scripts/Burnout.gd); may run below 0
-var burnt := {}  # pool (&"hp", &"energy" or a Reserve) -> max it has lost to Burnout, for good (refit(), pools())
+var endurance := 0  # Recovery Endurance (RE): recoveries it takes before it bites (Scripts/RecoveryEndurance.gd); may run below 0
+var burnt := {}  # pool (&"hp", &"energy" or a Reserve) -> max it has lost to Recovery Endurance's rule, for good (refit(), pools())
 var fury_acts := 0  # skill uses this turn while helpless, under a permit (Mindless Fury: its rank a turn; stopped())
 var overdriven := false  # ordered past its leader's command caps this turn, under a permit (Drone; Command.order())
 var healed_by: Unit  # who last healed it since it went Downed (Battle sets it): whoever saves it gets two shares of its XP (Battle.rescued())
@@ -518,6 +518,7 @@ var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over i
 
 func _init() -> void:
 	exhaustion.ease = func() -> float: return 1.0 + maxf(stat(&"stamina"), 0.0)  # Stamina: its counts / (rank + 1)
+	exhaustion.penalty = func(s: Skill) -> float: return Burnout.penalty(self, s)  # Burnout: int skills wear harder
 
 
 func _ready() -> void:
@@ -2349,7 +2350,7 @@ func siphon_order() -> Array:
 # Energy an effect gives it (Starblade, an Energy Potion, starlight, Starsap, Energy Transfer) - every
 # grant comes through here, not regen (recover()). A powered unit's Energy is its Power, so the grant
 # arrives as Power (Powerful). Up to its max; returns what it got.
-# heard: reported as a recovery (recovered: Burnout); a caller that adds Overcharge too reports the two at once.
+# heard: reported as a recovery (recovered: RecoveryEndurance); a caller that adds Overcharge too reports the two at once.
 func grant_energy(n: int, heard := true) -> int:
 	var was := energy
 	energy += maxi(n, 0)
@@ -2359,7 +2360,7 @@ func grant_energy(n: int, heard := true) -> int:
 
 
 # Something gave back n of pool (&"hp", &"energy" - Overcharge counts - or a Reserve) by means other than
-# regen: told to whoever listens (recovered: Battle's Burnout). heal() and grant_energy() call it; a new
+# regen: told to whoever listens (recovered: Battle's RecoveryEndurance). heal() and grant_energy() call it; a new
 # way to restore something calls it too, and burnout reaches it without knowing.
 func note_recovery(pool: Variant, n: int) -> void:
 	if n > 0:
@@ -2371,7 +2372,7 @@ func endurance_max() -> int:
 	return maxi(mod(&"constitution"), 0)
 
 
-# Burnout takes n off the max of pool for good (burnt): HP through refit(), Energy off max_energy, a
+# RecoveryEndurance takes n off the max of pool for good (burnt): HP through refit(), Energy off max_energy, a
 # reserve through pools().
 func burn(pool: Variant, n: int) -> void:
 	if n <= 0:
@@ -2431,7 +2432,7 @@ func pools() -> Dictionary[Reserve, int]:
 			var m := mods(x.skill)  # its modifiers: the mod is stat impact, the rank rank impact
 			out[r] = out.get(r, 0) + maxi((m.stat(mod(x.skill.reserve_mod), &"stat_impact") if x.skill.reserve_mod else 1) + r.base, 0) * m.irank(x.rank, &"rank_impact")
 	for r in out:
-		out[r] = maxi(out[r] - int(burnt.get(r, 0)), 0)  # Burnout's loss
+		out[r] = maxi(out[r] - int(burnt.get(r, 0)), 0)  # Recovery Endurance's loss
 	return out
 
 
@@ -2473,9 +2474,10 @@ func set_store(r: Reserve, v: int) -> void:
 
 
 # What s costs it, at its rank (starter spells: cost x rank; Pricing.cost_for()), before any savings (cost_from()): more
-# the more it has used it lately (Exhaustion.rate()), rounded up.
-func price(s: Skill) -> int:
-	return ceili(Pricing.cost_for(self, s) * exhaustion.rate(s) - 0.0001)  # priced, or hand-set under its modifiers
+# the more it has used it lately (Exhaustion.rate(); Exhaustion.raise() rounds it), and more again paid from a fund
+# that burns (Burnout.on_cost(): an int skill paid in Mana).
+func price(s: Skill, fund: Variant = null) -> int:
+	return Exhaustion.raise(Pricing.cost_for(self, s), exhaustion.rate(s, Burnout.on_cost(s, fund)))  # priced, or hand-set under its modifiers
 
 
 # What s costs it paid from fund: a reserve that pays whole costs takes its few points for any cost
@@ -2489,7 +2491,7 @@ func cost_from(s: Skill, fund: Variant, cut := 0.0) -> int:
 	for r in s.cost_with:
 		if pays_as(s, fund, r) and opened(r) >= tier(s):
 			factor = minf(factor, s.cost_with[r])
-	return ceili(price(s) * factor * (1.0 - cut) - 0.0001)
+	return ceili(price(s, fund) * factor * (1.0 - cut) - 0.0001)
 
 
 # The highest tier its passives open r's savings for (Mana II: tier 2); 0 if none do.
@@ -2791,7 +2793,7 @@ func strike_ap(s: Skill) -> float:
 
 
 func strike_cost(s: Skill) -> int:
-	return ceili(s.strike_cost * exhaustion.strike_rate(s) - 0.0001)
+	return Exhaustion.raise(s.strike_cost, exhaustion.strike_rate(s))
 
 
 # Whether it could pay a channeled skill's strike now.
@@ -2926,7 +2928,7 @@ func recover() -> int:
 	var rate := float(maxi(k, 1)) if k >= 0 else 1.0 / (1 - k)
 	var how := activity()
 	if how == &"rest" and full_resource():
-		endurance = maxi(endurance, endurance_max())  # Burnout: RE comes back only resting at full
+		endurance = maxi(endurance, endurance_max())  # RE comes back only resting at full
 	_recover_reserves(how, rate)
 	if powered() or runs_on() is Reserve:
 		return 0  # running on Mana or Stamina: its own Energy doesn't come back
@@ -3066,7 +3068,7 @@ func best_defensive_bonus() -> int:
 
 
 # Gives back `share` of its last payment for s (pay_for()): the AP to its general pool, the cost to what
-# paid it. A refund, not a recovery: no Burnout (Poach's and Slam Jam's discounts). Returns the cost back.
+# paid it. A refund, not a recovery: no RE spent (Poach's and Slam Jam's discounts). Returns the cost back.
 func refund(s: Skill, share: float) -> int:
 	if share <= 0.0 or paid_for != s:
 		return 0

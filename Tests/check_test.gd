@@ -134,11 +134,11 @@ func test_check_against_a_total() -> void:
 	ok(absf(won / 2000.0 - 0.55) < 0.05, "odds() matches what it rolls (%.3f)" % (won / 2000.0))
 
 
-# Rolls against a fixed DC (a dodge, Stun's save, Burnout's, Bandwagon's) and the checks after a hit (Hitch's
+# Rolls against a fixed DC (a dodge, Stun's save, Recovery Endurance's, Bandwagon's) and the checks after a hit (Hitch's
 # grapple, Slam Jam's contest) are the helper's, so its odds forecast them: Stun, Hitch and Slam Jam say what a
 # hit would bring (Behaviour.foresee()) from the odds of the very roll apply() makes; an evade rolls as odds say.
 func test_dc_and_rider_forecasts() -> void:
-	for f in ["Battle.gd", "Burnout.gd"]:  # (Battle's: the initiative d20, and the two last stands)
+	for f in ["Battle.gd", "RecoveryEndurance.gd"]:  # (Battle's: the initiative d20, and the two last stands)
 		var src := FileAccess.get_file_as_string("res://Scripts/" + f)
 		ok(src.count("Check.check(") == (3 if f == "Battle.gd" else 0), "%s: no DC roll builds its own Check" % f)
 	for f in DirAccess.get_files_at("res://Behaviours"):

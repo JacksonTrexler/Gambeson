@@ -17,4 +17,5 @@ extends Resource
 @export var replaces := false  # stands in for Energy while the toggle passive giving or opening it is on (Mana, Stamina): its holder runs on it, its own Energy emptied and not coming back (Unit.runs_on()); switching to or from it is channeled (Unit.toggle())
 @export var bars: Array[StringName] = []  # while its holder runs on it, nothing pays for skills of these kinds that cost anything (Stamina: magical)
 @export var rest_rank := 1.0  # with_energy: the resting bonus, x the rank of the passive giving or opening it (Stamina: 2)
+@export var burns := 1.0  # Burnout: exhaustion's wear on an int skill's cost paid from it, multiplied by this too (Mana: 1.5; Burnout.on_cost())
 @export var steady := 0.0  # with_energy: the share of that resting bonus it gets on a turn its holder doesn't rest (Mana: 0.5)

@@ -2711,7 +2711,7 @@ func _clear(box: Container) -> void:
 		c.queue_free()
 
 
-# What Burnout has taken off its maxes for good (Unit.burnt): "Burnt -3 HP", one chip a pool.
+# What Recovery Endurance's rule has taken off its maxes for good (Unit.burnt): "Burnt -3 HP", one chip a pool.
 func _burnt_chips(u: Unit, chips: Array) -> void:
 	for pool in u.burnt:
 		var what: String = pool.name.left(2).to_upper() if pool is Reserve else ("HP" if pool == &"hp" else ("PW" if u.powered() else "EN"))
@@ -2744,7 +2744,7 @@ func _info(u: Unit) -> Dictionary:
 			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
 			rows.append(["OC", "+%d" % u.overcharge, null, Unit.OVERCHARGE_COLOR])
-		rows.append(["RE", "%d/%d" % [u.endurance, u.endurance_max()], null, FOE if u.endurance <= 0 else MUTED])  # Recovery Endurance (Burnout)
+		rows.append(["RE", "%d/%d" % [u.endurance, u.endurance_max()], null, FOE if u.endurance <= 0 else MUTED])  # Recovery Endurance
 		rows.append(["AP", u.ap_left() - battle.free_ap(u), u.full_ap(), AP_COLOR])  # its own: not an interrupt's free pool
 		rows.append(["MV", maxf(u.move_left(), 0.0), u.stat(&"movement"), MOVE_COLOR])
 		rows.append(["DF", _defense_line(u), null, MOVE_COLOR])

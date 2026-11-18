@@ -4,7 +4,7 @@ extends Behaviour
 # can, up to rank pairs in all, and only as many as there is room for. Each pair gives 1 Energy
 # (Unit.grant_energy(): Power to a powered unit); past a full bar the rest comes as Overcharge, up to
 # rank x 20% of its total resource (max Energy and every reserve's max) held at once, for rank turns.
-# One recovery, Overcharge and all (Burnout).
+# One recovery, Overcharge and all (Recovery Endurance).
 
 const PAIR := 2.0  # AP a point of Energy
 const OVER := 0.2  # of its total resource, a rank, it may hold as Overcharge
@@ -58,4 +58,4 @@ func describe(rank: int) -> String:
 func describe_as(c: Cast) -> String:
 	var rank := c.impact_rank()
 	return "On itself: {r:1} Energy for every 2 AP, spending all it can up to {r:%d} Energy (its own 2 AP the first) - and no more than it has room for. Past a full bar, the rest as %s, up to {r:%d%%} of its total resource (max Energy and every reserve), for {t:%d turn%s}. Energy this way counts toward %s" % [
-			rank, Glossary.term(&"overcharge", "Overcharge"), roundi(OVER * 100.0 * rank), rank, "" if rank == 1 else "s", Glossary.term(&"burnout", "Burnout")]
+			rank, Glossary.term(&"overcharge", "Overcharge"), roundi(OVER * 100.0 * rank), rank, "" if rank == 1 else "s", Glossary.term(&"recovery_endurance", "Recovery Endurance")]

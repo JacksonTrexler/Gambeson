@@ -3,11 +3,14 @@ extends RefCounted
 
 # How worn a unit is from using its skills, and what that adds to their costs (Unit.exhaustion): the
 # one place every cost reads it from (Unit.price(), Unit.ap_cost(), Unit.strike_ap(), Unit.strike_cost()).
-# It counts its uses of each skill. Every use counted against a skill makes its next one cost STEP of
-# its AP and of its cost more; a use counts whole against the skill used, KIND as much against the
-# other skills of its broad kind (kinds(): martial, specialist, magical, from the trees it sits on), and
-# a general skill's (Strike) GENERAL as much against every other skill.
-# Stamina divides every count by 1 + its rank (the Effect stat stamina; ease).
+# It counts its uses of each skill, and weighs them against the skill about to be used as pressure (of()):
+# 1 is where it bites. A use weighs 1 / SAME against the skill itself, 1 / IN_KIND against the other skills
+# of its broad kind (kinds(): martial, specialist, magical, from the trees it sits on), 1 / ANY against
+# every other skill - so the 2nd cast of one skill, the 3rd skill of a kind in a row, or the 4th different
+# skill in a turn is the first to bite. Below 1 a use is nearly free (MILD a unit of pressure), from 1 on
+# it costs STEP of its AP and cost more a unit (rate()). Burnout (Scripts/Burnout.gd) is the same with a
+# harsher penalty (every int skill: penalty()), and harsher still on costs paid from a reserve that burns (Mana).
+# Stamina divides the pressure by 1 + its rank (the Effect stat stamina; ease).
 # A use is one payment (Unit.pay_for()): a Strike of three hits is one, a skill landing on several
 # (Sing) is one, a free recast (Jugular) none - and a channeled skill is one from its start to its
 # strike, the strike paid at the rate the channel began at (strike_rate()).
@@ -15,15 +18,18 @@ extends RefCounted
 # a turn it rested through (resting()). relieve() is the one way uses come off: that, and Wear, the
 # use as Battle settles it once its cast is over, are what passives' hooks (Behaviour.wearing()) work on.
 
-const STEP := 0.5  # of a skill's AP and of its cost, more for each use counted against it
-const KIND := 0.5  # what a use counts against the other skills of its broad kind
-const GENERAL := 0.25  # what a general skill's use (Strike) counts against every other skill
+const SAME := 1  # uses of a skill before it bites: its 2nd cast does
+const IN_KIND := 2  # uses of skills of one broad kind before the next of them bites: the 3rd caster skill in a row
+const ANY := 3  # uses of any skills before the next bites: the 4th different skill in a turn
+const MILD := 0.1  # of a skill's AP and cost more a unit of pressure, below the bite (rounded away on a cost: raise())
+const STEP := 0.5  # of a skill's AP and cost more a unit of pressure, from the bite on
 const RECOVERY := 1.0  # uses of each skill it gets over as each of its side's turns ends
 
 static var on := true  # off: nothing wears anyone out (staged tests: Test.calm())
 
 var uses: Dictionary[Skill, float] = {}  # its uses of each skill it hasn't got over yet
-var ease := func() -> float: return 1.0  # what the counts are divided by: 1 + its holder's Stamina rank (Unit sets it: the Effect stat stamina)
+var ease := func() -> float: return 1.0  # what the pressure is divided by: 1 + its holder's Stamina rank (Unit sets it: the Effect stat stamina)
+var penalty := func(_s: Skill) -> float: return 1.0  # what its wear on a skill is multiplied by: Burnout's (Unit sets it: Burnout.penalty())
 var begun: Dictionary[Skill, float] = {}  # what each skill's last use multiplied its costs by (a channel's strike pays the same)
 
 
@@ -43,8 +49,8 @@ class Wear:
 
 
 # The broad kinds a skill is of, from the trees it sits on (Skill.kinds(): Strike general, a Cleric's
-# Solar magical); on none, its category tags. One with no kind wears on no other skill, and no other
-# wears on it, but a general skill's use wears a little on all of them (GENERAL).
+# Solar magical); on none, its category tags. One with no kind shares IN_KIND's weight with no other;
+# ANY's it shares with all.
 static func kinds(s: Skill) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for t in s.kinds():
@@ -63,6 +69,12 @@ static func alike(a: Skill, b: Skill) -> bool:
 # a use, 1 / (1 - mod) - one more every (1 - mod) turns rested (0: 1, -1: 1/2, -3: 1/4).
 static func resting(con: int) -> float:
 	return float(con) if con >= 1 else 1.0 / (1 - con)
+
+
+# What a cost of `cost` comes to at `rate`: rounded up as ever, and what exhaustion adds to it rounded
+# to the nearest point - a mild wear (under half a point) adds nothing.
+static func raise(cost: float, rate: float) -> int:
+	return ceili(cost - 0.0001) + roundi(cost * (rate - 1.0))
 
 
 # One use of s, as it's paid for: what it added to the count (0 with exhaustion off).
@@ -85,25 +97,38 @@ func relieve(n: float, s: Skill = null) -> void:
 				uses.erase(k)
 
 
-# The uses that count against s now: its own, KIND of those of the other skills of its kind, GENERAL
-# of those of every general skill - divided by ease (Stamina).
+# Takes a share (0 to 1) of every skill's count off it (Deathlust), through relieve().
+func relieve_share(share: float) -> void:
+	for k in uses.keys():
+		relieve(uses[k] * clampf(share, 0.0, 1.0), k)
+
+
+# The pressure on s now, 1 where it bites: its own uses / SAME, the other skills of its kind's / IN_KIND,
+# every other skill's / ANY - divided by ease (Stamina).
 func of(s: Skill) -> float:
 	if not on:
 		return 0.0
 	var n := 0.0
 	for o in uses:
 		if o == s:
-			n += uses[o]
+			n += uses[o] / SAME
 		elif alike(s, o):
-			n += KIND * uses[o]
-		elif o.general():
-			n += GENERAL * uses[o]
+			n += uses[o] / IN_KIND
+		else:
+			n += uses[o] / ANY
 	return n / maxf(ease.call(), 1.0) if n > 0.0 else 0.0
 
 
-# What that multiplies s's AP and cost by: 1 fresh, STEP more a use.
-func rate(s: Skill) -> float:
-	return 1.0 + STEP * of(s)
+# Whether s's pressure has reached the bite.
+func bites(s: Skill) -> bool:
+	return of(s) >= 1.0 - 0.0001
+
+
+# What that multiplies s's AP and cost by: 1 fresh, MILD more a unit of pressure below the bite and STEP
+# from it on, times its penalty (Burnout) and `harsher` (a reserve that burns, on a cost: Burnout.on_cost()).
+func rate(s: Skill, harsher := 1.0) -> float:
+	var p := of(s)
+	return 1.0 + (STEP if p >= 1.0 - 0.0001 else MILD) * p * penalty.call(s) * harsher
 
 
 # The same for the strike of a channel of s already begun: what its channel was paid at, the two
@@ -117,7 +142,10 @@ func recover(rested: bool, con: int) -> void:
 	relieve(RECOVERY + (resting(con) if rested else 0.0))
 
 
-# Why s costs more now, for a tooltip or a cost line: "exhausted x2" (the uses counted against it),
-# or "" fresh.
+# Why s costs more now, for a tooltip or a cost line: "exhausted x2" (the pressure on it: 1 bites), "burnout
+# x2" for a Burnout skill, or "" fresh.
 func note(s: Skill) -> String:
-	return "exhausted x%s" % Skill.num(of(s)) if of(s) > 0.0001 else ""
+	var p := of(s)
+	if p <= 0.0001:
+		return ""
+	return "%s x%s" % ["burnout" if Burnout.of(s) else "exhausted", Skill.num(p)]

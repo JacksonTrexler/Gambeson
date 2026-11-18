@@ -1,12 +1,18 @@
 extends Behaviour
 
-# Deathlust: the fight feeds it. Any unit, of either side, killed within 2 tiles a rank of it takes a
-# quarter of a use a rank off each of its skills' exhaustion (Exhaustion.relieve()) - and a skill it
-# used that killed (not downed) a unit gains no exhaustion from that use (wearing(): Wear.killed()).
-# Both are generic hooks (neutralized, wearing) any passive may use; this is only the first.
+# Deathlust: the fight feeds it. Any unit, of either side, killed within rank tiles of it (rank I: its
+# neighbours, diagonals too) takes a share of each of its skills' exhaustion off (Exhaustion.relieve_share()),
+# curved: 1 - (1 - EASE)^rank (25%, 44%, 58% ...) - and a skill it used that killed (not downed) a unit
+# gains no exhaustion from that use (wearing(): Wear.killed()). Both are generic hooks (neutralized,
+# wearing) any passive may use; this is only the first.
 
-const REACH := 2  # tiles a rank
-const EASE := 0.25  # uses a rank
+const REACH := 1  # tiles a rank
+const EASE := 0.25  # of every count off at rank I; each rank more takes this share of what's left
+
+
+# The share of every count a death takes off at rank r: 1 - (1 - EASE)^r.
+static func share(r: int) -> float:
+	return 1.0 - pow(1.0 - EASE, maxi(r, 0))
 
 
 func neutralized(_b: Battle, holder: Unit, rank: int, u: Unit, _by: Unit, how: StringName) -> void:
@@ -14,7 +20,7 @@ func neutralized(_b: Battle, holder: Unit, rank: int, u: Unit, _by: Unit, how: S
 		return
 	var m := mods_on(holder)
 	if Command.tiles(u.cell, holder.cell) <= REACH * m.irank(rank, &"rank_range"):
-		holder.exhaustion.relieve(EASE * m.irank(rank, &"rank_impact"))
+		holder.exhaustion.relieve_share(share(m.irank(rank, &"rank_impact")))
 
 
 func wearing(_b: Battle, _holder: Unit, _rank: int, w: Exhaustion.Wear) -> void:
@@ -34,5 +40,5 @@ func describe(rank: int) -> String:
 
 
 func describe_as(c: Cast) -> String:
-	return "A unit killed within {r:%d} tiles of it, either side's, takes {r:%s} of a use off each skill's {k:exhaustion}. A skill it used that killed a unit (not downed one) gains no exhaustion from that use." \
-			% [REACH * c.range_rank(), Skill.num(EASE * c.impact_rank())]
+	return "A unit killed within {r:%d} tile%s of it, either side's, takes {r:%d%%} off each skill's {k:exhaustion}. A skill it used that killed a unit (not downed one) gains no exhaustion from that use." \
+			% [REACH * c.range_rank(), "" if REACH * c.range_rank() == 1 else "s", roundi(100.0 * share(c.impact_rank()))]

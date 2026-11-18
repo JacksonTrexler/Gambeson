@@ -25,25 +25,29 @@ func uses(u: Unit) -> float:
 
 
 func test_deaths_in_range() -> void:
-	lusty(1, {v(2): Vector2i(3, 3), v(4): Vector2i(8, 3)})
+	lusty(1, {v(2): Vector2i(3, 4), v(4): Vector2i(8, 3)})
+	var dl: Script = deathlust.behaviours[0].get_script()
+	ok(is_equal_approx(dl.share(1), 0.25) and is_equal_approx(dl.share(2), 0.4375) and is_equal_approx(dl.share(3), 1.0 - pow(0.75, 3)), "eased by a curve: 25%, 44%, 58% ...")
 	b.neutralize(v(4), &"killed")
-	ok(is_equal_approx(uses(v(1)), 2.0), "a death 4 tiles off, past rank 1's 2: nothing")
+	ok(is_equal_approx(uses(v(1)), 2.0), "a death 4 tiles off, past rank 1's 1: nothing")
 	b.neutralize(v(3), &"killed")
-	ok(is_equal_approx(uses(v(1)), 1.75), "a foe killed beside it: a quarter of a use off (%s)" % uses(v(1)))
+	ok(is_equal_approx(uses(v(1)), 1.5), "a foe killed beside it: 25%% off (%s)" % uses(v(1)))
 	b.neutralize(v(2), &"killed")
-	ok(is_equal_approx(uses(v(1)), 1.5), "an ally killed, either side counts (%s)" % uses(v(1)))
+	ok(is_equal_approx(uses(v(1)), 1.125), "an ally killed on a diagonal, either side counts (%s)" % uses(v(1)))
 	b.neutralize(v(3), &"downed")
 	b.neutralize(v(3), &"down")
-	ok(is_equal_approx(uses(v(1)), 1.5), "downed, or Downed, doesn't")
+	ok(is_equal_approx(uses(v(1)), 1.125), "downed, or Downed, doesn't")
 	b.neutralize(v(1), &"killed")
-	ok(is_equal_approx(uses(v(1)), 1.5), "nor its own death")
-	v(1).learned.clear()
-	v(1).learned.append(slot(deathlust, 2))
-	b.neutralize(v(4), &"killed")
-	ok(is_equal_approx(uses(v(1)), 1.0), "rank 2: reach 4 tiles, eases half a use (%s)" % uses(v(1)))
+	ok(is_equal_approx(uses(v(1)), 1.125), "nor its own death")
+	for r in [3, 4]:
+		v(1).learned.clear()
+		v(1).learned.append(slot(deathlust, r))
+		b.neutralize(v(4), &"killed")
+	ok(is_equal_approx(uses(v(1)), 1.125 * pow(0.75, 4)), "rank 3 reaches 3 tiles, not 4; rank 4 does, and eases 68%% (%s)" % uses(v(1)))
 	v(1).exhaustion.uses[sk("hex")] = 0.2
+	var was := uses(v(1))
 	b.neutralize(v(3), &"killed")
-	ok(not sk("hex") in v(1).exhaustion.uses and is_equal_approx(uses(v(1)), 0.5), "every skill's count, none below nothing")
+	ok(is_equal_approx(v(1).exhaustion.uses[sk("hex")], 0.2 * pow(0.75, 4)) and is_equal_approx(uses(v(1)), was * pow(0.75, 4)), "every skill's count, by the same share")
 
 
 func test_kill_skips_exhaustion() -> void:

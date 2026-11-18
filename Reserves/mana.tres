@@ -11,3 +11,4 @@ only = Array[StringName]([&"magical"])
 with_energy = true
 replaces = true
 steady = 0.5
+burns = 1.5

@@ -481,7 +481,7 @@ func _listen(u: Unit) -> void:
 	u.lost_skills.connect(_on_lost_skills)
 	u.being_healed.connect(_on_being_healed)
 	u.recovered.connect(_on_recovered)
-	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (Burnout)
+	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (RecoveryEndurance)
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
@@ -490,9 +490,9 @@ func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
 
 
-# Every recovery but regen (Unit.recovered): Burnout's rule.
+# Every recovery but regen (Unit.recovered): Recovery Endurance's rule.
 func _on_recovered(u: Unit, pool: Variant, n: int) -> void:
-	Burnout.recovered(self, u, pool, n)
+	RecoveryEndurance.recovered(self, u, pool, n)
 
 
 func _on_being_healed(u: Unit, got: Dictionary) -> void:

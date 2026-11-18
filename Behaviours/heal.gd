@@ -2,7 +2,7 @@ extends Behaviour
 
 # A heal by magnitude (Heal, Megaheal): the ally gets back d8s as many as its `magnitude` of its rank (Difficulty.MAGNITUDE: Heal moderate, 1.5 x rank; Megaheal severe, 3 x rank),
 # + the caster's mod in the skill's stat (Skill.stat()) + rank, at least 1 - through Battle.mend(), so
-# Molothrus and Burnout hear it as any heal.
+# Molothrus and Recovery Endurance hear it as any heal.
 
 const DIE := 8
 

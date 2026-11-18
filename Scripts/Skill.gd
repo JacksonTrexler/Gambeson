@@ -527,7 +527,7 @@ func spec(u: Unit = null, rank := 1) -> Array:
 	if u:
 		var rate := u.exhaustion.rate(self) if u.exhaustion else 1.0
 		out.append(["AP", num(Pricing.ap_at(u, self, rank) * rate)])
-		var e := ceili(Pricing.cost_at(u, self, rank) * rate - 0.0001)
+		var e := Exhaustion.raise(Pricing.cost_at(u, self, rank), rate)
 		if e:
 			out.append(["cost", str(e)])
 		return out

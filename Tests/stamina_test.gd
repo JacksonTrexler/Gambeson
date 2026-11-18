@@ -56,7 +56,7 @@ func test_eases_exhaustion() -> void:
 	fit(v(1), 2)
 	Exhaustion.on = true
 	ok(b.cast(v(1), strike, v(3)), "a Strike")
-	ok(is_equal_approx(v(1).exhaustion.of(strike), 1.0 / 3.0) and is_equal_approx(v(1).ap_cost(strike, pool), 3.5), "Stamina II: a use counts a third (3 x 1.1667 AP)")
+	ok(is_equal_approx(v(1).exhaustion.of(strike), 1.0 / 3.0) and is_equal_approx(v(1).ap_cost(strike, pool), 3.1), "Stamina II: a use counts a third, below the bite (3 x 1.0333 AP)")
 	v(2).exhaustion.used(strike)
 	ok(is_equal_approx(v(2).exhaustion.of(strike), 1.0), "without it, whole")
 	Exhaustion.on = false

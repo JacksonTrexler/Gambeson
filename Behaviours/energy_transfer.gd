@@ -14,7 +14,7 @@ func dealt(c: Cast, _n: int) -> void:
 	var got := c.caster.grant_energy(c.siphoned, false)
 	var kept := floori((c.siphoned - got) * EFFICIENCY * c.rank + 0.0001)
 	c.caster.add_overcharge(kept, c.rank, 1 if c.caster.faction == c.battle.turn else 0)
-	c.caster.note_recovery(&"energy", got + kept)  # one recovery, Overcharge and all (Burnout)
+	c.caster.note_recovery(&"energy", got + kept)  # one recovery, Overcharge and all (Recovery Endurance)
 
 
 func describe(rank: int) -> String:
