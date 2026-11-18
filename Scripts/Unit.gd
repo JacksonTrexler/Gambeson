@@ -1057,7 +1057,7 @@ func equipped(s: Skill) -> bool:
 func traits() -> Array[Skill]:
 	var out: Array[Skill] = []
 	for x in slots:
-		if x.rank > 0 and x.skill.is_trait():
+		if x.rank > 0 and x.skill.is_trait() and not x.skill.is_equipment():  # equipment (Armor) isn't listed: it is what an item does
 			out.append(x.skill)
 	return out
 
@@ -1963,7 +1963,7 @@ func defense(tags: Array[StringName] = []) -> int:
 # Defence its armor's mind_stat adds against magical attacks alone (Robe: wis mod). Untagged queries
 # (Defense shown at rest) count it too, so the sheet reflects it; a physical blow doesn't.
 func armor_mind(tags: Array[StringName] = []) -> int:
-	if not armor or not armor.mind_stat:
+	if not armor or not armor.mind_stat or armor_skills().is_empty():
 		return 0
 	return mod(armor.mind_stat) if tags.is_empty() or &"magical" in Tags.expand(tags) else 0
 
@@ -1972,7 +1972,7 @@ func armor_mind(tags: Array[StringName] = []) -> int:
 # magical +1). Tags it has none extra for are left out.
 func tagged_defense() -> Dictionary:
 	var out := {}
-	if armor and armor.mind_stat and mod(armor.mind_stat) != 0:
+	if armor and armor.mind_stat and mod(armor.mind_stat) != 0 and not armor_skills().is_empty():
 		out[&"magical"] = mod(armor.mind_stat)
 	for pair in _effects():
 		var e: Effect = pair[0]
@@ -1984,22 +1984,29 @@ func tagged_defense() -> Dictionary:
 	return out
 
 
-# Defense from armor alone. Unarmored, or in armor that sets none (Heart Up-Link): dex mod + con mod.
-# Armor of a weight (light, medium, heavy) goes by its basic piece's scaling (Item.WEIGHTS).
-# Armored: the higher of the armor's floor and its level now x its per_level (rounded down, or up
-# while lucky), plus dex mod if the armor allows it.
+# Defense from armor alone: what the equipment skills its armor lends set (armor_skills(): Armor, by the armor's own
+# fields - Behaviours/armor.gd), added up; with none working (no armor, or its skills suppressed) it is unarmored: dex mod + con mod.
 func armor_defense() -> int:
-	if not armor or not armor.sets_defense():
-		return mod(&"dexterity") + mod(&"constitution") + (armor.enchant if armor else 0)
-	var w := armor.weight_class()
-	if w:
-		var base: Array = Item.WEIGHTS[w]
-		var share: float = 0.0 if armor.no_dex else (1.0 if armor.full_dex else base[2])
-		var m := mod(&"dexterity")
-		var dex := floori(m * share) if m < 0 else rounded(m * share)  # a negative share rounds down: a penalty always bites
-		return maxi(base[0], rounded(lv() * base[1])) + dex + armor.enchant
-	var floor_or_level := maxi(armor.defense, rounded(lv() * armor.per_level))
-	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + (rounded(stat(&"dexterity") * armor.dex_share) if armor.dex_share > 0.0 else 0) + armor.enchant
+	var sum := 0
+	var set := false
+	for s in armor_skills():
+		for b in s.behaviours:
+			var n: int = b.armor(self, armor.skill_rank(s), armor) if b else Behaviour.NO_ARMOR
+			if n != Behaviour.NO_ARMOR:
+				sum += n
+				set = true
+	return sum if set else mod(&"dexterity") + mod(&"constitution")
+
+
+# The equipment skills (Skill.is_equipment()) its worn armor lends that work now: equipped() says (traits suppressed:
+# none).
+func armor_skills() -> Array[Skill]:
+	var out: Array[Skill] = []
+	if armor:
+		for s in armor.skills:
+			if s and s.is_equipment() and equipped(s):
+				out.append(s)
+	return out
 
 
 # Damage its weapon adds to attacks scaling on s: an enchanted weapon's +1 a rank, on strength attacks.

@@ -5,7 +5,7 @@
       [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--check "against=wisdom save=true ranked=true"] [--cost "high stamina, low ap"] \\
       --range-per-rank 1 --behaviour kick --tree general_martial --after brutal_strike \\
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
-      [--set rolls=false] [--passive] [--test] [--no-import] [--dry-run]
+      [--set rolls=false] [--passive] [--lent] [--test] [--no-import] [--dry-run]
   python3 Util/skill.py check       # cheap, plain text: run before every commit (Tests/skills_test.gd runs it too)
   python3 Util/skill.py drift       # information: hand-set AP / cost against the cost calculator's (Scripts/Pricing.gd)
   python3 Util/skill.py modifiers   # information: skills no modifier fits, and why - to parameterize (Scripts/Modifiers.gd)
@@ -32,7 +32,7 @@ from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ex
                   literal, effect_section, names)
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 103  # (-1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
-HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
+HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking", "armor")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
@@ -500,7 +500,7 @@ def new(a):
     a.title = a.title or sid.replace("_", " ").title()
     if os.path.exists(os.path.join(ROOT, "Skills/%s.tres" % sid)):
         die("Skills/%s.tres exists" % sid)
-    a.tree or a.role or die("give --tree (and --after or --root) and/or --role, or nobody can learn it")
+    a.tree or a.role or a.lent or die("give --tree (and --after or --root) and/or --role, or nobody can learn it - or --lent, for a skill only an item lends (Item.skills)")
     out = [("Skills/%s.tres" % sid, skill_tres(a))]
     own_rule = a.test  # a test file only for a behaviour of its own (a new Behaviours/*.gd), or when asked: data-only skills ride the sweep (CLAUDE.md)
     for b in a.behaviour:
@@ -627,6 +627,7 @@ def main():
     n.add_argument("--needs", type=int, help="a capstone: how many of its root's other skills it needs (Branch.needs)")
     n.add_argument("--branch-tier", type=int, help="its tier on a general tree (Branch.tier)")
     n.add_argument("--role", help="Roles/<x>.tres it's offered by outright (Role.options)")
+    n.add_argument("--lent", action="store_true", help="on no tree or role: an item lends it (Util/item.py new --skill), so nobody learns it")
     n.add_argument("--no-import", action="store_true")
     n.add_argument("--dry-run", action="store_true", help="print what it would write")
     sub.add_parser("check", help="catch the wiring pitfalls")

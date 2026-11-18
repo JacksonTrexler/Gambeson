@@ -4,6 +4,7 @@
   python3 Util/item.py new hobnail_boots --name "Hobnail Boots" --slot trinket [--human] [--rarity uncommon] \\
       [--rank 1] [--tags gem,fire] [--enchanted | --honed] [--skill kick] [--effect "stat=max_hp per_mod=strength"] \\
       [--emblem rho_up --scope sigil] [--damage-tag slash] [--set heat=1] [--loot alabaster[:weight]] [--dry-run]
+  python3 Util/item.py lend armor --slot armor      # lend a skill to every item of a slot (or --ids a,b): the table-driven step
   python3 Util/item.py check
 
 slot: armor, weapon, trinket or consumable (Item.slot). rarity: how often it drops and what a rank costs
@@ -147,6 +148,41 @@ def new(a):
     return check()
 
 
+def skill_tags(sid):
+    m = re.search(r"^tags = Array\[StringName\]\(\[(.*)\]\)$", read("Skills/%s.tres" % sid), re.M)
+    return re.findall(r'&"(\w+)"', m.group(1)) if m else []
+
+
+def lend(a):
+    """Adds a skill to the items it isn't on yet (by --slot, or --ids): the migration of existing items onto a skill."""
+    exists("Skills/%s.tres" % a.skill) or die("no Skills/%s.tres" % a.skill)
+    ids = [i for i in (a.ids or "").split(",") if i] or [p[len("Items/"):-len(".tres")] for p in files("Items", ".tres")]
+    path = "res://Skills/%s.tres" % a.skill
+    for i in ids:
+        p = "Items/%s.tres" % i
+        text = read(p)
+        secs = sections(text)
+        res = next(s for s in secs if s["kind"] == "resource")
+        if a.slot and res["props"].get("slot", '"armor"').strip('"') != a.slot:
+            continue
+        ext = tres.ext_ids(secs)
+        if any(ext.get(x) == path for x in tres.items(res["props"].get("skills", ""))):
+            continue
+        sid = tres.ext_id_for(secs, path)
+        if not sid:
+            sid = free_id(secs, "%d_%s" % (sum(s["kind"] == "ext_resource" for s in secs) + 1, a.skill))
+            text = add_ext(text, '[ext_resource type="Resource" path="%s" id="%s"]' % (path, sid))
+            secs = sections(text)
+        have = ['ExtResource("%s")' % x for x in tres.items(res["props"].get("skills", ""))] + ['ExtResource("%s")' % sid]
+        sk = tres.ext_id_for(secs, SKILL)
+        if not sk:
+            sk = free_id(secs, "%d_skill" % (sum(s["kind"] == "ext_resource" for s in secs) + 1))
+            text = add_ext(text, '[ext_resource type="Script" path="%s" id="%s"]' % (SKILL, sk))
+        line = 'skills = Array[ExtResource("%s")]([%s])' % (sk, ", ".join(have))
+        text = re.sub(r"^skills = .*$", line, text, flags=re.M) if re.search(r"^skills = ", text, re.M) else text.rstrip("\n") + "\n" + line + "\n"
+        write(p, text, a.dry_run)
+
+
 def problems():
     """Everything wrong with Items/ and Loot/: the item rules no other tool owns (icons come from icon.py)."""
     out = list(icon.check_items())
@@ -185,6 +221,9 @@ def problems():
         for i in tres.items(res["props"].get("skills", "")):
             if not (ext.get(i) or "").startswith("res://Skills/"):
                 out.append("%s: a lent skill (%s) isn't a Skills/ file" % (p, ext.get(i) or i))
+        lent = [(ext.get(i) or "")[len("res://Skills/"):-len(".tres")] for i in tres.items(res["props"].get("skills", ""))]
+        if pr.get("slot", "armor") == "armor" and not any("equipment" in skill_tags(x) for x in lent if exists("Skills/%s.tres" % x)):
+            out.append("%s: armor lends no equipment skill, so it sets no Defense (python3 Util/item.py lend armor --slot armor)" % p)
         for path in ext.values():
             if path and not exists(path[len("res://"):]):
                 out.append("%s: %s is missing" % (p, path))
@@ -241,9 +280,14 @@ def main():
     n.add_argument("--set", action="append", default=[], help="any other Item field: key=value")
     n.add_argument("--loot", help="Loot/<table>.tres to add it to: table[:weight]")
     n.add_argument("--dry-run", action="store_true")
+    l = sub.add_parser("lend", help="lend a skill to the items of a slot (or --ids) that don't have it")
+    l.add_argument("skill", help="Skills/<id>.tres")
+    l.add_argument("--slot", help="only items of this slot")
+    l.add_argument("--ids", help="only these items, comma separated")
+    l.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="every item and loot table sound")
     a = ap.parse_args()
-    sys.exit({"new": new, "check": check}[a.cmd](a))
+    sys.exit({"new": new, "check": check, "lend": lend}[a.cmd](a))
 
 
 if __name__ == "__main__":

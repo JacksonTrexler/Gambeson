@@ -119,6 +119,7 @@ const TERMS := {
 	&"fear": ["Fear", &"condition", "Driven away from its source, a tile at a time, as it is put on and as each of its turns starts while it lasts. Ends a grapple either side of it. Effects, skills and reactions tagged fear count on it."],
 	&"entrance": ["Entrance", &"condition", "Drawn toward its source, a tile at a time, as it is put on and as each of its turns starts while it lasts. Ends a grapple either side of it. Effects, skills and reactions tagged entrance count on it."],
 	&"trait": ["Trait", &"target", "What a unit is rather than what it has learned: always equipped, shown at the far right of the hotbar, takes no slot, and can't be disabled the way skills are, nor reached by anything that counts hotbar slots (Brainfog, a Sigil). Only a status that suppresses traits switches it off."],
+	&"equipment": ["Equipment", &"target", "What a unit wears or carries lends it: a skill with this tag comes from an item and is part of what the item does (armor's Defense is one). It sits apart from the hotbar and works while the item is worn."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

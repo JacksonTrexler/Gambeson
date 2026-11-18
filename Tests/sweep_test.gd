@@ -224,8 +224,9 @@ func test_item_skills() -> void:
 		for s in it.skills:
 			var on: Variant = _pose(s, false)
 			v(1).learned.clear()
-			ok(v(1).equip(it) == null and s in v(1).actives, "wearing %s lends %s" % [it.name, s.name])
-			ok(_use(s, on), "%s: cast through %s" % [s.name, it.name])
+			v(1).unequip(it.slot)
+			ok(v(1).equip(it) == null and (s in v(1).passives if s.passive else s in v(1).actives), "wearing %s lends %s" % [it.name, s.name])
+			ok(s.passive or _use(s, on), "%s: cast through %s" % [s.name, it.name])
 			n += 1
 	ok(n > 0, "some item lends a skill")
 

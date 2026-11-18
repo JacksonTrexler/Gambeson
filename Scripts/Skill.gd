@@ -213,8 +213,21 @@ func tier(rank: int) -> Tier:
 # Always equipped, takes no hotbar slot, and no skill-disabling effect or hotbar ordering reaches it -
 # only a status that suppresses traits turns it off (Unit.traits_suppressed()). A trait is an always-on
 # passive: nothing to cast or switch.
+# Equipment (the tag: what an item lends as part of what it does, Armor's Defense) behaves as a trait.
 func is_trait() -> bool:
-	return &"trait" in tags
+	return &"trait" in tags or is_equipment()
+
+
+# Equipment: an item lends it as part of what the item does (Item.skills; Armor). Always equipped while the item
+# is worn, takes no hotbar slot, and the HUD doesn't list it among a unit's traits (Unit.traits()).
+func is_equipment() -> bool:
+	return &"equipment" in tags
+
+
+# Whether one of its behaviours is its own enchanted effect (Behaviour.owns_enchant()): lent by an enchanted
+# item, it takes that effect in place of the +1 rank every other lent skill takes (Item.skill_rank()).
+func enchants() -> bool:
+	return behaviours.any(func(b: Behaviour): return b and b.owns_enchant())
 
 
 # Goes on the hotbar to work: everything but a trait, which takes no slot. Actives and toggles are
