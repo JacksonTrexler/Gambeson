@@ -374,7 +374,7 @@ func value(rank := 1) -> String:
 	elif stat == "glancing":
 		return "Strikes are made at {k:disadvantage}; an attack at disadvantage that its better die would land is a {k:glance} instead of a miss"
 	elif stat == "opening_rolls":
-		return "+%s to hit on each of its first %s attack rolls each time it uses a skill" % [Skill.num(x), Skill.num(x)]
+		return "+%s to hit on each of its first %s attacks each time it uses a skill" % [Skill.num(x), Skill.num(x)]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "abandon":
