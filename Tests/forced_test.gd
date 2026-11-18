@@ -231,24 +231,28 @@ func test_cc_and_shove_are_tagged() -> void:
 	var cc_stats := ["sleep", "helpless", "grappled", "jammed", "no_traits", "winded", "mindless", "fear", "entrance"]
 	var cc_skills := [&"stun", &"jam", &"slam_jam", &"hitch", &"drown", &"coalescing", &"brainfog", &"interdict", &"bludgeon", &"sing", &"mindless_fury"]
 	var seen := 0
+	var bad := []
 	for f in DirAccess.get_files_at("res://Skills"):
 		if not f.ends_with(".tres"):
 			continue
 		var s: Skill = load("res://Skills/" + f)
 		var id := StringName(f.get_basename())
 		var forces := s.behaviours.any(func(h: Behaviour): return (h is Displace and not h.toward) or h.get_script().resource_path.ends_with("/kick.gd"))
-		ok((&"shove" in s.tags) == forces, "%s: shove only where its own force moves a unit (%s)" % [id, forces])
+		if (&"shove" in s.tags) != forces:
+			bad.append("%s: shove only where its own force moves a unit (%s)" % [id, forces])
 		var impairs := s.effects.any(func(e: Effect): return &"cc" in e.bears) or s.disables or Displace.draws(s) != null or id in cc_skills
-		ok((&"cc" in s.tags) == impairs, "%s: cc where it impairs a unit's ability to act (%s)" % [id, impairs])
+		if (&"cc" in s.tags) != impairs:
+			bad.append("%s: cc where it impairs a unit's ability to act (%s)" % [id, impairs])
 		for e in s.effects:
-			ok(&"cc" in e.bears or e.stat not in cc_stats, "%s's %s status: cc where it impairs (%s)" % [id, e.stat, e.bears])
-			ok(&"cc" not in e.tags, "%s's %s: cc is borne, never a filter" % [id, e.stat])
+			if &"cc" not in e.bears and e.stat in cc_stats or &"cc" in e.tags:
+				bad.append("%s's %s status: cc borne where it impairs, never a filter (%s)" % [id, e.stat, e.bears])
 		seen += 1
 	for f in DirAccess.get_files_at("res://Effects"):
 		if f.ends_with(".tres"):
 			var e: Effect = load("res://Effects/" + f)
-			ok((&"cc" in e.bears) == (e.stat in cc_stats or e.stat == "tow"), "%s: cc where it impairs a unit's ability to act (%s)" % [f, e.stat])
-	ok(seen > 200, "every skill audited (%d)" % seen)
+			if (&"cc" in e.bears) != (e.stat in cc_stats or e.stat == "tow"):
+				bad.append("%s: cc where it impairs a unit's ability to act (%s)" % [f, e.stat])
+	ok(seen > 200 and bad.is_empty(), "every skill and status audited (%d): %s" % [seen, bad])
 	var stunned: Effect = load("res://Effects/stunned.tres")
 	v(1).afflict(stunned, 2)
 	v(1).afflict(effect("mitigate", 0.5), 2)
