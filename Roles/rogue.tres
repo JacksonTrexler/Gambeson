@@ -37,6 +37,7 @@
 [ext_resource type="Resource" path="res://Trees/illusion.tres" id="illusion"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="treechoice"]
 [ext_resource type="Resource" path="res://Skills/illusionist.tres" id="illusionist"]
+[ext_resource type="Resource" path="res://Skills/chaser.tres" id="s_chaser"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -62,11 +63,16 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_backstab")
 after = Array[ExtResource("5_skill")]([ExtResource("s_jam")])
 
+[sub_resource type="Resource" id="Branch_chaser"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_chaser")
+after = Array[ExtResource("5_skill")]([ExtResource("s_backstab")])
+
 [sub_resource type="Resource" id="Root_Blade"]
 script = ExtResource("6_root")
 name = "Blade"
 tag = &"martial"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_stamina"), SubResource("Branch_jam"), SubResource("Branch_backstab")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_stamina"), SubResource("Branch_jam"), SubResource("Branch_backstab"), SubResource("Branch_chaser")])
 
 [sub_resource type="Resource" id="Branch_meander"]
 script = ExtResource("7_branch")

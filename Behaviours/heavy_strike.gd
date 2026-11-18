@@ -1,29 +1,36 @@
 extends Behaviour
 
-# Heavy Strike (a Strike form): Strike's hits are rolled as usual, but none deals its damage as it lands;
-# their damage is pooled into one attack. Once the hits are rolled, a last attack roll + successes (the
-# hits that landed) + rank must hit the target, or the whole Strike misses; on a hit it deals the pool +
-# successes + rank (a critical doubles it, a glance halves it, as any roll's outcome). Through the
-# generic `striking` hook on a Strike's Volley (Behaviour.Volley; Battle._chain()).
+# Heavy Strike (a Strike form): the attacks of one skill use (any skill's; Battle.use_of()) - a Strike's
+# many hits, its automatic restrikes, an attacking skill's blows, a recast an effect sets off - are rolled
+# as usual, but none deals its damage as it lands; their damage on each unit is pooled into one attack.
+# As the use closes, a last attack roll + successes (the hits on it that landed) + rank must hit that unit,
+# or the pool misses; on a hit it deals the pool + successes + rank (a critical doubles it, a glance halves
+# it, as any roll's outcome). Through the generic `striking` hook on a use's Volley (Behaviour.Volley).
+# A use picked afresh (aimed again by hand, an interrupt's: Chaser) is another blow.
 
-const POOL := &"heavy_pool"  # the damage held back so far, in the Volley's bag
+const POOL := &"heavy_pool"  # in the use's bag: Unit -> [damage held, then its last hit's skill, bonus, defense, edge, tags]
 
 
 func striking(b: Battle, holder: Unit, rank: int, v: Volley) -> void:
+	var pools: Dictionary = v.bag.get_or_add(POOL, {})
 	if v.stage == &"hit":
-		v.bag[POOL] = int(v.bag.get(POOL, 0)) + v.dealt
+		var held: int = pools[v.target][0] if pools.has(v.target) else 0
+		pools[v.target] = [held + v.dealt, v.skill, v.bonus, v.defense, v.edge, v.tags]
 		v.dealt = 0  # held back
 		return
-	var pool := int(v.bag.get(POOL, 0))
-	v.bag.erase(POOL)
-	if v.landed <= 0 or not v.target or not v.target.is_alive():
-		return  # nothing landed: the Strike already missed
+	if not pools.has(v.target):
+		return
+	var p: Array = pools[v.target]
+	pools.erase(v.target)
+	if v.landed <= 0 or not v.target.is_alive():
+		return
 	var more := v.landed + holder_rank(holder, rank)
-	var last := b.roll_attack(holder, v.target, Battle.attack_check(holder, v.skill, v.bonus + more, v.defense, v.edge, v.tags))
+	v.tags = p[5]
+	var last := b.roll_attack(holder, v.target, Battle.attack_check(holder, p[1], p[2] + more, p[3], p[4], p[5]))
 	if not last.hit:
 		v.missed = true
 		return
-	v.dealt = Battle.as_rolled(pool + more, last)
+	v.dealt = Battle.as_rolled(p[0] + more, last)
 
 
 # Its terms: rank adds to the last roll and its damage (impact); tame.
@@ -37,5 +44,5 @@ func describe(rank: int) -> String:
 
 
 func describe_as(c: Cast) -> String:
-	return "Strike's hits are made as usual but their damage is held as one {k:attack}: a last attack, + the hits that landed + {r:%d} to hit, must hit or it all misses; hitting, it deals their damage + the hits that landed + {r:%d}." \
+	return "The hits of one skill use (a Strike's many, its restrikes) are made as usual but their damage on a foe is held as one {k:attack}: a last attack, + the hits that landed + {r:%d} to hit, must hit or it all misses; hitting, it deals their damage + the hits that landed + {r:%d}." \
 			% [c.impact_rank(), c.impact_rank()]

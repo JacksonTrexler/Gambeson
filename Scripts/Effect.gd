@@ -163,8 +163,8 @@ extends Resource
 # glancing: its Strikes (chain skills) roll at disadvantage, and any attack of its rolled at
 # disadvantage whose better d20 would have hit glances instead of missing (Battle.attack_check();
 # Glancing Strike)
-# opening_rolls: + this to each of its first this attack rolls a battle (Unit.rolls_made;
-# Battle.attack_check(); Glancing Strike: rank)
+# opening_rolls: + this to each of its first this attack rolls in each skill use (a Strike's many hits,
+# its restrikes; Unit.rolls_made, Battle.use_of(); Battle.attack_check(); Glancing Strike: rank)
 # no_traits: above 0, its traits (skills tagged trait) are suppressed: they stop working as if
 # unequipped, then come back (Unit.traits_suppressed(), Unit.equipped()); read from its timed
 # statuses only, never its passives. Unused by any skill yet
@@ -376,7 +376,7 @@ func value(rank := 1) -> String:
 	elif stat == "glancing":
 		return "Strikes are made at {k:disadvantage}; an attack at disadvantage that its better die would land is a {k:glance} instead of a miss"
 	elif stat == "opening_rolls":
-		return "+%s to hit on each of its first %s attacks each battle" % [Skill.num(x), Skill.num(x)]
+		return "+%s to hit on each of its first %s attacks each time it uses a skill" % [Skill.num(x), Skill.num(x)]
 	elif stat == "humble":
 		return "%s max HP cut" % Skill.num(x)
 	elif stat == "abandon":
