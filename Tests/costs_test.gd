@@ -87,8 +87,8 @@ func test_prefers() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
 	v(1).set_store(focus, 3)
 	v(1).energy = 10
-	ok(v(1).funding(s) == &"energy", "even: Energy first, Focus only once it can't")
+	ok(str(v(1).funding(s)) == "energy", "even: Energy first, Focus only once it can't")
 	s.costs = "prefers focus"
-	ok(v(1).funding(s) == focus, "prefers focus: Focus first")
+	ok(is_same(v(1).funding(s), focus), "prefers focus: Focus first")
 	v(1).set_store(focus, 0)
-	ok(v(1).funding(s) == &"energy", "...and Energy once Focus can't")
+	ok(str(v(1).funding(s)) == "energy", "...and Energy once Focus can't")
