@@ -14,7 +14,7 @@ Read: param.md (its 27 concrete), param-rest.md, param-tail.md, w2-cost.md (cost
    was; rank II+ is new scaling, which is what the user asked for ("scaled better on rank"), not a rebalance
    of rank I. Where a passive is capped at max_rank 1 it still scales: a Density emblem reads rank I as II
    (that is what the modifier is for; Efficiency, Move and Mana were done the same way in param.md).
-3. **Parameterized (8 of the 29, 1 tags-only, 1 more):**
+3. **Parameterized (7 of the 29, plus 2 tags-only):**
    - **Favour**: luck +1 and mitigation 1% are now `per_rank` effects (data only). Reverses param.md's
      "making it per rank would rebalance" call: the user's later words say concrete is the signal to scale.
    - **Hazard Expert** (trap word x(1 + rank)), **Move +1** (movement +rank): `per_rank` on the effect (data only).
