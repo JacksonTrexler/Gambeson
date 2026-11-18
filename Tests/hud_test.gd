@@ -1031,8 +1031,10 @@ func test_adventurer_skills_screen() -> void:
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
 	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER"],
 			"its own tab, its species', then all three general trees and the base one, on the far right")
-	ok(h.skills.picked == hex and h.skills.detail.title_label.text == "Hex" and h.skills.detail.state_label.text == "T1",
-			"Hex shows first: the first it can learn")
+	ok(h.skills.picked == load("res://Skills/skill_slot.tres") and h.skills.detail.title_label.text == "Skill Slot +1" and h.skills.detail.state_label.text == "T1",
+			"Skill Slot +1 shows first: the centre, the first it can learn")
+	h.skills.pick(hex)
+	ok(h.skills.picked == hex and h.skills.detail.title_label.text == "Hex" and h.skills.detail.state_label.text == "T1", "Hex next")
 	var act: CostButton = h.skills.detail.act
 	ok(act.text == "Unlock" and act.cost == 1 and act.disabled and act.tooltip_text == "Needs 1 skill point", "no point yet (%s)" % act.text)
 	var spec: Array = h.skills.detail.spec.get_children().map(func(c: Control): return (c.get_child(0) as RichTextLabel).get_parsed_text())
@@ -1180,7 +1182,7 @@ func test_tabbed_skills_screen() -> void:
 	var tabs: HFlowContainer = h.get_node("%WheelTabs")
 	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "TRICKSTER", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
 			"browser tabs: a tab per part of its tree (the Illusion school shut till picked), its species', then the general trees a Rogue gets")
-	ok(h.skills.view() == g and g.skills().size() == 4 and load("res://Skills/wary.tres") in g.skills() and load("res://Skills/stamina.tres") in g.skills() and load("res://Skills/jam.tres") in g.skills() and load("res://Skills/backstab.tres") in g.skills(), "its own: Wary, Stamina, Jam and Backstab, growing from the bottom (Strike is on the General tab)")
+	ok(h.skills.view() == g and g.skills().size() == 5 and load("res://Skills/wary.tres") in g.skills() and load("res://Skills/stamina.tres") in g.skills() and load("res://Skills/jam.tres") in g.skills() and load("res://Skills/backstab.tres") in g.skills() and load("res://Skills/chaser.tres") in g.skills(), "its own: Wary, Stamina, Jam, Backstab and Chaser, growing from the bottom (Strike is on the General tab)")
 	(tabs.get_child(1) as Button).pressed.emit()
 	var snare: Skill = load("res://Skills/snare.tres")
 	var hazard: Skill = load("res://Skills/hazard_expert.tres")

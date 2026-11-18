@@ -98,9 +98,9 @@ func apply(c: Cast) -> void:
 		&"loose":
 			c.put(BLINDED, c.rank)
 		&"hole":
-			b.push(c.target, c.caster, c.impact_rank())
+			b.push(c.target, c.caster, c.impact_rank(), [&"shove"] as Array[StringName], c.caster)
 		&"beside":
-			b.push(c.target, c.caster, 1)
+			b.push(c.target, c.caster, 1, [&"shove"] as Array[StringName], c.caster)
 
 
 # Its push into a hole is rank tiles: rank -> impact.

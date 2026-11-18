@@ -415,7 +415,8 @@ var chant_up := false  # a Chant primed: its next Warlock skill is used a rank h
 var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_turn(): Spike)
 var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
-var rolls_made := 0  # attack rolls it has made this battle (Battle.roll_attack(): opening_rolls, Glancing Strike)
+var rolls_made := 0  # attack rolls it has made in its skill use under way (Battle.roll_attack(), zeroed as a use opens: opening_rolls, Glancing Strike)
+var allowed: Dictionary = {}  # Skill -> highest rank: while not empty, its only actives, each at no more than that rank (an interrupt that allows only some: Chaser; Battle.grant_interrupt())
 
 # Every skill entry, its own (_own()) and what its items lend (granted()): a skill listed twice keeps its
 # highest rank, its own first on a tie.
@@ -476,7 +477,7 @@ var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
 		var lost := unranked()
-		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill) and rank(x.skill) > 0).map(func(x: Slot): return x.skill))
+		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and (allowed.is_empty() or allowed.has(x.skill)) and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill) and rank(x.skill) > 0).map(func(x: Slot): return x.skill))
 		return s
 
 # Passive entries that work: equipped (equipped()), on, and not disabled. Every reader of what a passive
@@ -593,7 +594,10 @@ func _process(_delta: float) -> void:
 # or honed (Tags.quality_rank(): a capstone's weight); 0 if it doesn't have s, or it's cursed down to nothing.
 func rank(s: Skill) -> int:
 	var r: int = base_rank(s) - unranked().get(s, 0)
-	return maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags) + Tags.quality_rank(s.tags), 0) if r > 0 else 0
+	if r <= 0:
+		return 0
+	r = maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags) + Tags.quality_rank(s.tags), 0)
+	return mini(r, allowed[s]) if allowed.has(s) else r
 
 
 # Levels a curse has taken off it (Level Down), from its timed level effects alone (its passives can't
@@ -2248,6 +2252,16 @@ func has_tag(t: StringName) -> bool:
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 
+# The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). Nothing reads
+# cc yet: a rule, a skill or a piece of gear that deals with a kind of status asks here.
+func afflicted(tag: StringName) -> Array[Effect]:
+	var out: Array[Effect] = []
+	for e: Effect in timed.keys():
+		if tag in e.bears:
+			out.append(e)
+	return out
+
+
 # Its shackles (a binding trinket) are locked: a Shackled effect is on it.
 func shackled() -> bool:
 	return timed.keys().any(func(e: Effect): return e.stat == "shackled")
@@ -2965,10 +2979,10 @@ func wards(level: int, extra: int, began := -1) -> bool:
 
 # Pays for walking n tiles that took `cost` movement (and as much move AP), counting them towards
 # still(). Once it's walked further than standing still allows, what lasts until it moves ends (Hide).
-func walked(n: int, cost: float) -> void:
+func walked(n: int, cost: float, compelled := false) -> void:
 	var before := ap.map(func(p: AP): return p.amount)
 	moved += cost  # a Relay boost can take it below what it's walked
-	pay(maxf(cost, 0.0), &"move")
+	pay(minf(maxf(cost, 0.0), ap_for(&"move")) if compelled else maxf(cost, 0.0), &"move")  # compelled (fear): pays what it has, and goes anyway
 	for i in mini(ap.size(), _walk_ap.size()):
 		_walk_ap[i] += before[i] - ap[i].amount
 	steps += n
