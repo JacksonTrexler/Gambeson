@@ -30,6 +30,7 @@
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [ext_resource type="Resource" path="res://Skills/stamina.tres" id="s_stamina"]
 [ext_resource type="Resource" path="res://Skills/jam.tres" id="s_jam"]
+[ext_resource type="Resource" path="res://Skills/backstab.tres" id="s_backstab"]
 [ext_resource type="Resource" path="res://Trees/showmanship.tres" id="showmanship"]
 [ext_resource type="Resource" path="res://Trees/deception.tres" id="deception"]
 [ext_resource type="Resource" path="res://Trees/legerdemain.tres" id="legerdemain"]
@@ -56,11 +57,16 @@ skill = ExtResource("s_stamina")
 script = ExtResource("7_branch")
 skill = ExtResource("s_jam")
 
+[sub_resource type="Resource" id="Branch_backstab"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_backstab")
+after = Array[ExtResource("5_skill")]([ExtResource("s_jam")])
+
 [sub_resource type="Resource" id="Root_Blade"]
 script = ExtResource("6_root")
 name = "Blade"
 tag = &"martial"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_stamina"), SubResource("Branch_jam")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_stamina"), SubResource("Branch_jam"), SubResource("Branch_backstab")])
 
 [sub_resource type="Resource" id="Branch_meander"]
 script = ExtResource("7_branch")

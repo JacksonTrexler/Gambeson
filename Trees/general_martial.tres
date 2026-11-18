@@ -13,11 +13,23 @@
 [ext_resource type="Resource" path="res://Skills/brutal_mastery.tres" id="s_brutal_mastery"]
 [ext_resource type="Resource" path="res://Skills/kick.tres" id="s_kick"]
 [ext_resource type="Resource" path="res://Skills/deathlust.tres" id="s_deathlust"]
+[ext_resource type="Resource" path="res://Skills/glancing_strike.tres" id="s_glancing_strike"]
+[ext_resource type="Resource" path="res://Skills/heavy_strike.tres" id="s_heavy_strike"]
 
 [sub_resource type="Resource" id="Branch_brutal_strike"]
 script = ExtResource("3_branch")
 skill = ExtResource("s_brutal_strike")
 tier = 2
+
+[sub_resource type="Resource" id="Branch_glancing_strike"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_glancing_strike")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_heavy_strike"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_heavy_strike")
+tier = 5
 
 [sub_resource type="Resource" id="Branch_kick"]
 script = ExtResource("3_branch")
@@ -63,7 +75,7 @@ tier = 5
 script = ExtResource("2_root")
 name = "Martial"
 tag = &"martial"
-branches = Array[ExtResource("3_branch")]([SubResource("Branch_brutal_strike"), SubResource("Branch_kick"), SubResource("Branch_strike_out"), SubResource("Branch_agility_bracing"), SubResource("Branch_balanced_bracing"), SubResource("Branch_vanguard_bracing"), SubResource("Branch_combat_bracing"), SubResource("Branch_brutal_mastery"), SubResource("Branch_deathlust")])
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_brutal_strike"), SubResource("Branch_glancing_strike"), SubResource("Branch_heavy_strike"), SubResource("Branch_kick"), SubResource("Branch_strike_out"), SubResource("Branch_agility_bracing"), SubResource("Branch_balanced_bracing"), SubResource("Branch_vanguard_bracing"), SubResource("Branch_combat_bracing"), SubResource("Branch_brutal_mastery"), SubResource("Branch_deathlust")])
 
 [resource]
 script = ExtResource("1_tab")

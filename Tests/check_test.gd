@@ -220,3 +220,70 @@ func test_declared_check() -> void:
 	ok(&"taps" in o.tags and &"magical" in o.tags and &"taps" not in s.tags, "its check tags join the skill's (which keep their own)")
 	ok(Battle.sides(v(1), &"charisma", v(3), &"wisdom", o)[0].bonus == v(1).check_mod(&"charisma", &"offensive", o.tags) + 1 - 6, "+ rank 1, - 2 x 3")
 	ok(s.check.penalty(3, 3) == 0 and s.check.penalty(2, 3) == 3, "the penalty falls 1 a rank past I")
+
+
+# A Glance (the user's word): a face in crit range that would miss lands anyway, a hit for half
+# (Check.outcome(), the one place an attack's outcome is decided); glancing, at disadvantage, a miss whose
+# better die would land glances too (Glancing Strike). Check.outcomes() is the same, unrolled.
+func test_glance_outcomes() -> void:
+	var c := Check.attack(0, 30)
+	ok(Check.outcome(c, 20, 20, 30) == Check.GLANCE, "a natural 20 that would miss glances")
+	c.keen(2)
+	ok(Check.outcome(c, 18, 18, 30) == Check.GLANCE and Check.outcome(c, 17, 17, 30) == Check.MISS, "crit range 18 and up: 18 glances, 17 misses")
+	ok(Check.outcome(Check.attack(15, 10).keen(2), 18, 18, 10) == Check.CRIT, "in range and hitting: a critical")
+	var d := Check.attack(0, 15).edge(-1)
+	ok(Check.outcome(d, 3, 16, 15) == Check.MISS, "at disadvantage the worse die counts")
+	d.glancing = true
+	ok(Check.outcome(d, 3, 16, 15) == Check.GLANCE and Check.outcome(d, 3, 14, 15) == Check.MISS, "glancing: the better die would hit, a glance; both miss, a miss")
+	var o := Check.outcomes(Check.attack(0, 100).keen(3))
+	ok(is_equal_approx(o[0], 0.2) and is_equal_approx(o[2], 0.2) and o[1] == 0.0, "hopeless, crit range 17 and up: 4 faces in 20 land, all glances (%s)" % [o])
+	o = Check.outcomes(d)
+	ok(is_equal_approx(o[0], 0.51) and is_equal_approx(o[2], 0.42) and is_equal_approx(o[1], 1.0 / 400.0), "glancing vs 15 at +0: lands when the better die reaches it, 51%%, 42%% as a glance (%s)" % [o])
+
+
+# The crit range hook (Effect stat crit_range: Backstab) on a real cast: faces in range that miss land as
+# glances for half damage (Battle.as_rolled()), and the forecast (hit_chance(), attack_odds()) says so.
+func test_crit_range_glances() -> void:
+	var s: Skill = strike.duplicate()
+	s.chain = false
+	s.hits_per_rank = false
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(1).learned.append(slot(s, 1))
+	v(1).strength = 28  # mod 9: a hit deals 1 + 9
+	v(1).weapon = null
+	v(3).afflict(effect("defense", 200), 99)  # nothing reaches it
+	soak(v(3), 100000)
+	ok(is_equal_approx(Battle.hit_chance(v(1), s, v(3), b), 0.05), "only a natural 20 lands (%s)" % Battle.hit_chance(v(1), s, v(3), b))
+	v(1).learned.append(slot(sk("backstab"), 4))
+	ok(Battle.crit_range(v(1)) == 4, "Backstab IV: crit range 4 faces wider (%d)" % Battle.crit_range(v(1)))
+	var odds := Battle.attack_odds(v(1), s, v(3), b)
+	ok(is_equal_approx(odds[0], 0.25) and is_equal_approx(odds[2], 0.25), "16 and up land, all as glances (%s)" % [odds])
+	var seen: Array[Check.Roll] = []
+	b.attack_rolled.connect(func(_c, _t, r: Check.Roll): seen.append(r))
+	var dealt := []
+	v(3).hp_changed.connect(func(was: int, now: int): dealt.append(was - now))
+	for i in 80:
+		v(1).refresh()
+		b.cast(v(1), s, v(3))
+	var glances := seen.filter(func(r: Check.Roll): return r.glance)
+	ok(seen.size() == 80 and seen.all(func(r: Check.Roll): return r.hit == (r.d20 >= 16) and not r.crit), "16 and up land, never a critical against it")
+	ok(glances.size() > 0 and dealt.size() == glances.size() and dealt.all(func(n: int): return n == 5), "each glance deals half of 10: %s" % [dealt])
+	ok(v(1).rolls_made == 80, "each roll counted (%d)" % v(1).rolls_made)
+
+
+# Glancing Strike's two stats as attack_check() reads them: its Strikes (chain skills) at disadvantage and
+# glancing, other attacks as they were; + rank to its first rank attack rolls a battle (Unit.rolls_made).
+func test_glancing_and_opening() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var plain: Skill = strike.duplicate()
+	plain.chain = false
+	v(1).learned.append(slot(sk("glancing_strike"), 2))
+	var c := Battle.attack_check(v(1), strike, 3, 15, 0)
+	ok(c.advantage == -1 and c.glancing, "a Strike: at disadvantage, glancing")
+	ok(Battle.attack_check(v(1), plain, 3, 15, 0).advantage == 0, "another attack: no edge of its own")
+	ok(Battle.attack_check(v(1), strike, 3, 15, 1).advantage == 0, "advantage from elsewhere cancels it")
+	ok(c.bonus == 3 + 2, "+ rank on its first rolls (%d)" % c.bonus)
+	v(1).rolls_made = 1
+	ok(Battle.attack_check(v(1), strike, 3, 15, 0).bonus == 5, "the second of rank 2's")
+	v(1).rolls_made = 2
+	ok(Battle.attack_check(v(1), strike, 3, 15, 0).bonus == 3, "then no more")

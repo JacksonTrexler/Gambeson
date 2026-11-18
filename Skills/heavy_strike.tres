@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/heavy_strike.gd" id="b_heavy_strike"]
+
+[sub_resource type="Resource" id="Behaviour_heavy_strike"]
+script = ExtResource("b_heavy_strike")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Heavy Strike"
+glyph = "Hs"
+passive = true
+tags = Array[StringName]([&"martial"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_heavy_strike")])
+exclusive = &"strike_form"
+renames = "Heavy Strike"
