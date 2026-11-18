@@ -75,7 +75,7 @@
 - [x] **Neutral sides** (`Faction.neutral`; `Battle.fighting()`, `Battle.victor()`): they act and fight, but don't keep a battle going: it ends once one other side is left.
 - [x] **Hunting** (`Unit.hunts`, `AI.HUNT`): the AI wants targets of a hunted side over others, by HUNT tiles' worth.
 - [x] **Recovering AI** (`behaviour` recovering; `AI._recover()`).
-- [x] **Inherent skills** (`Skill.inherent`): can't be disabled (`Unit.disable()`, `Unit.disable_order()`), removed, or put on the hotbar.
+- [x] **Inherent skills** (now the `trait` tag, ?185; was `Skill.inherent`): can't be disabled (`Unit.disable()`, `Unit.disable_order()`), removed, or put on the hotbar.
 - [x] **Last stands** (`Battle.last_stand()`): d20 + average stat mod (`Unit.average_mod()`) + its best defensive bracing over its stats (`Unit.best_defensive_bonus()`); against an execute at rank r, × (HP left / max HP) / r (`Check.cut()`). Used by Level Down and Death.
 - [x] **Level Down and Death** (`Skill.levels_down`, `Skill.kills`; `Battle._level_down()`, `Battle._death()`, `leveled`): see Warlock. Death's victims keep the HP they had (`Unit.slain_from`).
 - [x] **Easy-to-remove effects** (`Effect.ease`; `Battle.cleanse()`, `Battle.dispel()`, `Battle._strip()`): stripping takes `ease` of their ranks for each spent.
@@ -257,3 +257,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Dictionary and glossary** (`g-dictionary.md`, `g-glossary.md`, a CLAUDE.md line): plan `docs/plans/r-docs.md`. (?180)
 - [x] **Deathlust and its hooks** (`Behaviours/deathlust.gd`, `Behaviour.neutralized()`, `wearing()`, `Exhaustion.relieve()`, `Wear`, `Unit.paid`): plan `docs/plans/r-deathlust.md`. `deathlust_test`. (?182)
 - [x] **Big sims** (`Tests/sims/hunt_10v10.gd`, `busy_fight.gd`, `field.gd`; `Perception._seem`): plan `docs/plans/r-sims.md`. `sims_test`. (?183)
+- [x] **Traits** (`trait` tag, `Skill.is_trait()`, `Unit.traits()`, `traits_suppressed()`, `Effects/traits_suppressed.tres`, the HUD `Traits` column; Starkind, Reckless Abandon, Alluring): plan `docs/plans/w2-traits.md`. `equip_test.test_traits`. (?185)
+- [x] **Glance and crit range** (`Check.outcome()`, `Check.outcomes()`, `Battle.attack_check()`, `crit_range`, `attack_rolled`, `Behaviour.striking`, `Unit.rolls_made`): plan `docs/plans/w2-glance.md`. `check_test`. (?186)
+- [x] **Test stubs, Option A** (`skill.py`, `unit.py`, `mechanic.py` stub a test only for a new behaviour or on `--test`): plan `docs/plans/w2-teststubs.md`. (?187)
+- [x] **Facing by move or aim** (`Unit.turn()`, `displace()` turns, no stand-in turn): plan `docs/plans/w2-facing.md`. `facing_test`, `displace_test`. (?188)
+
