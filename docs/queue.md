@@ -7,6 +7,37 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 ## In flight (not here to launch)
 Nothing.
 
+## Wave 2: the user's answers of 2026-11-18 (verbatim in docs/agents/answers-2026-11-18.md)
+Run order: 1, 2, 3 and 5 first (2-3 at a time); 4 after 3 (same roll code); 6 after 5; 7 after 6. Rules for all: the user says no balancing now; an underpowered skill is tuned by check difficulty; an effect that stops a unit taking useful actions is precious, price it high.
+
+### 1. Traits (?163)
+- Scope: `trait` (the user's word, no ??) is a tag on a skill. A trait is always equipped, sits at the far right of the hotbar, takes no slot, is not hit by skill-disable effects, and is skipped by anything that orders the hotbar (enchant the leftmost rank skills, disable rank skills right to left). One generic way to suppress traits (e.g. a status "traits suppressed for N rounds"), unused for now. Decide which existing skills are traits (species, monster, form innates such as aquatic; list each as a call). Everything else, active or passive, does nothing unless equipped (and toggled if a toggle): check this holds for passives too.
+- Model: sonnet/high. Collides with: the HUD hotbar, `Unit.equipped`.
+
+### 2. Facing (?142)
+- Scope: a unit faces along the vector from start to finish of its last move, or from its position to the tile it last targeted with a skill, whichever is latest. Call to record: forced moves count as moves (a pushed unit faces along the push).
+- Model: sonnet/medium. Collides with: Unit facing code only.
+
+### 3. Glance, Backstab, Glancing Strike, Heavy Strike
+- Scope (the user's names, `--human`; the `glance` tag too): a roll in crit range that would miss is a `glance`: a hit for half regular damage. Backstab (Rogue and Slayer martial t4, passive): crit range widens by rank (crits on 20 - rank and up). Glancing Strike (general martial t2): strikes rolled at disadvantage; if the low roll misses but the high one hits, it hits with glance; plus rank to the first rank attack rolls the unit makes each battle (record that reading). Heavy Strike (general martial t5): roll the unit's consecutive strikes as usual, pool their damage into one attack, then a final attack roll + successes + rank must hit or it all misses; on a hit, + successes + rank damage (record the reading). Generic hooks (crit range, glance outcome), not one-off flags.
+- Model: opus/medium (design). Collides with: the attack roll in Battle.
+
+### 4. Striking Features and Striking Intellect
+- Scope (the user's names): Specialist general Striking Features and Caster general Striking Intellect use cha / int mod for strike attacks if higher. One generic hook for "which stat an attack reads", not two flags.
+- Model: sonnet/medium. After card 3 (same roll code).
+
+### 5. Test stubs, Option A (?144)
+- Scope: data-only skills get a row in a shared table test (the sweep); only a skill with a `Behaviours/*.gd` gets its own test file; `skill.py`, `unit.py`, `mechanic.py` stop stubbing per-item tests otherwise. Fold per-skill tests of functionally identical skills (basic tagged attack, heal, buff) into tests of the core mechanic. The user authorises editing CLAUDE.md's test line and `.claude/skills/new-skill`, `new-unit`, `new-mechanic`.
+- Model: sonnet/high. Collides with: Tests/, Util/.
+
+### 6. Cost identity (?131)
+- Scope: the computed price (Pricing: tags, parameters, rank scaling, possibly steep) is every skill's baseline; a skill declares a cost profile in words ("high mana, low ap") that skews that baseline across AP and resources; `skill.py new --cost "high mana, low ap"` takes it, so a Sonnet or Haiku can set one from a description. Plan first in docs/plans/, then build; migrate hand costs to the nearest profile only where cheap; don't balance.
+- Model: opus/medium. Collides with: Skills/*.tres, Util/skill.py (after card 5).
+
+### 7. Parameterize the concrete skills (?133)
+- Scope: an over-concrete skill should scale on rank, stats and check difficulty, and an underpowered one should be tunable by check difficulty. Take the 27 left concrete and parameterize those that can be.
+- Model: sonnet/high. After card 6.
+
 ## Wave 1: follow-ups from ?178 to ?183 (all need nothing from the user)
 
 ### AI turn cost: a per-act read cache and `_line_up`'s foresee
@@ -50,19 +81,14 @@ Nothing.
 - Collides with: none
 
 ## Needs the user (not queued)
-- Test stubs, Option A or B: ?144.
-- Actives must be equipped to work (AI included) and a global auto-equip toggle: ?163. The green "on" dot now only shows for toggles: ?165.
+- Retuning colours: ?125.
+- Closed 2026-11-18: ?87, ?167, ?152, ?173 keep as built (the user: no balancing now); ?144, ?163, ?142, ?131, ?133 answered, now Wave 2.
 - Skill Slot +1: is its slot the hotbar's center or the tree's? ?3, ?165.
-- The museum's balance: Hex still outscores Strike after the AI weighs wear; cost tuning: ?87, ?167.
-- Forced moves: turning. A unit that is hit turns toward its attacker, and push, pull, send and teleport turn the moved unit: facing's call that hits and forced moves turn nobody: ?142 (the forecast and AI are built, ?170).
 - Should a skill that carries a forced move be tagged `shove` (Send Off, Kick)? ?146, ?170.
-- The lied Defense's mirror point (`Perception.MIRROR` 20) and whether the armor's name lies too: ?173.
 - The AI's "nowhere to switch" case (a unit with one toggle and no pool holding enough): ?130.
-- The Siren's balance: dissonance by distance doubts its lure more (7 to 9, penalty 3 to 5); keep, or `LIE_FAR` 1.25: ?152.
 - Does a weapon or armor enchant raise the item's rank (armor drag), or only its lent skills'? ?143. Lent skills as prerequisites: ?143.
 - Skills that force an unshape (a Dispel, a Hex of the beast), and whose tool it is: ?126, ?153. Skills carrying fear, shove or entrance: ?146.
 - Winded's meaning: ?126. Burnout: burnt max, out-of-combat, other gains: ?121. A Life tree: ?121, ?122, ?124.
-- Price table or computed prices: ?131. The 27 concrete skills: ?133. Retuning colours: ?125.
 - `Unit.guard` on helpless: ?127. 0-AP actions while tapped: ?119. Merchant tree for Drone: ?119.
 - Item rank-up, sources for the Habergeon family: ?118.
 - Snapped forms (Gallantry, Final Act): ?140. A flank or rear rider skill: ?142.
