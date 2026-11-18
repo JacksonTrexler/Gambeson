@@ -181,6 +181,7 @@ func _ready() -> void:
 	battle.traveled.connect(overlay.walk)
 	battle.traveled.connect(_mark.unbind(3))
 	battle.attacked.connect(_on_attacked)
+	battle.attack_rolled.connect(_on_attack_rolled)
 	battle.contested.connect(_on_contested)
 	battle.used.connect(_on_used)
 	battle.sprung.connect(_on_sprung)
@@ -1818,6 +1819,14 @@ func _on_attacked(caster: Unit, target: Unit, d20: int, total: int, defense: int
 			hit = d20 == 20 or total >= defense, crit = d20 == 20}
 
 
+# The same roll's outcome (Check.Roll): a critical or a glance as the battle judged it (its crit range, glancing).
+func _on_attack_rolled(caster: Unit, target: Unit, r: Check.Roll) -> void:
+	if _roll.get("caster") == caster and _roll.get("target") == target:
+		_roll.hit = r.hit
+		_roll.crit = r.crit
+		_roll.glance = r.glance
+
+
 # A contest in place of an attack roll (Drown), likewise.
 func _on_contested(caster: Unit, target: Unit, total: int, against: int) -> void:
 	_roll = {caster = caster, target = target, total = total, against = against, hit = total >= against, crit = false}
@@ -1853,6 +1862,8 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 			return
 		if roll.crit and unit_seen(at.cell) == at:
 			overlay.float_text(at, "Critical!", GOLD)
+		elif roll.get("glance", false) and unit_seen(at.cell) == at:
+			overlay.float_text(at, "Glance", MUTED)
 	if at is Unit and dealt > 0:
 		if _hp_shows(at):
 			text += " [color=#ff6b5e]-%d[/color]" % dealt
@@ -1896,12 +1907,16 @@ func _on_evaluated(u: Unit, _s: Skill, d20: int, total: int) -> void:
 
 
 # An attack roll or contest, the log's way: " (14 - 11)" against Defense (or the other side's roll),
-# " (14)" where the player can't make Defense out, " (nat 20)".
+# " (14)" where the player can't make Defense out, " (nat 20)", " (critical)" (in a wider crit range), " (glance)".
 func _roll_text(roll: Dictionary, target: Unit) -> String:
 	if roll.has("against"):
 		return _rolls(roll.total, roll.against)
-	if roll.crit:
+	if roll.crit and roll.d20 == 20:
 		return " [color=#6b7180](nat 20)[/color]"
+	if roll.get("glance", false):
+		return " [color=#6b7180](glance)[/color]"
+	if roll.crit:
+		return " [color=#6b7180](critical)[/color]"
 	return _rolls(roll.total, roll.defense + view(target).skew(target) if _defense_shows(target) else null)
 
 
@@ -2956,6 +2971,9 @@ func _tip_text() -> String:
 	var line := _unit_line(u)
 	if show_odds and odds(it) not in [&"", &"unknown"]:
 		line += "\n%d%% to %s" % [roundi(Battle.hit_chance(it.unit, it.skill, u, battle, view(u).believed()) * 100.0), "win" if _contests(it.skill) else "hit"]
+		var glance := Battle.attack_odds(it.unit, it.skill, u, battle, view(u).believed())[2] if it.skill.attacks() and not _contests(it.skill) else 0.0
+		if glance >= 0.005:
+			line += " (%d%% a glance)" % roundi(glance * 100.0)
 	var seen := _seen(it, u)
 	if show_odds and seen >= 0:
 		line += "\n%d%% to be seen through" % seen

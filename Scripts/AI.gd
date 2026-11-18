@@ -390,6 +390,8 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	var toll := 0
 	if b and t:
 		p = _chance(u, s, r, b, t)
+		if s.attacks() and not (s.check and not s.check.suspicion) and not s.levels_down and p > 0.0:
+			dmg *= 1.0 - 0.5 * Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # a glance lands half
 		var more := b.foresee(u, s, t)
 		if not more.is_empty():
 			dmg += (more.lo + more.hi) / 2.0
