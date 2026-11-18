@@ -213,7 +213,7 @@ def new_faction(a):
 
 
 # A unit's skills must fit its hotbar: only equipped skills work (Unit.equipped()), and NPCs come
-# pre-configured. Every unit node that lists learned skills: those (less inherent ones, which take no
+# pre-configured. Every unit node that lists learned skills: those (less traits, which take no
 # slot) against 4 + level / 4 + extra_slots.
 def _slot_room(p, text):
     out = []
@@ -231,7 +231,7 @@ def _slot_room(p, text):
         need = 0
         for sp in skills:
             f = sp.replace("res://", "")
-            if not (f and exists(f) and re.search(r"^inherent = true", read(f), re.M)):
+            if not (f and exists(f) and re.search(r"^tags = .*&\"trait\"", read(f), re.M)):
                 need += 1
         lv = re.search(r'^level = (\d+)', node, re.M)
         ex = re.search(r'^extra_slots = (\d+)', node, re.M)

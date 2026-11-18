@@ -119,7 +119,7 @@ static func state(u: Unit, s: Skill) -> String:
 
 # Whether it's equipped (Unit.equipped()): only then does it work. Drag it onto the hotbar to equip it.
 static func _worn(u: Unit, s: Skill) -> String:
-	if s.inherent:
+	if s.is_trait():
 		return ""
 	return " · Equipped" if u.equipped(s) else " · Not equipped: drag it onto the hotbar"
 

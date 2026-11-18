@@ -230,8 +230,8 @@ func test_idle() -> void:
 func test_default_bar() -> void:
 	var siren := unit("Siren")
 	ok(same(unit("Icor").hotbar, [strike, hex, load("res://Skills/mana.tres"), arcanist, null, null]), "Icor (level 5): 5 slots and a clover slot; Strike (every class's), Hex, then its toggled Mana (the Wizard's) and Arcanist Perspective")
-	ok(same(siren.hotbar, [load("res://Skills/rake.tres"), load("res://Skills/drown.tres"), load("res://Skills/sing.tres"), tonefoolery, load("res://Skills/alluring.tres"), load("res://Skills/oceanic.tres"), null]),
-			"Siren (2 extra slots): Rake, Drown and Sing, then a toggle from the left; Oceanic and Alluring from the bottom (the last is its clover slot)")
+	ok(same(siren.hotbar, [load("res://Skills/rake.tres"), load("res://Skills/drown.tres"), load("res://Skills/sing.tres"), tonefoolery, load("res://Skills/oceanic.tres"), null]),
+			"Siren (1 extra slot): Rake, Drown and Sing, then a toggle from the left; Oceanic from the bottom (the last is its clover slot); Alluring is a trait, off the bar")
 	ok(same(v(1).hotbar, [strike, null, null, favour, null]) and v(1).slot_count() == Unit.SLOTS, "4 slots and a clover one; Favour, a passive, in the last sure slot")
 
 

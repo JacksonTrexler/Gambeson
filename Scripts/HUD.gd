@@ -117,6 +117,7 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 
 @onready var card: UnitCard = %Card
 @onready var bar: VBoxContainer = %Hotbar
+@onready var trait_bar: VBoxContainer = %Traits  # after the hotbar: the unit's traits (Unit.traits()), no slots, not selectable
 @onready var book_button: Button = %BookButton
 @onready var hold_button: Button = %HoldButton
 @onready var party_button: Button = %PartyButton
@@ -2491,6 +2492,8 @@ func _refresh_bar() -> void:
 	_rebuild_bar()
 	var u := selected if selected and hand(selected) else null
 	bar.visible = u != null or not selected  # other sides' skills aren't the player's to see
+	_refresh_traits(u if bar.visible else null)
+	trait_bar.visible = bar.visible
 	%BarTitle.visible = bar.visible
 	var orders := u != null and _orders(u)
 	var edit := u != null and _editable(u)
@@ -2514,6 +2517,29 @@ func _refresh_bar() -> void:
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked(u)
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
+
+
+# The traits after the hotbar's last slot: one read-only SkillSlot each, drawn apart (SkillSlot.trait_slot). They
+# take no slot, so no number key, drag or clearing reaches them; suppressed ones dim.
+func _refresh_traits(u: Unit) -> void:
+	var list: Array[Skill] = []
+	if u:
+		list = u.traits()
+	if trait_bar.get_child_count() != list.size():
+		for c in trait_bar.get_children():
+			trait_bar.remove_child(c)
+			c.queue_free()
+		for s in list:
+			var t := SkillSlot.new()
+			t.trait_slot = true
+			trait_bar.add_child(t)
+	var r := view(u) if u and u != command.leader else null
+	for i in list.size():
+		var t: SkillSlot = trait_bar.get_child(i)
+		var sense := skill_sense(u, list[i], r)
+		t.set_state(-1, list[i], u.rank(list[i]), false, true, not u.traits_suppressed(), false, false, sense, "", u)
+		if u.traits_suppressed():
+			t.tooltip_text = "Suppressed: it does nothing while its traits are\n" + t.tooltip_text
 
 
 # How much of u's skill s the player's side makes out (r: its read of u): 2 all of it (the leader's

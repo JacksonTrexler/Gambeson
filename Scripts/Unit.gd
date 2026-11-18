@@ -1033,21 +1033,38 @@ func fits(s: Skill, i: int) -> bool:
 
 # --- Equipping
 # A unit's learned skills (slots) and what it has equipped: its hotbar. Only equipped skills work, actives
-# and passives alike: every reader asks equipped() (on_passives and actives do). Inherent skills (Starkind)
-# take no slot and are always equipped. A skill it gets that it hasn't had before goes on the bar by
+# and passives alike: every reader asks equipped() (on_passives and actives do). Traits (Starkind)
+# take no slot and are always equipped (unless suppressed). A skill it gets that it hasn't had before goes on the bar by
 # itself (auto-equip, the Settings toggle: Unit.auto_equip) - actives and toggles from the left,
 # always-on passives from the right (the bottom), pillars in the last sure slots.
 
-# Whether s is equipped, so working: inherent, or on its hotbar in a slot a level curse hasn't sealed.
+# Whether s is equipped, so working: a trait (Skill.is_trait(): always, unless traits_suppressed()), or on its
+# hotbar in a slot a level curse hasn't sealed.
 # Asking brings in any skill it has newly got first (_sync_new()).
 func equipped(s: Skill) -> bool:
 	if s == null:
 		return false
-	if s.inherent:
-		return true
+	if s.is_trait():
+		return not traits_suppressed()
 	_sync_new()
 	var i := hotbar.find(s)
 	return i >= 0 and not _sealed_now(i)
+
+
+# The traits it has (learned, lent or innate), in the order it holds them: what the HUD shows apart from the
+# hotbar, at its far end. They take no hotbar slot, so nothing that walks the hotbar reaches them.
+func traits() -> Array[Skill]:
+	var out: Array[Skill] = []
+	for x in slots:
+		if x.rank > 0 and x.skill.is_trait():
+			out.append(x.skill)
+	return out
+
+
+# Whether its traits are suppressed now: a no_traits status is on it (Effects/traits_suppressed.tres). Read from
+# its timed statuses alone, as shackled() is: equipped() asks it, so it can't ask the passives.
+func traits_suppressed() -> bool:
+	return timed.keys().any(func(e: Effect): return e.stat == "no_traits")
 
 
 # sealed(), read without its passives (they depend on this): a sure slot past what its level, less what
@@ -1123,8 +1140,8 @@ func _skill_sig() -> int:
 
 # Puts s on the bar where it goes by itself (_auto_slot()), if it isn't there. False if it has nowhere.
 func equip_skill(s: Skill) -> bool:
-	if s == null or s.inherent or s in hotbar or not s.fits_bar() or base_rank(s) == 0:
-		return s != null and (s.inherent or s in hotbar)
+	if s == null or s.is_trait() or s in hotbar or not s.fits_bar() or base_rank(s) == 0:
+		return s != null and (s.is_trait() or s in hotbar)
 	var i := _auto_slot(s)
 	if i < 0:
 		return false
@@ -2547,14 +2564,14 @@ func lapsed(s: Skill) -> bool:
 
 
 # The name a skill goes by for it: Strike takes the name of a low-tier upgrade it has learned
-# (Decisive Strike), or its element's while imbued (Firestrike).
+# (Decisive Strike; only while equipped, as it only works then), or its element's while imbued (Firestrike).
 func skill_name(s: Skill) -> String:
 	if not s.chain:
 		return s.name
 	if imbued > 0 and element:
 		return String(element).capitalize() + "strike"
 	for x in slots:
-		if x.skill.renames and x.rank > 0:
+		if x.skill.renames and x.rank > 0 and equipped(x.skill):
 			return x.skill.renames
 	return s.name
 
@@ -3107,8 +3124,8 @@ func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 # Switches s off for some of its turns (Brainfog); a pillar skill takes every pillar skill with it.
 # A curse's (Brainfog) slots quiver; others only dim.
 func disable(s: Skill, turns: int, curse := false) -> void:
-	if s.inherent:
-		return  # what it is can't be switched off (Starkind)
+	if s.is_trait():
+		return  # what it is can't be switched off (Starkind); only traits_suppressed() does
 	for x in (pillars() if s.pillar() else [s] as Array[Skill]):
 		disabled[x] = maxi(disabled.get(x, 0), turns)
 		if curse:
@@ -3135,7 +3152,7 @@ func disable_order() -> Array[Array]:
 	var group := func(list: Array[Skill]) -> void:
 		var fresh: Array[Skill] = []
 		for s in list:
-			if s and not s.inherent and s not in seen and s not in disabled and rank(s) > 0:
+			if s and not s.is_trait() and s not in seen and s not in disabled and rank(s) > 0:
 				seen[s] = true
 				fresh.append(s)
 		if not fresh.is_empty():
