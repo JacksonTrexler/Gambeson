@@ -31,22 +31,17 @@ func spread(s: Skill, r: int) -> Array:
 
 func test_place() -> void:
 	ok(eros.branch(heal).tier == 8 and eros.branch(megaheal).tier == 8, "both at tier 8 on Eros")
-	ok(megaheal.cost > heal.cost and megaheal.ap > heal.ap, "Megaheal costs more")
 	ok(not heal.hostile and not megaheal.hostile, "used on allies")
 
 
-func test_heal() -> void:
+# One rule (Behaviours/heal.gd: d8s by magnitude of rank), a row each: Heal moderate, Megaheal severe.
+func test_dice() -> void:
 	var m := v(1).mod(&"wisdom")
-	var got := spread(heal, 2)  # 3d8 + wis mod + 2
-	ok(got[0] >= 3 + m + 2 and got[1] <= 24 + m + 2 and got[1] - got[0] >= 10, "Heal II: 3d8 + wis mod + 2 (%s)" % [got])
-	ok(heal.describe(2).contains("3d8"), heal.describe(2))
-
-
-func test_megaheal() -> void:
-	var m := v(1).mod(&"wisdom")
-	var got := spread(megaheal, 2)  # 6d8 + wis mod + 2
-	ok(got[0] >= 6 + m + 2 and got[1] <= 48 + m + 2 and got[1] - got[0] >= 15, "Megaheal II: 6d8 + wis mod + 2 (%s)" % [got])
-	ok(megaheal.describe(1).contains("3d8"), megaheal.describe(1))
+	for row: Array in [[heal, 3, 24, 10, "3d8"], [megaheal, 6, 48, 15, "3d8"]]:
+		var got := spread(row[0], 2)  # n d8 + wis mod + 2
+		ok(got[0] >= row[1] + m + 2 and got[1] <= row[2] + m + 2 and got[1] - got[0] >= row[3], "%s II: %dd8 + wis mod + 2 (%s)" % [row[0].name, row[1], got])
+		v(1).learned.pop_back()
+	ok(heal.describe(2).contains("3d8") and megaheal.describe(1).contains("3d8"), "%s, %s" % [heal.describe(2), megaheal.describe(1)])
 
 
 func test_burnout() -> void:

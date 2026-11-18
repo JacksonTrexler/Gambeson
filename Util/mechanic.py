@@ -42,7 +42,7 @@ func test_%(id)s() -> void:
 
 def test_stub(a, what):
     p = "Tests/%s_test.gd" % a.id
-    if a.no_test or exists(p):
+    if not a.test or exists(p):  # opt-in: the rule that reads it is tested where it lives (CLAUDE.md)
         return
     write(p, TEST_STUB % {"what": what, "id": a.id}, a.dry_run)
 
@@ -239,7 +239,7 @@ def main():
     for x in (t, p, e, s):
         x.add_argument("--human", action="store_true", help="a person named it: no ??")
         x.add_argument("--dry-run", action="store_true")
-        x.add_argument("--no-test", action="store_true", help="don't stub Tests/<id>_test.gd")
+        x.add_argument("--test", action="store_true", help="stub Tests/<id>_test.gd (default none: test the rule that reads it, in the file beside that system, or its own for a new seam)")
     sub.add_parser("check")
     a = ap.parse_args()
     sys.exit({"tag": tag, "color": color, "property": property_, "effect": effect, "stat": stat, "check": check}[a.cmd](a))

@@ -36,8 +36,8 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
    save or contest (execute, taps); `condition` - skills putting effects on a target; `ground` - skills
    aimed at a tile; `target` - never. Pick the kind for what the tag acts on, and it works as a modifier
    at once (`python3 Util/skill.py modifiers` lists skills nothing fits).
-   Definitions are plain sentences, no square brackets or double quotes (BBCode). Each writes a test stub,
-   `Tests/<id>_test.gd` (`--no-test` to skip). A property's or unit's `--tags` are just words on it: they
+   Definitions are plain sentences, no square brackets or double quotes (BBCode). No test file is written by
+   default (`--test` stubs `Tests/<id>_test.gd`): the rule that reads it gets the test (step 4). A property's or unit's `--tags` are just words on it: they
    need a Glossary term only once a rule or description names them.
 
 3. **Wire the rule** that reads it, in the one place it acts. Where things are read:
@@ -50,7 +50,7 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
    Grep for the neighbouring rule and read that range only. Say it in the Glossary or the reading
    function's comment, the house style.
 
-4. **Fill in its test stub** (`STUB(mechanic.py)` until done) where it acts (a test beside the system's: `defense_test`, `word_test`...), then give it to
+4. **Test the rule** where it acts (a test beside the system's: `defense_test`, `word_test`...; a new seam may take a file of its own, `--test` stubs one with `STUB(mechanic.py)` until done), then give it to
    what carries it (new-skill, new-tile, new-unit).
 
 5. **Check, then run:** `python3 Util/mechanic.py check`, `python3 Util/skill.py check` (it flags tags
