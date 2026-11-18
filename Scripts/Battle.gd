@@ -1199,7 +1199,6 @@ func _swapped(c: Behaviour.Cast, r: Behaviour.Reaction) -> bool:
 	if c.target == r.subject:
 		return false
 	c.tags = hit_tags(c.caster, c.skill, c.target if c.foe else null, self)  # (as it stood: the blow's side is read before it turns)
-	c.target.face(c.caster.cell)  # one that takes a blow in another's place turns to face its attacker
 	return true
 
 
@@ -2895,7 +2894,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		for i in touched:  # stepping in happens on the unit's own turn, which isn't one of those counted
 			for e in terrain(passed[i]).afflicts:
 				u.afflict(e, (e.turns if e.turns else terrain(passed[i]).turns) + 1)
-		u.face(passed[-1] + passed[-1] - (passed[-2] if passed.size() > 1 else from))  # the way its last step went
+		u.turn(passed[-1] - from)  # the vector of the whole walk, start to finish
 		u.striding = true
 		for c in passed:  # trodden into the ground
 			debris.erase(c)
@@ -4720,7 +4719,7 @@ func _let_go(u: Unit, s: Skill) -> void:
 # Forced movement (Behaviours/displace.gd, Kick, Send Off, the shove, fear and entrance effects): t moves up
 # to n tiles from `from` - away (dir 1) along the line from it through t, or toward it (dir -1), a step at a
 # time straight for it, stopping beside it - a tile at a time, stopping short of the map's edge, a hole or
-# another unit. Ground it's moved over does nothing to it, and it doesn't turn (docs/plans/facing.md).
+# another unit. Ground it's moved over does nothing to it, but it turns along the move (docs/plans/w2-facing.md).
 # Teleporting, it goes straight to the furthest free tile on that line, n tiles out or nearer (place(): a
 # trap there springs), never past `from`. Returns the tiles it went (0: none).
 # Whoever moved lets go: a grapple t is held in, or holds others in, ends (_let_go()). Driven away and
@@ -4756,6 +4755,7 @@ func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false, tags
 				break
 			went += 1
 	if went > 0:
+		t.turn(t.cell - start)  # a forced move is a move: it faces along it
 		_break_grips(t)
 	if went > 0 or hit:
 		driven.emit(t, by, tags, went, hit)

@@ -2,7 +2,7 @@ extends Test
 
 # Forced movement as one behaviour (Behaviours/displace.gd) over one primitive (Battle.displace()): any
 # skill that carries a Displace knocks back, draws in or teleports what it lands on - not Sing's or Send
-# Off's alone - and nobody it moves turns (docs/plans/facing.md).
+# Off's alone - and whoever it moves faces along it (docs/plans/w2-facing.md).
 
 
 # Hex with no roll (it always lands), carrying d.
@@ -30,7 +30,7 @@ func test_any_skill_knocks_back() -> void:
 	v(3).facing = Vector2(-1, 0)
 	ok(b.cast(u, s, v(3)) and v(3).hp < 300, "a plain damage skill lands (took %d)" % (300 - v(3).hp))
 	ok(v(3).cell == Vector2i(6, 3), "and its Displace drives the foe 2 tiles straight back (%s)" % v(3).cell)
-	ok(v(3).facing == Vector2(-1, 0), "the foe doesn't turn (%s)" % v(3).facing)
+	ok(v(3).facing == Vector2(1, 0), "the foe faces along the push (%s)" % v(3).facing)
 	ok("Drives it up to 2 tiles straight away from the caster" in s.describe(1), s.describe(1))
 	ok(&"push" in SkillTerms.of(s).channels[&"rank_impact"], "its push is rank impact: modifiers see it")
 
