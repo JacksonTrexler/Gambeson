@@ -61,4 +61,12 @@ Baseline suite: 9756 checks, 0 failed (936 tests).
 
 ## As built
 
-(filled in below at the end)
+Files: Scripts/Item.gd (`skill_rank()` exemption, describe), Skill.gd (`is_equipment()`, `enchants()`, `is_trait()` covers
+equipment), Behaviour.gd (`armor()`, `NO_ARMOR`, `owns_enchant()`), Unit.gd (`armor_defense()`, `armor_skills()`, `leaned`,
+`counts()`, `lapsed()`, `_judging`, `_bare`, `_counted()`, `_lent_count()`, `traits()`), Glossary.gd, Tags.gd (the tag),
+Skills/armor.tres, Icons/Skills/armor.png, Behaviours/armor.gd, nine Items/*.tres armor, Util/item.py (`lend`, check),
+Util/skill.py (`--lent`, hook name), Tests/lent_test.gd, test.gd, equip_test.gd, sweep_test.gd. Armor carries the tag
+`equipment` alone (`is_trait()` covers it, so units don't also read as carrying `trait`). Merged adventurer-skills (w3-traits
+landed: its trait list gains `skill_slot`).
+Not done: `Unit.leaned` isn't saved; Power Armor and Scrap Plating (later cards) will read `armor_skills()` and the hook;
+`counts()` doesn't ask `equipped()` of a lent non-trait (a lent skill left off the bar still counts: it is still lent).

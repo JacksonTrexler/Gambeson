@@ -90,7 +90,7 @@ func test_armor_is_a_skill() -> void:
 	ok(seen == 18, "every armor")
 	u.armor = load("res://Items/robe.tres")
 	ok(u.defense([&"magical"]) - u.defense([&"physical"]) == 2, "Robe: wis mod against magic")
-	ok(u.armor_skills() == ([armor_skill] as Array[Skill]) and u.traits().is_empty() and not armor_skill in u.hotbar, "Armor works without a slot, and isn't listed among its traits")
+	ok(u.armor_skills() == ([armor_skill] as Array[Skill]) and u.traits().is_empty() and not armor_skill in u.hotbar and not u.has_tag(&"trait"), "Armor works without a slot, and isn't listed among its traits")
 	u.afflict(load("res://Effects/traits_suppressed.tres"), 2)
 	var bare := u.mod(&"dexterity") + u.mod(&"constitution")
 	ok(u.armor_defense() == bare and u.defense([&"magical"]) == u.defense([&"physical"]), "traits suppressed: the armor sets nothing, unarmored (%d)" % bare)
