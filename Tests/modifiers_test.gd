@@ -105,7 +105,7 @@ func test_cost() -> void:
 
 func test_priced() -> void:
 	var s := scaler()
-	s.priced = true
+	s.costs = "even"
 	s.roll_per_rank = 1
 	var hand := scaler()
 	hand.roll_per_rank = 1

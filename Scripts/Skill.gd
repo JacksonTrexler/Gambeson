@@ -120,7 +120,7 @@ extends Resource
 @export var impact := &""  # its unique effect beyond damage: tame or impactful; empty: from its fields
 @export var penalty := &""  # what it costs its user to use: minor, major or severe; empty: from its fields (disadvantage, roll_bonus)
 @export var requires: Requirement  # a contingency: a test of the moment and what it gives while met (Scripts/Requirement.gd)
-@export var priced := false  # its AP and cost come from the cost calculator (Pricing), not ap and cost
+@export var costs := ""  # its cost profile: AP and cost from the cost calculator (Pricing), skewed by these words ("high mana, low ap", "even"; docs/plans/w2-cost.md); "": hand-priced, ap and cost as set
 @export_group("Stub")  # a skill that isn't built yet: shown on skill trees, but it can't be learned
 @export var stub := ""  # the open question(s) in todo.md it waits on: "?3", "?2 ?11"
 @export_multiline var plan := ""  # what it's meant to do, until it's built
@@ -341,6 +341,11 @@ func healing(u: Unit) -> int:
 	return maxi(u.rounded(u.mods(self).statf(sum, &"stat_impact") / float(heal_split)) + heal_bonus, 1)
 
 
+# Its AP and cost come from the cost calculator (Pricing), by its cost profile.
+func priced() -> bool:
+	return costs != ""
+
+
 # Its cost at a rank (starter spells: cost x rank).
 func price(rank: int) -> int:
 	return cost * (maxi(rank, 1) if cost_per_rank else 1)
@@ -526,7 +531,7 @@ func spec(u: Unit = null, rank := 1) -> Array:
 		if e:
 			out.append(["cost", str(e)])
 		return out
-	if priced:  # the cost calculator's, at rank I (Pricing)
+	if priced():  # the cost calculator's, at rank I (Pricing)
 		out.append(["AP", num(Pricing.ap(self, 1))])
 		if Pricing.energy(self, 1):
 			out.append(["cost", str(Pricing.energy(self, 1))])

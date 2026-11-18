@@ -13,8 +13,11 @@ class_name Pricing
 #   - adjacent (range 1, no range scaling)
 # AP = ap_base + points x ap_per, rounded; Energy = points x energy_per, rounded.
 #
-# A skill set `priced` costs this outright. Any other keeps its hand-set ap and cost, scaled by what its
-# modifiers do to its points (computed under them / computed without), so every price follows them.
+# A skill with a cost profile (Skill.costs: "high mana, low ap", "even") costs this outright, the profile
+# skewing that budget: AP = ap_base + q x ap_per x w_ap, cost = q x energy_per x w_cost, its weights from
+# the profile's words (levels), q its points with rank's growth past rank I x the profile's rank word.
+# Any other (costs "") keeps its hand-set ap and cost, scaled by what its modifiers do to its points
+# (computed under them / computed without), so every price follows them. docs/plans/w2-cost.md.
 
 const TABLE := {
 	&"intensity": {&"faint": 1.5, &"mild": 2.5, &"moderate": 3.5, &"strong": 5.0, &"intense": 7.0, &"severe": 10.0, &"overwhelming": 16.0},
@@ -32,7 +35,93 @@ const TABLE := {
 	&"ap_per": 0.5,
 	&"ap_max": 12.0,
 	&"energy_per": 0.5,
+	# Cost profiles (Skill.costs): "[level] [only|needs|prefers] <dimension>" clauses, or "<word> rank", or "even".
+	&"levels": {&"none": 0.0, &"no": 0.0, &"free": 0.0, &"low": 0.5, &"light": 0.5, &"cheap": 0.5,
+			&"moderate": 1.0, &"medium": 1.0, &"normal": 1.0, &"even": 1.0, &"high": 1.5, &"heavy": 1.5,
+			&"very high": 2.0, &"very heavy": 2.0},
+	&"rank": {&"flat": 0.0, &"scaled": 1.0, &"steep": 2.0},  # x rank's growth past rank I
+	&"generic": [&"cost", &"energy", &"resource"],  # the resource cost, paid by whatever its tags let pay
+	&"reserves": [&"mana", &"stamina", &"focus", &"sweet_nothings"],  # Reserves/<id>.tres
 }
+
+static var _profiles := {}  # profile text -> its parse (profile())
+
+
+# A cost profile read: {ap, cost (weights), rank (growth), reserve (a Reserves/ id or &""), only (bool),
+# error ("" if it parsed)}. Words in TABLE; Util/skill.py mirrors them.
+static func profile(text: String) -> Dictionary:
+	if _profiles.has(text):
+		return _profiles[text]
+	var out := {&"ap": 1.0, &"cost": 1.0, &"rank": 1.0, &"reserve": &"", &"only": false, &"error": ""}
+	var clauses := text.to_lower().replace(";", ",").replace(" and ", ",").split(",", false)
+	var seen_cost := false
+	for raw in clauses:
+		var words := Array(raw.strip_edges().replace("sweet nothings", "sweet_nothings").replace("sweet nothing", "sweet_nothings").split(" ", false))
+		while words.size() > 1 and words[-1] in ["cost", "costs"] and StringName(words[-2]) in [&"ap"] + TABLE[&"generic"] + TABLE[&"reserves"]:
+			words.pop_back()  # "high mana cost", "low ap cost": the dimension is mana, ap
+		if words.is_empty():
+			continue
+		var w := " ".join(PackedStringArray(words))
+		if w == "even":
+			continue
+		if words.size() == 2 and words[1] == "rank" and TABLE[&"rank"].has(StringName(words[0])):
+			out[&"rank"] = TABLE[&"rank"][StringName(words[0])]
+			continue
+		var how := ""
+		for x in ["only", "needs", "prefers"]:
+			if x in words:
+				how = x
+				words.erase(x)
+		if words.is_empty():
+			out[&"error"] = "\"%s\": %s what?" % [raw.strip_edges(), how]
+			break
+		var dim := StringName(words.pop_back())
+		var level := 1.0
+		if not words.is_empty():
+			var lw := StringName(" ".join(PackedStringArray(words)))
+			if not TABLE[&"levels"].has(lw):
+				out[&"error"] = "\"%s\": no level \"%s\" (%s)" % [raw.strip_edges(), lw, ", ".join(PackedStringArray(TABLE[&"levels"].keys()))]
+				break
+			level = TABLE[&"levels"][lw]
+		if dim in [&"health", &"hp", &"life"]:
+			out[&"error"] = "\"%s\": no skill costs health yet (a mechanic first: new-mechanic)" % raw.strip_edges()
+			break
+		if dim == &"ap":
+			if how:
+				out[&"error"] = "\"%s\": only, needs and prefers name a resource, not AP" % raw.strip_edges()
+				break
+			out[&"ap"] = level
+			continue
+		if dim not in TABLE[&"generic"] and dim not in TABLE[&"reserves"]:
+			out[&"error"] = "\"%s\": no dimension \"%s\" (ap, %s, or <flat|scaled|steep> rank)" % [raw.strip_edges(), dim, ", ".join(PackedStringArray(TABLE[&"generic"] + TABLE[&"reserves"]))]
+			break
+		if seen_cost:
+			out[&"error"] = "\"%s\": a second resource (a skill has one cost)" % raw.strip_edges()
+			break
+		seen_cost = true
+		if how and dim in TABLE[&"generic"]:
+			out[&"error"] = "\"%s\": only, needs and prefers name a reserve (%s)" % [raw.strip_edges(), ", ".join(PackedStringArray(TABLE[&"reserves"]))]
+			break
+		out[&"cost"] = level
+		if dim in TABLE[&"reserves"]:
+			out[&"reserve"] = dim
+			out[&"only"] = how in ["only", "needs"]
+	_profiles[text] = out
+	return out
+
+
+# The profile s's cost follows: its own, or the baseline's (a hand-priced skill's computed price: drift).
+static func profile_of(s: Skill) -> Dictionary:
+	return profile(s.costs if s.costs else "even")
+
+
+# Its points at rank r under m, with rank's growth past rank I x its profile's rank word.
+static func budget(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> float:
+	var g: float = profile_of(s)[&"rank"]
+	if r <= 1 or g == 1.0:
+		return points(s, r, m)
+	var p1 := points(s, 1, m)
+	return maxf(p1 + g * (points(s, r, m) - p1), TABLE[&"floor"])
 
 
 # Its points at rank r under m.
@@ -88,13 +177,18 @@ static func _intensity_points(s: Skill, tier: Tier) -> float:
 	return TABLE[&"intensity"].get(word, 0.0)
 
 
-# AP and Energy as computed at rank r under m.
+# AP and Energy as computed at rank r under m, by its profile.
 static func ap(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> float:
-	return clampf(roundf(TABLE[&"ap_base"] + points(s, r, m) * TABLE[&"ap_per"]), 1.0, TABLE[&"ap_max"])
+	return clampf(roundf(TABLE[&"ap_base"] + budget(s, r, m) * TABLE[&"ap_per"] * profile_of(s)[&"ap"]), 1.0, TABLE[&"ap_max"])
 
 
 static func energy(s: Skill, r: int, m: Modifiers = Modifiers.NONE) -> int:
-	return roundi(points(s, r, m) * TABLE[&"energy_per"])
+	return roundi(budget(s, r, m) * TABLE[&"energy_per"] * profile_of(s)[&"cost"])
+
+
+# The reserve its profile prefers (paid with first, Unit._funding()) or needs: a Reserves/ id, or &"".
+static func reserve_of(s: Skill) -> StringName:
+	return profile(s.costs)[&"reserve"] if s.costs else &""
 
 
 # What u pays in AP for s, before reserves and exhaustion (Unit.ap_cost()): computed if s is priced;
@@ -107,7 +201,7 @@ static func ap_for(u: Unit, s: Skill) -> float:
 static func ap_at(u: Unit, s: Skill, rank: int) -> float:
 	var r := maxi(rank, 1)
 	var m := u.mods(s)
-	if s.priced:
+	if s.priced():
 		return ap(s, r, m)
 	if m.empty():
 		return s.ap
@@ -123,7 +217,7 @@ static func cost_at(u: Unit, s: Skill, rank: int) -> int:
 	var r := maxi(rank, 1)
 	var m := u.mods(s)
 
-	if s.priced:
+	if s.priced():
 		return energy(s, r, m)
 	if m.empty():
 		return s.price(r)

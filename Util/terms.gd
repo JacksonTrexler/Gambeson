@@ -4,6 +4,7 @@ extends SceneTree
 #   godot --headless --path . -s Util/terms.gd -- drift       hand-set AP / cost vs the cost calculator's (Pricing), at rank I
 #   godot --headless --path . -s Util/terms.gd -- modifiers   skills no modifier is eligible for, and why (Modifiers.why_not())
 #   godot --headless --path . -s Util/terms.gd -- terms <id>  one skill's terms
+#   godot --headless --path . -s Util/terms.gd -- infer       hand-priced actives a cost profile reproduces exactly at every rank (docs/plans/w2-cost.md)
 
 
 func _init() -> void:
@@ -20,6 +21,8 @@ func _init() -> void:
 			_drift(skills)
 		"modifiers":
 			_modifiers(skills)
+		"infer":
+			_infer(skills)
 		"terms":
 			for s in skills:
 				if args.size() > 1 and s.resource_path.get_file().get_basename() == args[1]:
@@ -40,9 +43,9 @@ func _drift(skills: Array[Skill]) -> void:
 		var ap := Pricing.ap(s, 1)
 		var cost := Pricing.energy(s, 1)
 		var hand := "%s/%d" % [Skill.num(s.ap), s.price(1)]
-		if not s.priced and (ap != s.ap or cost != s.price(1)):
+		if not s.priced() and (ap != s.ap or cost != s.price(1)):
 			off += 1
-		print("%-22s %-14s %-18s %s%s" % [_id(s), "-" if s.priced else hand, "%s/%d" % [Skill.num(ap), cost], Skill.num(snappedf(Pricing.points(s, 1), 0.1)), " *" if s.priced else ""])
+		print("%-22s %-14s %-18s %s%s" % [_id(s), "-" if s.priced() else hand, "%s/%d" % [Skill.num(ap), cost], Skill.num(snappedf(Pricing.points(s, 1), 0.1)), " *" if s.priced() else ""])
 	print("drift: %d hand-priced skill%s differ from the calculator (information, not a failure)" % [off, "" if off == 1 else "s"])
 
 
@@ -71,4 +74,53 @@ func _terms(s: Skill) -> void:
 	for x in t.contingencies:
 		print("  contingency: %s (share %s%s)" % [x[0], Skill.num(snappedf(x[1], 0.01)), ", helps" if x[2] else ""])
 	print("  points %s -> AP %s, cost %d" % [Skill.num(snappedf(Pricing.points(s, 1), 0.1)), Skill.num(Pricing.ap(s, 1)), Pricing.energy(s, 1)])
+	var by_rank: PackedStringArray = []
+	for r in range(1, 4):
+		by_rank.append("%s: %s AP, %d cost" % [Skill.roman(r), Skill.num(Pricing.ap(s, r)), Pricing.energy(s, r)])
+	if s.priced():
+		var p := Pricing.profile(s.costs)
+		print("  profile \"%s\"%s -> %s" % [s.costs, (" (%s)" % p[&"error"]) if p[&"error"] else "", "; ".join(by_rank)])
+	else:
+		print("  hand-priced: %s AP, %s cost (as a profile \"even\" it would be %s)" % [Skill.num(s.ap), s.price(1), "; ".join(by_rank)])
 	print("  modifiers: %s" % ", ".join(Modifiers.words().filter(func(w): return Modifiers.eligible(w, s))))
+
+
+# Hand-priced actives (not cost x rank, not hybrids) whose AP and cost a profile reproduces exactly at
+# every rank 1..max (5 uncapped): "<id>\t<profile>" each, for skill.py migrate; the rest "<id>\t-".
+const LEVELS := [[0.0, "no"], [0.5, "low"], [1.0, ""], [1.5, "high"], [2.0, "very high"]]
+
+
+func _infer(skills: Array[Skill]) -> void:
+	for s in skills:
+		if s.passive or s.priced() or s.cost_per_rank:
+			continue
+		var top := s.max_rank if s.max_rank > 0 else 5
+		var found := ""
+		for flat in [false, true]:
+			for a in LEVELS:
+				for c in LEVELS:
+					var text := _profile_text(s, a, c, flat)
+					s.costs = text
+					var same := true
+					for r in range(1, top + 1):
+						if Pricing.ap(s, r) != s.ap or Pricing.energy(s, r) != s.price(r):
+							same = false
+							break
+					s.costs = ""
+					if same and not found:
+						found = text
+		print("%s\t%s" % [_id(s), found if found else "-"])
+
+
+static func _profile_text(s: Skill, a: Array, c: Array, flat: bool) -> String:
+	var out: PackedStringArray = []
+	if a[1]:
+		out.append("%s ap" % a[1])
+	var res := "cost"
+	if s.needs:
+		res = s.needs.resource_path.get_file().get_basename().replace("_", " ") + " only"
+	if c[1] or s.needs:
+		out.append(("%s %s" % [c[1], res]).strip_edges())
+	if flat:
+		out.append("flat rank")
+	return ", ".join(out) if out else "even"

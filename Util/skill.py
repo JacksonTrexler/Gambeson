@@ -2,7 +2,7 @@
 """Gambeson skill authoring: write a skill and wire it in (`new`), and catch the wiring pitfalls (`check`).
 
   python3 Util/skill.py new kick --tags physical,blunt,str,martial,offensive --intensity low --stat strength \\
-      [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--check "against=wisdom save=true ranked=true"] [--hand-priced --ap 4 --cost 1] \\
+      [--impact tame] [--penalty minor] [--requires "test=concealed share=0.3 edge=1"] [--check "against=wisdom save=true ranked=true"] [--cost "high stamina, low ap"] \\
       --range-per-rank 1 --behaviour kick --tree general_martial --after brutal_strike \\
       --branch-tier 1 [--role fighter] [--prereq snare] [--effect "stat=luck amount=-1 per_rank=true"] \\
       [--set rolls=false] [--passive] [--test] [--no-import] [--dry-run]
@@ -10,9 +10,18 @@
   python3 Util/skill.py drift       # information: hand-set AP / cost against the cost calculator's (Scripts/Pricing.gd)
   python3 Util/skill.py modifiers   # information: skills no modifier fits, and why - to parameterize (Scripts/Modifiers.gd)
   python3 Util/skill.py terms kick  # one skill's terms: channels, intensity, impact, contingencies, price, modifiers
+  python3 Util/skill.py cost kick "high ap, low cost"         # set (or change) a skill's cost profile; prints its price
+  python3 Util/skill.py cost kick hand --ap 4 --points 1      # back to a hand price
+  python3 Util/skill.py migrate [--dry-run]  # hand prices a profile reproduces exactly at every rank -> that profile
+
+A cost profile (Skill.costs; Scripts/Pricing.gd profile(), docs/plans/w2-cost.md) skews the computed price:
+comma-separated clauses "[level] [only|prefers] <dimension>" - levels no, low, moderate (the default), high,
+very high (light/heavy, free/cheap too); dimensions ap, cost (whatever pays), or a reserve: mana, stamina, focus,
+sweet nothings ("mana" alone: preferred, paid with first; "mana only": nothing else pays) - plus "flat rank"
+(every rank costs as rank I) or "steep rank" (rank's growth doubled), or "even" (the baseline).
 
 `new` writes a skill in terms (intensity, impact, penalty, a requirement: Scripts/SkillTerms.gd), priced by the cost
-calculator (Scripts/Pricing.gd) unless --hand-priced, then shows its terms and the modifiers it fits. It writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist (and then,
+calculator (Scripts/Pricing.gd) by its --cost profile (default "even") unless --hand-priced, then shows its terms and the modifiers it fits. It writes Skills/<id>.tres, a behaviour stub (Behaviours/<b>.gd) if it names one that doesn't exist (and then,
 and only then, a test stub, Tests/<id>_test.gd: a data-only skill is covered by Tests/sweep_test.gd; --test forces one), puts the skill on a tree (Trees/ or Roles/ <file>, beside --after's branch or at the
 end of --root's) and in --role's options, imports, then checks. It edits text by anchors and stops if one is
 missing. Stubs carry STUB: check fails until they're filled in. Plain python3, no dependencies.
@@ -22,7 +31,7 @@ import argparse, os, re, subprocess, sys
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
                   literal, effect_section, names)
 STUB = "STUB(skill.py)"
-FLAG_CEILING = 104  # (-22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
+FLAG_CEILING = 103  # (-1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
@@ -162,6 +171,82 @@ def check_flags(problems):
                         "raise FLAG_CEILING in Util/skill.py only for a field every skill shares" % (n, FLAG_CEILING))
 
 
+# Cost profiles (Skill.costs), as Scripts/Pricing.gd profile() reads them: keep the two in step.
+LEVELS = {"none": 0.0, "no": 0.0, "free": 0.0, "low": 0.5, "light": 0.5, "cheap": 0.5, "moderate": 1.0, "medium": 1.0,
+          "normal": 1.0, "even": 1.0, "high": 1.5, "heavy": 1.5, "very high": 2.0, "very heavy": 2.0}
+RANK_WORDS = {"flat": 0.0, "scaled": 1.0, "steep": 2.0}
+GENERIC = ("cost", "energy", "resource")
+RESERVES = ("mana", "stamina", "focus", "sweet_nothings")  # Reserves/<id>.tres
+HOW = ("only", "needs", "prefers")
+
+
+def profile(text):
+    """A cost profile read: {ap, cost, rank, reserve, only}; dies-free: raises ValueError with what's wrong."""
+    out = {"ap": 1.0, "cost": 1.0, "rank": 1.0, "reserve": "", "only": False}
+    seen = False
+    for raw in re.split(r",|;| and ", text.lower()):
+        raw = raw.strip()
+        words = raw.replace("sweet nothings", "sweet_nothings").replace("sweet nothing", "sweet_nothings").split()
+        while len(words) > 1 and words[-1] in ("cost", "costs") and words[-2] in ("ap",) + GENERIC + RESERVES:
+            words.pop()
+        if not words or words == ["even"]:
+            continue
+        if len(words) == 2 and words[1] == "rank" and words[0] in RANK_WORDS:
+            out["rank"] = RANK_WORDS[words[0]]
+            continue
+        how = next((x for x in HOW if x in words), "")
+        words = [x for x in words if x not in HOW]
+        if not words:
+            raise ValueError('"%s": %s what?' % (raw, how))
+        dim = words.pop()
+        level = " ".join(words)
+        if level and level not in LEVELS:
+            raise ValueError('"%s": no level "%s" (%s)' % (raw, level, ", ".join(LEVELS)))
+        w = LEVELS.get(level, 1.0)
+        if dim in ("health", "hp", "life"):
+            raise ValueError('"%s": no skill costs health yet (a mechanic first: new-mechanic)' % raw)
+        if dim == "ap":
+            if how:
+                raise ValueError('"%s": only, needs and prefers name a resource, not AP' % raw)
+            out["ap"] = w
+            continue
+        if dim not in GENERIC + RESERVES:
+            raise ValueError('"%s": no dimension "%s" (ap, %s, or <flat|scaled|steep> rank)' % (raw, dim, ", ".join(GENERIC + RESERVES)))
+        if seen:
+            raise ValueError('"%s": a second resource (a skill has one cost)' % raw)
+        seen = True
+        if how and dim in GENERIC:
+            raise ValueError('"%s": only, needs and prefers name a reserve (%s)' % (raw, ", ".join(RESERVES)))
+        out["cost"] = w
+        if dim in RESERVES:
+            out["reserve"], out["only"] = dim, how in ("only", "needs")
+    return out
+
+
+def check_costs(problems):
+    """Every cost profile parses, belongs to an active (or hybrid), and says "X only" exactly where it needs X."""
+    for p in sorted(files("Skills", ".tres")):
+        res = next((x for x in sections(read(p)) if x["kind"] == "resource"), None)
+        if not res or "costs" not in res["props"]:
+            continue
+        text = res["props"]["costs"].strip('"')
+        try:
+            prof = profile(text)
+        except ValueError as e:
+            problems.append("%s: cost profile %s" % (p, e))
+            continue
+        if not text:
+            problems.append('%s: costs = "" is hand-priced: drop the line (skill.py cost %s hand)' % (p, p[7:-5]))
+        if res["props"].get("passive") == "true" and res["props"].get("hybrid") != "true":
+            problems.append("%s: a cost profile on a passive (it costs nothing)" % p)
+        needs = REF.search(res["props"].get("needs", ""))
+        needs_path = ext_ids(sections(read(p))).get(needs.group(2)) if needs else None
+        want = "res://Reserves/%s.tres" % prof["reserve"] if prof["only"] else None
+        if needs_path != want:
+            problems.append("%s: its profile says %s but its needs is %s (skill.py cost sets both)" % (
+                p, '"%s only"' % prof["reserve"] if want else "no reserve only", needs_path or "none"))
+
+
 def check_stubs(problems):
     for top, ext in (("Tests", ".gd"), ("Behaviours", ".gd"), ("Skills", ".tres")):
         for p in files(top, ext):
@@ -184,7 +269,7 @@ def check_icons(problems):
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_stubs, check_icons):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons):
         f(problems)
     for p in problems:
         print(p)
@@ -245,8 +330,16 @@ def terms_props(a, ext, subs, props):
         ext.append('[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="%s"]' % CHECK_EXT)
         subs.append(check_section(dict(x.partition("=")[::2] for x in a.check.split())))
         props.append('check = SubResource("SkillCheck_1")')
-    if not a.passive and not a.hand_priced:
-        props.append("priced = true")  # its AP and cost from the cost calculator (Scripts/Pricing.gd)
+    if not a.passive and not a.hand_priced:  # its AP and cost from the cost calculator (Scripts/Pricing.gd), by its profile
+        text = a.cost or "even"
+        try:
+            prof = profile(text)
+        except ValueError as e:
+            die("--cost %s" % e)
+        props.append('costs = "%s"' % text)
+        if prof["only"]:
+            ext.append('[ext_resource type="Resource" path="res://Reserves/%s.tres" id="7_needs"]' % prof["reserve"])
+            props.append('needs = ExtResource("7_needs")')
 
 
 CHECK_EXT = "6_skill_check"
@@ -280,6 +373,8 @@ def skill_tres(a):
     terms_props(a, ext, subs, props)
     for key in ("ap", "cost", "radius", "radius_per_rank"):
         v = getattr(a, key)
+        if key in ("ap", "cost") and not a.hand_priced:
+            continue  # --cost is the profile, unless hand-priced
         if v is not None:
             props.append("%s = %s" % (key, literal(key, v)))
     if a.tier:
@@ -398,8 +493,10 @@ def put_in_options(role, sid):
 def new(a):
     sid = a.id
     re.fullmatch(r"[a-z][a-z0-9_]*", sid) or die("the id is a file name: lower_snake (kick, second_wind)")
-    if (a.ap or a.cost) and not a.passive and not a.hand_priced:
-        die("--ap/--cost set a hand price: add --hand-priced (and say why), or leave them to the cost calculator")
+    if a.ap and not a.passive and not a.hand_priced:
+        die("--ap sets a hand price: add --hand-priced (and say why), or give a --cost profile (\"high mana, low ap\")")
+    if a.hand_priced and a.cost and not re.fullmatch(r"\d+", a.cost):
+        die("--hand-priced takes --cost as a number (Energy); a profile is for skills the calculator prices")
     a.title = a.title or sid.replace("_", " ").title()
     if os.path.exists(os.path.join(ROOT, "Skills/%s.tres" % sid)):
         die("Skills/%s.tres exists" % sid)
@@ -433,6 +530,63 @@ def new(a):
     return check()
 
 
+def set_cost(sid, text, ap=None, points=None, dry=False):
+    """Set skill sid's cost profile (or text "hand": a hand price, ap and points): the costs line, its needs
+    to match "X only", and no hand ap/cost lines beside a profile."""
+    p = "Skills/%s.tres" % sid
+    os.path.exists(os.path.join(ROOT, p)) or die("no %s" % p)
+    whole = read(p)
+    at = re.search(r"^\[resource\]$", whole, re.M) or die("%s: no [resource]" % p)
+    head, body = whole[:at.end()], whole[at.end():]
+    secs = sections(whole)
+    res = next(x for x in secs if x["kind"] == "resource")
+    res["props"].get("passive") != "true" or res["props"].get("hybrid") == "true" or die("%s is a passive: it costs nothing" % sid)
+    body = re.sub(r"^(costs|priced|cost_per_rank|ap|cost) = .*\n", "", body, flags=re.M)
+    if text == "hand":
+        ap is not None and points is not None or die("hand: give --ap and --points")
+        body = body.rstrip("\n") + "\nap = %s\ncost = %d\n" % (literal("ap", str(ap)), int(points))
+    else:
+        try:
+            prof = profile(text)
+        except ValueError as e:
+            die("cost profile %s" % e)
+        had = REF.search(res["props"].get("needs", ""))
+        had_path = ext_ids(secs).get(had.group(2)) if had else None
+        want = "res://Reserves/%s.tres" % prof["reserve"] if prof["only"] else None
+        if had_path and had_path != want:
+            die('%s needs %s: say "%s only" in the profile, or remove its needs line first' % (sid, had_path, os.path.basename(had_path)[:-5].replace("_", " ")))
+        if want and not had_path:
+            rid = ext_id_for(secs, want) or free_id(secs, "needs")
+            if not ext_id_for(secs, want):
+                head = add_ext(head, '[ext_resource type="Resource" path="%s" id="%s"]' % (want, rid))
+            body = body.rstrip("\n") + '\nneeds = ExtResource("%s")\n' % rid
+        body = body.rstrip("\n") + '\ncosts = "%s"\n' % text
+    write(p, head + body, dry)
+
+
+def cost(a):
+    set_cost(a.id, a.profile, a.ap, a.points, a.dry_run)
+    if not a.dry_run:
+        report("terms", a.id)
+    return 0
+
+
+def migrate(a):
+    """Hand prices a profile reproduces exactly at every rank (Util/terms.gd infer) -> that profile."""
+    r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", "infer"], capture_output=True, text=True)
+    kept = []
+    for line in r.stdout.split("\n"):
+        if "\t" not in line:
+            continue
+        sid, text = line.split("\t")
+        if text == "-":
+            kept.append(sid)
+        else:
+            set_cost(sid, text, dry=a.dry_run)
+    print("kept hand-priced (no profile reproduces them at every rank): %s" % ", ".join(kept))
+    return 0
+
+
 def report(mode, *args):  # Util/terms.gd, headless: reads the skills as the game does
     r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", mode] + list(args), capture_output=True, text=True)
     out = [l for l in r.stdout.split("\n") if l.strip() and not l.startswith("Godot Engine")]
@@ -451,8 +605,8 @@ def main():
     n.add_argument("--tags", help="comma separated: physical,blunt,str,martial")
     n.add_argument("--passive", action="store_true")
     n.add_argument("--ap", help="a hand price, with --hand-priced (default: the cost calculator's)")
-    n.add_argument("--cost")
-    n.add_argument("--hand-priced", action="store_true", help="keep --ap/--cost rather than the cost calculator's price")
+    n.add_argument("--cost", help='its cost profile: "high mana, low ap", "very high ap, no cost, flat rank" (default "even"); with --hand-priced, the Energy cost')
+    n.add_argument("--hand-priced", action="store_true", help="keep --ap/--cost (a number) rather than the cost calculator's price")
     n.add_argument("--intensity", help="its damage: low, moderate_low, moderate, high, extreme (writes its rank I tier unless --tier)")
     n.add_argument("--stat", help="with --intensity: the stat whose mod its damage adds (strength...)")
     n.add_argument("--impact", help="its unique effect beyond damage: tame or impactful (default: from its fields)")
@@ -480,7 +634,19 @@ def main():
     sub.add_parser("modifiers", help="skills no modifier fits, and why (information)")
     t = sub.add_parser("terms", help="one skill's terms")
     t.add_argument("id")
+    c = sub.add_parser("cost", help='set a skill\'s cost profile: cost kick "high ap, low cost" (or: cost kick hand --ap 4 --points 1)')
+    c.add_argument("id")
+    c.add_argument("profile", help='"high mana, low ap", "mana only", "very high ap, no cost, flat rank", "even"; or hand')
+    c.add_argument("--ap", type=float, help="with hand: its AP")
+    c.add_argument("--points", type=int, help="with hand: its Energy cost")
+    c.add_argument("--dry-run", action="store_true")
+    mg = sub.add_parser("migrate", help="hand prices a profile reproduces exactly at every rank -> that profile")
+    mg.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    if a.cmd == "cost":
+        sys.exit(cost(a))
+    if a.cmd == "migrate":
+        sys.exit(migrate(a))
     if a.cmd in ("drift", "modifiers"):
         sys.exit(report(a.cmd))
     if a.cmd == "terms":

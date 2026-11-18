@@ -2601,7 +2601,8 @@ func _spend_overcharge(fund: Variant, n: int) -> int:
 	return off
 
 
-# What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else a
+# What pays for a skill: the reserve it needs, if it needs one (and nothing else will do); else the
+# reserve its cost profile prefers (Pricing.reserve_of(): "high mana"), if it can; else a
 # reserve that makes it cheaper (Hex: mana, for AP; the starter spells: mana, for cost; a Warlock's
 # dearer skills: a Sweet Nothing), then one dedicated to its tags or kinds (Skill.tagged(): mana for
 # magical skills, stamina for martial, specialist, general and physical ones, so Energy is kept for the
@@ -2623,6 +2624,11 @@ func _funding(s: Skill, buffered: bool, cut: float) -> Variant:
 	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
 		return s.needs if s.needs in allowed and covers(s.needs, cost_from(s, s.needs, cut), buffered) else null
+	var pref := Pricing.reserve_of(s)  # its cost profile prefers a reserve ("high mana"): that first
+	if pref:
+		for r: Reserve in allowed:
+			if r.resource_path.get_file().get_basename() == pref and covers(r, cost_from(s, r, cut), buffered):
+				return r
 	if ranged(s):
 		for r: Reserve in allowed:
 			if r.aims and covers(r, cost_from(s, r, cut), buffered):
