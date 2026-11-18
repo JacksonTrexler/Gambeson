@@ -19,3 +19,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-18,w3-facing,sonnet,high,161693,65,714803,ok
 2026-11-18,w3-strike,opus,medium,141442,58,841626,ok
 2026-11-18,w3-traits,sonnet,high,145732,60,519060,ok
+2026-11-18,w3-exhaust,opus,medium,121774,44,731034,ok
+2026-11-18,w3-lent,sonnet,high,215068,82,1491881,ok
+2026-11-18,w3-skeleton,sonnet,medium,64614,28,318555,ok
