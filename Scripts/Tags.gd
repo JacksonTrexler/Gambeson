@@ -96,6 +96,7 @@ const COLOR := {
 	&"dissonance": Color("#c9a0dc"),
 	&"undead": Color("#9aa98a"),
 	&"trait": Color("#d6c8a0"),
+	&"equipment": Color("#a7a79a"),
 	&"cc": Color("#a5a1c9"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one

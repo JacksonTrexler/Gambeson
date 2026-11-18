@@ -119,6 +119,7 @@ const TERMS := {
 	&"fear": ["Fear", &"condition", "Flees its source, a tile at a time, as it is put on and as each of its turns starts while it lasts: the unit moving itself, so it faces where it goes and spends movement AP. Ends a grapple either side of it. Effects, skills and reactions tagged fear count on it."],
 	&"entrance": ["Entrance", &"condition", "Walks toward its source, a tile at a time, as it is put on and as each of its turns starts while it lasts: the unit moving itself, so it faces where it goes and spends movement AP. Ends a grapple either side of it. Effects, skills and reactions tagged entrance count on it."],
 	&"trait": ["Trait", &"target", "What a unit is rather than what it has learned: always equipped, shown at the far right of the hotbar, takes no slot, and can't be disabled the way skills are, nor reached by anything that counts hotbar slots (Brainfog, a Sigil). Only a status that suppresses traits switches it off."],
+	&"equipment": ["Equipment", &"target", "What a unit wears or carries lends it: a skill with this tag comes from an item and is part of what the item does (armor's Defense is one). It sits apart from the hotbar and works while the item is worn."],
 	&"cc": ["CC", &"condition", "Crowd control: a skill or status that takes from a unit's ability to act (stun, sleep, fear, entrance, a grapple, a jam, a disabled skill). Gear, skills and reactions tagged cc count on it: they make it easier or harder to deal with."],
 }
 

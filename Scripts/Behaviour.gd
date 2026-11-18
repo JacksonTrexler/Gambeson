@@ -258,6 +258,22 @@ func holder_rank(holder: Unit, rank: int, c := &"rank_impact") -> int:
 	return mods_on(holder).irank(rank, c)
 
 
+# An equipment skill's armor (Unit.armor_defense()): the Defense it sets for `holder`, at `rank`, from `item`, the
+# armor lending it. NO_ARMOR: it sets none (the usual), so the unit goes by what its other equipment sets, or unarmored
+# (dex mod + con mod). Armor.
+const NO_ARMOR := -999999
+
+
+func armor(_holder: Unit, _rank: int, _item: Item) -> int:
+	return NO_ARMOR
+
+
+# It is its skill's own effect of an enchanted item: lent by one, the skill isn't ranked up by the enchantment
+# (Item.skill_rank(), Skill.enchants()), it does its enchanted thing instead (Armor: +1 Defense).
+func owns_enchant() -> bool:
+	return false
+
+
 # Used again while its caster channels it: the channel stops there, free, and nothing else happens
 # (Battle.cast(); Clairvoyance).
 func recast_stops() -> bool:

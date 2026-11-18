@@ -97,6 +97,7 @@ func bulwark() -> Item:
 	var it := Item.new()
 	it.name = "Bulwark"
 	it.defense = 20
+	it.skills = [load("res://Skills/armor.tres")] as Array[Skill]  # armor sets Defense through the equipment skill it lends
 	return it
 
 

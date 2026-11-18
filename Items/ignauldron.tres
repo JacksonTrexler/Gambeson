@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
 [ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Resource" path="res://Skills/armor.tres" id="3_armor"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
 
 [sub_resource type="Resource" id="Effect_0"]
 script = ExtResource("2_effect")
@@ -16,3 +18,4 @@ tags = Array[StringName]([&"metal", &"heavy", &"fire"])
 eases = &"wisdom"
 heat = 1
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])
+skills = Array[ExtResource("4_skill")]([ExtResource("3_armor")])

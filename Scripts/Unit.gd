@@ -162,6 +162,9 @@ var form_turns := 0  # its turns left as one
 var form_rank := 0  # the rank it was shaped at
 static var HASTE: Effect = _haste()
 var disciplined := 0  # AP burned into the attack it's making (Discipline: Battle._discipline()); 0 between them
+var leaned: Array[Skill] = []  # skills learned while an item's lent skill carried a prerequisite (unlock()): they stop working once their prerequisites aren't met without it (lapsed(), counts())
+var _judging := false  # lapsed() is working out whether a leaned skill's prerequisites hold: nothing it reads may touch effects (they read lapsed()): _skippable() stands down
+var _bare := false  # counts() is reading prerequisites as if nothing were lent (unlock(): was a lent skill needed?)
 var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
 var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
@@ -1062,7 +1065,7 @@ func equipped(s: Skill) -> bool:
 func traits() -> Array[Skill]:
 	var out: Array[Skill] = []
 	for x in slots:
-		if x.rank > 0 and x.skill.is_trait():
+		if x.rank > 0 and x.skill.is_trait() and not x.skill.is_equipment():  # equipment (Armor) isn't listed: it is what an item does
 			out.append(x.skill)
 	return out
 
@@ -1344,7 +1347,7 @@ func missing(s: Skill) -> String:
 			break
 	if gtier > 0 and (not role or role.tier(s) < 0):
 		return _general_need(s, gtier)[0]
-	var learnt := learned.filter(func(x: Slot): return x.skill != s and x.rank > 0).size()
+	var learnt := learned.filter(func(x: Slot): return x.skill != s and x.rank > 0).size() + _lent_count(s)
 	if s.min_tier > 1 and learnt < s.min_tier - 1:
 		return "Learn %d skill%s first (%d so far)" % [s.min_tier - 1, "" if s.min_tier == 2 else "s", learnt]
 	var homes := role.tabs_of(s) if role else ([] as Array[SkillTab])
@@ -1387,7 +1390,7 @@ func _root_missing(r: SkillRoot, s: Skill) -> String:
 	if not first.is_empty():
 		return "Learn %s first" % " and ".join(first.map(func(x: Skill): return x.name))
 	if b.needs > 0:
-		var have := r.skills().filter(func(x: Skill): return x != s and rank(x) > 0).size()
+		var have := r.skills().filter(func(x: Skill): return x != s and counts(x)).size()
 		if have < b.needs:
 			return "Needs %d %s skills (%d so far)" % [b.needs, r.name, have]
 	return ""
@@ -1397,7 +1400,7 @@ func _root_missing(r: SkillRoot, s: Skill) -> String:
 # on another - what comes before it on r too. A shared skill is one skill, learned and ranked once;
 # having it doesn't skip the way to it on another tree.
 func reached(r: SkillRoot, x: Skill) -> bool:
-	if rank(x) == 0:
+	if not counts(x):
 		return false
 	if not role or role.all_roots().filter(func(o: SkillRoot): return o.branch(x)).size() < 2:
 		return true
@@ -1407,7 +1410,7 @@ func reached(r: SkillRoot, x: Skill) -> bool:
 # A step on its trees it may pass over (Reckless Abandon: defensive and supportive skills that don't
 # also attack).
 func _skippable(x: Skill) -> bool:
-	return stat(&"abandon") > 0 and (x.serves(&"supportive", self) or x.serves(&"defensive", self)) and not x.serves(&"offensive", self)
+	return not _judging and stat(&"abandon") > 0 and (x.serves(&"supportive", self) or x.serves(&"defensive", self)) and not x.serves(&"offensive", self)
 
 
 # The devoting tabs it has picked (a Warlock's patron, a Cleric's god; a Wizard may have a pact and a
@@ -1550,6 +1553,11 @@ func unlock(s: Skill) -> bool:
 	var via: Skill = _general_need(s, gtier)[1] if general_skills().has(s) and (not role or role.tier(s) < 0) else null
 	if via:
 		waived[s] = via
+	_bare = true
+	var needed := missing(s) != ""  # with nothing lent, still short of a prerequisite: a lent skill is what let it through
+	_bare = false
+	if needed:
+		leaned.append(s)
 	var x := Slot.new()
 	x.skill = s
 	learned.append(x)
@@ -1968,7 +1976,7 @@ func defense(tags: Array[StringName] = []) -> int:
 # Defence its armor's mind_stat adds against magical attacks alone (Robe: wis mod). Untagged queries
 # (Defense shown at rest) count it too, so the sheet reflects it; a physical blow doesn't.
 func armor_mind(tags: Array[StringName] = []) -> int:
-	if not armor or not armor.mind_stat:
+	if not armor or not armor.mind_stat or armor_skills().is_empty():
 		return 0
 	return mod(armor.mind_stat) if tags.is_empty() or &"magical" in Tags.expand(tags) else 0
 
@@ -1977,7 +1985,7 @@ func armor_mind(tags: Array[StringName] = []) -> int:
 # magical +1). Tags it has none extra for are left out.
 func tagged_defense() -> Dictionary:
 	var out := {}
-	if armor and armor.mind_stat and mod(armor.mind_stat) != 0:
+	if armor and armor.mind_stat and mod(armor.mind_stat) != 0 and not armor_skills().is_empty():
 		out[&"magical"] = mod(armor.mind_stat)
 	for pair in _effects():
 		var e: Effect = pair[0]
@@ -1989,22 +1997,29 @@ func tagged_defense() -> Dictionary:
 	return out
 
 
-# Defense from armor alone. Unarmored, or in armor that sets none (Heart Up-Link): dex mod + con mod.
-# Armor of a weight (light, medium, heavy) goes by its basic piece's scaling (Item.WEIGHTS).
-# Armored: the higher of the armor's floor and its level now x its per_level (rounded down, or up
-# while lucky), plus dex mod if the armor allows it.
+# Defense from armor alone: what the equipment skills its armor lends set (armor_skills(): Armor, by the armor's own
+# fields - Behaviours/armor.gd), added up; with none working (no armor, or its skills suppressed) it is unarmored: dex mod + con mod.
 func armor_defense() -> int:
-	if not armor or not armor.sets_defense():
-		return mod(&"dexterity") + mod(&"constitution") + (armor.enchant if armor else 0)
-	var w := armor.weight_class()
-	if w:
-		var base: Array = Item.WEIGHTS[w]
-		var share: float = 0.0 if armor.no_dex else (1.0 if armor.full_dex else base[2])
-		var m := mod(&"dexterity")
-		var dex := floori(m * share) if m < 0 else rounded(m * share)  # a negative share rounds down: a penalty always bites
-		return maxi(base[0], rounded(lv() * base[1])) + dex + armor.enchant
-	var floor_or_level := maxi(armor.defense, rounded(lv() * armor.per_level))
-	return floor_or_level + (mod(&"dexterity") if armor.plus_dex else 0) + (rounded(stat(&"dexterity") * armor.dex_share) if armor.dex_share > 0.0 else 0) + armor.enchant
+	var sum := 0
+	var set := false
+	for s in armor_skills():
+		for b in s.behaviours:
+			var n: int = b.armor(self, armor.skill_rank(s), armor) if b else Behaviour.NO_ARMOR
+			if n != Behaviour.NO_ARMOR:
+				sum += n
+				set = true
+	return sum if set else mod(&"dexterity") + mod(&"constitution")
+
+
+# The equipment skills (Skill.is_equipment()) its worn armor lends that work now: equipped() says (traits suppressed:
+# none).
+func armor_skills() -> Array[Skill]:
+	var out: Array[Skill] = []
+	if armor:
+		for s in armor.skills:
+			if s and s.is_equipment() and equipped(s):
+				out.append(s)
+	return out
 
 
 # Damage its weapon adds to attacks scaling on s: an enchanted weapon's +1 a rank, on strength attacks.
@@ -2578,15 +2593,15 @@ func _general_need(s: Skill, t: int) -> Array:
 			continue
 		var c := g.category
 		if c == &"":
-			var have := _own().filter(func(x: Slot): return x.skill != s and x.rank > 0 and tier(x.skill) >= t).size()
+			var have := _counted().filter(func(x: Skill): return x != s and tier(x) >= t).size()
 			if have >= 3:
 				return ["", null]
 			why = "Needs 3 T%d+ skills (%d so far)" % [t, have]
 		else:
 			var best := -1
-			for x in _own():
-				if x.rank > 0 and role and role.tier(x.skill) >= 0 and role.category(x.skill) == c:
-					best = maxi(best, role.tier(x.skill))
+			for x in _counted():
+				if role and role.tier(x) >= 0 and role.category(x) == c:
+					best = maxi(best, role.tier(x))
 			if best >= t:
 				return ["", null]
 			why = "Needs a T%d+ %s class skill" % [t, "caster" if c == &"magical" else String(c)]
@@ -2601,11 +2616,57 @@ func _general_need(s: Skill, t: int) -> Array:
 	return [why, null]
 
 
-# A general-tree skill learned through a waiver whose waiver isn't working now: removed, disabled, or
-# cursed down to nothing, or unequipped. It stops working too.
+# A skill that stopped working: learned through a waiver whose waiver isn't working now (removed, disabled, or
+# cursed down to nothing, or unequipped), or learned on a lent skill (leaned) whose prerequisites are no longer met
+# now it is gone (missing(): counts() reads a lent skill only while it is lent and works). Dependents of a lapsed
+# skill lapse too, the way down the tree.
 func lapsed(s: Skill) -> bool:
 	var by: Skill = waived.get(s)
-	return by != null and (base_rank(by) == 0 or by in disabled or not equipped(by) or unranked().get(by, 0) >= base_rank(by))
+	if by != null and (base_rank(by) == 0 or by in disabled or not equipped(by) or unranked().get(by, 0) >= base_rank(by)):
+		return true
+	if s not in leaned or _bare:
+		return false
+	var was := _judging
+	_judging = true
+	var gone := missing(s) != ""
+	_judging = was
+	return gone
+
+
+# Whether x counts as a prerequisite: it has x (rank), and - if only an item lends it - it still works: lent, not
+# disabled, and not a trait while traits are suppressed. A skill learned on a lent one (leaned) counts while it hasn't
+# lapsed. With _bare (unlock() asking what it needed): nothing lent counts, nor anything learned on it.
+func counts(x: Skill) -> bool:
+	var own := 0  # (the slots' own ranks, not rank() or own_rank(): those read effects, which read lapsed())
+	var lent := 0
+	for list: Array[Slot] in [_role_slots, innate, learned]:
+		for sl in list:
+			if sl and sl.skill == x:
+				own = maxi(own, sl.rank)
+	for it in items():
+		if x in it.skills:
+			lent = maxi(lent, it.skill_rank(x))
+	if maxi(own, lent) - unranked().get(x, 0) <= 0:
+		return false
+	if x in leaned:
+		return not _bare and not lapsed(x)
+	if own > 0:
+		return true
+	return not _bare and x not in disabled and not (x.is_trait() and traits_suppressed())
+
+
+# The skills that count as prerequisites (counts()): what it has learned, and what is lent and works.
+func _counted() -> Array[Skill]:
+	var out: Array[Skill] = []
+	for x in slots:
+		if x.skill not in out and counts(x.skill):
+			out.append(x.skill)
+	return out
+
+
+# How many lent skills count toward s's tier (min_tier: skills learned first), beyond the `learned` ones.
+func _lent_count(s: Skill) -> int:
+	return granted().filter(func(x: Slot): return x.skill != s and own_rank(x.skill) == 0 and counts(x.skill)).size()
 
 
 # The name a skill goes by for it: Strike takes the name of a low-tier upgrade it has learned

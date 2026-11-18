@@ -119,7 +119,7 @@ func describe() -> String:
 	for e in effects:
 		lines.append(e.describe(ranked()))
 	for sk in skills:
-		if sk:
+		if sk and not sk.is_equipment():  # equipment is what the item does: its own line says it
 			lines.append("Gives the skill %s %s while worn (can't be ranked up; it ranks with the item)" % [sk.title(), Skill.roman(skill_rank(sk))])
 	lines.append(("%d - dex mod AP to put on in battle" % ARMOR_AP) if slot == "armor" else "%s AP to put on or use in battle" % Skill.num(ap_cost()))
 	return "\n".join(lines)
@@ -205,9 +205,13 @@ func ranked() -> int:
 
 
 # The rank its skills have on its wearer (Unit.granted()): ranked(), and one more for Pray's enchantment on a
-# weapon or armor (whose +1 is Defense or damage, and leaves ranked() alone), capped at a skill's max_rank.
+# weapon or armor (whose +1 is Defense or damage, and leaves ranked() alone), capped at a skill's max_rank. The item
+# is enchanted, so what it lends is: +1 rank each, but a skill with its own enchanted effect (Skill.enchants(): Armor's
+# +1 Defense) takes that instead and keeps the item's plain rank. Never raises the item's own rank (ranked(), armor drag).
 func skill_rank(s: Skill) -> int:
 	var r := ranked() + (1 if enchant > 0 and slot != "trinket" else 0)
+	if enchanted() and s.enchants():
+		r -= 1
 	return mini(r, s.max_rank) if s.max_rank > 0 else r
 
 
