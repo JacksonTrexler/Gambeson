@@ -69,6 +69,9 @@ func test_requirement_paths() -> void:
 	h.requires.share = 0.5
 	h.requires.hit = 3
 	h.requires.turns = 2
+	h.costs = ""  # hand-priced as Haluca was (4 AP, 2): its payoff would price it up past what v(3) has (w2-cost)
+	h.ap = 4.0
+	h.cost = 2
 	SkillTerms.forget(h)
 	learn(v(3), h, 1)
 	v(1).wisdom = 30
@@ -321,7 +324,7 @@ func test_missed() -> void:
 	v(3).charisma = 1
 	var before := v(3).energy
 	contest_total(v(3), h, v(1))
-	ok(spy.landed == 1 and spy.missed_on == 1 and v(3).energy == before - h.price(1) + 1, "a save its foe passes: missed() only, and its refund ran (%d)" % v(3).energy)
+	ok(spy.landed == 1 and spy.missed_on == 1 and v(3).energy == before - v(3).price(h) + 1, "a save its foe passes: missed() only, and its refund ran (%d)" % v(3).energy)
 	var chain: Skill = strike.duplicate()
 	chain.behaviours = [Miss.new()] as Array[Behaviour]
 	var hit: Miss = chain.behaviours[0]

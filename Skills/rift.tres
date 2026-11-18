@@ -6,11 +6,10 @@
 script = ExtResource("1_skill")
 name = "Rift"
 tags = Array[StringName]([&"magical", &"int"])
-ap = 4.0
-cost = 3
 radius_per_rank = 1.0
 rolls = false
 hostile = false
 min_tier = 2
 max_rank = 5
 rifts = true
+costs = "even"
