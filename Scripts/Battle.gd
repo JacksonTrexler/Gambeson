@@ -76,6 +76,7 @@ const DISCIPLINE_DAMAGE := 0.1  # more damage, a point of Discipline per point o
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const SLAM := 2  # blunt HP for each tile of a push stopped short by a unit or the map's edge (displace())
+const SELF_DRIVEN: Array[StringName] = [&"fear", &"entrance"]  # forced-move tags that are the unit moving itself (displace()): it faces where it goes and pays the walk in movement AP
 const DRIVES := {&"shove": 1, &"fear": 1, &"entrance": -1}  # the Effect stats that move their holder: away (1) or toward (-1) whoever put them on (drive())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
 const WORD := 4  # tiles (+ its cha mod) within which a unit tells its allies what it's grown suspicious of (spread())
@@ -4769,7 +4770,9 @@ func _let_go(u: Unit, s: Skill) -> void:
 # Forced movement (Behaviours/displace.gd, Kick, Send Off, the shove, fear and entrance effects): t moves up
 # to n tiles from `from` - away (dir 1) along the line from it through t, or toward it (dir -1), a step at a
 # time straight for it, stopping beside it - a tile at a time, stopping short of the map's edge, a hole or
-# another unit. Ground it's moved over does nothing to it, but it turns along the move (docs/plans/w2-facing.md).
+# another unit. Ground it's moved over does nothing to it. Only a unit's own doing turns it (docs/plans/w3-facing.md): a
+# push, a draw or a teleport leave its facing as it was, but fear and entrance (SELF_DRIVEN) are the unit walking
+# itself - it faces along the way it went and pays the tiles in movement and AP, whatever it has left.
 # Teleporting, it goes straight to the furthest free tile on that line, n tiles out or nearer (place(): a
 # trap there springs), never past `from`. Returns the tiles it went (0: none).
 # Whoever moved lets go: a grapple t is held in, or holds others in, ends (_let_go()). Driven away and
@@ -4781,6 +4784,8 @@ func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false, tags
 	var start := t.cell
 	var went := 0
 	var hit := false
+	var own := tags.any(func(x: StringName): return x in SELF_DRIVEN)
+	var cost := 0.0
 	if teleport:
 		for k in range(n, 0, -1):
 			var c := Vector2i((Vector2(start) + line * k).round())
@@ -4799,13 +4804,18 @@ func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false, tags
 				c = Vector2i((Vector2(start) + line * k).round())
 				if c == t.cell:
 					continue
+			var prev := t.cell
 			if not on_map(c) or not move(t, c):
 				if dir > 0:
 					hit = _slam(t, c, n - went, tags, by)
 				break
+			if own:
+				cost += stride(t, prev, c, terrain(prev), terrain(c), {}, null)
 			went += 1
 	if went > 0:
-		t.turn(t.cell - start)  # a forced move is a move: it faces along it
+		if own:
+			t.turn(t.cell - start)
+			t.walked(went, cost, true)
 		_break_grips(t)
 	if went > 0 or hit:
 		driven.emit(t, by, tags, went, hit)

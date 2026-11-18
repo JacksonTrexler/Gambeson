@@ -13,7 +13,7 @@ stat = &"charisma"
 [resource]
 script = ExtResource("1_skill")
 name = "Send Off"
-tags = Array[StringName]([&"divine", &"cha", &"love", &"magical"])
+tags = Array[StringName]([&"divine", &"cha", &"love", &"magical", &"shove"])
 ap = 3.0
 cost = 3
 radius = 1.0

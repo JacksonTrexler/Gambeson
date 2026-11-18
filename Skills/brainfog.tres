@@ -12,7 +12,7 @@ ranked = true
 [resource]
 script = ExtResource("1_skill")
 name = "Brainfog"
-tags = Array[StringName]([&"curse", &"magical", &"warlock", &"cha"])
+tags = Array[StringName]([&"curse", &"magical", &"warlock", &"cha", &"cc"])
 radius_mod = &"charisma"
 radius_per_rank = 1.0
 disables = true

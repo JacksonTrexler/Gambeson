@@ -8,3 +8,4 @@ stat = "winded"
 amount = 1.0
 per_rank = true
 name = "Winded"
+bears = Array[StringName]([&"cc"])

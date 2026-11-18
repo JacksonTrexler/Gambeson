@@ -4,7 +4,8 @@ extends Behaviour
 # Forced movement: landing, it moves the target - drawn toward the caster (Sing) or driven straight away
 # from it, a tile at a time and stopping at what's in the way, or teleported away to the furthest free
 # tile on that line (Send Off). Battle.displace() does the moving: no movement spent, the ground passed
-# over does nothing, and the one moved faces along it (docs/plans/w2-facing.md). Any skill, item skill or reaction can
+# over does nothing, and the one moved doesn't turn: only its own moves do (docs/plans/w3-facing.md; entrance, a draw,
+# is the unit walking itself, so it faces where it goes and pays movement). Any skill, item skill or reaction can
 # carry one: knock-back and draw-in are this, not a flag.
 
 @export var toward := false  # draws the target toward the caster, else drives it away

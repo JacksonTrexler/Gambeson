@@ -9,6 +9,7 @@ script = ExtResource("2_effect")
 stat = "grappled"
 amount = 1.0
 name = "Grappled"
+bears = Array[StringName]([&"cc"])
 
 [sub_resource type="Resource" id="SkillCheck_1"]
 script = ExtResource("6_skill_check")
@@ -18,7 +19,7 @@ drags_to = &"water"
 [resource]
 script = ExtResource("1_script")
 name = "Drown"
-tags = Array[StringName]([&"physical", &"str", &"water"])
+tags = Array[StringName]([&"physical", &"str", &"water", &"cc"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_submerged")])
 radius = 1.0
 rolls = false

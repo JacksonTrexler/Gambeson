@@ -2233,6 +2233,16 @@ func has_tag(t: StringName) -> bool:
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 
+# The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). Nothing reads
+# cc yet: a rule, a skill or a piece of gear that deals with a kind of status asks here.
+func afflicted(tag: StringName) -> Array[Effect]:
+	var out: Array[Effect] = []
+	for e: Effect in timed.keys():
+		if tag in e.bears:
+			out.append(e)
+	return out
+
+
 # Its shackles (a binding trinket) are locked: a Shackled effect is on it.
 func shackled() -> bool:
 	return timed.keys().any(func(e: Effect): return e.stat == "shackled")
@@ -2904,10 +2914,10 @@ func wards(level: int, extra: int, began := -1) -> bool:
 
 # Pays for walking n tiles that took `cost` movement (and as much move AP), counting them towards
 # still(). Once it's walked further than standing still allows, what lasts until it moves ends (Hide).
-func walked(n: int, cost: float) -> void:
+func walked(n: int, cost: float, compelled := false) -> void:
 	var before := ap.map(func(p: AP): return p.amount)
 	moved += cost  # a Relay boost can take it below what it's walked
-	pay(maxf(cost, 0.0), &"move")
+	pay(minf(maxf(cost, 0.0), ap_for(&"move")) if compelled else maxf(cost, 0.0), &"move")  # compelled (fear): pays what it has, and goes anyway
 	for i in mini(ap.size(), _walk_ap.size()):
 		_walk_ap[i] += before[i] - ap[i].amount
 	steps += n

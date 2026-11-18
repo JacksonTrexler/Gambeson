@@ -17,6 +17,7 @@ stat = "base_ap"
 amount = -1.0
 by_mod = &"strength"
 name = "Interdicted"
+bears = Array[StringName]([&"cc"])
 
 [sub_resource type="Resource" id="SkillCheck_1"]
 script = ExtResource("6_skill_check")
@@ -27,7 +28,7 @@ ranked = true
 [resource]
 script = ExtResource("1_skill")
 name = "Interdict"
-tags = Array[StringName]([&"martial", &"str", &"physical"])
+tags = Array[StringName]([&"martial", &"str", &"physical", &"cc"])
 radius = 1.0
 turns = 1
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_attack_down"), SubResource("Effect_ap")])
