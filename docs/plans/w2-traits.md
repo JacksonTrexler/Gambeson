@@ -86,3 +86,13 @@ in `disable_order`, suppression status and its expiry, the real set of traits an
 the HUD column and its read-only slots); `equip_test.test_equip_unequip` gains the renamed-Strike check. Updated to
 the tag: `command_test.test_default_bar` (Siren's bar: Alluring off it), `berserker_test.test_reckless_abandon` (`inherent` -> `is_trait()`), `sweep_test.test_passives` (same).
 No test encoded "an unequipped passive works".
+
+Mutation spot-checks (each fails `equip_test.test_traits`, or the Strike-rename check, then reverted): `equipped()`
+ignoring suppression; `disable()` without the trait guard; `fits_bar()` true for a trait; `skill_name()` without
+`equipped()`.
+
+Visual: `scratchpad/shot_traits` (a Berserker, Reckless Abandon): after the four hotbar slots, a parchment-framed row
+with a diamond where the number would be, bright while it works, dimmed (and "Suppressed" in its tooltip) under
+Traits Suppressed. Seen as good enough; a larger gap above the row was not added.
+
+Final suite: 8680 checks, 0 failed (928 tests). Launch log: only "6 resources still in use at exit".
