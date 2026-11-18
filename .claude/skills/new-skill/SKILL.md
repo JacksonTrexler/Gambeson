@@ -25,8 +25,23 @@ Follow the steps in order; each ends in something you can check.
      (`Scripts/Requirement.gd`) - lambda modifiers tighten or loosen it;
    - its unique effect's **impact** (`--impact tame|impactful`) and any **penalty** (`--penalty
      minor|major|severe`), when its fields don't say (they're derived otherwise).
-   It's **priced** by the calculator (`Scripts/Pricing.gd`); hand-set `--ap/--cost` need `--hand-priced` and a
-   reason. A behaviour declares its own terms in `terms(t)` and reads scaled values through its Cast
+   It's **priced** by the calculator (`Scripts/Pricing.gd`): its terms come to points, its baseline budget.
+   Its **cost profile** (`--cost "..."`, stored as `Skill.costs`; `docs/plans/w2-cost.md`) says how that budget
+   is spent, in plain words - its cost is part of its identity. Turn the design's description into
+   comma-separated clauses, `[level] [only|prefers] <dimension>`:
+   - levels: `no`, `low`, `moderate` (the default; unstated dimensions are moderate), `high`, `very high`
+     (`free`/`cheap`/`light`/`heavy`, `very heavy` too);
+   - dimensions: `ap`; `cost` (whatever its tags let pay: Energy, or a reserve); or a reserve - `mana`,
+     `stamina`, `focus`, `sweet nothings`. A reserve named plainly is **preferred** (paid with first when its
+     holder has it); `X only` means nothing else pays (the tool writes `needs` for it). One resource per skill;
+     no health costs (a mechanic first: new-mechanic);
+   - rank: `flat rank` (every rank costs as rank I), `steep rank` (rank's growth doubled); default: as its terms scale;
+   - `even`: the baseline (the default).
+   So "high mana cost, low AP cost" -> `--cost "high mana, low ap"`; "AP heavy, cheap" -> `--cost "high ap, low cost"`;
+   "a Warlock's dear curse, Sweet Nothings only" -> `--cost "high sweet nothings only"`. The words are absolute:
+   "high mana" alone makes it dearer overall, "high mana, low ap" spends the same budget differently.
+   Change one later with `python3 Util/skill.py cost <id> "<profile>"` (it prints AP and cost at ranks I-III);
+   `cost <id> hand --ap 4 --points 2` (or `new --hand-priced --ap 4 --cost 2`) sets a hand price, with a reason. A behaviour declares its own terms in `terms(t)` and reads scaled values through its Cast
    (`c.impact_rank()`, `c.range_rank()`, `c.stat_mod(m)`, `c.tags`) - never `c.rank` or `c.skill.tags` raw
    where a modifier should reach (see `Behaviours/kick.gd`).
 
@@ -45,7 +60,7 @@ Follow the steps in order; each ends in something you can check.
 
 4. **Write it:**
    ```
-   python3 Util/skill.py new <id> --tags physical,blunt,str,martial --intensity low --stat strength --range-per-rank 1 \
+   python3 Util/skill.py new <id> --tags physical,blunt,str,martial --intensity low --stat strength --range-per-rank 1 --cost "high stamina, low ap" \
        [--requires "test=target_hp_below share=0.5 hit=2"] [--impact tame] [--penalty minor] [--effect "stat=luck amount=-1 per_rank=true"] [--behaviour <name>] [--passive] \
        --tree <Trees/ or Roles/ file stem> --after <skill id> [--prereq <id>] [--branch-tier N] [--role <class>] \
        [--glyph Kk] [--human] [--set key=value]
@@ -78,6 +93,7 @@ Follow the steps in order; each ends in something you can check.
    python3 Util/skill.py check                               # wiring: ids, reachability, tags, uids, stubs, icons, counts
    python3 Util/skill.py modifiers                           # information: skills no modifier fits, and why - yours shouldn't be one
    python3 Util/skill.py drift                               # information: hand prices against the calculator's
+   python3 Util/skill.py cost <id> "high ap, low cost"       # set or change a cost profile (check parses every one)
    godot --headless --path . -s Tests/run.gd -- <id> skills_test   # then the full suite: no words
    ```
    A new `class_name` or file needs `godot --headless --path . --import` first; a compile error hangs the run.
