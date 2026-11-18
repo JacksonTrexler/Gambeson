@@ -1031,8 +1031,10 @@ func test_adventurer_skills_screen() -> void:
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
 	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER"],
 			"its own tab, its species', then all three general trees and the base one, on the far right")
-	ok(h.skills.picked == hex and h.skills.detail.title_label.text == "Hex" and h.skills.detail.state_label.text == "T1",
-			"Hex shows first: the first it can learn")
+	ok(h.skills.picked == load("res://Skills/skill_slot.tres") and h.skills.detail.title_label.text == "Skill Slot +1" and h.skills.detail.state_label.text == "T1",
+			"Skill Slot +1 shows first: the centre, the first it can learn")
+	h.skills.pick(hex)
+	ok(h.skills.picked == hex and h.skills.detail.title_label.text == "Hex" and h.skills.detail.state_label.text == "T1", "Hex next")
 	var act: CostButton = h.skills.detail.act
 	ok(act.text == "Unlock" and act.cost == 1 and act.disabled and act.tooltip_text == "Needs 1 skill point", "no point yet (%s)" % act.text)
 	var spec: Array = h.skills.detail.spec.get_children().map(func(c: Control): return (c.get_child(0) as RichTextLabel).get_parsed_text())

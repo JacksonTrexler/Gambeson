@@ -46,8 +46,8 @@ func test_starting_skills() -> void:
 	var offered: Array = u.options()[&"class"]
 	ok([hex, rejuvinate, sola, nadira, astera, igna, aetha, terestera, hydera, wary, snare, darkvision].all(func(s): return s in offered),
 			"on offer: Hex and Rejuvinate at the core, the starter spells, and the first skill of each path")
-	ok([hazard_expert, magic_slot, martial_slot, skill_slot, trade_skills, grind].all(func(s): return s not in offered),
-			"not yet: skills further along, capstones, and stubs")
+	ok(skill_slot in offered and [hazard_expert, magic_slot, martial_slot, trade_skills, grind].all(func(s): return s not in offered),
+			"on offer at the centre: Skill Slot +1; not yet: skills further along, capstones, and stubs")
 	ok(trade_skills in u.sources()[&"class"] and skill_slot in adventurer.offered(), "stubs are still part of the tree")
 	ok(u.missing(hazard_expert) == "Learn Snare first", "Hazard Expert comes after Snare (%s)" % u.missing(hazard_expert))
 	ok(u.missing(magic_slot) == "Needs 3 Magic skills (0 so far)", "the Magic capstone needs 3 of its root (%s)" % u.missing(magic_slot))
@@ -62,7 +62,7 @@ func test_tree_unlocks() -> void:
 	ok(not u.unlock(magic_slot) and u.unlock(sola) and u.unlock(nadira), "the capstone waits")
 	ok(u.missing(magic_slot) == "Needs 3 Magic skills (2 so far)", "...counting the root's skills learned")
 	ok(u.unlock(astera) and u.unlock(magic_slot), "a third: the capstone can be learned")
-	ok(not u.unlock(grind) and not u.unlock(skill_slot) and u.rank(grind) == 0, "a stub never can, points or not")
+	ok(not u.unlock(grind) and u.rank(grind) == 0, "a stub never can, points or not")
 	ok(u.skill_points == 5, "a point each (%d left)" % u.skill_points)
 	u.free()
 
@@ -208,11 +208,11 @@ func test_typed_slots() -> void:
 
 func test_stubs() -> void:
 	ok(igna.stub == "" and aetha.stub == "" and "skill AP at once" in igna.describe() and "move AP at once" in aetha.describe(), "Igna and Aetha are built: %s" % igna.describe())
-	ok(skill_slot.describe().begins_with("Not built yet. Waits on open question 3 (todo.md)") and "base slot" in skill_slot.describe(), "a stub says so, and what it's meant to do")
+	ok(skill_slot.stub == "" and "+1 untyped" in skill_slot.describe() and "Trait" in skill_slot.describe(), "Skill Slot +1 is built: a trait adding an untyped slot (%s)" % skill_slot.describe())
 	ok(trade_skills.waits() == "Waits on open questions 2 and 11 (todo.md)" , "two questions")
-	ok(skill_slot.mark() == "SS" and grind.mark() == "Gr", "stubs show initials too: Skill Slot +1, Grind")
+	ok(skill_slot.mark() == "SS" and grind.mark() == "Gr", "initials: Skill Slot +1, and a stub, Grind")
 	ok(sola.mark() == "So" and field_experience.mark() == "FE" and magic_slot.mark() == "+1", "the rest: initials, or a glyph")
-	ok(skill_slot.summary() == "Not built yet" and rejuvinate.summary() != "Not built yet", "listed as not built (Rejuvinate is built now)")
+	ok(grind.summary() == "Not built yet" and skill_slot.summary() != "Not built yet" and rejuvinate.summary() != "Not built yet", "listed as not built (Grind is; Skill Slot +1 and Rejuvinate are built now)")
 
 
 func test_tiers() -> void:

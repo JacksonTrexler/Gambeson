@@ -73,7 +73,7 @@ func test_traits() -> void:
 			names.append(f.get_basename())
 			ok(s.passive and not s.toggle and not s.fits_bar(), "%s: a trait is an always-on passive off the bar" % f)
 	names.sort()
-	ok(names == ["alluring", "reckless_abandon", "starkind"], "the innate skills that are traits: %s" % [names])
+	ok(names == ["alluring", "reckless_abandon", "skill_slot", "starkind"], "the innate skills that are traits: %s" % [names])
 	var h := await hud(u)
 	var traits: VBoxContainer = h.get_node("%Traits")
 	ok(traits.get_child_count() == 1 and (traits.get_child(0) as SkillSlot).skill == kin, "the HUD shows it after the hotbar")
@@ -81,6 +81,35 @@ func test_traits() -> void:
 	ok(shown.trait_slot and shown._get_drag_data(Vector2.ZERO) == null and not shown._can_drop_data(Vector2.ZERO, {skill = hex, from = -1}), "a trait slot can't be dragged, dropped on or cleared")
 	ok(h.bar.get_child_count() == u.bar_size() and h.bar.get_children().all(func(c: SkillSlot): return c.skill != kin), "and the hotbar proper is unchanged")
 	h.free()
+
+
+# Skill Slot +1 (docs/plans/w3-traits.md): a trait that adds one untyped slot to the hotbar, learned or lent by an
+# item. bar_size() is the one read of the hotbar's size (Cram and caster bonus slots will add to it the same way).
+func test_skill_slot() -> void:
+	var plus: Skill = load("res://Skills/skill_slot.tres")
+	var u := v(1)
+	var bar := u.bar_size()
+	u.learned.append(slot(plus))
+	u.get_equipped()
+	ok(u.bar_size() == bar + 1 and plus not in u.hotbar and plus in u.traits() and not plus.fits_bar(), "learned: a trait (no slot of its own) that adds one slot to the hotbar (%d -> %d)" % [bar, u.bar_size()])
+	ok(u.bar_size() == u.slot_count() + u.granted_slots().size() + (1 if u.lv() % 4 else 0) and u.slot_kind(u.slot_count()) == &"", "the size is one generic read: sure + granted + clover; the new slot is untyped")
+	var lent := Item.new()  # an item's version: it lends the trait, so it comes and goes with the item and the trait switch
+	lent.name = "Slot Ring ??"
+	lent.slot = "trinket"
+	lent.skills = [plus] as Array[Skill]
+	var w := v(2)
+	var wbar := w.bar_size()
+	w.trinket = lent
+	w.refit()
+	ok(w.bar_size() == wbar + 1 and w.equipped(plus) and plus in w.traits(), "lent by an item: the slot is there while it's worn")
+	w.afflict(load("res://Effects/traits_suppressed.tres"), 2)
+	ok(not w.equipped(plus) and w.bar_size() == wbar, "disabled as equipment is: no longer equipped, so the slot goes with it")
+	w.tick()
+	w.tick()
+	ok(w.bar_size() == wbar + 1, "and returns when it ends")
+	w.trinket = null
+	w.refit()
+	ok(w.bar_size() == wbar, "an item taken off takes the slot")
 
 
 func test_auto_equip() -> void:
