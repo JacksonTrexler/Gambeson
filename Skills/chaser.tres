@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/chaser.gd" id="b_chaser"]
+
+[sub_resource type="Resource" id="Behaviour_chaser"]
+script = ExtResource("b_chaser")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Chaser"
+glyph = "Ch"
+passive = true
+tags = Array[StringName]([&"martial", &"reaction"])
+impact = &"impactful"
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_chaser")])

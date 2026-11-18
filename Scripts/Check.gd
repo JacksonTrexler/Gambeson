@@ -40,6 +40,7 @@ class Roll:
 	var glance := false  # a miss in crit range (or a glancing one's better die would hit): a hit for half damage
 	var hit := false  # met the target, or forced, or a glance
 	var check: Check  # what was rolled (null: a fixed side)
+	var use := 0  # the skill use it was rolled in (Battle.use_of(): a Volley's id; 0: none)
 
 	func margin() -> int:  # how far the total beat the target (negative: fell short)
 		return total - target
