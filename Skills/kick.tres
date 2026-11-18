@@ -17,7 +17,7 @@ script = ExtResource("b_kick")
 [resource]
 script = ExtResource("1_skill")
 name = "Kick"
-tags = Array[StringName]([&"physical", &"blunt", &"str", &"martial", &"offensive"])
+tags = Array[StringName]([&"physical", &"blunt", &"str", &"martial", &"offensive", &"shove"])
 radius_per_rank = 1.0
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_kick")])

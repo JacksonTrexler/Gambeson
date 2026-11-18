@@ -174,9 +174,7 @@ func _draw() -> void:
 		var blank := "sealed" if sealed else "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "empty")
 		draw_string(font, Vector2(15, mid), blank, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
 		return
-	var dim := 1.0 if usable and works and (on or not skill.passive) else 0.45
-	if off > 0 or sealed:
-		dim = 0.25
+	var dim := brightness()
 	if sense == 0:
 		draw_string(font, Vector2(16, mid + 0.5), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1, 0.35))
 		return
@@ -213,6 +211,16 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(GOLD, 0.35 + 0.25 * sin(Time.get_ticks_msec() / 220.0)), false, 1.0)
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
+
+
+# How brightly its skill is drawn: dimmed for a skill that can't be used now, a switched-off toggle, a disabled or
+# sealed one. An always-on passive says nothing of on or off (the user, 2026-11-18): it is drawn the same whether or not
+# its unit can act now, so only a disabling (or a clover slot without luck) dims it. A trait is its own: dim while suppressed.
+func brightness() -> float:
+	if off > 0 or sealed:
+		return 0.25
+	var steady := skill != null and skill.passive and not skill.toggle and not trait_slot
+	return 1.0 if works and (steady or (usable and (on or not skill.passive))) else 0.45
 
 
 # Whether the slot shows the on/off dot: a toggled passive only.

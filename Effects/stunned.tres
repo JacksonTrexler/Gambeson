@@ -9,3 +9,4 @@ amount = 1.0
 name = "Stunned"
 wound = true
 ease = 2
+bears = Array[StringName]([&"cc"])

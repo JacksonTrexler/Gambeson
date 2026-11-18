@@ -1,8 +1,9 @@
 extends Test
 
-# Heavy Strike (Skills/heavy_strike.tres, Behaviours/heavy_strike.gd): Strike's hits rolled as usual, their
-# damage held back and dealt as one blow on a last roll + successes + rank, through the generic `striking`
-# hook on a Strike's Volley (Battle._chain()). Pins the pooling, the last roll's bonus and its outcomes.
+# Heavy Strike (Skills/heavy_strike.tres, Behaviours/heavy_strike.gd): the hits of one skill use (a Strike's,
+# or any attacking skill's) rolled as usual, their damage held back and dealt as one blow on a last roll +
+# successes + rank, through the generic `striking` hook on a use's Volley (Battle.use_of()). Pins the pooling,
+# the use's scope (a skill used again is another blow), the last roll's bonus and its outcomes.
 
 var heavy_strike: Skill = load("res://Skills/heavy_strike.tres")
 
@@ -30,6 +31,30 @@ func test_one_blow() -> void:
 	ok("must hit or it all misses" in heavy_strike.describe(2), heavy_strike.describe(2))
 
 
+# Any attacking skill, not only Strike: one use's blow pooled behind a last roll (two rolls, one blow); used
+# again, by hand, it is another use and another blow.
+func test_any_use() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var plain: Skill = strike.duplicate()
+	plain.chain = false
+	v(1).strength = 30
+	v(1).weapon = null
+	v(1).learned.append(slot(heavy_strike, 1))
+	v(1).learned.append(slot(plain, 1))
+	soak(v(3), 500)
+	var dealt := []
+	v(3).hp_changed.connect(func(was: int, now: int): dealt.append(was - now))
+	var rolls: Array[Check.Roll] = []
+	b.attack_rolled.connect(func(_c, _t, r: Check.Roll): rolls.append(r))
+	for i in 2:
+		v(1).refresh()
+		b.cast(v(1), plain, v(3))
+	ok(rolls.size() == 4 and rolls[0].use == rolls[1].use and rolls[2].use == rolls[3].use and rolls[1].use != rolls[2].use,
+			"each use: its roll, then the last roll in the same use (%s)" % [rolls.map(func(r: Check.Roll): return r.use)])
+	ok(rolls[1].total == rolls[1].d20 + rolls[0].total - rolls[0].d20 + 1 + 1, "the last: + 1 success + rank 1 (%d, %d)" % [rolls[0].total, rolls[1].total])
+	ok(dealt.size() == 2, "two uses, two blows (%s)" % [dealt])
+
+
 # The hook alone, on a Volley built by hand: each hit's damage held, then the last roll decides - a miss
 # loses it all (the Strike misses), a hit deals the pool + successes + rank, a critical double, a glance half.
 func test_last_roll() -> void:
@@ -42,6 +67,7 @@ func test_last_roll() -> void:
 		var vo := Behaviour.Volley.new()
 		vo.skill = strike
 		vo.target = v(3)
+		vo.defense = 20
 		for n in [7, 5]:
 			vo.dealt = n
 			hs.striking(b, v(1), 2, vo)
@@ -49,7 +75,6 @@ func test_last_roll() -> void:
 		vo.stage = &"end"
 		vo.landed = 2
 		vo.dealt = 0
-		vo.defense = 20
 		hs.striking(b, v(1), 2, vo)
 		var r: Check.Roll = last[-1]
 		ok(r.total == r.d20 + 2 + 2, "the last roll: + 2 successes + rank 2")

@@ -76,6 +76,7 @@ const DISCIPLINE_DAMAGE := 0.1  # more damage, a point of Discipline per point o
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const SLAM := 2  # blunt HP for each tile of a push stopped short by a unit or the map's edge (displace())
+const SELF_DRIVEN: Array[StringName] = [&"fear", &"entrance"]  # forced-move tags that are the unit moving itself (displace()): it faces where it goes and pays the walk in movement AP
 const DRIVES := {&"shove": 1, &"fear": 1, &"entrance": -1}  # the Effect stats that move their holder: away (1) or toward (-1) whoever put them on (drive())
 const PULSE_REACH := 3  # tiles a Regeneration Pulse reaches (_pulse())
 const WORD := 4  # tiles (+ its cha mod) within which a unit tells its allies what it's grown suspicious of (spread())
@@ -94,6 +95,8 @@ var _picked: Array[Unit] = []  # the units the outermost cast()'s caster picked 
 var _wears: Array[Exhaustion.Wear] = []  # uses paid for in the cast under way, settled as the outermost is done (_settle_wear(): Behaviour.wearing())
 var _aims: Array[Unit] = []  # whom each cast() under way is aimed at, innermost last
 var _casting := 0  # cast() / cast_at() calls under way: an interrupt opens once the outermost is done
+var _uses: Dictionary = {}  # Unit -> Behaviour.Volley: the skill use each caster has under way (use_of())
+var _use_count := 0  # uses opened this battle: the next one's id
 var _reacting := 0  # react() calls under way: an interrupt granted in one opens after it
 var _settling: Unit  # falling after its interrupt (_settle())
 const INTERRUPT_AP := 99.0  # a free action: AP enough for any skill, for skill uses only
@@ -841,7 +844,10 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: 
 		_picked = picked
 	_casting += 1
 	_aims.append(target)
+	var opened := _begin_use(caster, skill)
 	var done := _cast(caster, skill, target, spreading)
+	if opened:
+		_end_use(opened)
 	_aims.pop_back()
 	_casting -= 1
 	if _casting == 0:
@@ -1038,10 +1044,12 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var overage := 0  # what a roll beat Defense by (Irradiate)
 	var natural := false  # a natural 20 (Jugular recasts on one)
 	var rolled: Check.Roll = null
+	var rolled_with := [0, 0, 0]  # the roll's bonus, defense and edge (a use's striking() hooks: Heavy Strike's last roll)
 	if foe and skill.attacks():
 		var bonus := caster.attack_mod(skill) + skill.roll_per_rank * ri + skill.roll_bonus + int(req[0]) + zeal + caster.check_bonus(caster.attack_stat(skill), &"offensive") \
 				+ discipline_hit(caster) + caster.focus_bonus(skill)  # Focus: the last of it spent on this shot
-		var hit := roll_attack(caster, target, attack_check(caster, skill, bonus, target.defense(tags) + guard_of(acts), edge_of(skill, acts) + int(req[2]), tags))
+		rolled_with = [bonus, target.defense(tags) + guard_of(acts), edge_of(skill, acts) + int(req[2])]
+		var hit := roll_attack(caster, target, attack_check(caster, skill, bonus, rolled_with[1], rolled_with[2], tags))
 		overage = maxi(hit.margin(), 0)
 		natural = hit.crit  # (in crit range and a hit: Jugular's recast)
 		if skill.sure_crit and hit.hit and not hit.glance:  # Jugular: a hit is a critical (a glance stays one)
@@ -1131,6 +1139,10 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 					bonus += bh.bonus(acts)  # Spike: + rank
 			var power := maxi(roundi((t.power + roll(t.dice) + bonus + int(req[1])) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1)
 			power = as_rolled(power, rolled)
+			if rolled:  # an attack that landed: the use's passives may change what lands (Heavy Strike holds it back)
+				power = _strike_hit(caster, skill, target, rolled, power, tags, rolled_with[0], rolled_with[1], rolled_with[2])
+				if power <= 0:
+					continue
 			gross += power
 			if &"siphon" in tags:
 				var got := target.siphon(power, tags, caster)  # off its resources, never its HP
@@ -1299,9 +1311,94 @@ static func crit_range(u: Unit, tags: Array[StringName] = []) -> int:
 func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
 	var hit := resolve(c)
 	caster.rolls_made += 1
+	var v := use_of(caster)
+	hit.use = v.id if v else 0
 	attacked.emit(caster, target, hit.d20, hit.total, hit.target)
 	attack_rolled.emit(caster, target, hit)
+	if hit.crit and hit.hit:
+		react(&"crit", target, caster)  # a critical: reactions to it (Chaser)
 	return hit
+
+
+# --- Skill uses (Behaviour.Volley; docs/plans/w3-strike.md)
+
+# The skill use u has under way, or null: opened by its outermost cast() or cast_at() and holding everything
+# inside it - its attack rolls (opening_rolls counts within one), an automatic repeat an effect sets off
+# (Strike!'s restrike, Jugular's recast) - until that returns. A use picked afresh (aimed again, or chosen in
+# an interrupt: Chaser) is a new one.
+func use_of(u: Unit) -> Behaviour.Volley:
+	return _uses.get(u)
+
+
+# Opens caster's use of skill, unless one is under way (then null: it's part of that one).
+func _begin_use(caster: Unit, skill: Skill) -> Behaviour.Volley:
+	if _uses.has(caster):
+		return null
+	var v := Behaviour.Volley.new()
+	_use_count += 1
+	v.id = _use_count
+	v.battle = self
+	v.caster = caster
+	v.skill = skill
+	caster.rolls_made = 0
+	_uses[caster] = v
+	return v
+
+
+# An attack of caster's use landed on t for `dealt` (roll hit, with bonus, defense and edge): its passives'
+# striking() hooks may change what lands (Heavy Strike holds it back). What lands.
+func _strike_hit(caster: Unit, skill: Skill, t: Unit, hit: Check.Roll, dealt: int, tags: Array[StringName], bonus: int, defense: int, edge: int) -> int:
+	var v := use_of(caster)
+	if not v:
+		return dealt
+	v.stage = &"hit"
+	v.skill = skill
+	v.target = t
+	v.tags = tags
+	v.roll = hit
+	v.landed = v.struck.get(t, 0)
+	v.bonus = bonus
+	v.defense = defense
+	v.edge = edge
+	v.dealt = dealt
+	for h in caster.hooks():
+		h[0].striking(self, caster, h[1], v)
+	v.struck[t] = v.landed + 1
+	return v.dealt
+
+
+# The use is over: for each unit it landed on, its caster's passives say what of it lands as one more blow
+# (striking() at &"end": Heavy Strike's pool), which lands as any blow (_blow()); then it closes.
+func _end_use(v: Behaviour.Volley) -> void:
+	var hooks := v.caster.hooks() if v.caster.is_alive() else []
+	for t: Unit in v.struck:
+		if hooks.is_empty():
+			break
+		if not is_instance_valid(t):
+			continue
+		v.stage = &"end"
+		v.target = t
+		v.landed = v.struck[t]
+		v.dealt = 0
+		v.missed = false
+		for h in hooks:
+			h[0].striking(self, v.caster, h[1], v)
+		if v.dealt > 0 and is_instance_valid(t) and t.is_alive():
+			_blow(v.caster, t, v.dealt, v.tags)
+	_uses.erase(v.caster)
+
+
+# A blow that lands outside a skill's own steps (a use's pooled damage: Heavy Strike): its damage on t, Starblade's
+# refill beside it, the ground it stands on, and a kill counted.
+func _blow(caster: Unit, t: Unit, n: int, tags: Array[StringName]) -> void:
+	var before := t.hp
+	t.hit(n, tags, caster)
+	if next_to(caster.cell, t.cell):
+		_refill(caster, t, n)
+	if t.hp < before:
+		expose(t.cell, tags, caster)
+	if not t.is_alive():
+		caster.gain(&"kill", 1)
 
 
 # What a hit for `power` deals as roll r landed: double on a critical, half (rounded down, at least 1) on a glance.
@@ -1517,9 +1614,10 @@ func resolving() -> Behaviour.Cast:
 
 # u gets an interrupt: `actions` skill uses, free of AP, out of turn. It opens once nothing is being cast
 # (at once, if nothing is), after any granted before it; while open only u acts, and the interrupted turn
-# resumes when it's done (end_interrupt()).
-func grant_interrupt(u: Unit, actions := 1) -> void:
-	_interrupts.append([u, actions])
+# resumes when it's done (end_interrupt()). `only` (Skill -> highest rank), not empty: its only actives meanwhile,
+# each at no more than that rank (Unit.allowed: Chaser) - the HUD and the AI pick among them as any.
+func grant_interrupt(u: Unit, actions := 1, only: Dictionary = {}) -> void:
+	_interrupts.append([u, actions, only])
 	if _casting == 0 and _reacting == 0:
 		_open_interrupt()
 
@@ -1533,6 +1631,7 @@ func _open_interrupt() -> void:
 			continue
 		interrupter = u
 		_interrupt_left = next[1]
+		u.allowed = next[2]  # only these skills, each at no more than its rank (Chaser), while it lasts
 		_interrupt_ap = AP.new(INTERRUPT_AP, &"skill")
 		u.ap.push_front(_interrupt_ap)  # drawn before any skill-only AP of its own
 		interrupt_began.emit(u)
@@ -1547,6 +1646,7 @@ func end_interrupt() -> void:
 	if not u:
 		return
 	interrupter = null
+	u.allowed = {}
 	u.ap.erase(_interrupt_ap)
 	_interrupt_ap = null
 	_interrupt_left = 0
@@ -2495,7 +2595,10 @@ func _lose_cover(u: Unit) -> void:
 # A Rift is channeled unless `held` is false (Alt-click): then its count starts at once.
 func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	_casting += 1
+	var opened := _begin_use(caster, skill)
 	var done := _cast_at(caster, skill, c, held)
+	if opened:
+		_end_use(opened)
 	_casting -= 1
 	_done_casting(caster, done)
 	return done
@@ -4769,7 +4872,9 @@ func _let_go(u: Unit, s: Skill) -> void:
 # Forced movement (Behaviours/displace.gd, Kick, Send Off, the shove, fear and entrance effects): t moves up
 # to n tiles from `from` - away (dir 1) along the line from it through t, or toward it (dir -1), a step at a
 # time straight for it, stopping beside it - a tile at a time, stopping short of the map's edge, a hole or
-# another unit. Ground it's moved over does nothing to it, but it turns along the move (docs/plans/w2-facing.md).
+# another unit. Ground it's moved over does nothing to it. Only a unit's own doing turns it (docs/plans/w3-facing.md): a
+# push, a draw or a teleport leave its facing as it was, but fear and entrance (SELF_DRIVEN) are the unit walking
+# itself - it faces along the way it went and pays the tiles in movement and AP, whatever it has left.
 # Teleporting, it goes straight to the furthest free tile on that line, n tiles out or nearer (place(): a
 # trap there springs), never past `from`. Returns the tiles it went (0: none).
 # Whoever moved lets go: a grapple t is held in, or holds others in, ends (_let_go()). Driven away and
@@ -4781,6 +4886,8 @@ func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false, tags
 	var start := t.cell
 	var went := 0
 	var hit := false
+	var own := tags.any(func(x: StringName): return x in SELF_DRIVEN)
+	var cost := 0.0
 	if teleport:
 		for k in range(n, 0, -1):
 			var c := Vector2i((Vector2(start) + line * k).round())
@@ -4799,13 +4906,18 @@ func displace(t: Unit, from: Vector2i, dir: int, n: int, teleport := false, tags
 				c = Vector2i((Vector2(start) + line * k).round())
 				if c == t.cell:
 					continue
+			var prev := t.cell
 			if not on_map(c) or not move(t, c):
 				if dir > 0:
 					hit = _slam(t, c, n - went, tags, by)
 				break
+			if own:
+				cost += stride(t, prev, c, terrain(prev), terrain(c), {}, null)
 			went += 1
 	if went > 0:
-		t.turn(t.cell - start)  # a forced move is a move: it faces along it
+		if own:
+			t.turn(t.cell - start)
+			t.walked(went, cost, true)
 		_break_grips(t)
 	if went > 0 or hit:
 		driven.emit(t, by, tags, went, hit)
@@ -5156,7 +5268,7 @@ func _choke(caster: Unit, t: Unit) -> void:
 # `r` is its rank as it hits (rank_impact, through its caster's modifiers: Battle.cast()); `acts` its
 # behaviours' Cast (their guard, edge and bonus on each roll); `req` its contingency's payoff
 # (requirement(): + to hit, damage, edge).
-func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0, acts: Behaviour.Cast = null, req: Array = [0, 0, 0, 0, 0.0], v: Behaviour.Volley = null) -> int:
+func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName], extra := 0, depth := 0, acts: Behaviour.Cast = null, req: Array = [0, 0, 0, 0, 0.0]) -> int:
 	var tier := skill.tier(r)
 	if not tier:
 		return 0
@@ -5179,20 +5291,14 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	var gross := 0
 	var row := 0  # hits in a row so far
 	var sure := false
-	if not v:
-		v = Behaviour.Volley.new()
-		v.battle = self
-		v.caster = caster
-		v.skill = skill
-	var hooks := caster.hooks()
 	for i in hits:
 		if not t.is_alive():
 			break
 		var penalty := 0 if i < steady else row
-		v.bonus = caster.attack_mod(skill) + zeal + caster.check_bonus(caster.attack_stat(skill), &"offensive") + discipline_hit(caster) + int(req[0])
-		v.defense = t.defense(blow) + guard_of(acts)
-		v.edge = edge_of(skill, acts) + int(req[2])
-		var hit := roll_attack(caster, t, attack_check(caster, skill, v.bonus - penalty, v.defense, v.edge, blow).sure(sure))
+		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.attack_stat(skill), &"offensive") + discipline_hit(caster) + int(req[0])
+		var defense := t.defense(blow) + guard_of(acts)
+		var edge := edge_of(skill, acts) + int(req[2])
+		var hit := roll_attack(caster, t, attack_check(caster, skill, bonus - penalty, defense, edge, blow).sure(sure))
 		_evaluate(caster, skill, hit.d20, hit.total)
 		if hit.hit and acts and skill.hostile and t != caster:  # hit: reactions before its damage (Interject)
 			var rh := react(&"hit", t, caster, acts)
@@ -5228,17 +5334,10 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 			power += (brutal + (caster.weapon.ranked() if caster.weapon else 0)) if brutal > 0 else 0
 			power += mental * (int(imbued) + int(elemental))
 		var dealt := as_rolled(maxi(roundi(power * (1.0 + caster.stat(&"damage", blow) + discipline_damage(caster, skill))), 1), hit)
-		v.stage = &"hit"
-		v.target = t
-		v.tags = blow
-		v.roll = hit
-		v.landed = landed
-		v.dealt = dealt
-		for h in hooks:
-			h[0].striking(self, caster, h[1], v)  # Heavy Strike holds it back
-		if v.dealt > 0:
-			t.hit(v.dealt, blow, caster)
-		gross += v.dealt
+		dealt = _strike_hit(caster, skill, t, hit, dealt, blow, bonus, defense, edge)  # Heavy Strike holds it back
+		if dealt > 0:
+			t.hit(dealt, blow, caster)
+		gross += dealt
 		landed += 1
 		row += 1
 		if i < recording and t.is_alive():
@@ -5249,21 +5348,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		caster.imbued -= 1
 	var again := roundi(caster.stat(&"restrike"))
 	if landed >= 12 and again > 0 and depth < 3 and t.is_alive():  # Strike!: a strike, bowled
-		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1, acts, req, v)
-	if depth == 0 and not hooks.is_empty():  # its hits rolled: what the holder's passives make of the whole (Heavy Strike)
-		v.stage = &"end"
-		v.target = t
-		v.tags = blow
-		v.landed = landed
-		v.dealt = 0
-		for h in hooks:
-			h[0].striking(self, caster, h[1], v)
-		if v.dealt > 0 and t.is_alive():
-			t.hit(v.dealt, blow, caster)
-			if next_to(caster.cell, t.cell):
-				_refill(caster, t, v.dealt)
-		if v.missed:
-			landed = 0
+		landed += _chain(caster, skill, t, r, tags, again - 1, depth + 1, acts, req)  # the same use: its hits pool with these (Heavy Strike)
 	if depth == 0 and landed >= PERFECT_HITS:  # three strikes in a row: a perfect game
 		caster.heal(PERFECT_HEAL)
 		perfect.emit(caster)
