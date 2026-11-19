@@ -6,9 +6,37 @@ extends Resource
 @export var name := ""
 @export var tag := &""  # its category: magical, martial or specialist - its colour, and the typed slots its skills fit
 @export var branches: Array[Branch] = []
+@export var includes: Array[SkillRoot] = []  # trees composed into this one, by reference (the Caster tree: Student): their branches, tiers and prerequisites show here as if its own, so a skill put on them shows here with no more wiring (Student is on the Specialist tree too)
 
 
+# Its branches, then every included tree's (and theirs), each skill once: its own branch wins.
+func all_branches() -> Array[Branch]:
+	var out: Array[Branch] = []
+	_collect(out, [self])
+	return out
+
+
+func _collect(out: Array[Branch], seen: Array[SkillRoot]) -> void:
+	for b in branches:
+		if b and b.skill and not out.any(func(x: Branch): return x.skill == b.skill):
+			out.append(b)
+	for r in includes:
+		if r and r not in seen:
+			seen.append(r)
+			r._collect(out, seen)
+
+
+# Its skills, included trees' too.
 func skills() -> Array[Skill]:
+	var out: Array[Skill] = []
+	for b in all_branches() if not includes.is_empty() else branches:
+		if b and b.skill:
+			out.append(b.skill)
+	return out
+
+
+# Only the skills on its own branches: what it is the home of (Skill.kinds(): an included skill keeps its own tree's kind).
+func own_skills() -> Array[Skill]:
 	var out: Array[Skill] = []
 	for b in branches:
 		if b and b.skill:
@@ -17,9 +45,21 @@ func skills() -> Array[Skill]:
 
 
 func branch(s: Skill) -> Branch:
-	for b in branches:
+	for b in all_branches() if not includes.is_empty() else branches:
 		if b and b.skill == s:
 			return b
+	return null
+
+
+# The tree whose own branch holds s: itself, or the one it is included from (Role.category(): Discipline is Student's, a specialist skill, wherever it shows).
+func source(s: Skill, seen: Array[SkillRoot] = []) -> SkillRoot:
+	if branches.any(func(b: Branch): return b and b.skill == s):
+		return self
+	seen.append(self)
+	for r in includes:
+		var found := r.source(s, seen) if r and r not in seen else null
+		if found:
+			return found
 	return null
 
 
@@ -48,7 +88,7 @@ func max_depth() -> int:
 
 func _deepest() -> int:
 	var d := 1
-	for b in branches:
+	for b in all_branches():
 		if b and b.skill and not (b.after.is_empty() and b.needs > 0):
 			d = maxi(d, depth(b.skill))
 	return d

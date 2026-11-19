@@ -188,16 +188,16 @@ static func _find_kinds() -> void:
 			for s in ([t.center] if t.center else []) + t.core:
 				note.call(s, k)
 			for r in t.roots:
-				for s in r.skills() if r else []:
+				for s in r.own_skills() if r else []:  # not what it includes: those are kin of their own tree (Student)
 					note.call(s, k)
 		elif t and t.has_method(&"branch"):  # a class root shared by classes (SkillRoot)
-			for s in t.skills():
+			for s in t.own_skills():
 				note.call(s, t.tag)
 	for f in ResourceLoader.list_directory("res://Roles/"):
 		var role = load("res://Roles/" + f) if f.ends_with(".tres") else null
 		if role and role.has_method(&"all_roots"):
 			for r in role.all_roots():
-				for s in r.skills():
+				for s in r.own_skills():
 					note.call(s, r.tag)
 
 
