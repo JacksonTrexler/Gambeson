@@ -35,7 +35,7 @@ w4-knobs.md. Baseline suite: 10103 checks, 0 failed (958 tests). `Skill.gd` gain
    only reach; the channel's rank rising each turn already grows it), **Send Off** (a teleport: rank is only reach), **Stoneskin**
    (a fixed share above a fixed HP: `per_rank` would double 40% to 80% at II, which is a rebalance, not a read; needs tiers),
    and **Elemental Mastery** (scales through Strike's own `element` term).
-5. **Tags added (existing words, `mechanic.py carry`; no new words, so no ` ??`), 12 skills:** `entrance` on Sing (its displace
+5. **Tags added (existing words, `mechanic.py carry`; no new words, so no ` ??`), 15 skills:** `entrance` on Sing (its displace
    draws, and passes that tag to the unit); `evadable` on Wildfire (an evadable cone); `aura` on Flamecharm, Flamedance (the aura
    behaviour); `concealment` on Blur, Hide, Invisibility, Nadira, Vanishing Act (they lay concealment); `held` on Coalescing,
    Drown (a grapple); `disabled` on Brainfog; `channeled` on Clairvoyance; `wound` on Snare. All inert today (no rule reads a
