@@ -26,3 +26,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-19,w3-student,sonnet,high,127112,46,593788,ok
 2026-11-19,w3-armor,sonnet,high,185175,70,836783,ok
 2026-11-19,w3-docs1,sonnet,medium,123712,25,372360,ok
+2026-11-19,w4-coyote,opus,medium,134102,51,639663,ok
+2026-11-19,w4-friction,opus,medium,126278,51,987997,ok
+2026-11-19,w4-density,opus,medium,170322,63,1067477,ok
