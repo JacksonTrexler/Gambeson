@@ -158,3 +158,33 @@ func _free_actions(u: Unit) -> int:
 	b.interrupter = null
 	b._interrupts.clear()
 	return n
+
+
+# Density's bargain (docs/plans/w4-density.md): the one rule - rank impact and something to trade against it (a range,
+# a check, a slot a foe can disable, a cost) - and what each side trades: Density cuts the whole range and makes every
+# check the skill makes harder and its slot easier to disable; Diluted the reverse.
+func test_density() -> void:
+	var missile: Skill = sk("energy_missile")  # range 4, an attack, dice by rank
+	var t := duel(missile, 2)
+	v(1).set_equipped([missile])
+	var weight := func() -> int: return v(1).slot_weight([missile])
+	var plain := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
+	v(1).trinket = emblem(&"rho_up", &"sigil", 1)  # f 0.75: range / 1.75, checks - roundi(5 x 0.75) = 4
+	var dense := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
+	ok(is_equal_approx(dense[0], 4.0 / 1.75) and dense[1] == plain[1] - 4 and dense[2] < plain[2] and dense[3] == plain[3] - 4,
+			"Density: range 4 -> %s, its attack - 4 (%s -> %s), its slot 4 easier to disable" % [dense[0], plain[2], dense[2]])
+	v(1).trinket = emblem(&"rho_down", &"sigil", 1)  # checks + roundi(3 x 0.75) = 2; no rank range, so its range stays
+	var thin := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
+	ok(thin[0] == plain[0] and thin[1] == plain[1] + 2 and thin[2] > plain[2] and thin[3] == plain[3] + 2, "Diluted: its attack + 2 (%s), its slot 2 harder to disable" % thin[2])
+	var stun := sk("stun")  # its save's DC: rank impact, and the shift (easier to overcome dense)
+	v(1).learned.append(slot(stun, 2))
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # f 0.5: rank 2 -> 3, checks - roundi(2.5) = 3
+	var dc: int = stun.behaviours[0].dc(b.cast_of(v(1), stun, t, 2, false))
+	ok(dc == Difficulty.dc(&"difficult", 3) - 3, "Density: Stun's DC at rank 3, less 3 (%d)" % dc)
+	# The rule: a trait has no slot to disable, so with no range or check it has nothing to trade; slotted, it does.
+	var look: Skill = sk("alluring")
+	var slotted: Skill = look.duplicate()
+	slotted.tags = look.tags.filter(func(x): return x != &"trait")
+	ok(not Modifiers.eligible(&"rho_up", look) and not Modifiers.eligible(&"rho_down", look) and Modifiers.eligible(&"rho_up", slotted) and Modifiers.eligible(&"rho_down", slotted),
+			"a trait can't trade (%s); the same skill slotted can" % SkillTerms.of(look).density_why())
+	ok(not Modifiers.eligible(&"rho_down", sk("clairvoyance")), "no rank impact, nothing for Diluted to tamp: ineligible both ways")
