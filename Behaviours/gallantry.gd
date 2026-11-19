@@ -27,9 +27,9 @@ func react(r: Reaction, holder: Unit, rank: int) -> bool:
 	return true
 
 
-# Its check's bonus: CHECK_PER_RANK a rank past I, at the rank its holder's modifiers give it.
+# Its check's bonus: CHECK_PER_RANK a rank past I, at the rank its holder's modifiers give it, and their check shift (Density).
 func check_bonus(holder: Unit, rank: int) -> int:
-	return CHECK_PER_RANK * (holder_rank(holder, rank) - 1)
+	return CHECK_PER_RANK * (holder_rank(holder, rank) - 1) + mods_on(holder).check
 
 
 func _bonus_at(rank: int) -> int:

@@ -24,7 +24,7 @@ func apply(c: Cast) -> void:
 # The grapple's helper options (apply() rolls them, foresee() weighs them): + rank, the caster's tags on its
 # side and the skill's on the foe's; the foe wins ties.
 static func grapple(c: Cast) -> Dictionary:
-	return {bonus = c.impact_rank(), tags = c.tags, their_tags = c.skill.tags, ties = false}
+	return {bonus = c.impact_rank() + c.check_shift(), tags = c.tags, their_tags = c.skill.tags, ties = false}
 
 
 # What a hit would bring: the chance the grapple holds the foe (Battle.odds(), the roll apply() makes).

@@ -3,6 +3,8 @@ extends SceneTree
 # Reports on skill terms (SkillTerms), run by Util/skill.py: information, never a failure.
 #   godot --headless --path . -s Util/terms.gd -- drift       hand-set AP / cost vs the cost calculator's (Pricing), at rank I
 #   godot --headless --path . -s Util/terms.gd -- modifiers   skills no modifier is eligible for, and why (Modifiers.why_not())
+#   godot --headless --path . -s Util/terms.gd -- density     skills Density can't trade on (SkillTerms.density_why()) and their declared reason
+#   godot --headless --path . -s Util/terms.gd -- density-check   the same, as problems: an ineligible skill with no Skill.no_density, or one declared that is eligible
 #   godot --headless --path . -s Util/terms.gd -- terms <id>  one skill's terms
 #   godot --headless --path . -s Util/terms.gd -- infer       hand-priced actives a cost profile reproduces exactly at every rank (docs/plans/w2-cost.md)
 
@@ -23,6 +25,10 @@ func _init() -> void:
 			_modifiers(skills)
 		"infer":
 			_infer(skills)
+		"density":
+			_density(skills, false)
+		"density-check":
+			_density(skills, true)
 		"terms":
 			for s in skills:
 				if args.size() > 1 and s.resource_path.get_file().get_basename() == args[1]:
@@ -66,6 +72,24 @@ func _modifiers(skills: Array[Skill]) -> void:
 	print("modifiers: %d skill%s eligible for no modifier at all - parameterize them (docs/plans/skill-modifiers.md)" % [none, "" if none == 1 else "s"])
 
 
+# Density's eligibility, the one rule (SkillTerms.density_why()) against each skill's declared reason
+# (Skill.no_density): a report, or (problems) only where the two disagree.
+func _density(skills: Array[Skill], problems: bool) -> void:
+	var off := 0
+	for s in skills:
+		var why := SkillTerms.of(s).density_why()
+		if problems:
+			if why and not s.no_density:
+				print("Skills/%s.tres: Density can't trade on it (%s): parameterize it, or say why in no_density" % [_id(s), why])
+			elif s.no_density and not why:
+				print("Skills/%s.tres: no_density says \"%s\", but Density fits it (trades %s): clear it" % [_id(s), s.no_density, ", ".join(SkillTerms.of(s).trades())])
+		elif why:
+			off += 1
+			print("%-22s %-55s %s" % [_id(s), why, s.no_density if s.no_density else "(no reason declared)"])
+	if not problems:
+		print("density: %d skill%s ineligible for Density and Diluted (docs/plans/w4-density.md)" % [off, "" if off == 1 else "s"])
+
+
 func _terms(s: Skill) -> void:
 	var t := SkillTerms.of(s)
 	print("%s: intensity %s, impact %s, penalty %s, damage %s, check %s, conditions %s, ground %s" % [_id(s), t.intensity, t.impact, t.penalty, t.damage, t.check, t.conditions, t.ground])
@@ -82,6 +106,7 @@ func _terms(s: Skill) -> void:
 		print("  profile \"%s\"%s -> %s" % [s.costs, (" (%s)" % p[&"error"]) if p[&"error"] else "", "; ".join(by_rank)])
 	else:
 		print("  hand-priced: %s AP, %s cost (as a profile \"even\" it would be %s)" % [Skill.num(s.ap), s.price(1), "; ".join(by_rank)])
+	print("  density: %s" % ("trades rank impact against %s" % ", ".join(t.trades()) if not t.density_why() else "%s (%s)" % [t.density_why(), s.no_density if s.no_density else "no reason declared"]))
 	print("  modifiers: %s" % ", ".join(Modifiers.words().filter(func(w): return Modifiers.eligible(w, s))))
 
 

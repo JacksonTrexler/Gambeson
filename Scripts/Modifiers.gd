@@ -6,8 +6,10 @@ extends RefCounted
 # through, so a modifier changes it everywhere. docs/plans/skill-modifiers.md.
 #
 # A modifier is a symbol or a tag. Symbols work on a skill's scaling channels (SkillTerms):
-#   rho up (Density)        rank range nullified, rank impact x (1 + f)
-#   rho down (Diluted)      rank impact nullified, rank range x (1 + f)
+#   rho up (Density)        rank impact x (1 + f); rank range nullified, its whole range / (1 + f), its
+#                           checks DENSE_CHECK x f harder (docs/plans/w4-density.md)
+#   rho down (Diluted)      rank impact nullified; rank range x (1 + f), its checks DILUTE_CHECK x f easier
+#   (both only on a skill SkillTerms.density_why() passes: rank impact and something to trade against it)
 #   sigma down (Concentrated) stat range nullified, stat impact x (1 + f)
 #   sigma up (Dispersed)    stat impact nullified, stat range x (1 + f)
 #   lambda up (Restrictive) a requirement's permissive share p -> p^(1 + f), its payoff x (1 + f)
@@ -26,10 +28,17 @@ const SYMBOLS := {
 const SCOPES := {&"sigil": &"one", &"crest": &"some", &"badge": &"some", &"insignia": &"all"}
 const SCOPE_NAMES := {&"sigil": "Sigil", &"insignia": "Insignia", &"crest": "Crest", &"badge": "Badge"}
 
+# Density's and Diluted's shift on the caster's side of every check the skill makes, x f: the knobs to
+# tune the bargain by (the user: "dramatically more difficult checks" dense, "easier checks" diluted).
+const DENSE_CHECK := 5.0
+const DILUTE_CHECK := 3.0
+
 static var NONE := Modifiers.new()  # no modifiers: shared, never added to
 
 var applied: Array = []  # [word, rank, scope] as added
 var k := {&"rank_range": 1.0, &"rank_impact": 1.0, &"stat_range": 1.0, &"stat_impact": 1.0}
+var reach := 1.0  # the skill's whole range (Skill.span()) is multiplied by this
+var check := 0  # + on the caster's side of its checks (Battle.requirement(): attack rolls, saves, contests)
 var lam := 1.0  # a requirement's permissive share is raised to this
 var potency := 1.0  # its payoff is multiplied by this
 var tags: Array[StringName] = []
@@ -85,9 +94,12 @@ func add(word: StringName, rank: int, scope: StringName) -> void:
 		&"rho_up":
 			k[&"rank_range"] = 0.0
 			k[&"rank_impact"] *= 1.0 + f
+			reach /= 1.0 + f
+			check -= roundi(DENSE_CHECK * f)
 		&"rho_down":
 			k[&"rank_impact"] = 0.0
 			k[&"rank_range"] *= 1.0 + f
+			check += roundi(DILUTE_CHECK * f)
 		&"sigma_down":
 			k[&"stat_range"] = 0.0
 			k[&"stat_impact"] *= 1.0 + f
@@ -188,10 +200,8 @@ static func why_not(word: StringName, s: Skill) -> String:
 		return "not built"
 	var t := SkillTerms.of(s)
 	match word:
-		&"rho_up":
-			return "" if t.has(&"rank_impact") else "no rank impact scaling"
-		&"rho_down":
-			return "" if t.has(&"rank_range") else "no rank range scaling"
+		&"rho_up", &"rho_down":
+			return t.density_why()
 		&"sigma_down":
 			return "" if t.has(&"stat_impact") else "no stat impact scaling"
 		&"sigma_up":

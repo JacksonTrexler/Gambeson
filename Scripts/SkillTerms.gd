@@ -35,6 +35,8 @@ var penalty := &""  # "", minor, major, severe
 var hit_per_rank := 0.0  # + to hit per rank
 var damage_per_rank := 0.0  # + damage per rank (a behaviour's +rank damage)
 var contingencies: Array = []  # [what (String), share, beneficial] - a requirement or an above_hp effect
+var reach := false  # an active that reaches past its user and the tiles beside it: a range Density can shrink
+var slotted := false  # it takes a hotbar slot (not a trait), so a foe can disable it (Unit.slot_weight())
 
 # Read once and kept on the skill itself (Skill.terms_read), freed with it.
 static func of(s: Skill) -> SkillTerms:
@@ -115,6 +117,8 @@ func _init(s: Skill) -> void:
 	check = not s.passive and (s.attacks() or s.contests())  # or a behaviour's (an evadable cone: Wildfire)
 	conditions = not s.passive and (not s.effects.is_empty() or s.grants != null)  # put on a target
 	ground = not s.passive and s.on_tile()
+	slotted = not s.is_trait()
+	reach = not s.passive and not s.self_only and (s.radius > 1.5 or s.radius_per_rank or s.reach_scale or s.radius_mod or s.radius_stat)
 	intensity = s.intensity if s.intensity else _derived_intensity()
 	impact = s.impact if s.impact else _derived_impact()
 	penalty = s.penalty if s.penalty else _derived_penalty()
@@ -143,6 +147,34 @@ func has(c: StringName) -> bool:
 # A contingency lambda can act on: one that helps.
 func beneficial_contingency() -> bool:
 	return contingencies.any(func(x: Array): return x[2])
+
+
+# Density (rho up) and Diluted (rho down) trade a skill's rank impact against how hard it is to land
+# (docs/plans/w4-density.md): what of the latter it has - a range to shrink or stretch, a check to make
+# harder or easier, a slot a foe's disabling check overcomes more or less easily (every skill but a
+# trait: Unit.slot_weight()), a cost to its user (a penalty: Cram's wear).
+func trades() -> Array[String]:
+	var out: Array[String] = []
+	if reach or has(&"rank_range"):
+		out.append("range")
+	if check:
+		out.append("check")
+	if slotted:
+		out.append("disable")
+	if penalty:
+		out.append("penalty")
+	return out
+
+
+# Why Density can't make a fair bargain of it ("" if it can): the one rule, both ways - rank impact to
+# boost or tamp down, and something it trades against. Modifiers.why_not() asks this; a skill it fails
+# declares why in Skill.no_density (skill.py check holds the two in step).
+func density_why() -> String:
+	if not has(&"rank_impact"):
+		return "no rank impact to boost or tamp down"
+	if trades().is_empty():
+		return "nothing to trade: a trait, with no range, check or cost to its user"
+	return ""
 
 
 # Rank or stat scaling of any kind.

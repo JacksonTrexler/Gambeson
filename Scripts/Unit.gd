@@ -3475,9 +3475,10 @@ func disable_order() -> Array[Array]:
 
 
 # What a slot of disable_order() adds to the check against disabling it: its skill's rank, or for
-# the pillar skills (one slot), their median rank.
+# the pillar skills (one slot), their median rank; each with its modifiers' check shift (Density's
+# makes a dense skill easier to overcome, Diluted's harder: Modifiers.check).
 func slot_weight(group: Array) -> int:
-	var ranks := group.map(func(s: Skill): return rank(s))
+	var ranks := group.map(func(s: Skill): return rank(s) + mods(s).check)
 	ranks.sort()
 	var n := ranks.size()
 	if n == 0:
