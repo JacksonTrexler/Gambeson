@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://Skills/coyote_charm.tres" id="2_coyote_charm"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="3_skill"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Coyote Charm"
+slot = "trinket"
+tags = Array[StringName]([&"magical"])
+rarity = "epic"
+skills = Array[ExtResource("3_skill")]([ExtResource("2_coyote_charm")])

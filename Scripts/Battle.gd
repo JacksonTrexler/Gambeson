@@ -484,6 +484,8 @@ func _listen(u: Unit) -> void:
 	u.lost_skills.connect(_on_lost_skills)
 	u.being_healed.connect(_on_being_healed)
 	u.recovered.connect(_on_recovered)
+	u.disabling.connect(_on_disabling)
+	u.slaying.connect(_on_slaying)
 	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (RecoveryEndurance)
 
 
@@ -491,6 +493,22 @@ func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
 	_note_attack(u, blow)
 	for h in u.hooks():
 		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
+
+
+# u's skills are about to be disabled (Unit.disabling, d): the passives of whoever disables it, then its own,
+# have their say (Behaviour.disabling(): Coyote Scepter, Coyote Charm).
+func _on_disabling(u: Unit, d: Dictionary) -> void:
+	var by: Unit = d.by
+	for o: Unit in ([by, u] if by and by != u else [u]):
+		for h in o.hooks():
+			h[0].disabling(self, o, h[1], u, d)
+
+
+# u is about to die an instant death with HP left (Unit.slaying, d): its passives may put it on borrowed
+# time instead (Behaviour.slain(): an enchanted Coyote Charm).
+func _on_slaying(u: Unit, d: Dictionary) -> void:
+	for h in u.hooks():
+		h[0].slain(self, u, h[1], d)
 
 
 # Every recovery but regen (Unit.recovered): Recovery Endurance's rule.
@@ -1016,7 +1034,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return true
 	for g in fog:
 		for s: Skill in g:
-			target.disable(s, skill.lasts(r, caster) + int(req[3]) + (1 if target.faction == turn else 0), true)
+			target.disable(s, skill.lasts(r, caster) + int(req[3]) + (1 if target.faction == turn else 0), true, caster)
 	if foe and skill.chain:  # Strike: a hit at a time (_chain()); its behaviours land with its first hit
 		var landed := _chain(caster, skill, target, ri, tags, 0, 0, acts, req)
 		if acts and acts.target != target:  # a reaction took the blows in its place (Interject)
@@ -1743,7 +1761,7 @@ func _smite(caster: Unit, t: Unit, r: int, gross: int) -> void:
 			if t.is_alive() and t.execute_share() <= 0.05 * r:  # full while hale (Bless)
 				t.slain_from = t.hp
 				if not Downed.finish(t):  # one already Downed dies of it
-					t.hp = 0
+					t.slay()
 		&"sol":
 			if t.is_alive():
 				var burn := Effect.new()
@@ -2239,11 +2257,13 @@ func dispel(t: Unit, r: int) -> int:
 	return _strip(t, r, 1)
 
 
-# Takes r ranks of t's effects that help it (way 1) or hurt it (-1), the highest-ranked first. An
-# effect easy to remove (Effect.ease: Level Down 2, Level Up 4) loses that many ranks for each spent.
+# Takes r ranks of t's effects that help it (way 1) or hurt it (-1), the highest-ranked first - but a
+# debuff to be overcome (the overcome stat: Curse of the Coyote) before any. An effect easy to remove
+# (Effect.ease: Level Down 2, Level Up 4) loses that many ranks for each spent. A postponing buff gone,
+# what it held lands (Unit.release()).
 func _strip(t: Unit, r: int, way: int) -> int:
 	var those := t.timed.keys().filter(func(e: Effect): return e.helps() == way and e.stat != "ire")
-	those.sort_custom(func(x: Effect, y: Effect): return t.timed[x].rank > t.timed[y].rank)
+	those.sort_custom(func(x: Effect, y: Effect): return x.stat == "overcome" if (x.stat == "overcome") != (y.stat == "overcome") else t.timed[x].rank > t.timed[y].rank)
 	var left := r
 	for e: Effect in those:
 		if left <= 0:
@@ -2254,6 +2274,7 @@ func _strip(t: Unit, r: int, way: int) -> int:
 		left -= ceili(off / float(e.ease))
 		if a.rank <= 0:
 			t.timed.erase(e)
+	t.release()
 	t._arrange()  # a level effect may have gone
 	t.refit()  # or Asphyxia
 	return r - left
@@ -4037,6 +4058,7 @@ func lives_left(f: Faction) -> int:
 func _on_downed(u: Unit) -> void:
 	u.timed.clear()
 	u.disabled.clear()
+	u.postponed.clear()
 	end_channel(u)
 	if u not in fallen:
 		fallen.append(u)
@@ -4987,8 +5009,16 @@ func place(u: Unit, c: Vector2i) -> bool:
 
 
 # A heal: its wounds of rank `power` or less cleared (an effect's wound flag), then hp back, plus
-# per_wound for each wound cleared (First Aid: rank). Returns the wounds cleared.
+# per_wound for each wound cleared (First Aid: rank). Returns the wounds cleared. A debuff to be overcome
+# on t (the overcome stat: Curse of the Coyote) takes it instead: it wears max(power, 1) of its ranks away,
+# and the heal does nothing else.
 func mend(t: Unit, hp: int, power: int, per_wound := 0) -> int:
+	for e: Effect in t.timed.keys():
+		if e.stat == "overcome" and e.helps() < 0:
+			t.timed[e].rank -= maxi(power, 1)
+			if t.timed[e].rank <= 0:
+				t.timed.erase(e)
+			return 0
 	var n := 0
 	for e in t.timed.keys():
 		if e.wound and t.timed[e].rank <= power:
@@ -5676,7 +5706,7 @@ func _death(caster: Unit, skill: Skill, t: Unit, r: int, req: Array = [0, 0, 0, 
 	t.slain_from = t.hp
 	if not Downed.finish(t):  # one already Downed dies of it
 		t.damage(1)
-		t.hp = 0
+		t.slay()
 	caster.gain(&"kill", 1)
 	return true
 

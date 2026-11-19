@@ -373,6 +373,20 @@ func neutralized(_b: Battle, _holder: Unit, _rank: int, _u: Unit, _by: Unit, _ho
 	pass
 
 
+# u's skills d.skills are about to be switched off for d.turns (Unit.disable(), Battle._on_disabling()): d.by
+# disables it (null: nobody), d.curse marks a curse's. The holder is d.by (asked first) or u itself: change
+# d.turns (Coyote Scepter: + rank), or put something on u - a postponing status holds the disabling off
+# (the postpone stat: Coyote Charm).
+func disabling(_b: Battle, _holder: Unit, _rank: int, _u: Unit, _d: Dictionary) -> void:
+	pass
+
+
+# The holder is about to die an instant death, with HP left (Unit.slay(): Death, Luun's Smite): set d.defer to put
+# it on borrowed time for that many rounds instead (Unit.defer(); an enchanted Coyote Charm).
+func slain(_b: Battle, _holder: Unit, _rank: int, _d: Dictionary) -> void:
+	pass
+
+
 # A use of w.skill the holder paid for is over, with its whole cast (Battle._settle_wear()): w.gain is what it added to
 # the holder's exhaustion, w.uses what it keeps - lower it (0: none) to ease it; w.felled holds whom it took out
 # of the fight, and how (w.killed()). Deathlust: a skill that killed gains no exhaustion.

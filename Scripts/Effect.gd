@@ -174,6 +174,12 @@ extends Resource
 # bonus_slots: sure hotbar slots a skill on the bar converts into bonus slots of its tag's type
 # (Cram: caster bonus slots), per rank: a skill there works only while it carries the type and no
 # pillar skill on the bar is disabled; wear on it is x rank (Unit.bonus_slots())
+# postpone: above 0, skills disabled on it wait: each disabling is held, not counting down, and
+# its curse debuffs (statuses bearing curse) don't count down either, until no postpone is left on
+# it - then the disablings land for their full turns (Coyote Charm; Unit.disable(), Unit.tick())
+# overcome: a debuff to be overcome first: cleansing takes its ranks before any other's, and a
+# heal (Battle.mend()) only wears max(its power, 1) of its ranks away, doing nothing else, until
+# it is gone (Curse of the Coyote; Battle._strip(), Battle.mend())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -184,7 +190,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -224,11 +230,12 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"strategy": "Allies commanded a turn", "tactics": "Orders per ally a turn", "command_mod": "Cha mod when commanding",
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
 		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
-		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??", "attack_stat": "Attack stat ??"}
+		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??", "attack_stat": "Attack stat ??",
+		"postpone": "Disablings postponed ??", "overcome": "To be overcome ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove", "no_traits"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove", "no_traits", "overcome"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -255,6 +262,10 @@ func marked(rank := 1) -> String:
 		v = Glossary.term(&"helpless", "helpless")
 	elif stat == "hale":
 		v = "%s go by its full HP" % Glossary.term(&"execute", "executes")
+	elif stat == "postpone":
+		v = "skills %s on it wait, not counting down, and so do its curses, until this ends" % Glossary.term(&"disabled", "disabled")
+	elif stat == "overcome":
+		v = "cleansing takes it before anything else, and a heal only wears it away"
 	elif stat == "defer":
 		var n := roundi(amount * (rank if per_rank else 1))
 		v = "on its last life, death put off %d round%s (once a battle) - what harmed it in the last %d replayed in order as each ends - then a %s against an %s at rank %d" % [

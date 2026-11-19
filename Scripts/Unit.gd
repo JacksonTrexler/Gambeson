@@ -13,6 +13,8 @@ signal downed(u: Unit)  # it took mortal damage with a heart left: it gets up ag
 signal falling(u: Unit, hold: Dictionary)  # _landed(): it reached 0 HP; a listener may set hold.stay to hold it up there (Battle: Final Act)
 signal lost_skills(u: Unit, skills: Array[Skill])  # skills stopped being equipped (an item taken off, a slot lost, unequipped: _sync_granted(), _arrange(), bar_clear()): Battle ends a channel on one
 signal paid(u: Unit, s: Skill, wear: Exhaustion.Wear)  # pay_for(): one use of s, now counted in its exhaustion (Battle holds it open until its cast is over: Behaviour.wearing())
+signal disabling(u: Unit, d: Dictionary)  # disable(): d.skills are about to be switched off for d.turns by d.by (null: nobody); d.curse a curse's - listeners may change d.turns (Battle: Behaviour.disabling(): Coyote Charm, Coyote Scepter)
+signal slaying(u: Unit, d: Dictionary)  # slay(): an instant death, with HP left; a listener may set d.defer to put it on borrowed time for that many rounds instead (Battle: Behaviour.slain(): an enchanted Coyote Charm)
 signal dbno_changed(u: Unit, how: StringName)  # Downed (Scripts/Downed.gd), not the hearts' going down: &"down", &"saved", or what it died of (Downed.succumb())
 
 # Stats with a base value on the unit; effects add to these and to any other named stat.
@@ -275,12 +277,15 @@ func defers() -> int:
 	return roundi(stat(&"defer"))
 
 
-# Puts its death off, if it can (the hp setter, at 0 HP on its last life): true if it did.
-func defer() -> bool:
-	if deferred_once or defers() < 1:
+# Puts its death off, if it can (the hp setter, at 0 HP on its last life): true if it did. `n`: for that
+# many rounds rather than its defer stat's (slay(): a behaviour lending it borrowed time).
+func defer(n := -1) -> bool:
+	if n < 0:
+		n = defers()
+	if deferred_once or n < 1:
 		return false
 	deferred_once = true
-	defer_rank = defers()
+	defer_rank = n
 	deferred = defer_rank
 	deferring.emit(self, &"begin")
 	return true
@@ -310,6 +315,18 @@ func replay_harms() -> void:
 		else:
 			afflict(h.effect, h.turns, h.rank)
 	replaying = false
+
+
+# Instant death (Death, Luun's Smite): it dies with HP left - the one place that happens. Its listeners
+# may put it on borrowed time instead (slaying, d.defer: an enchanted Coyote Charm), else its HP goes to 0
+# and it falls as it would (a heart, Downed, Borrowed Time's defer stat). With no HP left it's no instant
+# death: it just falls.
+func slay() -> void:
+	if hp > 0:
+		var d := {defer = 0}
+		slaying.emit(self, d)
+		defer(int(d.defer))
+	hp = 0
 
 
 # Its borrowed time is up and the execute took it: it falls as its death would have had it - a Downed
@@ -415,6 +432,7 @@ var over_max := 0  # HP it may hold past its max for now (a Red Spinel Ring past
 var slain_from := 0  # the HP it had as Death took it: what revival and die-hard effects go by (Battle._death())
 var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> its turns left: they can't be used, and passives stop working
 var cursed: Dictionary[Skill, bool] = {}  # of those, the ones a curse switched off (Brainfog): their slots quiver
+var postponed: Dictionary[Skill, Array] = {}  # disablings held while it postpones them (the postpone stat: Coyote Charm) -> [turns, curse]: they land as it stops (release())
 var chant_gains := 0  # Sweet Nothing gains a Chant will add one to (Battle._chant())
 var chant_up := false  # a Chant primed: its next Warlock skill is used a rank higher (rank())
 var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_turn(): Spike)
@@ -3420,14 +3438,39 @@ func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 
 
 # Switches s off for some of its turns (Brainfog); a pillar skill takes every pillar skill with it.
-# A curse's (Brainfog) slots quiver; others only dim.
-func disable(s: Skill, turns: int, curse := false) -> void:
+# A curse's (Brainfog) slots quiver; others only dim. `by`: who disables it, if anyone. Its listeners
+# have their say first (disabling: Coyote Scepter lengthens it); while it postpones (the postpone stat:
+# Coyote Charm) the disabling is held, not counting down, and lands as that ends (release()).
+func disable(s: Skill, turns: int, curse := false, by: Unit = null) -> void:
 	if s.is_trait():
 		return  # what it is can't be switched off (Starkind); only traits_suppressed() does
-	for x in (pillars() if s.pillar() else [s] as Array[Skill]):
-		disabled[x] = maxi(disabled.get(x, 0), turns)
-		if curse:
+	var d := {skills = pillars() if s.pillar() else [s] as Array[Skill], turns = turns, curse = curse, by = by}
+	disabling.emit(self, d)
+	for x: Skill in d.skills:
+		if postponing():
+			var was: Array = postponed.get(x, [0, false])
+			postponed[x] = [maxi(was[0], d.turns), was[1] or d.curse]
+			continue
+		disabled[x] = maxi(disabled.get(x, 0), d.turns)
+		if d.curse:
 			cursed[x] = true
+
+
+# It holds disablings off for now (the postpone stat: Coyote Charm): they and its curse debuffs wait.
+func postponing() -> bool:
+	return timed.keys().any(func(e: Effect): return e.stat == "postpone")
+
+
+# What it postponed lands, once nothing postpones it any longer (tick(), Battle._strip()): each disabling for
+# its full turns.
+func release() -> void:
+	if postponing():
+		return
+	for x in postponed:
+		disabled[x] = maxi(disabled.get(x, 0), postponed[x][0])
+		if postponed[x][1]:
+			cursed[x] = true
+	postponed.clear()
 
 
 # Its pillar skills: those its build stands on (Powerful), easiest to disable - one goes, all go.
@@ -3450,7 +3493,7 @@ func disable_order() -> Array[Array]:
 	var group := func(list: Array[Skill]) -> void:
 		var fresh: Array[Skill] = []
 		for s in list:
-			if s and not s.is_trait() and s not in seen and s not in disabled and rank(s) > 0:
+			if s and not s.is_trait() and s not in seen and s not in disabled and s not in postponed and rank(s) > 0:
 				seen[s] = true
 				fresh.append(s)
 		if not fresh.is_empty():
@@ -3487,8 +3530,10 @@ func slot_weight(group: Array) -> int:
 
 # End of this unit's faction turn: timed effects count down, and so do disabled skills. One that fades loses a rank instead
 # of ending, a turn at a time; one lasting until it moves (with no turns set), or until something
-# ends it (lasting), doesn't count down.
+# ends it (lasting), doesn't count down; nor, while it postpones (Coyote Charm), its curse debuffs. The
+# postponing over, what it held lands (release()).
 func tick() -> void:
+	var holding := postponing()
 	for s in disabled.keys():
 		disabled[s] -= 1
 		if disabled[s] <= 0:
@@ -3499,7 +3544,7 @@ func tick() -> void:
 		overcharge -= ceili(overcharge / float(maxi(oc.turns, 1)))
 	for e in timed.keys():
 		var a := timed[e]
-		if a.lasting or (a.until_move and a.turns == 0):
+		if a.lasting or (a.until_move and a.turns == 0) or (holding and &"curse" in e.bears and e.helps() < 0):
 			continue
 		a.turns -= 1
 		if a.turns > 0:
@@ -3511,6 +3556,7 @@ func tick() -> void:
 			timed.erase(e)
 	if OVERCHARGE not in timed:
 		overcharge = 0
+	release()
 	_arrange()  # a level effect may have ended
 	refit()  # or Asphyxia fallen a stack
 
