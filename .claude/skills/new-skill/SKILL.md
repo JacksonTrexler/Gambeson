@@ -100,6 +100,8 @@ Follow the steps in order; each ends in something you can check.
 
 7. **Record the calls you made** that the user didn't, for review (CLAUDE.md). The next question number
    N is one past the highest in use: `grep -rhoE '^- [0-9]+|\(\?[0-9]+\)' todo.md docs/todo | grep -oE '[0-9]+' | sort -n | tail -1` (questions are
-   numbered across todo.md and docs/todo/*.md). Add to todo.md's "Built on judgement" list:
+   numbered across todo.md and docs/todo/*.md). Append to todo.md (its append list of questions):
    `- N <Topic> (<date>): <each call, with the choice made>.` Put the item itself, ending `(?N)`, in the
    docs/todo file for its area (classes.md for a class's skill, systems.md for a general one), and add N to that file's row of the table at the bottom of todo.md.
+
+A skill that is a trait (always on, no hotbar slot) is declared explicitly: `python3 Util/skill.py new --trait` for a new one, `python3 Util/skill.py trait <id> [--off]` for an existing one; `check` fails a trait that is a toggle, hybrid or pillar. Tags on a skill and its statuses: `python3 Util/mechanic.py carry <tag> --skills --effects --inline skill:stat`; tag `cc` on anything that impairs a unit's ability to act, `shove` only where a skill's force itself moves a unit.

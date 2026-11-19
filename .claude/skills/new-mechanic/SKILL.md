@@ -58,6 +58,8 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
 
 6. **Record the calls you made** that the user didn't, for review (CLAUDE.md). The next question number
    N is one past the highest in use: `grep -rhoE '^- [0-9]+|\(\?[0-9]+\)' todo.md docs/todo | grep -oE '[0-9]+' | sort -n | tail -1` (questions are
-   numbered across todo.md and docs/todo/*.md). Add to todo.md's "Built on judgement" list:
+   numbered across todo.md and docs/todo/*.md). Append to todo.md (its append list of questions):
    `- N <Topic> (<date>): <each call, with the choice made>.` Put the item itself, ending `(?N)`, in the
    docs/todo file for its area (systems.md or rules.md), and add N to that file's row of the table at the bottom of todo.md.
+
+`python3 Util/mechanic.py carry <tag> --skills --effects --inline skill:stat` puts an existing tag on skills, on Effect `bears` (statuses carry `cc` there, not in `tags`), or on an inline effect's stat. Convention (2026-11-19): `cc` marks anything that impairs a unit's ability to act; `friction` caps looping attack rolls inside one skill use; `strike` marks Strike skills (Heavy and Glancing Strike read it).
