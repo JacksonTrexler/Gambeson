@@ -1111,3 +1111,9 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
 - [ ] **FLAG_CEILING raised for `scaling`:** keep the field, or replace it with tags or a Terms-field entry (ceiling back to 104)? (?204)
 - [ ] **The Guide does not list β and d** (the knob terms are kind `target`, which no Guide page lists); decide whether it should. (?204)
 - [ ] **No skill uses `modified`;** the AI does not read a knob beyond the numbers it changes. (?204)
+
+## Moved from todo.md (2026-11-19 consolidation): the user's annotations
+
+- **Stun, Stunned, Borrowed Time (?83, ?85, ?119).** Your words: "Martial prowess high tier skill: Stun: attempt a very difficult attack. on a hit target attempts a difficult constitution check. On a failure, target is stunned for rank rounds". "Stunned is an easy debuff to cleanse, it's rank for cleanse purposes is halved". "Stunned is a `wound`: it can be healed off with an active skill". "Stunned units are tapped". Downed: "It does not end for the berskerker variant who acts as normal on borrowed time, but does for adventurers etc. who are tapped until they're back up". Built in the section "Tapped, helpless, Stun, Mindless Fury, Drone" above.
+- **Contact with a concealed unit (?68).** Your note: physically contacting a concealed unit (a move blocked by it) grants 1 recon. Recorded in `docs/requirements.md`; built with Fixes (?127).
+

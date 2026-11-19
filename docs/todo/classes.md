@@ -580,3 +580,8 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
 - [ ] **Friction's numbers** (disadvantage plus -1 per roll, free rolls = rank) are as you wrote; not balanced. (?202)
 - [ ] **Friction is not shown on the HUD** except through the forecast's odds (no line naming it on a roll). (?202)
 - [ ] **Waterstrike and Silent Strike don't get Brutal, Decisive, Elemental, Strike Out, Strike! or Record Striker** (those need `_chain()`). (?202)
+
+## Moved from todo.md (2026-11-19 consolidation): the user's annotations
+
+- **Rank-up and unlock costs (?58, Berserker / Affinity).** Built: the even curve keeps 1 + r^2 steps (about n^2); +1 is n log2 n floored at n; a skill's Affinity sums the postures it serves; ranks never drop below I. Your annotation, verbatim: "sorry I don't folow exactly, but unlock / rank up costs should follow a uniform system that can be built off of with traits, skills, debuffs etc. It's OK if costs are similar for initial purchase but if ranking up skills can get expensive, efficiency +/- should make a major impact on how many points a unit can invest into skills while still creating effective builds." Requirement recorded in `docs/requirements.md`.
+

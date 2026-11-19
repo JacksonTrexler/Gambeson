@@ -1,6 +1,6 @@
 # Gambeson: completed
 
-What's decided and built, split by scope. Open work and questions are indexed in `todo.md`.
+What's decided and built, split by scope. Open work and questions are indexed in `todo.md`; the short list of every decided rule is `requirements.md`.
 
 `[x]` done · `(?N)` an open question in `docs/todo/` that may still change the item · *Now:* what the game does today.
 

@@ -9,7 +9,6 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 
 ## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A, B and C built, ?202 to ?204)
 D. **Aggressive tagging** (running as `w4-tags`): tag and parameterize skills widely so they are easier to scale later; continue from ?191's 22 concrete skills and any missing tags. Sonnet/high.
-E. **Consolidate todo.md** (after the wave's docs keeper): drafts in the scratchpad `condense/` (requirements.md with its facing line superseded by ?142's answer, todo.md, moves.md); refresh with ?185 onward and the answers; apply moves.md first, commit docs/requirements.md beside completed.md, replace todo.md with the condensed version (open questions only, about 80 lines). Sonnet/medium.
 
 ## Wave 3: the user's answers of 2026-11-18, second batch (docs/agents/answers-2026-11-18b.md)
 All eleven cards are built (?192 to ?201). Nothing left here.
