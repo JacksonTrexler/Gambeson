@@ -135,9 +135,15 @@ func test_cram() -> void:
 	var bonus := u.bonus_slots()
 	ok(bonus.size() == 2 and bonus.get(c - 1) == [&"magical", 2] and bonus.has(c - 2), "rank sure slots to its left become caster bonus slots")
 	u.bar_clear(c - 1)
+	for i in u.slot_count():  # only bonus slots left free
+		if not u.hotbar[i] and not bonus.has(i):
+			u.hotbar[i] = Skill.new()
 	u.learned.append(slot(kick))
 	u.get_equipped()
-	ok(kick in u.hotbar and not bonus.has(u.hotbar.find(kick)), "auto-equip leaves a non-caster out of a bonus slot")
+	ok(u.hotbar.find(kick) >= u.slot_count() and not u.hotbar[c - 1], "auto-equip leaves a non-caster out of a bonus slot")
+	for i in u.slot_count():
+		if u.hotbar[i] and u.hotbar[i].resource_path == "":
+			u.hotbar[i] = null
 	ok(u.bar_place(strike, c - 1) and u.hotbar[c - 1] == strike and not u.equipped(strike) and strike not in u.actives and u.bonus_why(c - 1) != "", "a non-caster can be slotted there, but doesn't work")
 	u.learned.append(slot(sola))
 	u.get_equipped()
