@@ -1,14 +1,13 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-19. Reconciled against the code after ?192 to ?204 (the next question is 205).
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-19. Reconciled against the code after ?192 to ?205 (the next question is 206).
 
 Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: Wave 2 (traits, facing, glance, Striking Features and Intellect, cost profiles, parameterized skills), traits, facing by move or aim, glance and its skills, test stubs Option A, the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), Skeleton, Deathlust, the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-`w4-tags` (Wave 4 card D). Built 2026-11-19 (?198 to ?204): Wave 3 cards 5, 6, 8, 9 and Wave 4 cards A, B and C.
+Nothing. Built 2026-11-19 (?198 to ?205): Wave 3 cards 5, 6, 8, 9 and Wave 4 cards A to D.
 
-## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A, B and C built, ?202 to ?204)
-D. **Aggressive tagging** (running as `w4-tags`): tag and parameterize skills widely so they are easier to scale later; continue from ?191's 22 concrete skills and any missing tags. Sonnet/high.
+## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A to D built, ?202 to ?205)
 
 ## Wave 3: the user's answers of 2026-11-18, second batch (docs/agents/answers-2026-11-18b.md)
 All eleven cards are built (?192 to ?201). Nothing left here.

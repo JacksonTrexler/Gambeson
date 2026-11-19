@@ -177,6 +177,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Strike tag, Chaser's chain, `friction` (?202) | `check_test.gd`, `heavy_strike_test.gd`, `chaser_test.gd`, `fighter_test.gd` |
 | — | Density eligibility and `no_density` (?203) | `param_test.gd`, `skills_test.gd` |
 | — | Balance knobs: `scaling`, β and d tags (?204) | `param_test.gd`, `kick_test.gd` |
+| — | Aggressive tagging, `Cast.put()`, impact reads (?205) | `param_test.gd`, `water_test.gd` |
 
 ## Questions to answer first
 

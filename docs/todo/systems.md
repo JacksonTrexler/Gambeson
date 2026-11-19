@@ -1112,6 +1112,20 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
 - [ ] **The Guide does not list β and d** (the knob terms are kind `target`, which no Guide page lists); decide whether it should. (?204)
 - [ ] **No skill uses `modified`;** the AI does not read a knob beyond the numbers it changes. (?204)
 
+## Wave 4 card D (2026-11-19): aggressive tagging
+
+205. **Tag and parameterize the rest - built on judgement, open for review (2026-11-19).** Your words (answers of 2026-11-19, last line): "*do* aggressively tag and parameterize skills to make them easier to scale and tweak in the long run". Plan: `docs/plans/w4-tags.md`. Calls:
+    - **What "cheap" meant:** a skill whose number can read rank (impact or range) through an existing mechanism (`per_rank`, `dice_per_rank`, `Cast.impact_rank()`, `holder_rank()`) and one `terms()` line, with rank I exactly as before; no AP, cost or price edited. Alternative: also allow rebalances (tiers, new costs) for the harder ones.
+    - **Drown rank II+ is new untuned scaling** (`dice_per_rank` now also multiplies a grip's `drowns` dice: 2d12 a turn at II); Peel, Solar, Energy Transfer, Kick's riders and Slam Jam likewise. Alternative: tune by the knob or a d tag, or leave rank II+ flat.
+    - **Coyote Charm and Scepter channel reads are inert until slotted:** item-lent, so `mods_on()` is `NONE` today; live when a tree teaches them. Alternative: leave them concrete.
+    - **Fifteen skills got existing tags via `mechanic.py carry`, inert** (no rule reads a skill's condition tag yet): entrance, evadable, aura, concealment, held, disabled, channeled, wound. No new words. Alternative: no tags until a rule reads them.
+    - **Gale and Judgement left untagged:** `forced_test.test_cc_and_shove_are_tagged` audits `cc` and `shove` by what a skill does (Gale is a stub with no displace; Judgement's shackles hold movement, not action). Discipline and role tags untouched, since the AI reads `offensive` and friends as intent. Alternative: tag them and change the audit.
+    - **Still concrete, with reasons:** Clairvoyance (rank is only reach), Send Off (a teleport), Stoneskin (`per_rank` would double 40% to 80%: a rebalance, needs tiers), Elemental Mastery (scales through Strike's `element`). Alternative: give them rank-impact terms as ?203 asked ("as few as possible").
+    - **Density-ineligible 37 to 29.** Tests: `param_test` (`test_concrete_scaled` rows, new `test_impact_reads`), `water_test.test_drowning_dice_per_rank`; seven mutations failed and reverted. Suite 10189 checks, 0 failed.
+    - **New names to review:** none.
+- [ ] **Are Drown, Peel, Solar rank II+ values right?** Untuned. (?205)
+- [ ] **Clairvoyance, Send Off, Stoneskin, Elemental Mastery:** give them rank impact (tiers for Stoneskin), or keep them concrete? (?205)
+
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 
 - **Stun, Stunned, Borrowed Time (?83, ?85, ?119).** Your words: "Martial prowess high tier skill: Stun: attempt a very difficult attack. on a hit target attempts a difficult constitution check. On a failure, target is stunned for rank rounds". "Stunned is an easy debuff to cleanse, it's rank for cleanse purposes is halved". "Stunned is a `wound`: it can be healed off with an active skill". "Stunned units are tapped". Downed: "It does not end for the berskerker variant who acts as normal on borrowed time, but does for adventurers etc. who are tapped until they're back up". Built in the section "Tapped, helpless, Stun, Mindless Fury, Drone" above.
