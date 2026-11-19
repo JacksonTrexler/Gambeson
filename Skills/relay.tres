@@ -15,3 +15,4 @@ name = "Relay"
 passive = true
 tags = Array[StringName]([&"physical", &"str"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_relay")])
+no_density = "its share by str mod (stat impact): rank adds nothing yet"

@@ -8,3 +8,4 @@ passive = true
 name = "Thaumaturgist"
 tags = Array[StringName]([&"foundation", &"magical"])
 waives = &"magical"
+no_density = "a build gate: an emblem coming off would strand picks"

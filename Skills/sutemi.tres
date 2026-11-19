@@ -22,6 +22,7 @@ tags = Array[StringName]([&"physical", &"str", &"martial", &"offensive"])
 radius = 1.0
 radius_per_rank = 1.0
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+dice_per_rank = true
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_sutemi")])
 weapon_tag = true
 costs = "low cost"

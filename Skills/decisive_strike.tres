@@ -16,3 +16,4 @@ renames = "Decisive Strike"
 exclusive = &"strike_form"
 max_rank = 1
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])
+no_density = "a Strike form switch: on or off, nothing scales"

@@ -9,3 +9,4 @@ passive = true
 max_rank = 1
 glyph = "FE"
 energy_as = Array[StringName]([&"martial"])
+no_density = "energy counts as a kind: on or off, nothing scales"

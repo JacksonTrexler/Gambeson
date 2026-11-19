@@ -15,3 +15,4 @@ script = ExtResource("1_skill")
 name = "Manifest"
 passive = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_luck")])
+no_density = "luck by cha score (stat impact): rank adds nothing yet"

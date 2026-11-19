@@ -11,3 +11,4 @@ toggle = true
 tags = Array[StringName]([&"magical"])
 stand_in = &"intelligence"
 replaces = Array[StringName]([&"wisdom", &"charisma"])
+no_density = "a stat stands in for another: on or off, nothing scales"

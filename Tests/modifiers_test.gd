@@ -142,7 +142,7 @@ func test_symbols() -> void:
 	var r := v(1).rank(s)
 	ok(s.span(v(1)) == 1 + 2 + 3 and s.lasts(r, v(1)) == 2 + 2, "unmodified: range 1 + rank + int mod, turns rank + cha mod")
 	v(1).trinket = emblem(&"rho_up", &"sigil", 1)  # x1.75
-	ok(s.span(v(1)) == 1 + 1 + 3 and s.lasts(r, v(1)) == roundi(2 * 1.75) + 2 and v(1).mods(s).label() == "ρ↑", "Density: rank range as at rank I, rank impact x1.75")
+	ok(is_equal_approx(s.span(v(1)), (1 + 1 + 3) / 1.75) and s.lasts(r, v(1)) == roundi(2 * 1.75) + 2 and v(1).mods(s).label() == "ρ↑", "Density: rank range as at rank I and the whole range / 1.75, rank impact x1.75 (%s)" % s.span(v(1)))
 	v(1).trinket = emblem(&"rho_down", &"sigil", 1)
 	ok(s.span(v(1)) == 1 + 2 * 1.75 + 3 and s.lasts(r, v(1)) == 1 + 2, "Diluted: rank impact as at rank I, rank range x1.75")
 	v(1).trinket = emblem(&"sigma_down", &"sigil", 1)

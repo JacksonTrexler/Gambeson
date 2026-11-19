@@ -44,6 +44,10 @@ class Cast:
 	func range_rank() -> int:
 		return mods.irank(rank, &"rank_range") if mods else rank
 
+	# + on its caster's side of a check it makes: Density's or Diluted's shift (Modifiers.check).
+	func check_shift() -> int:
+		return mods.check if mods else 0
+
 	# A stat mod m its caster adds to what it does (stat_impact) or to its reach (stat_range), through
 	# its modifiers.
 	func stat_mod(m: int, channel := &"stat_impact") -> int:

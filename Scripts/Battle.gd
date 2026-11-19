@@ -5643,15 +5643,17 @@ static func executed(t: Unit, by: Variant, r: int) -> float:
 # What skill's contingency (Skill.requires) gives caster using it on target at rank r: [hit, damage,
 # edge], all 0 unmet. Its share and payoff go through the caster's modifiers (lambda: Modifiers.share(),
 # pay()); a penalty's payoff (below 0) lambda leaves as it is.
+# Its + hit also carries Density's or Diluted's shift on every check it makes (Modifiers.check).
 func requirement(caster: Unit, skill: Skill, target: Unit, r: int) -> Array:
 	var q := skill.requires
+	var shift := caster.mods(skill).check
 	if q == null:
-		return [0, 0, 0, 0, 0.0]
+		return [shift, 0, 0, 0, 0.0]
 	var m := caster.mods(skill) if q.beneficial() else Modifiers.NONE
 	var allies := units.values().filter(func(o: Unit): return Faction.friends(o.faction, caster.faction))
 	if not q.met(caster, target, r, m.share(q.share), allies, roundi(caster.stat(&"concealment"))):
-		return [0, 0, 0, 0, 0.0]
-	return [m.pay(q.hit), m.pay(q.damage), q.edge, m.pay(q.turns), q.strength * m.potency if q.strength > 0.0 else q.strength]
+		return [shift, 0, 0, 0, 0.0]
+	return [m.pay(q.hit) + shift, m.pay(q.damage), q.edge, m.pay(q.turns), q.strength * m.potency if q.strength > 0.0 else q.strength]
 
 
 

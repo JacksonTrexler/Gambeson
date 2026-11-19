@@ -18,3 +18,4 @@ cost = 3
 radius = 1.0
 weapon_tag = true
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+dice_per_rank = true

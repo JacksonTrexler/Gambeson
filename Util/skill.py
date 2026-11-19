@@ -33,7 +33,7 @@ import argparse, os, re, subprocess, sys
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
                   literal, effect_section, names, composition_problems)
 STUB = "STUB(skill.py)"
-FLAG_CEILING = 103  # (-1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
+FLAG_CEILING = 104  # (+1 2026-11-19: `no_density`, the Terms group's declared reason a skill is ineligible for Density, docs/plans/w4-density.md; -1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking", "armor", "summon_ap", "armor_slot", "slot_works", "slot_defense", "slot_blocked", "disabling", "slain")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
@@ -293,9 +293,14 @@ def check_icons(problems):
     problems.extend(item.problems())  # every item and loot table: icons, tags, rarity, qualities, lent skills (item.py check)
 
 
+def check_density(problems):  # Density's one rule (SkillTerms.density_why()) against each skill's no_density, read headless as the game does
+    r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", "density-check"], capture_output=True, text=True)
+    problems.extend(l for l in r.stdout.split("\n") if l.startswith("Skills/"))
+
+
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons, check_density):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
@@ -688,6 +693,7 @@ def main():
     sub.add_parser("check", help="catch the wiring pitfalls")
     sub.add_parser("drift", help="hand-set prices against the cost calculator's (information)")
     sub.add_parser("modifiers", help="skills no modifier fits, and why (information)")
+    sub.add_parser("density", help="skills Density / Diluted can't trade on, and their declared reason (no_density); check holds them in step")
     t = sub.add_parser("terms", help="one skill's terms")
     t.add_argument("id")
     c = sub.add_parser("cost", help='set a skill\'s cost profile: cost kick "high ap, low cost" (or: cost kick hand --ap 4 --points 1)')
@@ -705,7 +711,7 @@ def main():
         sys.exit(cost(a))
     if a.cmd == "migrate":
         sys.exit(migrate(a))
-    if a.cmd in ("drift", "modifiers"):
+    if a.cmd in ("drift", "modifiers", "density"):
         sys.exit(report(a.cmd))
     if a.cmd == "terms":
         sys.exit(report("terms", a.id))

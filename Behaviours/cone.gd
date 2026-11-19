@@ -55,7 +55,7 @@ func _evadable(c: Cast, cell: Vector2i) -> void:
 	var hit := {}
 	var tries := func(w: Unit) -> float:  # the check it imposes: at its rank impact
 		var bane := skill.bane != &"" and w.has_tag(skill.bane)
-		return b.evade(w, Difficulty.dc(&"impossible" if bane else skill.difficulty, ri))
+		return b.evade(w, Difficulty.dc(&"impossible" if bane else skill.difficulty, ri) + c.check_shift())  # Density: easier to dodge
 	var strike := func(w: Unit, share: float) -> void:
 		if share <= 0.0 or not t:
 			hit[w] = hit.get(w, 0)
@@ -123,5 +123,5 @@ func describe_as(c: Cast) -> String:
 	var lines := ["A {r:%d} degree cone, {r:%d} tiles long: it lands on every unit in it but the caster" % [roundi(degrees), long]]
 	if s and s.difficulty:
 		lines.append("%s: a %s %s (%s, DC {r:%d}) - passing, none of it lands; failing by a quarter of the DC or less, half"
-				% [Glossary.term(&"evadable"), Glossary.term(s.difficulty), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true), Difficulty.dc(s.difficulty, m.irank(c.rank, &"rank_impact"))])
+				% [Glossary.term(&"evadable"), Glossary.term(s.difficulty), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true), Difficulty.dc(s.difficulty, m.irank(c.rank, &"rank_impact")) + m.check])
 	return "\n".join(lines)

@@ -16,3 +16,4 @@ passive = true
 toggle = true
 tags = Array[StringName]([&"magical", &"int", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_armor")])
+no_density = "Defense by int mod (stat impact): rank adds nothing yet"

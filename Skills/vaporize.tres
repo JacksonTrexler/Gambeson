@@ -33,3 +33,4 @@ passive = true
 toggle = true
 tags = Array[StringName]([&"water", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_mist"), SubResource("Effect_physical"), SubResource("Effect_magical"), SubResource("Effect_wind")])
+no_density = "a toggled form with fixed mitigations: no rank curve to push"

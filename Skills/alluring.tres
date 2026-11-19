@@ -24,3 +24,4 @@ shows_nouns = Dictionary[String, String]({
 "Lady": ";)",
 "Songstress": ":3"
 })
+no_density = "a trait: no slot a foe can disable, no range, check or cost, so Density would be all gain"

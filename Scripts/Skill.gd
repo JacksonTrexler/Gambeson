@@ -120,6 +120,7 @@ extends Resource
 @export var impact := &""  # its unique effect beyond damage: tame or impactful; empty: from its fields
 @export var penalty := &""  # what it costs its user to use: minor, major or severe; empty: from its fields (disadvantage, roll_bonus)
 @export var requires: Requirement  # a contingency: a test of the moment and what it gives while met (Scripts/Requirement.gd)
+@export var no_density := ""  # why Density / Diluted can't trade on it fairly (one line), where SkillTerms.density_why() finds nothing to trade; skill.py check holds the two in step
 @export var costs := ""  # its cost profile: AP and cost from the cost calculator (Pricing), skewed by these words ("high mana, low ap", "even"; docs/plans/w2-cost.md); "": hand-priced, ap and cost as set
 @export_group("Stub")  # a skill that isn't built yet: shown on skill trees, but it can't be learned
 @export var stub := ""  # the open question(s) in todo.md it waits on: "?3", "?2 ?11"
@@ -398,6 +399,8 @@ func span(u: Unit) -> float:
 	var r := radius + radius_per_rank * m.rank(u.rank(self), &"rank_range") + (m.statf(u.stat(radius_stat), &"stat_range") if radius_stat else 0.0)
 	if radius_mod:
 		r = maxf(r + m.stat(u.mod(radius_mod, tags), &"stat_range"), 1.0)
+	if m.reach != 1.0 and r > 1.0:  # Density's cut (Modifiers.reach): never below the tiles beside it
+		r = maxf(r * m.reach, 1.5 if r >= 1.5 else 1.0)
 	return r + (u.skill_stat(&"range", self) if not self_only else 0.0)
 
 

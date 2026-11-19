@@ -36,3 +36,4 @@ passive = true
 tags = Array[StringName]([&"martial", &"trait"])
 effects = Array[ExtResource("2_effect")]([SubResource("E_off"), SubResource("E_sup"), SubResource("E_def"), SubResource("E_ab")])
 lore = "A Berserker's trait: it gives itself to the fight and nothing else."
+no_density = "an inherent trait: flat Affinity by posture"

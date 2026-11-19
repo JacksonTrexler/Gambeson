@@ -14,3 +14,4 @@ name = "Elemental Mastery"
 tags = Array[StringName]([&"magical"])
 max_rank = 1
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])
+no_density = "a switch; its number scales through Strike's own stat impact (element)"

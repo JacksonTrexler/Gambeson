@@ -20,3 +20,4 @@ radius = 1.0
 either = true
 lore = "A kiss on the brow, and they're elsewhere: out of harm's way, or out of yours."
 behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_displace")])
+no_density = "rank buys only reach: Density would cut all it boosts, Diluted give reach for nothing"

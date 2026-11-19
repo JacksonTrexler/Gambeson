@@ -15,4 +15,5 @@ name = "Waterstrike"
 tags = Array[StringName]([&"water", &"physical", &"blunt", &"dex", &"strike"])
 radius = 1.0
 tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
+dice_per_rank = true
 costs = "high ap, no cost"
