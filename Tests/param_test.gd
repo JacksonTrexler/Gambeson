@@ -102,8 +102,14 @@ func test_concrete_scaled() -> void:
 		&"stonegift": [func(u: Unit): return stone.lasts(u.learned[0].rank, u), 3],  # absolute: 3 turns at I, as before
 		&"final_act": [func(u: Unit): return _free_actions(u), 1],
 		&"gallantry": [func(u: Unit): return gal.behaviours[0].check_bonus(u, u.learned[0].rank) - u.mods(gal).check, 0],  # its rank's part (the shift: test_density)
+		&"mage_armor": [func(u: Unit): return u.stat(&"defense"), 3],  # int 16: +3 a rank
+		&"manifest": [func(u: Unit): return u.stat(&"luck"), 2],  # cha 20: 2 a rank
+		&"relay": [func(u: Unit): return u.stat(&"relay"), 0.5],  # str 20: 0.1 x 5 a rank
 		&"cram": [func(u: Unit): return u.granted_slots().size(), 2],  # 1 + rank caster slots; its converted slots and wear: equip_test.test_cram
 	}
+	v(1).intelligence = 16
+	v(1).charisma = 20
+	v(1).strength = 20
 	for id in reads:
 		var s: Skill = load("res://Skills/%s.tres" % id)
 		var read: Callable = reads[id][0]
@@ -158,6 +164,98 @@ func _free_actions(u: Unit) -> int:
 	b.interrupter = null
 	b._interrupts.clear()
 	return n
+
+
+# The hooks and rolls that read rank through its impact channel (docs/plans/w4-tags.md), each at rank I under Density
+# (which reads I as II), against what rank I does bare: Peel's steps, Energy Transfer's Overcharge, the Coyote Charm's
+# rank, Kick's riders, and the dice of Solar and of a grip's drowning (Drown, Coalescing), by sums over many rolls.
+func test_impact_reads() -> void:
+	var dense := func() -> void:
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1)
+		v(1).refresh()
+	# Peel: steps a turn.
+	var peel: Skill = sk("peel")
+	var peeled := func(density: bool) -> float:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(peel, 1))
+		v(1).wisdom = 18
+		v(1).movement = 9
+		stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(5, 3), v(3): Vector2i(6, 3)})
+		v(1).refresh()
+		if density:
+			dense.call()
+		var w := b.walk(v(1), Vector2i(4, 3), true)
+		return 3.0 - w.costs.reduce(func(sum, x): return sum + x, 0.0)
+	var steps := [peeled.call(false), peeled.call(true)]
+	ok(is_equal_approx(steps[0], 0.5) and is_equal_approx(steps[1], 1.0), "Peel I halves 1 step's price, 2 under Density: the steps a turn are rank impact (%s)" % [steps])
+	# Energy Transfer: the Overcharge kept, 20% x rank of what overflows.
+	var transfer: Skill = sk("energy_transfer")
+	var kept := func(density: bool) -> int:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(transfer, 1))
+		stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+		v(1).refresh()
+		v(1).energy = v(1).max_energy
+		v(1).overcharge = 0
+		if density:
+			dense.call()
+		var c := b.cast_of(v(1), transfer, v(3), 1, true)
+		c.siphoned = 20
+		transfer.behaviours[0].dealt(c, 20)
+		return v(1).overcharge
+	ok(kept.call(false) == 4 and kept.call(true) == 8, "Energy Transfer I keeps 20%% of 20 (4), 40%% under Density (8)")
+	# The Coyote Charm: the buff and its curse at the holder's rank.
+	var charm: Skill = sk("coyote_charm")
+	for density in [false, true]:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(charm, 1))
+		v(1).timed.clear()
+		v(1).refresh()
+		if density:
+			dense.call()
+		charm.behaviours[0].disabling(b, v(1), 1, v(1), {})
+		var buff: Effect = load("res://Effects/coyote_charm.tres")
+		ok(v(1).timed[buff].rank == (2 if density else 1), "Coyote Charm I lends rank %d%s" % [2 if density else 1, " under Density" if density else ""])
+	# Kick's Soaked and Blinded turns, as it says them.
+	var kick: Skill = sk("kick")
+	v(1).trinket = null
+	v(1).learned.clear()
+	v(1).learned.append(slot(kick, 1))
+	v(1).refresh()
+	var bare := Glossary.plain(kick.describe(1, v(1)))
+	dense.call()
+	ok("for 1 turn" in bare and "for 2 turns" in Glossary.plain(kick.describe(1, v(1))), "Kick's riders last rank impact turns (%s)" % Glossary.plain(kick.describe(1, v(1))))
+	# Dice: Solar's d20s and a grip's drowning dice, as sums over 30 rolls at I and under Density.
+	var solar: Skill = sk("solar")
+	var sums := []
+	for density in [false, true]:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(solar, 1))
+		v(1).bar_place(solar, 0)
+		stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(4, 3)})
+		v(1).wisdom = 8
+		v(1).refresh()
+		if density:
+			dense.call()
+		var total := 0
+		for i in 30:
+			soak(v(3), 9999)
+			soak(v(1), 9999)
+			v(1).ap.append(AP.new(20.0, &""))
+			v(1).energy = 99
+			ok(b.cast_at(v(1), solar, v(3).cell), "Solar casts")
+			total += 9999 - v(3).hp
+		sums.append(total)
+	ok(sums[1] - sums[0] > 150, "Solar's d20 a rank: 30 casts deal %d at I, %d under Density (2 dice)" % [sums[0], sums[1]])
+	v(1).trinket = null
+	ok("1d20" in solar.describe(1) and "2d20" in solar.describe(2), "Solar says its dice (%s)" % solar.describe(2))
+	for id in ["drown", "coalescing"]:
+		ok(sk(id).dice_per_rank and SkillTerms.of(sk(id)).has(&"rank_impact"), "%s: its drowning dice are rank impact" % id)
+	ok("2d12" in sk("drown").describe(2) and "1d12" in sk("drown").describe(1), "Drown says its dice (%s)" % sk("drown").describe(2))
 
 
 # Density's bargain (docs/plans/w4-density.md): the one rule - rank impact and something to trade against it (a range,

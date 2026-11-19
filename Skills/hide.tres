@@ -12,7 +12,7 @@ per_rank = true
 [resource]
 script = ExtResource("1_skill")
 name = "Hide"
-tags = Array[StringName]([&"specialist", &"dex"])
+tags = Array[StringName]([&"specialist", &"dex", &"concealment"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_concealment")])
 hostile = false
 until_move = true

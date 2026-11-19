@@ -94,18 +94,18 @@ func apply(c: Cast) -> void:
 		&"trap":
 			b.spring(at, c.target)
 		&"water":
-			c.put(SOAKED, c.rank)
+			c.put(SOAKED, c.impact_rank())
 		&"loose":
-			c.put(BLINDED, c.rank)
+			c.put(BLINDED, c.impact_rank())
 		&"hole":
 			b.push(c.target, c.caster, c.impact_rank(), [&"shove"] as Array[StringName], c.caster)
 		&"beside":
 			b.push(c.target, c.caster, 1, [&"shove"] as Array[StringName], c.caster)
 
 
-# Its push into a hole is rank tiles: rank -> impact.
+# Its push into a hole is rank tiles, and the Soaked and Blinded it leaves their rank and turns: all rank impact.
 func terms(t: SkillTerms) -> void:
-	t.add(&"rank_impact", "push")
+	t.add(&"rank_impact", "push, soaked, blinded")
 
 
 func describe(rank: int) -> String:
@@ -113,7 +113,7 @@ func describe(rank: int) -> String:
 
 
 func describe_as(c: Cast) -> String:
-	var rank := c.rank
+	var rank := c.impact_rank()
 	var turns := "{t:%d turn%s}" % [rank, "" if rank == 1 else "s"]
 	return "\n".join([
 		"Kicks what lies at its feet, between it and the foe, at the foe:",

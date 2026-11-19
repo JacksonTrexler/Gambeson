@@ -28,7 +28,7 @@ wounds = Array[ExtResource("3_effect")]([SubResource("Effect_bleeding")])
 [resource]
 script = ExtResource("1_script")
 name = "Snare"
-tags = Array[StringName]([&"trap", &"physical", &"pierce", &"dex", &"specialist"])
+tags = Array[StringName]([&"trap", &"physical", &"pierce", &"dex", &"specialist", &"wound"])
 ap = 4.0
 cost = 2
 radius = 1.5

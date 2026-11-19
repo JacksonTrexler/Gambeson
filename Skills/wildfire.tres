@@ -18,7 +18,7 @@ evadable = true
 [resource]
 script = ExtResource("1_skill")
 name = "Wildfire"
-tags = Array[StringName]([&"fire", &"divine", &"wis", &"magical"])
+tags = Array[StringName]([&"fire", &"divine", &"wis", &"magical", &"evadable"])
 ap = 10.0
 cost = 10
 difficulty = &"difficult"

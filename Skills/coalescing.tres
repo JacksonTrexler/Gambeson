@@ -13,7 +13,7 @@ bears = Array[StringName]([&"cc"])
 [resource]
 script = ExtResource("1_skill")
 name = "Coalescing"
-tags = Array[StringName]([&"water", &"physical", &"str", &"cc"])
+tags = Array[StringName]([&"water", &"physical", &"str", &"cc", &"held"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_grappled")])
 radius = 1.0
 rolls = false

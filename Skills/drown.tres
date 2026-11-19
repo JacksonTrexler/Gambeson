@@ -19,7 +19,7 @@ drags_to = &"water"
 [resource]
 script = ExtResource("1_script")
 name = "Drown"
-tags = Array[StringName]([&"physical", &"str", &"water", &"cc"])
+tags = Array[StringName]([&"physical", &"str", &"water", &"cc", &"held"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_submerged")])
 radius = 1.0
 rolls = false

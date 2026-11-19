@@ -87,6 +87,31 @@ func test_drowning_needs_water() -> void:
 	ok(v(1).hp < hp, "and it drowns there too")
 
 
+# A grip's drowning dice are rolled once per rank when its skill says so (Drown, Coalescing: dice_per_rank): 30 drownings
+# at rank I and at rank III, d12 against 3d12.
+func test_drowning_dice_per_rank() -> void:
+	stage(nemes, {siren(): Vector2i(1, 1), v(1): Vector2i(2, 1)})
+	var c := dry_cell()
+	b.move(v(1), c)
+	b.move(siren(), c + Vector2i(-1, 0) if b.on_map(c + Vector2i(-1, 0)) and not b.unit_at(c + Vector2i(-1, 0)) else c + Vector2i(1, 0))
+	siren().strength = 20
+	var a := v(1).afflict(drown.effects[0], 0, 1)
+	a.lasting = true
+	a.skill = drown
+	a.by = siren()
+	b.flood(c, 5, 2, siren())
+	var sums := []
+	for r in [1, 3]:
+		a.rank = r
+		var total := 0
+		for i in 30:
+			soak(v(1), 9999)
+			b._grip(v(1))
+			total += 9999 - v(1).hp
+		sums.append(total)
+	ok(sums[1] - sums[0] > 250, "Drown: 30 drownings deal %d at I, %d at III (3d12 against d12)" % [sums[0], sums[1]])
+
+
 func test_siren_closes_in() -> void:
 	stage(nemes, {siren(): Vector2i(9, 7), v(1): Vector2i(1, 1)})
 	var from := siren().cell

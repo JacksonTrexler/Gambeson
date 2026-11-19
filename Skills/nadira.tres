@@ -20,7 +20,7 @@ stat = &"intelligence"
 [resource]
 script = ExtResource("1_skill")
 name = "Nadira"
-tags = Array[StringName]([&"dark", &"magical", &"int"])
+tags = Array[StringName]([&"dark", &"magical", &"int", &"concealment"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_ally")])
 ap = 3.0
 cost = 2

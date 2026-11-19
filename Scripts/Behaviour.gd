@@ -56,9 +56,9 @@ class Cast:
 	var strength := 1.0  # what its skill's `decays` leaves of it, set as it was cast (Battle.decay()): every effect it puts on has it (put())
 
 	# Puts e on the target for its turns (+ 1 on its side's turn, which doesn't count), marked as this
-	# cast's, as a skill's own effects are.
+	# cast's, as a skill's own effects are (a per-rank one at its rank impact, as Battle puts them).
 	func put(e: Effect, turns: int) -> Unit.Applied:
-		var a := target.afflict(e, turns + (1 if target.faction == battle.turn else 0), rank)
+		var a := target.afflict(e, turns + (1 if target.faction == battle.turn else 0), impact_rank() if e.per_rank else rank)
 		a.total = turns
 		a.scale = strength
 		a.skill = skill

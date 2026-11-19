@@ -57,7 +57,7 @@ func test_terms() -> void:
 	var ts := SkillTerms.of(stoneskin)
 	ok(ts.beneficial_contingency() and is_equal_approx(ts.contingencies[0][1], 0.15), "Stoneskin's above 85% HP is a contingency, share 0.15")
 	var kick: Skill = load("res://Skills/kick.tres")
-	ok("push" in SkillTerms.of(kick).channels[&"rank_impact"], "a behaviour declares its own terms (Kick's push)")
+	ok("push, soaked, blinded" in SkillTerms.of(kick).channels[&"rank_impact"], "a behaviour declares its own terms (Kick's push and riders)")
 
 
 func test_cost() -> void:

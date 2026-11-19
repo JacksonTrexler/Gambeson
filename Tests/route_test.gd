@@ -137,9 +137,7 @@ func test_area() -> void:
 	var dc := Difficulty.dc(wildfire.difficulty, 4) + v(1).mods(wildfire).check  # less its check shift: easier to dodge
 	ok(dcs.size() > 0 and dcs[0] == dc and v(1).mods(wildfire).check < 0, "Density: the dodge's DC at rank 4, less its check shift (%s)" % [dcs])
 	ok("DC %d" % dc in wildfire.describe(2, v(1)), wildfire.describe(2, v(1)))
-	var solar: Skill = load("res://Skills/solar.tres").duplicate()  # a rank impact to trade, so Diluted fits it (docs/plans/w4-density.md)
-	solar.turns_per_rank = 1
-	SkillTerms.forget(solar)
+	var solar: Skill = load("res://Skills/solar.tres")  # its dice are rank impact: Diluted fits it
 	v(1).trinket = emblem(&"rho_down", &"sigil")
 	learn(v(1), solar, 2)
 	var cone = solar.behaviour(&"cone")
