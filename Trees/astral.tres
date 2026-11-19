@@ -11,6 +11,8 @@
 [ext_resource type="Resource" path="res://Skills/starsap.tres" id="s_starsap"]
 [ext_resource type="Resource" path="res://Skills/starfall.tres" id="s_starfall"]
 
+[ext_resource type="Resource" path="res://Skills/power_armor.tres" id="s_power_armor"]
+
 [sub_resource type="Resource" id="Branch_mana"]
 script = ExtResource("branch")
 skill = ExtResource("s_mana")
@@ -45,8 +47,13 @@ script = ExtResource("branch")
 skill = ExtResource("s_starfall")
 after = Array[ExtResource("skill")]([ExtResource("s_constellation")])
 
+[sub_resource type="Resource" id="Branch_power_armor"]
+script = ExtResource("branch")
+skill = ExtResource("s_power_armor")
+needs = 3
+
 [resource]
 script = ExtResource("root")
 name = "Astral"
 tag = &"magical"
-branches = Array[ExtResource("branch")]([SubResource("Branch_mana"), SubResource("Branch_astera"), SubResource("Branch_fortune"), SubResource("Branch_starkind"), SubResource("Branch_constellation"), SubResource("Branch_starsap"), SubResource("Branch_starfall")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_mana"), SubResource("Branch_astera"), SubResource("Branch_fortune"), SubResource("Branch_starkind"), SubResource("Branch_constellation"), SubResource("Branch_starsap"), SubResource("Branch_starfall"), SubResource("Branch_power_armor")])

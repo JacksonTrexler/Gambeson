@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="3_skill"]
+[ext_resource type="Resource" path="res://Skills/power_armor.tres" id="s_power_armor"]
+
+[sub_resource type="Resource" id="Branch_power_armor"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_power_armor")
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Abjuration"
+tag = &"magical"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_power_armor")])

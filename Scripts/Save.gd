@@ -71,7 +71,7 @@ static func unpack(d: Dictionary) -> void:
 	if worn is Dictionary:
 		for slot in worn:
 			var it := item_in(worn[slot])
-			if it and it.slot == slot:
+			if it and (it.slot == slot or (it.slot == "armor" and slot.begins_with(Unit.PLATE))):
 				Game.outfit[slot] = it
 	Game.stash = []
 	var stash = d.get("stash")

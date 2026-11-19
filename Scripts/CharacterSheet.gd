@@ -7,7 +7,7 @@ extends PanelContainer
 # into it), takes them off, or uses up a consumable (a Heart) or a potion in its trinket slot. In
 # battle, putting on or using costs the item's AP (Item.ap_cost()); taking off is free.
 
-signal equipped(u: Unit, it: Item)
+signal equipped(u: Unit, it: Item, slot: String)  # slot: one of the armor slots its skills give, or "" for the item's own
 signal unequipped(u: Unit, slot: String)
 signal used_up(u: Unit, it: Item)
 signal unshackled(u: Unit, how: StringName)  # unlock, pick or pry its shackles (Battle.unshackle())
@@ -60,12 +60,12 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_OFF
 		l.text = Glossary.rich(bio)
 		_column.add_child(l)
-	for slot in SLOTS if r == null else []:
+	for slot in (SLOTS + u.plate_slots()) if r == null else []:
 		var it: Item = u.get(slot)
 		var row := HBoxContainer.new()
 		row.add_child(UnitCard.trim_mark(it.trim() if it else Color(0, 0, 0, 0), it.name if it else "", it.icon() if it else null))
 		var l := Label.new()
-		l.text = "%s: %s" % [slot.capitalize(), it.name if it else "none"]
+		l.text = "%s: %s" % [u.slot_label(slot), it.name if it else "none"]
 		l.tooltip_text = it.describe() if it else ""
 		l.mouse_filter = MOUSE_FILTER_PASS
 		l.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -98,7 +98,9 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		if editable and it.slot == "consumable":
 			row.add_child(_button("Use" + _ap(it), func() -> void: used_up.emit(unit, it)))
 		elif editable and u.can_wear(it):
-			row.add_child(_button("Equip" + _ap(it), func() -> void: equipped.emit(unit, it)))
+			row.add_child(_button("Equip" + _ap(it), func() -> void: equipped.emit(unit, it, "")))
+			for slot in u.plate_slots() if it.slot == "armor" else ([] as Array[StringName]):  # armor goes in a slot its skills give, too
+				row.add_child(_button("%s%s" % [u.slot_label(slot), _ap(it)], func() -> void: equipped.emit(unit, it, slot)))
 		_column.add_child(row)
 	var close := _button("Close", hide)
 	close.size_flags_horizontal = SIZE_SHRINK_END

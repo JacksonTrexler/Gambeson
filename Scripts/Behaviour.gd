@@ -268,6 +268,28 @@ func armor(_holder: Unit, _rank: int, _item: Item) -> int:
 	return NO_ARMOR
 
 
+# An armor slot its passive gives its holder beyond the first (Unit.plate_skills(), Unit.plating): one armor more
+# worn in it, its Defense added to what the armor proper sets and its AP drag and weight to what that costs. The
+# rest of the slot's rules are these hooks, each defaulting to a plain slot. Power Armor, Scrap Plating.
+func armor_slot() -> bool:
+	return false
+
+
+# Whether that slot works now, at `rank` (Unit.plates()): off, the armor in it stays worn and counts for nothing.
+func slot_works(_holder: Unit, _rank: int) -> bool:
+	return true
+
+
+# The Defense the armor worn in that slot confers, given the `defense` its equipment skills set for it.
+func slot_defense(_holder: Unit, _rank: int, defense: int) -> int:
+	return defense
+
+
+# An attack of `power` damage that the armor in that slot blocked: it would have hit without it (Battle.roll_attack()).
+func slot_blocked(_b: Battle, _holder: Unit, _rank: int, _power: int) -> void:
+	pass
+
+
 # It is its skill's own effect of an enchanted item: lent by one, the skill isn't ranked up by the enchantment
 # (Item.skill_rank(), Skill.enchants()), it does its enchanted thing instead (Armor: +1 Defense).
 func owns_enchant() -> bool:
