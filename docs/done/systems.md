@@ -271,3 +271,4 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **`friction` tag and `Battle.loops()`** (Chaser, Jugular): plan `docs/plans/w4-friction.md`. `check_test`, `chaser_test`, `fighter_test`. (?202)
 - [x] **Density eligibility** (`SkillTerms.trades()`, `density_why()`, `Skill.no_density`, `Util/terms.gd density-check`, `skill.py density`): plan `docs/plans/w4-density.md`. `param_test.test_density`. (?203)
 - [x] **Tree composition and armor slots** (`SkillRoot.includes`, `composition_problems()`; `Behaviour.armor_slot()`, `Unit.plating`): plans `docs/plans/w3-student.md`, `w3-armor.md`. (?199, ?200)
+- [x] **Balance knobs** (`Skill.scaling`, tags `beta_up`, `beta_down`, `cohen_up`, `cohen_down`, `Modifiers.BETA`, `COHEN`, `sees_knobs()`, `priced()`, `skill.py knob` and `knobs`; Kick, Gank, Spike each carry one): plan `docs/plans/w4-knobs.md`. `param_test.test_knobs`. (?204)
