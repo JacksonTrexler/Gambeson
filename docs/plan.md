@@ -164,6 +164,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Striking Features and Intellect, `attack_stat` (?189) | `general_test.gd` |
 | — | Cost profiles (?190) | `costs_test.gd` |
 | — | Parameterizing the concrete skills (?191) | `param_test.gd` |
+| — | Intentional facing, `shove` and `cc` (?192) | `facing_test.gd`, `displace_test.gd`, `forced_test.gd` |
+| — | Per-use strike rules, Chaser (?193) | `check_test.gd`, `heavy_strike_test.gd`, `chaser_test.gd` |
+| — | Traits by tooling, Skill Slot +1 (?194) | `equip_test.gd` |
+| — | Exhaustion retune, Burnout, Recovery Endurance, Deathlust (?195) | `exhaustion_test.gd`, `recovery_endurance_test.gd`, `deathlust_test.gd` |
+| — | Lent skills: enchant, `equipment` armor, prerequisites (?196) | `lent_test.gd` |
+| — | Summoned AP, Wake and Rake (?197) | `summon_test.gd` |
 
 ## Questions to answer first
 

@@ -9,7 +9,7 @@ Every tree's capstone, for now (later a mid-tree capstone), is a **Basic Martial
 Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees: most paths are a few nodes long, and each root branches into about 6 strong applications of the basics. Paths are shallow slices of other classes' trees, but Adventurers can learn core skills many classes share: **Hex** and **Rejuvinate** are a first choice at any time. The three starting passives are separate skills on purpose, since each takes a slot; once Adventurers have skills that use them, they can become mid-tier passives in the tree instead.
 
 - [x] **Rejuvinate** on the core ring (see Paladin): built (`docs/done/classes.md`). (?12)
-- [ ] **Skill Slot +1** (unspecified type): acts like a base slot, slightly darker. Sits at the center, locked until current slots are filled. *Now:* a stub at the centre of the wheel. (?3)
+- [x] **Skill Slot +1** (unspecified type): answered 2026-11-18: a trait adding one hotbar slot, far right, costing a point to learn. Built 2026-11-19 (?194). The "slightly darker" look and "locked until slots are filled" are not built. (?3)
 - [ ] **Trade Skills** (passive): skill limits scale partly with wis: (base stat + wis × rank) / rank. *Now:* a stub on the core ring. (?2 ?11)
 - [ ] **Grind** (passive): str mod can count toward martial limits; max HP drops by the % overage. *Now:* a stub on the core ring. (?2 ?11)
   - Rank 2+: bonus slots, each −10 × (rank − 1)% max HP while in use.
@@ -456,7 +456,8 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **They arrive with AP spent** (act from their side's next turn). `Behaviours/summon_per_rank.gd` zeroes it; Battle.gd untouched.
     - **The Skeleton unit** (`Scenes/skeleton.tscn`): tag undead (already a Unit tag; only its colour `#9aa98a` was missing), vibe Hollow, aura -1, temper aggressive, class-less, level 1, HP 6, Energy 4, str 10 dex 10 con 8 int 3 wis 6 cha 2, Strike only. Weaker than the Pike (HP 8, level 2).
     - **Generic behaviour:** `summon_per_rank` exports `scene` and `per_rank`; any later summon sets another scene and number.
-- [ ] **The AI never casts Skeleton** (no tile-summon plan in `AI.gd`). (?181)
+- [ ] **The AI never casts Skeleton** (no tile-summon plan in `AI.gd`; queued). (?181)
+- [x] **Summoned units spend their AP on arrival** except rank + cast mod, and Wake and Rake adds rank to that. Built 2026-11-19 (?197). (?181)
 - [ ] **No cap or duration on skeletons**; a Wizard tab or a limit if they swarm. (?181)
 - [ ] **Mortis Arcalís has one skill**; the rest of the school and real art. (?181)
 
@@ -489,3 +490,29 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **New names to review:** Attack stat ??.
 - [ ] **Placement of Striking Intellect** (tier 4 after Record Striker on the Caster general tree): confirm. (?189)
 - [ ] **Does `attack_stat` apply to other strike-like attacks** (Gank, Jugular, a Hex)? Now only Strike; a skill opts in by `skills` or `tags`. (?189)
+
+## Wave 3 (2026-11-19): strike use, Chaser, summon AP
+
+193. **Per-use strike rules and Chaser - built on judgement, open for review (2026-11-19).** Your words (answers 2 and 3 of 2026-11-18b): Glancing Strike "per skill use: units can make many strike attack rolls at once due to the nature of strike"; Heavy Strike "acts on a single skill *use* (whether or not that skill used was 'strike')", an automatic repeat being consecutive and a manual re-target a separate hit; Rogue t8 "Chaser": "on a critical hit, use an active skill within rank active skills of rightmost active skill ... at a rank no higher than that of Chaser". Plan: `docs/plans/w3-strike.md`. Calls:
+    - **One generic scope, the skill use** (`Battle.use_of(u)`, payload `Behaviour.Volley`): opened by a caster's outermost `cast()` / `cast_at()`, holding all its attack rolls, Strike!'s restrike, Jugular's recast and an auto skill's spread; each use has an `id` carried by every roll (`Check.Roll.use`). A use chosen afresh is a new one; another unit's reaction inside it is not part of it. No per-skill counter.
+    - **Glancing Strike:** `Unit.rolls_made` is zeroed as a use opens (was per battle); "+N to hit on each of its first N attacks each time it uses a skill".
+    - **Heavy Strike on any use:** every landed attack goes through `striking()` at stage `hit`; the `end` stage moved to the use's close (`Battle._end_use`). Pools are per target; a multi-hit skill counts each blow as a success; the pooled blow lands after `used` is emitted through `_blow()`. **Changed:** a missed last roll now loses only the pooled damage (the Strike no longer counts as missed for behaviours; only Perfect at 36 hits notices). Heavy Strike stays a Strike form. Alternative: pool only Strike's own blows (now your 2026-11-19 amendment, queued as Wave 4 card A).
+    - **Chaser** (`--human`): a passive, martial + reaction, on the Rogue's Blade root after Backstab (roots have no tiers, so the "t8" isn't set; the prerequisite is my pick). New reaction trigger `&"crit"` (`Battle.roll_attack()`, fired on a rolled critical, not on Jugular's forced one). The follow-up is the existing interrupt (`grant_interrupt`, as Final Act's), after the critting use is over (a separate use); `grant_interrupt(u, actions, only)` has a new `only` (`Unit.allowed`): HUD and AI read `actives` and follow unchanged. "Within rank of the rightmost" counts the rightmost `rank` usable actives on the hotbar (passives and disabled actives aren't counted); rank cap = Chaser's rank through its holder's modifiers.
+    - **Once per skill use** (a Strike's many crits chase once); a use made inside an interrupt sets off no chase (without it a high crit range chained 80+ chases in a mutation). Your 2026-11-19 amendment (Chaser procs only rank times; `friction`) is Wave 4 card A.
+    - **Not balanced;** Chaser's price is the calculator's.
+    - **Tests:** `check_test.test_glancing_and_opening`, `test_crit_range_glances`, `heavy_strike_test` (new `test_any_use`), `chaser_test` (new), `hud_test.test_tabbed_skills_screen`; eight mutations failed and reverted.
+    - **New names to review:** the `crit` reaction trigger ?? (Chaser is yours).
+- [ ] **Chaser's placement** (Blade root after Backstab, not "t8"): confirm. (?193)
+- [ ] **The HUD isn't visually checked during a Chaser interrupt** (it reads `actives`). (?193)
+- [ ] **The AI doesn't plan around Heavy Strike's pool across other skills.** (?193)
+
+197. **Summoned AP and Wake and Rake - built on judgement, open for review (2026-11-19).** Your words (answer 9, ?181): summoned units "spend all but up to rank + cast mod ap on spawning"; "Caster general: Wake and Rake: Add rank to AP `summon` units keep on spawning." Plan: `docs/plans/w3-skeleton.md`. Calls:
+    - **Keep rule** in `Behaviours/summon_per_rank.gd` `keeps()`: rank impact + the cast's stat mod (the skill's stat through the caster's modifiers: Skeleton is int) + passives' `summon_ap`, never below 0 or above what the unit had; taken from the pools in order. "Cast mod" read as the casting stat's mod. Alternative: the best of the caster's mods.
+    - **Generic hook** `Behaviour.summon_ap(holder, rank, who) -> int` (default 0), asked of every equipped passive the summoner has; `Battle.summon` untouched; added to `skill.py` `HOOKS`.
+    - **Tag `summon`** (yours; kind target, colour `#8fb0c8`, a placeholder) on Skeleton's unit; declared by `mechanic.py tag`, its `??` on the term removed by hand. Wake and Rake reads the tag, not Skeleton.
+    - **Wake and Rake** (`--human`): passive, magical + int, Caster general tree, tier 4 (a guess, beside Drone), price left to the calculator (2 AP, cost 1); its rank goes through `holder_rank`.
+    - **Skeleton's description** now says the AP kept.
+    - **Tests:** `summon_test` extended (rank + mod kept, Wake and Rake III keeps 3 more, describe); the stub `wake_and_rake_test.gd` deleted; two mutations failed and reverted.
+    - **New names to review:** none.
+- [ ] **Wake and Rake's tier** (Caster general, tier 4, a guess): confirm. (?197)
+- [ ] **"Cast mod"**: read as the casting stat's mod; confirm. (?197)

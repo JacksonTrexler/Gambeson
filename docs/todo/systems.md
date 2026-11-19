@@ -460,7 +460,7 @@ Plan and what was built: `docs/plans/facing.md`. Built on `u-facing`. Tests: new
     - **Draw and AI:** a faint chevron on the sprite; `AI._approach` prefers the tile whose aspect lowers the foe's Defense (0.4 tiles a point, ties and near-ties only).
     - **New names to review:** Rear ??, Flank ??.
 - [x] **The hit forecast labels a rear or flank blow** (`HUD.aspect`). Built 2026-11-15 (?148). (?142)
-- [ ] **A unit that is hit doesn't turn** (kept: under your rule only a move or an aim turns it). Forced moves now turn the unit (?188). (?142)
+- [ ] **A unit that is hit doesn't turn** (kept: under your rule only a move or an aim turns it). Forced moves no longer turn the unit either (?192, reversing ?188). (?142)
 - [ ] **No skill carries a flank or rear rider yet** (Gank's ambush analogue). (?142)
 - [ ] **The AI doesn't walk to a side for a better shot**; the pull only breaks ties. (?142)
 
@@ -476,8 +476,8 @@ Plan and what was built: `docs/plans/item-skills.md`. Built on `u-itemskills`. T
     - **Urlo's enchantment** reaches the trinket, and skips items with nothing to scale (Heart Up, Heart Up-Link) without using up Pray's count.
     - **Hobnail Boots ??** (AI-made name): an uncommon trinket lending Kick, in Alabaster's loot, so it competes with emblems and Heart Up for the one slot.
     - **New names to review:** Hobnail Boots ??.
-- [ ] **Should a weapon or armor enchant raise the item's rank?** As built, Pray's enchant on a weapon or armor raises its lent skills' rank, not its drag. Open question. (?143)
-- [ ] **Should lent skills ever count toward prerequisites?** As built, never. (?143)
+- [x] **Should a weapon or armor enchant raise the item's rank?** Answered 2026-11-18: the item is enchanted, so its lent skills are (+1 rank unless a lent skill has its own enchant effect); armor drag stays. Built 2026-11-19 (?196). (?143)
+- [x] **Should lent skills ever count toward prerequisites?** Answered 2026-11-18: yes, and a skill that depends on one lapses when it is lost. Built 2026-11-19 (?196). (?143)
 - [x] **Saving** of lent skills: they come back by being the item's. Built 2026-11-15 (?145). (?143)
 
 ## Test and logic consolidation (2026-11-15)
@@ -533,9 +533,9 @@ Plan and what was built: `docs/plans/fear.md`. Built on `x-fear`. Tests: new `Te
     - **The AI** neither seeks nor avoids them (its `_away()` spends the unit's own movement).
     - **New names to review:** none.
 - [x] **The AI doesn't read fear, shove or entrance**, nor foresee the move or slam in the forecast. Built 2026-11-15 (?170): `Battle.course()`, `foresee_drive()`; the AI reads it through `foresee()`. (?146)
-- [ ] **No skill carries fear, shove or entrance yet.** Needs a design. (?146)
+- [x] **No skill carries fear, shove or entrance yet.** Kick and Send Off carry `shove`, Sing `cc` (entrance); no skill carries fear. Built 2026-11-19 (?192). (?146)
 - [x] **Aura and Coordinate's effect loops call `drive()`.** Built 2026-11-15 (?170). (?146)
-- [ ] **The tags aren't on skills' own `tags`** (the cast's tag set), only on the move. Decided not to in ?170, for the user to reverse (asked at the top of `todo.md`). (?146, ?170)
+- [x] **The tags aren't on skills' own `tags`**: answered 2026-11-18, `shove` goes on skills that apply force to a unit (Kick, Send Off), `cc` on skills that impair acting. Built 2026-11-19 (?192). (?146, ?170)
 
 ## Polish (2026-11-15)
 
@@ -713,7 +713,7 @@ Plan and what was built: `docs/plans/equipping.md`. Built on `x-equip`. Tests: n
     - **Save:** the starter's bar is written as skill ids (`Save._equipped_out()`, `_equipped_in()`, `Unit.set_equipped()`); learned skills themselves aren't saved yet, so this mostly keeps the class's arrangement.
     - **New names to review:** none.
 - [x] **Always-on passives on the bar show the green "on" dot** toggles use. Built 2026-11-15 (?165): the dot shows only for toggles. (?163)
-- [ ] **Skill Slot +1 (?3) is still a stub.** Not built in ?165: it waits on ?3 ("the hotbar's center or the tree's?"). (?163)
+- [x] **Skill Slot +1 (?3)**: answered 2026-11-18 (the hotbar, far right, a trait). Built 2026-11-19 (?194). (?163)
 - [ ] **The auto-equip toggle is global**, not player-only. (?163)
 - [ ] **NPC-side equipping choices** beyond `extra_slots`. (?163)
 
@@ -790,8 +790,8 @@ Plan and what was built: `docs/plans/forced-forecast.md`. Built on `z-forced`. T
     - **New names to review:** none.
 - [x] **The AI doesn't walk to a tile to line up a shove against a wall**, nor weigh being shoved by foes in its own positioning (`_away` etc.). (?170) Built 2026-11-16 (?176): `AI._line_up`, `_shoved`. (?176)
 - [ ] **Fear and entrance's repeat moves aren't foreseen**; neither are mitigation, boosts or reactions on a slam. (?170)
-- [ ] **No skill carries fear, shove or entrance yet** (still needs a design). (?146)
-- [x] **Turning**: a unit moved by force now faces along the move. Built 2026-11-18 (?188). A unit that is hit still doesn't turn. (?142)
+- [x] **No skill carries fear, shove or entrance yet.** See ?192. (?146)
+- [x] **Turning**: ~~a unit moved by force now faces along the move~~ (?188) reversed 2026-11-19 (?192): only a unit's own intentional moves (fear and entrance included) and aims turn it. A unit that is hit still doesn't turn. (?142)
 
 ## Warcry's default-pick preview (2026-11-15)
 
@@ -889,7 +889,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **`g-dictionary.md`**: preferred terms for stubbing and naming, 20 rows, read from `Glossary.gd`, `Reserve.gd`, `Battle.gd` (`neutralized`), `Exhaustion.gd` and the plans; "use instead of" filled only where the code or you draw the line. The "Arcalís" rows are your rule (no ` ??`).
     - **`g-glossary.md`**: the Center entry verbatim; **the builder added its own one-line readings of Lancin, Lancela and Lancin Proper** under it, outside the verbatim paragraph. Delete them if wrong.
     - **CLAUDE.md** gained one naming line.
-- [ ] **Check the three Lancin readings in `g-glossary.md`** against what you meant (delete or correct). (?180)
+- [x] **Lancin and Lancela get their own headings in `g-glossary.md`**, light formatting only (answers 2026-11-18b item 11). Built 2026-11-19 (?180). The builder's one-line readings stay under the headings, marked as such; the user may still correct them.
 
 182. **Deathlust and its hooks - built on judgement, open for review (2026-11-16).** Your words: "Units dying in rank range remove a small amount of exhaustion. Prevents specific skill exhaustion on skills used to kill (not down) a unit." The name is yours. My calls:
     - **Where:** Eros (after Impassioned Fighter, so it is not a Paladin's free first skill; free at the root it changed `progress_test.test_unlock`), Slayer and Vanguard (roots, open from the start), General Martial (tier 5 with the bracings; "Fighter martial" read as this tree). Tags `martial`.
@@ -937,7 +937,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **`FLAG_CEILING` in `Util/skill.py` should drop by one** (the `inherent` field went away); the host will do it.
     - **New names to review:** Traits Suppressed ??.
 - [ ] **Which more skills are traits** (Oceanic, Regeneration Pulse, Stoneskin, Hardy, Starsap, the Powerful pair, the FORMS): confirm the reading above. (?185)
-- [ ] **Should `insignia` and `badge` reach a trait?** (?185)
+- [x] **Should `insignia` and `badge` reach a trait?** OK 2026-11-19: an item emblem can still modify a trait. (?185)
 - [ ] **No skill applies Traits Suppressed ??** yet (a utility effect for later). (?185)
 - [ ] **Lower `FLAG_CEILING` by one** in `Util/skill.py`. Host to do. (?185)
 
@@ -973,7 +973,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Tool:** `skill.py new --cost "high mana, low ap"` (default "even"; `--hand-priced --ap N --cost N` still hand), `skill.py cost <id> "<profile>"` or `cost <id> hand --ap --points`, `migrate`; `check` parses every profile and checks `only X` against `needs`; `skill.py cost` refuses to drop an existing `needs` silently. `.claude/skills/new-skill` documents it.
     - **Tests:** new `Tests/costs_test.gd` (profile table, every profile, funding preference); changed to the new rule: `modifiers_test.test_priced`, `energize_test`, `route_test.test_missed`, `route_test.test_requirement_paths`. Four mutation spot-checks. Suite 9522 / 931 tests to 9702 / 934, 0 failed.
     - **New names to review:** none (the profile words are yours or plain English).
-- [ ] **The 26 "flat rank" profiles** may want to scale with rank (a balance call). (?190)
+- [x] **The 26 "flat rank" profiles**: OK as built (the user, 2026-11-19, ?185 to ?191). (?190)
 - [ ] **The 38 hand-priced actives** stay hand-set; give one a profile with `skill.py cost` once its terms are parameterized. (?190)
 - [ ] **Health costs** (`high health`) are refused: no HP cost mechanic exists. (?190)
 - [ ] **Emblem pricing of migrated skills** differs slightly from the old hand x ratio: confirm rounding is fine. (?190)
@@ -993,3 +993,67 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
 - [ ] **Wire Interject's and Snapping Turtle's checks to `Reaction` `bonus`.** Queued (`docs/queue.md`). (?191)
 - [ ] **The 22 left concrete** (see ?191): confirm which should stay; tags-only Coalescing, Energy Missile and Stoneskin would need new tiers. (?191, ?133)
 - [ ] **Gallantry's check difficulty** is a behaviour constant; confirm, or say where a passive's check should live. (?191)
+
+## Wave 3 (2026-11-19): facing, traits, exhaustion, lent skills
+
+The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) built on `w3-facing`, `w3-traits`, `w3-exhaust`, `w3-lent` (plans `docs/plans/w3-*.md`). Baseline suite 9756 checks, 0 failed (936 tests).
+
+192. **Facing, forced moves, shove and cc - built on judgement, open for review (2026-11-19).** Your words: "intentional unit actions only: pushes / warps etc don't count"; "`shove` should only apply to skills that apply the force to a unit itself. fear would technically be the unit itself deciding to act ... it *would* face the direction it is moving, and it should probably spend movement AP accordingly. tag it `cc` if needed ..., any skill or effect that infers penalties on a unit's ability to act needs to be tagged as such." Plan: `docs/plans/w3-facing.md`. Calls:
+    - **Reverts ?188's forced turn:** push, pull, send and every other move by another's force leave facing alone.
+    - **Self-driven moves are named by tag** (`Battle.SELF_DRIVEN = [fear, entrance]`), not a flag: `displace()` with such a tag turns the unit along the move and charges the tiles (real step cost, `stride()`) to movement and move AP (`Unit.walked(.., compelled)`). A later effect carrying the tag joins. Alternative: a boolean on the move.
+    - **Compelled pays what it has and goes anyway:** fear on a foe's turn, or with less AP than the walk costs, still flees, paying `min(cost, AP left)` (`moved` goes up by the full cost; at its own turn start `_frighten()` takes it off the fresh pool). Alternative: a unit out of AP ignores fear (made fear useless on units that had spent their turn).
+    - **Entrance counts as self-driven** (Sing's draw: the enraptured walks to the singer, faces it, pays move AP): only fear was named, entrance is its sibling (my reading). Alternative: entrance a plain pull.
+    - **Slam unchanged:** a flee or draw stopped short still slams (the code did; `Effect.describe` says only shove hurts). Not touched; for you to say.
+    - **`shove` on skills:** Kick (push) and Send Off (teleport away); Kick's pushes carry the `shove` move tag and credit the kicker. Not tagged: Sing (a draw: entrance, cc), Switcheroo (a trade of places), Drown, Hitch and Coalescing (grapples: held, not driven).
+    - **`cc`** declared `mechanic.py tag cc --human` (term "CC", kind condition, colour `#a5a1c9`, a placeholder). New `mechanic.py carry <tag> --skills --effects --inline skill:stat` tags what exists; `Effect.bears` and `Unit.afflicted(tag)`. No rule reads cc yet.
+    - **The cc audit** (255 skills, 15 reusable statuses, inline statuses). Tagged: Stun, Jam, Slam Jam, Hitch, Drown, Coalescing, Brainfog, Interdict, Bludgeon (Winded), Sing, Mindless Fury (the user is helpless: self-inflicted, tagged all the same; say if not); statuses Stunned, Jammed, Winded, Traits Suppressed, Hitched; inline Grappled, Interdicted's base AP, Mindless. Considered, not tagged: Level Down, Haluca, Humble, Hex, Showstopper, Phantasm, Breathtaking, Soaked, Blinded (a penalty, not a stop), Judgement and its Shackles, the Stew tile's sleep, and the fear, shove and entrance effect stats themselves.
+    - **Tests:** `facing_test.test_latest_wins`, `displace_test.test_any_skill_knocks_back` and `test_draw_in`, `forced_test.test_the_three_effects` changed; new `forced_test.test_cc_and_shove_are_tagged` (one table over every skill and status). Mutations (each failed, reverted): turning on every displace; cc stripped from Stun.
+    - **New names to review:** none (`cc` and `shove` are yours).
+- [ ] **Confirm the cc audit's edge cases:** Mindless Fury tagged (self-inflicted); Level Down, Humble, Breathtaking, Soaked, Blinded left out. (?192)
+- [ ] **Should the slam apply to a flee or draw stopped short?** Unchanged: it does; `Effect.describe` says only shove hurts. (?192)
+- [ ] **No rule reads `cc` yet** ("certain equipment or skills may make them easier to deal with"): a resistance would read `Unit.afflicted()`. (?192)
+- [ ] **No skill carries fear**; one that does should bear `cc`. (?192)
+
+194. **Traits by tooling, Skill Slot +1, always-on passives - built on judgement, open for review (2026-11-19).** Your words: "Traits are best explicitly specified by builder skill / script tooling"; "skill slot +1 adds it to the unit's *hotbar*, and it sits on the far right ... it is a *trait* when learned ... it still costs points to learn for the first time ... If it's applied as an *item*, it can be disabled the same way other equipment effects can be disabled"; "always on passives should have no indication they are 'on' or 'off' whatsoever". Plan: `docs/plans/w3-traits.md`. Calls:
+    - **The declaration is the tag, written by tools, checked:** `skill.py new --trait` (implies `--passive`, needs no tree), `skill.py trait <id> [--off]`, `unit.py trait <unit> <skill>[:rank] [--off]` (moves a skill onto a scene's `innate`, refuses a non-trait), `unit.py new --trait`; `--skill` naming a trait dies pointing at `--trait`. No `Skill.gd` field. Nothing was inferred at run time before; the loose part was authoring.
+    - **Checks** (`check_traits`): a trait must be a plain always-on passive, not a pillar or foundation; a scene listing a trait under `learned` fails with the fix. Not made: "an innate always-on passive must be a trait" (Powerful and Starsap on Starmote and Starman are innate and slotted on purpose).
+    - **Migration:** Siren's Alluring from `learned` to `innate` (rank 4 kept).
+    - **Skill Slot +1** is a trait with one untyped `slots` Effect, `max_rank` 1, on the Adventurer's centre, tier 1; one point to learn (so "costs points the first time" holds). Mastery gating ("used to reward mastery") is left to where it is offered; a prerequisite on the centre needs machinery that doesn't exist. Alternative: gate it behind filled slots.
+    - **Item version:** an item lists it in `Item.skills`; the slot goes when the trait is suppressed or the item taken off. No real item written (`item.py new ... --skills skill_slot` makes one).
+    - **`Unit.bar_size()`** (sure slots + granted + clover) is the hotbar's one read; `clover()` and `burning_slots()` keep their own sums on purpose.
+    - **(?165)** `SkillSlot.brightness()`: an always-on passive is bright whatever its unit can do now; a toggle dims when off or unusable, an active when unusable, a trait while suppressed. The tooltip's "Always on" spec word stays (kind, not state).
+    - **Tests:** `equip_test.test_skill_slot` (new), `test_slot_switch_dot`, `adventurer_test`, `hud_test.test_adventurer_skills_screen` changed; mutations failed and reverted (brightness ignoring always-on, amount 0, trait under `learned`). Suite 9769 checks, 0 failed (937 tests).
+    - **New names to review:** none.
+- [ ] **A slightly darker untyped granted slot** (ui.md): needs a slot kind; left for Cram's card. (?194, ?3)
+- [ ] **Skill Slot +1's mastery gating**: offered on the centre, learnable at once; say if it should wait on something. (?194)
+- [ ] **A real Skill Slot +1 item** (none exists; the test builds one). (?194)
+- [ ] **To do for the floater:** `.claude/skills/new-skill`, `new-unit` and `new-mechanic` should mention `--trait`, `unit.py trait` and `mechanic.py carry` (`.claude/` is out of bounds for builders and keepers). (?192, ?194)
+
+195. **Exhaustion retune, Burnout, Recovery Endurance, Deathlust - built on judgement, open for review (2026-11-19).** Your words: bad things "should really only start happening on the second cast of the same regular ability, third caster skill cast in a row, or fourth skill use on the same turn"; "`Burnout` child of exhaustion. All `int` skills use `Burnout` ... with increased penalties for `int` skills and harsher exhaust effect on `mana` costs"; ?182 "1 tile per rank + 1 ... effect itself will be curved so consider a percentage". Plan: `docs/plans/w3-exhaust.md`. Calls:
+    - **One pressure** (`Exhaustion.of()`): each prior use weighs `1/SAME` against the skill itself, `1/IN_KIND` against its broad kind, `1/ANY` against every other skill; `SAME 1`, `IN_KIND 2`, `ANY 3`. Mixed patterns add. Below 1 the rate rises `MILD` 0.1 a unit; from 1, `STEP` 0.5. The jump at 1 is deliberate. Alternative: a smooth ramp.
+    - **"In a row" and "in a turn"** read as uses not yet recovered (counts fall 1 a side-turn), not a streak reset by an off-kind skill: no new counter. Alternative: a real streak counter.
+    - **General skills are no longer special:** every skill weighs 1/3 on every other (was 0.25 and only general ones).
+    - **Added cost rounds to nearest** (`Exhaustion.raise()`), the base still rounds up, so a mild wear under half a point adds nothing.
+    - **Burnout** (`Burnout.of()`, `int`-tagged skills, 26): same thresholds; wear times `Burnout.PENALTY` 1.25; on a cost paid from a reserve that burns, times `Reserve.burns` again (Mana 1.5): a 3rd caster spell in a row costs 1.94x Mana, 1.63x Energy. AP is not harsher on Mana (you said costs); Energy standing in for Mana isn't. Burnout is a rule term, not a tag; `mechanic.py` can't edit a rule's Glossary term, so `Glossary.gd` was edited by hand.
+    - **The old Burnout rule (?121) is renamed Recovery Endurance** (your own term): `Scripts/RecoveryEndurance.gd`, `recovery_endurance_test`; its Glossary text folded into `recovery_endurance`. Alternative: fold it into the new Burnout. HUD chip "Burnt -3 HP", `Unit.burnt` and `burn()` kept.
+    - **Tooltip and pips:** "burnout x1.5" for an int skill, "exhausted x1.5" otherwise; slot pips show pressure (a whole pip bites).
+    - **Deathlust:** radius = rank (rank I: adjacent, diagonals too, plus self), my reading of "1 tile per rank + 1"; relief `1 - 0.75^rank` of every skill's count (25%, 44%, 58%, 68%) through `rank_impact`, `Exhaustion.relieve_share()`; hooks `neutralized` and `wearing` kept.
+    - **Tests:** `exhaustion_test.test_counts` (rewritten), `test_burnout` (new), `test_costs`, `test_channel_is_one_use`, `stamina_test.test_eases_exhaustion`, `deathlust_test.test_deaths_in_range`; `burnout_test` renamed `recovery_endurance_test`. Seven mutations failed and reverted. Suite 9807 checks, 0 failed (942 tests) after the merge.
+    - **New names to review:** `Reserve.burns` ?? (a Reserve field).
+- [ ] **Cram's multiplier on the Burnout penalty** is the later card's (`Burnout.penalty()` is the one read). (?195)
+- [ ] **No museum-sim retune check after the retune** (the AI reads `rate()` unchanged). (?195)
+- [ ] **Confirm the numbers:** `PENALTY` 1.25, Mana `burns` 1.5, `MILD` 0.1, the 1 - 0.75^rank curve. (?195)
+
+196. **Lent skills: enchantment, armor as equipment, prerequisites - built on judgement, open for review (2026-11-19).** Your words (answer 8, ?143): the item is enchanted, so its lent skills are too, "+1 to rank" unless a skill has its own enchantment effect; "the armor effect itself should be implemented as an `equipment` skill, generally one that grants +armor"; lent skills can be prerequisites, and "if the unit loses the skill for any reason ... any dependent prerequisite skills would disable as well". Plan: `docs/plans/w3-lent.md`. Calls:
+    - **Enchanted lends:** already +1 rank (`Item.skill_rank()`); new is the exemption, a generic hook `Behaviour.owns_enchant()` (`Skill.enchants()`), not a flag or Effect field; armor is its first user. Pray never raised an armor's own rank, so drag stays. Alternative: an `Effect` field.
+    - **`equipment` tag** (yours) declared `mechanic.py tag equipment --human --kind target`, colour `#a7a79a` (my pick).
+    - **Armor is a skill:** `Skills/armor.tres` ("Armor ??", passive, `equipment`, `ai = true`) with `Behaviours/armor.gd` (hook `Behaviour.armor(holder, rank, item)`); the formula moved out of `Unit.armor_defense()` unchanged; `armor_defense()` sums what the worn armor's equipment skills set (`Unit.armor_skills()`), unarmored (dex + con mod) with none working. Armor owns its enchantment: +1 Defense when the item is `enchanted()`; so an armor authored with the tag `enchanted` now also gets +1 Defense (none in Items/). The item keeps its table (weight tag, `no_dex`, `full_dex`, `mind_stat`, `eases`); the skill is the carrier.
+    - **Equipment behaves as a trait** (`Skill.is_trait()` true: no slot, not disabled by skill-disabling), so traits suppressed takes armor's Defense away; not listed in `Unit.traits()` (the HUD strip would show every unit's Armor); `Skill.is_equipment()` says which. Alternative: list it.
+    - **Migration:** `item.py lend armor --slot armor` (new) lent it to all nine armors; `item.py check` fails an armor lending none; `skill.py new --lent` for a skill only items lend. No fallback for an armor with none: test armor gets it (`bulwark()`). Defense of all nine armors at levels 1/9/30 x dex 6/10/14/20, plain and Pray-enchanted, and Robe's magical Defense matched the old tip (28ae12a).
+    - **Prerequisites:** one read, `Unit.counts(x)` (learned, or lent and working); `reached()`, root `needs`, tier and category needs read it. A skill learned on a lent one is marked (`Unit.leaned`) and `lapsed()` when the prerequisites no longer hold; dependents lapse too; it all comes back with the lent skill. Calls: a lapsed skill keeps rank and slot and is switched off; authored units never lean (only `unlock()` marks); `lapsed()` reads no effects, so Reckless Abandon's skipped steps aren't given while judging; `Unit.leaned` isn't saved; Pray's enchant on a lent prerequisite doesn't matter; no respec exists so `leaned` has no removal.
+    - **Tests:** `lent_test.gd` (new, 3 tests, 72 checks), `test.gd`, `equip_test`, `sweep_test.test_item_skills`; five mutations failed and reverted.
+    - **New names to review:** Armor ??.
+- [ ] **`Unit.leaned` is not saved**: a loaded unit that learned on a lent skill won't lapse when it loses it. (?196)
+- [ ] **`counts()` doesn't ask `equipped()` of a lent non-trait**: a lent skill left off the bar still counts. (?196)
+- [ ] **Power Armor and Scrap Plating** read `armor_skills()` and the `armor()` hook (`w3-armor`). (?196)
+- [ ] **Should Armor show in the HUD trait strip?** Not listed now. (?196)

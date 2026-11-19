@@ -14,7 +14,7 @@ The grammar (in `docs/done/rules.md`): `Actor Skill Rank --> Target (ours - thei
 - [x] **"Pick up to x"** boxes around a class's choice of trees (see Picking trees, `docs/todo/classes.md`).
 
 - [x] Settings › Gameplay toggles, starting with auto-equip. Built 2026-11-15 (?163).
-- [ ] The Adventurer's extra slot is a base slot, slightly darker. (?3)
+- [ ] The Adventurer's extra slot (Skill Slot +1, built as a trait, ?194) is a base slot, slightly darker: needs a slot kind. (?3)
 - [x] When targeting, if a unit is just out of range from the caster's current tile, show small circles for both units' sizes so the gap is visible. Built 2026-11-14: two faint circles and a dashed line from the reach ring when the target is within a tile beyond reach (`Overlay.NEAR`, ?136). *Before:* a near miss was decided by luck, with no explanation.
 - [ ] Lore keeper: one reference per skill, and its hover description is what the skill is built from. (?8)
 
