@@ -170,6 +170,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Exhaustion retune, Burnout, Recovery Endurance, Deathlust (?195) | `exhaustion_test.gd`, `recovery_endurance_test.gd`, `deathlust_test.gd` |
 | — | Lent skills: enchant, `equipment` armor, prerequisites (?196) | `lent_test.gd` |
 | — | Summoned AP, Wake and Rake (?197) | `summon_test.gd` |
+| — | Cram and caster bonus slots (?198) | `equip_test.gd` |
+| — | Student tree composed into the Caster tree (?199) | `general_test.gd`, `hud_test.gd` |
+| — | Power Armor, Scrap Plating, armor slots (?200) | `plating_test.gd` |
+| — | Coyote Charm and Scepter, disable and slay hooks (?201) | `coyote_charm_test.gd` |
+| — | Strike tag, Chaser's chain, `friction` (?202) | `check_test.gd`, `heavy_strike_test.gd`, `chaser_test.gd`, `fighter_test.gd` |
+| — | Density eligibility and `no_density` (?203) | `param_test.gd`, `skills_test.gd` |
 
 ## Questions to answer first
 
