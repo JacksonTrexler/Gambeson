@@ -274,23 +274,36 @@ func test_crit_range_glances() -> void:
 	ok(uses.size() == 80 and not uses.has(0) and v(1).rolls_made == 1, "each cast its own skill use, its roll counted in it (%d uses, %d)" % [uses.size(), v(1).rolls_made])
 
 
-# Glancing Strike's two stats as attack_check() reads them: its Strikes (chain skills) at disadvantage and
-# glancing, other attacks as they were; + rank to its first rank attack rolls of each skill use (Unit.rolls_made,
-# zeroed as a use opens: a real Strike III makes three rolls in one use, and the next Strike starts again).
+# Glancing Strike's two stats as attack_check() reads them, only on a Strike skill's attacks (its effects ask for
+# the strike tag, on the attack's tags: hit_tags()): at disadvantage and glancing, any other attack as it was (no
+# edge, no glance, no opening bonus, even a non-chain one); + rank to its first rank attack rolls of each skill use
+# (Unit.rolls_made, zeroed as a use opens: a real Strike III makes three rolls in one use, the next starts again).
+# Friction (Unit.friction, Battle.loops()) on any attack: at disadvantage, - that.
 func test_glancing_and_opening() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var plain: Skill = strike.duplicate()
 	plain.chain = false
+	plain.tags = [&"physical", &"str", &"martial"] as Array[StringName]
+	var lone: Skill = strike.duplicate()  # a Strike skill that isn't a chain (Silent Strike, Waterstrike)
+	lone.chain = false
+	var hit := Battle.hit_tags(v(1), strike)
 	v(1).learned.append(slot(sk("glancing_strike"), 2))
-	var c := Battle.attack_check(v(1), strike, 3, 15, 0)
+	ok(&"strike" in hit and &"strike" in Battle.hit_tags(v(1), sk("waterstrike")) and &"strike" in Battle.hit_tags(v(1), sk("silent_strike")), "Strike, Waterstrike and Silent Strike attack as Strike skills (%s)" % [hit])
+	var c := Battle.attack_check(v(1), strike, 3, 15, 0, hit)
 	ok(c.advantage == -1 and c.glancing, "a Strike: at disadvantage, glancing")
-	ok(Battle.attack_check(v(1), plain, 3, 15, 0).advantage == 0, "another attack: no edge of its own")
-	ok(Battle.attack_check(v(1), strike, 3, 15, 1).advantage == 0, "advantage from elsewhere cancels it")
+	ok(Battle.attack_check(v(1), lone, 3, 15, 0, Battle.hit_tags(v(1), lone)).advantage == -1, "any Strike skill, chain or not")
+	var other := Battle.attack_check(v(1), plain, 3, 15, 0, Battle.hit_tags(v(1), plain))
+	ok(other.advantage == 0 and not other.glancing and other.bonus == 3, "another attack: no edge, no glance, no opening bonus (%d)" % other.bonus)
+	ok(Battle.attack_check(v(1), strike, 3, 15, 1, hit).advantage == 0, "advantage from elsewhere cancels it")
 	ok(c.bonus == 3 + 2, "+ rank on its first rolls (%d)" % c.bonus)
 	v(1).rolls_made = 1
-	ok(Battle.attack_check(v(1), strike, 3, 15, 0).bonus == 5, "the second of rank 2's")
+	ok(Battle.attack_check(v(1), strike, 3, 15, 0, hit).bonus == 5, "the second of rank 2's")
 	v(1).rolls_made = 2
-	ok(Battle.attack_check(v(1), strike, 3, 15, 0).bonus == 3, "then no more")
+	ok(Battle.attack_check(v(1), strike, 3, 15, 0, hit).bonus == 3, "then no more")
+	v(1).friction = 2
+	var f := Battle.attack_check(v(1), plain, 3, 15, 1, Battle.hit_tags(v(1), plain))
+	ok(f.advantage == 0 and f.bonus == 1, "friction 2: a step of disadvantage (cancelling advantage) and -2 (%d, %d)" % [f.advantage, f.bonus])
+	v(1).friction = 0
 	v(1).learned.append(slot(strike, 3))
 	v(1).strength = 30  # (str mod 10 at Defense 2: every hit lands)
 	v(1).weapon = null

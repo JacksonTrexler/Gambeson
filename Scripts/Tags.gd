@@ -100,6 +100,8 @@ const COLOR := {
 
 	&"summon": Color("#8fb0c8"),
 	&"cc": Color("#a5a1c9"),
+	&"strike": Color("#c9915a"),
+	&"friction": Color("#9a8f84"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
@@ -108,7 +110,7 @@ const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with on
 const PLAIN: Array[StringName] = [&"metal", &"iron", &"cloth", &"padded", &"mail", &"wood", &"stone", &"rock", &"glass",
 		&"gem", &"blade", &"book", &"potion", &"ring", &"shackles", &"treat", &"stew", &"heavy", &"medium", &"enchanted",
 		&"honed", &"str", &"dex", &"con", &"int", &"wis", &"cha", &"offensive", &"defensive", &"supportive", &"beneficial",
-		&"detrimental", &"damage", &"unique", &"finesse", &"bracing", &"tall", &"sigil", &"insignia", &"crest", &"badge", &"trait"]
+		&"detrimental", &"damage", &"unique", &"finesse", &"bracing", &"tall", &"sigil", &"insignia", &"crest", &"badge", &"trait", &"strike", &"friction"]
 # Words too broad to say what a blow is made of: a damage floater (HUD) passes over them too.
 const BROAD: Array[StringName] = [&"martial", &"magical", &"specialist", &"physical"]
 

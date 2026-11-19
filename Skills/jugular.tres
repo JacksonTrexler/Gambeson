@@ -11,7 +11,7 @@ stat = &"strength"
 [resource]
 script = ExtResource("1_skill")
 name = "Jugular"
-tags = Array[StringName]([&"physical", &"str", &"martial", &"offensive"])
+tags = Array[StringName]([&"physical", &"str", &"martial", &"offensive", &"friction"])
 ap = 4.0
 cost = 2
 radius = 1.0

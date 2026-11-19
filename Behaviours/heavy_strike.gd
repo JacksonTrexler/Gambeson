@@ -1,8 +1,9 @@
 extends Behaviour
 
-# Heavy Strike (a Strike form): the attacks of one skill use (any skill's; Battle.use_of()) - a Strike's
-# many hits, its automatic restrikes, an attacking skill's blows, a recast an effect sets off - are rolled
-# as usual, but none deals its damage as it lands; their damage on each unit is pooled into one attack.
+# Heavy Strike (a Strike form): the attacks of one skill use (Battle.use_of()) made with a Strike skill (the
+# strike tag: Strike, Waterstrike, Silent Strike) - a Strike's many hits, its automatic restrikes, a Strike
+# used as a Chaser's chase - are rolled as usual, but none deals its damage as it lands; their damage on each
+# unit is pooled into one attack. Any other skill's attacks land as they would (a Jam that crits, then chased).
 # As the use closes, a last attack roll + successes (the hits on it that landed) + rank must hit that unit,
 # or the pool misses; on a hit it deals the pool + successes + rank (a critical doubles it, a glance halves
 # it, as any roll's outcome). Through the generic `striking` hook on a use's Volley (Behaviour.Volley).
@@ -14,6 +15,8 @@ const POOL := &"heavy_pool"  # in the use's bag: Unit -> [damage held, then its 
 func striking(b: Battle, holder: Unit, rank: int, v: Volley) -> void:
 	var pools: Dictionary = v.bag.get_or_add(POOL, {})
 	if v.stage == &"hit":
+		if &"strike" not in v.tags:
+			return  # not a Strike skill's: it lands
 		var held: int = pools[v.target][0] if pools.has(v.target) else 0
 		pools[v.target] = [held + v.dealt, v.skill, v.bonus, v.defense, v.edge, v.tags]
 		v.dealt = 0  # held back
@@ -44,5 +47,5 @@ func describe(rank: int) -> String:
 
 
 func describe_as(c: Cast) -> String:
-	return "The hits of one skill use (a Strike's many, its restrikes) are made as usual but their damage on a foe is held as one {k:attack}: a last attack, + the hits that landed + {r:%d} to hit, must hit or it all misses; hitting, it deals their damage + the hits that landed + {r:%d}." \
+	return "The hits of one use of a {k:strike} skill (a Strike's many, its restrikes) are made as usual but their damage on a foe is held as one {k:attack}: a last attack, + the hits that landed + {r:%d} to hit, must hit or it all misses; hitting, it deals their damage + the hits that landed + {r:%d}." \
 			% [c.impact_rank(), c.impact_rank()]

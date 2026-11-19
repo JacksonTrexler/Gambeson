@@ -439,6 +439,7 @@ var unspent := 0.0  # AP it had left as its side's last turn ended (Battle.end_t
 var tally: Dictionary[StringName, int] = {}  # counts behaviours keep over its turn, across walks (Peel's assisted steps: Battle.travel()); cleared by refresh()
 var turns_taken := 0  # its side's turns it has started this battle (refresh(): a Dagger's opening AP)
 var rolls_made := 0  # attack rolls it has made in its skill use under way (Battle.roll_attack(), zeroed as a use opens: opening_rolls, Glancing Strike)
+var friction := 0  # steps of friction on its next attack roll (Battle.loops(), friction tag): above 0, at disadvantage and - this (Battle.attack_check()); set by Battle per use
 var allowed: Dictionary = {}  # Skill -> highest rank: while not empty, its only actives, each at no more than that rank (an interrupt that allows only some: Chaser; Battle.grant_interrupt())
 
 # Every skill entry, its own (_own()) and what its items lend (granted()): a skill listed twice keeps its

@@ -136,6 +136,17 @@ func test_jugular_recasts() -> void:
 		b.cast(v(1), j, v(3))
 	var twenties := rolls.count(20)
 	ok(twenties > 0 and rolls.size() == 200 + twenties, "each natural 20 casts it again at once, free (%d rolls, %d twenties)" % [rolls.size(), twenties])
+	# Tagged friction (Battle.loops()): every hit a critical (crit range 2+), its recasts past the first (rank I)
+	# roll at disadvantage, worse each time - so the chain is tamped down well before RECAST_LIMIT.
+	var keen: Skill = load("res://Skills/backstab.tres")
+	v(1).learned.append(slot(keen, 18))
+	var seen := {}  # use -> [two dice, ...] in order
+	b.attack_rolled.connect(func(_c, _t, r: Check.Roll): seen.get_or_add(r.use, []).append(r.other != 0))
+	for i in 20:
+		v(1).refresh()
+		b.cast(v(1), j, v(3))
+	var shaped := seen.values().all(func(a: Array): return range(a.size()).all(func(k: int): return a[k] == (k >= 2)))
+	ok(shaped and seen.values().any(func(a: Array): return a.size() > 2), "the use's roll and first recast plain, every later recast at disadvantage (%s)" % [seen.values()])
 
 
 func test_defend_order() -> void:
