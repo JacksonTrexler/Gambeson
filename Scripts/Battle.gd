@@ -1327,7 +1327,10 @@ func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
 # run with the damage the blow was worth (its skill's damage at the attacker's rank: none known, none done).
 func _plate_blocks(caster: Unit, target: Unit, c: Check, hit: Check.Roll, v: Behaviour.Volley) -> void:
 	var t: Tier = v.skill.tier(caster.rank(v.skill)) if v and v.skill else null
-	var power := maxi(roundi((t.power + roll(t.dice)) * (1.0 + caster.stat(&"damage", hit_tags(caster, v.skill, target, self)))), 1) if t else 0
+	var power := 0
+	if t:
+		var tags := hit_tags(caster, v.skill, target, self)
+		power = maxi(roundi((t.power + roll(t.dice) + (caster.mod(caster.wielded(t.stat, tags), tags) if t.stat else 0)) * (1.0 + caster.stat(&"damage", tags))), 1)
 	for pair in target.plated_defense():
 		if pair[1] > 0 and Check.outcome(c, hit.d20, maxi(hit.d20, hit.other), hit.target - pair[1]) != Check.MISS:
 			for bh in pair[0].behaviours:
