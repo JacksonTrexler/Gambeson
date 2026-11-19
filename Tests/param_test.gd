@@ -228,6 +228,10 @@ func test_impact_reads() -> void:
 	var bare := Glossary.plain(kick.describe(1, v(1)))
 	dense.call()
 	ok("for 1 turn" in bare and "for 2 turns" in Glossary.plain(kick.describe(1, v(1))), "Kick's riders last rank impact turns (%s)" % Glossary.plain(kick.describe(1, v(1))))
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var soaked: Effect = load("res://Effects/soaked.tres")
+	b.cast_of(v(1), kick, v(3), 1, true).put(soaked, 2)
+	ok(v(3).timed[soaked].rank == 2, "Cast.put gives a per-rank effect the cast's rank impact (Soaked rank %d)" % v(3).timed[soaked].rank)
 	# Dice: Solar's d20s and a grip's drowning dice, as sums over 30 rolls at I and under Density.
 	var solar: Skill = sk("solar")
 	var sums := []
