@@ -4,13 +4,20 @@
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
 [ext_resource type="Resource" path="res://Skills/discipline.tres" id="s_discipline"]
 
+[ext_resource type="Resource" path="res://Skills/cram.tres" id="s_cram"]
+
 [sub_resource type="Resource" id="Branch_discipline"]
 script = ExtResource("2_branch")
 skill = ExtResource("s_discipline")
 tier = 3
 
+[sub_resource type="Resource" id="Branch_cram"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_cram")
+tier = 7
+
 [resource]
 script = ExtResource("1_skillroot")
 name = "Student"
 tag = &"specialist"
-branches = Array[ExtResource("2_branch")]([SubResource("Branch_discipline")])
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_discipline"), SubResource("Branch_cram")])
