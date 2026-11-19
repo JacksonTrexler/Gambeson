@@ -24,5 +24,6 @@ effects = Array[ExtResource("2_effect")]([SubResource("Effect_submerged")])
 radius = 1.0
 rolls = false
 drowns = Vector2i(1, 12)
+dice_per_rank = true
 check = SubResource("SkillCheck_1")
 costs = "very high ap, flat rank"

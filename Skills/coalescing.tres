@@ -20,5 +20,5 @@ rolls = false
 mist_only = true
 engulfs = true
 drowns = Vector2i(1, 12)
+dice_per_rank = true
 costs = "high ap"
-no_density = "an engulf with a fixed drown roll: rank adds nothing yet"

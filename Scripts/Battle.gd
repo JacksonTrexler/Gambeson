@@ -4425,7 +4425,7 @@ func _ire(u: Unit) -> void:
 
 
 # Still held as its side's turn ends (a grapple: Drown's effects), u drowns while submerged (the
-# skill's drowns dice + its holder's mod in the skill's stat) -
+# skill's drowns dice (x its rank when dice_per_rank) + its holder's mod in the skill's stat) -
 # and, fooled by its holder, looks harder at it. A holder that's fallen, or isn't beside it (or on its
 # tile) any more, lets go.
 func _grip(u: Unit) -> void:
@@ -4439,7 +4439,8 @@ func _grip(u: Unit) -> void:
 		return
 	var before := u.hp
 	if s.drowns != Vector2i.ZERO and u.is_alive() and submerged(u) and not u.has_tag(&"aquatic"):  # the aquatic breathe water
-		u.hit(roll(s.drowns) + by.mod(s.stat(), s.tags), s.tags, by)
+		var dice := Vector2i(s.drowns.x * (by.mods(s).irank(a.rank, &"rank_impact") if s.dice_per_rank else 1), s.drowns.y)  # a die count a rank, when it says so
+		u.hit(roll(dice) + by.mod(s.stat(), s.tags), s.tags, by)
 	gripped.emit(u, by, before - u.hp)
 	if u.is_alive() and u.hp < before and read(u, by).deceived:
 		doubt(u, by)

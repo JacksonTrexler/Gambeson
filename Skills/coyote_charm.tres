@@ -13,4 +13,3 @@ name = "Coyote Charm"
 passive = true
 tags = Array[StringName]([&"magical", &"curse"])
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_coyote_charm")])
-no_density = "an item hook: it defers a disabling or a death by rank, with no check or range to trade on"

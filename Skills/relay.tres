@@ -8,6 +8,7 @@ script = ExtResource("2_effect")
 stat = "relay"
 amount = 0.1
 per_mod = &"strength"
+per_rank = true
 
 [resource]
 script = ExtResource("1_script")
@@ -15,4 +16,3 @@ name = "Relay"
 passive = true
 tags = Array[StringName]([&"physical", &"str"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_relay")])
-no_density = "its share by str mod (stat impact): rank adds nothing yet"

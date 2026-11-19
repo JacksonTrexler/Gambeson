@@ -3,7 +3,7 @@ extends Behaviour
 # A cone from the caster toward the tile it's cast on, `degrees` wide, hitting the units in it; every tile
 # in it is exposed to its tags (Battle.expose()).
 # Solar (plain): + 15 degrees a rank past I (rank range), its range long; everyone in it, the caster too,
-# takes d20 + the caster's wis score in fire.
+# takes a d20 a rank (rank impact) + the caster's wis score in fire.
 # Wildfire (evadable): `reach_scale` of its rank long, landing on every unit in it but the caster. Each
 # tries to dodge (Battle.evade(): the skill's difficulty at its rank impact); what lands is its tier's
 # dice x `dice_scale` of its rank + its stat's mod. A unit of its bane (earth) dodges at impossible and,
@@ -83,8 +83,9 @@ func _plain(c: Cast, cell: Vector2i) -> void:
 	var aim := Vector2(cell - caster.cell).angle()
 	var long := b.area_reach(caster, c.skill)
 	var hit := {}
+	var dice := Vector2i(c.impact_rank(), 20)  # a d20 a rank, through its caster's modifiers
 	var strike := func(w: Unit, _share: float) -> void:
-		hit[w] = hit.get(w, 0) + w.hit(b.roll(Vector2i(1, 20)) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
+		hit[w] = hit.get(w, 0) + w.hit(b.roll(dice) + roundi(caster.stat(&"wisdom")), [&"fire"] as Array[StringName], caster)
 	for u: Unit in b.units.values():
 		if u == caster or (u.is_alive() and b.in_cone(caster.cell, u.cell, aim, half, long)):
 			b.area_blow(c, u, strike)
@@ -98,10 +99,11 @@ func tile_target() -> StringName:
 	return &"area"
 
 
-# A plain cone's width is rank range. An evadable one is a check (its dodge) whose DC is rank impact.
+# A plain cone's width is rank range, its dice rank impact. An evadable one is a check (its dodge) whose DC is rank impact.
 func terms(t: SkillTerms) -> void:
 	if not evadable:
 		t.add(&"rank_range", "cone")
+		t.add(&"rank_impact", "dice")
 	elif t.skill.difficulty:
 		t.add(&"rank_impact", "difficulty")
 	if evadable:
@@ -117,7 +119,7 @@ func describe(rank: int) -> String:
 func describe_as(c: Cast) -> String:
 	var m: Modifiers = c.mods if c.mods else Modifiers.NONE
 	if not evadable:
-		return "A {r:%d} degree cone, its range long: 1d20 + {o:wis score} {x:fire} to everyone in it, the caster too" % roundi(width(c.rank, m))
+		return "A {r:%d} degree cone, its range long: {r:%dd20} + {o:wis score} {x:fire} to everyone in it, the caster too" % [roundi(width(c.rank, m)), c.impact_rank()]
 	var s := c.skill
 	var long := maxi(ceili(m.rank(c.rank, &"rank_range") * Difficulty.MAGNITUDE[s.reach_scale]), 1) if s and s.reach_scale else 0
 	var lines := ["A {r:%d} degree cone, {r:%d} tiles long: it lands on every unit in it but the caster" % [roundi(degrees), long]]

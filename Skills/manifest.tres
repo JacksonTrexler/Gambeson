@@ -9,10 +9,10 @@ stat = "luck"
 amount = 1.0
 per_stat = &"charisma"
 per = 10
+per_rank = true
 
 [resource]
 script = ExtResource("1_skill")
 name = "Manifest"
 passive = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_luck")])
-no_density = "luck by cha score (stat impact): rank adds nothing yet"

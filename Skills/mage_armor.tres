@@ -8,6 +8,7 @@ script = ExtResource("2_effect")
 stat = "defense"
 amount = 1.0
 per_mod = &"intelligence"
+per_rank = true
 
 [resource]
 script = ExtResource("1_skill")
@@ -16,4 +17,3 @@ passive = true
 toggle = true
 tags = Array[StringName]([&"magical", &"int", &"defensive"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_armor")])
-no_density = "Defense by int mod (stat impact): rank adds nothing yet"

@@ -78,7 +78,7 @@ extends Resource
 @export var strike_ap := 0.0
 @export var strike_cost := 0
 @export var blast := 0.0  # the explosion's radius, per rank
-@export var dice_per_rank := false  # its tier's dice rolled once per rank (Metea II: 2d12)
+@export var dice_per_rank := false  # its tier's dice rolled once per rank (Metea II: 2d12); a grip's drowning dice too (Drown)
 
 @export_group("Heal")  # used on an ally (Battle.mend())
 @export var heal_mods: Array[StringName] = []  # heals the caster's mods in these, added up (First Aid: dexterity, wisdom; Renew: wisdom)...
@@ -722,7 +722,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		if holds():
 			lines.append("%s it: moving away first takes 1 + %s tiles of movement and a %s" % [Glossary.term(&"held", "Holds"), me, Glossary.term(&"contest", "contest")])
 		if drowns != Vector2i.ZERO:
-			lines.append("%s: each turn it ends held and %s, it takes %dd%d + %s" % [Glossary.term(&"drowning", "Drowns it"), Glossary.term(&"submerged", "submerged"), drowns.x, drowns.y, me])
+			lines.append("%s: each turn it ends held and %s, it takes %s + %s" % [Glossary.term(&"drowning", "Drowns it"), Glossary.term(&"submerged", "submerged"), ("{r:%dd%d}" % [drowns.x * ri, drowns.y]) if dice_per_rank and ri > 1 else "%dd%d" % [drowns.x, drowns.y], me])
 		if check and check.suspicion:
 			lines.append("%s%s comes. On a suspicious one, a %s (%s vs %s) takes a stack of %s off"
 					% [foe, ("only one " if dual else "Only one ") + Glossary.term(&"enraptured", "enraptured"), Glossary.term(&"contest", "contest"),
