@@ -16,14 +16,15 @@ func apply(c: Cast) -> void:
 	c.bag[&"stunned"] = not saved
 	if saved:
 		return
-	c.put(STUNNED, c.rank)
+	c.put(STUNNED, c.impact_rank())
 	if c.target.stopped():
 		c.bag[&"interrupted"] = c.battle.interrupt(c.target)
 
 
 # Its save's DC, and the helper's options for the foe's roll of it (the cast's own tags help it: checks tagged taps).
+# The DC's rank and the turns are rank impact; Density's check shift moves the DC (easier to overcome dense).
 static func dc(c: Cast) -> int:
-	return Difficulty.dc(&"difficult", c.rank)
+	return Difficulty.dc(&"difficult", c.impact_rank()) + c.check_shift()
 
 
 static func save_opts(c: Cast) -> Dictionary:
@@ -38,8 +39,17 @@ func foresee(c: Cast) -> Dictionary:
 	return {notes = ["Stuns it (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
 
 
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "stun DC and turns")
+
+
 func describe(rank: int) -> String:
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
 	return "Landing, the foe makes a %s %s %s (DC %d, a check that %s); failing, it's Stunned for {r:%d} turn%s: %s - %s unless something lets it act. A %s: a heal clearing rank {r:%d} takes it off; easy to cleanse (half its rank)" % [
-			Glossary.term(&"difficult"), Glossary.mod(&"con", true), Glossary.term(&"check", "check"), Difficulty.dc(&"difficult", rank),
+			Glossary.term(&"difficult"), Glossary.mod(&"con", true), Glossary.term(&"check", "check"), dc(c),
 			Glossary.term(&"taps", "taps"), rank, "" if rank == 1 else "s",
 			Glossary.term(&"helpless", "helpless"), Glossary.term(&"tapped", "tapped"), Glossary.term(&"wound", "wound"), rank]

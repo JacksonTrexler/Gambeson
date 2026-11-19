@@ -13,4 +13,5 @@ name = "Energy Missile"
 tags = Array[StringName]([&"astral", &"energy", &"cha"])
 radius = 4.0
 tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
+dice_per_rank = true
 costs = "very high ap"

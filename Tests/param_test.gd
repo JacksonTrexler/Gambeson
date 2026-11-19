@@ -35,7 +35,7 @@ func test_move() -> void:
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # x1.5: rank II reads as 3
 	var before := v(1).move_left()
 	ok(b.cast(v(1), move, v(1)) and is_equal_approx(v(1).move_left() - before, 3.0), "Density: Move II gains 3 tiles (%s)" % (v(1).move_left() - before))
-	ok(not Modifiers.eligible(&"rho_down", move), "Diluted doesn't fit it: no rank range to boost, so an emblem never only takes away")
+	ok(Modifiers.eligible(&"rho_down", move) and not Modifiers.eligible(&"rho_down", load("res://Skills/clairvoyance.tres")), "Diluted fits it (rank impact to tamp, a slot to defend); not Clairvoyance, with no rank impact")
 
 
 # Heal's caster mod is stat impact.
@@ -60,8 +60,8 @@ func test_clairvoyance() -> void:
 	ok(b.cast(v(1), cv, v(1)) and cv.behaviours[0].reach(v(1)) == roundi(4 * 1.5 + 1), "Dispersed: wisdom x1.5 + rank (%d)" % cv.behaviours[0].reach(v(1)))
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)
 	ok(not Modifiers.eligible(&"rho_up", cv) and cv.behaviours[0].reach(v(1)) == 5, "Density doesn't fit it (no rank impact): wisdom + rank, unmodified")
-	v(1).trinket = emblem(&"rho_down", &"insignia", 1)  # rank range x1.5
-	ok(cv.behaviours[0].reach(v(1)) == roundi(4 + 1.5), "Diluted: wisdom + rank x1.5 (%d)" % cv.behaviours[0].reach(v(1)))
+	v(1).trinket = emblem(&"rho_down", &"insignia", 1)
+	ok(not Modifiers.eligible(&"rho_down", cv) and cv.behaviours[0].reach(v(1)) == 5, "Diluted doesn't fit it either (nothing to tamp: docs/plans/w4-density.md): wisdom + rank, unmodified")
 
 
 # A passive's hook (Word to the Wise: its wis mod is stat impact) and Unit-side reads (a reserve, Mana's tiers).
@@ -101,7 +101,8 @@ func test_concrete_scaled() -> void:
 		&"specialist_slot": [func(u: Unit): return u.granted_slots().size(), 1],
 		&"stonegift": [func(u: Unit): return stone.lasts(u.learned[0].rank, u), 3],  # absolute: 3 turns at I, as before
 		&"final_act": [func(u: Unit): return _free_actions(u), 1],
-		&"gallantry": [func(u: Unit): return gal.behaviours[0].check_bonus(u, u.learned[0].rank), 0],
+		&"gallantry": [func(u: Unit): return gal.behaviours[0].check_bonus(u, u.learned[0].rank) - u.mods(gal).check, 0],  # its rank's part (the shift: test_density)
+		&"cram": [func(u: Unit): return u.granted_slots().size(), 2],  # 1 + rank caster slots; its converted slots and wear: equip_test.test_cram
 	}
 	for id in reads:
 		var s: Skill = load("res://Skills/%s.tres" % id)

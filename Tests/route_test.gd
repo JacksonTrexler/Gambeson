@@ -45,7 +45,7 @@ func test_save_rank() -> void:
 	ok("vs cha mod + 2" in haluca.describe(2, v(3)), haluca.describe(2, v(3)))
 	v(3).trinket = emblem(&"rho_up", &"sigil")  # x1.75: rank 2 -> 4
 	var dense := contest_total(v(3), haluca, v(1))
-	ok(dense[0] - plain[0] == 2, "Density: + 4 on the save, not + 2 (%s vs %s)" % [dense, plain])
+	ok(dense[0] - plain[0] == 2 + v(3).mods(haluca).check, "Density: + 4 on the save, not + 2, less its check shift %d (%s vs %s)" % [v(3).mods(haluca).check, dense, plain])
 	ok("vs cha mod + 4" in haluca.describe(2, v(3)) and "vs cha mod + 2" in haluca.describe(2), "described as held: + 4; base: + 2")
 	var exe: Skill = haluca.duplicate()
 	exe.tags = haluca.tags + ([&"execute"] as Array[StringName])
@@ -134,10 +134,12 @@ func test_area() -> void:
 	v(1).ap.append(AP.new(20.0, &""))
 	v(1).energy = 99
 	b.cast_at(v(1), wildfire, v(3).cell)
-	var dc := Difficulty.dc(wildfire.difficulty, 4)
-	ok(dcs.size() > 0 and dcs[0] == dc and dc != Difficulty.dc(wildfire.difficulty, 2), "Density: the dodge's DC at rank 4 (%s)" % [dcs])
+	var dc := Difficulty.dc(wildfire.difficulty, 4) + v(1).mods(wildfire).check  # less its check shift: easier to dodge
+	ok(dcs.size() > 0 and dcs[0] == dc and v(1).mods(wildfire).check < 0, "Density: the dodge's DC at rank 4, less its check shift (%s)" % [dcs])
 	ok("DC %d" % dc in wildfire.describe(2, v(1)), wildfire.describe(2, v(1)))
-	var solar: Skill = load("res://Skills/solar.tres")
+	var solar: Skill = load("res://Skills/solar.tres").duplicate()  # a rank impact to trade, so Diluted fits it (docs/plans/w4-density.md)
+	solar.turns_per_rank = 1
+	SkillTerms.forget(solar)
 	v(1).trinket = emblem(&"rho_down", &"sigil")
 	learn(v(1), solar, 2)
 	var cone = solar.behaviour(&"cone")
@@ -175,6 +177,7 @@ func test_aura() -> void:
 	glow.turns = 2
 	glow.ap = 1.0
 	glow.effects = [effect("zz_glow", 1)] as Array[Effect]
+	glow.turns_per_rank = 1  # a rank impact for Diluted to trade against its reach
 	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(4, 3)})
 	learn(v(1), glow, 1)
 	b.cast(v(1), glow, v(1))
@@ -352,7 +355,9 @@ func test_rift_look() -> void:
 	v(1).refresh()
 	var again := b.cast_at(v(1), rift, Vector2i(2, 4), false)
 	ok(again and b.pockets[-1].turns == 5, "Density: 5 turns (%s, %d pockets, %d)" % [again, b.pockets.size(), b.pockets[-1].turns])
-	var look := sk("alluring")
+	var look: Skill = sk("alluring").duplicate()  # not a trait: Density trades on a slotted look (docs/plans/w4-density.md)
+	look.tags = look.tags.filter(func(x): return x != &"trait")
+	SkillTerms.forget(look)
 	v(1).trinket = null
 	v(1).extra_dissonance = 20
 	learn(v(1), look, 2)
