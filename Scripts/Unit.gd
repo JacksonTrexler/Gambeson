@@ -2813,6 +2813,47 @@ func _general_need(s: Skill, t: int) -> Array:
 	return [why, null]
 
 
+# What the save keeps of leaned and waived (Save carries it as one dictionary, so a loaded unit still lapses): skill ids
+# (Skills/<id>.tres). Empty for a unit that leans on nothing.
+func lapses_out() -> Dictionary:
+	var out := {}
+	if not leaned.is_empty():
+		out.leaned = leaned.map(_skill_id)
+	if not waived.is_empty():
+		var w := {}
+		for s in waived:
+			w[_skill_id(s)] = _skill_id(waived[s])
+		out.waived = w
+	return out
+
+
+# Back from lapses_out() (or an old save with no such keys: nothing leans). Skills that are gone, or that this unit
+# hasn't learned, are left out: a lapse only means something on a learned skill.
+func lapses_in(d: Dictionary) -> void:
+	leaned.clear()
+	waived.clear()
+	var l = d.get("leaned")
+	for id in (l if l is Array else []):
+		var s := _skill_by_id(id)
+		if s and base_rank(s) > 0:
+			leaned.append(s)
+	var w = d.get("waived")
+	for id in (w if w is Dictionary else {}):
+		var s := _skill_by_id(id)
+		var via := _skill_by_id(w[id])
+		if s and via and base_rank(s) > 0:
+			waived[s] = via
+
+
+static func _skill_id(s: Skill) -> String:
+	return s.resource_path.get_file().get_basename()
+
+
+static func _skill_by_id(id: Variant) -> Skill:
+	var path := "res://Skills/%s.tres" % str(id)
+	return load(path) if id is String and id != "" and ResourceLoader.exists(path) else null
+
+
 # A skill that stopped working: learned through a waiver whose waiver isn't working now (removed, disabled, or
 # cursed down to nothing, or unequipped), or learned on a lent skill (leaned) whose prerequisites are no longer met
 # now it is gone (missing(): counts() reads a lent skill only while it is lent and works). Dependents of a lapsed

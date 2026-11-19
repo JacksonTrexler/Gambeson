@@ -559,6 +559,7 @@ func starter(s: Dictionary) -> Unit:
 		u.set(slot, Game.outfit[slot])
 	refill(u)
 	u.hearts += Game.hearts
+	u.lapses_in(Game.lapses)
 	if not Game.equipped.is_empty():  # what it had equipped, once its bar is set up
 		u.ready.connect(func(): u.set_equipped(Game.equipped), CONNECT_ONE_SHOT)
 	assert(s.faction in spawns, "no spawn for %s" % s.faction.name)

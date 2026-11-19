@@ -37,6 +37,8 @@ static func pack() -> Dictionary:
 			stash.append(d)
 	out.stash = stash
 	out.equipped = _equipped_out()
+	if not Game.lapses.is_empty():
+		out.lapses = Game.lapses
 	return out
 
 
@@ -82,6 +84,8 @@ static func unpack(d: Dictionary) -> void:
 				Game.stash.append(it)
 	var eq = d.get("equipped")
 	_equipped_in(eq if eq is Array else [])
+	var lp = d.get("lapses")
+	Game.lapses = lp if lp is Dictionary else {}  # a file from before it: nothing leans
 
 
 static func _is_path(p: Variant) -> bool:
