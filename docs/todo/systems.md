@@ -1094,3 +1094,26 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
 - [ ] **Give the 35 a rank-impact term where the user's "as few as possible" asks:** Solar's damage, Send Off's turns, Clairvoyance, Peel (reach only); mage_armor, manifest, relay (`per_rank` on the effect); coalescing, stoneskin (new tiers). Queued. (?203)
 - [ ] **The check-shift numbers** (`DENSE_CHECK` 5, `DILUTE_CHECK` 3) and the blows' new rank scaling are untuned. (?203)
 - [ ] **The AI does not read the check shift or the disable weight** beyond the forecast. (?203)
+
+## Wave 4 card C (2026-11-19): balance knobs
+
+204. **Balance knobs - built on judgement, open for review (2026-11-19).** Your words (answers of 2026-11-19): "consider optional base/symbol scaling coefficient properties on tags like Impact, Range, Modified ... keep em in our back pocket and test on a few obvious ones"; a "β +-(beta) tag, for outliers it tweaks scaling to be stronger or weaker", visible only to units with `very high` int; a `d` (Cohen) tag (early ranks stronger or weaker, smoothing out with rank); "apply it to an obvious skill to test the feature itself and leave it alone for now". Plan: `docs/plans/w4-knobs.md`. Calls:
+    - **Readings:** "Impact, Range, Modified" are the scaling channels (rank impact, rank range, and the stat channels). `Skill.scaling` is one coefficient per word (default 1), a factor on the channel's k, so it stacks with a symbol (x2 and Density x1.5 read x3); under 1 a rank never reads below rank I (Kick at rank I would otherwise reach half a tile).
+    - **β:** tags `beta_up` ("β+") and `beta_down` ("β-"), k x1.25 or / 1.25 on all four channels (`Modifiers.BETA`). **d:** tags `cohen_up` ("d+") and `cohen_down` ("d-"), rank impact reads `1.5 / rank` more or less than the rank itself (impact only; `Modifiers.COHEN`). **The dial values 1.25 and 1.5 are first cuts, untuned.** Alternative: other values, or d on every channel.
+    - **FLAG_CEILING 104 to 105 for `scaling`** (the coefficients need a number, a tag can't carry one), against the ceiling-only-down rule, as `no_density` was. Alternative: no field; one tag per coefficient value, or a Terms-field entry.
+    - **"Very high" int is 16, and the holder is the viewer.** No int-gated visibility existed, so `Modifiers.sees_knobs(u)` = int score >= `VERY_HIGH_INT` 16 (the adventurer's 16 in every stat qualifies; a Fighter at 8 does not). Only the tag is hidden (`Skill.markup(rank, with_spec, u)`); the numbers a knob changes show to all, being true. Alternative: another threshold, or the viewing player's best int (`HUD.eyes()`), which needs a viewer argument on `markup`.
+    - **Price unchanged by a knob** (`Modifiers.priced()` drops them): a nerf should not also make a priced skill cheaper. A knob is no emblem and is never labelled.
+    - **Tools:** `skill.py knob <id> [--impact|--range|--modified X] [--beta +|-|off] [--cohen +|-|off] [--clear]`, `skill.py knobs`; `skill.py check` runs `terms.gd knobs-check` (a coefficient on a channel the skill lacks, 1 or negative, both + and -, β on a skill that scales by nothing, d on one with no rank impact). The four tags were declared with `mechanic.py tag --human`.
+    - **One skill each, to test the feature:** Kick `scaling range = 0.5` (docs/plans/ai-sim.md: "Kick dominates Strike on price even in the open"; reach now 1, 1, 1.5, 2, 2.5 tiles); Gank `beta_up` (weakest of the Slayer set, never chosen by the sim); Spike `cohen_up` (dear and weak early: rank I reads as III). `modified` has no skill. Alternative: other skills.
+    - **Tests:** new `param_test.test_knobs`; `Test.untuned(id)`; `kick_test` and `ai_tactics_test` read an untuned Kick; five mutations failed and reverted.
+    - **New names to review:** none (`scaling` is a Skill field, plain code name).
+- [ ] **Is the holder's int the viewer, is 16 "very high", are the dials (BETA 1.25, COHEN 1.5) right?** (?204)
+- [ ] **FLAG_CEILING raised for `scaling`:** keep the field, or replace it with tags or a Terms-field entry (ceiling back to 104)? (?204)
+- [ ] **The Guide does not list β and d** (the knob terms are kind `target`, which no Guide page lists); decide whether it should. (?204)
+- [ ] **No skill uses `modified`;** the AI does not read a knob beyond the numbers it changes. (?204)
+
+## Moved from todo.md (2026-11-19 consolidation): the user's annotations
+
+- **Stun, Stunned, Borrowed Time (?83, ?85, ?119).** Your words: "Martial prowess high tier skill: Stun: attempt a very difficult attack. on a hit target attempts a difficult constitution check. On a failure, target is stunned for rank rounds". "Stunned is an easy debuff to cleanse, it's rank for cleanse purposes is halved". "Stunned is a `wound`: it can be healed off with an active skill". "Stunned units are tapped". Downed: "It does not end for the berskerker variant who acts as normal on borrowed time, but does for adventurers etc. who are tapped until they're back up". Built in the section "Tapped, helpless, Stun, Mindless Fury, Drone" above.
+- **Contact with a concealed unit (?68).** Your note: physically contacting a concealed unit (a move blocked by it) grants 1 recon. Recorded in `docs/requirements.md`; built with Fixes (?127).
+
