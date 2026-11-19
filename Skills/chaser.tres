@@ -12,5 +12,5 @@ script = ExtResource("1_skill")
 name = "Chaser"
 glyph = "Ch"
 passive = true
-tags = Array[StringName]([&"martial", &"reaction"])
+tags = Array[StringName]([&"martial", &"reaction", &"friction"])
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_chaser")])

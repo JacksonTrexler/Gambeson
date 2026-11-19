@@ -88,8 +88,9 @@ var _aimed: Dictionary[Unit, Dictionary] = {}  # caster -> {target: times it use
 var _reacted: Dictionary[Unit, Dictionary] = {}  # holder -> {passive: times it reacted this battle} (times_reacted())
 var interrupter: Unit  # acting out of turn (grant_interrupt()): while set, only it acts (_acting())
 var directed := Callable()  # (unit) -> bool: a person picks that unit's interrupt (the HUD sets it for the player's side); unset, every unit's is the AI's
-var _interrupts: Array = []  # [unit, actions] waiting their turn to interrupt, first first
+var _interrupts: Array = []  # [unit, actions, only, chain] waiting their turn to interrupt, first first
 var _interrupt_left := 0  # actions the interrupter has left
+var _interrupt_chain := {}  # the use chain the interrupter's uses join (Behaviour.Volley.chain: a Chaser's chase), or empty
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
 var _picked: Array[Unit] = []  # the units the outermost cast()'s caster picked by hand
 var _wears: Array[Exhaustion.Wear] = []  # uses paid for in the cast under way, settled as the outermost is done (_settle_wear(): Behaviour.wearing())
@@ -1181,6 +1182,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		doubt(target, caster)
 	if foe and natural and skill.recast_on_crit and target.is_alive() and _recasts < RECAST_LIMIT:
 		_recasts += 1  # Jugular: a natural 20 goes again, free
+		loops(caster, skill, ri)  # (friction: its recasts past the first rank roll at disadvantage, worse each time)
 		cast(caster, skill, target, true)
 		_recasts -= 1
 	return true
@@ -1287,15 +1289,19 @@ func defaults_of(caster: Unit, skill: Skill) -> Array[Unit]:
 
 # The one place an attack roll is built (cast(), _chain(), Heavy Strike's last roll; attack_odds() unrolled):
 # d20 + bonus against defense, at edge (summed, then held to one either way), with what its roller's stats
-# say of any attack it makes: its crit range (crit_range(): Backstab, Discipline), glancing (Glancing Strike:
-# its Strikes at disadvantage, a miss whose better die would land a glance) and opening_rolls (+ that to its
-# first that many rolls a battle). The attacker's modifier itself is the caller's: Unit.attack_mod(skill).
+# say of any attack it makes: its crit range (crit_range(): Backstab, Discipline), glancing (Glancing Strike,
+# its effects asking for the strike tag: a Strike skill's attack at disadvantage, a miss whose better die would
+# land a glance), opening_rolls (+ that to its first that many rolls a use) and its friction (Unit.friction,
+# loops(): at disadvantage, - that). `tags` the attack's (hit_tags(): its skill's among them, strike for a
+# Strike skill). The attacker's modifier itself is the caller's: Unit.attack_mod(skill).
 static func attack_check(u: Unit, s: Skill, bonus: int, defense: int, edge: int, tags: Array[StringName] = []) -> Check:
 	var glancing := u.stat(&"glancing", tags) > 0.0
-	if glancing and s and s.chain:
+	if glancing:
+		edge -= 1
+	if u.friction > 0:
 		edge -= 1
 	var opening := roundi(u.stat(&"opening_rolls", tags))
-	var c := Check.attack(bonus + (opening if u.rolls_made < opening else 0), defense).edge(clampi(edge, -1, 1)).keen(crit_range(u, tags))
+	var c := Check.attack(bonus + (opening if u.rolls_made < opening else 0) - u.friction, defense).edge(clampi(edge, -1, 1)).keen(crit_range(u, tags))
 	c.glancing = glancing
 	return c
 
@@ -1313,6 +1319,9 @@ func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
 	caster.rolls_made += 1
 	var v := use_of(caster)
 	hit.use = v.id if v else 0
+	if v and v.chain.has(FRICTION):
+		v.chain[FRICTION][1] += 1
+		caster.friction = _friction_next(v)
 	attacked.emit(caster, target, hit.d20, hit.total, hit.target)
 	attack_rolled.emit(caster, target, hit)
 	if hit.crit and hit.hit:
@@ -1358,8 +1367,35 @@ func _begin_use(caster: Unit, skill: Skill) -> Behaviour.Volley:
 	v.caster = caster
 	v.skill = skill
 	caster.rolls_made = 0
+	if caster == interrupter and not _interrupt_chain.is_empty():
+		v.chain = _interrupt_chain  # an interrupt granted to carry a use on (a Chaser's chase): it joins that chain
+	caster.friction = _friction_next(v)
 	_uses[caster] = v
 	return v
+
+
+const FRICTION := &"friction"  # in a use chain: [rolls free, attack rolls since it began looping]
+
+
+# A skill of caster's tagged friction (Chaser, Jugular) loops its use under way at `rank` (its rank through its
+# holder's modifiers): a chase, a recast. From then on, across the use and the uses it sets off (Volley.chain),
+# each attack roll past the first `rank` is at disadvantage and - 1 more for each after it (the first past them -1;
+# Unit.friction, attack_check()). The first to loop a chain sets its rolls free; another doesn't add to them.
+# A skill without the tag loops freely (Strike!'s restrikes, bounded at three). True if the chain has friction now.
+func loops(caster: Unit, skill: Skill, rank: int) -> bool:
+	var v := use_of(caster)
+	if not v or not skill or &"friction" not in caster.skill_tags(skill):
+		return false
+	if not v.chain.has(FRICTION):
+		v.chain[FRICTION] = [maxi(rank, 0), 0]
+	caster.friction = _friction_next(v)
+	return true
+
+
+# The friction on the next attack roll in use v's chain: past its free rolls, 1, 2, ... (0 if none).
+static func _friction_next(v: Behaviour.Volley) -> int:
+	var f: Array = v.chain.get(FRICTION, [])
+	return maxi(f[1] + 1 - f[0], 0) if not f.is_empty() else 0
 
 
 # An attack of caster's use landed on t for `dealt` (roll hit, with bonus, defense and edge): its passives'
@@ -1402,6 +1438,7 @@ func _end_use(v: Behaviour.Volley) -> void:
 			h[0].striking(self, v.caster, h[1], v)
 		if v.dealt > 0 and is_instance_valid(t) and t.is_alive():
 			_blow(v.caster, t, v.dealt, v.tags)
+	v.caster.friction = 0
 	_uses.erase(v.caster)
 
 
@@ -1632,9 +1669,10 @@ func resolving() -> Behaviour.Cast:
 # u gets an interrupt: `actions` skill uses, free of AP, out of turn. It opens once nothing is being cast
 # (at once, if nothing is), after any granted before it; while open only u acts, and the interrupted turn
 # resumes when it's done (end_interrupt()). `only` (Skill -> highest rank), not empty: its only actives meanwhile,
-# each at no more than that rank (Unit.allowed: Chaser) - the HUD and the AI pick among them as any.
-func grant_interrupt(u: Unit, actions := 1, only: Dictionary = {}) -> void:
-	_interrupts.append([u, actions, only])
+# each at no more than that rank (Unit.allowed: Chaser) - the HUD and the AI pick among them as any. `chain`
+# (a Volley's), not empty: its uses join that use chain (Chaser: its chases count, friction carries on).
+func grant_interrupt(u: Unit, actions := 1, only: Dictionary = {}, chain: Dictionary = {}) -> void:
+	_interrupts.append([u, actions, only, chain])
 	if _casting == 0 and _reacting == 0:
 		_open_interrupt()
 
@@ -1649,6 +1687,7 @@ func _open_interrupt() -> void:
 		interrupter = u
 		_interrupt_left = next[1]
 		u.allowed = next[2]  # only these skills, each at no more than its rank (Chaser), while it lasts
+		_interrupt_chain = next[3]
 		_interrupt_ap = AP.new(INTERRUPT_AP, &"skill")
 		u.ap.push_front(_interrupt_ap)  # drawn before any skill-only AP of its own
 		interrupt_began.emit(u)
@@ -1664,6 +1703,7 @@ func end_interrupt() -> void:
 		return
 	interrupter = null
 	u.allowed = {}
+	_interrupt_chain = {}
 	u.ap.erase(_interrupt_ap)
 	_interrupt_ap = null
 	_interrupt_left = 0

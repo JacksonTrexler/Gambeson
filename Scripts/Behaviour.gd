@@ -407,6 +407,7 @@ class Volley:
 	var edge := 0
 	var missed := false
 	var bag := {}  # scratch its passives share across the use (Heavy Strike's pools, Chaser's once)
+	var chain := {}  # shared by the use and the uses it sets off (Chaser's chases): its friction (Battle.loops()), Chaser's count
 
 
 # The holder's skill use (v: a Volley), as each attack lands and once it's done: change what lands (Heavy Strike).

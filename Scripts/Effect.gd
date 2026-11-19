@@ -160,9 +160,8 @@ extends Resource
 # neutralized as &"unshaped"; nothing stays on the unit
 # crit_range: faces below a natural 20 its attack rolls also land in crit range, never below 2
 # (Battle.attack_check(); Backstab: rank; Discipline's points add beside it)
-# glancing: its Strikes (chain skills) roll at disadvantage, and any attack of its rolled at
-# disadvantage whose better d20 would have hit glances instead of missing (Battle.attack_check();
-# Glancing Strike)
+# glancing: its attacks (of its tags: Glancing Strike's, strike) roll at disadvantage, and one whose
+# better d20 would have hit glances instead of missing (Battle.attack_check(); Glancing Strike)
 # opening_rolls: + this to each of its first this attack rolls in each skill use (a Strike's many hits,
 # its restrikes; Unit.rolls_made, Battle.use_of(); Battle.attack_check(); Glancing Strike: rank)
 # no_traits: above 0, its traits (skills tagged trait) are suppressed: they stop working as if
@@ -377,7 +376,7 @@ func value(rank := 1) -> String:
 	elif stat == "crit_range":
 		return "attacks are {k:critical} on a natural %s and up; one there that would miss is a {k:glance} instead" % maxi(20 - roundi(x), 2)
 	elif stat == "glancing":
-		return "Strikes are made at {k:disadvantage}; an attack at disadvantage that its better die would land is a {k:glance} instead of a miss"
+		return "its attacks are made at {k:disadvantage}; one that its better die would land is a {k:glance} instead of a miss"
 	elif stat == "opening_rolls":
 		return "+%s to hit on each of its first %s attacks each time it uses a skill" % [Skill.num(x), Skill.num(x)]
 	elif stat == "humble":

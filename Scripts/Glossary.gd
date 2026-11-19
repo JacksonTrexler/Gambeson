@@ -123,6 +123,8 @@ const TERMS := {
 
 	&"summon": ["Summon", &"target", "A unit that was summoned or raised, not recruited: a summoner's skills that read it (the AP it keeps on arriving) find it by this tag."],
 	&"cc": ["CC", &"condition", "Crowd control: a skill or status that takes from a unit's ability to act (stun, sleep, fear, entrance, a grapple, a jam, a disabled skill). Gear, skills and reactions tagged cc count on it: they make it easier or harder to deal with."],
+	&"strike": ["Strike", &"target", "A Strike skill: one named for striking (Strike, Waterstrike, Silent Strike). Rules named Strike (Heavy Strike, Glancing Strike) act only on attacks made with one, even one used in another skill's wake (a Chaser's chase)."],
+	&"friction": ["Friction", &"check", "Can loop: within one skill use and what it sets off (a Chaser's chases, a Jugular's recasts), each attack roll past the first rank once it loops is at disadvantage and -1 more for each roll after."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],
