@@ -22,3 +22,7 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-18,w3-exhaust,opus,medium,121774,44,731034,ok
 2026-11-18,w3-lent,sonnet,high,215068,82,1491881,ok
 2026-11-18,w3-skeleton,sonnet,medium,64614,28,318555,ok
+2026-11-19,w3-cram,opus,medium,140660,73,912616,ok
+2026-11-19,w3-student,sonnet,high,127112,46,593788,ok
+2026-11-19,w3-armor,sonnet,high,185175,70,836783,ok
+2026-11-19,w3-docs1,sonnet,medium,123712,25,372360,ok
