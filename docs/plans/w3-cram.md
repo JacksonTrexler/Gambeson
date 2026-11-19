@@ -61,3 +61,12 @@ Baseline suite: 9918 checks, 0 failed (945 tests).
   x rank, any disabled pillar, Cram disabled, under Density, auto-equip). Mutation spot-checks (each failed, reverted):
   pillar check dropped; `slot_penalty` 1; `_suits` ignoring bonus slots; Density ignored (raw rank); `equipped()` not
   asking `bonus_off()`.
+- Visual: `scratchpad/shot_w3-cram` (a Mage with Cram II and Kick: Mana and Kick in dashed purple bonus slots, Kick dimmed;
+  Cram disabled: both bonus slots and Cram dim, and the granted caster slots go with Cram, as any disabled slot-granter's do).
+- Final suite: 9931 checks, 0 failed (946 tests); `skill.py check`, `mechanic.py check` ok; launch clean (only the known
+  "resources still in use"). adventurer-skills merge: already up to date.
+
+## Undone
+
+- Cram on the Specialist Student tree (w3-student builds it): put it there, or let Student compose into Mage general.
+- No swap when Cram arrives on a full bar: a non-caster already in a converted slot just stops working (call 6).
