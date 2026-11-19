@@ -158,7 +158,8 @@ func tier(s: Skill) -> int:
 func category(s: Skill) -> StringName:
 	var root := root_of(s)
 	if root and root.tag:
-		return (root.source(s) or root).tag  # an included skill keeps its own tree's category
+		var home := root.source(s)
+		return (home if home else root).tag  # an included skill keeps its own tree's category
 	for t in [&"martial", &"specialist", &"magical"]:
 		if t in s.tags:
 			return t
