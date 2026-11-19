@@ -22,3 +22,4 @@ name = "Stoneskin"
 tags = Array[StringName]([&"defensive"])
 passive = true
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_skin"), SubResource("Effect_slow")])
+no_density = "a fixed share above a fixed HP: rank would need new tiers"

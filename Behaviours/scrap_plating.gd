@@ -8,9 +8,18 @@ func armor_slot() -> bool:
 	return true
 
 
-func slot_defense(_holder: Unit, rank: int, defense: int) -> int:
-	return mini(defense, rank)
+# Its cap is rank impact, through its holder's modifiers.
+func slot_defense(holder: Unit, rank: int, defense: int) -> int:
+	return mini(defense, holder_rank(holder, rank))
+
+
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "defense cap")
 
 
 func describe(rank: int) -> String:
-	return "An armor slot more: the armor in it confers at most %d Defense, and drags in full" % rank
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	return "An armor slot more: the armor in it confers at most {r:%d} Defense, and drags in full" % c.impact_rank()

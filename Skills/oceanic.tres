@@ -27,3 +27,4 @@ name = "Oceanic"
 passive = true
 tags = Array[StringName]([&"physical"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_str"), SubResource("Effect_dex"), SubResource("Effect_con")])
+no_density = "a drawback only: nothing to boost"

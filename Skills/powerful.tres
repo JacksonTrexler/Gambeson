@@ -14,3 +14,4 @@ passive = true
 tags = Array[StringName]([&"pillar", &"astral"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_powered")])
 max_rank = 1
+no_density = "Energy counts as Power: a switch, nothing scales"

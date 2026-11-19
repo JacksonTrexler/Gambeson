@@ -18,3 +18,4 @@ glyph = "Si"
 passive = true
 tags = Array[StringName]([&"magical"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
+no_density = "picks which stat an attack reads: a selector, nothing scales"

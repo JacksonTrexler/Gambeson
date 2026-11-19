@@ -9,3 +9,4 @@ passive = true
 tags = Array[StringName]([&"magical", &"pillar"])
 stand_in = &"strength"
 replaces = Array[StringName]([&"intelligence"])
+no_density = "a stat stands in for another: on or off, nothing scales"

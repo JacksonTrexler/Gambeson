@@ -14,3 +14,4 @@ passive = true
 tags = Array[StringName]([&"specialist"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_synergy")])
 max_rank = 1
+no_density = "shared reads within party reach: a gate, nothing scales"

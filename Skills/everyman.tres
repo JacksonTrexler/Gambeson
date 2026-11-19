@@ -9,3 +9,4 @@ passive = true
 max_rank = 1
 glyph = "Ev"
 energy_as = Array[StringName]([&"specialist"])
+no_density = "energy counts as a kind: on or off, nothing scales"

@@ -16,3 +16,4 @@ ap = 8.0
 cost = 8
 radius_mod = &"wisdom"
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_cone")])
+no_density = "rank buys only reach: Density would cut all it boosts, Diluted give reach for nothing"

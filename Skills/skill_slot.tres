@@ -15,3 +15,4 @@ passive = true
 tags = Array[StringName]([&"trait"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_slot")])
 max_rank = 1
+no_density = "a trait: no slot a foe can disable, no range, check or cost, so Density would be all gain"

@@ -10,3 +10,4 @@ tags = Array[StringName]([&"magical"])
 max_rank = 3
 glyph = "Dv"
 studies = "religious domains (guest trees, -1 Affinity)"
+no_density = "a build gate: an emblem coming off would strand picks"

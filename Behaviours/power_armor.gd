@@ -10,13 +10,23 @@ func armor_slot() -> bool:
 	return true
 
 
+# Its rank (the share it lets go, the cut of each blow) is rank impact, through its holder's modifiers.
 func slot_works(holder: Unit, rank: int) -> bool:
-	return holder.power_share() >= 1.0 - SHARE * rank - 0.0001
+	return holder.power_share() >= 1.0 - SHARE * holder_rank(holder, rank) - 0.0001
 
 
 func slot_blocked(_b: Battle, holder: Unit, rank: int, power: int) -> void:
-	holder.sap_power(ceili(power / float(maxi(rank, 1))))
+	holder.sap_power(ceili(power / float(maxi(holder_rank(holder, rank), 1))))
+
+
+func terms(t: SkillTerms) -> void:
+	t.add(&"rank_impact", "power share and blow cut")
 
 
 func describe(rank: int) -> String:
-	return "An armor slot more, while it has at least %d%% of its Power; blows it blocks take their damage / %d off Power" % [roundi((1.0 - SHARE * rank) * 100.0), rank]
+	return describe_as(Cast.at(rank))
+
+
+func describe_as(c: Cast) -> String:
+	var rank := c.impact_rank()
+	return "An armor slot more, while it has at least %d%% of its Power; blows it blocks take their damage / {r:%d} off Power" % [maxi(roundi((1.0 - SHARE * rank) * 100.0), 0), rank]
