@@ -550,6 +550,8 @@ func use_slot(i: int) -> void:
 		_say(SkillSlot.NO_LUCK)
 	elif s in u.disabled:
 		_say("%s's %s is disabled for %d more turn%s" % [_name(u), s.name, u.disabled[s], "" if u.disabled[s] == 1 else "s"])
+	elif u.bonus_off(i):
+		_say("%s doesn't work in a bonus slot now: %s" % [s.name, u.bonus_why(i)])
 	elif s.passive and s.hybrid:
 		if not command.may_use(u, s):
 			return
@@ -2505,9 +2507,11 @@ func _refresh_bar() -> void:
 		var works := u == null or u.slot_works(i)
 		var sense := skill_sense(u, s, r)
 		var off: int = u.disabled.get(s, 0) if u and s else 0
-		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and (s.passive or u.can_afford(s))
+		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and not u.bonus_off(i) and (s.passive or u.can_afford(s))
 		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense, u.mods(s).label() if s else "", u)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
+		var bonus: Variant = u.bonus_slots().get(i) if u else null  # Cram's caster bonus slots
+		slot.set_bonus(bonus[0] if bonus != null else &"", bonus[1] if bonus != null else 0, u.bonus_why(i) if bonus != null else "")
 		slot.set_lent(u.lent_by(s) if u and s and sense == 2 else "")
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())

@@ -31,6 +31,9 @@ var works := true  # false: a clover slot whose unit isn't lucky now - greyed ou
 var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it isn't - dimmed while it is
 var cursed := false  # a curse disabled it (Brainfog), or sealed the slot (a level curse: Unit.sealed()): it quivers gently
 var sealed := false  # a level curse took the slot: it stays, unusable, till the curse ends
+var bonus := &""  # a bonus slot's type (Unit.bonus_slots(): Cram's caster bonus slots, magical), &"" none: a dashed rim in its colour
+var bonus_rank := 0  # ...and the rank wear on its skill is multiplied by
+var bonus_why := ""  # why its skill doesn't work there now (Unit.bonus_why()), "" it does: dimmed, as a disabled one
 var label := ""  # the name it goes by for its unit (Unit.skill_name(): Decisive Strike, Firestrike); empty: its own
 var exhausted := 0.0  # uses counted against its skill (Exhaustion.of()): a pip each, a half pip for a half - its raised cost without words
 var switching := false  # its passive is a switch of what the unit runs on (Mana, Stamina) in progress: a turning arc and a pulsing rim until the channel ends
@@ -112,6 +115,20 @@ func set_kind(k: StringName, does_work: bool) -> void:
 	queue_redraw()
 
 
+# Marks a bonus slot (Unit.bonus_slots()): its type, the rank its wear is multiplied by, and why its skill doesn't
+# work there now ("" it does). type &"": a plain slot.
+func set_bonus(type: StringName, r: int, why: String) -> void:
+	bonus = type
+	bonus_rank = r
+	bonus_why = why
+	if bonus != &"":
+		var cat: String = Skill.CATEGORIES.get(bonus, String(bonus))
+		var cast := "caster" if bonus == &"magical" else cat.to_lower()
+		tooltip_text = "%s bonus slot: only %s skills work here, and none while a pillar skill is disabled; wear here x%d%s\n%s" % [
+			cast.capitalize(), cast, r, ("\nNot working: " + why) if why != "" and skill else "", tooltip_text]
+	queue_redraw()
+
+
 # Its skill is disabled for n more turns (0: it isn't): dimmed. Cursed (Brainfog), or a slot a level
 # curse sealed, it also quivers gently.
 func set_off(n: int, by_curse := false, is_sealed := false) -> void:
@@ -162,6 +179,8 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(tone, 0.12 * fade))
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(tone, 0.5 * fade), false, 1.0)
 	draw_rect(Rect2(2, 2, 9, size.y - 4), Color(tone, 0.3 * fade) if tone != null else Color(1, 1, 1, 0.07))
+	if bonus != &"":  # a bonus slot: a dashed rim in its type's colour, over whatever marks the slot
+		_dashed_rim(Color(TYPES.get(bonus, PLAIN_TINT), 0.85 * fade))
 	if trait_slot:  # a diamond where the number would be: it has no key
 		var at := Vector2(6.5, size.y / 2.0)
 		draw_colored_polygon(PackedVector2Array([at + Vector2(0, -2.5), at + Vector2(2.5, 0), at + Vector2(0, 2.5), at + Vector2(-2.5, 0)]), Color(tone.lightened(0.35), fade))
@@ -171,7 +190,7 @@ func _draw() -> void:
 		var key_col := Color(tone.lightened(0.35), fade) if tone != null else Color(1, 1, 1, 0.55)
 		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, key_col)
 	if not skill:
-		var blank := "sealed" if sealed else "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "empty")
+		var blank := "sealed" if sealed else "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "%s bonus" % ("caster" if bonus == &"magical" else String(bonus)) if bonus != &"" else "empty")
 		draw_string(font, Vector2(15, mid), blank, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
 		return
 	var dim := brightness()
@@ -217,10 +236,17 @@ func _draw() -> void:
 # sealed one. An always-on passive says nothing of on or off (the user, 2026-11-18): it is drawn the same whether or not
 # its unit can act now, so only a disabling (or a clover slot without luck) dims it. A trait is its own: dim while suppressed.
 func brightness() -> float:
-	if off > 0 or sealed:
+	if off > 0 or sealed or (bonus_why != "" and skill != null):
 		return 0.25
 	var steady := skill != null and skill.passive and not skill.toggle and not trait_slot
 	return 1.0 if works and (steady or (usable and (on or not skill.passive))) else 0.45
+
+
+# A bonus slot's rim: dashes along its edge.
+func _dashed_rim(col: Color) -> void:
+	var r := Rect2(Vector2(0.5, 0.5), size - Vector2.ONE)
+	for edge in [[r.position, Vector2(r.end.x, r.position.y)], [Vector2(r.end.x, r.position.y), r.end], [r.end, Vector2(r.position.x, r.end.y)], [Vector2(r.position.x, r.end.y), r.position]]:
+		draw_dashed_line(edge[0], edge[1], col, 1.0, 3.0)
 
 
 # Whether the slot shows the on/off dot: a toggled passive only.
