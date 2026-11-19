@@ -171,6 +171,9 @@ extends Resource
 # attack_stat: its attacks (of its tags and skills, if it names any) may use the stat in checks
 # for their attack mod where it is higher (Unit.attack_stat(); Striking Features, Striking
 # Intellect)
+# bonus_slots: sure hotbar slots a skill on the bar converts into bonus slots of its tag's type
+# (Cram: caster bonus slots), per rank: a skill there works only while it carries the type and no
+# pillar skill on the bar is disabled; wear on it is x rank (Unit.bonus_slots())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -181,7 +184,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -429,6 +432,9 @@ func value(rank := 1) -> String:
 		return "sees the rolls of allies using active skills within %s tile%s, its own too" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
 	elif stat == "slots":
 		return "%s %s" % [_signed(x), Skill.CATEGORIES.get(tags[0], String(tags[0])) if not tags.is_empty() else "untyped"]
+	elif stat == "bonus_slots":
+		var cat: String = Skill.CATEGORIES.get(tags[0], String(tags[0])).to_lower() if not tags.is_empty() else "any"
+		return "%s of its slots, from the right, become %s bonus slots: a skill there works only if %s and while no pillar skill is disabled; its wear x rank" % [Skill.num(x), cat, cat]
 	else:
 		text = _signed(x)
 	if per_stat:

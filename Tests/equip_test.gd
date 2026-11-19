@@ -3,7 +3,8 @@ extends Test
 # Equipping (docs/plans/equipping.md): the hotbar is the equipped set, and only what's equipped works
 # (Unit.equipped()). Seams: equip and unequip, auto-equip and its Setting, losing a granting skill's
 # slots. That every passive is inert unequipped is sweep_test.test_passives. Traits (the `trait` tag,
-# docs/plans/w2-traits.md) are the exception to equipping: test_traits.
+# docs/plans/w2-traits.md) are the exception to equipping: test_traits. Bonus slots (Cram, docs/plans/w3-cram.md):
+# test_cram.
 
 var magic_slot: Skill = load("res://Skills/magic_slot.tres")
 var martial_slot: Skill = load("res://Skills/martial_slot.tres")
@@ -110,6 +111,56 @@ func test_skill_slot() -> void:
 	w.trinket = null
 	w.refit()
 	ok(w.bar_size() == wbar, "an item taken off takes the slot")
+
+
+# Cram (docs/plans/w3-cram.md): a pillar that grants Caster Skill Slots (1 + rank) and converts rank sure slots, from
+# the right past its pillars, into caster bonus slots - a non-caster there doesn't work, nor does anything there while
+# a pillar skill on the bar is disabled; wear there is x rank (Burnout.penalty()); a Density emblem's rank reaches all
+# of it; auto-equip keeps non-casters out of them.
+func test_cram() -> void:
+	var cram: Skill = load("res://Skills/cram.tres")
+	var sola: Skill = load("res://Skills/sola.tres")
+	var kick: Skill = load("res://Skills/kick.tres")
+	var strike: Skill = load("res://Skills/strike.tres")
+	var powerful: Skill = load("res://Skills/powerful.tres")
+	var u := v(1)
+	u.extra_slots += 3
+	u._arrange()
+	var grants := u.granted_slots().size()
+	u.learned.append(slot(cram, 2))
+	u.get_equipped()
+	var sure := u.slot_count()
+	var c := u.hotbar.find(cram)
+	ok(c >= sure - 2 and c < sure and u.granted_slots().size() - grants == 3 and u.granted_slots().count(&"magical") >= 3, "a pillar at the bottom of the sure slots; Caster Skill Slot +1 + rank: 3 caster slots at rank II")
+	var bonus := u.bonus_slots()
+	ok(bonus.size() == 2 and bonus.get(c - 1) == [&"magical", 2] and bonus.has(c - 2), "rank sure slots to its left become caster bonus slots")
+	u.bar_clear(c - 1)
+	u.learned.append(slot(kick))
+	u.get_equipped()
+	ok(kick in u.hotbar and not bonus.has(u.hotbar.find(kick)), "auto-equip leaves a non-caster out of a bonus slot")
+	ok(u.bar_place(strike, c - 1) and u.hotbar[c - 1] == strike and not u.equipped(strike) and strike not in u.actives and u.bonus_why(c - 1) != "", "a non-caster can be slotted there, but doesn't work")
+	u.learned.append(slot(sola))
+	u.get_equipped()
+	ok(u.bar_place(sola, c - 1) and u.equipped(sola) and sola in u.actives, "a caster skill works there")
+	ok(is_equal_approx(u.slot_penalty(sola), 2.0) and is_equal_approx(Burnout.penalty(u, sola), 2.5) and is_equal_approx(Burnout.penalty(u, kick), 1.0), "its Burnout penalty x rank there (1.25 x 2); elsewhere untouched")
+	u.learned.append(slot(powerful))
+	u.get_equipped()
+	u.disabled[powerful] = 1  # any pillar skill on the bar, not only Cram (disable() takes them all together anyway)
+	ok(powerful in u.hotbar and not u.equipped(sola) and sola not in u.actives, "a disabled pillar skill disables every bonus slot")
+	u.disabled.erase(powerful)
+	u.disable(cram, 1)
+	ok(cram in u.disabled and powerful in u.disabled and not u.equipped(sola), "Cram disabled: so is every pillar, and the bonus slots")
+	u.tick()
+	ok(u.equipped(sola), "back as it ends")
+	var badge := Item.new()  # a Density emblem: its rank reaches the slots granted, the slots converted and the penalty alike
+	badge.slot = "trinket"
+	badge.emblem = &"rho_up"
+	badge.scope = &"insignia"
+	badge.rank = 3
+	var was := u.granted_slots().size()
+	u.equip(badge)
+	var r := u.mods(cram).irank(2, &"rank_impact")
+	ok(r > 2 and u.bonus_slots().size() == mini(r, c - 1) and is_equal_approx(u.slot_penalty(sola), float(r)) and u.granted_slots().size() - was == r - 2, "under Density (rank %d): more slots granted and converted, the penalty x %d" % [r, r])
 
 
 func test_auto_equip() -> void:

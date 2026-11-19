@@ -379,6 +379,8 @@ var _role_slots: Array[Slot] = []  # this unit's copies of its role's innate ski
 var _ap_start: Array[float] = []  # each AP pool as its turn started, to tell how hard it worked (activity())
 var _walk_ap: Array[float] = []  # of each AP pool, what walking took this turn (activity(): standing still doesn't count)
 var _keys: Array = []  # the slot keys the hotbar was last arranged for (_slot_keys(), _arrange())
+var _bonus: Array = [0, {}]  # bonus_slots() as last worked out, with the hotbar's hash it was for; _arrange() drops it
+var _bonus_busy := false  # bonus_slots() is being worked out: equipped() (asked by the modifiers it reads) doesn't ask it again
 var _seen: Dictionary[Skill, bool] = {}  # skills it has had since it was set up: one not among them is new, and auto-equips (_sync_new())
 var _seen_sig := -1  # _skill_sig() when _seen was last brought up to date (_sync_new(): cheap to check)
 static var auto_equip := true  # Settings: new skills, and skills for new slots, go on the bar by themselves (HUD sets it from Prefs)
@@ -1031,6 +1033,73 @@ func slot_works(i: int) -> bool:
 	return i >= 0 and i < bar_size() and (i != clover() or luck > 0) and not sealed(i)
 
 
+# Its bonus slots (Cram's caster bonus slots), by hotbar index -> [type, rank]: sure slots a skill on its bar
+# converts (an Effect "bonus_slots", tagged with the type; amount per rank): the sure slots to its left, past
+# pillar skills and slots already converted, right to left. Rank as its modifiers read it (rank_impact: a Density emblem doubles them). A
+# bonus slot holds anything (fits()), but its skill works only while it carries the type and no pillar skill
+# on the bar is disabled (bonus_off()); wear on a skill there is x rank (slot_penalty(): Burnout.penalty()).
+# Read from the hotbar itself, not on_passives: equipped() reads this.
+func bonus_slots() -> Dictionary:
+	if _bonus_busy or hotbar.is_empty():
+		return {}
+	var h := hotbar.hash()
+	if _bonus[0] == h:
+		return _bonus[1]
+	_bonus_busy = true
+	var out := {}
+	var bar := hotbar.duplicate()
+	for i in range(bar.size() - 1, -1, -1):
+		var s: Skill = bar[i]
+		var at := mini(i, slot_count()) - 1
+		for e: Effect in s.effects if s else []:
+			if e.stat != "bonus_slots" or base_rank(s) <= 0:
+				continue
+			var r := mods(s).irank(base_rank(s), &"rank_impact")
+			for n in roundi(e.amount * (r if e.per_rank else 1)):
+				while at >= 0 and ((bar[at] and bar[at].pillar()) or out.has(at)):
+					at -= 1
+				if at < 0:
+					break
+				out[at] = [e.tags[0] if not e.tags.is_empty() else &"", r]
+				at -= 1
+	_bonus_busy = false
+	_bonus = [h, out]
+	return out
+
+
+# Why the skill in bonus slot i doesn't work now, or "" if it does (or i is no bonus slot): a pillar skill on
+# the bar is disabled (any: Cram's, or another's), or the skill lacks the slot's type.
+func bonus_why(i: int) -> String:
+	var b: Variant = bonus_slots().get(i)
+	if b == null or i >= hotbar.size():
+		return ""
+	if hotbar.any(func(x: Skill): return x and x.pillar() and x in disabled):
+		return "a pillar skill is disabled"
+	if hotbar[i] and b[0] != &"" and not hotbar[i].tagged(b[0]):
+		return "not a %s skill" % Skill.CATEGORIES.get(b[0], String(b[0])).to_lower()
+	return ""
+
+
+func bonus_off(i: int) -> bool:
+	return bonus_why(i) != ""
+
+
+# What wear on s is multiplied by for the slot it sits in: a bonus slot's rank (Cram's caster bonus slots),
+# else 1. Burnout.penalty() reads it.
+func slot_penalty(s: Skill) -> float:
+	var b: Variant = bonus_slots().get(hotbar.find(s)) if s else null
+	return float(b[1]) if b != null else 1.0
+
+
+# Whether s goes in slot i when slotted by itself (auto-equip, a unit setting up): it fits, and a bonus slot
+# only takes a skill it would work in there.
+func _suits(s: Skill, i: int) -> bool:
+	if s == null:
+		return true
+	var b: Variant = bonus_slots().get(i)
+	return fits(s, i) and (b == null or b[0] == &"" or s.tagged(b[0]))
+
+
 # Whether s can go in hotbar slot i: a typed slot only holds skills carrying its type, and the clover
 # slot, filled on its unit's own turn and only working while it's lucky, holds no always-on passive.
 func fits(s: Skill, i: int) -> bool:
@@ -1057,7 +1126,7 @@ func equipped(s: Skill) -> bool:
 		return not traits_suppressed()
 	_sync_new()
 	var i := hotbar.find(s)
-	return i >= 0 and not _sealed_now(i)
+	return i >= 0 and not _sealed_now(i) and not bonus_off(i)
 
 
 # The traits it has (learned, lent or innate), in the order it holds them: what the HUD shows apart from the
@@ -1170,7 +1239,7 @@ func _auto_slot(s: Skill) -> int:
 		if not s.pillar():
 			order += range(hotbar.size() - 1, sure - 1, -1)
 		for i in order:
-			if not hotbar[i] and slot_works(i) and fits(s, i):
+			if not hotbar[i] and slot_works(i) and _suits(s, i):
 				return i
 		return -1
 	return free_slot(s)
@@ -1292,7 +1361,7 @@ func gain_xp(n: int) -> int:
 # The first empty hotbar slot that works (and that s fits, given one), or -1.
 func free_slot(s: Skill = null) -> int:
 	for i in hotbar.size():
-		if not hotbar[i] and slot_works(i) and (s == null or fits(s, i)):
+		if not hotbar[i] and slot_works(i) and _suits(s, i):
 			return i
 	return -1
 
@@ -1644,6 +1713,7 @@ func _fill_bar() -> void:
 # slot turns plain. A skill left with no slot comes off the bar - a granting skill's slots go with it,
 # skills and all, and so on till nothing more drops. Slots that appear auto-fill (auto_equip).
 func _arrange() -> void:
+	_bonus = [0, {}]  # ranks or items may have changed what bonus_slots() reads
 	if hotbar.is_empty():
 		return  # not set up yet: _fill_bar()
 	var grew := false

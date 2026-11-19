@@ -14,9 +14,10 @@ static func of(s: Skill) -> bool:
 	return s.tagged(&"int")
 
 
-# What exhaustion's wear on s is multiplied by for u: PENALTY on an int skill, else 1.
-static func penalty(_u: Unit, s: Skill) -> float:
-	return PENALTY if of(s) else 1.0
+# What exhaustion's wear on s is multiplied by for u: PENALTY on an int skill, else 1; times the slot it sits in
+# (Unit.slot_penalty(): a caster bonus slot's rank, Cram's).
+static func penalty(u: Unit, s: Skill) -> float:
+	return (PENALTY if of(s) else 1.0) * (u.slot_penalty(s) if u else 1.0)
 
 
 # What that wear is multiplied by again on s's cost paid from fund: the reserve's burns (Mana 1.5) on an
