@@ -31,3 +31,5 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-19,w4-density,opus,medium,170322,63,1067477,ok
 2026-11-19,w4-knobs,sonnet,high,190817,76,1257022,ok
 2026-11-19,w4-docs2,sonnet,medium,98018,14,144250,ok
+2026-11-19,w4-tags,sonnet,high,228638,107,1958166,ok
+2026-11-19,w4-docs3,sonnet,medium,107596,26,976839,ok
