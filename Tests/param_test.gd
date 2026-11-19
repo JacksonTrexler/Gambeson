@@ -188,3 +188,67 @@ func test_density() -> void:
 	ok(not Modifiers.eligible(&"rho_up", look) and not Modifiers.eligible(&"rho_down", look) and Modifiers.eligible(&"rho_up", slotted) and Modifiers.eligible(&"rho_down", slotted),
 			"a trait can't trade (%s); the same skill slotted can" % SkillTerms.of(look).density_why())
 	ok(not Modifiers.eligible(&"rho_down", sk("clairvoyance")), "no rank impact, nothing for Diluted to tamp: ineligible both ways")
+
+
+# Balance knobs (docs/plans/w4-knobs.md), one table: a skill's own coefficient on a channel, the β tags (every channel's
+# scaling x1.25 or / 1.25) and the d tags (rank impact reads 1.5 / rank more or less than the rank, nudging early ranks
+# most) - what each reads rank I to V as. Then the same through a unit on the three skills that carry one, that they leave
+# the price alone and stack with a symbol, who is shown β and d (very high int), and what the check calls a knob that does nothing.
+func test_knobs() -> void:
+	var rows := [  # [skill's scaling, its tags, channel, rank I-V read as (irank)]
+		[{}, [], &"rank_impact", [1, 2, 3, 4, 5]],
+		[{&"range": 0.5}, [], &"rank_range", [1, 1, 2, 2, 3]],  # 1, 1, 1.5, 2, 2.5: never below rank I
+		[{&"range": 0.5}, [], &"rank_impact", [1, 2, 3, 4, 5]],  # a range coefficient leaves impact alone
+		[{&"impact": 2.0}, [], &"rank_impact", [2, 4, 6, 8, 10]],
+		[{}, [&"beta_up"], &"rank_impact", [1, 3, 4, 5, 6]],
+		[{}, [&"beta_down"], &"rank_range", [1, 2, 2, 3, 4]],
+		[{&"impact": 2.0}, [&"beta_up"], &"rank_impact", [3, 5, 8, 10, 13]],  # they multiply: x2.5
+		[{}, [&"cohen_up"], &"rank_impact", [3, 3, 4, 4, 5]],  # r + 1.5 / r: 2.5, 2.75, 3.5, 4.4, 5.3
+		[{}, [&"cohen_down"], &"rank_impact", [1, 1, 3, 4, 5]],  # r - 1.5 / r: not below rank I
+		[{}, [&"cohen_up"], &"rank_range", [1, 2, 3, 4, 5]],  # d is impact alone
+	]
+	for row in rows:
+		var s := Skill.new()
+		s.scaling.assign(row[0])
+		s.tags.assign(row[1])
+		var m := Modifiers.tuned_for(s)
+		m = m if m else Modifiers.NONE
+		var got := []
+		for r in range(1, 6):
+			got.append(m.irank(r, row[2]))
+		ok(got == row[3], "%s %s on %s: rank I-V read %s (%s)" % [row[0], row[1], row[2], row[3], got])
+	var s := Skill.new()
+	s.scaling.assign({&"modified": 0.5})
+	ok(Modifiers.tuned_for(s).stat(3, &"stat_impact") == 2 and Modifiers.tuned_for(s).stat(3, &"stat_range") == 2 and Modifiers.tuned_for(s).stat(3, &"rank_impact") == 3, "modified: both stat channels, a mod of 3 reads 2")
+	# Through a unit, on the three that carry one: Kick's reach (range x0.5), Gank's dice (beta up), Spike's rank (d up).
+	var kick := sk("kick")
+	var gank := sk("gank")
+	var spike := sk("spike")
+	duel(kick, 3)
+	ok(kick.span(v(1)) == 1.5 and SkillTerms.of(kick).knobs != null, "Kick III reaches 1.5 tiles, not 3 (%s)" % kick.span(v(1)))
+	ok(v(1).mods(gank).irank(2, &"rank_impact") == 3 and v(1).mods(spike).irank(1, &"rank_impact") == 3 and v(1).mods(spike).irank(5, &"rank_impact") == 5, "Gank II rolls 3 dice, Spike I reads as III and V as itself")
+	ok(v(1).mods(gank).empty() and v(1).mods(gank).label() == "" and v(1).mods(gank).tuned, "a knob is not a modifier: no label, no symbol shown")
+	var plain := untuned("gank")
+	ok(Pricing.ap_at(v(1), gank, 3) == Pricing.ap_at(v(1), plain, 3) and Pricing.cost_at(v(1), gank, 3) == Pricing.cost_at(v(1), plain, 3), "a knob doesn't change the price")
+	ok(v(1).mods(gank).priced().k[&"rank_impact"] == 1.0 and not v(1).mods(gank).priced().tuned, "priced() reads a skill without its knobs")
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # f 0.5: x1.5 on top of x1.25
+	var dense := v(1).mods(gank)
+	ok(is_equal_approx(dense.k[&"rank_impact"], 1.5 * 1.25) and dense.label() == "ρ↑" and dense.tuned, "a symbol stacks with it, and alone is what's shown (%s)" % dense.label())
+	v(1).trinket = null
+	# Whom they're shown to: very high int only; the others see the numbers, never the tag.
+	v(1).intelligence = Modifiers.VERY_HIGH_INT
+	v(3).intelligence = Modifiers.VERY_HIGH_INT - 1
+	v(1).refresh()
+	v(3).refresh()
+	ok(Modifiers.sees_knobs(v(1)) and not Modifiers.sees_knobs(v(3)) and not Modifiers.sees_knobs(null), "int 16 sees them, 15 doesn't, nobody doesn't")
+	ok("β+" in gank.describe(1, v(1)) and "β+" not in gank.describe(1, v(3)) and "β+" not in gank.describe(1), "Gank's tooltip carries its β tag for very high int alone (%s)" % gank.describe(1, v(1)).right(60))
+	ok("d+" in spike.describe(1, v(1)) and "d+" not in spike.describe(1, v(3)), "Spike's carries d+")
+	ok(&"beta_up" not in Guide.terms(&"skills") and &"beta_up" in Glossary.TERMS, "the Guide's pages don't list them")
+	# What the check calls a knob that does nothing (skill.py check).
+	var bad := sk("clairvoyance").duplicate()  # no rank impact: nothing for d or an impact coefficient to tune
+	bad.scaling.assign({&"impact": 2.0, &"range": 1.0, &"made_up": 2.0})
+	bad.tags.append_array([&"cohen_up", &"cohen_down", &"beta_up"])
+	SkillTerms.forget(bad)
+	var said := " | ".join(SkillTerms.of(bad).knob_problems(bad))
+	ok("no impact scaling" in said and "not 1" in said and "no coefficient" in said and "both cohen_up and cohen_down" in said and "no rank impact" in said, "knob_problems(): %s" % said)
+	ok(SkillTerms.of(kick).knob_problems(kick).is_empty() and SkillTerms.of(gank).knob_problems(gank).is_empty() and SkillTerms.of(spike).knob_problems(spike).is_empty(), "the three sound")

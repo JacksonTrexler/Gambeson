@@ -106,6 +106,15 @@ func sk(id: String) -> Skill:
 	return load("res://Skills/%s.tres" % id)
 
 
+# A skill by id without its balance knobs (docs/plans/w4-knobs.md): a test of its rules at ranks II and up
+# (Kick's riders, from 2 tiles at rank II) reads it as written, not as tuned; param_test.test_knobs pins the knobs.
+static func untuned(id: String) -> Skill:
+	var s: Skill = load("res://Skills/%s.tres" % id).duplicate()
+	s.scaling.clear()
+	s.tags = s.tags.filter(func(x: StringName): return x not in Modifiers.KNOBS)
+	return s
+
+
 # v(1) learns s at rank r and stands at (4, 3) beside its target, at (5, 3): a foe, v(3), or with foe
 # false an ally, v(2). Returns the target. The line most skill tests start with.
 func duel(s: Skill, r := 1, foe := true) -> Unit:

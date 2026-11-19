@@ -33,6 +33,21 @@ const SCOPE_NAMES := {&"sigil": "Sigil", &"insignia": "Insignia", &"crest": "Cre
 const DENSE_CHECK := 5.0
 const DILUTE_CHECK := 3.0
 
+# Balance knobs (docs/plans/w4-knobs.md): what a skill's own data does to how it scales, tools kept for a
+# skill that scales badly, never applied defensively. They ride the same factors the symbols do, so every
+# read of a scaled value (rank(), irank(), stat(), Skill.reach_markup()...) takes them with no new call site:
+#   Skill.scaling   a coefficient per channel, default 1 (COEFFICIENTS): x on its k; under 1 never reads
+#                   below rank I, so a weaker rank scaling still lets rank I be rank I
+#   beta_up / beta_down (tags, β+ / β-)   every channel's k x (1 + BETA) or / (1 + BETA)
+#   cohen_up / cohen_down (tags, d+ / d-) rank impact reads COHEN / rank more (or less) than the rank
+#                   itself: a big nudge at rank I, smoothing out as rank rises
+# Only the tags β and d are secret: sees_knobs() says who they're shown to (very high int).
+const COEFFICIENTS := {&"impact": [&"rank_impact"], &"range": [&"rank_range"], &"modified": [&"stat_impact", &"stat_range"]}
+const KNOBS: Array[StringName] = [&"beta_up", &"beta_down", &"cohen_up", &"cohen_down"]
+const BETA := 0.25
+const COHEN := 1.5
+const VERY_HIGH_INT := 16  # an int score at which a viewer sees β and d (Unit.stat(int)): the adventurer's 16 does
+
 static var NONE := Modifiers.new()  # no modifiers: shared, never added to
 
 var applied: Array = []  # [word, rank, scope] as added
@@ -42,6 +57,8 @@ var check := 0  # + on the caster's side of its checks (Battle.requirement(): at
 var lam := 1.0  # a requirement's permissive share is raised to this
 var potency := 1.0  # its payoff is multiplied by this
 var tags: Array[StringName] = []
+var tuned := false  # the skill's own knobs are in k and cohen (tuned_for()): not a modifier, so not in applied
+var cohen := 0  # +1 / -1: rank impact reads COHEN / rank more / less than rank (cohen_up, cohen_down)
 static var _tuned := {}  # [effect, lam, potency] -> its tuned copy (effect())
 
 
@@ -63,6 +80,9 @@ static func rsc(rank: int, scope: StringName) -> float:
 # reaches that it's eligible for. NONE when there are none.
 static func of(u: Unit, s: Skill) -> Modifiers:
 	var m: Modifiers = null
+	var own := SkillTerms.of(s).knobs
+	if own:
+		m = own.copy()
 	for it in u.items():
 		if it.emblem == &"" or not eligible(it.emblem, s) or not _reaches(u, s, it):
 			continue
@@ -84,6 +104,53 @@ static func _reaches(u: Unit, s: Skill, it: Item) -> bool:
 		&"badge":
 			return s.passive
 	return true
+
+
+# A skill's own knobs as modifiers (SkillTerms.knobs), or null if it has none.
+static func tuned_for(s: Skill) -> Modifiers:
+	var m := Modifiers.new()
+	for w in COEFFICIENTS:
+		for c in COEFFICIENTS[w]:
+			m.k[c] *= float(s.scaling.get(w, 1.0))
+	var beta := 1.0
+	if &"beta_up" in s.tags:
+		beta *= 1.0 + BETA
+	if &"beta_down" in s.tags:
+		beta /= 1.0 + BETA
+	for c in m.k:
+		m.k[c] *= beta
+	m.cohen = int(&"cohen_up" in s.tags) - int(&"cohen_down" in s.tags)
+	m.tuned = m.cohen != 0 or m.k.values().any(func(x: float): return x != 1.0)
+	return m if m.tuned else null
+
+
+# s as nobody holds it: its own knobs, or NONE (the skills screen's base values).
+static func base(s: Skill) -> Modifiers:
+	return SkillTerms.of(s).knobs if SkillTerms.of(s).knobs else NONE
+
+
+func copy() -> Modifiers:
+	var m := Modifiers.new()
+	m.k = k.duplicate()
+	m.cohen = cohen
+	m.tuned = tuned
+	return m
+
+
+# Whether a viewer is shown the secret knobs (β and d): very high int.
+static func sees_knobs(u: Unit) -> bool:
+	return u != null and u.stat(&"intelligence") >= VERY_HIGH_INT
+
+
+# These modifiers without the skill's own knobs: what its price is read under (Pricing.ap_at()), so a
+# balance tweak doesn't also cost or save its user.
+func priced() -> Modifiers:
+	if not tuned:
+		return self
+	var m := Modifiers.new()
+	for a in applied:
+		m.add(a[0], a[1], a[2])
+	return m
 
 
 # Adds a modifier: a symbol, or a tag.
@@ -124,12 +191,16 @@ func empty() -> bool:
 # Rank r as channel c reads it: x its factor; nullified, as at rank I.
 func rank(r: float, c: StringName) -> float:
 	var x: float = k[c]
-	return 1.0 if x == 0.0 else r * x
+	if x == 0.0:
+		return 1.0
+	if cohen and c == &"rank_impact" and r >= 1.0:
+		r = maxf(r + cohen * COHEN / r, 1.0)
+	return r * x if x >= 1.0 or r < 1.0 else maxf(r * x, 1.0)  # a weaker scaling never reads below rank I
 
 
 # ...as a whole number, at least 1 (r itself when nothing changes it).
 func irank(r: int, c: StringName) -> int:
-	return r if k[c] == 1.0 else maxi(roundi(rank(r, c)), 1)
+	return r if k[c] == 1.0 and not (cohen and c == &"rank_impact") else maxi(roundi(rank(r, c)), 1)
 
 
 # A stat mod m as channel c reads it: x its factor (nullified: 0).

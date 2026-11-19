@@ -36,6 +36,7 @@ var hit_per_rank := 0.0  # + to hit per rank
 var damage_per_rank := 0.0  # + damage per rank (a behaviour's +rank damage)
 var contingencies: Array = []  # [what (String), share, beneficial] - a requirement or an above_hp effect
 var reach := false  # an active that reaches past its user and the tiles beside it: a range Density can shrink
+var knobs: Modifiers  # the skill's own balance knobs (Skill.scaling, β, d) as modifiers, or null: Modifiers.of() starts from them
 var slotted := false  # it takes a hotbar slot (not a trait), so a foe can disable it (Unit.slot_weight())
 
 # Read once and kept on the skill itself (Skill.terms_read), freed with it.
@@ -130,6 +131,7 @@ func _init(s: Skill) -> void:
 	for b in s.behaviours:
 		if b:
 			b.terms(self)
+	knobs = Modifiers.tuned_for(s)
 	skill = null  # kept on the skill (of()): no cycle back to it
 
 
@@ -175,6 +177,27 @@ func density_why() -> String:
 	if trades().is_empty():
 		return "nothing to trade: a trait, with no range, check or cost to its user"
 	return ""
+
+
+# Why the skill's balance knobs (Skill.scaling, the β and d tags) do nothing or contradict, one line each ([] if
+# they're sound): a knob on a channel it doesn't scale by is no knob at all. skill.py check reads this.
+func knob_problems(s: Skill) -> Array[String]:
+	var out: Array[String] = []
+	for w in s.scaling:
+		if w not in Modifiers.COEFFICIENTS:
+			out.append("scaling \"%s\" is no coefficient (%s)" % [w, ", ".join(Modifiers.COEFFICIENTS.keys())])
+		elif s.scaling[w] < 0.0 or s.scaling[w] == 1.0:
+			out.append("scaling %s = %s: a coefficient is 0 or more and not 1 (1 is the default and does nothing)" % [w, s.scaling[w]])
+		elif not Modifiers.COEFFICIENTS[w].any(func(c): return has(c)):
+			out.append("scaling %s = %s: it has no %s scaling to tune" % [w, s.scaling[w], w])
+	for pair in [[&"beta_up", &"beta_down"], [&"cohen_up", &"cohen_down"]]:
+		if pair[0] in s.tags and pair[1] in s.tags:
+			out.append("both %s and %s: pick one" % pair)
+	if (&"beta_up" in s.tags or &"beta_down" in s.tags) and not scales():
+		out.append("β (beta) on a skill that scales by nothing")
+	if (&"cohen_up" in s.tags or &"cohen_down" in s.tags) and not has(&"rank_impact"):
+		out.append("d (cohen) on a skill with no rank impact")
+	return out
 
 
 # Rank or stat scaling of any kind.

@@ -22,3 +22,4 @@ radius_per_rank = 1.0
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_kick")])
 costs = "high ap, low cost, flat rank"
+scaling = Dictionary[StringName, float]({&"range": 0.5})

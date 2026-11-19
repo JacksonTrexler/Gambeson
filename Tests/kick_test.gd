@@ -5,7 +5,7 @@ extends Test
 # it, a hole drives it back rank tiles; bare ground, just the blow; beside it, a 1-tile push. The first
 # skill on Skill.behaviours.
 
-var kick: Skill = load("res://Skills/kick.tres")
+var kick: Skill = untuned("kick")  # as written: these are Kick's rules at rank II, not its balance (Skills/kick.tres scales its range at half)
 const KICK := preload("res://Behaviours/kick.gd")
 const FROM := Vector2i(2, 3)
 const MID := Vector2i(3, 3)  # between them, at rank II's 2 tiles
@@ -27,7 +27,7 @@ func test_reach() -> void:
 	ok(not b.in_reach(u, kick, v(3)) and b.cast(u, kick, v(3)) == false, "rank I: 2 tiles is out of reach")
 	stage(lancin, {u: FROM, v(3): MID})
 	ok(b.in_reach(u, kick, v(3)), "rank I reaches the tile beside it")
-	ok(load("res://Trees/general_martial.tres").offers(kick), "on the General Martial tree")
+	ok(load("res://Trees/general_martial.tres").offers(sk("kick")), "on the General Martial tree")
 	var said := kick.describe(2)
 	ok(said.split("\n")[0].contains("range rank"), "range: its rank (%s)" % said.split("\n")[0])
 	ok("Soaked" in said and "Blinded" in said and "drives it 2 tiles straight back" in said, "what it kicks up, said beside the rest: %s" % said)

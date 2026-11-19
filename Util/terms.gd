@@ -5,6 +5,8 @@ extends SceneTree
 #   godot --headless --path . -s Util/terms.gd -- modifiers   skills no modifier is eligible for, and why (Modifiers.why_not())
 #   godot --headless --path . -s Util/terms.gd -- density     skills Density can't trade on (SkillTerms.density_why()) and their declared reason
 #   godot --headless --path . -s Util/terms.gd -- density-check   the same, as problems: an ineligible skill with no Skill.no_density, or one declared that is eligible
+#   godot --headless --path . -s Util/terms.gd -- knobs       skills carrying a balance knob (Skill.scaling, the beta and cohen tags): what each reads rank I-V as
+#   godot --headless --path . -s Util/terms.gd -- knobs-check   as problems: a knob on a channel the skill doesn't scale by, or two that contradict (SkillTerms.knob_problems())
 #   godot --headless --path . -s Util/terms.gd -- terms <id>  one skill's terms
 #   godot --headless --path . -s Util/terms.gd -- infer       hand-priced actives a cost profile reproduces exactly at every rank (docs/plans/w2-cost.md)
 
@@ -29,6 +31,10 @@ func _init() -> void:
 			_density(skills, false)
 		"density-check":
 			_density(skills, true)
+		"knobs":
+			_knobs(skills, false)
+		"knobs-check":
+			_knobs(skills, true)
 		"terms":
 			for s in skills:
 				if args.size() > 1 and s.resource_path.get_file().get_basename() == args[1]:
@@ -90,6 +96,36 @@ func _density(skills: Array[Skill], problems: bool) -> void:
 		print("density: %d skill%s ineligible for Density and Diluted (docs/plans/w4-density.md)" % [off, "" if off == 1 else "s"])
 
 
+# Balance knobs (docs/plans/w4-knobs.md): the skills carrying one and what rank I-V reads as through it, or (problems)
+# only those SkillTerms.knob_problems() finds nothing to tune in.
+func _knobs(skills: Array[Skill], problems: bool) -> void:
+	var n := 0
+	for s in skills:
+		var bad := SkillTerms.of(s).knob_problems(s)
+		if problems:
+			for b in bad:
+				print("Skills/%s.tres: %s" % [_id(s), b])
+		elif not s.scaling.is_empty() or s.tags.any(func(x): return x in Modifiers.KNOBS):
+			n += 1
+			print("%-22s %s" % [_id(s), _knob_line(s)])
+	if not problems:
+		print("knobs: %d skill%s (docs/plans/w4-knobs.md)" % [n, "" if n == 1 else "s"])
+
+
+func _knob_line(s: Skill) -> String:
+	var parts: PackedStringArray = []
+	for w in s.scaling:
+		parts.append("%s x%s" % [w, s.scaling[w]])
+	for x in s.tags:
+		if x in Modifiers.KNOBS:
+			parts.append(Glossary.TERMS[x][0])
+	var m := Modifiers.base(s)
+	var reads: PackedStringArray = []
+	for r in range(1, 6):
+		reads.append("%s: impact %s, range %s" % [Skill.roman(r), Skill.num(snappedf(m.rank(r, &"rank_impact"), 0.01)), Skill.num(snappedf(m.rank(r, &"rank_range"), 0.01))])
+	return "%s | %s" % [", ".join(parts), "; ".join(reads)]
+
+
 func _terms(s: Skill) -> void:
 	var t := SkillTerms.of(s)
 	print("%s: intensity %s, impact %s, penalty %s, damage %s, check %s, conditions %s, ground %s" % [_id(s), t.intensity, t.impact, t.penalty, t.damage, t.check, t.conditions, t.ground])
@@ -106,6 +142,8 @@ func _terms(s: Skill) -> void:
 		print("  profile \"%s\"%s -> %s" % [s.costs, (" (%s)" % p[&"error"]) if p[&"error"] else "", "; ".join(by_rank)])
 	else:
 		print("  hand-priced: %s AP, %s cost (as a profile \"even\" it would be %s)" % [Skill.num(s.ap), s.price(1), "; ".join(by_rank)])
+	if Modifiers.base(s) != Modifiers.NONE:
+		print("  knobs: %s" % _knob_line(s))
 	print("  density: %s" % ("trades rank impact against %s" % ", ".join(t.trades()) if not t.density_why() else "%s (%s)" % [t.density_why(), s.no_density if s.no_density else "no reason declared"]))
 	print("  modifiers: %s" % ", ".join(Modifiers.words().filter(func(w): return Modifiers.eligible(w, s))))
 

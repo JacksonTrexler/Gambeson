@@ -829,7 +829,7 @@ func emblems() -> bool:
 # The modifiers on its use of s (Modifiers.of(): its emblems'): s as it uses it is s plus these.
 # Everything that reads a per-rank or per-stat value of s for it goes through them.
 func mods(s: Skill) -> Modifiers:
-	return Modifiers.of(self, s) if s and emblems() else Modifiers.NONE
+	return Modifiers.of(self, s) if s and (emblems() or SkillTerms.of(s).knobs) else Modifiers.NONE
 
 
 # s's tags as it uses s: its own, plus the tags its modifiers add (a Fire Insignia: fire).

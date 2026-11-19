@@ -120,6 +120,7 @@ extends Resource
 @export var impact := &""  # its unique effect beyond damage: tame or impactful; empty: from its fields
 @export var penalty := &""  # what it costs its user to use: minor, major or severe; empty: from its fields (disadvantage, roll_bonus)
 @export var requires: Requirement  # a contingency: a test of the moment and what it gives while met (Scripts/Requirement.gd)
+@export var scaling: Dictionary[StringName, float] = {}  # balance knobs, set only on a skill that scales badly: a coefficient (default 1) on a channel's scaling, by Modifiers.COEFFICIENTS (impact, range, modified); the β and d knobs are tags (beta_up..., cohen_down). skill.py check holds them to what the skill scales by
 @export var no_density := ""  # why Density / Diluted can't trade on it fairly (one line), where SkillTerms.density_why() finds nothing to trade; skill.py check holds the two in step
 @export var costs := ""  # its cost profile: AP and cost from the cost calculator (Pricing), skewed by these words ("high mana, low ap", "even"; docs/plans/w2-cost.md); "": hand-priced, ap and cost as set
 @export_group("Stub")  # a skill that isn't built yet: shown on skill trees, but it can't be learned
@@ -368,7 +369,7 @@ func price(rank: int) -> int:
 # How many of the target's turns the effects it puts on last, at a rank.
 # Through u's modifiers (Unit.mods()): its rank_impact rank, its stat_impact mod.
 func lasts(rank: int, u: Unit = null) -> int:
-	var m := u.mods(self) if u else Modifiers.NONE
+	var m := u.mods(self) if u else Modifiers.base(self)
 	return turns + turns_per_rank * m.irank(rank, &"rank_impact") + (m.stat(maxi(u.mod(turns_mod), 0), &"stat_impact") if u and turns_mod else 0)
 
 
@@ -539,7 +540,7 @@ func spec(u: Unit = null, rank := 1) -> Array:
 		return how
 	var out := [["", Glossary.term(target())]]
 	if not self_only or prays:  # a prayer to Drael lands on a unit in range
-		out.append(["range", reach_markup(u.mods(self) if u else Modifiers.NONE)])
+		out.append(["range", reach_markup(u.mods(self) if u else Modifiers.base(self))])
 	if u:
 		var rate := u.exhaustion.rate(self) if u.exhaustion else 1.0
 		out.append(["AP", num(Pricing.ap_at(u, self, rank) * rate)])
@@ -609,7 +610,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	var ally := "On an ally: " if dual else ""
 	var me := Glossary.mod(stat())
 	var me_short := String(stat()).left(3)
-	var m := u.mods(self) if u else Modifiers.NONE  # its holder's modifiers: rank and stats as cast() reads them
+	var m := u.mods(self) if u else Modifiers.base(self)  # its holder's modifiers: rank and stats as cast() reads them
 	var ri := m.irank(rank, &"rank_impact")  # rank for what it does
 	var rr := m.irank(rank, &"rank_range")  # rank for how far it reaches
 	if with_spec:
@@ -801,8 +802,9 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 				", ".join(replaces.map(func(x): return String(x).capitalize())), ", ".join(tags)])
 	if rank_cost:
 		lines.append("Ranks cost more: II takes %d points, then x%s each rank" % [rank_cost, num(rank_growth)])
-	if (not tags.is_empty() and not stand_in) or not classes.is_empty():
-		lines.append("Tags: " + ", ".join(classes.map(func(c): return String(c).capitalize()) + ([] if stand_in else tags.map(func(t): return "{x:%s}" % t))))
+	var shown := tags.filter(func(t: StringName): return t not in Modifiers.KNOBS or Modifiers.sees_knobs(u))  # β and d: very high int only
+	if (not shown.is_empty() and not stand_in) or not classes.is_empty():
+		lines.append("Tags: " + ", ".join(classes.map(func(c): return String(c).capitalize()) + ([] if stand_in else shown.map(func(t): return Glossary.term(t) if t in Modifiers.KNOBS else "{x:%s}" % t))))  # a knob by its name: β+, d-
 	if lore:
 		lines.append(lore.replace("{", "(").replace("}", ")"))
 	return "\n".join(lines)
@@ -815,7 +817,7 @@ func _lasting(rank: int, u: Unit = null) -> String:
 	var n := lasts(rank, u)
 	var text := " for {t:%d turn%s}" % [n, "" if n == 1 else "s"] if n else ""
 	if turns_mod:
-		var m := u.mods(self) if u else Modifiers.NONE
+		var m := u.mods(self) if u else Modifiers.base(self)
 		n = turns + turns_per_rank * m.irank(rank, &"rank_impact")
 		text = " for %s + {t:%d turns}" % [_mod(turns_mod, &"stat_impact", m), n]
 	if until_move:

@@ -200,7 +200,7 @@ static func ap_for(u: Unit, s: Skill) -> float:
 # ...at rank r (a description of s at some rank, as u holds it: Skill.spec()).
 static func ap_at(u: Unit, s: Skill, rank: int) -> float:
 	var r := maxi(rank, 1)
-	var m := u.mods(s)
+	var m := u.mods(s).priced()  # without the skill's own balance knobs: a tweak doesn't change its price
 	if s.priced():
 		return ap(s, r, m)
 	if m.empty():
@@ -215,7 +215,7 @@ static func cost_for(u: Unit, s: Skill) -> int:
 
 static func cost_at(u: Unit, s: Skill, rank: int) -> int:
 	var r := maxi(rank, 1)
-	var m := u.mods(s)
+	var m := u.mods(s).priced()  # without the skill's own balance knobs: a tweak doesn't change its price
 
 	if s.priced():
 		return energy(s, r, m)

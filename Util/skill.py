@@ -14,6 +14,9 @@
   python3 Util/skill.py terms kick  # one skill's terms: channels, intensity, impact, contingencies, price, modifiers
   python3 Util/skill.py cost kick "high ap, low cost"         # set (or change) a skill's cost profile; prints its price
   python3 Util/skill.py cost kick hand --ap 4 --points 1      # back to a hand price
+  python3 Util/skill.py knob kick --range 0.5                # a balance knob (docs/plans/w4-knobs.md): a coefficient on a channel's scaling (impact, range, modified; 1 = none)
+  python3 Util/skill.py knob gank --beta +                   # the secret tags β (beta_up / beta_down) and d (cohen_up / cohen_down), + or -; "off" takes one away; --clear takes all
+  python3 Util/skill.py knobs                                # information: the skills carrying a knob
   python3 Util/skill.py migrate [--dry-run]  # hand prices a profile reproduces exactly at every rank -> that profile
 
 A cost profile (Skill.costs; Scripts/Pricing.gd profile(), docs/plans/w2-cost.md) skews the computed price:
@@ -33,7 +36,7 @@ import argparse, os, re, subprocess, sys
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
                   literal, effect_section, names, composition_problems)
 STUB = "STUB(skill.py)"
-FLAG_CEILING = 104  # (+1 2026-11-19: `no_density`, the Terms group's declared reason a skill is ineligible for Density, docs/plans/w4-density.md; -1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
+FLAG_CEILING = 105  # (+1 2026-11-19: `scaling`, the Terms group's balance-knob coefficients, docs/plans/w4-knobs.md; +1 2026-11-19: `no_density`, the Terms group's declared reason a skill is ineligible for Density, docs/plans/w4-density.md; -1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking", "armor", "summon_ap", "armor_slot", "slot_works", "slot_defense", "slot_blocked", "disabling", "slain")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
@@ -293,6 +296,55 @@ def check_icons(problems):
     problems.extend(item.problems())  # every item and loot table: icons, tags, rarity, qualities, lent skills (item.py check)
 
 
+def check_knobs(problems):  # balance knobs (Skill.scaling, the β and d tags) against what each skill scales by (SkillTerms.knob_problems()), read headless
+    r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", "knobs-check"], capture_output=True, text=True)
+    problems.extend(l for l in r.stdout.split("\n") if l.startswith("Skills/"))
+
+
+KNOB_TAGS = {"beta": ("beta_up", "beta_down"), "cohen": ("cohen_up", "cohen_down")}
+KNOB_WORDS = ("impact", "range", "modified")
+
+
+def knob(a):
+    """Set or clear skill a.id's balance knobs: Skill.scaling coefficients, and the beta / cohen tags (+ or -). Only the
+    resource section is touched; `check` (knobs-check) holds them to what the skill scales by."""
+    p = "Skills/%s.tres" % a.id
+    os.path.exists(os.path.join(ROOT, p)) or die("no %s" % p)
+    text = read(p)
+    at = re.search(r"^\[resource\]$", text, re.M) or die("%s: no [resource]" % p)
+    head, body = text[:at.end()], text[at.end():]
+    have = dict((k, float(v)) for k, v in re.findall(r'&"(\w+)": ([\d.]+)', next(iter(re.findall(r"^scaling = (.*)$", body, re.M)), "")))
+    tags_line = re.search(r"^tags = Array\[StringName\]\(\[(.*)\]\)$", body, re.M) or die("%s: no tags line" % p)
+    tags = re.findall(r'&"(\w+)"', tags_line.group(1))
+    if a.clear:
+        have = {}
+        tags = [x for x in tags if x not in sum(KNOB_TAGS.values(), ())]
+    for w in KNOB_WORDS:
+        v = getattr(a, w)
+        if v is None:
+            continue
+        v >= 0 or die("--%s: a coefficient is 0 or more" % w)
+        if v == 1.0:
+            have.pop(w, None)  # 1 is the default
+        else:
+            have[w] = v
+    for k, (up, down) in KNOB_TAGS.items():
+        s = getattr(a, k)
+        if s is None:
+            continue
+        s in ("+", "-", "off") or die("--%s: + - or off" % k)
+        tags = [x for x in tags if x not in (up, down)] + ([up] if s == "+" else [down] if s == "-" else [])
+    body = re.sub(r"^scaling = .*\n", "", body, flags=re.M)
+    body = body.replace(tags_line.group(0), "tags = Array[StringName]([%s])" % ", ".join('&"%s"' % x for x in tags))
+    if have:
+        line = "scaling = Dictionary[StringName, float]({%s})\n" % ", ".join('&"%s": %s' % (w, literal("scaling", str(have[w]))) for w in KNOB_WORDS if w in have)
+        body = body.rstrip("\n") + "\n" + line
+    write(p, head + body, a.dry_run)
+    if not a.dry_run:
+        report("terms", a.id)
+    return 0
+
+
 def check_density(problems):  # Density's one rule (SkillTerms.density_why()) against each skill's no_density, read headless as the game does
     r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", "density-check"], capture_output=True, text=True)
     problems.extend(l for l in r.stdout.split("\n") if l.startswith("Skills/"))
@@ -300,7 +352,7 @@ def check_density(problems):  # Density's one rule (SkillTerms.density_why()) ag
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons, check_density):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
@@ -702,6 +754,15 @@ def main():
     c.add_argument("--ap", type=float, help="with hand: its AP")
     c.add_argument("--points", type=int, help="with hand: its Energy cost")
     c.add_argument("--dry-run", action="store_true")
+    kn = sub.add_parser("knob", help="a balance knob on a skill that scales badly: a coefficient on a channel (impact, range, modified), or the secret tags beta, cohen")
+    kn.add_argument("id")
+    for w in KNOB_WORDS:
+        kn.add_argument("--" + w, type=float, help="its coefficient on %s scaling (default 1)" % w)
+    kn.add_argument("--beta", help="+ or -: the scaling stronger or weaker (the tag β); off removes it")
+    kn.add_argument("--cohen", help="+ or -: early ranks stronger or weaker, smoothing out (the tag d); off removes it")
+    kn.add_argument("--clear", action="store_true", help="take every knob off")
+    kn.add_argument("--dry-run", action="store_true")
+    sub.add_parser("knobs", help="the skills carrying a balance knob, and what they do (information)")
     mg = sub.add_parser("migrate", help="hand prices a profile reproduces exactly at every rank -> that profile")
     mg.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -711,7 +772,9 @@ def main():
         sys.exit(cost(a))
     if a.cmd == "migrate":
         sys.exit(migrate(a))
-    if a.cmd in ("drift", "modifiers", "density"):
+    if a.cmd == "knob":
+        sys.exit(knob(a))
+    if a.cmd in ("drift", "modifiers", "density", "knobs"):
         sys.exit(report(a.cmd))
     if a.cmd == "terms":
         sys.exit(report("terms", a.id))

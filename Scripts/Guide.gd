@@ -95,4 +95,4 @@ static func keys(text: String) -> String:
 # The terms a Glossary page lists, in order.
 static func terms(id: StringName) -> Array:
 	var kinds: Array = GLOSSARY.get(id, [])
-	return Glossary.TERMS.keys().filter(func(t: StringName) -> bool: return Glossary.TERMS[t][1] in kinds)
+	return Glossary.TERMS.keys().filter(func(t: StringName) -> bool: return Glossary.TERMS[t][1] in kinds and t not in Modifiers.KNOBS)  # the balance knobs are a skill's tooltip's to explain, to very high int
