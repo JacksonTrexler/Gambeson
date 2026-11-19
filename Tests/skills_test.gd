@@ -5,7 +5,7 @@ extends Test
 
 # Fields that shape how a skill works without a line of their own (its name, its glyph; whether it rolls).
 const QUIET := ["name", "glyph", "ai", "max_rank", "min_tier", "hostile", "rolls", "weapon_tag", "needs", "hybrid",
-		"difficulty", "reach_scale", "dice_scale"]
+		"difficulty", "reach_scale", "dice_scale", "no_density"]  # no_density: a design note skill.py check reads, no rule
 # Flags set before this check that their skills don't mention yet. Shrink it; never grow it.
 const UNSAID := []
 
