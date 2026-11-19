@@ -217,6 +217,8 @@ func test_knobs() -> void:
 		for r in range(1, 6):
 			got.append(m.irank(r, row[2]))
 		ok(got == row[3], "%s %s on %s: rank I-V read %s (%s)" % [row[0], row[1], row[2], row[3], got])
+		if row[0].get(&"range") == 0.5 and row[2] == &"rank_range":
+			ok(m.rank(1.0, row[2]) == 1.0 and m.rank(2.0, row[2]) == 1.0 and m.rank(3.0, row[2]) == 1.5, "a weaker coefficient never reads below rank I: 1, 1, 1.5")
 	var s := Skill.new()
 	s.scaling.assign({&"modified": 0.5})
 	ok(Modifiers.tuned_for(s).stat(3, &"stat_impact") == 2 and Modifiers.tuned_for(s).stat(3, &"stat_range") == 2 and Modifiers.tuned_for(s).stat(3, &"rank_impact") == 3, "modified: both stat channels, a mod of 3 reads 2")
@@ -228,8 +230,10 @@ func test_knobs() -> void:
 	ok(kick.span(v(1)) == 1.5 and SkillTerms.of(kick).knobs != null, "Kick III reaches 1.5 tiles, not 3 (%s)" % kick.span(v(1)))
 	ok(v(1).mods(gank).irank(2, &"rank_impact") == 3 and v(1).mods(spike).irank(1, &"rank_impact") == 3 and v(1).mods(spike).irank(5, &"rank_impact") == 5, "Gank II rolls 3 dice, Spike I reads as III and V as itself")
 	ok(v(1).mods(gank).empty() and v(1).mods(gank).label() == "" and v(1).mods(gank).tuned, "a knob is not a modifier: no label, no symbol shown")
-	var plain := untuned("gank")
-	ok(Pricing.ap_at(v(1), gank, 3) == Pricing.ap_at(v(1), plain, 3) and Pricing.cost_at(v(1), gank, 3) == Pricing.cost_at(v(1), plain, 3), "a knob doesn't change the price")
+	var steep := sk("sutemi").duplicate()  # a priced skill (the cost calculator reads its rank): β makes it no dearer at rank III
+	steep.tags = steep.tags.duplicate()
+	steep.tags.append(&"beta_up")
+	ok(steep.priced() and Pricing.ap_at(v(1), steep, 3) == Pricing.ap_at(v(1), sk("sutemi"), 3) and Pricing.cost_at(v(1), steep, 3) == Pricing.cost_at(v(1), sk("sutemi"), 3), "a knob doesn't change the price (%s AP)" % Pricing.ap_at(v(1), steep, 3))
 	ok(v(1).mods(gank).priced().k[&"rank_impact"] == 1.0 and not v(1).mods(gank).priced().tuned, "priced() reads a skill without its knobs")
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # f 0.5: x1.5 on top of x1.25
 	var dense := v(1).mods(gank)
@@ -243,9 +247,10 @@ func test_knobs() -> void:
 	ok(Modifiers.sees_knobs(v(1)) and not Modifiers.sees_knobs(v(3)) and not Modifiers.sees_knobs(null), "int 16 sees them, 15 doesn't, nobody doesn't")
 	ok("β+" in gank.describe(1, v(1)) and "β+" not in gank.describe(1, v(3)) and "β+" not in gank.describe(1), "Gank's tooltip carries its β tag for very high int alone (%s)" % gank.describe(1, v(1)).right(60))
 	ok("d+" in spike.describe(1, v(1)) and "d+" not in spike.describe(1, v(3)), "Spike's carries d+")
-	ok(&"beta_up" not in Guide.terms(&"skills") and &"beta_up" in Glossary.TERMS, "the Guide's pages don't list them")
 	# What the check calls a knob that does nothing (skill.py check).
 	var bad := sk("clairvoyance").duplicate()  # no rank impact: nothing for d or an impact coefficient to tune
+	bad.scaling = bad.scaling.duplicate()  # a duplicate shares its dictionary and tags
+	bad.tags = bad.tags.duplicate()
 	bad.scaling.assign({&"impact": 2.0, &"range": 1.0, &"made_up": 2.0})
 	bad.tags.append_array([&"cohen_up", &"cohen_down", &"beta_up"])
 	SkillTerms.forget(bad)

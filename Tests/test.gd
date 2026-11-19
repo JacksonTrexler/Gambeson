@@ -110,6 +110,7 @@ func sk(id: String) -> Skill:
 # (Kick's riders, from 2 tiles at rank II) reads it as written, not as tuned; param_test.test_knobs pins the knobs.
 static func untuned(id: String) -> Skill:
 	var s: Skill = load("res://Skills/%s.tres" % id).duplicate()
+	s.scaling = s.scaling.duplicate()  # duplicate() shares the dictionary
 	s.scaling.clear()
 	s.tags = s.tags.filter(func(x: StringName): return x not in Modifiers.KNOBS)
 	return s
