@@ -12,6 +12,7 @@ with skill.py), its placeholder sprite (Units/<Sprite>.png), and a place on the 
   python3 Util/role.py god ramut [--patron] [--tree luun --kind Divinity] [--offers protector,radiance] [--human]
       # a god or patron (Gods/<id>.tres): its own tree (a tab of --tree's root, picked by a choice of god) and
       # the trees it offers its servants' slots (Gods/tabs/<stem>.tres; TreeChoice.kinds); --offers adds to one
+  python3 Util/role.py include general_caster student [--root Caster]   # compose a tree into a root: its skills show there as its own
   python3 Util/role.py check
 
 Then give the tree its skills: python3 Util/skill.py new <id> ... --tree <tree file> [--root "Open Palm"]
@@ -24,7 +25,7 @@ already has, like the Mage's School).
 """
 import argparse, re, sys
 
-from tres import Doc, ai_name, die, exists, files, import_project, items, names, read, sections, snake, typed, write, add_ext, free_id
+from tres import Doc, ai_name, composition_problems, die, exists, files, import_project, items, names, read, sections, snake, typed, write, add_ext, free_id
 import os
 import icon
 
@@ -188,6 +189,37 @@ def _append(text, section_start, key, script_id, ref):  # adds ref to a typed ar
     return text[:section_start] + body + text[end:]
 
 
+def include(a):
+    """Compose Trees/<tree>.tres into a root of Trees/<into>.tres (SkillRoot.includes): everything on it, now or later, shows
+    on that root with its tiers and prerequisites; nothing is copied. Refused (nothing written) if that loops or repeats a skill."""
+    p = "Trees/%s.tres" % a.into
+    exists(p) or die("no %s" % p)
+    exists("Trees/%s.tres" % a.tree) or die("no Trees/%s.tres" % a.tree)
+    a.into == a.tree and die("a tree can't include itself")
+    text = read(p)
+    secs = sections(text)
+    roots = [s for s in secs if s["kind"] in ("sub_resource", "resource") and "branches" in s["props"]]
+    root = next((r for r in roots if a.root in (None, r["props"].get("name", "").strip('"'))), None) or die("%s: no root %s" % (p, a.root))
+    text, root_gd = _ext(text, "Script", "res://Scripts/SkillRoot.gd")
+    text, ref = _ext(text, "Resource", "res://Trees/%s.tres" % a.tree)
+    secs = sections(text)
+    root = next(r for r in secs if r["kind"] == root["kind"] and r["props"].get("name") == root["props"].get("name"))
+    if 'ExtResource("%s")' % ref in root["props"].get("includes", ""):
+        die("%s: %s already includes %s" % (p, root["props"].get("name"), a.tree))
+    start = re.search(r'^\[%s(?: type="Resource" id="%s")?\]$' % (root["kind"], re.escape(root["attrs"].get("id", ""))), text, re.M).start()
+    text = _append(text, start, "includes", root_gd, 'ExtResource("%s")' % ref)
+    before, orig = set(composition_problems()), read(p)
+    write(p, text, a.dry_run)
+    if a.dry_run:
+        return 0
+    bad = [x for x in composition_problems() if x not in before]
+    if bad:
+        write(p, orig, False)
+        die("not included: " + "; ".join(bad))
+    print("next: skills put on Trees/%s.tres now show on %s too; python3 Util/skill.py check" % (a.tree, a.into))
+    return 0
+
+
 def tab(a):
     p = "Roles/%s.tres" % a.role
     exists(p) or die("no %s" % p)
@@ -314,6 +346,7 @@ def check(_a=None):
             problems.append("%s: a god offering nothing (role.py god %s --offers ...)" % (p, p[5:-5]))
         if "patron = true" not in text and not (re.search(r"^domains = \"[^\"]+\"", text, re.M) and re.search(r"^tag = &\"[^\"]+\"", text, re.M)):
             problems.append("%s: a god of the pantheon with no domains or damage tag (God.domains, God.tag)" % p)
+    problems.extend(composition_problems())
     for p in problems:
         print(p)
     print("role.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
@@ -359,6 +392,11 @@ def main():
     for x in (tr, tb):
         x.add_argument("--human", action="store_true", help="a person named it: no ??")
         x.add_argument("--dry-run", action="store_true")
+    ic = sub.add_parser("include", help="compose one tree into another's root (SkillRoot.includes): a skill on it shows on both")
+    ic.add_argument("into", help="Trees/<into>.tres, a general tab or a root")
+    ic.add_argument("tree", help="Trees/<tree>.tres, the root included")
+    ic.add_argument("--root", help="the root of <into> by name (default: its first)")
+    ic.add_argument("--dry-run", action="store_true")
     g = sub.add_parser("god", help="a god or patron (Gods/<id>.tres), or more trees in an existing one's pool")
     g.add_argument("id")
     g.add_argument("--patron", action="store_true", help="a Warlock's patron")
@@ -371,7 +409,7 @@ def main():
     g.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="every class has a sprite and is offered; no tree left empty; every god offers something")
     a = ap.parse_args()
-    sys.exit({"new": new, "tree": tree, "tab": tab, "god": god, "check": check}[a.cmd](a))
+    sys.exit({"new": new, "tree": tree, "tab": tab, "include": include, "god": god, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":

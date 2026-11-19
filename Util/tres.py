@@ -144,6 +144,76 @@ def free_id(secs, want):
     return i
 
 
+# --- trees
+
+def tree_roots(p):  # the roots in a .tres: [{name, branches: [(skill path, [after paths], tier, needs)], includes: [tree files]}], the [resource] one flagged "main"
+    secs = sections(read(p))
+    ext = ext_ids(secs)
+    branch = {}
+    for s in secs:
+        if s["kind"] == "sub_resource" and "skill" in s["props"]:
+            pr = s["props"]
+            skill = ext.get(REF.search(pr["skill"]).group(2)) if REF.search(pr["skill"]) else None
+            after = [ext.get(i) for i in items(pr["after"])] if "after" in pr else []
+            tier = int(pr["tier"]) if pr.get("tier", "").strip().isdigit() else 0
+            needs = int(pr["needs"]) if pr.get("needs", "").strip().isdigit() else 0
+            branch[s["attrs"]["id"]] = (skill, after, tier, needs)
+    out = []
+    for s in secs:
+        if s["kind"] in ("sub_resource", "resource") and "branches" in s["props"]:
+            inc = [ext.get(i, "") for i in items(s["props"]["includes"])] if "includes" in s["props"] else []
+            out.append({"name": s["props"].get("name", s["attrs"].get("id", "")).strip('"'), "main": s["kind"] == "resource", "includes": [x.replace("res://", "") for x in inc],
+                        "branches": [branch[i] for i in items(s["props"]["branches"]) if i in branch]})
+    return out
+
+
+def composition_problems():
+    """Tree composition (SkillRoot.includes): a root that includes trees shows their skills as its own, so they must not
+    loop, repeat a skill, name a file that isn't a tree, or leave a prerequisite or tier unresolved in the composed whole."""
+    problems, cache = [], {}
+
+    def root_of_file(f):
+        if f not in cache:
+            cache[f] = next((r for r in tree_roots(f) if r["main"]), None) if os.path.exists(os.path.join(ROOT, f)) else None
+        return cache[f]
+
+    def compose(root, trail, problems_for):  # its branches then its included trees', each [(branch, from file)]
+        out = [(b, trail[0]) for b in root["branches"]]
+        for f in root["includes"]:
+            inc = root_of_file(f)
+            if inc is None:
+                problems_for.append("includes %s, which isn't a tree root (a Trees/ file whose [resource] is a SkillRoot)" % f)
+            elif f in trail:
+                problems_for.append("includes %s again: a loop (%s)" % (f, " -> ".join(trail + [f])))
+            else:
+                out += compose(inc, trail + [f], problems_for)
+        return out
+
+    for p in sorted(list(files("Trees", ".tres")) + list(files("Roles", ".tres")) + list(files("Gods", ".tres"))):
+        for root in tree_roots(p):
+            if not root["includes"]:
+                continue
+            mine = []
+            whole = compose(root, [p], mine)
+            seen, tiers = {}, {}
+            for (skill, after, tier, needs), src in whole:
+                if skill in seen:
+                    mine.append("%s is on it twice (%s and %s)" % (skill, seen[skill], src))
+                seen[skill] = src
+                tiers[skill] = tier
+            for (skill, after, tier, needs), src in whole:
+                for a in after:
+                    if a not in seen:
+                        mine.append("%s (from %s) comes after %s, which it doesn't hold" % (skill, src, a))
+                    elif tier and tiers[a] and tiers[a] >= tier:
+                        mine.append("%s (T%d) comes after %s (T%d): its tier must be higher" % (skill, tier, a, tiers[a]))
+                if tier == 0 and any(t for t in tiers.values()):
+                    mine.append("%s (from %s) has no tier, where its tree sets them (python3 Util/skill.py new --branch-tier)" % (skill, src))
+            for m in mine:
+                problems.append("%s: root %s %s" % (p, root["name"], m))
+    return problems
+
+
 # --- values
 
 def names(v):

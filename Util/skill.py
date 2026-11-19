@@ -31,7 +31,7 @@ missing. Stubs carry STUB: check fails until they're filled in. Plain python3, n
 import argparse, os, re, subprocess, sys
 
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
-                  literal, effect_section, names)
+                  literal, effect_section, names, composition_problems)
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 103  # (-1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
 HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking", "armor", "summon_ap")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
@@ -297,6 +297,7 @@ def check(_args=None):
     problems = []
     for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons):
         f(problems)
+    problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
         print(p)
     print("skill.py check: %s" % ("%d problem%s" % (len(problems), "" if len(problems) == 1 else "s") if problems else "ok"))

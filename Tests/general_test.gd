@@ -74,6 +74,37 @@ func test_category_gate() -> void:
 	ok(c.missing(sk("elemental_strike")) == "", "a Cleric's Luun skill (tier 2) opens Caster tier 2")
 
 
+# Tree composition (SkillRoot.includes): the Caster and Specialist trees include Student, so what is on it shows on
+# them with its tier and prerequisites, a Mage's general skills, nothing copied. Put a skill on Student and it is
+# there. A loop in the data ends rather than hangs. The tools' checks police the data (role.py, skill.py check).
+func test_included_trees() -> void:
+	var student: SkillRoot = load("res://Trees/student.tres")
+	var caster: SkillTab = load("res://Trees/general_caster.tres")
+	var specialist: SkillTab = load("res://Trees/general_specialist.tres")
+	var discipline := sk("discipline")
+	ok(student.branch(discipline) != null and caster.roots[0].includes == [student] and specialist.roots[0].includes == [student], "Student: Discipline, included by the Caster and Specialist trees")
+	ok(not caster.roots[0].branches.any(func(x: Branch): return x.skill == discipline) and caster.tier_of(discipline) == 3 and specialist.tier_of(discipline) == 3, "not copied: tier 3 on both, from Student's branch")
+	ok(discipline.kinds() == [&"specialist"] and caster.roots[0].source(discipline) == student, "it keeps its own tree's kind (specialist, not magical)")
+	var mage := unit_of("mage")
+	ok(discipline in mage.general_skills() and mage.tier(discipline) == 1, "a Mage's general skills (its own listed Discipline is its class's: tier 1)")
+	var wizard := unit_of("wizard")
+	ok(discipline in wizard.general_skills() and wizard.tier(discipline) == 3 and wizard.missing(discipline).begins_with("Needs a T3+ caster class skill"), "any caster has it from its tier on the Caster tree: %s" % wizard.missing(discipline))
+	var kick := sk("kick")
+	var put := Branch.new()
+	put.skill = kick
+	put.tier = 7
+	student.branches.append(put)  # put a skill on Student, and nothing else
+	ok(caster.offers(kick) and caster.tier_of(kick) == 7 and specialist.tier_of(kick) == 7 and kick in unit_of("mage").general_skills() and kick in unit_of("rogue").general_skills(), "a skill put on Student shows on the Caster and Specialist trees at its tier (T7: Cram's place)")
+	student.branches.erase(put)
+	ok(not caster.offers(kick) and not unit_of("mage").general_skills().has(kick), "taken off, gone from both")
+	var a := SkillRoot.new()
+	var c := SkillRoot.new()
+	a.includes = [c]
+	c.includes = [a]
+	c.branches.append(put)
+	ok(a.skills() == [kick] and c.skills() == [kick] and a.source(kick) == c and a.source(discipline) == null, "a loop of included trees ends (and the tools refuse one)")
+
+
 func test_exclusive() -> void:
 	var u := unit_of("adventurer")
 	u.learned.append(slot(sk("decisive_strike")))
