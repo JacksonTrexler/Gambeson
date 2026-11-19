@@ -1317,7 +1317,21 @@ func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
 	attack_rolled.emit(caster, target, hit)
 	if hit.crit and hit.hit:
 		react(&"crit", target, caster)  # a critical: reactions to it (Chaser)
+	if not hit.hit and not target.plating.is_empty():
+		_plate_blocks(caster, target, c, hit, v)
 	return hit
+
+
+# A missed attack (roll hit of check c, in use v): each armor slot a skill gives its target (Unit.plated_defense()) whose
+# Defense made the difference - the attack would have hit without it - blocked it, and its skill's slot_blocked() hooks
+# run with the damage the blow was worth (its skill's damage at the attacker's rank: none known, none done).
+func _plate_blocks(caster: Unit, target: Unit, c: Check, hit: Check.Roll, v: Behaviour.Volley) -> void:
+	var t: Tier = v.skill.tier(caster.rank(v.skill)) if v and v.skill else null
+	var power := maxi(roundi((t.power + roll(t.dice)) * (1.0 + caster.stat(&"damage", hit_tags(caster, v.skill, target, self)))), 1) if t else 0
+	for pair in target.plated_defense():
+		if pair[1] > 0 and Check.outcome(c, hit.d20, maxi(hit.d20, hit.other), hit.target - pair[1]) != Check.MISS:
+			for bh in pair[0].behaviours:
+				bh.slot_blocked(self, target, target.own_rank(pair[0]), power)
 
 
 # --- Skill uses (Behaviour.Volley; docs/plans/w3-strike.md)
@@ -2749,12 +2763,14 @@ func equip_ap(u: Unit, it: Item) -> float:
 
 # Puts it on u, paying equip_ap() from its general AP. False (nothing changes) if it can't - or if
 # what's in that slot is bound on (Shackles: unshackle() first).
-func equip(u: Unit, it: Item) -> bool:
-	var there: Item = u.get(it.slot) if it else null
+func equip(u: Unit, it: Item, slot := "") -> bool:
+	var there: Item = u.get(slot if slot else it.slot) if it else null
 	if not outfitting(u) or not u.can_wear(it) or (there and there.binding) or u.ap_for(&"equip") < equip_ap(u, it) - 0.0001:
 		return false
+	if slot and slot != it.slot and not (it.slot == "armor" and slot in u.plate_slots()):
+		return false
 	u.pay(equip_ap(u, it), &"equip")
-	u.equip(it)
+	u.equip(it, slot)
 	return true
 
 

@@ -10,6 +10,8 @@
 [ext_resource type="Resource" path="res://Skills/martial_slot.tres" id="s_martial_slot"]
 [ext_resource type="Resource" path="res://Skills/interject.tres" id="s_interject"]
 [ext_resource type="Resource" path="res://Skills/snapping_turtle.tres" id="s_snapping_turtle"]
+[ext_resource type="Resource" path="res://Skills/power_armor.tres" id="s_power_armor"]
+[ext_resource type="Resource" path="res://Skills/scrap_plating.tres" id="s_scrap_plating"]
 
 [sub_resource type="Resource" id="Branch_shields_up"]
 script = ExtResource("branch")
@@ -30,6 +32,11 @@ script = ExtResource("branch")
 skill = ExtResource("s_turtle_tactics")
 after = Array[ExtResource("skill")]([ExtResource("s_shields_up")])
 
+[sub_resource type="Resource" id="Branch_scrap_plating"]
+script = ExtResource("branch")
+skill = ExtResource("s_scrap_plating")
+after = Array[ExtResource("skill")]([ExtResource("s_turtle_tactics")])
+
 [sub_resource type="Resource" id="Branch_interject"]
 script = ExtResource("branch")
 skill = ExtResource("s_interject")
@@ -40,6 +47,11 @@ script = ExtResource("branch")
 skill = ExtResource("s_snapping_turtle")
 after = Array[ExtResource("skill")]([ExtResource("s_turtle_tactics")])
 
+[sub_resource type="Resource" id="Branch_power_armor"]
+script = ExtResource("branch")
+skill = ExtResource("s_power_armor")
+after = Array[ExtResource("skill")]([ExtResource("s_snapping_turtle")])
+
 [sub_resource type="Resource" id="Branch_martial_slot"]
 script = ExtResource("branch")
 skill = ExtResource("s_martial_slot")
@@ -49,4 +61,4 @@ needs = 3
 script = ExtResource("root")
 name = "Protector"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_shields_up"), SubResource("Branch_obstruct"), SubResource("Branch_interdict"), SubResource("Branch_turtle_tactics"), SubResource("Branch_interject"), SubResource("Branch_snapping_turtle"), SubResource("Branch_martial_slot")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_shields_up"), SubResource("Branch_obstruct"), SubResource("Branch_interdict"), SubResource("Branch_turtle_tactics"), SubResource("Branch_scrap_plating"), SubResource("Branch_interject"), SubResource("Branch_snapping_turtle"), SubResource("Branch_power_armor"), SubResource("Branch_martial_slot")])

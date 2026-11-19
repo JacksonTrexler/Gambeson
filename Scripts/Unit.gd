@@ -26,6 +26,7 @@ const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"] 
 const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
+const PLATE := "plate_"  # a slot a skill gives it beyond armor's own is named for the skill: plate_power_armor (u.get(slot) and u.set(slot, item) reach it, so the sheet and the outfit treat it as any slot)
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
 const CLASS_HP := 5  # a class unit's max HP before what its levels bring (Battle.from_role(); level_hp()) - its level 1 total is 5 + con mod + vigor, a Fighter 10
 const SLOTS := 4  # skill slots at level 1; one more every 4 levels (slot_count()), plus any skills grant
@@ -193,6 +194,8 @@ var picked: Array[String] = []  # the trees it has picked on its class's own tab
 		trinket = v
 		if banner:
 			banner.queue_redraw()  # its trim shows as a banner
+
+var plating: Dictionary[StringName, Item] = {}  # the armor worn in the slots its skills give beyond the first, by slot name (plate_slot(); plate_skills())
 
 @export_group("Stats")
 @export var strength := 5
@@ -2000,23 +2003,35 @@ func tagged_defense() -> Dictionary:
 # Defense from armor alone: what the equipment skills its armor lends set (armor_skills(): Armor, by the armor's own
 # fields - Behaviours/armor.gd), added up; with none working (no armor, or its skills suppressed) it is unarmored: dex mod + con mod.
 func armor_defense() -> int:
-	var sum := 0
-	var set := false
-	for s in armor_skills():
-		for b in s.behaviours:
-			var n: int = b.armor(self, armor.skill_rank(s), armor) if b else Behaviour.NO_ARMOR
-			if n != Behaviour.NO_ARMOR:
-				sum += n
-				set = true
+	var sum := _set_by(armor)
+	var set := sum != Behaviour.NO_ARMOR
+	if not set:
+		sum = 0
+	for pair in plated_defense():  # the armor in its other slots adds its own, by each slot's rules
+		sum += pair[1]
+		set = true
 	return sum if set else mod(&"dexterity") + mod(&"constitution")
 
 
-# The equipment skills (Skill.is_equipment()) its worn armor lends that work now: equipped() says (traits suppressed:
+# What the equipment skills item lends set its wearer's Defense to, added up (NO_ARMOR: none do).
+func _set_by(item: Item) -> int:
+	var sum := 0
+	var set := false
+	for s in armor_skills(item):
+		for b in s.behaviours:
+			var n: int = b.armor(self, item.skill_rank(s), item) if b else Behaviour.NO_ARMOR
+			if n != Behaviour.NO_ARMOR:
+				sum += n
+				set = true
+	return sum if set else Behaviour.NO_ARMOR
+
+
+# The equipment skills (Skill.is_equipment()) its worn armor (or `item`) lends that work now: equipped() says (traits suppressed:
 # none).
-func armor_skills() -> Array[Skill]:
+func armor_skills(item: Item = armor) -> Array[Skill]:
 	var out: Array[Skill] = []
-	if armor:
-		for s in armor.skills:
+	if item:
+		for s in item.skills:
 			if s and s.is_equipment() and equipped(s):
 				out.append(s)
 	return out
@@ -2156,13 +2171,13 @@ func can_wear(it: Item) -> bool:
 	return it != null and it.slot in ["weapon", "armor", "trinket"] and (not it.requires or mod(it.requires) > 0)
 
 
-# Puts it on in its slot, returning what was there (null if nothing, or if it can't wear it: then
-# nothing changes). Its max HP follows (refit()).
-func equip(it: Item) -> Item:
-	if not can_wear(it):
+# Puts it on in its slot - or in `to`, one of the armor slots its skills give (plate_slots()) - returning what was there
+# (null if nothing, or if it can't wear it: then nothing changes). Its max HP follows (refit()).
+func equip(it: Item, to := "") -> Item:
+	if not can_wear(it) or (to and to != it.slot and not (it.slot == "armor" and to in plate_slots())):
 		return null
-	var old: Item = get(it.slot)
-	set(it.slot, it)
+	var old: Item = get(to if to else it.slot)
+	set(to if to else it.slot, it)
 	refit()
 	return old
 
@@ -2194,6 +2209,97 @@ func unequip(slot: String) -> Item:
 	set(slot, null)
 	refit()
 	return old
+
+
+# The armor slots its skills give beyond the first (Behaviour.armor_slot()): a slot for each such skill it has learned,
+# whether it works now or not (the armor in it stays worn).
+func plate_skills() -> Array[Skill]:
+	var out: Array[Skill] = []
+	for x in _own():
+		if x.rank > 0 and x.skill.behaviours.any(func(b: Behaviour): return b and b.armor_slot()):
+			out.append(x.skill)
+	return out
+
+
+# Their slot names, as u.get() and u.set() take them (plate_slot()).
+func plate_slots() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for s in plate_skills():
+		out.append(plate_slot(s))
+	return out
+
+
+# The slot the skill gives: PLATE + its file's name.
+static func plate_slot(s: Skill) -> StringName:
+	return StringName(PLATE + s.resource_path.get_file().get_basename())
+
+
+# What a slot is called: an item slot's name, or the skill giving it (its slot's: "Power Armor").
+func slot_label(slot: String) -> String:
+	for s in plate_skills():
+		if plate_slot(s) == slot:
+			return s.name
+	return slot.capitalize()
+
+
+func _get(property: StringName) -> Variant:
+	return plating.get(property) if String(property).begins_with(PLATE) else null
+
+
+func _set(property: StringName, value: Variant) -> bool:
+	if not String(property).begins_with(PLATE):
+		return false
+	if value == null:
+		plating.erase(property)
+	else:
+		plating[property] = value
+	return true
+
+
+# The armor it wears in the slots its skills give that work now (Behaviour.slot_works()), with the skill giving each:
+# [skill, item] pairs, in the order it learned them. None while nothing is worn in one (the usual: it reads nothing).
+func plates() -> Array:
+	var out := []
+	if plating.is_empty():
+		return out
+	for s in plate_skills():
+		var it: Item = plating.get(plate_slot(s))
+		if it and can_wear(it) and s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s))):
+			out.append([s, it])
+	return out
+
+
+# The Defense each worn armor in those slots confers: [skill, Defense] pairs, for the armor that sets any (the slot's
+# own rules - Behaviour.slot_defense() - applied). What Battle asks of a missed attack: which of them blocked it.
+func plated_defense() -> Array:
+	var out := []
+	for pair in plates():
+		var s: Skill = pair[0]
+		var d := _set_by(pair[1])
+		if d == Behaviour.NO_ARMOR:
+			continue
+		for b in s.behaviours:
+			if b:
+				d = b.slot_defense(self, own_rank(s), d)
+		out.append([s, d])
+	return out
+
+
+# How much of its Power it has, 0 to 1: its Energy, or the reserve it runs on in place of it (runs_on()).
+func power_share() -> float:
+	var on: Variant = runs_on()
+	if on is Reserve:
+		return float(store(on)) / maxi(pools().get(on, 0), 1)
+	return float(energy) / maxi(max_energy, 1)
+
+
+# Takes n off its Power (power_share()): what an attack Power Armor blocks does.
+func sap_power(n: int) -> void:
+	var on: Variant = runs_on()
+	if on is Reserve:
+		set_store(on, store(on) - n)
+	else:
+		energy -= n
 
 
 # The derived-stat pipeline's last step (docs/plan-composability.md, seam 5). Its stats are its base
@@ -2274,6 +2380,8 @@ func weight() -> int:
 	var w := ceili(stat(&"size"))
 	for it in items():
 		w += it.heft()
+	for pair in plates():  # and the armor in its other slots
+		w += pair[1].heft()
 	return w
 
 
@@ -3087,14 +3195,22 @@ func _pools() -> Array[AP]:
 # What armor takes off its dex (pool &"move") or wis (&"skill") AP each turn: heavy armor its rank less
 # its con mod (dex) or str mod (wis) - a negative mod makes it worse - medium armor half that; never
 # below 0. None from armor that eases that pool (Item.eases) on a wearer with that mod at SUFFICIENT
-# or more. Light armor takes nothing.
+# or more. Light armor takes nothing. What it wears in the slots its skills give (plates()) drags the same, each
+# worked out alone and all added up.
 func armor_drag(pool: StringName) -> float:
-	if not armor or armor.weight_class() not in [&"heavy", &"medium"]:
+	var sum := _drag_of(armor, pool)
+	for pair in plates():  # armor in its other slots drags in full, on top: harder to overcome
+		sum += _drag_of(pair[1], pool)
+	return sum
+
+
+func _drag_of(item: Item, pool: StringName) -> float:
+	if not item or item.weight_class() not in [&"heavy", &"medium"]:
 		return 0.0
 	var m := mod(&"constitution" if pool == &"move" else &"strength")
-	if armor.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
+	if item.eases == (&"dexterity" if pool == &"move" else &"wisdom") and m >= SUFFICIENT:
 		return 0.0
-	return maxf((armor.ranked() - m) / (2.0 if armor.weight_class() == &"medium" else 1.0), 0.0)
+	return maxf((item.ranked() - m) / (2.0 if item.weight_class() == &"medium" else 1.0), 0.0)
 
 
 # Wearing armor to some effect: armor that sets Defense, whose requirement it meets. Bracing passives

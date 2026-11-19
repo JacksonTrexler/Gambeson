@@ -757,17 +757,17 @@ func _keep_bar(u: Unit) -> void:
 func _keep_outfit(u: Unit) -> void:
 	if u == battle.player:
 		Game.outfit = {}
-		for slot in CharacterSheet.SLOTS:
+		for slot in CharacterSheet.SLOTS + Array(u.plating.keys()):  # (a slot whose skill it hasn't learned this battle keeps what it holds)
 			if u.get(slot):
 				Game.outfit[slot] = u.get(slot)
 		Game.hearts = u.hearts
 
 
-func _on_equipped(u: Unit, it: Item) -> void:
+func _on_equipped(u: Unit, it: Item, slot := "") -> void:
 	if not _outfits(u) or it not in Game.stash or not u.can_wear(it):
 		return
-	var old: Item = u.get(it.slot)
-	if not battle.equip(u, it):
+	var old: Item = u.get(slot if slot else it.slot)
+	if not battle.equip(u, it, slot):
 		_say("%s needs %s AP to put on %s" % [_name(u), Skill.num(battle.equip_ap(u, it)), it.name])
 		return
 	Game.stash.erase(it)
@@ -2966,7 +2966,10 @@ func _bst_line(stats: Array) -> String:
 
 # "11 · Gambeson", "2 · unarmored", with tagged Defense after: "+2 vs magical".
 func _defense_line(u: Unit, shown: Variant = null) -> String:
-	var text := "%d · %s" % [u.defense() if shown == null else shown, u.armor.name if u.armor else "unarmored"]
+	var worn: Array[String] = [u.armor.name if u.armor else "unarmored"]
+	for pair in u.plates():  # armor in the slots its skills give, too
+		worn.append(pair[1].name)
+	var text := "%d · %s" % [u.defense() if shown == null else shown, " + ".join(worn)]
 	var tagged := u.tagged_defense()
 	for t in tagged:
 		text += ", %+d vs %s" % [tagged[t], t]
