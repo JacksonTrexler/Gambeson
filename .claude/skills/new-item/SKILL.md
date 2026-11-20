@@ -36,6 +36,8 @@ description: Add an item to Gambeson - writes Items/<id>.tres (slot, rarity, ran
    kind and trim; art replaces the file), adds it to `Loot/<table>.tres` at the weight given, imports and
    checks. To redraw after changing its tags or slot: `python3 Util/icon.py item <id>`.
 
+2b. **Lending a skill.** An item lends a skill the holder doesn't own: `python3 Util/item.py lend <skill> [--slot S] [--ids a,b]` puts it on items; a skill meant only to be lent is written with `python3 Util/skill.py new <id> --lent` (on no tree or role). `check` holds the wiring.
+
 3. **Where it turns up.** A drop: `--loot <table>` (a unit's `loot`, `Loot.gd`: weight x rarity pull;
    what falls goes to `Battle.spoils`). A class's starting kit: `Role.items` (new-class).
 

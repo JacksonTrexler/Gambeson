@@ -200,7 +200,7 @@ extends Resource
 @export var armored := false  # only while its holder wears armor to some effect (Unit.armored(): Invigorating Bracing's AP)  # a skill attribute (range, rank): only for these skills; empty: any the tags allow
 @export var per_stat := &""  # optional scaling: amount x floor(stat / per), e.g. charisma / 10
 @export var per := 10
-@export var per_mod := &""  # optional scaling: amount x the holder's mod in this stat (Mage Armor: intelligence)
+@export var per_mod := &""  # optional scaling: amount x the holder's mod in this stat (Mage Armor: intelligence). On a `check` effect: its mod in this stat, from 0 up to the skill's rank (set per_rank, so rank modifiers move the cap), added to the checks it names (Unit.check_bonus())
 @export var per_rank := false  # amount x the skill's rank (Hex III: luck -3)
 @export var min_rank := 0  # only from this rank of the skill up (Wary V: traps hit enemies harder)
 @export var above_hp := 0.0  # only while hp is above this fraction of max (Stoneskin: 0.85)
@@ -449,7 +449,9 @@ func value(rank := 1) -> String:
 		text = _signed(x)
 	if per_stat:
 		text += " per %d %s" % [per, per_stat]
-	if per_mod:
+	if per_mod and stat == "check":
+		text = "+%s mod to %s checks, up to its rank" % [String(per_mod).left(3), " or ".join(checks.map(func(c): return String(c).left(3)))]
+	elif per_mod:
 		text += " per %s mod" % String(per_mod).left(3)
 	if by_mod:
 		text += " x the caster's %s mod" % String(by_mod).left(3)

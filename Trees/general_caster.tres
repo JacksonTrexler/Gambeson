@@ -4,7 +4,6 @@
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="2_root"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="3_branch"]
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
-[ext_resource type="Resource" path="res://Trees/student.tres" id="r_student"]
 [ext_resource type="Resource" path="res://Skills/elemental_strike.tres" id="s_elemental_strike"]
 [ext_resource type="Resource" path="res://Skills/record_striker.tres" id="s_record_striker"]
 [ext_resource type="Resource" path="res://Skills/meditative_bracing.tres" id="s_meditative_bracing"]
@@ -70,7 +69,6 @@ tier = 4
 script = ExtResource("2_root")
 name = "Caster"
 tag = &"magical"
-includes = Array[ExtResource("2_root")]([ExtResource("r_student")])
 branches = Array[ExtResource("3_branch")]([SubResource("Branch_elemental_strike"), SubResource("Branch_energy_transfer"), SubResource("Branch_telepathy"), SubResource("Branch_record_striker"), SubResource("Branch_striking_intellect"), SubResource("Branch_drone"), SubResource("Branch_meditative_bracing"), SubResource("Branch_invigorating_bracing"), SubResource("Branch_elemental_mastery"), SubResource("Branch_wake_and_rake")])
 
 [resource]

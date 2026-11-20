@@ -31,7 +31,7 @@ and only then, a test stub, Tests/<id>_test.gd: a data-only skill is covered by 
 end of --root's) and in --role's options, imports, then checks. It edits text by anchors and stops if one is
 missing. Stubs carry STUB: check fails until they're filled in. Plain python3, no dependencies.
 """
-import argparse, os, re, subprocess, sys
+import argparse, datetime, os, re, subprocess, sys
 
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
                   literal, effect_section, names, composition_problems)
@@ -193,11 +193,53 @@ def check_traits(problems):
                     problems.append("%s: %s is a trait but listed as learned: a unit's trait is innate (python3 Util/unit.py trait <unit> %s)" % (p, f, os.path.basename(f)[:-5]))
 
 
+def check_equipment(problems):
+    """Equipment (the tag: Armor) is what an item lends as part of what it does (docs/plans/w3-lent.md, ?196): never a hotbar skill.
+    It is an always-on passive (no toggle, hybrid or pillar), on no tree, no role's options and no unit's learned list, so
+    nobody learns it and nothing can put it on the bar (Skill.fits_bar() is false for it; Tests/lent_test.gd holds the bar)."""
+    equip = []
+    for p in sorted(files("Skills", ".tres")):
+        res = next(x for x in sections(read(p)) if x["kind"] == "resource")["props"]
+        if '&"equipment"' not in res.get("tags", ""):
+            continue
+        equip.append(p)
+        if res.get("passive") != "true" or any(res.get(k) == "true" for k in ("toggle", "hybrid")) or '&"pillar"' in res.get("tags", ""):
+            problems.append("%s: tagged equipment but not an always-on passive (an item lends it: nothing to cast, switch or disable)" % p)
+    for p in sorted(files("Trees", ".tres")) + sorted(files("Roles", ".tres")):
+        text = read(p)
+        for f in equip:
+            if 'path="res://%s"' % f in text:
+                problems.append("%s: lists %s, which is equipment: an item lends it, no tree or class offers it (it never takes a hotbar slot)" % (p, f))
+    for p in sorted(files("Scenes", ".tscn")):
+        text = read(p)
+        for f in equip:
+            if 'path="res://%s"' % f in text:
+                problems.append("%s: holds %s, which is equipment: an item lends it, a unit never learns it" % (p, f))
+
+
 def check_flags(problems):
     n = len(re.findall(r"^@export var ", read("Scripts/Skill.gd"), re.M))
     if n > FLAG_CEILING:
-        problems.append("Scripts/Skill.gd: %d flags, over %d - put new behaviour in a Behaviours/ script (CLAUDE.md); "
-                        "raise FLAG_CEILING in Util/skill.py only for a field every skill shares" % (n, FLAG_CEILING))
+        problems.append("Scripts/Skill.gd: %d fields, over the creep alarm at %d - a new field is fine when it removes duplication or "
+                        "enables a shared system (CLAUDE.md); confirm it with `python3 Util/skill.py ceiling \"<field: why>\"`, "
+                        "which raises FLAG_CEILING with that note, and list the field as a question for the user" % (n, FLAG_CEILING))
+
+
+def raise_ceiling(note):
+    """Raise FLAG_CEILING to the current field count, noting why (the creep alarm: the user confirms it later)."""
+    n = len(re.findall(r"^@export var ", read("Scripts/Skill.gd"), re.M))
+    p = os.path.join(ROOT, "Util/skill.py")
+    t = open(p).read()
+    m = re.search(r"^FLAG_CEILING = (\d+)  # \(", t, re.M)
+    if not m:
+        print("FLAG_CEILING line not found"); return 1
+    if n <= int(m.group(1)):
+        print("%d fields, ceiling %d: nothing to raise" % (n, int(m.group(1)))); return 0
+    entry = "+%d %s: %s; " % (n - int(m.group(1)), datetime.date.today().isoformat(), note.replace(")", "]"))
+    t = t[:m.start()] + "FLAG_CEILING = %d  # (%s" % (n, entry) + t[m.end():]
+    open(p, "w").write(t)
+    print("FLAG_CEILING %d -> %d; list the new field as a question in todo.md for the user" % (int(m.group(1)), n))
+    return 0
 
 
 # Cost profiles (Skill.costs), as Scripts/Pricing.gd profile() reads them: keep the two in step.
@@ -352,7 +394,7 @@ def check_density(problems):  # Density's one rule (SkillTerms.density_why()) ag
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
@@ -743,6 +785,8 @@ def main():
     tr.add_argument("--off", action="store_true", help="take the declaration off: it is slotted again")
     tr.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="catch the wiring pitfalls")
+    ce = sub.add_parser("ceiling", help="raise the Skill.gd field creep alarm (FLAG_CEILING) to the current count, with a note")
+    ce.add_argument("note", help="the field and why it removes duplication or enables a shared system")
     sub.add_parser("drift", help="hand-set prices against the cost calculator's (information)")
     sub.add_parser("modifiers", help="skills no modifier fits, and why (information)")
     sub.add_parser("density", help="skills Density / Diluted can't trade on, and their declared reason (no_density); check holds them in step")
@@ -766,6 +810,8 @@ def main():
     mg = sub.add_parser("migrate", help="hand prices a profile reproduces exactly at every rank -> that profile")
     mg.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    if a.cmd == "ceiling":
+        sys.exit(raise_ceiling(a.note))
     if a.cmd == "trait":
         sys.exit(set_trait(a))
     if a.cmd == "cost":

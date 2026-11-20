@@ -73,6 +73,7 @@ func _initialize() -> void:
 			Game.hearts = 0
 			Game.stash = []
 			Game.equipped = []
+			Game.lapses = {}
 			var scene: Node = museum.instantiate()
 			scene.get_node("Battle").rng.seed = 1
 			root.add_child(scene)

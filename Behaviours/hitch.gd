@@ -6,6 +6,7 @@ extends Behaviour
 # tow stat: Battle.travel()). The grip ends as the caster's turn does.
 
 const HITCHED: Effect = preload("res://Effects/hitched.tres")
+const HELD := 0.5  # the share of a foe's turn a grip takes (it can't walk off; it can strike): what the AI counts (Behaviour.foresee() `afflicts`)
 const FOE_STATS: Array[StringName] = [&"strength", &"dexterity"]  # the foe rolls the better of them
 
 
@@ -32,7 +33,7 @@ func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
 	var p := Battle.odds(c.caster, &"strength", c.target, FOE_STATS, grapple(c))
-	return {notes = ["Holds it (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
+	return {notes = ["Holds it (%d%%)" % roundi(p * 100.0)] as Array[String], riders = 0.0, afflicts = p * HELD}
 
 
 # Its terms: + rank on its grapple contest (a check), the tow an impactful effect.

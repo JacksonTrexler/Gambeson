@@ -23,7 +23,8 @@ const CORE: Array[StringName] = [&"strength", &"dexterity", &"constitution", &"i
 const BASE_AP := 10.0
 const REAR_EDGE := 1  # Defense an attack from behind takes off its target: +1 to hit (defense(), side_of())
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
-		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres")]  # the general trees, on the far right of the skills screen (general_trees())
+		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres"),
+		preload("res://Trees/general_student.tres"), preload("res://Trees/general_journeyman.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
 const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
@@ -169,6 +170,7 @@ var leaned: Array[Skill] = []  # skills learned while an item's lent skill carri
 var _judging := false  # lapsed() is working out whether a leaned skill's prerequisites hold: nothing it reads may touch effects (they read lapsed()): _skippable() stands down
 var _bare := false  # counts() is reading prerequisites as if nothing were lent (unlock(): was a lent skill needed?)
 var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
+var trees_granted: Array[StringName] = []  # general trees opened to it beyond its class's (grant_tree(): an adventure's reward)
 var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
@@ -2448,11 +2450,16 @@ func has_tag(t: StringName) -> bool:
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 
-# The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). Nothing reads
-# cc yet: a rule, a skill or a piece of gear that deals with a kind of status asks here.
+# The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). A rule, a skill
+# or a piece of gear that deals with a kind of status asks here; the AI asks of what it has read of a unit (bearing()).
 func afflicted(tag: StringName) -> Array[Effect]:
+	return Unit.bearing(timed.keys(), tag)
+
+
+# Of those statuses, the ones that bear `tag` (afflicted(), over a list the asker has - a Read's effects).
+static func bearing(effects: Array, tag: StringName) -> Array[Effect]:
 	var out: Array[Effect] = []
-	for e: Effect in timed.keys():
+	for e: Effect in effects:
 		if tag in e.bears:
 			out.append(e)
 	return out
@@ -2746,9 +2753,19 @@ func tier(s: Skill) -> int:
 func general_trees() -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
 	for g in GENERAL_TREES:
-		if g.category == &"" or (role and g.category in role.general) or _opener(g.category) != null:
+		var k := g.key()
+		if k == &"" or (role and k in role.general) or k in trees_granted or _opener(k) != null:
 			out.append(g)
 	return out
+
+
+# Opens a general tree to it that its class doesn't (SkillTab.grant: Student, Journeyman): what an adventure's reward
+# or a flex choice calls. False if it has it already or no general tree has that key.
+func grant_tree(key: StringName) -> bool:
+	if key in trees_granted or not GENERAL_TREES.any(func(g: SkillTab): return g.grant == key):
+		return false
+	trees_granted.append(key)
+	return true
 
 
 func general_skills() -> Array[Skill]:
@@ -2811,6 +2828,47 @@ func _general_need(s: Skill, t: int) -> Array:
 			if t <= reach:
 				return ["", by]
 	return [why, null]
+
+
+# What the save keeps of leaned and waived (Save carries it as one dictionary, so a loaded unit still lapses): skill ids
+# (Skills/<id>.tres). Empty for a unit that leans on nothing.
+func lapses_out() -> Dictionary:
+	var out := {}
+	if not leaned.is_empty():
+		out.leaned = leaned.map(_skill_id)
+	if not waived.is_empty():
+		var w := {}
+		for s in waived:
+			w[_skill_id(s)] = _skill_id(waived[s])
+		out.waived = w
+	return out
+
+
+# Back from lapses_out() (or an old save with no such keys: nothing leans). Skills that are gone, or that this unit
+# hasn't learned, are left out: a lapse only means something on a learned skill.
+func lapses_in(d: Dictionary) -> void:
+	leaned.clear()
+	waived.clear()
+	var l = d.get("leaned")
+	for id in (l if l is Array else []):
+		var s := _skill_by_id(id)
+		if s and base_rank(s) > 0:
+			leaned.append(s)
+	var w = d.get("waived")
+	for id in (w if w is Dictionary else {}):
+		var s := _skill_by_id(id)
+		var via := _skill_by_id(w[id])
+		if s and via and base_rank(s) > 0:
+			waived[s] = via
+
+
+static func _skill_id(s: Skill) -> String:
+	return s.resource_path.get_file().get_basename()
+
+
+static func _skill_by_id(id: Variant) -> Skill:
+	var path := "res://Skills/%s.tres" % str(id)
+	return load(path) if id is String and id != "" and ResourceLoader.exists(path) else null
 
 
 # A skill that stopped working: learned through a waiver whose waiver isn't working now (removed, disabled, or
@@ -3318,6 +3376,8 @@ func check_mod(s: StringName, kind: StringName, tags: Array[StringName] = []) ->
 # each that matches its armor's weight, stat and kind adds its armor's rank (x the passive's share),
 # up to the passive's rank (Agility, Balanced, Vanguard, Combat, Meditative, Invigorating Bracing).
 # Plain check effects (Turtle Tactics) add theirs, armor or not.
+# A check effect with per_mod adds its holder's mod in that stat instead (never below 0, up to the passive's rank): one stat
+# adds to checks of another, the one hook (Journeyman's Physical Intelligence and Muscle Memory).
 # A `check` effect with tags counts only for checks carrying one (the check tag seam: a check that
 # taps carries `taps`, an execute's carries `execute`, so one effect can help with every such check).
 func check_bonus(s: StringName, kind: StringName, tags: Array[StringName] = []) -> int:
@@ -3332,7 +3392,9 @@ func check_bonus(s: StringName, kind: StringName, tags: Array[StringName] = []) 
 			continue
 		if not (s in e.checks or (&"mental" in e.checks and s in MENTAL) or (e.stat == "check" and e.checks.is_empty())):
 			continue
-		if e.stat == "check":
+		if e.stat == "check" and e.per_mod:  # one stat's mod adds to another's checks, up to the rank (Physical Intelligence: int to str; Muscle Memory: wis to str)
+			total += roundi(e.amount * clampi(mod(e.per_mod, tags), 0, pair[1]) * pair[2])
+		elif e.stat == "check":
 			total += roundi(e.amount * (pair[1] if e.per_rank else 1) * pair[2])
 		elif armored() and (e.tags.is_empty() or w in e.tags):
 			total += mini(floori(armor.ranked() * e.amount), pair[1])

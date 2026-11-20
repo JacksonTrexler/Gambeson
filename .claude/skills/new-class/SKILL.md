@@ -57,3 +57,5 @@ description: Add a class (Role) to Gambeson - writes Roles/<id>.tres, its own sk
    numbered across todo.md and docs/todo/*.md). Add to todo.md's "Built on judgement" list:
    `- N <Topic> (<date>): <each call, with the choice made>.` Put the item itself, ending `(?N)`, in the
    docs/todo file for its area (classes.md), and add N to that file's row of the table at the bottom of todo.md.
+
+**Including another tree.** `python3 Util/role.py include <into> <tree> [--root ...]` makes a general tab or root include another tree's skills (how the Student tab is built). A general tab is offered by `Role.general`; a tab with a `grant` key (Student, since w5-tree: Mages only) opens through a class's `general` list or at run time with `Unit.grant_tree(key)`, e.g. from an adventure.

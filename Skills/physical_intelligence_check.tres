@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "check"
+per_mod = &"intelligence"
+per_rank = true
+checks = Array[StringName]([&"strength"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Physical Intelligence"
+glyph = "Pi"
+passive = true
+tags = Array[StringName]([&"martial", &"specialist"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
+max_rank = 5

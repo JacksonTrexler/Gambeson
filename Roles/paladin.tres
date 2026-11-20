@@ -80,5 +80,5 @@ stats = Dictionary[StringName, int]({&"strength": 12, &"dexterity": 10, &"consti
 options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement"), ExtResource("s_discipline")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Idealism")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
-general = Array[StringName]([&"martial", &"magical"])
+general = Array[StringName]([&"martial", &"magical", &"journeyman"])
 choices = Array[ExtResource("c_choice")]([SubResource("Choice_Prowess"), SubResource("Choice_Domain"), SubResource("Choice_Flex")])

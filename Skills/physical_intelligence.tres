@@ -4,7 +4,8 @@
 
 [resource]
 script = ExtResource("1_script")
-name = "Physical Intelligence"
+name = "Brawn as Brains"
+ai = true
 passive = true
 tags = Array[StringName]([&"magical", &"pillar"])
 stand_in = &"strength"

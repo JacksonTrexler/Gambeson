@@ -750,7 +750,7 @@ func test_skills_screen() -> void:
 	var names: Array = tabs.get_children().map(func(x: Button): return x.text)
 	ok(names[0] == "CLASS · PALADIN" and h.skills.view() is SkillGrid and load("res://Skills/favour.tres") in h.skills.view().skills(),
 			"a class without a tree: its options as one, growing from the bottom")
-	ok(names.slice(1) == ["DIVINITY · EROS", "SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER"],
+	ok(names.slice(1) == ["DIVINITY · EROS", "SPECIES · HALFLING", "GENERAL", "GENERAL · MARTIAL", "GENERAL · CASTER", "GENERAL · JOURNEYMAN"],
 			"no Prowess tab until it's picked, its Domain (Eros's one Divinity) open with no pick; its species, then the general trees a Paladin gets: %s" % [names])
 	var grid: SkillGrid = h.skills.view()
 	var boxed := func(c: TreeChoice) -> Array: return grid._entries.keys().filter(func(t: SkillTab): return grid._entries[t][1] == c).map(func(t: SkillTab): return t.name)
@@ -1029,7 +1029,7 @@ func test_adventurer_skills_screen() -> void:
 			"the Adventurer's own tab: a wheel")
 	ok(w.tab.roots.reduce(func(all: Array, r: SkillRoot): return all + r.skills(), [w.tab.center] + w.tab.core).all(func(s: Skill): return s in w.skills()) and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
-	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER"],
+	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER", "GENERAL · JOURNEYMAN"],
 			"its own tab, its species', then all three general trees and the base one, on the far right")
 	ok(h.skills.picked == load("res://Skills/skill_slot.tres") and h.skills.detail.title_label.text == "Skill Slot +1" and h.skills.detail.state_label.text == "T1",
 			"Skill Slot +1 shows first: the centre, the first it can learn")
@@ -1180,7 +1180,7 @@ func test_tabbed_skills_screen() -> void:
 	await tree.process_frame
 	var g: SkillGrid = h.get_node("%Grid")
 	var tabs: HFlowContainer = h.get_node("%WheelTabs")
-	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "TRICKSTER", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST"],
+	ok(tabs.get_children().map(func(x: Button): return x.text) == ["CLASS · ROGUE", "CALLING · FREEDOM", "TRICKSTER", "SPECIES · HUMAN", "GENERAL", "GENERAL · SPECIALIST", "GENERAL · JOURNEYMAN"],
 			"browser tabs: a tab per part of its tree (the Illusion school shut till picked), its species', then the general trees a Rogue gets")
 	ok(h.skills.view() == g and g.skills().size() == 5 and load("res://Skills/wary.tres") in g.skills() and load("res://Skills/stamina.tres") in g.skills() and load("res://Skills/jam.tres") in g.skills() and load("res://Skills/backstab.tres") in g.skills() and load("res://Skills/chaser.tres") in g.skills(), "its own: Wary, Stamina, Jam, Backstab and Chaser, growing from the bottom (Strike is on the General tab)")
 	(tabs.get_child(1) as Button).pressed.emit()
@@ -1419,8 +1419,8 @@ func test_every_tab_draws_its_skills() -> void:
 					seen[s] = true
 			var shown: Array = h.skills.view().skills()
 			ok(shown.size() == seen.size() and shown.all(func(s: Skill): return seen.has(s)), "%s / %s: %d skills drawn, %d laid out" % [f, t.name, shown.size(), seen.size()])
-			if t.general() and t.category in [&"magical", &"specialist"]:  # Student's, included in both (SkillRoot.includes)
-				ok(load("res://Skills/discipline.tres") in shown, "%s / %s: a tree's included skills are drawn too" % [f, t.name])
+			if t.general() and t.grant == &"student":
+				ok(load("res://Skills/discipline.tres") in shown and load("res://Skills/cram.tres") in shown, "%s / %s: Student's skills are drawn" % [f, t.name])
 			n += 1
 		h.free()
 	ok(n >= 13, "tabs swept (%d)" % n)

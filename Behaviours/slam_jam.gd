@@ -31,7 +31,7 @@ func foresee(c: Cast) -> Dictionary:
 	if not c.foe:
 		return {}
 	var p := Battle.odds(c.caster, &"strength", c.target, &"constitution", contest(c))
-	return {notes = ["Interrupts it, Jammed (%d%%)" % roundi(p * 100.0)] as Array[String], riders = p}
+	return {notes = ["Interrupts it, Jammed (%d%%)" % roundi(p * 100.0)] as Array[String], riders = 0.0, afflicts = p * JAMMED_TURN}
 
 
 func rebate(c: Cast) -> Vector2:  # on a hit only: a refund after paying

@@ -87,6 +87,14 @@ func test_burnout() -> void:
 	u.exhaustion.uses.clear()
 	u.exhaustion.used(hex)
 	ok(same(u.exhaustion.rate(sola), 1.0 + 0.1 * 0.5 * 1.25) and u.price(sola, mana) == 2, "below the bite, mild for it too")
+	# ?195: Burnout is Exhaustion's one count, not a second meter: relief (a turn's end, Deathlust) lowers both alike, slowly (1 use a turn)
+	u.exhaustion.uses.clear()
+	u.exhaustion.used(sola)
+	u.exhaustion.used(sola)
+	u.exhaustion.used(hex)
+	u.exhaustion.recover(false, 0)
+	ok(same(u.exhaustion.uses[sola], 1.0) and not u.exhaustion.uses.has(hex),
+			"one count for int and non-int skills: a turn's end takes 1 use off each, a slow decay")
 
 
 func test_costs() -> void:

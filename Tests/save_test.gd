@@ -18,6 +18,7 @@ func _game() -> void:
 	Game.xp = 7
 	Game.hearts = 2
 	Game.equipped = [strike, null, load("res://Skills/everyman.tres")]
+	Game.lapses = {leaned = ["meander"]}
 
 
 func test_round_trip() -> void:
@@ -32,7 +33,9 @@ func test_round_trip() -> void:
 	Game.xp = 0
 	Game.hearts = 0
 	Game.equipped = []
+	Game.lapses = {}
 	ok(Save.load_game(), "read")
+	ok(Game.lapses == {leaned = ["meander"]}, "what leans comes back (an older save has none: empty)")
 	ok(Game.hero.name == "Wren" and Game.hero.faction == lancin and Game.hero.role.name == "Adventurer", "the hero, by its side and class files")
 	ok(Game.level == 4 and Game.xp == 7 and Game.hearts == 2, "level, XP and hearts")
 	ok(Game.outfit.size() == 2 and Game.outfit.armor.name == worn.name and Game.outfit.armor.enchant == 1, "the outfit, an item copy's enchant kept")
