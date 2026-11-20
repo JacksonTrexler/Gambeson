@@ -66,6 +66,7 @@ const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill 
 const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
 const CC := 0.5  # the share of a foe's next turn a cc takes when what carries it can't say (no foresee() afflicts: Brainfog, Interdict, a grip's drowning): a guess (_afflicting())
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
+const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -430,13 +431,19 @@ static func _afflicting(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, more: Di
 
 
 # What a turn of t's is worth to it against u: the average blow of the best hostile skill it reads to have (r.skills,
-# at its hit chance on u, as it would be cast), BLOW if it can't make out any; never more than u has left.
+# at its hit chance on u, as it would be cast); else, from its stats if they show (the best attack stat's modifier
+# added to BLOW), else BLOW alone. Never more than u has left.
 static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
 	var best := -1.0
 	for s in r.skills:
 		if s.hostile and s.attacks():
 			best = maxf(best, float(Battle.damage_range(t, s, u, b).get("avg", 0.0)) * Battle.hit_chance(t, s, u, b))
-	return minf(BLOW if best < 0.0 else best, float(u.hp))
+	if best < 0.0:
+		best = BLOW
+		for k in ATTACK_STATS:
+			if r.stats.has(k):
+				best = maxf(best, BLOW + floorf((float(r.stats[k]) - 10.0) / 2.0))
+	return minf(best, float(u.hp))
 
 
 # How much more or less a use of s is expected to deal than score() reckons by its first roll's odds (hit chance x

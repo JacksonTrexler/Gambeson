@@ -406,14 +406,20 @@ func _rider(n: int) -> void:
 	await process_frame
 
 
-# v(1) with Strike and Stun (II) beside v(2) against v(3), a hard hitter (strength 40, four times the HP), and v(4), a weak foe
-# (strength 1, half the HP). Stuns and Strikes used, v(1)'s turns with no skill used (a price must not turn a unit
+# v(1) with Strike and Stun (II) beside v(2) against v(4), a hard hitter (strength 40, four times the HP), and v(3), a weak foe
+# (strength 1, half the HP), v(1) reading them at recon 0 (nothing), 1 (stats) and 3 (skills). Stuns and Strikes used, v(1)'s turns with no skill used (a price must not turn a unit
 # passive), Lancin's HP left, rounds to win.
 func _cc(n: int) -> void:
+	for recon in [0, 1, 3]:  # nothing read of the foes, their stats, their skills
+		await _cc_at(n, recon)
+
+
+func _cc_at(n: int, recon: int) -> void:
 	var tally := {}
 	var idle := 0
 	var hard := 0
 	var weak := 0
+	var first := 0
 	var turns := 0
 	var rounds := 0.0
 	var wins := 0
@@ -421,16 +427,17 @@ func _cc(n: int) -> void:
 	for seed in n:
 		var t := await _fresh(seed)
 		t.v(1).strength = 12
+		t.v(1).afflict(t.effect("recon", recon), 99)
 		t.v(1).learned.append(t.slot(t.sk("stun"), 2))
 		t.roomy(t.v(1))
 		t.v(1).refresh()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(3, 4), t.v(3): Vector2i(5, 3), t.v(4): Vector2i(5, 4)})
-		t.v(3).strength = 40
-		t.v(3).max_hp *= 4
-		t.v(3).hp = t.v(3).max_hp
-		t.v(4).strength = 1
-		t.v(4).max_hp *= 2
-		t.v(4).hp = t.v(4).max_hp / 2
+		t.v(4).strength = 40  # the hard hitter comes second in the list: a tie goes to the weak foe
+		t.v(4).max_hp *= 4
+		t.v(4).hp = t.v(4).max_hp
+		t.v(3).strength = 1
+		t.v(3).max_hp *= 2
+		t.v(3).hp = t.v(3).max_hp / 2
 		var done := ROUNDS
 		for r in ROUNDS:
 			if t.v(1).is_alive():
@@ -451,10 +458,12 @@ func _cc(n: int) -> void:
 		hp += t.v(1).hp + t.v(2).hp
 		for s in ["Strike", "Stun"]:
 			tally[s] = tally.get(s, 0) + t.uses("Villager1", s)
-		hard += t.count("uses Stun on Villager3")
-		weak += t.count("uses Stun on Villager4")
+		hard += t.count("uses Stun on Villager4")
+		weak += t.count("uses Stun on Villager3")
+		var opening := t.logs.filter(func(l: String): return "uses Stun on" in l)
+		first += 1 if not opening.is_empty() and "on Villager4" in opening[0] else 0
 		_drop(t)
-	_say("cc", {strike = float(tally.Strike) / n, stun = float(tally.Stun) / n, stun_hard_hitter = float(hard) / n, stun_weak_foe = float(weak) / n, idle_turns = float(idle) / n, of_turns = float(turns) / n, rounds = rounds / n, won = wins, lancin_hp = hp / n})
+	_say("cc-recon%d" % recon, {strike = float(tally.Strike) / n, stun = float(tally.Stun) / n, stun_hard_hitter = float(hard) / n, stun_weak_foe = float(weak) / n, first_stun_on_hard_hitter = float(first) / n, idle_turns = float(idle) / n, of_turns = float(turns) / n, rounds = rounds / n, won = wins, lancin_hp = hp / n})
 	await process_frame
 
 
