@@ -25,6 +25,7 @@ const RING := preload("res://Items/red_spinel_ring.tres")  # every player starts
 @onready var play: Button = %Play
 @onready var wipe: Button = %Delete  # New game: clears the save, after a second press
 @onready var resume: Button = %Continue  # the saved starter, as it was left (Save)
+@onready var party: Button = %Party  # who goes with it (PartyPanel)
 
 
 func _ready() -> void:
@@ -41,6 +42,7 @@ func _ready() -> void:
 	play.pressed.connect(_play)
 	resume.pressed.connect(_continue)
 	wipe.pressed.connect(_delete)
+	party.pressed.connect(open_party)
 	Save.load_once()
 	_show_save()
 	side.pick(default_side)
@@ -77,6 +79,8 @@ func _show_save() -> void:
 	wipe.text = "New game: delete the save"
 	wipe.visible = not Game.hero.is_empty() or FileAccess.file_exists(Save.PATH)
 	resume.visible = not Game.hero.is_empty()
+	party.visible = Game.roster.size() > 1
+	party.text = "Party: %d of %d" % [Game.party_now().size(), Game.leader_party_size()]
 	if resume.visible:
 		resume.text = "Continue: %s, %s, level %d" % [Game.hero.name, Game.hero.role.name, Game.level]
 
@@ -110,10 +114,32 @@ func _play() -> void:
 	Game.level = clampi(roundi(level.value), 1, Unit.MAX_LEVEL)  # a new starter starts over, at the level picked
 	Game.xp = 0
 	Game.equipped = []  # its class's default bar
+	Game.roster.assign([recruit(side.value, role.value, chosen_name(), Game.outfit)])  # it leads; one of each other class may go with it, as new as it
+	for r in roles:
+		if r != role.value:
+			Game.roster.append(recruit(side.value, r, r.name, r.outfit()))
+	Game.party.assign(range(Game.roster.size()))
+	Game.party = Game.party_now()  # the first that fit
 	if not Game.stash.any(func(it: Item): return it == RING):
 		Game.stash.append(RING)  # the player's own trinket: a life once a battle
 	Save.save()
 	_enter()
+
+
+# A new roster entry (Unit.to_dict()'s shape): a unit of class r at the level picked, in what it's given.
+func recruit(f: Faction, r: Role, nick: String, worn: Dictionary) -> Dictionary:
+	var out := {}
+	for slot in worn:
+		out[slot] = Save.item_out(worn[slot])
+	return {faction = f.resource_path, role = r.resource_path, name = nick, level = Game.level, outfit = out}
+
+
+# The Party screen over this one; the button's count follows it.
+func open_party() -> PartyPanel:
+	var p := PartyPanel.new()
+	p.closed.connect(_show_save)
+	add_child(p)
+	return p
 
 
 func _enter() -> void:

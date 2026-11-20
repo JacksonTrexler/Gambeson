@@ -9,8 +9,10 @@ class_name Save
 # Items go by their file (res://Items/<id>.tres) with the rank and enchant they have now: the same .tres gets
 # a copy only if either differs (Unit.enchant() copies an item). Item-lent skills come back with their items.
 # Tests point PATH at a file of their own (Tests/run.gd), as Prefs.SAVE.
+# Version 2 adds the roster (Game.roster: each persistent unit's Unit.to_dict(), learned skills and all) and the party
+# picked from it (Game.party); a version 1 file still loads, its hero becoming the roster's one entry (migrate()).
 
-const VERSION := 1
+const VERSION := 2
 const ITEMS := "res://Items/"
 
 # A script run with -s (a screenshot driver, or the test runner, which sets its own path too) is not the game: it keeps to a file of its own. (No main loop yet while a -s script loads.)
@@ -21,6 +23,7 @@ static var _ids := {}  # item name -> its file, for an item copy that no longer 
 
 # Game's progress, as a dictionary ready for JSON.
 static func pack() -> Dictionary:
+	Game.keep()  # what the units in the field have now
 	var out := {version = VERSION, hearts = Game.hearts, level = Game.level, xp = Game.xp}
 	if Game.hero:
 		out.hero = {faction = Game.hero.faction.resource_path, role = Game.hero.role.resource_path, name = Game.hero.name}
@@ -39,6 +42,8 @@ static func pack() -> Dictionary:
 	out.equipped = _equipped_out()
 	if not Game.lapses.is_empty():
 		out.lapses = Game.lapses
+	out.roster = Game.roster
+	out.party = Game.party_now()
 	return out
 
 
@@ -86,6 +91,28 @@ static func unpack(d: Dictionary) -> void:
 	_equipped_in(eq if eq is Array else [])
 	var lp = d.get("lapses")
 	Game.lapses = lp if lp is Dictionary else {}  # a file from before it: nothing leans
+	Game.roster = []
+	var ro = d.get("roster")
+	for e in (ro if ro is Array else []):
+		if e is Dictionary and _is_path(e.get("role")) and ResourceLoader.exists(e.role) and load(e.role) is Role:
+			Game.roster.append(e)
+		else:
+			push_warning("Save: a roster entry (%s) has no class to come back as; it is left out" % str(e).left(80))
+	if Game.roster.is_empty() and Game.hero:
+		migrate(d)
+	Game.party.assign((d.get("party") if d.get("party") is Array else []).map(func(i): return int(i)))
+	Game.party = Game.party_now()
+
+
+# A version 1 file (no roster): its hero, with its level, XP, hearts, outfit, bar and lapses, as the roster's one entry.
+static func migrate(d: Dictionary) -> void:
+	var h := {faction = Game.hero.faction.resource_path, role = Game.hero.role.resource_path, name = Game.hero.name}
+	for k in ["level", "xp", "hearts", "outfit", "lapses"]:
+		if d.has(k):
+			h[k] = d[k]
+	if d.get("equipped") is Array:
+		h.bar = d.equipped
+	Game.roster.assign([h])
 
 
 static func _is_path(p: Variant) -> bool:
@@ -157,7 +184,7 @@ static func load_game() -> bool:
 	var text := FileAccess.get_file_as_string(PATH)
 	var d = JSON.parse_string(text)
 	var v = d.get("version") if d is Dictionary else null
-	if not (v is float or v is int) or int(v) != VERSION:
+	if not (v is float or v is int) or int(v) not in [1, VERSION]:  # 1: migrate()
 		push_warning("Save: %s is not a version %d save; ignored, kept as .bad" % [PATH, VERSION])
 		DirAccess.rename_absolute(ProjectSettings.globalize_path(PATH), ProjectSettings.globalize_path(PATH + ".bad"))
 		return false

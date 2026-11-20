@@ -107,6 +107,13 @@ visible = false
 layout_mode = 2
 text = "Continue"
 
+[node name="Party" type="Button" parent="Center/Form"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Who goes into battle with your starter"
+text = "Party"
+
 [node name="Delete" type="Button" parent="Center/Form"]
 unique_name_in_owner = true
 visible = false

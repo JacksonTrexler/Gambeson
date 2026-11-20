@@ -403,6 +403,8 @@ func _ready() -> void:
 			u.free()
 			continue
 		_listen(u)
+	if player and not Game.roster.is_empty():
+		_field_party()
 	for u: Unit in units.values():
 		for t: Unit in units.values():
 			if u.faction and t.faction and not Faction.friends(u.faction, t.faction) and Perception.cover(self, t) == 0:
@@ -552,9 +554,11 @@ func move(u: Unit, c: Vector2i) -> bool:
 # (Game.outfit), with the hearts it's been given (Game.hearts).
 func starter(s: Dictionary) -> Unit:
 	var u := from_role(s.faction, s.role, s.name)
-	u.level = clampi(Game.level, 1, Unit.MAX_LEVEL)  # its levels and XP from earlier battles; a point a level gained to learn its skills again
+	if not Game.roster.is_empty():
+		u.from_dict(Game.roster[0])  # the leader's roster entry: what it learned, its ranks, trees and picks
+	u.level = clampi(Game.level, 1, Unit.MAX_LEVEL)  # its levels and XP from earlier battles
 	u.xp = Game.xp
-	u.skill_points = u.level - 1
+	u.skill_points = maxi(u.level - 1 - u.purchases.reduce(func(n: int, p: Array): return n + p[1], 0), 0)  # a point a level, less what it spent
 	for slot in Game.outfit:  # what it had on last battle
 		u.set(slot, Game.outfit[slot])
 	refill(u)
@@ -565,6 +569,31 @@ func starter(s: Dictionary) -> Unit:
 	assert(s.faction in spawns, "no spawn for %s" % s.faction.name)
 	u.cell = spawns[s.faction]
 	return u
+
+
+# The rest of the Party (Game.party_now()) beside the player's starter: each roster entry as a unit of its class on the
+# player's side (Unit.from_dict()), on the free tiles nearest it, in its party (Command picks up who follows the
+# leader). Each one fielded, and the starter, is read back into the roster as the save is written or the battle
+# leaves the tree (Game.keep()).
+func _field_party() -> void:
+	Game.fielded = {0: player}
+	for i in Game.party_now():
+		var d: Dictionary = Game.roster[i]
+		if i == 0 or not ResourceLoader.exists(d.get("role", "")):
+			continue
+		var spot: Variant = free_near(player.cell)
+		if spot == null:
+			break
+		var u := from_role(player.faction, load(d.role), str(d.get("name", "")))
+		u.from_dict(d)
+		refill(u)
+		u.follows = player
+		$Units.add_child(u, true)
+		move(u, spot)
+		_listen(u)
+		Game.fielded[i] = u
+	if not tree_exiting.is_connected(Game.keep):
+		tree_exiting.connect(Game.keep)
 
 
 # A level 1 unit of a class: its stats and reserves, on side f.

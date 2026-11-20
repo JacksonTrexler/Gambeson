@@ -28,6 +28,9 @@ var locked: Dictionary[Unit, bool] = {}  # barred from more commands this factio
 func _init(b: Battle, l: Unit) -> void:
 	battle = b
 	leader = l
+	for u in b.members(l.faction) if l.faction else []:
+		if u.follows == l and u != l:
+			party.append(u)  # in its party from the start (the Party a battle fields: Battle._field_party()), whatever party_size() says
 
 
 # Tiles between two cells: the straight-line distance, rounded (a diagonal step is 1 tile).

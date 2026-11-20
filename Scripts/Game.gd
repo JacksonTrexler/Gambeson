@@ -13,6 +13,43 @@ static var hearts := 0  # extra lives the starter has been given for good (a Hea
 static var lapses := {}  # the starter's Unit.lapses_out() (leaned, waived), kept with the save so what it learned on a lent skill still lapses
 static var equipped: Array = []  # the player's starter's hotbar, skill by slot (null empty): it keeps what it equipped from battle to battle (Unit.set_equipped())
 static var stash: Array[Item] = []  # items the player's side has won (Battle.spoils), to equip or use between and in battles
+# The player's persistent units, each a Unit.to_dict(): the hero (the leader) first, then those it can bring along
+# (Entry: one of each other starting class). Kept between battles and in the save; the fields above (level, xp, outfit,
+# hearts, equipped, lapses) are the leader's own, kept live as before, and win over its entry where both say.
+static var roster: Array[Dictionary] = []
+static var party: Array[int] = []  # the roster entries a battle fields (the Party screen): 0, the leader, always among them; at most party_size()
+static var fielded := {}  # roster index -> the Unit standing for it in the battle now (Battle._field()): keep() reads them back
+
+
+# How many the Party holds, the leader among them: its level / 4, plus its base charisma mod if positive, at least 2.
+static func party_size(lvl: int, charisma: int) -> int:
+	return maxi(lvl / 4 + maxi(floori((charisma - 10) / 2.0), 0), 2)
+
+
+# The Party's size for the leader: Game.level, and the charisma its class gives (a unit's base score: nothing
+# raises it in play but effects, which don't count here).
+static func leader_party_size() -> int:
+	var r = hero.get("role")
+	return party_size(level, r.stats.get(&"charisma", 10) if r else 10)
+
+
+# The party as it stands: valid roster indices, the leader first, cut to the size it may have.
+static func party_now() -> Array[int]:
+	var out: Array[int] = []
+	if not roster.is_empty():
+		out.append(0)
+	for i in party:
+		if i > 0 and i < roster.size() and i not in out and out.size() < leader_party_size():
+			out.append(i)
+	return out
+
+
+# Each fielded unit's state back into its roster entry (Save.pack(), and as the battle leaves the tree).
+static func keep() -> void:
+	for i in fielded:
+		var u = fielded[i]
+		if is_instance_valid(u) and i < roster.size():
+			roster[i] = u.to_dict()
 
 
 # Back to a new game's start (Save.erase()).
@@ -26,3 +63,8 @@ static func reset() -> void:
 	xp = 0
 	hearts = 0
 	stash = []
+	lapses = {}
+	equipped = []
+	roster = []
+	party = []
+	fielded = {}
