@@ -180,11 +180,19 @@ func ours(u: Unit) -> bool:
 # Close enough to the leader to hear its orders (whoever's turn it is): an ally, or a traitor of
 # another side posing as one in its party (Battle.posing()).
 func in_range(u: Unit) -> bool:
-	if u == leader:
+	return hears(leader, u, reach_for(u))
+
+
+# Whether l's orders carry to u: l itself, or an ally (or a traitor posing in its party) within its reach, the
+# party's PARTY_REACH times as far, or within `reach` where a stand-in mod carries further (reach_for()). The one
+# reading of "in command range", for what rewards it without a Command (Symphony).
+static func hears(l: Unit, u: Unit, reach := 0) -> bool:
+	if u == l:
 		return true
-	if not leader.is_alive() or (u.faction != leader.faction and u.follows != leader):
+	if not l.is_alive() or (u.faction != l.faction and u.follows != l):
 		return false
-	return tiles(leader.cell, u.cell) <= (party_reach() if u in party else float(reach())) or tiles(leader.cell, u.cell) <= reach_for(u)
+	var d := tiles(l.cell, u.cell)
+	return d <= (party_reach_of(l) if u.follows == l else float(reach_of(l))) or d <= reach
 
 
 # How far the leader's orders carry to u by the mod it commands u by (cha_for()): a stand-in mod

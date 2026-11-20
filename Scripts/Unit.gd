@@ -1975,7 +1975,7 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 			continue
 		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
 			continue
-		if pair[1] < e.min_rank or e.unless_on.any(func(x): return x in ground):
+		if pair[1] < e.min_rank or (e.rested and rested_turns <= 0) or e.unless_on.any(func(x): return x in ground):
 			continue
 		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1) * pair[2]
 		if e.per_mod:

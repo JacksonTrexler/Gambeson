@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "strategy"
+per_rank = true
+rested = true
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "tactics"
+per_rank = true
+rested = true
+
+[sub_resource type="Resource" id="Effect_3"]
+script = ExtResource("2_effect")
+stat = "command"
+per_rank = true
+rested = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Conductor"
+glyph = "Co"
+passive = true
+tags = Array[StringName]([&"specialist", &"cha"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2"), SubResource("Effect_3")])

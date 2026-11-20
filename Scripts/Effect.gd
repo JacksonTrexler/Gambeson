@@ -204,6 +204,7 @@ extends Resource
 @export var per_rank := false  # amount x the skill's rank (Hex III: luck -3)
 @export var min_rank := 0  # only from this rank of the skill up (Wary V: traps hit enemies harder)
 @export var above_hp := 0.0  # only while hp is above this fraction of max (Stoneskin: 0.85)
+@export var rested := false  # only while its holder rested through its last turn (Unit.rested_turns: Conductor's command limits and range)
 @export var unless_on: Array[StringName] = []  # off while the unit stands on ground with these tags (Oceanic: water, wet)
 @export var name := ""  # a condition it's part of ("Haste": ap and dex_ap), shown as one; empty: its stat
 @export var turns := 0  # put on a unit: lasts this many of its turns (0: as the skill or ground says)
@@ -463,6 +464,8 @@ func value(rank := 1) -> String:
 		text += ", from rank %s" % Skill.roman(min_rank)
 	if not unless_on.is_empty():
 		text += ", except on %s" % " or ".join(unless_on)
+	if rested:
+		text += ", if it rested last turn"
 	if wound:
 		text += "; a wound, healed away"
 	if ease > 1:

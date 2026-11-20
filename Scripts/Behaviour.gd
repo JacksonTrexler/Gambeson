@@ -443,6 +443,8 @@ class Volley:
 	var defense := 0
 	var edge := 0
 	var missed := false
+	var first := false  # the first of its side to use a skill this turn (Battle.first_to_act(): First Chair)
+	var impact := 0  # impact its passives add to every effect of the use, damage and healing (opening(): Symphony's First Chair)
 	var bag := {}  # scratch its passives share across the use (Heavy Strike's pools, Chaser's once)
 	var chain := {}  # shared by the use and the uses it sets off (Chaser's chases): its friction (Battle.loops()), Chaser's count
 
@@ -524,6 +526,18 @@ func command_mod(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> int:
 
 # The holder, leading c, has just given u an order (Command.order(); Telepathy binds to it for the turn).
 func ordered(_c: Command, _holder: Unit, _rank: int, _u: Unit) -> void:
+	pass
+
+
+# A teammate of the holder (itself too) opens a use of a skill (v: the Volley: v.caster, v.skill, v.first), before
+# it rolls: a passive may add impact to the use (v.impact: Symphony's First Chair). Only the outermost use of a unit.
+func opening(_b: Battle, _holder: Unit, _rank: int, _v: Volley) -> void:
+	pass
+
+
+# u, a teammate of the holder (itself too), has just passed a check it rolled: a contest or save it won, an attack
+# that landed (Battle.check(), roll_attack()). Symphony builds a bonus on it.
+func passed(_b: Battle, _holder: Unit, _rank: int, _u: Unit) -> void:
 	pass
 
 
