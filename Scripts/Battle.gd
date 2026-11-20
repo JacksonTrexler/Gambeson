@@ -1104,6 +1104,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var put: Array[Unit.Applied] = []
 	if not (skill.dual and foe):
 		for e in skill.effects + (skill.grants.effects if skill.grants else ([] as Array[Effect])):
+			if e.min_rank > (ri if e.per_rank else r):  # a tier it hasn't the rank for isn't put on (Send Off's ward)
+				continue
 			var n := e.turns if e.turns else skill.lasts(r, caster)
 			n += int(req[3]) if n > 0 else 0  # a contingency's + turns (Requirement.turns)
 			var a := target.afflict(e, n + (1 if n and target.faction == turn else 0), ri if e.per_rank else r)
@@ -4778,8 +4780,8 @@ func interrupt(u: Unit) -> Array[StringName]:
 # u, channeling a skill that senses (Clairvoyance), senses every foe its side can't see (none of it has
 # it located, pings aside) within `reach` tiles of where it stands, walls or not. Each is pinged at its
 # tile - its side then knows where it is and nothing more (Perception.unit(), HUD.view()) - and u grows
-# a stack more suspicious of that tile. The channel's pings before are dropped.
-func ping(u: Unit, reach: int) -> void:
+# `stacks` more suspicious of that tile (Clairvoyance: rank impact). The channel's pings before are dropped.
+func ping(u: Unit, reach: int, stacks := 1) -> void:
 	var ch := u.channel
 	ch.pings.clear()
 	if u not in _seers:
@@ -4792,7 +4794,7 @@ func ping(u: Unit, reach: int) -> void:
 			ch.pings[t] = t.cell
 	_blind_to_pings = false
 	for t in ch.pings:
-		suspect(u, ch.pings[t])
+		suspect(u, ch.pings[t], stacks)
 
 
 # Where side f has sensed foes by Clairvoyance: foe -> the tile it was pinged at, over every channel of

@@ -35,7 +35,7 @@ func test_move() -> void:
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # x1.5: rank II reads as 3
 	var before := v(1).move_left()
 	ok(b.cast(v(1), move, v(1)) and is_equal_approx(v(1).move_left() - before, 3.0), "Density: Move II gains 3 tiles (%s)" % (v(1).move_left() - before))
-	ok(Modifiers.eligible(&"rho_down", move) and not Modifiers.eligible(&"rho_down", load("res://Skills/clairvoyance.tres")), "Diluted fits it (rank impact to tamp, a slot to defend); not Clairvoyance, with no rank impact")
+	ok(Modifiers.eligible(&"rho_down", move) and not Modifiers.eligible(&"rho_down", load("res://Skills/powerful.tres")), "Diluted fits it (rank impact to tamp, a slot to defend); not Powerful, with no rank impact")
 
 
 # Heal's caster mod is stat impact.
@@ -59,9 +59,65 @@ func test_clairvoyance() -> void:
 	v(1).trinket = emblem(&"sigma_up", &"insignia", 1)  # stat range x1.5
 	ok(b.cast(v(1), cv, v(1)) and cv.behaviours[0].reach(v(1)) == roundi(4 * 1.5 + 1), "Dispersed: wisdom x1.5 + rank (%d)" % cv.behaviours[0].reach(v(1)))
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)
-	ok(not Modifiers.eligible(&"rho_up", cv) and cv.behaviours[0].reach(v(1)) == 5, "Density doesn't fit it (no rank impact): wisdom + rank, unmodified")
+	ok(Modifiers.eligible(&"rho_up", cv) and cv.behaviours[0].reach(v(1)) == 3, "Density fits it now (rank impact: stacks) and cuts its reach: (wisdom + rank) / 1.75 (%d)" % cv.behaviours[0].reach(v(1)))
 	v(1).trinket = emblem(&"rho_down", &"insignia", 1)
-	ok(not Modifiers.eligible(&"rho_down", cv) and cv.behaviours[0].reach(v(1)) == 5, "Diluted doesn't fit it either (nothing to tamp: docs/plans/w4-density.md): wisdom + rank, unmodified")
+	ok(Modifiers.eligible(&"rho_down", cv), "so does Diluted")
+
+
+# Clairvoyance, Send Off and Stoneskin gained a rank-impact term (w5-density), so Density and Diluted fit them; one table:
+# what rank adds, at rank I as it was, at rank II more, and a Density insignia reads I as II.
+func test_density_tiers() -> void:
+	var cv := sk("clairvoyance")
+	var off := sk("send_off")
+	var skin := sk("stoneskin")
+	for s in [cv, off, skin]:
+		ok(Modifiers.eligible(&"rho_up", s) and Modifiers.eligible(&"rho_down", s), "%s: Density and Diluted fit it (%s)" % [s.name, SkillTerms.of(s).density_why()])
+	# Clairvoyance: the stacks of suspicion each ping adds, its learned rank's impact (1 at I, 2 under Density).
+	var stacks := func(dense: bool) -> int:
+		stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(3, 2)})
+		v(1).learned.clear()
+		v(1).learned.append(slot(cv, 1))
+		v(1).wisdom = 3
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
+		v(3).afflict(effect("concealment", 9), 99)
+		v(1).suspicion.clear()
+		b.end_channel(v(1))
+		v(1).energy = v(1).max_energy
+		v(1).refresh()
+		b.cast(v(1), cv, v(1))
+		return v(1).suspects(Vector2i(3, 2))
+	var st: Array[int] = [stacks.call(false), stacks.call(true)]
+	ok(st == [1, 2], "Clairvoyance: a stack a ping at I, 2 under Density (%s)" % [st])
+	v(1).trinket = null
+	# Stoneskin: 40% at I as it was, 5% a rank more from II (tiers: min_rank).
+	var mit := func(r: int, dense: bool) -> float:
+		v(1).learned.clear()
+		v(1).learned.append(slot(skin, r))
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
+		v(1).hp = v(1).max_hp
+		v(1).refresh()
+		return v(1).mitigation([])
+	var m: Array[float] = [mit.call(1, false), mit.call(2, false), mit.call(3, false), mit.call(1, true)]
+	ok(is_equal_approx(m[0], 0.4) and is_equal_approx(m[1], 0.5) and is_equal_approx(m[2], 0.55) and is_equal_approx(m[3], m[1]), "Stoneskin: 40%% at I, 50%% at II, 55%% at III, Density I reads as II (%s)" % [m])
+	v(1).trinket = null
+	# Send Off: a ward on whoever it sends, from rank II (a tier), for rank turns (rank impact).
+	var ward := func(r: int, dense: bool) -> Array:
+		stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
+		v(1).learned.clear()
+		v(1).learned.append(slot(off, r))
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
+		v(1).charisma = 16
+		v(1).energy = v(1).max_energy
+		v(1).refresh()
+		v(2).timed.clear()
+		v(2).refresh()
+		var sent := b.cast(v(1), off, v(2))
+		return [sent, v(2).mitigation([]), v(2).timed.values()[0].turns if not v(2).timed.is_empty() else 0]
+	var w1: Array = ward.call(1, false)
+	var w2: Array = ward.call(2, false)
+	var w3: Array = ward.call(1, true)
+	ok(w1[0] and w1[1] == 0.0 and w2[0] and is_equal_approx(w2[1], 0.1) and w2[2] >= 2 and w3[0] and is_equal_approx(w3[1], 0.1), "Send Off: no ward at I, 10%% for turns at II, Density I reads as II (%s %s %s)" % [w1, w2, w3])
+	v(1).trinket = null
 
 
 # A passive's hook (Word to the Wise: its wis mod is stat impact) and Unit-side reads (a reserve, Mana's tiers).
@@ -289,7 +345,7 @@ func test_density() -> void:
 	slotted.tags = look.tags.filter(func(x): return x != &"trait")
 	ok(not Modifiers.eligible(&"rho_up", look) and not Modifiers.eligible(&"rho_down", look) and Modifiers.eligible(&"rho_up", slotted) and Modifiers.eligible(&"rho_down", slotted),
 			"a trait can't trade (%s); the same skill slotted can" % SkillTerms.of(look).density_why())
-	ok(not Modifiers.eligible(&"rho_down", sk("clairvoyance")), "no rank impact, nothing for Diluted to tamp: ineligible both ways")
+	ok(not Modifiers.eligible(&"rho_down", sk("powerful")), "no rank impact, nothing for Diluted to tamp: ineligible both ways")
 
 
 # Balance knobs (docs/plans/w4-knobs.md), one table: a skill's own coefficient on a channel, the β tags (every channel's
@@ -350,7 +406,7 @@ func test_knobs() -> void:
 	ok("β+" in gank.describe(1, v(1)) and "β+" not in gank.describe(1, v(3)) and "β+" not in gank.describe(1), "Gank's tooltip carries its β tag for very high int alone (%s)" % gank.describe(1, v(1)).right(60))
 	ok("d+" in spike.describe(1, v(1)) and "d+" not in spike.describe(1, v(3)), "Spike's carries d+")
 	# What the check calls a knob that does nothing (skill.py check).
-	var bad := sk("clairvoyance").duplicate()  # no rank impact: nothing for d or an impact coefficient to tune
+	var bad := sk("powerful").duplicate()  # no rank impact: nothing for d or an impact coefficient to tune
 	bad.scaling = bad.scaling.duplicate()  # a duplicate shares its dictionary and tags
 	bad.tags = bad.tags.duplicate()
 	bad.scaling.assign({&"impact": 2.0, &"range": 1.0, &"made_up": 2.0})

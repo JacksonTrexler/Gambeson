@@ -3,12 +3,20 @@
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
 [ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="b_behaviour"]
 [ext_resource type="Script" path="res://Behaviours/displace.gd" id="b_displace"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="b_effect"]
 
 [sub_resource type="Resource" id="Behaviour_displace"]
 script = ExtResource("b_displace")
 teleport = true
 foes_only = false
 stat = &"charisma"
+
+[sub_resource type="Resource" id="Effect_ward"]
+script = ExtResource("b_effect")
+stat = "mitigate"
+amount = 0.05
+per_rank = true
+min_rank = 2
 
 [resource]
 script = ExtResource("1_skill")
@@ -18,6 +26,7 @@ ap = 3.0
 cost = 3
 radius = 1.0
 either = true
+turns_per_rank = 1
+effects = Array[ExtResource("b_effect")]([SubResource("Effect_ward")])
 lore = "A kiss on the brow, and they're elsewhere: out of harm's way, or out of yours."
 behaviours = Array[ExtResource("b_behaviour")]([SubResource("Behaviour_displace")])
-no_density = "rank buys only reach: Density would cut all it boosts, Diluted give reach for nothing"
