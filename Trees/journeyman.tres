@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/physical_intelligence_check.tres" id="s_physical_intelligence_check"]
+[ext_resource type="Resource" path="res://Skills/muscle_memory.tres" id="s_muscle_memory"]
+
+[sub_resource type="Resource" id="Branch_physical_intelligence_check"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_physical_intelligence_check")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_muscle_memory"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_muscle_memory")
+tier = 2
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Journeyman"
+tag = &""
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_physical_intelligence_check"), SubResource("Branch_muscle_memory")])

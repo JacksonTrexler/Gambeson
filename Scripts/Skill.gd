@@ -191,7 +191,7 @@ static func _find_kinds() -> void:
 				note.call(s, k)
 			for r in t.roots:
 				for s in r.own_skills() if r else []:  # not what it includes: those are kin of their own tree (Student)
-					note.call(s, k)
+					note.call(s, r.tag if t.grant else k)  # a granted tree's skills stay their root's kind (Student: specialist)
 		elif t and t.has_method(&"branch"):  # a class root shared by classes (SkillRoot)
 			for s in t.own_skills():
 				note.call(s, t.tag)

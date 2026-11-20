@@ -90,3 +90,44 @@ func test_last_roll() -> void:
 		ok(vo.dealt == want and vo.missed != r.hit, "12 held + 2 + 2: %d as rolled (%d, %s)" % [want, vo.dealt, r.d20])
 		seen[&"crit" if r.crit else (&"glance" if r.glance else (&"hit" if r.hit else &"miss"))] = true
 	ok(seen.size() == 3 and not seen.has(&"glance"), "hits, misses and criticals all seen; no glance at +4 vs 20: 16 hits (%s)" % [seen.keys()])
+
+
+# The AI's forecast counts the pool (Behaviour.forecasting(), AI._use_ratio()): a Strike skill's use deals one blow, as
+# often as its last roll lands, and the forecast agrees with the casts - the pooled use averages what forecast() says
+# (a lone Strike: its roll, then the last at + 1 success + rank), where an unpooled one lands at its hit chance. Another
+# attack is not pooled: its worth is as it was.
+func test_forecast_pool() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var lone: Skill = strike.duplicate()
+	lone.chain = false
+	var plain: Skill = lone.duplicate()
+	plain.tags = [&"physical", &"str", &"martial"] as Array[StringName]
+	v(1).strength = 30
+	v(1).weapon = null
+	roomy(v(1))
+	v(1).learned.append(slot(lone, 1))
+	v(1).learned.append(slot(plain, 1))
+	soak(v(3), 99999)
+	v(3).afflict(effect("defense", 18), 99)  # a roll that can miss
+	v(1).refresh()
+	var read := b.read(v(1), v(3))
+	var avg: float = Battle.damage_range(v(1), lone, v(3), b).avg
+	ok(AI._use_ratio(b, v(1), lone, v(3), read, {avg = avg}) == 1.0, "without Heavy Strike the reckoning is the plain one")
+	v(1).learned.append(slot(heavy_strike, 1))
+	v(1).refresh()
+	var ratio := AI._use_ratio(b, v(1), lone, v(3), read, {avg = avg})
+	var p := Battle.hit_chance(v(1), lone, v(3), b)
+	var o := Battle.attack_odds(v(1), lone, v(3), b, -1, 1, 2)  # the last roll: + 1 success + rank
+	var last := o[0] + o[1] - 0.5 * o[2]  # as often as it lands, a critical double, a glance half
+	ok(is_equal_approx(ratio, last * (avg + 2.0) / avg) and ratio < 1.0, "a Strike's use is one blow behind its last roll: x %.2f (last roll %.2f)" % [ratio, last])
+	ok(AI._use_ratio(b, v(1), plain, v(3), read, {avg = avg}) == 1.0, "an attack that is not a Strike is not pooled")
+	var got := 0.0
+	b.rng.seed = 7
+	var n := 500
+	for i in n:
+		v(3).hp = v(3).max_hp
+		v(1).refresh()
+		b.cast(v(1), lone, v(3))
+		got += v(3).max_hp - v(3).hp
+	var want := p * last * (avg + 2.0)
+	ok(absf(got / n - want) < 0.15 * want, "it deals what the forecast says on average (%.1f; forecast %.1f)" % [got / n, want])

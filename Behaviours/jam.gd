@@ -5,6 +5,7 @@ extends Behaviour
 # instant stun, leaves it Jammed - no reactions (no dodging, guarding or obstructing) - until its next
 # turn is over. Its damage comes off the foe's Focus too, as much as the HP it took (dealt()).
 
+const JAMMED_TURN := 0.25  # the share of a foe's turn losing its reactions takes: what the AI counts (Behaviour.foresee() `afflicts`)
 const JAMMED: Effect = preload("res://Effects/jammed.tres")
 const FOCUS: Reserve = preload("res://Reserves/focus.tres")
 
@@ -18,7 +19,7 @@ func apply(c: Cast) -> void:
 
 # For the AI and the forecast: the interrupt and Jammed it puts on a foe, one rider (Slam Jam: as likely as its contest).
 func foresee(c: Cast) -> Dictionary:
-	return {notes = ["Interrupts it, Jammed"] as Array[String]} if c.foe else {}
+	return {notes = ["Interrupts it, Jammed"] as Array[String], riders = 0.0, afflicts = JAMMED_TURN} if c.foe else {}
 
 
 func dealt(c: Cast, n: int) -> void:

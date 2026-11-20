@@ -33,7 +33,7 @@ extends Resource
 func vigor_per_level() -> int:
 	if vigor > 0:
 		return vigor
-	if general.size() >= 3:
+	if general.filter(func(g: StringName): return g in [&"martial", &"specialist", &"magical"]).size() >= 3:  # a tree's grant key (student, journeyman) isn't a category
 		return 2
 	if &"martial" in general:
 		return 3

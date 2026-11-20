@@ -193,6 +193,30 @@ def check_traits(problems):
                     problems.append("%s: %s is a trait but listed as learned: a unit's trait is innate (python3 Util/unit.py trait <unit> %s)" % (p, f, os.path.basename(f)[:-5]))
 
 
+def check_equipment(problems):
+    """Equipment (the tag: Armor) is what an item lends as part of what it does (docs/plans/w3-lent.md, ?196): never a hotbar skill.
+    It is an always-on passive (no toggle, hybrid or pillar), on no tree, no role's options and no unit's learned list, so
+    nobody learns it and nothing can put it on the bar (Skill.fits_bar() is false for it; Tests/lent_test.gd holds the bar)."""
+    equip = []
+    for p in sorted(files("Skills", ".tres")):
+        res = next(x for x in sections(read(p)) if x["kind"] == "resource")["props"]
+        if '&"equipment"' not in res.get("tags", ""):
+            continue
+        equip.append(p)
+        if res.get("passive") != "true" or any(res.get(k) == "true" for k in ("toggle", "hybrid")) or '&"pillar"' in res.get("tags", ""):
+            problems.append("%s: tagged equipment but not an always-on passive (an item lends it: nothing to cast, switch or disable)" % p)
+    for p in sorted(files("Trees", ".tres")) + sorted(files("Roles", ".tres")):
+        text = read(p)
+        for f in equip:
+            if 'path="res://%s"' % f in text:
+                problems.append("%s: lists %s, which is equipment: an item lends it, no tree or class offers it (it never takes a hotbar slot)" % (p, f))
+    for p in sorted(files("Scenes", ".tscn")):
+        text = read(p)
+        for f in equip:
+            if 'path="res://%s"' % f in text:
+                problems.append("%s: holds %s, which is equipment: an item lends it, a unit never learns it" % (p, f))
+
+
 def check_flags(problems):
     n = len(re.findall(r"^@export var ", read("Scripts/Skill.gd"), re.M))
     if n > FLAG_CEILING:
@@ -370,7 +394,7 @@ def check_density(problems):  # Density's one rule (SkillTerms.density_why()) ag
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
