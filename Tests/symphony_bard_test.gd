@@ -81,3 +81,36 @@ func test_first_chair() -> void:
 	b.turn = lancin
 	ok(b.first_to_act(lead), "a new turn of its side: someone is first again")
 	b.attacked.disconnect(note)
+	# ...and it lands: the same rolls with and without being first, in each place a use's impact is counted
+	var kick := sk("kick")
+	var aid := sk("first_aid")
+	v(2).learned.append(slot(kick, 1))
+	v(2).learned.append(slot(aid, 1))
+	for pair in [[strike, v(3)], [kick, v(3)]]:
+		var a := _blows(v(2), pair[0], pair[1], true)
+		var n := _blows(v(2), pair[0], pair[1], false)
+		ok(a > n and (a - n) % 3 == 0, "%s: First Chair's +3 on each blow that landed (%d against %d)" % [pair[0].name, a, n])
+	soak(lead)
+	var healed := func(first: bool) -> int:
+		lead.hp = 1
+		v(2).refresh()
+		b.acted.clear()
+		if not first:
+			b.acted[v(1)] = b.turns_begun
+		b.cast(v(2), aid, lead)
+		return lead.hp - 1
+	ok(healed.call(true) - healed.call(false) == 3, "and +3 on a heal")
+
+
+# The HP v(3) loses to caster's use of s on t, from the same rolls, as the first of its side to act or not.
+func _blows(caster: Unit, s: Skill, t: Unit, first: bool) -> int:
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 2)})  # (a kick drives its target off)
+	soak(t)
+	caster.refresh()
+	caster.energy = caster.max_energy
+	b.acted.clear()
+	if not first:
+		b.acted[v(1)] = b.turns_begun
+	b.rng.seed = 11
+	b.cast(caster, s, t)
+	return t.max_hp - t.hp
