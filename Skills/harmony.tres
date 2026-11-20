@@ -1,12 +1,16 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/harmony.gd" id="b_harmony"]
+
+[sub_resource type="Resource" id="Behaviour_harmony"]
+script = ExtResource("b_harmony")
 
 [resource]
 script = ExtResource("1_skill")
 name = "Harmony"
-ai = true
+glyph = "Sy"
 passive = true
-tags = Array[StringName]([&"magical", &"supportive"])
-stub = "?70"
-plan = "College of Concord. +1 to the Mage's spell attacks and checks for each allied caster within rank tiles, up to rank."
+tags = Array[StringName]([&"specialist", &"cha"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_harmony")])

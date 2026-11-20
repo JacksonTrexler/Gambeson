@@ -1,6 +1,6 @@
 extends Behaviour
 
-# Symphony (the Bard's: the Wizard's study of the same name is Skills/symphony.tres): units in the holder's command range
+# Harmony (the Bard's; not the Wizard's Symphony study, Skills/symphony.tres): units in the holder's command range
 # (Command.hears()) play off one another. Each time one it commands (any in range but itself) passes a check
 # (Behaviour.passed(): a contest or save won, an attack landed), every unit in range gets +1 on checks (Cadence, one
 # of its side's turns), up to rank. And the first unit of its side to use a skill in a turn, if in range, is First

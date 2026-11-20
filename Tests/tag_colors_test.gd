@@ -79,3 +79,20 @@ func test_trim_shows() -> void:
 	var m := UnitCard.trim_mark(Color(0, 0, 0, 0), "")
 	ok(m.custom_minimum_size == Vector2(7, 10), "an untrimmed item's mark keeps the space, so sheet rows line up")
 	m.free()
+
+
+# A ?? (an AI's invented name, until reviewed) is on a tag's shown name only: every rule looks the tag up by its id.
+func test_marked_names_are_display_only() -> void:
+	var marked: Array[StringName] = []
+	for t: StringName in Glossary.TERMS:
+		if Glossary.name_of(t).ends_with(" ??"):
+			marked.append(t)
+	ok(marked.size() >= 3, "some terms still wear a ?? (%s)" % [marked])
+	var words := Modifiers.words()
+	for t in marked:
+		var shown := Glossary.name_of(t)
+		stage(lancin, {v(1): Vector2i(2, 3)})
+		v(1).tags = [t]
+		ok(String(t) == String(t).to_lower() and not "?" in String(t) and not " " in String(t), "%s: its id has no ??" % t)
+		ok(v(1).has_tag(t) and t in words and Tags.coloured(t) and Glossary.kind(t) != &"", "%s: has_tag, modifier words, colour and kind all go by the id" % t)
+		ok(Glossary.plain(Glossary.term(t)) == shown and "[url=term:%s]" % t in Glossary.rich(Glossary.term(t)) and shown in Guide.text(Glossary.page(t)), "%s: shown as %s, linked and listed by its id" % [t, shown])

@@ -438,6 +438,19 @@ func query() -> Array[StringName]:
 	return out
 
 
+# Ids a save may still hold for a skill that was renamed (Skills/<new>.tres), old -> new: Skill.by_id() reads through it.
+# symphony_bard was the Bard's Harmony for a day (docs/plans/w8-names.md).
+const RENAMED := {"symphony_bard": "harmony"}
+
+
+# The skill of Skills/<id>.tres as a save names it (a renamed id still finds it), or null for no such file.
+static func by_id(id: Variant) -> Skill:
+	if not id is String or id == "":
+		return null
+	var path := "res://Skills/%s.tres" % RENAMED.get(id, id)
+	return load(path) if ResourceLoader.exists(path) else null
+
+
 # Its name as the skills screen and hotbar show it: an AI's placeholder design ends with ?? (ai).
 func title() -> String:
 	return name + " ??" if ai else name

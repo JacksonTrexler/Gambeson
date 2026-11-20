@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://m8dkcp68gxu1"
-path="res://.godot/imported/symphony_bard.png-241dd1c262e2b699417cb138efc24a6a.ctex"
+uid="uid://dv5ssiyyw2hv0"
+path="res://.godot/imported/accord.png-0984883432b882301e6f98563bea30be.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Icons/Skills/symphony_bard.png"
-dest_files=["res://.godot/imported/symphony_bard.png-241dd1c262e2b699417cb138efc24a6a.ctex"]
+source_file="res://Icons/Skills/accord.png"
+dest_files=["res://.godot/imported/accord.png-0984883432b882301e6f98563bea30be.ctex"]
 
 [params]
 

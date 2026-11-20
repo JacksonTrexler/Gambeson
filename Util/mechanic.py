@@ -23,7 +23,8 @@ stat: a new Effect stat (Effect.gd's list and its doc line). Read it with unit.s
 carry: puts a tag on what exists - skills (Skill.tags), reusable statuses (Effects/<id>.tres) and a status written inside
   a skill (--inline skill:stat). A status carries a tag in Effect.bears, never Effect.tags (that one filters what the
   effect's stat counts on). Read with Unit.afflicted(tag). Tags only: nothing here makes a rule.
-An AI-made name gets " ??" (CLAUDE.md). .claude/skills/new-mechanic has the process.
+A name an AI invented gets " ??" on its shown name (never the id, which every rule looks up by); a word from the user's own words
+goes in with --human, no ??. check fails a tag id that isn't lower_snake. .claude/skills/new-mechanic has the process.
 """
 import argparse, re, sys, textwrap
 
@@ -101,7 +102,8 @@ def tag(a):
     a.kind in KINDS or die("--kind: one of %s" % ", ".join(KINDS))
     a.color or a.parent or die('--color "#rrggbb": every tag has a colour (Tags.COLOR); a --parent\'s child may take its parent\'s')
     '"' not in a.define and "[" not in a.define or die("--define: no double quotes or square brackets (BBCode)")
-    term = ai_name(a.term or t.replace("_", " ").title(), a.human)
+    shown = a.term or t.replace("_", " ").title()
+    term = shown.removesuffix("??").strip() if a.human else ai_name(shown)  # --human: the user's word, no ??
     line = '\t&"%s": ["%s", &"%s", "%s"],\n' % (t, term, a.kind, a.define)
     end = gl.index("\n}\n", gl.index("const TERMS := {"))
     write("Scripts/Glossary.gd", gl[:end + 1] + line + gl[end + 1:], a.dry_run)
@@ -230,10 +232,30 @@ def check(_a=None):
         if m and '&"enchanted"' in m.group(0) and '&"honed"' in m.group(0):
             problems.append("%s: enchanted and honed together - pick one (they exclude each other)" % p)
     check_colours(problems, gl)
+    check_tag_ids(problems, gl)
     for p in problems:
         print(p)
     print("mechanic.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
     return 1 if problems else 0
+
+
+def check_tag_ids(problems, gl):
+    """A tag id is a lower_snake word, whatever name it is shown by: a ?? (or a space) in one would make every lookup by it
+    (has_tag, Tags.PARENT, a Glossary link) miss. A shown name's ?? goes after it, in the Glossary term."""
+    bad = re.compile(r"[a-z][a-z0-9_]*")
+    for t in re.findall(r'^\t&"([^"]*)": \[', gl, re.M):
+        if not bad.fullmatch(t):
+            problems.append('Scripts/Glossary.gd: the tag id "%s" must be lower_snake (a ?? goes on the shown name only)' % t)
+    for n in re.findall(r'^\t&"[^"]*": \["([^"]*)"', gl, re.M):
+        if "??" in n and not n.endswith(" ??"):
+            problems.append('Scripts/Glossary.gd: the term "%s": a ?? goes at the end of the name, after a space' % n)
+    for t in re.findall(r'&"([^"]*)"', " ".join(re.findall(r"const PARENT := \{[^}]*\}", read("Scripts/Tags.gd")))):
+        bad.fullmatch(t) or problems.append('Scripts/Tags.gd: the PARENT tag id "%s" must be lower_snake' % t)
+    for top in ("Skills", "Items", "Terrain", "Properties", "Effects", "Scenes", "Races", "Roles"):
+        for f in sorted(list(files(top, ".tres")) + list(files(top, ".tscn"))):
+            for line in re.findall(r"^(?:tags|bears) = .*$", read(f), re.M):
+                for t in re.findall(r'&"([^"]*)"', line):
+                    bad.fullmatch(t) or problems.append('%s: the tag id "%s" must be lower_snake (a ?? goes on the shown name only)' % (f, t))
 
 
 def check_colours(problems, gl):

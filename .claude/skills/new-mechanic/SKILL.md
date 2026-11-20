@@ -15,7 +15,10 @@ description: Add a game mechanic's building block to Gambeson - a tag (with its 
      hook on `Scripts/Behaviour.gd`, reached by a Unit signal that Battle listens to (`taking_hit`,
      `being_healed`). Decouple through signals - no new references between Unit and Battle - and never
      a new `Skill.gd` flag.
-   Named by the user: `--human`; else names get `??`.
+   Named by the user, or a word taken from their own words: `--human`, no `??`. Only a genuinely AI-invented tag
+   (or status, property) gets `??`, and only on its shown name, never its id and never in a way that breaks
+   functionality: `mechanic.py check` fails a tag id (Glossary key, `Tags.PARENT`, a `tags =` line) that isn't
+   lower_snake, so a `??` there is caught. A stat has no shown name to mark.
 
 2. **Write it:**
    ```

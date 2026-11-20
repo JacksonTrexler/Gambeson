@@ -1,12 +1,12 @@
 extends Test
 
 # The Bard's three of Wave 7: String Theory (a stand-in for cha on cha-tagged skills), Conductor (an Effect that holds
-# only after a rested turn: Effect.rested) and Symphony (Behaviours/symphony.gd: Cadence from checks a commanded unit
+# only after a rested turn: Effect.rested) and Harmony (Behaviours/harmony.gd: Cadence from checks a commanded unit
 # passes, First Chair's impact on a side's first use). Skills/symphony.tres is the Wizard's study, a different skill.
 
 var string_theory: Skill = load("res://Skills/string_theory.tres")
 var conductor: Skill = load("res://Skills/conductor.tres")
-var symphony: Skill = load("res://Skills/symphony_bard.tres")
+var harmony: Skill = load("res://Skills/harmony.tres")
 var cadence: Effect = load("res://Effects/cadence.tres")
 
 
@@ -34,9 +34,9 @@ func test_conductor() -> void:
 	ok(conductor.describe(2).contains("rested"), conductor.describe(2))
 
 
-func test_symphony() -> void:
+func test_harmony() -> void:
 	var lead := v(1)
-	lead.learned.append(slot(symphony, 2))
+	lead.learned.append(slot(harmony, 2))
 	lead.charisma = 14  # reach 2
 	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 4), b.get_node("Units/Alabaster"): Vector2i(9, 3)})
 	var far: Unit = b.get_node("Units/Alabaster")
@@ -59,7 +59,7 @@ func test_symphony() -> void:
 
 func test_first_chair() -> void:
 	var lead := v(1)
-	lead.learned.append(slot(symphony, 3))
+	lead.learned.append(slot(harmony, 3))
 	lead.charisma = 14
 	var power := 80
 	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 2)})
