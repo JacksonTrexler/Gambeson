@@ -3536,7 +3536,12 @@ func disable(s: Skill, turns: int, curse := false, by: Unit = null) -> void:
 
 # It holds disablings off for now (the postpone stat: Coyote Charm): they and its curse debuffs wait.
 func postponing() -> bool:
-	return timed.keys().any(func(e: Effect): return e.stat == "postpone")
+	return Unit.postponing_in(timed.keys())
+
+
+# Whether those statuses (a Read's effects, as afflicted() reads them) hold disablings off.
+static func postponing_in(effects: Array) -> bool:
+	return effects.any(func(e: Effect): return e.stat == "postpone")
 
 
 # What it postponed lands, once nothing postpones it any longer (tick(), Battle._strip()): each disabling for

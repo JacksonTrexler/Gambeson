@@ -75,6 +75,27 @@ func test_scepter() -> void:
 	ok(v(1).timed.get(buff) and v(1).timed[buff].rank == 3 and v(1).timed.get(curse) and v(1).timed[curse].rank == 3, "its target gets the Charm buff and the curse at the Scepter's rank")
 
 
+# The AI prices a disable by what its target postpones (any postpone status, Unit.postponed): a Brainfog on a unit under the Charm's
+# buff is worth less than on one that is not (statuses read at recon 3), and less again for each disabling already held; Strike's price is unchanged.
+func test_ai_weighs_a_postponed_disable() -> void:
+	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(1, 1)})
+	v(3).learned.append(slot(brainfog, 1))
+	roomy(v(3))
+	sharp(v(3))
+	v(3).refresh()
+	var worth := func(s: Skill) -> float: return AI.score(v(3), s, b.read(v(3), v(1)), b, v(1))
+	var plain: float = worth.call(brainfog)
+	var hit: float = worth.call(strike)
+	ok(plain > 0.0, "a disable is worth something (%s)" % plain)
+	v(1).afflict(buff, 3, 1)
+	var waiting: float = worth.call(brainfog)
+	ok(waiting < plain and is_equal_approx(worth.call(strike), hit), "postponing: less of it, a blow the same (%s, %s)" % [waiting, plain])
+	v(1).postponed[favour] = [2, true]
+	ok(worth.call(brainfog) < waiting, "and less for what it already holds (%s)" % worth.call(brainfog))
+	v(1).timed.erase(buff)
+	ok(is_equal_approx(worth.call(brainfog), plain), "the postpone over: whole again")
+
+
 func test_instant_death() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	wear(v(3), charm, 2, true)

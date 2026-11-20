@@ -67,6 +67,7 @@ const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by 
 const CC := 0.5  # the share of a foe's next turn a cc takes when what carries it can't say (no foresee() afflicts: Brainfog, Interdict, a grip's drowning): a guess (_afflicting())
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
+const DELAY := 0.5  # the share of a disable's worth left it when its target postpones disablings (the postpone stat: Coyote Charm): it lands as the postpone ends, and one more held adds less (_held()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -416,7 +417,8 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 				toll += bh.unguarded(c)
 			var fund: Variant = u.funding(s)
 			saved = minf(share, 1.0) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
-	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) and &"cc" not in u.skill_tags(s) else 0.0) + cc \
+	var held := _held(r, t) if s.disables else 1.0  # (a disable that waits)
+	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + ((1.0 if not s.effects.is_empty() else held) if s.hostile and (not s.effects.is_empty() or s.disables) and &"cc" not in u.skill_tags(s) else 0.0) + cc * held \
 			+ (KILL if s.drags() else 0.0) + RIDER * riders + spill  # into the water: the Siren's favourite
 	return p * value + saved + blocked - DEFENSE * toll - _hate(r)
 
@@ -468,6 +470,15 @@ static func _blocks(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, dmg: float) 
 		if toll > 0 and pair[1] > 0:
 			worth += maxf(Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE) - pair[1]) - with, 0.0) * toll * POINT
 	return worth
+
+
+# What is left of a disable's worth against t: all of it, unless r reads t to postpone disablings (Unit.postponing_in(): a status
+# with the postpone stat, so any source of one, not the Coyote Charm alone). Then it is held, not working, till that ends: DELAY, and
+# less for each disabling t already holds (Unit.postponed: what its side cast into the wait).
+static func _held(r: Read, t: Unit) -> float:
+	if t == null or not Unit.postponing_in(r.effects):
+		return 1.0
+	return DELAY / (1.0 + t.postponed.size())
 
 
 # What a skill's cc takes from the foe t's next turn, in HP: the share of the turn it takes (what its behaviours foresee,
