@@ -33,3 +33,11 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-19,w4-docs2,sonnet,medium,98018,14,144250,ok
 2026-11-19,w4-tags,sonnet,high,228638,107,1958166,ok
 2026-11-19,w4-docs3,sonnet,medium,107596,26,976839,ok
+2026-11-19,w5-ceiling,sonnet,high,90092,30,285482,dropped
+2026-11-19,w5-save,sonnet,medium,62725,23,262996,landed
+2026-11-19,w5-ai1,sonnet,high,207495,75,1922153,landed
+2026-11-19,w5-tree,sonnet,high,176280,63,1933066,landed
+2026-11-19,w5-burn,sonnet,medium,55763,14,1065135,landed
+2026-11-19,w5-diff,sonnet,high,112370,42,675895,landed
+2026-11-19,w5-ai2,sonnet,high,182704,80,1905859,landed
+2026-11-19,w5-density,sonnet,high,125942,40,526090,landed
