@@ -1,11 +1,11 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-19. Reconciled against the code after ?192 to ?213 (the next question is 214).
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-20. Reconciled against the code after ?192 to ?217 (the next question is 218).
 
-Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: Wave 2 (traits, facing, glance, Striking Features and Intellect, cost profiles, parameterized skills), traits, facing by move or aim, glance and its skills, test stubs Option A, the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), Skeleton, Deathlust, the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
+Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: Wave 6 (equipment links, multi-slot skills, the Party, the audit), Wave 2 (traits, facing, glance, Striking Features and Intellect, cost profiles, parameterized skills), traits, facing by move or aim, glance and its skills, test stubs Option A, the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), the AI casts Skeleton, Interject's and Snapping Turtle's bonus, the near hunt sim, Deathlust (its AI unwear), the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-Nothing. Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
+Nothing. Built 2026-11-20 (?214 to ?217): Wave 6 (equipment links `innate` / `optional`, multi-slot skills, the persistent roster and Party, the queue audit). Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
 
 ## Wave 7: the user's answers of 2026-11-20, second batch (docs/agents/answers-2026-11-20b.md; run after Wave 6 lands)
 Builders read the verbatim file for exact wording. Names the user gave go in with `--human`.
@@ -42,48 +42,12 @@ Builders read the verbatim file for exact wording. Names the user gave go in wit
 - Scope: about 90 PNGs (skip .aseprite; a siren is there). Map them onto skill icons, unit sprites and status icons where a name or subject fits; copy each used file to its fixed path and leave the source untouched; record the mapping in docs; `icon.py check` passes.
 - Model: sonnet/medium
 
-## Wave 6: the user's answers of 2026-11-20 (docs/agents/answers-2026-11-20.md; running)
-
-### 1. Meathead (?204)
-- Scope: rename "Brawn as Brains ??" to "Meathead" (the user's name: no `??`, `ai = true` dropped). Done in the step-0 commit; the docs keeper fixes the mentions in todo.md and docs/todo/classes.md.
-- Model: sonnet/low (docs keeper)
-
-### 2. Equipment-skill links: `optional` and `innate` (?196)
-- Source: the user, 2026-11-20: "those tags are associated with an equipment's association to a skill rather than the skill itself (Igna may be provided for no equip cost by a robe, and with a slot equip cost on a medium armor set)".
-- Scope: `optional` (the wearer may put the lent skill on the hotbar) and `innate` (the lent skill needs no slot) are properties of an item's link to a skill, not of the skill. Armor's own `equipment` skill is innate. Keep `skill.py check`'s "never on the hotbar" rule light, read through the link.
-- Files: Scripts/Item.gd, Util/item.py, Unit.equipped, the HUD hotbar
-- Model: sonnet/high
-- Collides with: card 3 (hotbar code; card 3 runs after)
-
-### 3. Multi-slot skills
-- Scope: a skill may take several hotbar slots. Default 1, restricted as usual (martial skills may use martial bonus slots, etc.). A skill with a rarity takes more by default: Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5. An explicit slots property or tag overrides it. Work it into Cram's caster bonus slots, Density's slot doubling, traits (still 0) and the disable ordering (one skill spanning several slots).
-- Model: sonnet/high, after card 2
-- Collides with: card 2
-
-### 4. Persistent units and the Party (?206)
-- Scope: the player's units keep learned skills, ranks, equipped bar, items, level and XP across battles in `Save.gd` (version bump, migration of an old save), filling the `lapses` plumbing. A configurable Party: size is level / 4 + the base cha mod if positive, at least 2 (level = the hero's or leader's: record the call). The player picks who is in it from a (simple) roster screen; a battle fields the party. Class units stay fresh where they are only NPCs.
-- Files: Scripts/Save.gd, Scripts/Game.gd, Scripts/Entry.gd or a roster scene, Unit serialization
-- Model: opus/medium
-- Collides with: cards 2 and 3 only through Unit.equipped (keep it to serialization)
-
-### 5. Queue audit
-- Scope: check the Wave 1 and 2 cards below against the code; report which are built (the builder writes `docs/plans/w6-audit.md`, does not edit queue.md); run the unbuilt ones that need no user input.
-- Model: sonnet/medium
-
 ## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A to D built, ?202 to ?205)
 
 ## Wave 3: the user's answers of 2026-11-18, second batch (docs/agents/answers-2026-11-18b.md)
 All eleven cards are built (?192 to ?201). Nothing left here.
 
 ## Wave 2 follow-ups (the user's answers of 2026-11-18 are all built, ?185 to ?191; the rules stand: no balancing now, tune by check difficulty, price effects that stop actions high)
-
-### Interject's and Snapping Turtle's checks take the reaction bonus
-- Source: docs/todo/systems.md (?191)
-- Scope: `Reaction.contest()` / `odds()` take an optional `bonus` (Gallantry uses it); wire Interject's dex check and Snapping Turtle's check to it, each reading its rank through the holder's modifiers with rank I exactly as now, so they scale like Gallantry. Declare the channel (`skill.py terms`), keep the difficulty a named constant, add a row to `param_test`'s table.
-- Read: docs/plans/w2-param.md
-- Files: Behaviours/interject.gd, Behaviours/snapping_turtle.gd, Tests/param_test.gd
-- Model: sonnet/medium
-- Collides with: none
 
 ## Wave 1: follow-ups from ?178 to ?183 (all need nothing from the user)
 
@@ -95,37 +59,13 @@ All eleven cards are built (?192 to ?201). Nothing left here.
 - Model: sonnet/high
 - Collides with: the AI cards below (AI.gd)
 
-### The AI casts Skeleton
-- Source: docs/todo/classes.md (?181)
-- Scope: a tile-summon plan in `AI.gd`: when a side has room and a foe is in reach, cast a summon skill (`summon_per_rank`) at a tile near itself; price it by the bodies it adds. Sim before and after.
-- Read: docs/plans/r-skeleton.md
-- Files: Scripts/AI.gd, Tests/ai_tactics_test.gd, Tests/summon_test.gd
-- Model: sonnet/high
-- Collides with: the AI-cost card (AI.gd), the next card
-
-### Deathlust AI awareness
-- Source: docs/todo/systems.md (?182)
-- Scope: the AI weighs a kill's exhaustion discount (the kill skill gains no use; a death in reach eases every count) and Deathlust's float or log line on the HUD. Use the `wearing` and `neutralized` hooks, not a Deathlust special case.
-- Read: docs/plans/r-deathlust.md
+### Deathlust: the HUD float and pricing the relief
+- Source: docs/todo/systems.md (?182, ?217)
+- Scope: the AI's unwear of a killing blow is built (`AI._wear()` and the `wearing` hook). Left: a float or log line on the HUD when Deathlust eases a count (`Behaviours/deathlust.gd` `neutralized()` relieves silently), and the AI pricing the relief a death in reach gives other counts. Use the `wearing` and `neutralized` hooks, not a Deathlust special case.
+- Read: docs/plans/r-deathlust.md, docs/plans/w6-audit.md
 - Files: Scripts/AI.gd, Scripts/HUD.gd, Tests/deathlust_test.gd
 - Model: sonnet/medium
-- Collides with: `r-aiperf` (AI.gd), the card above
-
-### Hunt sim: hiders in range from round 1
-- Source: docs/todo/systems.md (?178, ?183)
-- Scope: a variant of `hunt_10v10.gd` with hiders placed within the Rangers' reach, to measure the search apart from the ten-round walk; tune `AI.LOST` with it (`sweep.sh`).
-- Read: docs/plans/r-sims.md, docs/plans/ai-findings.md
-- Files: Tests/sims/hunt_10v10.gd, Tests/sims/ai_sim.gd
-- Model: sonnet/medium
-- Collides with: none
-
-### Edge-pan sideways and drag
-- Source: docs/todo/systems.md (?179, ?175)
-- Scope: the HUD's side panels cover the left and right edges, so edge-pan only works top and bottom; find a way to pan sideways (a thin margin past the panels, or a middle-drag) without taking the mouse buttons others use.
-- Read: docs/plans/meadows-tails.md
-- Files: Scripts/BattleCamera.gd, Tests/meadows_test.gd
-- Model: sonnet/medium
-- Collides with: none
+- Collides with: the AI-cost card (AI.gd)
 
 ## Wave 5: follow-ups from ?206 to ?213 (all need nothing from the user)
 
@@ -161,8 +101,43 @@ All eleven cards are built (?192 to ?201). Nothing left here.
 - Model: sonnet/medium
 - Collides with: the AI cards in Wave 1 and above (AI.gd)
 
+## Wave 6 follow-ups: from ?214 to ?217 (all need nothing from the user)
+
+### A wider HUD slot for a multi-slot skill
+- Source: docs/todo/systems.md (?215)
+- Scope: a covered slot shows "(continued)" dimmed today. Draw a multi-slot skill as one wide button spanning its slots (icon, key, tooltip once), keeping the number keys, click, right-click and drop on any covered slot as they are.
+- Read: docs/plans/w6-slots.md
+- Files: Scripts/HUD.gd, Scripts/SkillSlot.gd, Tests/equip_test.gd
+- Model: sonnet/medium
+- Collides with: none
+
+### Retune `AI.LOST` with the near hunt sim
+- Source: docs/todo/systems.md (?178, ?217)
+- Scope: run `Tests/sims/hunt_10v10.gd` `near` through `sweep.sh SIM=` over `AI.LOST` (0.5 today) and set it from the numbers; say what the sweep showed.
+- Read: docs/plans/w6-audit.md, docs/plans/ai-findings.md
+- Files: Scripts/AI.gd, Tests/sims/hunt_10v10.gd
+- Model: sonnet/medium
+- Collides with: the AI cards (AI.gd)
+
+### A sim where Skeleton reaches the foe
+- Source: docs/todo/systems.md (?217)
+- Scope: the `host` scenario in `ai_sim.gd` raises bodies (0 to 8) but the skeletons never reach the soaker 9 tiles off in 10 rounds, so damage reads 0.00 both ways. Add a variant with the foe within walking reach and compare damage before and after the AI's `_summon()` (`BODY`, `SUMMON_SEEN`, `SUMMON_CAP`).
+- Read: docs/plans/w6-audit.md
+- Files: Tests/sims/ai_sim.gd
+- Model: sonnet/medium
+- Collides with: the AI cards (AI.gd only if the constants move)
+
+### Party members' outfits and the stash
+- Source: docs/todo/systems.md (?216)
+- Scope: the stash screen is the leader's; let the player open any roster member's outfit (and bar) between battles, saved through the roster entry. No new rules, only the screen reading `Game.roster`.
+- Read: docs/plans/w6-party.md
+- Files: Scripts/Entry.gd, Scripts/PartyPanel.gd, the stash scene, Tests/save_test.gd
+- Model: sonnet/high
+- Collides with: none
+
 ## Needs the user (not queued)
-- Calls for review: ?198 (Cram's readings, tier 7, no swap on arrival), ?200 (Defense adds, Power is Energy share, where Abjuration and Smith are offered), ?201 (postpone and overcome stats), ?202 (the `strike` tag, friction's numbers), ?203 and ?204 (the disable trade; confirm the flags `no_density` and `scaling`, the viewer and the dials), ?192 (cc audit edges, the slam on a flee), ?193 (Chaser placement), ?194 (Skill Slot +1 gating), ?195 (the numbers), ?197 (Wake and Rake's tier, "cast mod"), ?206 (cc prices), ?208 (Student flex picker, Journeyman's tier and max rank, "Brawn as Brains ??"), ?209 (do recoveries add Exhaustion uses?), ?211 (the synonyms), ?212 (Send Off's ward on a foe sent away), ?213 (`pack`, POINT, DELAY, the loot table).
+- Calls for review: ?198 (Cram's readings, tier 7, no swap on arrival), ?200 (Defense adds, Power is Energy share, where Abjuration and Smith are offered), ?201 (postpone and overcome stats), ?202 (the `strike` tag, friction's numbers), ?203 and ?204 (the disable trade; confirm the flags `no_density` and `scaling`, the viewer and the dials), ?192 (cc audit edges, the slam on a flee), ?193 (Chaser placement), ?194 (Skill Slot +1 gating), ?195 (the numbers), ?197 (Wake and Rake's tier, "cast mod"), ?206 (cc prices), ?208 (Student flex picker, Journeyman's tier and max rank; the "Brawn as Brains ??" skill is now the user's "Meathead", ?204), ?209 (do recoveries add Exhaustion uses?), ?211 (the synonyms), ?212 (Send Off's ward on a foe sent away), ?213 (`pack`, POINT, DELAY, the loot table), ?214 to ?217 (below).
+- Wave 6 (?214 to ?217): an innate active (Igna on a robe) needs a way to cast from outside the bar, and which item first uses `optional` (?214); which skill first carries a rarity or `slots`, a Mythic unplaceable before level 4, a wide skill cheaper to disable, runs across two granting skills (?215); the leader's level as "level", recruiting and dismissing members and where recruits come from, what a death does to a roster member (?216); Skeleton's AI numbers (?217).
 - Retuning colours: ?125.
 - Closed 2026-11-18: ?87, ?167, ?152, ?173 keep as built (the user: no balancing now); ?144, ?163, ?142 answered and built (?185 to ?188); ?131 and ?133 answered and built (?190, ?191).
 - Open from Wave 2: which more skills are traits, and whether `insignia` and `badge` reach a trait (?185); tier placement of Backstab, Glancing Strike and Heavy Strike and the natural-20 reading (?186); Striking Intellect's placement and whether `attack_stat` reaches other attacks (?189); whether the 26 "flat rank" profiles should scale, the 38 hand-set prices, health costs (?190); the 22 skills left concrete and Gallantry's check difficulty (?191).

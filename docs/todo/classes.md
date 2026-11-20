@@ -456,7 +456,7 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **They arrive with AP spent** (act from their side's next turn). `Behaviours/summon_per_rank.gd` zeroes it; Battle.gd untouched.
     - **The Skeleton unit** (`Scenes/skeleton.tscn`): tag undead (already a Unit tag; only its colour `#9aa98a` was missing), vibe Hollow, aura -1, temper aggressive, class-less, level 1, HP 6, Energy 4, str 10 dex 10 con 8 int 3 wis 6 cha 2, Strike only. Weaker than the Pike (HP 8, level 2).
     - **Generic behaviour:** `summon_per_rank` exports `scene` and `per_rank`; any later summon sets another scene and number.
-- [ ] **The AI never casts Skeleton** (no tile-summon plan in `AI.gd`; queued). (?181)
+- [x] **The AI never casts Skeleton** (no tile-summon plan in `AI.gd`; queued). (?181) Built (found 2026-11-20, ?217): `AI._summon()`.
 - [x] **Summoned units spend their AP on arrival** except rank + cast mod, and Wake and Rake adds rank to that. Built 2026-11-19 (?197). (?181)
 - [ ] **No cap or duration on skeletons**; a Wizard tab or a limit if they swarm. (?181)
 - [ ] **Mortis Arcalís has one skill**; the rest of the school and real art. (?181)
@@ -588,9 +588,9 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **No picker for the flex choice today** (`TreeChoice` picks class-tab trees): a Caster/Specialist choice of Student is not a box yet.
     - **Discipline is back on the Specialist tab (T3) and stays on Student** (two branches of one skill).
     - **Journeyman** (your name, `--human`): `Trees/journeyman.tres` in `Trees/general_journeyman.tres` (grant `journeyman`); offered natively by Fighter, Berserker, Paladin, Rogue, Ranger, Bard, Adventurer. Physical Intelligence (`physical_intelligence_check`) and Muscle Memory on one hook: a `check` Effect with `per_mod` adds the holder's mod to the checks it names, up to the skill's rank. Tier 2 and max rank 5 are guesses.
-    - **Name clashes:** the old `physical_intelligence` skill (a stand-in pillar) is renamed "Brawn as Brains ??" (id kept); the Journeyman tree shares a name with the Journeyman skill.
+    - **Name clashes:** the old `physical_intelligence` skill (a stand-in pillar) is renamed "Brawn as Brains ??" (id kept); the Journeyman tree shares a name with the Journeyman skill. **Answered 2026-11-20 (?204): "rename to Meathead"; done, no ??.**
     - **Armor** loses its " ??" (approved). New check `skill.py check_equipment`: an equipment skill is an always-on passive on no tree, role or unit, so it never takes a hotbar slot.
-    - **New names to review:** Brawn as Brains ??.
+    - **New names to review:** none now (Meathead is the user's name).
 - [ ] **A picker for the Student flex choice** (a TreeChoice whose pick calls `grant_tree`) and an adventure that grants it. (?208)
 - [ ] **Is Journeyman's tier 2 and max rank 5 right?** Guesses. (?208)
 

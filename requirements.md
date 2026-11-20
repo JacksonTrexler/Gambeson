@@ -67,6 +67,12 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - "High", "very high" and the like are synonyms on one check-difficulty table (`Difficulty.WORDS`), used everywhere a difficulty is set. (?204, ?211)
 - The no-new-flags rule is relaxed: restrict creep, confirm new flags. (?203, ?210)
 
+## Wave 6 rules (2026-11-20)
+
+- Equipment links: `optional` and `innate` are flags on an item's link to a skill, not on the skill; armor lends Armor innate. (?196, ?214)
+- Multi-slot skills: 1 slot by default; a rarity takes Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5; an explicit slots property overrides. (?215)
+- Party size is level / 4 + the base cha mod if positive, at least 2; the player's units persist in a roster. (?216)
+
 ## Equipping and traits
 - Every skill, active or passive, does nothing unless equipped (and toggled where relevant): auto-equipped on learn when a slot is free, manually when the bar is full; AI included. (?163) [user]
 - Slots: 4 + level/4, typed (martial, magic, specialist) or untyped; passives take the last slots; losing a slot depends on why. (?3) [call]

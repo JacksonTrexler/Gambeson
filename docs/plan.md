@@ -185,6 +185,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Difficulty words (?211) | `param_test.gd` |
 | — | Density: Clairvoyance, Send Off, Stoneskin (?212) | `param_test.gd` |
 | — | Plating, friction and postponement in the AI and HUD (?213) | `plating_test.gd`, `ai_tactics_test.gd`, `coyote_charm_test.gd` |
+| — | Equipment links: innate and optional (?214) | `lent_test.gd` |
+| — | Multi-slot skills (?215) | `equip_test.gd` |
+| — | Roster and Party, Save version 2 (?216) | `save_test.gd` |
+| — | The AI casts Skeleton (?217) | `summon_test.gd`, `ai_sim.gd` |
 
 ## Questions to answer first
 

@@ -164,3 +164,7 @@ Every skill follows these, so skill descriptions don't repeat them.
 - [x] **Burnout is Exhaustion functionally:** effects that raise Burnout raise Exhaustion by the same amount; it builds on casting and using an int mod and decays slowly. (the user, 2026-11-19, ?195, ?209)
 - [x] **One difficulty table:** "high", "very high" and the like are synonyms for the check-difficulty rungs, used alike for imposed effects, attack rolls, world interactions and knobs. (the user, 2026-11-19, ?204, ?211)
 - [x] **The no-new-flags rule is relaxed:** restrict creep, not anything that lessens repetition and builds rich systems; new flags are to be confirmed. (the user, 2026-11-19, ?203, ?210)
+- [x] **Equipment links:** `optional` (the wearer may add the lent skill to the hotbar) and `innate` (the lent skill needs no slot) belong to an item's link to a skill, not to the skill; keep them light. (the user, 2026-11-20, ?196, ?214)
+- [x] **Multi-slot skills:** a skill takes 1 slot unless a slots property says otherwise (restricted as usual); a skill with a rarity takes Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5. (the user, 2026-11-20, ?215)
+- [x] **Party size** is level / 4 plus the base cha mod if positive, at least 2; the player's persistent units keep their learned skills. (the user, 2026-11-20, ?216)
+- [x] **"Meathead"** is the name of the old Physical Intelligence stand-in skill. (the user, 2026-11-20, ?204)

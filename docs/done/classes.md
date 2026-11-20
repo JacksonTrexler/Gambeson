@@ -264,3 +264,4 @@ Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?
 - [x] **Power Armor and Scrap Plating** (`Skills/power_armor.tres`, `scrap_plating.tres`, `Behaviours/power_armor.gd`, `scrap_plating.gd`, trees Abjuration and Smith): plan `docs/plans/w3-armor.md`. `plating_test`. (?200)
 - [x] **Chaser rank chases, strike-only Heavy and Glancing Strike** (tag `strike`, `Behaviour.Volley.chain`): plan `docs/plans/w4-friction.md`. `chaser_test`, `heavy_strike_test`, `check_test`. (?202)
 - [x] **Student for Mages and the Journeyman tree** (`Trees/general_student.tres`, `general_journeyman.tres`, `journeyman.tres`, `SkillTab.grant`, `Unit.grant_tree()`, a `check` Effect with `per_mod`; `skill.py check_equipment`): plan `docs/plans/w5-tree.md`. `general_test`, `lent_test`. (?208)
+- [x] **Meathead** (the old `physical_intelligence` skill renamed by the user; no `??`). (?204, ?208)

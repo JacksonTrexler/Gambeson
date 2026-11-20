@@ -877,13 +877,13 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Line-up threshold tested:** `test_line_up_gain_threshold` stages the least real gain (0.5) and none; `<` to `<=`, `< 0` and `< 2 x PUSH x RIDER` each fail it.
     - **Allies and a retreat: a tie-break, not a reservation.** `_claimed()` runs `_retreat()` for each able ally that hasn't moved and is within reach, and a claimed tile loses a tie on shove, gap and room (a fourth key element, only on the starve walk). No state kept between units; "yet to move" is `move_left() >= movement`. The `grudge` sim is identical before and after (the two Lancin start apart); kept because a seam test can tell it from `_room()` and it is never worse on the first three keys. Drop it (`_claimed`, the key, the test) if no crowded battle shows a gain.
 - [ ] **Does the ally tie-break pay in a crowded battle?** `_claimed()` costs one `_retreat` per ally in reach on a starve turn; drop it if a busy-fight sim shows nothing. (?178)
-- [ ] **A hunter's `LOST` clue after the line-up** is a guess at 0.5; tune it with a hunt sim where hiders start in range. (?178)
+- [x] **A hunter's `LOST` clue after the line-up** is a guess at 0.5; tune it with a hunt sim where hiders start in range. (?178) The near variant is built (?217); no retune yet (queue).
 
 179. **Meadows tails - built on judgement, open for review (2026-11-16).** Three cards from ?175. My calls:
     - **Tally vs clock:** the "Demons slain" tally is a right-aligned label x 80..226 (`Meadows.TALLY_LEFT/RIGHT`), growing leftward and ending clear of the clock (the HUD's clock is untouched; other tests pin it). Test: `meadows_test.test_plane`.
     - **Edge-pan:** `BattleCamera.edge_dir(pointer, view, clear)`, pure: a pointer within 3 design pixels of an edge pans that way (corners diagonal), unless over `Root/Left` or `Root/Right` (the panels fill the side edges, so in practice top and bottom pan). Arrow keys win when held; none while a panel (Settings, skills) is open, with the pointer out of the window, the app unfocused, or before the pointer first moved. Speed is the arrow keys' (`PAN`); it lets go of the unit as the keys do. The Setting `BattleCamera.edge_pan` (static), default on, "Edge-pan the camera" in Settings, Prefs `edge_pan`.
     - **Summon search:** the first guess is the nearest free tile past every watcher's perception range (`beyond_sight()`, a distance, no read), confirmed by one read; only if none reads unseen does the old nearest-unseen search run. A call: a nearer concealed tile (brush, fog) used to win; now a tile past sight does. Five Siren summons 111-145 ms -> 13-14 ms (M3).
-- [ ] **Edge-pan reaches only the top and bottom edges** while the HUD's side panels fill the left and right; a way to pan sideways by the mouse. (?179)
+- [x] **Edge-pan reaches only the top and bottom edges** while the HUD's side panels fill the left and right; a way to pan sideways by the mouse. (?179) Built 2026-11-20 (?217): middle-drag pans.
 
 180. **Dictionary and glossary - built on judgement, open for review (2026-11-16).** Docs only. My calls:
     - **`g-dictionary.md`**: preferred terms for stubbing and naming, 20 rows, read from `Glossary.gd`, `Reserve.gd`, `Battle.gd` (`neutralized`), `Exhaustion.gd` and the plans; "use instead of" filled only where the code or you draw the line. The "Arcalís" rows are your rule (no ` ??`).
@@ -900,7 +900,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Settled at the outermost cast's end**, so reactions inside it settle too.
     - **Generic pieces:** `Exhaustion.relieve(n, skill = null)` (turn-end `recover()` uses it), `Exhaustion.Wear`, `Unit.paid` signal, `Battle._settle_wear()`; Behaviour hooks `neutralized(b, holder, rank, u, by, how)` and `wearing(b, holder, rank, wear)` (`Util/skill.py` `HOOKS`). No HUD float or log line.
     - **Tests:** `Tests/deathlust_test.gd` (two tests, 11 checks); five mutations fail them.
-- [ ] **The AI doesn't seek kills for Deathlust's discount**, and has no word of it. (?182)
+- [ ] **The AI doesn't seek kills for Deathlust's discount** (its `wearing` unwear of a killing blow is built, ?217; pricing the relief a death in reach gives other counts is not), and has no word of it. (?182)
 - [ ] **Deathlust gives no HUD float or log line** when it eases a count. (?182)
 - [ ] **A channel's later strike (Metea) and an area skill's kills** don't count as a skill's kill (only `last_hit_by` and the cast's aim do). (?182)
 
@@ -915,7 +915,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Load order:** a sim script must name `Test` before `Role`, `Branch` or `Effect` or the scripts hang in a cycle; `field.gd` has no `class_name`.
 - [ ] **AI turn cost over budget** (100 ms a unit turn, 1000 ms an `end_turn` on M3 x 4): a per-act read cache, `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up`'s foresee over every tile, a Brood-free fast path in `Unit.stat`, `travel`/`_approach`. Halved by `r-aiperf` (?184); still over at the unit turn. (?183)
 - [ ] **Frame times unmeasured:** `busy_fight.gd`'s windowed path is written, not run. (?183)
-- [ ] **A hunt where hiders are in range from round 1**, to measure the search apart from the walk. (?183)
+- [x] **A hunt where hiders are in range from round 1**, to measure the search apart from the walk. (?183) Built 2026-11-20 (?217): `hunt_10v10` `near`.
 
 184. **AI turn cost and the floater's tools - built on judgement, open for review (2026-11-16).** Calls (numbers in `docs/plans/r-aiperf.md`):
 - A cache only inside a "stretch" (`Unit.begin_read()/end_read()`) where nothing mutates: `suspicious`, `_sightings`, `route`, `_check_stall`, the AI's reads and the weighing in `_strike`, `_line_up`, `_approach`, `_steady`, `_could_strike`, `_best_target`; dropped on a cell, footing or steadied change. A whole-act cache and a distance bound on `_line_up` were rejected as not strict.
@@ -990,7 +990,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Check difficulty:** none of the 29 had a `SkillCheck` to tune; the numbers are now data (`per_rank`, `turns_per_rank`) or one named constant. **Interject's and Snapping Turtle's checks do not use `bonus` yet**; queued.
     - **Tests:** `Tests/param_test.gd` (PARAMETERIZED gains nine; `test_concrete_scaled` one table: rank I as it was, rank II more, Density reads I as II; plus Favour's mitigation, Reaction bonus, Gallantry's text). Four mutation spot-checks. `skill.py check`: ok.
     - **New names to review:** none.
-- [ ] **Wire Interject's and Snapping Turtle's checks to `Reaction` `bonus`.** Queued (`docs/queue.md`). (?191)
+- [x] **Wire Interject's and Snapping Turtle's checks to `Reaction` `bonus`.** Queued (`docs/queue.md`). (?191) Found already built (?217).
 - [ ] **The 22 left concrete** (see ?191): confirm which should stay; tags-only Coalescing, Energy Missile and Stoneskin would need new tiers. (?191, ?133)
 - [ ] **Gallantry's check difficulty** is a behaviour constant; confirm, or say where a passive's check should live. (?191)
 
@@ -1140,7 +1140,7 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - `Save.gd` keeps no unit state and learned skills are not saved, so `Unit.lapses_out()` / `lapses_in(d)` carry `{leaned, waived}` as plain JSON, `Game.lapses` holds it between battles, `Save` writes a `lapses` key only when non-empty (no version bump), `Battle.starter()` calls `lapses_in`. It keeps only skills the unit has learned, so in the live game it filters everything today; nothing calls `lapses_out()` at battle end.
     - **Sim check, no tuning:** `worn` sim: Strike 12, Hex 3, damage 28.00 before; Strike 12, Hex 5, 29.88 after, so Hex does not outscore Strike in uses. Where the AI scores plans (`armor`): Hex 5 vs Strike 3, unchanged. `rider` and `kick` identical.
     - **New names to review:** none.
-- [ ] **Save learned skills** (so `Game.lapses` fills), and call `lapses_out` at battle end. (?207)
+- [x] **Save learned skills** (so `Game.lapses` fills), and call `lapses_out` at battle end. (?207) Built 2026-11-20 (?216): `Game.roster`, `Game.keep()`.
 
 209. **Burnout is Exhaustion - built on judgement, open for review (2026-11-19).** Your words: "Burnout *is* RecoveryEndurance / Exhuastion functionally (effects that increase Burnout increase Exhaustion the same amount) it builds when casting and using int mod, and it decays slowly." Plan: `docs/plans/w5-burn.md`. Calls:
     - **No fold, no code change:** `Burnout` holds no state; it is a penalty multiplier on `Exhaustion`'s one `uses` count, so anything that adds or relieves a use moves both equally. It builds on a cast and an `int` skill wears harder (1.25x, more on Mana); it decays 1 use a side-turn, more on a rest. One line added to `exhaustion_test.test_burnout`.
@@ -1168,6 +1168,69 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **The remaining 26** are traits, switches, build gates, Armor, drawback and form skills.
     - **New names to review:** none.
 - [ ] **Should a ward on Send Off reach a foe sent away?** (?212)
+
+## Wave 6 (2026-11-20): equipment links, multi-slot skills, the Party, the audit
+
+214. **Equipment-skill links: `innate` and `optional` - built on judgement, open for review (2026-11-20).** Your words (?196): "not a bad idea, just keep them light. Armor may provide skills that can be optionally added to hotbar in the future (`optional`), or skills that don't need a hotbar slot (`innate`)... those tags are associated with an equipment's association to a skill rather than the skill itself (Igna may be provided for no equip cost by a robe, and with a slot equip cost on a medium armor set)". Plan: `docs/plans/w6-link.md`. Calls:
+    - **The flags live on the item's link:** `Item.innate` and `Item.optional`, two `Array[Skill]` each a subset of `Item.skills`; `Item.link(s)` reads them. No Skill.gd field, no link Resource (it would have changed every `skills =` line).
+    - **Meanings:** plain = a slot, on the bar by itself as before; `optional` = lent, works only once the wearer puts it on the bar (auto-equip, auto-fill and `_fill_bar` leave it; the spellbook offers it); `innate` = no slot, always equipped while worn (suppressed with traits), listed with the traits.
+    - **`Unit.slot_cost(s)`** is the one price in slots (0 for a trait or an innate lend, else 1: ?215 changes it there); `bar_place`, `equip_skill`, `auto_fill`, the spellbook drag and the bar's drop all ask it.
+    - **Edges:** (a) innate means something only on an always-on passive; on an active or toggle it reads as plain and `item.py check` flags it, so your Igna (an active) is not innate-able until something can cast from outside the bar; (b) two items linking one skill: innate beats plain beats optional; (c) a skill learned as well as lent is the unit's own, the link is ignored; (d) a lend that turns innate gives up its slot quietly, one that turns plain auto-equips; (e) the rank is the best item's, whatever the link.
+    - **Armor's `equipment` skill is innate:** `Skill.is_trait()` no longer includes `equipment` (tag kept); all nine armors lend Armor innate; `item.py check` (run by `skill.py check`) fails an item lending an equipment skill not in its `innate`: the old "never on the hotbar" hold, through the link. `armor_skills()` also accepts the item's own innate link (armor in a Plating slot).
+    - **Tooling:** `item.py new --skill kick:innate|optional`; `item.py lend <skill> --as innate|optional`; `check` flags a flag on a skill not lent, innate on a non-passive, both flags, equipment not innate.
+    - **No demonstration of `optional`:** Hobnail Boots' Kick is an active, and making it optional would change how the boots play; not done.
+    - **Tests:** `lent_test.test_links` (24 checks); `equip_test`, `lent_test`, `test.gd` changed to the new rule; two mutations failed and reverted. Suite 10265 checks before.
+    - **New names to review:** none.
+- [ ] **Innate on an active** (your Igna on a robe): needs a way to cast from outside the bar. A design call. (?214)
+- [ ] **Which item first uses `optional`?** (?214)
+- [ ] **`SkillTerms` and `Skill.describe()` still decide "Trait" from the skill alone** (Armor reads "Always on", shown nowhere). (?214)
+
+215. **Multi-slot skills - built on judgement, open for review (2026-11-20).** Your words: "some skills take up multiple slots. if no slots property / tag is specified it's default 1 / restricted as usual (martial skills may use martial bonus slots etc). Skills with a rarity take up multiple slots by default: Rare: 2, Epic / Very Rare: 3, Legendary: 4, Mythic: 5" and "most often, this will come up for high tier skills that need to be nerfed in some fashion." Plan: `docs/plans/w6-slots.md`. Calls:
+    - **Rarity tags (skills had none; `Item.rarity` is an enum):** `rare`, `epic`, `very_rare` (a child of `epic`, shown "Very Rare"), `legendary`, `mythic`, named as you wrote them (no ??), Glossary terms of kind `target`, in `Tags.PLAIN`; `Skill.RARITY_SLOTS` maps them to 2, 3, 4, 5; two on one skill: the dearer wins. `Item.rarity` is not unified with them (a later call).
+    - **An explicit price is a behaviour:** `Behaviours/slot_cost.gd` (`@export slots`) answers `Behaviour.slots_taken()`, standing over the rarity either way (1 makes a rare skill ordinary). No Skill field, so no `skill.py ceiling`; `skill.py check` allows it unused (`UNUSED_OK`) until your first nerfed skill.
+    - **`Unit.slot_cost(s)`:** 0 for a trait or an innate lend, else `slots_taken()`. **A pillar always takes 1** (pillars are pinned to single sure slots).
+    - **Representation:** the hotbar stays an `Array[Skill]`; a multi-slot skill sits in its first slot and the slots after hold null, "covered" (`covered()`, `anchor()`, `skill_at()`, `slot_free()`, `span()`); saves unchanged. Not the skill repeated in each slot.
+    - **A run of one kind:** the slots exist, work, fit the skill's type and are all sure slots or all one granting skill's slots (Cram's three caster slots are one run; two Magic Slot skills' are not); never across the clover slot.
+    - **Placing:** `bar_place(s, i)` takes the run from i and takes off every skill with a slot in it, announced; a skill landing on exactly one skill swaps if that one fits the freed slots, else it comes off; a pillar in the run refuses; `bar_clear` on any covered slot clears the whole skill; auto-placement looks for a free run (actives first, passives last). With no run the skill stays learned, unequipped.
+    - **The sort (`_arrange()`):** a multi-slot skill goes through as that many copies; `_gather()` puts back one first slot or, if a copy was cut off, takes it off the bar whole (announced).
+    - **Working:** `equipped(s)` needs every slot of its run unsealed and not idle in a bonus slot. In Cram's caster bonus slots a spanning skill works only if it carries the type for each slot; its Burnout wear is the highest bonus rank among its slots. **Density doubles what a skill's rank grants and leaves its price alone** (a rare skill costs 2 under any emblem). A burning slot burns a skill once.
+    - **Disabling:** one skill is one entry in `disable_order()`; a disabling effect counts slots as ever, so **a 3-slot skill is cheaper to reach than three 1-slot ones**: part of the nerf, a number to tune.
+    - **HUD:** a covered slot shows "(continued)" dimmed with the skill's stripe; a number key or click uses the skill; right-click unequips whole; a drop is `bar_place` on the slot clicked; a failed drop says "takes N slots side by side"; the tooltip says "Takes N hotbar slots ..."; no wider slot.
+    - **AI** places nothing; NPC and monster bars set up through `_fill_bar()`, which looks for runs.
+    - **Existing content:** no skill carries a rarity or SlotCost, so 0 skills take more than one slot; nothing re-tiered. With 4 sure slots at level 1 (5 at level 4) a Mythic (5) can't be on a bar before level 4 and a Legendary (4) fills a level 1 bar: whichever skill is tagged first decides whether that is meant.
+    - **Tests:** `equip_test.test_multi_slot` (30 checks); four mutations failed and reverted. Suite 10279 checks before.
+    - **New names to review:** none (the rarity words are yours).
+- [ ] **Which skill is the first to carry a rarity or `slots`?** and is a Mythic unplaceable before level 4 meant? (?215)
+- [ ] **A disabling effect counts slots as ever**, so a wide skill is cheaper to disable; keep as the nerf or weight by span (`slot_weight` is rank alone)? (?215)
+- [ ] **A rare pillar skill (Cram) stays 1 slot; Density leaves the price alone.** Right? (?215)
+- [ ] **Runs across two granting skills' slots** are not allowed; a wider HUD slot is not built; `Item.rarity` is not the same tags. (?215)
+
+216. **Persistent roster and Party - built on judgement, open for review (2026-11-20).** Your words: "Go ahead and set up persistent units to keep track of saved skills / a configurable 'Party'. Party size is level / 4, + base cha mod if positive. at least 2." Plan: `docs/plans/w6-party.md` (two builders; the first was interrupted). Calls:
+    - **The roster:** `Game.roster`, the player's persistent units, each a `Unit.to_dict()` (side, class, name, level, XP, hearts, learned skills with rank, points and on, purchases, trees opened and picked, the bar by skill id, worn items by `Save.item_out()`, `lapses_out()`); `Unit.from_dict()` puts it back on a fresh unit of its class; a gone skill or item is left out; unspent points are level - 1 less what `purchases` spent.
+    - **"Level" is the leader's:** `Game.party_size(lvl, cha) = max(lvl / 4 + max(cha mod, 0), 2)` from `Game.level` (the hero, roster entry 0) and its class's base charisma (`Role.stats`), not effects in play; the leader counts toward the size.
+    - **`Game.hero` stays the leader's record** and entry 0; `Game.level/xp/hearts/outfit/equipped/lapses` stay its live fields and win over the entry where both speak; its hearts are its class's plus `Game.hearts`, not the entry's.
+    - **Who is on the roster:** a new game makes the leader plus one recruit of each other starting class, as new as it, named by its class (a stand-in until recruiting exists; no made-up names). The party starts as the first that fit.
+    - **The Party screen** (`Scripts/PartyPanel.gd`): a "Party: n of m" button on Entry (when the roster has more than the leader); a box per member, the leader always ticked, others while there's room.
+    - **A battle fields the party** (`Battle._field_party()`): each picked member as a unit of its class on the player's side, on the free tiles nearest the leader, following it (Command puts it in the leader's party from the start); Command's `party_size()` never drops below what was brought. NPC and companion class units stay fresh.
+    - **Keeping:** `Game.keep()` reads each fielded unit back into its entry, and the leader's `lapses_out()` into `Game.lapses`; it runs as the battle leaves the tree and inside `Save.pack()`; every battle with a player connects it.
+    - **Save version 2** adds `roster` and `party`; a version 1 file migrates (`Save.migrate()`: hero, level, XP, hearts, outfit, bar and lapses become the one entry) and writes back as 2.
+    - **Bar with null slots** (from ?214, ?215): `to_dict` writes "" for an empty slot; `from_dict` sets it through `set_equipped()`.
+    - **Tests:** `save_test.test_roster`, `test_migrate`, `test_party_size`; `Tests/run.gd` resets roster, party and fielded between files; five mutations failed and reverted. Suite 10304 checks, 976 tests. Visual: `S/shot_w6-party/`.
+    - **New names to review:** none (class names are yours).
+- [ ] **Recruiting and dismissing roster members in play** (needs the user: where recruits come from, names). (?216)
+- [ ] **What a death does to a roster member** (a fallen member is not removed; permadeath is a design call). (?216)
+- [ ] **Party members' outfits can't be changed between battles** (the stash screen is the leader's): a card. (?216)
+- [ ] **Is "level" the leader's the right reading** (vs the highest or the average on the roster)? (?216)
+
+217. **Queue audit - built on judgement, open for review (2026-11-20).** Plan: `docs/plans/w6-audit.md` (skipped by instruction: the AI turn cost card). Verdicts:
+    - **Interject's and Snapping Turtle's checks take the reaction bonus: already built** (`Interject.check_bonus()` feeds `contest()` in the `hit` and `snap` branches and `foils()`; Snapping Turtle re-asks Interject as `&"snap"`, so no code change); row in `param_test.test_concrete_scaled`.
+    - **The AI casts Skeleton: built** (`AI._summon()` in `act()`; consts `BODY` 5.0 HP a body, `SUMMON_SEEN` a foe read within 10 tiles, `SUMMON_CAP` 12 units a side; not when posture is defensive or temper stoic; the cast tile is the free tile within the skill's reach nearest the foe). `Behaviour.bodies()` is a generic hook (overridden in `summon_per_rank.gd`), no Skeleton special case. Sim `host` in `ai_sim.gd`: bodies 0.00 to 8.00, every other line identical; damage 0.00 both (the skeletons don't reach the soaker 9 tiles off in 10 rounds). `BODY = 0` failed `test_ai_raises_host`; reverted.
+    - **Hunt sim near variant: built** (`hunt_10v10.gd` `near`, `sweep.sh SIM=`); **no `AI.LOST` retune**, it stays 0.5.
+    - **Edge-pan sideways: built** (`BattleCamera.gd` middle-drag; `meadows_test`).
+    - **Deathlust AI awareness: partly.** Built: `AI._wear()` asks `wearing()` hooks, so a killing blow's exhaustion is unworn. Not built: the HUD float or log line on its relief; the AI pricing the relief a death in reach gives other counts.
+    - **New names to review:** none.
+- [ ] **Retune `AI.LOST` with the near hunt sim.** Queued. (?217)
+- [ ] **A sim where Skeleton reaches the foe** (damage in `host` is 0 both ways). Queued. (?217)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

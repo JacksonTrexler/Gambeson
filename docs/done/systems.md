@@ -279,3 +279,7 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **One difficulty table** (`Difficulty.WORDS`, `KNOB_SIGHT`, `skill.py check_difficulty_words`): plan `docs/plans/w5-diff.md`. (?211)
 - [x] **Density: Clairvoyance, Send Off, Stoneskin** (`min_rank` on effects; `no_density` 29 to 26): plan `docs/plans/w5-density.md`. `param_test`. (?212)
 - [x] **Plating, friction and postponement in the AI and HUD** (`Unit.pack`, `AI._dress()`, `slot_toll()`, `POINT`, `DELAY`, Astral Princess loot): plan `docs/plans/w5-ai2.md`. (?213)
+- [x] **Equipment-skill links** (`Item.innate`, `Item.optional`, `Item.link()`, `Unit.slot_cost()`, `item.py new --skill` / `lend --as`; Armor lent innate by every armor): plan `docs/plans/w6-link.md`. `lent_test.test_links`. (?214)
+- [x] **Multi-slot skills** (rarity tags, `Skill.RARITY_SLOTS`, `Behaviours/slot_cost.gd`, `Behaviour.slots_taken()`, covered slots, `bar_place` runs, HUD "(continued)"): plan `docs/plans/w6-slots.md`. `equip_test.test_multi_slot`. (?215)
+- [x] **Persistent roster and Party** (`Game.roster`, `party`, `keep()`, `party_size()`, `Unit.to_dict/from_dict`, Save version 2 with migration, `PartyPanel.gd`, `Battle._field_party()`): plan `docs/plans/w6-party.md`. `save_test`. (?216)
+- [x] **Queue audit: the AI casts Skeleton** (`AI._summon()`, `Behaviour.bodies()`, sim `host`), **Interject and Snapping Turtle bonus, hunt sim `near`, edge-pan middle-drag** found built: plan `docs/plans/w6-audit.md`. `summon_test.test_ai_raises_host`. (?217)
