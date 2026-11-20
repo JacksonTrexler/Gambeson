@@ -17,6 +17,10 @@ func count(c: Cast) -> int:
 	return per_rank * c.impact_rank()
 
 
+func bodies(c: Cast) -> int:
+	return count(c)
+
+
 func apply_at(c: Cast, cell: Vector2i) -> void:
 	for i in count(c):
 		var u := c.battle.summon(scene, c.caster.faction, cell)

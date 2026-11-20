@@ -61,6 +61,9 @@ const FLANKING := 0.4  # a tile's pull, a point of Defense the target loses to a
 const SHOT := 0.5  # the chance to hit below which a ranged attack isn't worth taking now, when resting for Focus would make it one (_steady())
 const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take off it in its reckoning (_foiled()): a target it can't hit through them is still a target
 const GUESS_DEFENSE := 12  # the Defense it takes a foe to have when it can't make it out (Read.defense null): a medium armor's floor
+const BODY := 5.0  # what a body a summon adds is worth, in the HP a blow takes (a Skeleton: 6 HP and a weak Strike; two of them repay its 4 AP, 3 cost)
+const SUMMON_SEEN := 10  # tiles a foe it makes out may stand for it to raise a host (_summon())
+const SUMMON_CAP := 12  # units a side may hold before it raises no more (the bodies' worth falls to nothing)
 const POINT := 0.5  # what a point of Energy or other cost it gets back is worth, in the HP a blow takes (a 3 AP strike costs a few)
 const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
 const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
@@ -151,6 +154,9 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		return log
 	if posture == &"" and not u.pack.is_empty() and not _could_strike(b, u, reads):  # nothing to strike from here: armor first, then the walk
 		_dress(b, u, log)
+	if posture != &"defensive" and temper != &"stoic":
+		while _summon(b, u, reads, log):
+			pass
 	if temper != &"stoic" and not rooted and _emboldened(u, reads):
 		_line_up(b, u, reads, log)  # to the tile its shoves tell most from, if there is one
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
@@ -628,6 +634,50 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 		return false
 	log.append("%s uses %s on %s -> %d" % [u.name, best[0].name, best[1].name, best[1].hp])
 	reads[best[1]] = b.read(u, best[1])
+	return true
+
+
+# Raises a host: a tile skill whose cast adds bodies (Behaviour.bodies(): Skeleton) cast near itself, toward the nearest foe
+# it makes out within SUMMON_SEEN, while its side has room (SUMMON_CAP) and the bodies (BODY each) are worth more than what
+# the cast costs it (AP, POINT, as score() weighs a rebate) and its wear. The best such skill; false if none was cast.
+static func _summon(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	var room := SUMMON_CAP - b.members(u.faction).size()
+	if room <= 0:
+		return false
+	var foe: Variant = null
+	for t: Unit in reads:
+		var r: Read = reads[t]
+		if t.is_alive() and _foe(u, r) and r.located() and Command.tiles(u.cell, r.cell) <= SUMMON_SEEN \
+				and (foe == null or Command.tiles(u.cell, r.cell) < Command.tiles(u.cell, foe)):
+			foe = r.cell
+	if foe == null:
+		return false
+	var best: Skill = null
+	var best_net := 0.0
+	for s: Skill in u.actives:
+		if not s.on_tile() or not u.can_afford(s) or s.hostile:
+			continue
+		var n := 0
+		var c := b.cast_of(u, s, null, u.rank(s), true)
+		for bh in s.behaviours:
+			n += bh.bodies(c)
+		if n <= 0:
+			continue
+		var fund: Variant = u.funding(s)
+		var net := minf(n, room) * BODY - (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT) - _wear(u, s)
+		if net > best_net:
+			best = s
+			best_net = net
+	if best == null:
+		return false
+	var spot: Variant = null
+	for c: Vector2i in b.cells_near(u.cell, b.area_reach(u, best)):
+		if b.unit_at(c) == null and b.on_map(c) and Vector2(u.cell).distance_to(Vector2(c)) <= b.area_reach(u, best) + 0.0001 \
+				and (spot == null or Command.tiles(c, foe) < Command.tiles(spot, foe)):
+			spot = c
+	if spot == null or not b.cast_at(u, best, spot):
+		return false
+	log.append("%s raises %s at %s" % [u.name, best.name, spot])
 	return true
 
 
