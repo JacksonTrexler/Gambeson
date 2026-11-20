@@ -30,7 +30,7 @@ func test_sing() -> void:
 	siren().refresh()
 	ok(b.auto_targets(siren(), sing) == [v(3), v(1)] and b.cast(siren(), sing, siren()) and v(1).cell == Vector2i(5, 6),
 			"Sing II: range 2 + cha mod (4), the nearest two - a foe among them, drawn 2 tiles closer")
-	ok("Used at once: lands on the nearest 2 units in range, allies and foes alike" in sing.describe(2) and "On a foe: draws it up to 2 tiles toward the caster" in sing.describe(2),
+	ok("Used at once: lands on the nearest 2 units in range, allies and foes alike" in sing.describe(2) and "; draws it up to 2 tiles toward the caster" in sing.describe(2),
 			"described (%s)" % sing.describe(2))
 	b.move(v(1), Vector2i(1, 6))
 	ok(b.auto_targets(siren(), sing) == [v(3)], "7 tiles off: out of range")

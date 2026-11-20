@@ -76,7 +76,7 @@ func test_traits() -> void:
 	names.sort()
 	ok(names == ["alluring", "reckless_abandon", "skill_slot", "starkind"], "the innate skills that are traits: %s" % [names])
 	var h := await hud(u)
-	var traits: VBoxContainer = h.get_node("%Traits")
+	var traits: SlotColumns = h.get_node("%Traits")
 	ok(traits.get_child_count() == 1 and (traits.get_child(0) as SkillSlot).skill == kin, "the HUD shows it after the hotbar")
 	var shown: SkillSlot = traits.get_child(0)
 	ok(shown.trait_slot and shown._get_drag_data(Vector2.ZERO) == null and not shown._can_drop_data(Vector2.ZERO, {skill = hex, from = -1}), "a trait slot can't be dragged, dropped on or cleared")

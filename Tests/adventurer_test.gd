@@ -97,7 +97,7 @@ func test_starter_spells_on_allies() -> void:
 	ok(is_equal_approx(b.skill_range(u, sola), 3.21), "range 1 + int mod (16 -> 3) + reach and sizes")
 	u.intelligence = 4
 	ok(is_equal_approx(b.skill_range(u, sola), 1.21), "a negative int mod still reaches the adjacent: floored at 1 + 0.21 sizes")
-	ok("On an ally: Persona: +1 for 3 turns" in sola.describe(3) and "On a foe: deals 1d4 + int" in sola.describe(3),
+	ok("On an ally: Persona: +1 for 3 turns" in sola.describe(3) and "On a foe: Attack (int mod); deals 1d4 + int" in sola.describe(3),
 			"described both ways (%s)" % sola.describe(3))
 	u.free()
 

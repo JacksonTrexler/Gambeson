@@ -833,7 +833,38 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 		lines.append("Tags: " + ", ".join(classes.map(func(c): return String(c).capitalize()) + ([] if stand_in else shown.map(func(t): return Glossary.term(t) if t in Modifiers.KNOBS else "{x:%s}" % t))))  # a knob by its name: β+, d-
 	if lore:
 		lines.append(lore.replace("{", "(").replace("}", ")"))
-	return "\n".join(lines)
+	return "\n".join(merge_leads(lines))
+
+
+# "On a foe: ..." leads one line, once: every later line with the same "On <who>: " lead (this class's own, and what a
+# behaviour or an effect says) joins the first after a "; ", in the order they came - Attack, damage and a draw
+# on a foe read as one line, an ally's buff and boost as another. A line leading otherwise is left where it is.
+static func merge_leads(lines: PackedStringArray) -> PackedStringArray:
+	var out: PackedStringArray = []
+	var at := {}  # lead -> its line's place in out
+	for l in lines:
+		var lead := lead_of(l)
+		if lead == "":
+			out.append(l)
+		elif at.has(lead):
+			out[at[lead]] += "; " + l.substr(lead.length())
+		else:
+			at[lead] = out.size()
+			out.append(l)
+	return out
+
+
+# The "On a foe: " (or "On an ally: ", "On itself: ") a line leads with, "" for one that doesn't.
+static func lead_of(line: String) -> String:
+	if not line.begins_with("On "):
+		return ""
+	var colon := line.find(": ")
+	if colon < 0 or colon > 24:
+		return ""
+	for c in line.substr(3, colon - 3):
+		if not (c == " " or (c >= "a" and c <= "z")):
+			return ""
+	return line.substr(0, colon + 2)
 
 
 # How long its put-on effects last at a rank: " for 2 turns", " until it moves", " for 2 turns,
