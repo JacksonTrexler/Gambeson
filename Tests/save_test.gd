@@ -119,6 +119,17 @@ func test_migrate() -> void:
 	ok(Game.party == ([0] as Array[int]) and Save.pack().version == 2, "the party is the leader alone, and it saves as version 2")
 
 
+# A skill renamed since a save was written (Skill.RENAMED): its old id still finds the file, on the bar and in the roster.
+func test_renamed_skill() -> void:
+	var harmony: Skill = load("res://Skills/harmony.tres")
+	ok(Skill.by_id("symphony_bard") == harmony and Skill.by_id("harmony") == harmony and Skill.by_id("no_such_skill") == null and Skill.by_id("") == null, "a renamed id and its new one find the same skill; none is null")
+	var f := FileAccess.open(Save.PATH, FileAccess.WRITE)
+	f.store_string(JSON.stringify({version = 1, level = 1, xp = 0, equipped = ["symphony_bard", "strike"],
+			hero = {faction = lancin.resource_path, role = "res://Roles/adventurer.tres", name = "Old"}}))
+	f.close()
+	ok(Save.load_game() and Game.equipped == [harmony, load("res://Skills/strike.tres")], "a save from before the rename keeps it on the bar (%s)" % [Game.equipped])
+
+
 func test_party_size() -> void:
 	Game.hero = {faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Wren"}
 	# [level, base charisma, size]: level / 4, plus the charisma mod if positive, at least 2
