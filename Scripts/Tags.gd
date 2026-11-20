@@ -110,6 +110,8 @@ const COLOR := {
 	&"epic": Color("#b06ae0"),
 	&"legendary": Color("#f0a030"),
 	&"mythic": Color("#e05a5a"),
+	&"impact": Color("#f2a56b"),
+	&"first_chair": Color("#e8c547"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
