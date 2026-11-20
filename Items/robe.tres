@@ -11,4 +11,3 @@ tags = Array[StringName]([&"light", &"cloth"])
 no_dex = true
 mind_stat = &"wisdom"
 skills = Array[ExtResource("3_skill")]([ExtResource("2_armor")])
-innate = Array[ExtResource("3_skill")]([ExtResource("2_armor")])

@@ -22,7 +22,8 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool, hold
 	theme_type_variation = &"Card"
 	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.markup(rank, true, holder)]  # as its holder has it: its modifiers, its price
 	if holder and holder.slot_cost(s) == 0:
-		tooltip_text += "\nAlways on: it takes no hotbar slot, so it can't be slotted or unslotted."
+		tooltip_text += "\nAlways on: it takes no hotbar slot, so it can't be slotted or unslotted." if SkillSlot.muted(s) else \
+				"\nFree: it takes no hotbar slot; use it from beside the hotbar, where it sits keyed."
 	if draggable:
 		tooltip_text += "\nDrag onto the hotbar."
 		mouse_default_cursor_shape = CURSOR_DRAG
@@ -33,7 +34,7 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool, hold
 	numeral.text = Skill.roman(rank)
 	numeral.custom_minimum_size.x = 14
 	numeral.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var hush := SkillSlot.muted(s)  # an always-on passive: muted, as on the hotbar; a trait or an innate lend can't be slotted at all
+	var hush := SkillSlot.muted(s)  # an always-on passive: muted, as on the hotbar; a trait or a free lend can't be slotted at all
 	numeral.add_theme_color_override(&"font_color", SkillSlot.MUTED_GOLD if hush else SkillSlot.GOLD)
 	row.add_child(numeral)
 	var stripe := ColorRect.new()

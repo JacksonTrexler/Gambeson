@@ -97,8 +97,7 @@ func bulwark() -> Item:
 	var it := Item.new()
 	it.name = "Bulwark"
 	it.defense = 20
-	it.skills = [load("res://Skills/armor.tres")] as Array[Skill]  # armor sets Defense through the equipment skill it lends...
-	it.innate = it.skills.duplicate()  # ...innate: it takes no hotbar slot
+	it.skills = [load("res://Skills/armor.tres")] as Array[Skill]  # armor sets Defense through the equipment skill it lends (free: no hotbar slot)
 	return it
 
 

@@ -45,7 +45,7 @@ var holder: Unit  # whose slot it is: its tooltip describes the skill as this un
 var modded := false  # a worn emblem puts a modifier on its skill (Unit.mods()): a small gold diamond, the tooltip's symbols without hovering
 var lent := ""  # the item lending its skill (Unit.lent_by()): a small pale ring at the slot's lower right, and its tooltip says whose
 var cover: Skill  # the skill before it that spans this slot (Unit.skill_at(): one that takes several), whose continuation it draws; skill is null
-var trait_slot := false  # a trait (Skill.is_trait()) shown after the hotbar: no number, no drag, no clearing, drawn in the trait colour
+var trait_slot := false  # in the band after the hotbar (HUD.band(): a trait, a free lend): no drag, no clearing, drawn in the trait colour; a number only if its skill is cast or switched (keyed())
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
 var _lit := -100.0  # when (s) its passive last acted (flash()); -100: not lately
@@ -218,7 +218,7 @@ func _draw() -> void:
 	draw_rect(Rect2(2, 2, 9, size.y - 4), Color(tone, 0.3 * fade) if tone != null else Color(1, 1, 1, 0.07))
 	if bonus != &"":  # a bonus slot: a dashed rim in its type's colour, over whatever marks the slot
 		_dashed_rim(Color(TYPES.get(bonus, PLAIN_TINT), 0.85 * fade))
-	if trait_slot:  # a diamond where the number would be: it has no key
+	if trait_slot and not keyed():  # a diamond where the number would be: it has no key
 		var at := Vector2(6.5, size.y / 2.0)
 		draw_colored_polygon(PackedVector2Array([at + Vector2(0, -2.5), at + Vector2(2.5, 0), at + Vector2(0, 2.5), at + Vector2(-2.5, 0)]), Color(tone.lightened(0.35), fade))
 	elif locked:
@@ -327,9 +327,16 @@ func _key() -> String:
 	return str((index + 1) % 10)
 
 
-# What its tooltip leads with: its number key, or "Trait" for a trait, which has none.
+# What its tooltip leads with: its number key, or for a band slot with none "Trait" (a trait) or "Free" (a free lend).
 func _tag() -> String:
-	return "Trait" if trait_slot else "[%s]" % _key()
+	if keyed():
+		return "[%s]" % _key()
+	return "Trait" if not skill or skill.is_trait() else "Free"
+
+
+# Whether it has a number key: every hotbar slot, and a band slot whose skill is cast or switched (not muted()).
+func keyed() -> bool:
+	return not trait_slot or (skill != null and not muted(skill))
 
 
 func _get_drag_data(_at: Vector2) -> Variant:

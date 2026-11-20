@@ -11,4 +11,3 @@ tags = Array[StringName]([&"astral"])
 requires = &"constitution"
 hearts_mod = &"constitution"
 skills = Array[ExtResource("3_skill")]([ExtResource("2_armor")])
-innate = Array[ExtResource("3_skill")]([ExtResource("2_armor")])

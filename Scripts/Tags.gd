@@ -115,6 +115,7 @@ const COLOR := {
 	&"survey": Color("#b9cf8a"),
 	&"evaluate": Color("#9fd6c8"),
 	&"inquire": Color("#e8c547"),
+	&"flight": Color("#b8d8f0"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

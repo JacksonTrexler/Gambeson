@@ -200,7 +200,7 @@ def check_equipment(problems):
     """Equipment (the tag: Armor) is what an item lends as part of what it does (docs/plans/w3-lent.md, ?196): never a hotbar skill.
     It is an always-on passive (no toggle, hybrid or pillar), on no tree, no role's options and no unit's learned list, so
     nobody learns it. Taking no slot is the item's link, not the skill's (docs/plans/w6-link.md): item.py check (run below)
-    fails any item lending an equipment skill that isn't in its `innate` list; Tests/lent_test.gd holds the bar."""
+    fails any item lending an equipment skill optional (lends are free unless optional, ?214); Tests/lent_test.gd holds the bar."""
     equip = []
     for p in sorted(files("Skills", ".tres")):
         res = next(x for x in sections(read(p)) if x["kind"] == "resource")["props"]
@@ -213,7 +213,7 @@ def check_equipment(problems):
         text = read(p)
         for f in equip:
             if 'path="res://%s"' % f in text:
-                problems.append("%s: lists %s, which is equipment: an item lends it, no tree or class offers it (an item lends it innate)" % (p, f))
+                problems.append("%s: lists %s, which is equipment: an item lends it, no tree or class offers it (an item lends it free)" % (p, f))
     for p in sorted(files("Scenes", ".tscn")):
         text = read(p)
         for f in equip:

@@ -311,20 +311,19 @@ func test_multi_slot() -> void:
 	covered_slot.cleared.emit(3)
 	ok(rare not in u.hotbar, "unequipping from the covered slot takes the whole skill")
 	h.free()
-	# an item's innate link makes it slotless whatever its rarity; a plain one charges its price
+	# an item's free link makes it slotless whatever its rarity; an optional one charges its price
 	var calm: Skill = wary.duplicate()
 	calm.name = "Calm ??"
 	calm.tags = calm.tags + ([&"epic"] as Array[StringName])
 	var ring := Item.new()
 	ring.slot = "trinket"
 	ring.skills = [calm] as Array[Skill]
-	ring.innate = [calm] as Array[Skill]
 	var w := roomy(v(2), 3)
 	w.equip(ring)
-	ok(w.slot_cost(calm) == 0 and calm not in w.hotbar and w.equipped(calm), "a rare skill lent innate takes no slot")
-	ring.innate = [] as Array[Skill]
+	ok(w.slot_cost(calm) == 0 and calm not in w.hotbar and w.equipped(calm), "a rare skill lent free takes no slot")
+	ring.optional = [calm] as Array[Skill]
 	w.refit()
-	ok(w.slot_cost(calm) == 3 and w.span(calm).size() == 3 and w.equipped(calm), "lent plain it takes its three, on the bar by itself")
+	ok(w.slot_cost(calm) == 3 and calm not in w.hotbar and w.bar_place(calm, w.free_slot(calm)) and w.span(calm).size() == 3 and w.equipped(calm), "lent optional it takes its three, once its wearer slots it")
 	w.unequip("trinket")
 	# typed and bonus slots (Cram): every slot of the run must carry the type
 	var cram: Skill = load("res://Skills/cram.tres")
