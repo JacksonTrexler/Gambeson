@@ -6,7 +6,7 @@ extends Camera2D
 # the one the player selects, or the last to act that the player's side makes out (one acting unseen
 # doesn't draw the view: that would give it away). The arrow keys pan it (camera_left/right/up/down,
 # rebindable in KeyBinds), and so does the mouse pushed to the screen's edge (edge_pan, a Setting; not
-# over the HUD's side panels, nor with one open); a panned view stays put until someone acts, the turn or the selection
+# over the HUD's side panels, nor with one open), and a middle-drag (sideways, past the panels); a panned view stays put until someone acts, the turn or the selection
 # changes, or Home. Home refocuses on the selected unit; Home again goes back to the player's unit.
 
 const FAR := 110.0  # how far off centre (world pixels) the active unit gets before the view goes to it
@@ -89,6 +89,13 @@ func hud_panels() -> Array[Rect2]:
 func _input(e: InputEvent) -> void:
 	if e is InputEventMouse:
 		_mouse = e.position
+	if e is InputEventMouseMotion and e.button_mask & MOUSE_BUTTON_MASK_MIDDLE:  # the side panels cover the left and right edges: drag the view sideways too
+		pan(drag_by(e.relative, zoom.x))
+
+
+# How far a middle-drag of `rel` design pixels moves the view: the ground follows the pointer.
+static func drag_by(rel: Vector2, zoom_x: float) -> Vector2:
+	return -rel / zoom_x
 
 
 func _notification(what: int) -> void:
