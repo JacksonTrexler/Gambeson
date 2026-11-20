@@ -21,9 +21,10 @@ static var party: Array[int] = []  # the roster entries a battle fields (the Par
 static var fielded := {}  # roster index -> the Unit standing for it in the battle now (Battle._field_party()): keep() reads them back
 
 
-# How many the Party holds, the leader among them: its level / 4, plus its base charisma mod if positive, at least 2.
+# How many the Party holds, the leader among them: its base charisma mod if positive (at least +0), plus its
+# level / 4 (at least 1). A size of 1 is the leader going solo: no one to bring (?216).
 static func party_size(lvl: int, charisma: int) -> int:
-	return maxi(lvl / 4 + maxi(floori((charisma - 10) / 2.0), 0), 2)
+	return maxi(floori((charisma - 10) / 2.0), 0) + maxi(lvl / 4, 1)
 
 
 # The Party's size for the leader: Game.level, and the charisma its class gives (a unit's base score: nothing

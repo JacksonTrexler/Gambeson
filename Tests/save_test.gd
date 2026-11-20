@@ -121,12 +121,18 @@ func test_migrate() -> void:
 
 func test_party_size() -> void:
 	Game.hero = {faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Wren"}
-	# [level, base charisma, size]: level / 4, plus the charisma mod if positive, at least 2
-	for row in [[1, 10, 2], [1, 16, 3], [3, 8, 2], [4, 12, 2], [8, 10, 2], [12, 10, 3], [12, 6, 3], [7, 11, 2], [20, 18, 9]]:
+	# [level, base charisma, size]: the charisma mod if positive (at least +0) plus level / 4 (at least 1); 1 is solo (?216)
+	for row in [[1, 10, 1], [1, 16, 4], [3, 8, 1], [4, 12, 2], [8, 10, 2], [12, 10, 3], [12, 6, 3], [7, 11, 1], [20, 18, 9]]:
 		ok(Game.party_size(row[0], row[1]) == row[2], "level %d, charisma %d: %d (%d)" % [row[0], row[1], row[2], Game.party_size(row[0], row[1])])
 	Game.roster.assign(range(6).map(func(i): return {name = str(i)}))
 	Game.party.assign([4, 9, 2, 1, 4])
-	ok(Game.party_now() == ([0, 4, 2] as Array[int]), "the party: the leader first, real entries once each, cut to its size (Adventurer, charisma 16: 3)")
+	Game.level = 1
+	ok(Game.party_now() == ([0, 4, 2, 1] as Array[int]), "the party: the leader first, real entries once each, cut to its size (Adventurer, level 1, charisma 16: 4)")
+	Game.hero = {faction = lancin, role = load("res://Roles/fighter.tres"), name = "Brann"}
+	ok(Game.leader_party_size() == 1 and Game.party_now() == ([0] as Array[int]), "a leader with charisma 9 at level 1 goes solo: the party is the leader alone, though others are picked")
+	var e := _entry()
+	ok(e.party.text == "Party: solo", "Entry says so: %s" % e.party.text)
+	e.free()
 
 
 func test_never_blank() -> void:

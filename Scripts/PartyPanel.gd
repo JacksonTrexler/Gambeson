@@ -66,7 +66,7 @@ func _toggled() -> void:
 	var cap := Game.leader_party_size()
 	for i in range(1, boxes.size()):
 		boxes[i].disabled = not boxes[i].button_pressed and picked.size() >= cap
-	count.text = "%d of %d" % [picked.size(), cap]
+	count.text = "Going solo: no one to bring yet" if cap <= 1 else "%d of %d" % [picked.size(), cap]
 
 
 func _done() -> void:
