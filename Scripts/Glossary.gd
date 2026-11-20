@@ -139,11 +139,6 @@ const TERMS := {
 	&"survey": ["Survey", &"check", "A check made to learn more about a tile, such as looking it over for what hides there. Whatever helps with such checks helps with every one of them; a use of preparation by the same name spends a Survey on a tile for intel alone."],
 	&"evaluate": ["Evaluate", &"check", "Sizing a unit up: how much of it a reader makes out, which recon counts. A use of preparation by the same name spends an Evaluation on a unit for intel alone, with no suspicion."],
 	&"inquire": ["Inquire", &"check", "A check made to overcome trickery: looking harder at a unit that fools you, or at what a skill hid. A use of preparation by the same name spends an Inquisition on a unit for suspicion alone, at advantage."],
-
-	&"first_chair": ["First Chair", &"target", "The first unit of a side to use a skill in a turn. Symphony gives it bonus impact on that skill."],
-	&"survey": ["Survey ??", &"check", "A check made to learn more about a tile, such as looking it over for what hides there. Whatever helps with such checks helps with every one of them; a use of preparation by the same name spends a Survey on a tile for intel alone."],
-	&"evaluate": ["Evaluate ??", &"check", "Sizing a unit up: how much of it a reader makes out, which recon counts. A use of preparation by the same name spends an Evaluation on a unit for intel alone, with no suspicion."],
-	&"inquire": ["Inquire ??", &"check", "A check made to overcome trickery: looking harder at a unit that fools you, or at what a skill hid. A use of preparation by the same name spends an Inquisition on a unit for suspicion alone, at advantage."],
 	&"flight": ["Flight", &"condition", "Aloft: every step costs it 1 movement whatever the ground below, and deep water neither slows nor drowns it. Hollow Bones gives it while switched on."],
 }
 
