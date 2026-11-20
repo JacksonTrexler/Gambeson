@@ -37,9 +37,9 @@ const WORDS := {
 }
 
 # Where a rung stands as an ability score (Unit.stat), for rules that ask "is this stat that high": only
-# what's been asked so far. Unfair ("very high") reads 16, the adventurer's score across; a flat DC isn't
-# a score (very high is 20 as a DC), so this is its own named entry, not derived.
-const STAT_SCORE := {&"unfair": 16}
+# what's been asked so far. Unfair ("very high") reads 16, the adventurer's score across; difficult ("high")
+# reads 14 (+2); a flat DC isn't a score (very high is 20 as a DC), so these are named entries, not derived.
+const STAT_SCORE := {&"difficult": 14, &"unfair": 16}
 
 # An area's difficulty (Battle.difficulty: dungeons, scenarios) -> the rung its own checks sit on, and
 # how much of everything it throws at you (the Meadows: live spawns, how long its portal takes).

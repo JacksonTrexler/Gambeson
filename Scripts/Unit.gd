@@ -44,6 +44,9 @@ const SHAPE := Color(0.03, 0.03, 0.03)  # what a silhouette is painted: one that
 const GLOW := 0.55  # how strongly a unit glows in its side's colour
 const MARK_TIME := 1.0  # seconds a mark (pop_mark(): ? suspected, ! seen through) takes to pop and fade
 const DESATURATE := preload("res://Scenes/UI/desaturate.gdshader")
+const GLOW_SHADER := preload("res://Scenes/UI/unit_glow.gdshader")  # shapes its glow: where it faces, and what later builds add (glow_param())
+const HEADING_SIGHT := &"high"  # the wisdom a viewer needs to see which way a unit faces (Difficulty.stat_at: 14), as a lean in its glow
+const HEADING := 0.5  # how much stronger the glow is on the side it faces, at its most (a share of its alpha): a lean, not a pointer
 const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in high contrast
 # The four strengths a unit's glow takes when the HUD has something to say with it (set_glow();
 # HUD.glow_of()): barely for one out of reach this turn, somewhat for one only a walk that can't be
@@ -393,8 +396,8 @@ var unwatched := 0  # its turns since it last looked around (Battle._watch(): wi
 var facing := Vector2.ZERO:  # the way it faces (a direction; zero: none yet): set by its steps, by what it aims at (face()), by Shields Up!; side_of() reads it
 	set(v):
 		facing = v
-		if heading_tick:
-			heading_tick.queue_redraw()
+		_show_heading()
+var heading_seen := false  # the viewer reads which way it faces (HUD.look_of()): its glow leans that way
 var guard := false  # its shield is up (Shields Up!: Battle._guard(); hit()): it blocks what comes from its front
 var striding := false  # moving was the last thing it did this turn (Eyes Forward looks the way it faces)
 var mark: Label  # the mark that last popped over it (pop_mark()), while it fades
@@ -546,7 +549,6 @@ var luck: int:
 @onready var reserve_bar: ProgressBar = $ReserveBar
 var second_bar: ProgressBar  # a second reserve's bar, made when it holds two (_layout_bars())
 var more_bars: Array[ProgressBar] = []  # a third reserve's, and any further: 1px slivers (the map's bars, as few pixels as they need)
-var heading_tick: Node2D  # a faint tick at the edge of its tile toward the way it faces (facing); on the sprite, so a silhouette hides it
 var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over its shoulder; on the sprite, so a silhouette hides it
 
 
@@ -578,10 +580,8 @@ func _ready() -> void:
 	banner.position = Vector2(6, -13)
 	banner.draw.connect(_draw_banner)
 	sprite.add_child(banner)
-	heading_tick = Node2D.new()
-	heading_tick.name = &"Facing"
-	heading_tick.draw.connect(_draw_tick)
-	sprite.add_child(heading_tick)
+	glow.material = ShaderMaterial.new()  # its own: each unit's glow takes its own parameters
+	glow.material.shader = GLOW_SHADER
 	sprite.material = ShaderMaterial.new()
 	sprite.material.shader = DESATURATE
 	set_saturation(1.0)
@@ -2443,19 +2443,6 @@ func _draw_banner() -> void:
 		Item.draw_banner(banner, Vector2.ZERO, c, Color("#1d1a12"))
 
 
-# The tick for the way it faces: a small pale chevron at the rim of its tile, faint (no side's colour: a
-# disguise gives nothing away).
-func _draw_tick() -> void:
-	if facing == Vector2.ZERO:
-		return
-	var d := facing.normalized()
-	var at := d * 9.0  # out past the sprite's arms
-	var side := d.orthogonal()
-	var pts := PackedVector2Array([at + d * 2.5, at - d * 1.0 + side * 3.0, at - d * 1.0 - side * 3.0])
-	heading_tick.draw_colored_polygon(pts, Color(1, 1, 1, 0.8))
-	heading_tick.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[0]]), Color(0, 0, 0, 0.7), 1.0)
-
-
 # Takes off what's in a slot, returning it.
 func unequip(slot: String) -> Item:
 	var old: Item = get(slot)
@@ -4202,6 +4189,28 @@ func set_glow(level: int, contrast := false) -> void:
 		var mult := INTENSITY[level] if level >= 0 else 1.0
 		glow.modulate.a = clampf(GLOW * mult * (CONTRAST_GLOW if contrast else 1.0), 0.0, 1.0)
 		glow.scale = Vector2.ONE * (INTENSITY_SIZE[level] if level >= 0 else 1.0)
+
+
+# Sets one of the glow shader's parameters (Scenes/UI/unit_glow.gdshader): the one way anything reaches it.
+func glow_param(name: StringName, value: Variant) -> void:
+	if glow and glow.material:
+		(glow.material as ShaderMaterial).set_shader_parameter(name, value)
+
+
+# Whether a viewer reads which way a unit faces: wisdom at HEADING_SIGHT.
+static func reads_heading(viewer: Unit) -> bool:
+	return viewer != null and viewer.stat(&"wisdom") >= Difficulty.stat_at(HEADING_SIGHT)
+
+
+# Leans the glow toward the way it faces for a viewer who reads it (heading_seen), evenly otherwise.
+func _show_heading() -> void:
+	glow_param(&"heading", facing.normalized() * HEADING if heading_seen else Vector2.ZERO)
+
+
+func see_heading(on: bool) -> void:
+	if heading_seen != on:
+		heading_seen = on
+		_show_heading()
 
 
 func appear(r: Read) -> void:
