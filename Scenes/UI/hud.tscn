@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://Scripts/CostButton.gd" id="7_cost"]
 [ext_resource type="Script" path="res://Scripts/GuideLink.gd" id="7_link"]
 [ext_resource type="Script" path="res://Scripts/SkillDetail.gd" id="8_detail"]
+[ext_resource type="Script" path="res://Scripts/SlotColumns.gd" id="9_cols"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -89,15 +90,15 @@ layout_mode = 2
 theme_type_variation = &"Muted"
 text = "HOTBAR"
 
-[node name="Hotbar" type="VBoxContainer" parent="Root/Left/Column"]
+[node name="Hotbar" type="Container" parent="Root/Left/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 2
+script = ExtResource("9_cols")
 
-[node name="Traits" type="VBoxContainer" parent="Root/Left/Column"]
+[node name="Traits" type="Container" parent="Root/Left/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 2
+script = ExtResource("9_cols")
 
 [node name="Spacer" type="Control" parent="Root/Left/Column"]
 layout_mode = 2

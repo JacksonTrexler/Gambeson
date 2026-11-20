@@ -245,6 +245,27 @@ func test_describes() -> void:
 	ok(n > 0, "behaviours found")
 
 
+# One lead-in, one line (Skill.merge_leads()): no skill's description, at any rank, says "On a foe: " (or "On an ally: ",
+# "On itself: "...) twice; what a dual skill does to a foe reads as one line, its ally side as another.
+func test_description_leads() -> void:
+	var n := 0
+	for s in _built:
+		for r in [1, 2, 3]:
+			var seen := {}
+			for line in s.describe(r).split("\n"):
+				var lead := Skill.lead_of(line)
+				if lead != "":
+					ok(not seen.has(lead), "%s at rank %d: \"%s\" leads one line only (%s)" % [_id(s), r, lead, line])
+					seen[lead] = true
+					n += 1
+	ok(n > 40, "lead-ins swept (%d)" % n)
+	var aetha: String = (load("res://Skills/aetha.tres") as Skill).describe(1)
+	ok("On a foe: Attack (int mod); deals 1d4 + int mod\n" in aetha and aetha.count("On a foe") == 1 and aetha.count("On an ally") == 1, "a dual spell: foe line, then ally line (%s)" % aetha)
+	var sing: String = (load("res://Skills/sing.tres") as Skill).describe(1)
+	ok(sing.count("On a foe") == 1 and "; draws it up to 1 tile toward the caster" in sing, "Sing's foe lines are one (%s)" % sing)
+	ok(Skill.merge_leads(PackedStringArray(["a", "On a foe: x", "b", "On an ally: y", "On a foe: z"])) == PackedStringArray(["a", "On a foe: x; z", "b", "On an ally: y"]), "merge_leads keeps order and the other lines")
+
+
 # Every behaviour that declares a scaling term (terms(): rank or stat, impact or range) says its numbers as
 # its holder has them: with a modifier on that channel, describe_as() changes (Behaviour.describe_as()).
 # Each is read on a built skill that carries it (some read the skill's own fields).

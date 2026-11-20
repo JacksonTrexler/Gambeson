@@ -25,6 +25,8 @@ extends CanvasLayer
 
 const STARPOWER_TINT := Color("#ffe48a")  # tile-pane lines about the star lattice
 const NOWHERE := Vector2i(-9999, -9999)
+const BAR_SHARE := 0.45  # of the window's width, the most the left panel takes before its slot columns squeeze
+const MIN_ROWS := 4  # the hotbar never wraps into shorter columns than this
 const GOLD := Color("#e8c547")
 const MUTED := Color("#9aa0ae")
 const FOE := Color("#ff6b5e")
@@ -119,8 +121,8 @@ var _falls: Array[String] = []  # "X falls" lines, held until the hit that did i
 var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logged after the falls (_flush_falls())
 
 @onready var card: UnitCard = %Card
-@onready var bar: VBoxContainer = %Hotbar
-@onready var trait_bar: VBoxContainer = %Traits  # after the hotbar: the unit's traits (Unit.traits()), no slots, not selectable
+@onready var bar: SlotColumns = %Hotbar
+@onready var trait_bar: SlotColumns = %Traits  # after the hotbar: the unit's traits (Unit.traits()), no slots, not selectable
 @onready var book_button: Button = %BookButton
 @onready var hold_button: Button = %HoldButton
 @onready var party_button: Button = %PartyButton
@@ -158,6 +160,9 @@ static func shade(c: Color) -> Color:
 
 func _ready() -> void:
 	add_to_group(&"hud")  # the battle camera finds it (BattleCamera)
+	var col: Control = $Root/Left/Column
+	col.minimum_size_changed.connect(_fit_bar, CONNECT_DEFERRED)  # what the panel holds besides the bar changes (a hint wraps, a card row appears)
+	$Root.resized.connect(_fit_bar, CONNECT_DEFERRED)  # ...and the window does
 	command = Command.new(battle, battle.player if battle.player else _stand_in())
 	clock_label = Label.new()
 	clock_label.name = &"Clock"
@@ -422,6 +427,7 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	_tick_clock(delta)
+	_fit_bar()  # what wraps in the panel settles over a few frames (a hint, a name): cheap once it has
 	_hurry()
 	for l in _spinning:
 		l.text = str(randi_range(1, 20))
@@ -2587,6 +2593,37 @@ func _rebuild_bar() -> void:
 		s.dropped.connect(_on_dropped)
 		s.cleared.connect(_on_cleared)
 		bar.add_child(s)
+
+
+var _fit_key: Array = []  # what _fit_bar last fitted for, and the room it gave
+var _fit_room := INF
+
+
+# The hotbar and the traits wrap into columns when the left panel (as tall as the window) can't hold them in one: a
+# widescreen window is wider, not taller. Each gets what the panel's other rows leave; the panel may take up to
+# BAR_SHARE of the window's width before the columns squeeze.
+func _fit_bar() -> void:
+	var col: Control = $Root/Left/Column
+	var view: Vector2 = ($Root as Control).size
+	var panel := $Root/Left as Control
+	var pad := panel.get_combined_minimum_size() - col.get_combined_minimum_size()
+	var others := col.get_combined_minimum_size().y - (bar.get_combined_minimum_size().y if bar.visible else 0.0) \
+			- (trait_bar.get_combined_minimum_size().y if trait_bar.visible else 0.0)
+	var room := view.y - panel.offset_top + panel.offset_bottom - pad.y - others  # (the offsets: its position drifts while it overflows)
+	var key := [view, selected, bar.get_child_count(), trait_bar.get_child_count(), bar.visible, trait_bar.visible]
+	if key == _fit_key:  # the panel's own wrapping (a hint, a name) answers to the columns: only ever tighten, so they can't flip back and forth
+		room = minf(room, _fit_room)
+	_fit_key = key
+	_fit_room = room
+	var tall := _bar_height(trait_bar.get_child_count()) if trait_bar.visible else 0.0  # the traits first stand in one column: they never starve the bar
+	var bar_room := maxf(room - tall, _bar_height(mini(bar.get_child_count(), MIN_ROWS)))
+	var wide := view.x * BAR_SHARE - panel.offset_left - pad.x
+	bar.set_limits(bar_room, wide)
+	trait_bar.set_limits(maxf(room - bar.get_combined_minimum_size().y - 3.0, _bar_height(1)), wide)
+
+
+func _bar_height(n: int) -> float:
+	return n * 13.0 + maxi(n - 1, 0) * SlotColumns.GAP
 
 
 # Hotbar slots shown for u: all of them, but its clover slot (the last) only while it's lucky - unlucky,
