@@ -527,11 +527,14 @@ func _plate(n: int) -> void:
 			t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3) if near else Vector2i(8, 6)})
 			t.v(1).learned.append(t.slot(t.sk("scrap_plating"), 3))
 			t.v(1).pack.append(t.bulwark())
+			t.roomy(t.v(1))
 			t.v(1).refresh()
 			t.soak(t.v(3), 300)
 			for r in 3:
 				t.turn([t.v(1)])
 				t.b.end_turn()
+			if _debug:
+				print("  ", t.logs.slice(-4), t.v(1).ap_for(&"equip"), t.v(1).plate_slots(), t.v(1).pack.size())
 			defense += t.v(1).defense()
 			dressed += 1 if t.v(1).get(&"plate_scrap_plating") != null else 0
 			strikes += t.uses("Villager1", "Strike")
@@ -557,6 +560,8 @@ func _plate(n: int) -> void:
 		var scrap := AI.score(t.v(1), t.strike, t.b.read(t.v(1), t.v(3)), t.b, t.v(3))
 		var power_armor := AI.score(t.v(1), t.strike, t.b.read(t.v(1), t.v(4)), t.b, t.v(4))
 		var pre := t.v(4).energy
+		if _debug:
+			print("  def3=%s def4=%s read4=%s plates4=%s scores %s %s blocks %s" % [t.v(3).defense(), t.v(4).defense(), t.b.read(t.v(1), t.v(4)).defense, t.v(4).plates().size(), scrap, power_armor, AI._blocks(t.b, t.v(1), t.strike, t.b.read(t.v(1), t.v(4)), t.v(4), 5.0)])
 		t.turn([t.v(1)])
 		first += 1 if t.uses("Villager1", "Strike") > 0 and t.logs.any(func(l: String): return l.begins_with("Villager1 uses Strike on") and t.v(4).name in l) else 0
 		power += pre - t.v(4).energy

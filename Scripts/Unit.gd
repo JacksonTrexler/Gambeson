@@ -2357,9 +2357,27 @@ func plates() -> Array:
 		return out
 	for s in plate_skills():
 		var it: Item = plating.get(plate_slot(s))
-		if it and can_wear(it) and s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s))):
+		if it and can_wear(it) and plate_works(s):
 			out.append([s, it])
 	return out
+
+
+# Whether the slot its skill s gives works now: the skill does (equipped, on, not disabled, not lapsed: `passives`) and its
+# own rules say so (Behaviour.slot_works()).
+func plate_works(s: Skill) -> bool:
+	return s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s)))
+
+
+# The Defense `it` would confer in the slot skill s gives, by that slot's rules (Behaviour.slot_defense() applied to what the
+# equipment skills it lends set): NO_ARMOR where it sets none. Worn or not, working or not.
+func plate_defense(s: Skill, it: Item) -> int:
+	var d := _set_by(it)
+	if d == Behaviour.NO_ARMOR:
+		return d
+	for b in s.behaviours:
+		if b:
+			d = b.slot_defense(self, own_rank(s), d)
+	return d
 
 
 # The Defense each worn armor in those slots confers: [skill, Defense] pairs, for the armor that sets any (the slot's
@@ -2367,14 +2385,9 @@ func plates() -> Array:
 func plated_defense() -> Array:
 	var out := []
 	for pair in plates():
-		var s: Skill = pair[0]
-		var d := _set_by(pair[1])
-		if d == Behaviour.NO_ARMOR:
-			continue
-		for b in s.behaviours:
-			if b:
-				d = b.slot_defense(self, own_rank(s), d)
-		out.append([s, d])
+		var d := plate_defense(pair[0], pair[1])
+		if d != Behaviour.NO_ARMOR:
+			out.append([pair[0], d])
 	return out
 
 

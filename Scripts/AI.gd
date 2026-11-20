@@ -148,6 +148,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			return log
 	if posture == &"" and (_steady(b, u, reads, log) or _starve(b, u, reads, log)):
 		return log
+	if posture == &"" and not u.pack.is_empty() and not _could_strike(b, u, reads):  # nothing to strike from here: armor first, then the walk
+		_dress(b, u, log)
 	if temper != &"stoic" and not rooted and _emboldened(u, reads):
 		_line_up(b, u, reads, log)  # to the tile its shoves tell most from, if there is one
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
@@ -171,6 +173,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		_support(b, u, reads, log)
 	if posture == &"":
 		_replenish(b, u, log)
+		_dress(b, u, log)
 	return log
 
 
@@ -392,11 +395,13 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	var saved := 0.0
 	var toll := 0
 	var cc := 0.0
+	var blocked := 0.0
 	if b and t:
 		p = _chance(u, s, r, b, t)
 		if s.attacks() and not (s.check and not s.check.suspicion) and not s.levels_down and p > 0.0:
 			dmg *= 1.0 - 0.5 * Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # a glance lands half
 			dmg *= _use_ratio(b, u, s, t, r, d)  # friction on its rolls, a pool its passives make of them
+		blocked = _blocks(b, u, s, r, t, float(d.get("avg", 0.0)))
 		var more := b.foresee(u, s, t)
 		cc = _afflicting(b, u, s, r, t, more)
 		if not more.is_empty():
@@ -413,7 +418,56 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 			saved = minf(share, 1.0) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
 	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) and &"cc" not in u.skill_tags(s) else 0.0) + cc \
 			+ (KILL if s.drags() else 0.0) + RIDER * riders + spill  # into the water: the Siren's favourite
-	return p * value + saved - DEFENSE * toll - _hate(r)
+	return p * value + saved + blocked - DEFENSE * toll - _hate(r)
+
+
+# A self-directed turn with no blow to strike from where it stands, and what is left of one that struck, go to armor it carries (Unit.pack): the one that adds most Defense to an armor slot its
+# skills give (Unit.plate_slots()) that works now, over what is worn in it (Unit.plate_defense(): that slot's rules, so
+# Scrap Plating's cap and Power Armor's gate are read, not guessed). One a turn (armor takes most of one: Item.ap_cost());
+# none where nothing would add any, or the AP is short (Battle.equip()). What it takes off goes back in the pack.
+static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
+	if u.pack.is_empty():
+		return
+	var best: Array = []
+	var gain := 0
+	for s in u.plate_skills():
+		if not u.plate_works(s):
+			continue
+		var slot := Unit.plate_slot(s)
+		var worn: Item = u.get(slot)
+		var now := 0
+		if worn:
+			now = maxi(u.plate_defense(s, worn), 0) if u.can_wear(worn) else 0
+		for it in u.pack:
+			var d := u.plate_defense(s, it) if it and it.slot == "armor" and u.can_wear(it) else Behaviour.NO_ARMOR
+			if d != Behaviour.NO_ARMOR and d - now > gain:
+				gain = d - now
+				best = [slot, it]
+	if gain > 0:
+		var worn: Item = u.get(best[0])
+		if b.equip(u, best[1], best[0]):
+			u.pack.erase(best[1])
+			if worn:
+				u.pack.append(worn)
+			log.append("%s puts on %s, +%d Defense" % [u.name, best[1].name, gain])
+
+
+# What the plates t wears cost it when they block u's s: each armor slot its skills give it (Unit.plated_defense(), seen once
+# its armor shows: Read.defense) blocks the blows that would have hit without it - the chance s has with its Defense, less
+# the plate's, over the chance it has - and each block takes its skill's toll (Behaviour.slot_toll(): Power Armor's Power) off t
+# at POINT a point, for an attack of `dmg`. 0 for a foe in no plate, one whose armor isn't read, or a plate that takes nothing.
+static func _blocks(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, dmg: float) -> float:
+	if t.plating.is_empty() or r.defense == null or not s.attacks() or (s.check and not s.check.suspicion) or s.levels_down:
+		return 0.0
+	var worth := 0.0
+	var with := Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE))
+	for pair in t.plated_defense():
+		var toll := 0
+		for bh in pair[0].behaviours:
+			toll += bh.slot_toll(t, t.own_rank(pair[0]), roundi(dmg)) if bh else 0
+		if toll > 0 and pair[1] > 0:
+			worth += maxf(Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE) - pair[1]) - with, 0.0) * toll * POINT
+	return worth
 
 
 # What a skill's cc takes from the foe t's next turn, in HP: the share of the turn it takes (what its behaviours foresee,
