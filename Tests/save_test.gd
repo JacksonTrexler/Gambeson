@@ -1,7 +1,8 @@
 extends Test
 
 # Saving (Save): the starter, level, outfit, hearts and stash to user://save.json and back; a bad or
-# other-versioned file ignored (and set aside); and the test runner's files, never the player's own.
+# other-versioned file ignored (and set aside); and the test runner's files, never the player's own. The roster
+# (Unit.to_dict() / from_dict()) and the Party a battle fields from it; a version 1 save migrated.
 
 
 func _game() -> void:
@@ -47,6 +48,77 @@ func test_round_trip() -> void:
 	var u := b.starter(Game.hero)
 	b.get_node("Units").add_child(u)
 	ok(u.get_equipped().slice(0, 4) == ([strike, null, load("res://Skills/everyman.tres"), null] as Array[Skill]), "the starter comes back with it: Working Knowledge and Field Experience left off")
+
+
+# A roster member as a battle leaves it: level 5, a skill learned and raised, its bar, an item, XP, a lapse.
+func _veteran() -> Unit:
+	var u := b.from_role(lancin, load("res://Roles/fighter.tres"), "Brann")
+	u.level = 5
+	u.skill_points = 4
+	u.cell = b.free_near(Vector2i(0, 0))
+	b.get_node("Units").add_child(u)
+	b.move(u, u.cell)
+	var s: Skill
+	for x: Skill in u.options()[&"class"]:
+		if x.fits_bar() and u.unlock(x):
+			s = x
+			break
+	u.raise(s)
+	u.weapon = load("res://Items/broadsword.tres")
+	u.xp = 9
+	u.leaned.assign([s])
+	return u
+
+
+func test_roster() -> void:
+	_game()
+	var u := _veteran()
+	var s: Skill = u.learned[0].skill
+	var bar := u.get_equipped()
+	Game.roster.assign([{faction = lancin.resource_path, role = Game.hero.role.resource_path, name = "Wren"}, u.to_dict()])
+	Game.party.assign([1, 0])
+	ok(Save.save(), "written")
+	Game.roster = []
+	Game.party = []
+	ok(Save.load_game() and Game.roster.size() == 2 and Game.party == ([0, 1] as Array[int]), "the roster and the party (leader first) come back")
+	var w := b.from_role(lancin, load(Game.roster[1].role), Game.roster[1].name)
+	w.from_dict(Game.roster[1])
+	b.get_node("Units").add_child(w)
+	ok(w.nick == "Brann" and w.level == 5 and w.xp == 9 and w.weapon == u.weapon, "name, level, XP, the item worn")
+	ok(w.own_rank(s) == 2 and w.purchases.size() == 2 and w.skill_points == 1 and u.skill_points == 1, "the skill learned at its rank, what was spent, the points left (%d)" % w.skill_points)
+	ok(w.get_equipped() == bar, "the bar, slot by slot")
+	ok(w.lapses_out() == u.lapses_out() and not w.lapses_out().is_empty(), "and what leans")
+	# the battle fields it beside the leader, in its party; what it gains there goes back into the roster
+	b.player = b.starter(Game.hero)
+	b.get_node("Units").add_child(b.player)
+	b.move(b.player, b.free_near(b.player.cell))
+	b._field_party()
+	var f: Unit = Game.fielded.get(1)
+	ok(f and f in b.units.values() and f.faction == b.player.faction and f.own_rank(s) == 2, "the party member stands on the player's side, as saved")
+	ok(f in Command.new(b, b.player).party, "in the leader's party from the start")
+	f.gain_xp(1)
+	Game.keep()
+	ok(int(Game.roster[1].xp) == 10 and Game.roster[0].name == "Wren", "kept: the roster reads the fielded units back")
+
+
+func test_migrate() -> void:
+	var f := FileAccess.open(Save.PATH, FileAccess.WRITE)
+	f.store_string(JSON.stringify({version = 1, level = 3, xp = 4, equipped = ["strike"], lapses = {leaned = ["meander"]},
+			hero = {faction = lancin.resource_path, role = "res://Roles/adventurer.tres", name = "Old"}}))
+	f.close()
+	ok(Save.load_game() and Game.level == 3 and Game.lapses == {leaned = ["meander"]}, "a version 1 save loads")
+	ok(Game.roster.size() == 1 and Game.roster[0].name == "Old" and int(Game.roster[0].level) == 3 and Game.roster[0].bar == ["strike"], "its hero is the roster's one entry")
+	ok(Game.party == ([0] as Array[int]) and Save.pack().version == 2, "the party is the leader alone, and it saves as version 2")
+
+
+func test_party_size() -> void:
+	Game.hero = {faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Wren"}
+	# [level, base charisma, size]: level / 4, plus the charisma mod if positive, at least 2
+	for row in [[1, 10, 2], [1, 16, 3], [3, 8, 2], [4, 12, 2], [8, 10, 2], [12, 10, 3], [12, 6, 3], [7, 11, 2], [20, 18, 9]]:
+		ok(Game.party_size(row[0], row[1]) == row[2], "level %d, charisma %d: %d (%d)" % [row[0], row[1], row[2], Game.party_size(row[0], row[1])])
+	Game.roster.assign(range(6).map(func(i): return {name = str(i)}))
+	Game.party.assign([4, 9, 2, 1, 4])
+	ok(Game.party_now() == ([0, 4, 2] as Array[int]), "the party: the leader first, real entries once each, cut to its size (Adventurer, charisma 16: 3)")
 
 
 func test_never_blank() -> void:
