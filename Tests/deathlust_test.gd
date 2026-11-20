@@ -64,3 +64,19 @@ func test_kill_skips_exhaustion() -> void:
 	v(1).refresh()
 	ok(b.cast(v(1), strike, v(4)) and not v(4).is_alive(), "a Strike that kills")
 	ok(is_equal_approx(uses(v(1)), 0.0), "adds no use of Strike (%s)" % uses(v(1)))
+
+
+# The AI prices a worn skill by the wearing() hooks: a blow that would kill costs no wear with Deathlust.
+func test_ai_weighs_kill_discount() -> void:
+	lusty(1)
+	v(1).exhaustion.uses[strike] = 3.0
+	var dmg := int(Battle.damage_range(v(1), strike, v(3), b).avg)
+	var reads := {v(3): b.read(v(1), v(3))}
+	var worn := AI._wear(v(1), strike, b, v(3), reads[v(3)])
+	ok(worn > 0.0, "a blow that doesn't kill: its wear counts (%.2f)" % worn)
+	soak(v(3), maxi(dmg, 1))
+	reads = {v(3): b.read(v(1), v(3))}
+	ok(AI._wear(v(1), strike, b, v(3), reads[v(3)]) == 0.0, "one that kills: no wear with Deathlust")
+	v(1).learned.clear()
+	v(1).refresh()
+	ok(AI._wear(v(1), strike, b, v(3), reads[v(3)]) > 0.0, "without it: the wear stands")

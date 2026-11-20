@@ -610,7 +610,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if v > 0.0:
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
-				v = maxf(v - _wear(u, s), v * (1.0 - WORN))  # and what its own wear adds to the price
+				v = maxf(v - _wear(u, s, b, t, r), v * (1.0 - WORN))  # and what its own wear adds to the price
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -634,12 +634,26 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 # What s's cost has risen by since it was fresh (Exhaustion), in the HP a blow takes: the AP and the cost
 # points it pays beyond the first-use price, weighed as score() weighs a rebate (AP, POINT). It takes the
 # worn skill's share off the score, so a unit with another blow nearly as good varies its skills.
-static func _wear(u: Unit, s: Skill) -> float:
+# A blow that would kill t (its average damage meets t's HP) keeps the use unworn as far as its passives'
+# wearing() hooks say (Deathlust: a killing skill gains no use), asked as Battle settles a use, not by name.
+static func _wear(u: Unit, s: Skill, b: Battle = null, t: Unit = null, r: Read = null) -> float:
 	var rate := u.exhaustion.rate(s)
 	if rate <= 1.0001:
 		return 0.0
 	var fund: Variant = u.funding(s)
-	return (1.0 - 1.0 / rate) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
+	var cost := (1.0 - 1.0 / rate) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
+	if t and r and r.hp != null and Battle.damage_range(u, s, t, b).get("avg", 0.0) >= r.hp:
+		var w := Exhaustion.Wear.new()
+		w.skill = s
+		w.caster = u
+		w.target = t
+		w.gain = 1.0
+		w.uses = 1.0
+		w.felled[t] = &"killed"
+		for h in u.hooks():
+			h[0].wearing(b, u, h[1], w)
+		cost *= clampf(w.uses / w.gain, 0.0, 1.0)  # the share of the use it keeps
+	return cost
 
 
 # What share of its worth a skill keeps for what exhaustion has added to its cost: 1 fresh, 1 / rate worn, never
