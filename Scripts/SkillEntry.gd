@@ -18,7 +18,7 @@ var lit := false:  # the one shown in full
 
 func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool, holder: Unit = null) -> void:
 	skill = s
-	draggable = can_drag and s.fits_bar()
+	draggable = can_drag and (holder.slot_cost(s) > 0 if holder else s.fits_bar())
 	theme_type_variation = &"Card"
 	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.markup(rank, true, holder)]  # as its holder has it: its modifiers, its price
 	if draggable:

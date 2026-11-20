@@ -11,6 +11,8 @@ extends Resource
 @export var enchanted_as: Item  # its own enchantment: enchanted, it becomes this instead of taking the +1
 @export var effects: Array[Effect] = []  # on its wearer while it's equipped (Burning Blade: str mod to max HP)
 @export var skills: Array[Skill] = []  # skills its wearer has while it's worn (Unit.granted()): on loan, so they can't be ranked; they rank with the item (skill_rank()) and come off with it
+@export var innate: Array[Skill] = []  # of `skills`, the ones this item lends innate: they need no hotbar slot (a passive that just works while it's worn: Armor on every armor). The flag is on the link, not the skill: a robe may lend Igna innate where a medium armor lends it for a slot (Unit.link())
+@export var optional: Array[Skill] = []  # of `skills`, the ones lent optional: not put on the bar by themselves; its wearer may put them there (Unit.link())
 @export var requires := &""  # it can only be worn with a positive mod in this (Heart Up-Link: constitution)
 @export var hearts := 0  # extra lives: while it's worn (Heart Up), or given for good as it's used (a Heart)
 @export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
@@ -213,6 +215,12 @@ func skill_rank(s: Skill) -> int:
 	if enchanted() and s.enchants():
 		r -= 1
 	return mini(r, s.max_rank) if s.max_rank > 0 else r
+
+
+# How this item links the skill s it lends to its wearer: &"innate" (needs no slot), &"optional" (the wearer may put it on
+# the hotbar), or &"" (a plain lend: it takes a slot, and is put there by itself). Innate beats optional.
+func link(s: Skill) -> StringName:
+	return &"innate" if s in innate else (&"optional" if s in optional else &"")
 
 
 # Whether Pray's enchantment (Unit.enchant()) would do anything to it: a weapon or armor always (+1), a trinket if

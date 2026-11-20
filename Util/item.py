@@ -4,12 +4,14 @@
   python3 Util/item.py new hobnail_boots --name "Hobnail Boots" --slot trinket [--human] [--rarity uncommon] \\
       [--rank 1] [--tags gem,fire] [--enchanted | --honed] [--skill kick] [--effect "stat=max_hp per_mod=strength"] \\
       [--emblem rho_up --scope sigil] [--damage-tag slash] [--set heat=1] [--loot alabaster[:weight]] [--dry-run]
-  python3 Util/item.py lend armor --slot armor      # lend a skill to every item of a slot (or --ids a,b): the table-driven step
+  python3 Util/item.py lend armor --slot armor --as innate   # lend a skill to every item of a slot (or --ids a,b): the table-driven step
   python3 Util/item.py check
 
 slot: armor, weapon, trinket or consumable (Item.slot). rarity: how often it drops and what a rank costs
   (Item.RARITY_WEIGHT, Item.RANK_COST). --enchanted / --honed: the quality tags (rank +1, never both).
---skill: a skill lent while it's worn (Item.skills: on loan, ranked by the item; docs/plans/item-skills.md).
+--skill: a skill lent while it's worn (Item.skills: on loan, ranked by the item; docs/plans/item-skills.md). `kick:innate` or
+  `kick:optional` sets the link's flag (Item.innate: needs no hotbar slot, a passive only; Item.optional: not put on the
+  bar by itself, the wearer may). The flags belong to the item's link to the skill, not to the skill (docs/plans/w6-link.md).
 --emblem: a modifier symbol (Modifiers.SYMBOLS: rho_up...) or a coloured tag (fire, execute), with --scope
   sigil, insignia, crest or badge (Modifiers.SCOPES); the scope goes on as a tag too, as on every emblem.
 --effect: an Effect on its wearer (tres.effect_props: "stat=... amount=... per_rank=true").
@@ -93,11 +95,18 @@ def item_tres(a):
         a.damage_tag in ("slash", "pierce", "blunt") or die("--damage-tag: slash, pierce or blunt")
         p.append('damage_tag = &"%s"' % a.damage_tag)
     if a.skill:
-        refs = []
+        refs, flagged = [], {"innate": [], "optional": []}
         for sid in a.skill:
+            sid, _, how = sid.partition(":")
+            how in ("", "innate", "optional") or die("--skill %s:%s - the link is innate or optional (or none)" % (sid, how))
             exists("Skills/%s.tres" % sid) or die("--skill %s: no Skills/%s.tres (python3 Util/skill.py new ...)" % (sid, sid))
             refs.append(d.res("Resource", "res://Skills/%s.tres" % sid))
+            if how:
+                flagged[how].append(refs[-1])
         p.append("skills = " + typed(SKILL, d, refs))
+        for how, rs in flagged.items():
+            if rs:
+                p.append("%s = %s" % (how, typed(SKILL, d, rs)))
     if a.effect:
         refs = [d.effect("Effect_%d" % (i + 1), s, a.human) for i, s in enumerate(a.effect)]
         p.append("effects = " + typed(EFFECT, d, refs))
@@ -154,7 +163,8 @@ def skill_tags(sid):
 
 
 def lend(a):
-    """Adds a skill to the items it isn't on yet (by --slot, or --ids): the migration of existing items onto a skill."""
+    """Adds a skill to the items it isn't on yet (by --slot, or --ids): the migration of existing items onto a skill.
+    --as innate|optional also sets the link's flag (Item.innate, Item.optional) on every item it lends the skill, new or not."""
     exists("Skills/%s.tres" % a.skill) or die("no Skills/%s.tres" % a.skill)
     ids = [i for i in (a.ids or "").split(",") if i] or [p[len("Items/"):-len(".tres")] for p in files("Items", ".tres")]
     path = "res://Skills/%s.tres" % a.skill
@@ -167,6 +177,8 @@ def lend(a):
             continue
         ext = tres.ext_ids(secs)
         if any(ext.get(x) == path for x in tres.items(res["props"].get("skills", ""))):
+            if a.how:
+                write(p, flag_link(text, path, a.how), a.dry_run)
             continue
         sid = tres.ext_id_for(secs, path)
         if not sid:
@@ -180,7 +192,25 @@ def lend(a):
             text = add_ext(text, '[ext_resource type="Script" path="%s" id="%s"]' % (SKILL, sk))
         line = 'skills = Array[ExtResource("%s")]([%s])' % (sk, ", ".join(have))
         text = re.sub(r"^skills = .*$", line, text, flags=re.M) if re.search(r"^skills = ", text, re.M) else text.rstrip("\n") + "\n" + line + "\n"
-        write(p, text, a.dry_run)
+        write(p, flag_link(text, path, a.how) if a.how else text, a.dry_run)
+
+
+def flag_link(text, path, how):
+    """text with the skill at `path` (already one of the item's skills) listed in its `innate` or `optional` field."""
+    secs = sections(text)
+    res = next(s for s in secs if s["kind"] == "resource")
+    sid = tres.ext_id_for(secs, path)
+    have = tres.items(res["props"].get(how, ""))
+    if sid in have:
+        return text
+    sk = tres.ext_id_for(secs, SKILL)
+    line = '%s = Array[ExtResource("%s")]([%s])' % (how, sk, ", ".join('ExtResource("%s")' % x for x in have + [sid]))
+    return re.sub(r"^%s = .*$" % how, line, text, flags=re.M) if re.search(r"^%s = " % how, text, re.M) else text.rstrip("\n") + "\n" + line + "\n"
+
+
+def skill_prop(sid, key):
+    m = re.search(r"^%s = (\w+)$" % key, read("Skills/%s.tres" % sid), re.M)
+    return m.group(1) if m else ""
 
 
 def problems():
@@ -222,6 +252,18 @@ def problems():
             if not (ext.get(i) or "").startswith("res://Skills/"):
                 out.append("%s: a lent skill (%s) isn't a Skills/ file" % (p, ext.get(i) or i))
         lent = [(ext.get(i) or "")[len("res://Skills/"):-len(".tres")] for i in tres.items(res["props"].get("skills", ""))]
+        links = {h: [(ext.get(i) or "")[len("res://Skills/"):-len(".tres")] for i in tres.items(res["props"].get(h, ""))] for h in ("innate", "optional")}
+        for h, ids in links.items():
+            for x in ids:
+                if x not in lent:
+                    out.append("%s: %s is %s but not among the skills it lends (the flag is on a lent skill's link)" % (p, x, h))
+                elif h == "innate" and exists("Skills/%s.tres" % x) and (skill_prop(x, "passive") != "true" or skill_prop(x, "toggle") == "true"):
+                    out.append("%s: %s is innate but not an always-on passive: nothing can work it without a slot, so it reads as plain" % (p, x))
+        for x in links["innate"]:
+            x in links["optional"] and out.append("%s: %s is both innate and optional (innate wins)" % (p, x))
+        for x in lent:
+            if exists("Skills/%s.tres" % x) and "equipment" in skill_tags(x) and x not in links["innate"]:
+                out.append("%s: lends %s, which is equipment, so it must be innate - it never takes a hotbar slot (python3 Util/item.py lend %s --as innate --ids %s)" % (p, x, x, os.path.basename(p)[:-5]))
         if pr.get("slot", "armor") == "armor" and not any("equipment" in skill_tags(x) for x in lent if exists("Skills/%s.tres" % x)):
             out.append("%s: armor lends no equipment skill, so it sets no Defense (python3 Util/item.py lend armor --slot armor)" % p)
         for path in ext.values():
@@ -284,6 +326,7 @@ def main():
     l.add_argument("skill", help="Skills/<id>.tres")
     l.add_argument("--slot", help="only items of this slot")
     l.add_argument("--ids", help="only these items, comma separated")
+    l.add_argument("--as", dest="how", choices=("innate", "optional"), help="also flag the link: innate (needs no hotbar slot) or optional (not put on the bar by itself)")
     l.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="every item and loot table sound")
     a = ap.parse_args()
