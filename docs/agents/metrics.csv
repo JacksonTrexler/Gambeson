@@ -52,3 +52,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-20,w7-glow,sonnet,medium,71607,35,402960,landed
 2026-11-20,w7-prep,sonnet,high,185006,74,984992,landed
 2026-11-20,w7-art,sonnet,medium,53099,14,221417,landed
+2026-11-20,w7-docs,sonnet,medium,95598,17,238574,landed
+2026-11-20,w7-passives,opus,medium,182360,97,1434456,landed
+2026-11-20,w7-wide,sonnet,high,144716,73,1275514,landed
