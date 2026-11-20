@@ -127,6 +127,7 @@ class Applied:
 @export var with_player := false  # joins whichever side the player's starter is on (Battle._ready(): the Astral Envoy's villagers and shades)
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())
 @export var loot: Loot  # what it may drop as it falls (Battle._on_died())
+@export var pack: Array[Item] = []  # armor it carries to put on in a plate slot it has empty (AI._dress(): what it does with a spare turn); not worn, so it counts for nothing till it is
 @export var summons: PackedScene  # comes with each heart it spends, as it gets up (the Astral Princess: a Regeneration Probe)
 @export_file("*.tscn") var reverts_to := ""  # what it falls back into as it dies, on its tile (a Starman: a Starmote; Battle._on_died()) - a path: the two scenes name each other
 @export_file("*.tscn") var reforms_into := ""  # what it becomes once its Reforming stacks reach its level (a Starmote: a Starman; Battle._starkind())
@@ -2348,7 +2349,8 @@ func _set(property: StringName, value: Variant) -> bool:
 
 
 # The armor it wears in the slots its skills give that work now (Behaviour.slot_works()), with the skill giving each:
-# [skill, item] pairs, in the order it learned them. None while nothing is worn in one (the usual: it reads nothing).
+# [skill, item] pairs, in the order it learned them. None while nothing is worn in one (the usual: it reads nothing). A skill
+# that has lapsed (learned through a waiver or a lent skill that no longer holds, lapsed()) works no slot: `passives` leaves it out.
 func plates() -> Array:
 	var out := []
 	if plating.is_empty():

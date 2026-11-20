@@ -69,6 +69,19 @@ func test_slots() -> void:
 	ok(u.defense() == 3, "armor in the slot and none proper: it is armor, not unarmored (%d)" % u.defense())
 
 
+# A skill that lapsed (waived by a skill that no longer holds) works no slot: the armor stays worn, counts for nothing, and
+# the unit card still shows it (HUD.trims()); the waiver back, it works again.
+func test_lapsed() -> void:
+	villagers_only()
+	var u := plated(scrap_plating, 3)
+	ok(u.defense() == 14 and u.plates().size() == 1, "Scrap Plating works")
+	u.waived[scrap_plating] = load("res://Skills/generalist.tres")  # (never learned: the waiver doesn't hold)
+	ok(u.lapsed(scrap_plating) and u.plates().is_empty() and u.defense() == 11, "lapsed: off")
+	ok(u.get(Unit.plate_slot(scrap_plating)) != null and HUD.trims(u).any(func(t: Array) -> bool: return t[1] == "Bulwark (Scrap Plating)"), "the armor stays worn, and on the card as the slot's")
+	u.waived.clear()
+	ok(u.defense() == 14, "waiver gone: works")
+
+
 # Armor in the slots drags in full on top of the armor proper's, each worked out alone - and weighs - whatever caps its Defense.
 func test_drag() -> void:
 	villagers_only()

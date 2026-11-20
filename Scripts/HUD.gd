@@ -2846,12 +2846,17 @@ func _info(u: Unit) -> Dictionary:
 
 
 # [colour, item name, icon] for each item u wears: the card's equipment, its icon (Item.icon()) with its
-# trim as a banner beside it (a clear colour when it has none).
+# trim as a banner beside it (a clear colour when it has none). The armor in the slots its skills give (Unit.plate_slots())
+# follows, named for its slot ("Bulwark (Power Armor)"), worn whether the slot works now or not.
 static func trims(u: Unit) -> Array:
 	var out := []
 	for it: Item in [u.weapon, u.armor, u.trinket]:
 		if it:
 			out.append([it.trim(), it.name, it.icon()])
+	for slot in u.plate_slots():
+		var it: Item = u.get(slot)
+		if it:
+			out.append([it.trim(), "%s (%s)" % [it.name, u.slot_label(slot)], it.icon()])
 	return out
 
 
