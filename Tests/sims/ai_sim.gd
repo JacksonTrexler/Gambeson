@@ -15,6 +15,7 @@ extends SceneTree
 #   armor    a foe in plate or in rags, its Defense not read: Strike or Hex (GUESS_DEFENSE)
 #   plate    plated foes (Power Armor, Scrap Plating): v(1) carrying spare armor dresses (rounds, Defense) with a foe near and far; Strike at two foes of one Defense, only one's blocks costing it Power
 #   worn     Strike and Hex worn by exhaustion, 10 rounds on a soaker (WORN)
+#   host     a Skeleton caster 10 tiles from a soaker, 8 rounds: bodies raised, damage dealt (AI._summon(), BODY)
 #   hide     Invisibility offered to an ally with a watcher of rising wisdom (SEEN)
 # Saves and settings go to per-process files, as run.gd (a sim must never touch the player's own).
 
@@ -98,7 +99,7 @@ func _initialize() -> void:
 	var keys: GDScript = load("res://Scripts/KeyBinds.gd")
 	keys.set("SAVE", "user://keybinds_sim_%d.cfg" % pid)
 	_museum = load(MUSEUM)
-	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide"]:
+	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host"]:
 		if words.is_empty() or words.any(func(w: String): return w in sc):
 			await call("_" + sc, n)
 	for p in [Prefs.SAVE, keys.get("SAVE"), save.get("PATH"), save.get("PATH") + ".bad", save.get("PATH") + ".tmp"]:
@@ -593,6 +594,26 @@ func _worn(n: int) -> void:
 		Exhaustion.on = false
 		_drop(t)
 	_say("worn", {strike = float(strikes) / n, hex = float(hexes) / n, damage = dmg / n})
+	await process_frame
+
+
+# v(1) with Skeleton against a soaker v(3) 9 tiles off, ROUNDS rounds: the bodies it raises and the damage to the foe.
+func _host(n: int) -> void:
+	var bodies := 0
+	var dmg := 0.0
+	for seed in n:
+		var t := await _fresh(seed)
+		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres")))
+		t.roomy(t.v(1))
+		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(13, 3)})
+		t.soak(t.v(3), 900)
+		var before: int = t.b.members(t.lancin).size()
+		for r in ROUNDS:
+			t.turn(t.b.members(t.lancin))
+		bodies += t.b.members(t.lancin).size() - before
+		dmg += 900 - t.v(3).hp
+		_drop(t)
+	_say("host", {bodies = float(bodies) / n, damage = dmg / n})
 	await process_frame
 
 

@@ -146,6 +146,7 @@ func test_passives() -> void:
 # moves rank I the same way.
 func test_concrete_scaled() -> void:
 	var gal: Skill = load("res://Skills/gallantry.tres")
+	var inj: Skill = load("res://Skills/interject.tres")
 	var stone: Skill = load("res://Skills/stonegift.tres")
 	# id -> [what it reads off a holder with the skill in its first slot, what rank I adds to a holder without it]
 	var reads := {
@@ -158,6 +159,7 @@ func test_concrete_scaled() -> void:
 		&"stonegift": [func(u: Unit): return stone.lasts(u.learned[0].rank, u), 3],  # absolute: 3 turns at I, as before
 		&"final_act": [func(u: Unit): return _free_actions(u), 1],
 		&"gallantry": [func(u: Unit): return gal.behaviours[0].check_bonus(u, u.learned[0].rank) - u.mods(gal).check, 0],  # its rank's part (the shift: test_density)
+		&"interject": [func(u: Unit): return inj.behaviours[0].check_bonus(u, u.learned[0].rank) - u.mods(inj).check, 0],  # its dex check, as Gallantry's
 		&"mage_armor": [func(u: Unit): return u.stat(&"defense"), 3],  # int 16: +3 a rank
 		&"manifest": [func(u: Unit): return u.stat(&"luck"), 2],  # cha 20: 2 a rank
 		&"relay": [func(u: Unit): return u.stat(&"relay"), 0.5],  # str 20: 0.1 x 5 a rank
@@ -169,7 +171,7 @@ func test_concrete_scaled() -> void:
 	for id in reads:
 		var s: Skill = load("res://Skills/%s.tres" % id)
 		var read: Callable = reads[id][0]
-		var absolute: bool = id in [&"stonegift", &"final_act", &"gallantry"]
+		var absolute: bool = id in [&"stonegift", &"final_act", &"gallantry", &"interject"]
 		v(1).trinket = null
 		v(1).learned.clear()
 		v(1).refresh()

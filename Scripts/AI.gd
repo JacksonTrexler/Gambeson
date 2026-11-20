@@ -61,6 +61,9 @@ const FLANKING := 0.4  # a tile's pull, a point of Defense the target loses to a
 const SHOT := 0.5  # the chance to hit below which a ranged attack isn't worth taking now, when resting for Focus would make it one (_steady())
 const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take off it in its reckoning (_foiled()): a target it can't hit through them is still a target
 const GUESS_DEFENSE := 12  # the Defense it takes a foe to have when it can't make it out (Read.defense null): a medium armor's floor
+const BODY := 5.0  # what a body a summon adds is worth, in the HP a blow takes (a Skeleton: 6 HP and a weak Strike; two of them repay its 4 AP, 3 cost)
+const SUMMON_SEEN := 10  # tiles a foe it makes out may stand for it to raise a host (_summon())
+const SUMMON_CAP := 12  # units a side may hold before it raises no more (the bodies' worth falls to nothing)
 const POINT := 0.5  # what a point of Energy or other cost it gets back is worth, in the HP a blow takes (a 3 AP strike costs a few)
 const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
 const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
@@ -151,6 +154,9 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		return log
 	if posture == &"" and not u.pack.is_empty() and not _could_strike(b, u, reads):  # nothing to strike from here: armor first, then the walk
 		_dress(b, u, log)
+	if posture != &"defensive" and temper != &"stoic":
+		while _summon(b, u, reads, log):
+			pass
 	if temper != &"stoic" and not rooted and _emboldened(u, reads):
 		_line_up(b, u, reads, log)  # to the tile its shoves tell most from, if there is one
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
@@ -610,7 +616,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 			if v > 0.0:
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
-				v = maxf(v - _wear(u, s), v * (1.0 - WORN))  # and what its own wear adds to the price
+				v = maxf(v - _wear(u, s, b, t, r), v * (1.0 - WORN))  # and what its own wear adds to the price
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -631,15 +637,73 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 	return true
 
 
+# Raises a host: a tile skill whose cast adds bodies (Behaviour.bodies(): Skeleton) cast near itself, toward the nearest foe
+# it makes out within SUMMON_SEEN, while its side has room (SUMMON_CAP) and the bodies (BODY each) are worth more than what
+# the cast costs it (AP, POINT, as score() weighs a rebate) and its wear. The best such skill; false if none was cast.
+static func _summon(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+	var room := SUMMON_CAP - b.members(u.faction).size()
+	if room <= 0:
+		return false
+	var foe: Variant = null
+	for t: Unit in reads:
+		var r: Read = reads[t]
+		if t.is_alive() and _foe(u, r) and r.located() and Command.tiles(u.cell, r.cell) <= SUMMON_SEEN \
+				and (foe == null or Command.tiles(u.cell, r.cell) < Command.tiles(u.cell, foe)):
+			foe = r.cell
+	if foe == null:
+		return false
+	var best: Skill = null
+	var best_net := 0.0
+	for s: Skill in u.actives:
+		if not s.on_tile() or not u.can_afford(s) or s.hostile:
+			continue
+		var n := 0
+		var c := b.cast_of(u, s, null, u.rank(s), true)
+		for bh in s.behaviours:
+			n += bh.bodies(c)
+		if n <= 0:
+			continue
+		var fund: Variant = u.funding(s)
+		var net := minf(n, room) * BODY - (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT) - _wear(u, s)
+		if net > best_net:
+			best = s
+			best_net = net
+	if best == null:
+		return false
+	var spot: Variant = null
+	for c: Vector2i in b.cells_near(u.cell, b.area_reach(u, best)):
+		if b.unit_at(c) == null and b.on_map(c) and Vector2(u.cell).distance_to(Vector2(c)) <= b.area_reach(u, best) + 0.0001 \
+				and (spot == null or Command.tiles(c, foe) < Command.tiles(spot, foe)):
+			spot = c
+	if spot == null or not b.cast_at(u, best, spot):
+		return false
+	log.append("%s raises %s at %s" % [u.name, best.name, spot])
+	return true
+
+
 # What s's cost has risen by since it was fresh (Exhaustion), in the HP a blow takes: the AP and the cost
 # points it pays beyond the first-use price, weighed as score() weighs a rebate (AP, POINT). It takes the
 # worn skill's share off the score, so a unit with another blow nearly as good varies its skills.
-static func _wear(u: Unit, s: Skill) -> float:
+# A blow that would kill t (its average damage meets t's HP) keeps the use unworn as far as its passives'
+# wearing() hooks say (Deathlust: a killing skill gains no use), asked as Battle settles a use, not by name.
+static func _wear(u: Unit, s: Skill, b: Battle = null, t: Unit = null, r: Read = null) -> float:
 	var rate := u.exhaustion.rate(s)
 	if rate <= 1.0001:
 		return 0.0
 	var fund: Variant = u.funding(s)
-	return (1.0 - 1.0 / rate) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
+	var cost := (1.0 - 1.0 / rate) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
+	if t and r and r.hp != null and Battle.damage_range(u, s, t, b).get("avg", 0.0) >= r.hp:
+		var w := Exhaustion.Wear.new()
+		w.skill = s
+		w.caster = u
+		w.target = t
+		w.gain = 1.0
+		w.uses = 1.0
+		w.felled[t] = &"killed"
+		for h in u.hooks():
+			h[0].wearing(b, u, h[1], w)
+		cost *= clampf(w.uses / w.gain, 0.0, 1.0)  # the share of the use it keeps
+	return cost
 
 
 # What share of its worth a skill keeps for what exhaustion has added to its cost: 1 fresh, 1 / rate worn, never

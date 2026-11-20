@@ -198,6 +198,16 @@ func test_camera() -> void:
 	ok(BattleCamera.edge_dir(Vector2(240, 1), view, side) == Vector2(0, -1) and BattleCamera.edge_dir(Vector2(300, 269), view, side) == Vector2(0, 1), "the mouse at the top or bottom edge pans that way")
 	ok(BattleCamera.edge_dir(Vector2(479, 100), view, side).x == 1.0 and BattleCamera.edge_dir(Vector2(240, 135), view, side) == Vector2.ZERO, "the right edge pans; the middle doesn't")
 	ok(BattleCamera.edge_dir(Vector2(1, 100), view, side) == Vector2.ZERO and BattleCamera.edge_dir(Vector2(1, 1), view, side) == Vector2.ZERO, "over a HUD panel at the edge: no pan")
+	var drag := InputEventMouseMotion.new()
+	drag.relative = Vector2(20, 0)
+	drag.button_mask = MOUSE_BUTTON_MASK_MIDDLE
+	at = cam.global_position
+	cam._input(drag)
+	ok(cam.global_position == at + BattleCamera.drag_by(drag.relative, cam.zoom.x) and cam.global_position.x < at.x, "a middle-drag pans the view the ground following the pointer")
+	drag.button_mask = 0
+	at = cam.global_position
+	cam._input(drag)
+	ok(cam.global_position == at, "a motion with no middle button held doesn't pan")
 	mb.turn_changed.emit(lancin, demons)
 	ok(not cam.panned and cam.target() == mb.player, "a new turn: back to the player's unit")
 	cam.hud.free()

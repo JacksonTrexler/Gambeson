@@ -183,6 +183,11 @@ func rebate(_c: Cast) -> Vector2:
 	return Vector2.ZERO
 
 
+# How many bodies its cast `c` adds to its caster's side (a summon: Skeleton's two a rank), for the AI to price. Pure.
+func bodies(_c: Cast) -> int:
+	return 0
+
+
 # The share of its AP price the cast saves, expected, given p the chance it lands: what the AI weighs.
 func refunds(c: Cast, p: float) -> float:
 	var r := rebate(c)

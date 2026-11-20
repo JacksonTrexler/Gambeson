@@ -1,7 +1,8 @@
 extends SceneTree
 
 # 10 Rangers seek 10 hiders on a large open field (docs/plans/r-sims.md). Not in the suite. Run:
-#   godot --headless --path . -s Tests/sims/hunt_10v10.gd -- [still|moving] [n=8] [rounds=20] [wis=16] [debug]
+#   godot --headless --path . -s Tests/sims/hunt_10v10.gd -- [still|moving] [near] [n=8] [rounds=20] [wis=16] [debug]
+# `near`: the hiders start within the Rangers' reach (x 6 to 15, not 12 to 56), to measure the search apart from the walk across the field.
 # Per seed and as a mean: hiders found, the round of the first find and the last, mean round found. Both modes unless one is named.
 # Each hider was seen once where it stood (the Rangers' side knows that spot), cast Hide (debris), then stepped up to 2 tiles and hides
 # under one shared concealment 7; `moving` hiders step 2 tiles again every round. Rangers act by the AI (Observe where clues point,
@@ -13,14 +14,18 @@ const FIELD_SCRIPT := "res://Tests/sims/field.gd"  # loaded at run time: naming 
 const RANGERS := 10
 const HIDERS := 10
 const COVER := 7
+const NEAR_X := 6  # `near`: hiders start at x NEAR_X to NEAR_X + NEAR_SPAN - 1
+const NEAR_SPAN := 10
 
 var _first: Test = null  # named first: scripts load in the order ai_sim's `extends Test` gives them (any other type first loads them in a cycle)
 var _debug := false
+var _near := false
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	_debug = "debug" in args
+	_near = "near" in args
 	var n := 8
 	var rounds := 20
 	var wis := 16
@@ -47,7 +52,7 @@ func _initialize() -> void:
 
 
 func _mode(moving: bool, n: int, rounds: int, wis: int) -> void:
-	var name := "moving" if moving else "still"
+	var name := ("moving" if moving else "still") + ("-near" if _near else "")
 	var rate := 0.0
 	var firsts := 0.0
 	var lasts := 0.0
@@ -71,9 +76,9 @@ func _mode(moving: bool, n: int, rounds: int, wis: int) -> void:
 		var hiders: Array[Unit] = []
 		var taken := {}
 		for i in HIDERS:
-			var c := Vector2i(12 + f.rng.randi() % (FIELD.x - 15), 3 + f.rng.randi() % (FIELD.y - 6))
+			var c := _hider_cell(f)
 			while c in taken:
-				c = Vector2i(12 + f.rng.randi() % (FIELD.x - 15), 3 + f.rng.randi() % (FIELD.y - 6))
+				c = _hider_cell(f)
 			taken[c] = true
 			var h: Unit = f.add(f.nemes, load("res://Roles/rogue.tres"), c, "Hider%d" % i)
 			h.learned.append(f.slot(hide, 1))
@@ -134,3 +139,9 @@ func _step(f: Variant, h: Unit) -> void:
 	var near: Array = f.b.cells_near(h.cell, 2).filter(func(c: Vector2i): return f.b.unit_at(c) == null and f.b.map.get_cell_source_id(c) != -1)
 	if not near.is_empty():
 		f.b.move(h, near[f.rng.randi() % near.size()])
+
+
+# Where a hider starts: across the field, or within the Rangers' reach (`near`).
+func _hider_cell(f: Variant) -> Vector2i:
+	var x: int = NEAR_X + f.rng.randi() % NEAR_SPAN if _near else 12 + f.rng.randi() % (FIELD.x - 15)
+	return Vector2i(x, 3 + f.rng.randi() % (FIELD.y - 6))
