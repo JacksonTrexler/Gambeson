@@ -99,6 +99,8 @@ func test_roster() -> void:
 	f.gain_xp(1)
 	Game.keep()
 	ok(int(Game.roster[1].xp) == 10 and Game.roster[0].name == "Wren", "kept: the roster reads the fielded units back")
+	f.gain_xp(1)
+	ok(int(Save.pack().roster[1].xp) == 11, "and so does writing the save")
 
 
 func test_migrate() -> void:
