@@ -63,7 +63,7 @@ signal reacted(u: Unit, skill: Skill, r: Behaviour.Reaction)  # u's passive reac
 signal interrupt_began(u: Unit)  # u acts out of turn (grant_interrupt(): Final Act); the turn under way waits
 signal interrupt_ended(u: Unit)  # ...and the interrupted turn resumes
 
-enum Phase { INITIATIVE, TURNS, OVER, PREP }  # PREP: before the initiative roll, the player looks the field over (study()), then begin()s
+enum Phase { INITIATIVE, TURNS, OVER, PREP }  # PREP: before the initiative roll, the player looks the field over (prepare()), then begin()s
 
 # Terrain loaded when the class first runs, not preloaded: a Terrain's effects reach back to Battle
 # (Effect's text), so a compile-time preload here can catch Terrain.gd mid-compile.
@@ -134,9 +134,9 @@ var panes: Dictionary[Vector2i, bool] = {}  # starpanes still whole: a bludgeoni
 var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up to STAR_CAPACITY (Starsap fills them)
 
 @export var prep := false  # the battle opens in Phase.PREP (as one started from the entry screen does: Game.starter.prep)
-var studied: Dictionary[Faction, Dictionary] = {}  # what each side studied in preparation (study()): unit or tile -> recon levels more it reads it at
+var studied: Dictionary[Faction, Dictionary] = {}  # what each side read better in preparation (prepare(), an intel use): unit or tile -> recon levels more it reads it at
 var noticed: Dictionary[Unit, Dictionary] = {}  # recon a unit has gained on its own (note()): unit -> {unit or tile -> recon levels more it reads it at}
-var studied_allies: Dictionary[Faction, Array] = {}  # which of those it studied as allies (studies_left())
+var prepped: Dictionary[Faction, Dictionary] = {}  # what each side spent its preparation uses on (prepare(), Prep.USES): use id -> the targets
 var phase := Phase.INITIATIVE:
 	set(v):
 		if v == phase:
@@ -437,13 +437,23 @@ func begin() -> void:
 		phase = Phase.INITIATIVE
 
 
+# Uses of kind `id` (Prep.USES) o may still make in preparation: its count (Prep.total()) less those spent.
+func uses_left(o: Unit, id: StringName) -> int:
+	return maxi(Prep.total(o, id) - prepped.get(o.faction, {}).get(id, []).size(), 0)
+
+
 # Studies o may still make in preparation: allies up to its cha mod, foes and tiles up to its wis mod
 # (none below 0). ally: which kind.
 func studies_left(o: Unit, ally: bool) -> int:
-	var cap := maxi(o.mod(&"charisma" if ally else &"wisdom"), 0)
-	var allies: int = studied_allies.get(o.faction, []).size()
-	var done: int = allies if ally else studied.get(o.faction, {}).size() - allies
-	return maxi(cap - done, 0)
+	return uses_left(o, &"study_ally" if ally else &"study")
+
+
+# What kind of target k is to o (Prep.USES' `of`): a tile, an ally (a unit that seems to be o's side's
+# friend), or a foe.
+func prep_kind(o: Unit, k: Variant) -> StringName:
+	if k is Vector2i:
+		return &"tile"
+	return &"ally" if _studies_ally(o, k) else &"foe"
 
 
 # Whether studying k is an ally's kind of study: a unit that seems to be o's side's friend.
@@ -454,25 +464,41 @@ func _studies_ally(o: Unit, k: Variant) -> bool:
 	return f != null and Faction.friends(f, o.faction)
 
 
-# In preparation, o (the player) studies an ally, a foe or a tile: its side reads it a recon level
-# better for the battle (_read()). A foe it scrutinizes besides, looking harder at one that fools it
-# (doubt()); a tile, inspecting it (inspect()). False once it has no studies of that kind left
-# (studies_left()), or for one already studied.
-func study(o: Unit, k: Variant) -> bool:
-	if phase != Phase.PREP or (k is Unit and k == o) or (k is Vector2i and not on_map(k)):
-		return false
-	var mine: Dictionary = studied.get_or_add(o.faction, {})
-	if k in mine or studies_left(o, _studies_ally(o, k)) <= 0:
-		return false
-	var ally := _studies_ally(o, k)
-	mine[k] = 1
-	if ally:
-		studied_allies.get_or_add(o.faction, []).append(k)
-	if k is Vector2i:
-		inspect(o, k)
-	elif not ally and read(o, k).deceived:
-		doubt(o, k)
-	return true
+# The use a click on k in preparation spends, or &"" for none: the first of Prep.USES that fits k's kind,
+# has one left, wasn't spent on k, and still gives it something - intel k hasn't had, or suspicion for a
+# use that gives only that.
+func prep_use(o: Unit, k: Variant) -> StringName:
+	if phase != Phase.PREP or (k is Unit and (k == o or not is_instance_valid(k))) or (k is Vector2i and not on_map(k)):
+		return &""
+	var kind := prep_kind(o, k)
+	var mine: Dictionary = prepped.get(o.faction, {})
+	var had: bool = k in studied.get(o.faction, {})
+	for id: StringName in Prep.USES:
+		var use: Dictionary = Prep.USES[id]
+		if kind in use.of and uses_left(o, id) > 0 and k not in mine.get(id, []) and (not had or not use.intel):
+			return id
+	return &""
+
+
+# In preparation, o (the player) spends a use on k, an ally, a foe or a tile (prep_use()): the first fit
+# of Prep.USES. Intel: its side reads k a recon level better for the battle (_read()). Suspicion: o looks
+# harder at k - a tile, inspecting it (inspect()); a unit that fools it, doubting it (doubt()) - at advantage
+# where the use has it. Study is both for a foe or tile, intel alone for an ally. Returns the use spent, or &""
+# when none fits (none left, the same one twice, or past the preparation).
+func prepare(o: Unit, k: Variant) -> StringName:
+	var id := prep_use(o, k)
+	if id == &"":
+		return id
+	var use: Dictionary = Prep.USES[id]
+	prepped.get_or_add(o.faction, {}).get_or_add(id, []).append(k)
+	if use.intel:
+		studied.get_or_add(o.faction, {})[k] = 1
+	if use.suspicion:
+		if k is Vector2i:
+			inspect(o, k, null, 0, use.edge)
+		elif read(o, k).deceived:
+			doubt(o, k, use.edge)
+	return id
 
 
 # Hears what a unit on the field goes through: its falling, and the hits and heals its passives and
@@ -2083,11 +2109,12 @@ func _hidden_from(o: Unit, t: Unit) -> int:
 # or with edge 1; the worse of two with edge -1) against t's own check, d20 + its cha mod + its lie -
 # its dissonance penalty (a less believable lie, the more it lies). The lie is its persona to its
 # allies, its trickery to its enemies, plus its clout with o's side (Unit.clout()). Meeting it, o grows a stack more suspicious of t.
+# o's side of the check carries `inquire` (what adds to checks overcoming trickery: Inquisitor), t's does not.
 func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
 	lie += t.clout(o.faction)  # standing with o's side: its word carries
 	var close := Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie
-	var vs := check(o, &"wisdom", t, &"charisma", {edge = -1 if edge < 0 else (1 if edge > 0 or close else 0), their_bonus = lie - t.dissonance_penalty()})
+	var vs := check(o, &"wisdom", t, &"charisma", {edge = -1 if edge < 0 else (1 if edge > 0 or close else 0), their_bonus = lie - t.dissonance_penalty(), tags = [&"inquire"], their_tags = []})
 	if vs.won:
 		suspect(o, t)
 	doubted.emit(o, t, vs.mine.total, vs.theirs.total)
@@ -2292,8 +2319,9 @@ func distance_penalty(o: Unit, center: Vector2i, c: Vector2i) -> int:
 # concealment there - a hidden enemy's, or a trap's it wasn't told of. Meeting it, it grows a stack
 # more suspicious of the tile (of what hides there), and of the enemy hiding on it. With nothing
 # hidden there, there's nothing to find: no roll. An ally there whose tags o sees scrambled (Haluca):
-# the same check against the spell's roll sets them straight (untangled).
-func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
+# the same check against the spell's roll sets them straight (untangled). edge: at advantage (a Survey's).
+# The check carries `survey`: what adds to checks learning of tiles adds to this (Surveyor).
+func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0, edge := 0) -> bool:
 	var t := unit_at(c)
 	var hiding := Perception.cover(self, t) if t and t.faction != o.faction else 0
 	var snare: Snare = snares.get(c)
@@ -2304,7 +2332,7 @@ func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0) -> bool:
 	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
 	if hiding <= 0 and trap <= 0 and not mixed:
 		return false
-	var look := {bonus = bonus - distance_penalty(o, center if center != null else o.cell, c)}
+	var look := {bonus = bonus - distance_penalty(o, center if center != null else o.cell, c), edge = edge, tags = [&"survey"]}
 	if mixed and hiding <= 0 and trap <= 0:
 		var a := o.scrambled()
 		var seen := check(o, &"wisdom", null, a.roll, look)  # against the roll it scrambled with, spent
@@ -2518,7 +2546,7 @@ func _feel(o: Unit, h: Unit) -> void:
 func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void:
 	for o in eyes:
 		var close := is_close(o, u, skill)
-		var look := check(o, &"wisdom", null, against, {edge = 1 if close else 0})  # against the hider's roll, spent
+		var look := check(o, &"wisdom", null, against, {edge = 1 if close else 0, tags = [&"inquire"]})  # against the hider's roll, spent
 		var total := look.mine.total
 		if look.won:
 			for e in skill.effects:
@@ -2548,7 +2576,7 @@ static func seen_odds(caster: Unit, skill: Skill, target: Unit, eyes: Array[Unit
 	for f in Check.totals(guise(caster, skill, target, ri, hiding and b != null and b.covered(target.cell))):
 		var unseen := 1.0
 		for o in eyes:
-			unseen *= 1.0 - odds(o, &"wisdom", null, f[0], {edge = 1 if is_close(o, target, skill) else 0})
+			unseen *= 1.0 - odds(o, &"wisdom", null, f[0], {edge = 1 if is_close(o, target, skill) else 0, tags = [&"inquire"]})
 		p += f[1] * (1.0 - unseen)
 	return p
 
@@ -3101,7 +3129,7 @@ func read(o: Unit, target: Variant) -> Read:
 
 func _read(o: Unit, target: Variant, extra := 0.0) -> Read:
 	if o.faction in studied:
-		extra += studied[o.faction].get(target, 0)  # studied in preparation (study())
+		extra += studied[o.faction].get(target, 0)  # studied in preparation (prepare())
 	if o in noticed:
 		extra += noticed[o].get(target, 0)  # learned on its own (note(): bumping into it unseen)
 	return Perception.unit(self, o, target, extra) if target is Unit else Perception.tile(self, o, target, extra)

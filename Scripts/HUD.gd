@@ -175,6 +175,9 @@ func _ready() -> void:
 	phase_box = PhaseBox.new()
 	$Root.add_child(phase_box)
 	prep_uses[&"study"] = _study_line
+	for id: StringName in Prep.USES:
+		if Prep.granted(id):  # a skill's use (Surveys, Evaluates, Inquisitions) adds its own line, shown once its holder has one
+			prep_uses[id] = _use_line.bind(id)
 	study_cursor = TextureRect.new()
 	study_cursor.name = &"StudyCursor"
 	study_cursor.texture = load("res://Icons/UI/study.png")
@@ -901,9 +904,19 @@ func study_state(c: Vector2i) -> StringName:
 	if u and u == command.leader:
 		return &""
 	var k: Variant = u if u else c
-	if battle.studied.get(command.faction(), {}).has(k) or battle.studies_left(command.leader, battle._studies_ally(command.leader, k)) <= 0:
+	if battle.prep_use(command.leader, k) == &"":
 		return &"spent"
 	return &"open"
+
+
+# The line for a use a skill grants (Prep.granted()): "Surveys: 2 tiles", "none left" once spent; left out
+# for a leader with none of it. `Prep.USES`' words.
+func _use_line(id: StringName) -> String:
+	var left := battle.uses_left(command.leader, id)
+	var use: Dictionary = Prep.USES[id]
+	if Prep.total(command.leader, id) <= 0:
+		return ""
+	return "%s: %s" % [use.label, "none left" if left <= 0 else "%d %s" % [left, Prep.plural(use.noun, left)]]
 
 
 # Preparation's study line for phase_box: what the leader can still study.
@@ -927,8 +940,8 @@ func _refresh_phase_box() -> void:
 	phase_box.show_lines("Preparing" if battle.phase == Battle.Phase.PREP else "", sub)
 
 
-# In preparation, a click studies what's there for the battle (Battle.study()): an ally by cha, a foe
-# or the tile by wis.
+# In preparation, a click spends a use on what's there for the battle (Battle.prepare()): Study's an ally
+# by cha, a foe or the tile by wis; then Surveys, Evaluates, Inquisitions where it has them.
 func _study(c: Vector2i) -> void:
 	var u := unit_seen(c)
 	var k: Variant = u if u else c
@@ -936,8 +949,9 @@ func _study(c: Vector2i) -> void:
 		select(u)
 	if u == command.leader:
 		return
-	if battle.study(command.leader, k):
-		_log("%s studies %s" % [_tag(command.leader), _tag(u) if u else _seen_as(command.leader, c)])
+	var spent := battle.prepare(command.leader, k)
+	if spent != &"":
+		_log("%s %s %s" % [_tag(command.leader), Prep.USES[spent].verb, _tag(u) if u else _seen_as(command.leader, c)])
 	elif battle.studied.get(command.faction(), {}).has(k):
 		_say("Already studied")
 	else:

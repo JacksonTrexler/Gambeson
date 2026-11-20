@@ -62,6 +62,14 @@ const LIE_DEFAULT := 1.0
 const LIE_FAR := 1.5
 
 
+# The tags o's recon is asked with when it sizes t up: t's own, and `evaluate`, which what adds to the way
+# a reader makes out a unit (Evaluator) carries.
+static func sizing(t: Unit) -> Array[StringName]:
+	var q := t.tags.duplicate()
+	q.append(&"evaluate")
+	return q
+
+
 # What `o` knows about unit `t`. Persona advertises; with enough trickery it lies, and to other
 # factions whatever it doesn't cover gets twisted (more of it, more consistently, the higher the
 # trickery). Without trickery it still fools allies that aren't insightful (fronts_to()), and allies
@@ -70,7 +78,7 @@ const LIE_FAR := 1.5
 # others share with it (Coordinate: Battle.read()).
 static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	var r := Read.new()
-	var recon := o.stat(&"recon", t.tags) + extra
+	var recon := o.stat(&"recon", sizing(t)) + extra
 	var left := _left(o, _levels(b, t.cell, t, true, o))
 	_sense(r, left, recon, o.luck - t.luck)
 	r.concealed = o != t and left.values().any(func(x): return x > 0)
@@ -194,7 +202,7 @@ static func fools(b: Battle, o: Unit, a: Unit) -> bool:
 	if o == a or (o.faction == a.faction and a.candid()):
 		return false
 	var trick := trickery(a, Read.new(), o, b)
-	return (trick > 0 and trick >= o.stat(&"recon", a.tags)) or fronts_to(o, a) or conspires_with(o, a)
+	return (trick > 0 and trick >= o.stat(&"recon", sizing(a))) or fronts_to(o, a) or conspires_with(o, a)
 
 
 # How t's stats seem to o (Read.stats): its own fronts if it fools o (Embellish up, Brood 25% down a
