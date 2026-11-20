@@ -7,6 +7,34 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 ## In flight (not here to launch)
 Nothing. Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
 
+## Wave 6: the user's answers of 2026-11-20 (docs/agents/answers-2026-11-20.md; running)
+
+### 1. Meathead (?204)
+- Scope: rename "Brawn as Brains ??" to "Meathead" (the user's name: no `??`, `ai = true` dropped). Done in the step-0 commit; the docs keeper fixes the mentions in todo.md and docs/todo/classes.md.
+- Model: sonnet/low (docs keeper)
+
+### 2. Equipment-skill links: `optional` and `innate` (?196)
+- Source: the user, 2026-11-20: "those tags are associated with an equipment's association to a skill rather than the skill itself (Igna may be provided for no equip cost by a robe, and with a slot equip cost on a medium armor set)".
+- Scope: `optional` (the wearer may put the lent skill on the hotbar) and `innate` (the lent skill needs no slot) are properties of an item's link to a skill, not of the skill. Armor's own `equipment` skill is innate. Keep `skill.py check`'s "never on the hotbar" rule light, read through the link.
+- Files: Scripts/Item.gd, Util/item.py, Unit.equipped, the HUD hotbar
+- Model: sonnet/high
+- Collides with: card 3 (hotbar code; card 3 runs after)
+
+### 3. Multi-slot skills
+- Scope: a skill may take several hotbar slots. Default 1, restricted as usual (martial skills may use martial bonus slots, etc.). A skill with a rarity takes more by default: Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5. An explicit slots property or tag overrides it. Work it into Cram's caster bonus slots, Density's slot doubling, traits (still 0) and the disable ordering (one skill spanning several slots).
+- Model: sonnet/high, after card 2
+- Collides with: card 2
+
+### 4. Persistent units and the Party (?206)
+- Scope: the player's units keep learned skills, ranks, equipped bar, items, level and XP across battles in `Save.gd` (version bump, migration of an old save), filling the `lapses` plumbing. A configurable Party: size is level / 4 + the base cha mod if positive, at least 2 (level = the hero's or leader's: record the call). The player picks who is in it from a (simple) roster screen; a battle fields the party. Class units stay fresh where they are only NPCs.
+- Files: Scripts/Save.gd, Scripts/Game.gd, Scripts/Entry.gd or a roster scene, Unit serialization
+- Model: opus/medium
+- Collides with: cards 2 and 3 only through Unit.equipped (keep it to serialization)
+
+### 5. Queue audit
+- Scope: check the Wave 1 and 2 cards below against the code; report which are built (the builder writes `docs/plans/w6-audit.md`, does not edit queue.md); run the unbuilt ones that need no user input.
+- Model: sonnet/medium
+
 ## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A to D built, ?202 to ?205)
 
 ## Wave 3: the user's answers of 2026-11-18, second batch (docs/agents/answers-2026-11-18b.md)
@@ -65,14 +93,6 @@ All eleven cards are built (?192 to ?201). Nothing left here.
 - Collides with: none
 
 ## Wave 5: follow-ups from ?206 to ?213 (all need nothing from the user)
-
-### Save learned skills so `Game.lapses` fills
-- Source: docs/todo/systems.md (?207)
-- Scope: `Save` keeps no learned skills; save them (ids and ranks, as `equipped` does), load them into the starter, and call `Unit.lapses_out()` at battle end into `Game.lapses`, so a loaded unit that learned on a lent skill still lapses. Round-trip test in `lent_test` or `save_test`.
-- Read: docs/plans/w5-save.md
-- Files: Scripts/Save.gd, Scripts/Game.gd, Scripts/Battle.gd, Tests/save_test.gd
-- Model: sonnet/high
-- Collides with: none
 
 ### A defensive cc read in the AI
 - Source: docs/todo/systems.md (?206)
