@@ -18,7 +18,7 @@ static var stash: Array[Item] = []  # items the player's side has won (Battle.sp
 # hearts, equipped, lapses) are the leader's own, kept live as before, and win over its entry where both say.
 static var roster: Array[Dictionary] = []
 static var party: Array[int] = []  # the roster entries a battle fields (the Party screen): 0, the leader, always among them; at most party_size()
-static var fielded := {}  # roster index -> the Unit standing for it in the battle now (Battle._field()): keep() reads them back
+static var fielded := {}  # roster index -> the Unit standing for it in the battle now (Battle._field_party()): keep() reads them back
 
 
 # How many the Party holds, the leader among them: its level / 4, plus its base charisma mod if positive, at least 2.
@@ -44,8 +44,13 @@ static func party_now() -> Array[int]:
 	return out
 
 
-# Each fielded unit's state back into its roster entry (Save.pack(), and as the battle leaves the tree).
+# Each fielded unit's state back into its roster entry (Save.pack(), and as the battle leaves the tree; the battle's
+# end saves).
+# The leader's lapses_out() is its own too (Game.lapses), as its bar is (HUD._keep_bar()).
 static func keep() -> void:
+	var lead = fielded.get(0)
+	if is_instance_valid(lead):
+		lapses = lead.lapses_out()
 	for i in fielded:
 		var u = fielded[i]
 		if is_instance_valid(u) and i < roster.size():

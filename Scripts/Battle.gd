@@ -403,7 +403,7 @@ func _ready() -> void:
 			u.free()
 			continue
 		_listen(u)
-	if player and not Game.roster.is_empty():
+	if player:
 		_field_party()
 	for u: Unit in units.values():
 		for t: Unit in units.values():
@@ -555,7 +555,9 @@ func move(u: Unit, c: Vector2i) -> bool:
 func starter(s: Dictionary) -> Unit:
 	var u := from_role(s.faction, s.role, s.name)
 	if not Game.roster.is_empty():
+		var h := u.hearts
 		u.from_dict(Game.roster[0])  # the leader's roster entry: what it learned, its ranks, trees and picks
+		u.hearts = h  # its hearts are its class's and Game.hearts (below), as before
 	u.level = clampi(Game.level, 1, Unit.MAX_LEVEL)  # its levels and XP from earlier battles
 	u.xp = Game.xp
 	u.skill_points = maxi(u.level - 1 - u.purchases.reduce(func(n: int, p: Array): return n + p[1], 0), 0)  # a point a level, less what it spent
@@ -577,6 +579,8 @@ func starter(s: Dictionary) -> Unit:
 # leaves the tree (Game.keep()).
 func _field_party() -> void:
 	Game.fielded = {0: player}
+	if not tree_exiting.is_connected(Game.keep):
+		tree_exiting.connect(Game.keep)
 	for i in Game.party_now():
 		var d: Dictionary = Game.roster[i]
 		if i == 0 or not ResourceLoader.exists(d.get("role", "")):
@@ -592,8 +596,6 @@ func _field_party() -> void:
 		move(u, spot)
 		_listen(u)
 		Game.fielded[i] = u
-	if not tree_exiting.is_connected(Game.keep):
-		tree_exiting.connect(Game.keep)
 
 
 # A level 1 unit of a class: its stats and reserves, on side f.

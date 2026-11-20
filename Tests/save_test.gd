@@ -97,8 +97,14 @@ func test_roster() -> void:
 	ok(f and f in b.units.values() and f.faction == b.player.faction and f.own_rank(s) == 2, "the party member stands on the player's side, as saved")
 	ok(f in Command.new(b, b.player).party, "in the leader's party from the start")
 	f.gain_xp(1)
+	b.player.leaned.assign([s])
+	Game.lapses = {}
 	Game.keep()
 	ok(int(Game.roster[1].xp) == 10 and Game.roster[0].name == "Wren", "kept: the roster reads the fielded units back")
+	ok(Game.lapses == {leaned = [s.resource_path.get_file().get_basename()]}, "and the leader's lapses_out() into Game.lapses (%s)" % Game.lapses)
+	var again := b.starter(Game.hero)
+	ok(again.hearts == b.player.hearts and again.hearts > 0, "the leader from its own entry: its hearts not counted twice (%d, %d)" % [again.hearts, b.player.hearts])
+	again.free()
 	f.gain_xp(1)
 	ok(int(Save.pack().roster[1].xp) == 11, "and so does writing the save")
 
