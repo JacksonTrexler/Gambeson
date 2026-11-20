@@ -40,6 +40,7 @@ class Roll:
 	var glance := false  # a miss in crit range (or a glancing one's better die would hit): a hit for half damage
 	var hit := false  # met the target, or forced, or a glance
 	var check: Check  # what was rolled (null: a fixed side)
+	var friction := 0  # the friction on it (Unit.friction as it was rolled: disadvantage and -N to hit, Battle.loops()): the HUD names it
 	var use := 0  # the skill use it was rolled in (Battle.use_of(): a Volley's id; 0: none)
 
 	func margin() -> int:  # how far the total beat the target (negative: fell short)

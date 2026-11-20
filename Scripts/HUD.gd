@@ -1828,6 +1828,7 @@ func _on_attack_rolled(caster: Unit, target: Unit, r: Check.Roll) -> void:
 		_roll.hit = r.hit
 		_roll.crit = r.crit
 		_roll.glance = r.glance
+		_roll.friction = r.friction
 
 
 # A contest in place of an attack roll (Drown), likewise.
@@ -1858,6 +1859,8 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 		text += "%s%d, %d" % [_arrow(true), at.x, at.y]
 	if not roll.is_empty():
 		text += _roll_text(roll, at)
+		if roll.get("friction", 0) > 0 and unit_seen(caster.cell) == caster:
+			overlay.float_text(caster, "Friction -%d" % roll.friction, MUTED)
 		if not roll.hit:
 			if unit_seen(at.cell) == at:
 				overlay.float_text(at, "Miss", MUTED)
@@ -1912,6 +1915,15 @@ func _on_evaluated(u: Unit, _s: Skill, d20: int, total: int) -> void:
 # An attack roll or contest, the log's way: " (14 - 11)" against Defense (or the other side's roll),
 # " (14)" where the player can't make Defense out, " (nat 20)", " (critical)" (in a wider crit range), " (glance)".
 func _roll_text(roll: Dictionary, target: Unit) -> String:
+	return _roll_note(roll, target) + _friction_text(roll.get("friction", 0))
+
+
+# " (friction: disadvantage, -2)" on a roll made under friction (Unit.friction: disadvantage and -N to hit), "" for none.
+func _friction_text(friction: int) -> String:
+	return " [color=#c08a4a](friction: disadvantage, -%d)[/color]" % friction if friction > 0 else ""
+
+
+func _roll_note(roll: Dictionary, target: Unit) -> String:
 	if roll.has("against"):
 		return _rolls(roll.total, roll.against)
 	if roll.crit and roll.d20 == 20:
