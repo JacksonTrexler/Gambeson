@@ -215,13 +215,12 @@ func tier(rank: int) -> Tier:
 # Always equipped, takes no hotbar slot, and no skill-disabling effect or hotbar ordering reaches it -
 # only a status that suppresses traits turns it off (Unit.traits_suppressed()). A trait is an always-on
 # passive: nothing to cast or switch.
-# Equipment (the tag: what an item lends as part of what it does, Armor's Defense) behaves as a trait.
 func is_trait() -> bool:
-	return &"trait" in tags or is_equipment()
+	return &"trait" in tags
 
 
-# Equipment: an item lends it as part of what the item does (Item.skills; Armor). Always equipped while the item
-# is worn, takes no hotbar slot, and the HUD doesn't list it among a unit's traits (Unit.traits()).
+# Equipment: an item lends it as part of what the item does (Item.skills; Armor), and the HUD doesn't list it among a unit's
+# traits (Unit.traits()). It takes no hotbar slot because the item lends it innate (Item.innate; skill.py check holds that).
 func is_equipment() -> bool:
 	return &"equipment" in tags
 
@@ -232,7 +231,8 @@ func enchants() -> bool:
 	return behaviours.any(func(b: Behaviour): return b and b.owns_enchant())
 
 
-# Goes on the hotbar to work: everything but a trait, which takes no slot. Actives and toggles are
+# Goes on the hotbar to work: everything but a trait, which takes no slot (a lent skill an item makes innate takes none
+# either: Unit.slot_cost() is the unit's answer). Actives and toggles are
 # worked by hand from it; an always-on passive just sits there, working (Unit.equipped()).
 func fits_bar() -> bool:
 	return not is_trait()

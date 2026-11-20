@@ -9,3 +9,4 @@ script = ExtResource("1_item")
 name = "Plate"
 tags = Array[StringName]([&"metal", &"heavy"])
 skills = Array[ExtResource("3_skill")]([ExtResource("2_armor")])
+innate = Array[ExtResource("3_skill")]([ExtResource("2_armor")])

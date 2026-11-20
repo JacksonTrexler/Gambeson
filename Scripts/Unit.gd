@@ -458,6 +458,7 @@ var slots: Array[Slot]:
 		return out
 
 var _held: Array[Skill] = []  # the skills its items lent at the last refit() (_sync_granted())
+var _freed: Array = []  # of those, the ones that took no slot (slot_cost() 0)
 var _granted: Dictionary[Skill, Slot] = {}  # the slots its items lend, kept while they're worn (granted()): a toggle's state lasts as long
 
 # Its own skill entries, the role's first: what it has learned, one per skill at its highest rank. What its
@@ -1147,19 +1148,52 @@ func fits(s: Skill, i: int) -> bool:
 func equipped(s: Skill) -> bool:
 	if s == null:
 		return false
-	if s.is_trait():
+	if slot_cost(s) == 0:
 		return not traits_suppressed()
 	_sync_new()
 	var i := hotbar.find(s)
 	return i >= 0 and not _sealed_now(i) and not bonus_off(i)
 
 
-# The traits it has (learned, lent or innate), in the order it holds them: what the HUD shows apart from the
+# The hotbar slots s takes to be equipped: 0 for a trait and for a skill an item lends it innate (link()), 1 otherwise.
+# The one place a skill's price in slots is worked out: whatever puts a skill on the bar (bar_place(), equip_skill(),
+# auto_fill(), the HUD's drags) asks this, never Skill.fits_bar() alone.
+func slot_cost(s: Skill) -> int:
+	return 0 if s.is_trait() or link(s) == &"innate" else 1
+
+
+# How its worn items link s to it: &"innate" (it works without a slot: a passive an item lends so), &"optional" (lent, and
+# left off the bar until it puts it there), or &"" (a plain lend: it takes a slot and goes on the bar by itself - or s
+# isn't lent, or it learned s as well: then it is its own). The same skill may be linked differently by two items: innate
+# beats a plain lend beats optional (Item.link()). Innate only means anything for an always-on passive: on anything it
+# is cast or switched it reads as plain.
+func link(s: Skill) -> StringName:
+	var lent := false
+	var innate := false
+	var plain := false
+	for it in items():
+		if s in it.skills:
+			lent = true
+			match it.link(s):
+				&"innate":
+					innate = true
+				&"optional":
+					pass
+				_:
+					plain = true
+	if not lent or own_rank(s) > 0:
+		return &""
+	if innate:
+		return &"innate" if s.passive and not s.toggle else &""
+	return &"" if plain else &"optional"
+
+
+# The traits it has (learned, lent innate or its own), in the order it holds them: what the HUD shows apart from the
 # hotbar, at its far end. They take no hotbar slot, so nothing that walks the hotbar reaches them.
 func traits() -> Array[Skill]:
 	var out: Array[Skill] = []
 	for x in slots:
-		if x.rank > 0 and x.skill.is_trait() and not x.skill.is_equipment():  # equipment (Armor) isn't listed: it is what an item does
+		if x.rank > 0 and slot_cost(x.skill) == 0 and not x.skill.is_equipment():  # equipment (Armor) isn't listed: it is what an item does
 			out.append(x.skill)
 	return out
 
@@ -1210,7 +1244,7 @@ func _sync_new() -> void:
 	var fresh: Array[Skill] = []
 	for x in slots:
 		have[x.skill] = true
-		if x.skill not in _seen:
+		if x.skill not in _seen and slot_cost(x.skill) > 0:
 			_seen[x.skill] = true
 			fresh.append(x.skill)
 	var gone: Array[Skill] = []
@@ -1243,8 +1277,8 @@ func _skill_sig() -> int:
 
 # Puts s on the bar where it goes by itself (_auto_slot()), if it isn't there. False if it has nowhere.
 func equip_skill(s: Skill) -> bool:
-	if s == null or s.is_trait() or s in hotbar or not s.fits_bar() or base_rank(s) == 0:
-		return s != null and (s.is_trait() or s in hotbar)
+	if s == null or slot_cost(s) == 0 or s in hotbar or base_rank(s) == 0:
+		return s != null and (slot_cost(s) == 0 or s in hotbar)
 	var i := _auto_slot(s)
 	if i < 0:
 		return false
@@ -1258,6 +1292,8 @@ func equip_skill(s: Skill) -> bool:
 # a granted slot only past the sure ones, so one granting skill rarely sits in another's slot; anything
 # else the first free slot it fits. -1: full.
 func _auto_slot(s: Skill) -> int:
+	if link(s) == &"optional":
+		return -1  # lent optional: its wearer puts it on the bar, it doesn't go by itself
 	if s.passive and not s.toggle or s.pillar():
 		var sure := mini(slot_count(), hotbar.size())
 		var order := range(sure - 1, -1, -1)
@@ -1273,8 +1309,8 @@ func _auto_slot(s: Skill) -> int:
 # Fills its free slots, as auto_equip does when slots appear: its learned skills that aren't equipped,
 # actives and toggles first, in the order it has them.
 func auto_fill() -> void:
-	var picks := slots.filter(func(x: Slot): return x.skill.fits_bar() and not x.skill.passive)
-	picks.append_array(slots.filter(func(x: Slot): return x.skill.fits_bar() and x.skill.passive))
+	var picks := slots.filter(func(x: Slot): return slot_cost(x.skill) > 0 and not x.skill.passive)
+	picks.append_array(slots.filter(func(x: Slot): return slot_cost(x.skill) > 0 and x.skill.passive))
 	for x in picks:
 		if x.skill not in hotbar and base_rank(x.skill) > 0:
 			var i := _auto_slot(x.skill)
@@ -1294,7 +1330,7 @@ func rounded(x: float) -> int:
 # bar goes only into an empty sure slot. Whatever drops off the bar by it, or with the slots it took
 # (a slot-granting skill moved out), is announced (lost_skills).
 func bar_place(s: Skill, i: int) -> bool:
-	if i < 0 or i >= hotbar.size() or not slot_works(i) or not s or not s.fits_bar() or base_rank(s) == 0 or not fits(s, i):
+	if i < 0 or i >= hotbar.size() or not slot_works(i) or not s or slot_cost(s) == 0 or base_rank(s) == 0 or not fits(s, i):
 		return false
 	if (hotbar[i] and hotbar[i].pillar()) or (s.pillar() and (s in hotbar or hotbar[i] or i >= slot_count())):
 		return false
@@ -1709,22 +1745,23 @@ func _fill_bar() -> void:
 	hotbar.resize(bar_size())
 	_keys = _slot_keys()
 	for x in slots:
-		_seen[x.skill] = true
+		if slot_cost(x.skill) > 0:  # one that takes no slot is new when it does (an innate lend made plain: _sync_granted())
+			_seen[x.skill] = true
 	_seen_sig = _skill_sig()
 	if not fresh:
 		return
 	var pinned := slot_count() - 1
 	for x in slots:
-		if x.skill.pillar() and x.skill.fits_bar() and pinned >= 0:  # pillar skills take the last sure slots
+		if x.skill.pillar() and slot_cost(x.skill) > 0 and pinned >= 0:  # pillar skills take the last sure slots
 			hotbar[pinned] = x.skill
 			pinned -= 1
 	for pass_ in 2:  # the slots its passives grant join as they go on
 		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and (not y.skill.passive or y.skill.toggle)):
-			if x.skill not in hotbar:
+			if x.skill not in hotbar and link(x.skill) != &"optional":
 				var i := free_slot(x.skill)
 				if i >= 0:
 					hotbar[i] = x.skill
-		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and y.skill.passive and not y.skill.toggle and y.skill.fits_bar()):
+		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and y.skill.passive and not y.skill.toggle and slot_cost(y.skill) > 0):
 			if x.skill not in hotbar:
 				var i := _auto_slot(x.skill)
 				if i >= 0:
@@ -2124,7 +2161,7 @@ func armor_skills(item: Item = armor) -> Array[Skill]:
 	var out: Array[Skill] = []
 	if item:
 		for s in item.skills:
-			if s and s.is_equipment() and equipped(s):
+			if s and s.is_equipment() and (equipped(s) or (item.link(s) == &"innate" and not traits_suppressed())):  # armor in another slot (Plating) isn't in items(): its own link says it is innate
 				out.append(s)
 	return out
 
@@ -2447,11 +2484,20 @@ func _sync_granted() -> void:
 		var i := hotbar.find(s)
 		if i >= 0:
 			hotbar[i] = null
-	if not lost.is_empty():
+	var free := now.filter(func(s: Skill): return slot_cost(s) == 0)
+	var freed := false  # one on the bar that an item now lends innate gives its slot up (it still works: not lost)
+	for s in free:
+		var i := hotbar.find(s)
+		if i >= 0:
+			hotbar[i] = null
+			_seen.erase(s)
+			freed = true
+	if freed or not lost.is_empty():
 		_arrange()
-	if now != _held:
-		_seen_sig = -1
+	if now != _held or free != _freed:
+		_seen_sig = -1  # what it lends, or what of it needs no slot, changed
 	_held = now
+	_freed = free
 	_sync_new()
 	if not lost.is_empty():
 		lost_skills.emit(self, lost)
@@ -2922,7 +2968,7 @@ func counts(x: Skill) -> bool:
 		return not _bare and not lapsed(x)
 	if own > 0:
 		return true
-	return not _bare and x not in disabled and not (x.is_trait() and traits_suppressed())
+	return not _bare and x not in disabled and not (slot_cost(x) == 0 and traits_suppressed())
 
 
 # The skills that count as prerequisites (counts()): what it has learned, and what is lent and works.
@@ -3520,7 +3566,7 @@ func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 # have their say first (disabling: Coyote Scepter lengthens it); while it postpones (the postpone stat:
 # Coyote Charm) the disabling is held, not counting down, and lands as that ends (release()).
 func disable(s: Skill, turns: int, curse := false, by: Unit = null) -> void:
-	if s.is_trait():
+	if slot_cost(s) == 0:
 		return  # what it is can't be switched off (Starkind); only traits_suppressed() does
 	var d := {skills = pillars() if s.pillar() else [s] as Array[Skill], turns = turns, curse = curse, by = by}
 	disabling.emit(self, d)
@@ -3576,7 +3622,7 @@ func disable_order() -> Array[Array]:
 	var group := func(list: Array[Skill]) -> void:
 		var fresh: Array[Skill] = []
 		for s in list:
-			if s and not s.is_trait() and s not in seen and s not in disabled and s not in postponed and rank(s) > 0:
+			if s and slot_cost(s) > 0 and s not in seen and s not in disabled and s not in postponed and rank(s) > 0:
 				seen[s] = true
 				fresh.append(s)
 		if not fresh.is_empty():
