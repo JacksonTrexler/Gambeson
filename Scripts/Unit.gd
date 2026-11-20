@@ -3047,6 +3047,62 @@ func lapses_in(d: Dictionary) -> void:
 			waived[s] = via
 
 
+# What a persistent unit (a roster member: Game.roster) keeps between battles, as plain JSON: who it is (side, class,
+# name), its level and XP, hearts, learned skills with their ranks and points, the purchases a level curse undoes,
+# trees opened and picked, its equipped bar, what it wears (Save.item_out()) and lapses_out(). Unspent skill points
+# aren't kept: they're its levels less what it has spent (from_dict()).
+func to_dict() -> Dictionary:
+	var worn := {}
+	for slot in ["weapon", "armor", "trinket"] + Array(plating.keys()):
+		if get(slot):
+			var it := Save.item_out(get(slot))
+			if it:
+				worn[str(slot)] = it
+	return {faction = faction.resource_path if faction else "", role = role.resource_path if role else "", name = nick,
+		level = level, xp = xp, hearts = hearts,
+		learned = learned.filter(func(x: Slot): return x.skill).map(func(x: Slot): return {skill = _skill_id(x.skill), rank = x.rank, points = x.points, on = x.on}),
+		purchases = purchases.map(func(p: Array): return [_skill_id(p[0]), p[1]]),
+		trees = trees_granted.map(func(k: StringName): return str(k)), picked = picked.duplicate(),
+		bar = get_equipped().map(func(s: Skill): return _skill_id(s) if s and s.resource_path.begins_with("res://Skills/") else ""),
+		outfit = worn, lapses = lapses_out()}
+
+
+# Back from to_dict() onto a unit made from its class (Battle.from_role()), before it's in the tree. A missing key keeps
+# the fresh unit's own (an old save's hero has no learned skills); a skill or item that's gone is left out.
+func from_dict(d: Dictionary) -> void:
+	level = clampi(int(d.get("level", level)), 1, MAX_LEVEL)
+	xp = maxi(int(d.get("xp", xp)), 0)
+	hearts = maxi(int(d.get("hearts", hearts)), 0)
+	for e in d.get("learned", []):
+		var s := _skill_by_id(e.get("skill")) if e is Dictionary else null
+		if s:
+			var x := Slot.new()
+			x.skill = s
+			x.rank = maxi(int(e.get("rank", 1)), 1)
+			x.points = int(e.get("points", -1))
+			x.on = bool(e.get("on", true))
+			learned.append(x)
+	for p in d.get("purchases", []):
+		if p is Array and p.size() == 2 and _skill_by_id(p[0]):
+			purchases.append([_skill_by_id(p[0]), int(p[1])])
+	for k in d.get("trees", []):
+		trees_granted.append(StringName(str(k)))
+	for k in d.get("picked", []):
+		picked.append(str(k))
+	skill_points = maxi(level - 1 - purchases.reduce(func(n: int, p: Array): return n + p[1], 0), 0)
+	var worn = d.get("outfit", {})
+	for slot in (worn if worn is Dictionary else {}):
+		var it := Save.item_in(worn[slot])
+		if it and (it.slot == slot or (it.slot == "armor" and slot.begins_with(PLATE))):
+			set(slot, it)
+	var lp = d.get("lapses", {})
+	lapses_in(lp if lp is Dictionary else {})
+	var bar = d.get("bar", [])
+	if bar is Array and not bar.is_empty():
+		var skills: Array = bar.map(_skill_by_id)
+		ready.connect(func(): set_equipped(skills), CONNECT_ONE_SHOT)  # once its bar is set up
+
+
 static func _skill_id(s: Skill) -> String:
 	return s.resource_path.get_file().get_basename()
 
