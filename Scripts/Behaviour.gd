@@ -215,7 +215,9 @@ func foils(_r: Reaction, _holder: Unit, _rank: int) -> float:
 # for the HUD's forecast and the AI: {lo, hi: more HP it takes off the target, notes: Array[String]: one
 # line for each rider it puts on it}. Optionally for the AI alone: `riders` (how many of its notes it can
 # count on, expected: a rider that lands one time in two is 0.5, a note that only reports is 0; default,
-# one for each note) and `spill` (HP it takes off others net, the caster's foes' less its friends': Kick's
+# one for each note), `afflicts` (a cc it puts on the target - a status bearing the cc tag - as the share of the
+# target's next turn it takes, 0-1, as likely as it lands: Stun's helpless is all of it, Jam's lost reactions a
+# part; the AI prices it by what that turn is worth, AI._afflicting(), not as a rider) and `spill` (HP it takes off others net, the caster's foes' less its friends': Kick's
 # trap blast and slam). Pure (no rolls spent). Empty: nothing more.
 func foresee(_c: Cast) -> Dictionary:
 	return {}
@@ -428,8 +430,55 @@ class Volley:
 	var chain := {}  # shared by the use and the uses it sets off (Chaser's chases): its friction (Battle.loops()), Chaser's count
 
 
+# A skill use as the AI plans it (AI._use_ratio()), before it rolls: the rolls it makes on `target` and what they are
+# expected to deal, friction counted (the odds of a roll ahead in the use: Battle.friction_ahead()). A chain (Strike)
+# stops at its first miss. `worth` is the damage the use is expected to deal, -1 until counted; a passive that changes
+# how a use lands (forecasting()) sets it.
+class Forecast:
+	var battle: Battle
+	var caster: Unit
+	var skill: Skill
+	var target: Unit
+	var tags: Array[StringName] = []  # the attack's (Battle.hit_tags())
+	var guess := -1  # the Defense it takes the target to have (Battle.hit_chance()'s)
+	var rolls := 1  # attack rolls the use makes, at most
+	var per := 0.0  # the damage of each that lands, average
+	var worth := -1.0
+	var flat := false  # odds() as the first roll's all through: no friction
+
+	# [hit, critical, glance] odds of the use's roll `i` (0 first), `plus` more to hit.
+	func odds(i: int, plus := 0) -> Array[float]:
+		return Battle.attack_odds(caster, skill, target, battle, guess, 0 if flat else i, plus)
+
+	# The chance that exactly k of its rolls land, k = 0 up: each lands with its own odds, and it ends at the first miss.
+	func spread() -> Array[float]:
+		var out: Array[float] = []
+		var live := 1.0
+		for i in rolls:
+			var p := odds(i)[0]
+			out.append(live * (1.0 - p))
+			live *= p
+		out.append(live)
+		return out
+
+	# What landing rolls alone deal on average: per for each.
+	func landings() -> float:
+		var sum := 0.0
+		var k := 0
+		for p in spread():
+			sum += p * k * per
+			k += 1
+		return sum
+
+
 # The holder's skill use (v: a Volley), as each attack lands and once it's done: change what lands (Heavy Strike).
 func striking(_b: Battle, _holder: Unit, _rank: int, _v: Volley) -> void:
+	pass
+
+
+# The holder's skill use, as the AI weighs it (f: a Forecast): a passive that changes how the blows of a use land
+# (Heavy Strike pools them behind one last roll) tells what the use is then expected to deal in f.worth. Pure.
+func forecasting(_b: Battle, _holder: Unit, _rank: int, _f: Forecast) -> void:
 	pass
 
 

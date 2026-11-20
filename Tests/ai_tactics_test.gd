@@ -290,7 +290,7 @@ func test_prices_the_rest() -> void:
 	ok(f.riders == 1.0 and "regains" in f.notes[0], "one that fells it does (%s)" % [f.notes])
 	var js := b.foresee(v(1), slam_jam, v(3))
 	var odds := Battle.odds(v(1), &"strength", v(3), &"constitution", {bonus = 2, tags = cp.tags, their_tags = slam_jam.tags, kind = Check.Kind.SAVE})
-	ok(is_equal_approx(js.riders, odds) and odds > 0.0 and odds < 1.0, "Slam Jam's interrupt is a rider as likely as its contest (%.2f)" % js.riders)
+	ok(is_equal_approx(js.afflicts, odds * load("res://Behaviours/jam.gd").JAMMED_TURN) and js.riders == 0.0 and odds > 0.0 and odds < 1.0, "Slam Jam's Jammed is a cc as likely as its contest (%.2f), a share of a turn" % js.afflicts)
 
 
 func trap_blast(radius: float) -> void:
@@ -571,3 +571,36 @@ func test_forced_moves_are_priced() -> void:
 	buff.effects = [effect("mitigate", 0.2)] as Array[Effect]
 	AI._support(b, v(1), {v(2): b.read(v(1), v(2))}, log)
 	ok(not log.is_empty(), "though one that helps is (%s)" % [log])
+
+
+# What a cc takes from a foe's turn (docs/plans/w5-ai1.md): a skill's cc is worth the share of the foe's next turn its
+# behaviour foresees (Battle.foresee() `afflicts`; CC where only the tag says it is one) of what that turn is worth
+# (_threat(): its skills, else its stats, else BLOW), less for each cc it already bears, none from one stopped.
+func test_prices_a_cc() -> void:
+	var stun := sk("stun")
+	v(1).learned.append(slot(stun, 2))
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	soak(v(1), 500)
+	soak(v(3), 300)
+	v(1).refresh()
+	var f := b.foresee(v(1), stun, v(3))
+	ok(f.afflicts > 0.0 and f.afflicts < 1.0 and f.riders == 0.0, "Stun reports its odds as a cc, not a rider (%s)" % [f])
+	var worth := func() -> float: return AI._afflicting(b, v(1), stun, b.read(v(1), v(3)), v(3), f)
+	ok(is_equal_approx(worth.call(), f.afflicts * AI.BLOW), "unread: its turn is a BLOW (%.2f)" % worth.call())
+	v(3).strength = 40
+	sharp(v(1))
+	var hard: float = worth.call()
+	v(3).strength = 1
+	var weak: float = worth.call()
+	ok(hard > weak and hard > 1.5 * AI.BLOW * f.afflicts, "read, a hard hitter's turn is worth more to take than a weak foe's (%.2f, %.2f)" % [hard, weak])
+	v(3).strength = 40
+	v(3).afflict(load("res://Effects/winded.tres"), 3)
+	ok(is_equal_approx(worth.call(), hard / 2.0), "a cc it already bears halves it (%.2f)" % worth.call())
+	v(3).afflict(load("res://Effects/stunned.tres"), 1)
+	ok(worth.call() == 0.0 and v(3).stopped() and v(3).afflicted(&"cc").size() == 2, "none from a unit that is stopped")
+	var stopped := score(v(1), stun, v(3))
+	v(3).timed.clear()
+	ok(score(v(1), stun, v(3)) > stopped + 0.9 * hard * 0.5, "the price is in the score: a Stun on a foe not yet stopped outbids one on a foe already")
+	var fog := sk("brainfog")
+	ok(AI._afflicting(b, v(1), fog, b.read(v(1), v(3)), v(3), {}) > 0.0 and is_equal_approx(AI._afflicting(b, v(1), fog, b.read(v(1), v(3)), v(3), {}) / AI._threat(b, v(1), b.read(v(1), v(3)), v(3)), AI.CC), "a cc with nothing foreseen is worth the CC share")
+	ok(AI._afflicting(b, v(1), hex, b.read(v(1), v(3)), v(3), {}) == 0.0, "a hostile skill with no cc tag is worth none")

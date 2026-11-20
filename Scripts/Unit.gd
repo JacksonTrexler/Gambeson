@@ -2448,11 +2448,16 @@ func has_tag(t: StringName) -> bool:
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 
-# The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). Nothing reads
-# cc yet: a rule, a skill or a piece of gear that deals with a kind of status asks here.
+# The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). A rule, a skill
+# or a piece of gear that deals with a kind of status asks here; the AI asks of what it has read of a unit (bearing()).
 func afflicted(tag: StringName) -> Array[Effect]:
+	return Unit.bearing(timed.keys(), tag)
+
+
+# Of those statuses, the ones that bear `tag` (afflicted(), over a list the asker has - a Read's effects).
+static func bearing(effects: Array, tag: StringName) -> Array[Effect]:
 	var out: Array[Effect] = []
-	for e: Effect in timed.keys():
+	for e: Effect in effects:
 		if tag in e.bears:
 			out.append(e)
 	return out

@@ -55,6 +55,47 @@ func test_reach_and_ai() -> void:
 	ok(used.size() == 3 and used[1] in [row[1], row[2]] and used[2] in [row[1], row[2]] and b.interrupter == null, "the AI chased twice in the chain (rank II), each with one in reach (%s)" % [used.map(func(s: Skill): return s.name)])
 
 
+# The AI picks the best it may, within the reach: the leftmost far outweighs the others but is out of reach at rank II,
+# and of the two in reach the middle is the better blow (so it, not the Strike that began it, is the chase's pick).
+func test_ai_picks_the_best_in_reach() -> void:
+	var row := _kit(2)
+	for i in [0, 1]:
+		var big: Tier = row[i].tiers[0].duplicate()
+		big.power = [300, 60][i]
+		row[i].tiers = [big] as Array[Tier]
+	v(1).refresh()
+	var used := []
+	b.used.connect(func(_u: Unit, s: Skill, _at, _d): used.append(s))
+	b.cast(v(1), row[2], v(3))
+	ok(used.size() == 3 and used.slice(1).all(func(s: Skill): return s == row[1]), "the chases are the best blow in reach, never the leftmost (%s)" % [used.map(func(s: Skill): return s.name)])
+
+
+# The forecast counts a chase's friction (Battle.friction_ahead()): in an interrupt granted to carry a looping chain on,
+# the chase's first roll is at its disadvantage and - N, as the cast will make it, though Unit.friction is 0 until its use
+# opens; the AI prices the rolls of a Strike's use from there (_use_ratio(): each later roll at more), a plain use at 1.
+func test_forecast_counts_friction() -> void:
+	var row := _kit(1)
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab"))  # its crit range would make every roll a hit
+	v(1).refresh()
+	v(3).afflict(effect("defense", 16), 99)  # a roll that can miss
+	b.directed = func(u: Unit): return u == v(1)
+	var read := b.read(v(1), v(3))
+	var d := Battle.damage_range(v(1), row[2], v(3), b)
+	var free := Battle.hit_chance(v(1), row[1], v(3), b)
+	ok(AI._use_ratio(b, v(1), row[2], v(3), read, d) == 1.0 and b.friction_ahead(v(1)) == 0, "no friction: the plain reckoning")
+	b.grant_interrupt(v(1), 1, {row[1]: 1, row[2]: 3}, {Battle.FRICTION: [1, 2]})  # (Strike at III: three rolls) looping: 1 roll free, 2 rolled since
+	ok(b.interrupter == v(1) and v(1).friction == 0 and b.friction_ahead(v(1)) == 2 and b.friction_ahead(v(1), 2) == 4, "the chase's next roll is at friction 2, the ones after worse")
+	var chased := Battle.hit_chance(v(1), row[1], v(3), b)
+	ok(chased < free, "the odds of the chase's first roll count it (%.2f, against %.2f)" % [chased, free])
+	var ratio := AI._use_ratio(b, v(1), row[2], v(3), read, d)
+	ok(ratio < 0.95, "a Strike's later rolls, at more friction, are priced (x %.2f)" % ratio)
+	b.end_interrupt()
+	v(1).friction = 2  # as the use will have set it
+	ok(is_equal_approx(Battle.hit_chance(v(1), row[1], v(3), b), chased), "the same odds as the roll it is")
+	v(1).friction = 0
+	b.directed = Callable()
+
+
 # The user's case: a non-Strike attack (Left, a Jam: three rolls, no strike tag) crits; Chaser II follows up
 # with Strike (Right) twice in the chain. Heavy Strike pools only the Strike's rolls: Left's hits land one by
 # one, each chase's land as one blow after its rolls. Friction: from the crit, each roll past the first two is
