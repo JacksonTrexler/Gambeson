@@ -1041,19 +1041,19 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **Tests:** `exhaustion_test.test_counts` (rewritten), `test_burnout` (new), `test_costs`, `test_channel_is_one_use`, `stamina_test.test_eases_exhaustion`, `deathlust_test.test_deaths_in_range`; `burnout_test` renamed `recovery_endurance_test`. Seven mutations failed and reverted. Suite 9807 checks, 0 failed (942 tests) after the merge.
     - **New names to review:** `Reserve.burns` ?? (a Reserve field).
 - [x] **Cram's multiplier on the Burnout penalty**: built 2026-11-19, `Unit.slot_penalty()` in `Burnout.penalty()` (?198). (?195)
-- [ ] **No museum-sim retune check after the retune** (the AI reads `rate()` unchanged). (?195)
+- [x] **No museum-sim retune check after the retune** (the AI reads `rate()` unchanged). (?195) Built 2026-11-19 (?207): Hex does not outscore Strike in uses (Strike 12, Hex 5 after; Hex 3 before).
 - [ ] **Confirm the numbers:** `PENALTY` 1.25, Mana `burns` 1.5, `MILD` 0.1, the 1 - 0.75^rank curve. (?195)
 
 196. **Lent skills: enchantment, armor as equipment, prerequisites - built on judgement, open for review (2026-11-19).** Your words (answer 8, ?143): the item is enchanted, so its lent skills are too, "+1 to rank" unless a skill has its own enchantment effect; "the armor effect itself should be implemented as an `equipment` skill, generally one that grants +armor"; lent skills can be prerequisites, and "if the unit loses the skill for any reason ... any dependent prerequisite skills would disable as well". Plan: `docs/plans/w3-lent.md`. Calls:
     - **Enchanted lends:** already +1 rank (`Item.skill_rank()`); new is the exemption, a generic hook `Behaviour.owns_enchant()` (`Skill.enchants()`), not a flag or Effect field; armor is its first user. Pray never raised an armor's own rank, so drag stays. Alternative: an `Effect` field.
     - **`equipment` tag** (yours) declared `mechanic.py tag equipment --human --kind target`, colour `#a7a79a` (my pick).
-    - **Armor is a skill:** `Skills/armor.tres` ("Armor ??", passive, `equipment`, `ai = true`) with `Behaviours/armor.gd` (hook `Behaviour.armor(holder, rank, item)`); the formula moved out of `Unit.armor_defense()` unchanged; `armor_defense()` sums what the worn armor's equipment skills set (`Unit.armor_skills()`), unarmored (dex + con mod) with none working. Armor owns its enchantment: +1 Defense when the item is `enchanted()`; so an armor authored with the tag `enchanted` now also gets +1 Defense (none in Items/). The item keeps its table (weight tag, `no_dex`, `full_dex`, `mind_stat`, `eases`); the skill is the carrier.
+    - **Armor is a skill:** `Skills/armor.tres` ("Armor", passive, `equipment`, `ai = true`) with `Behaviours/armor.gd` (hook `Behaviour.armor(holder, rank, item)`); the formula moved out of `Unit.armor_defense()` unchanged; `armor_defense()` sums what the worn armor's equipment skills set (`Unit.armor_skills()`), unarmored (dex + con mod) with none working. Armor owns its enchantment: +1 Defense when the item is `enchanted()`; so an armor authored with the tag `enchanted` now also gets +1 Defense (none in Items/). The item keeps its table (weight tag, `no_dex`, `full_dex`, `mind_stat`, `eases`); the skill is the carrier.
     - **Equipment behaves as a trait** (`Skill.is_trait()` true: no slot, not disabled by skill-disabling), so traits suppressed takes armor's Defense away; not listed in `Unit.traits()` (the HUD strip would show every unit's Armor); `Skill.is_equipment()` says which. Alternative: list it.
     - **Migration:** `item.py lend armor --slot armor` (new) lent it to all nine armors; `item.py check` fails an armor lending none; `skill.py new --lent` for a skill only items lend. No fallback for an armor with none: test armor gets it (`bulwark()`). Defense of all nine armors at levels 1/9/30 x dex 6/10/14/20, plain and Pray-enchanted, and Robe's magical Defense matched the old tip (28ae12a).
     - **Prerequisites:** one read, `Unit.counts(x)` (learned, or lent and working); `reached()`, root `needs`, tier and category needs read it. A skill learned on a lent one is marked (`Unit.leaned`) and `lapsed()` when the prerequisites no longer hold; dependents lapse too; it all comes back with the lent skill. Calls: a lapsed skill keeps rank and slot and is switched off; authored units never lean (only `unlock()` marks); `lapsed()` reads no effects, so Reckless Abandon's skipped steps aren't given while judging; `Unit.leaned` isn't saved; Pray's enchant on a lent prerequisite doesn't matter; no respec exists so `leaned` has no removal.
     - **Tests:** `lent_test.gd` (new, 3 tests, 72 checks), `test.gd`, `equip_test`, `sweep_test.test_item_skills`; five mutations failed and reverted.
-    - **New names to review:** Armor ??.
-- [ ] **`Unit.leaned` is not saved**: a loaded unit that learned on a lent skill won't lapse when it loses it. (?196)
+    - **New names to review:** Armor.
+- [x] **`Unit.leaned` is not saved**: a loaded unit that learned on a lent skill won't lapse when it loses it. (?196) Plumbed 2026-11-19 (?207): `Unit.lapses_out/in`, `Game.lapses`, a Save `lapses` key; nothing fills it until learned skills are saved (next line).
 - [ ] **`counts()` doesn't ask `equipped()` of a lent non-trait**: a lent skill left off the bar still counts. (?196)
 - [x] **Power Armor and Scrap Plating** read `armor_skills()` and the `armor()` hook: built 2026-11-19 (?200). (?196)
 - [ ] **Should Armor show in the HUD trait strip?** Not listed now. (?196)
@@ -1072,7 +1072,7 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **After the merge the floater edited both Coyote skills with a `no_density` reason** (Density can't trade on them), as ?203's check demanded.
     - **Tests:** `coyote_charm_test.gd` (postpone, overcome, scepter, instant death); six mutations failed and reverted.
     - **New names to review:** Disablings postponed ??, To be overcome ?? (Effect stats `postpone`, `overcome`). (Coyote Charm, Coyote Scepter, Curse of the Coyote, `curse` are yours.)
-- [ ] **Coyote items are in no loot table**, and the AI doesn't weigh the postpone or the curse. (?201)
+- [x] **Coyote items are in no loot table**, and the AI doesn't weigh the postpone or the curse. (?201) Built 2026-11-19 (?213): `Loot/astral_princess.tres`, and the AI weighs a postponed disable (`DELAY`).
 - [ ] **Postponing stops any curse ticking and holds any disabling** (not only the Coyote's); say if it should be Coyote-only. (?201)
 - [ ] **A Downed unit's Resuscitate can be eaten by `overcome`.** (?201)
 
@@ -1089,7 +1089,7 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **Ineligible: 140 under the bare rule, 45 with the disable trade, 35 now**, each with a declared reason: alluring, starkind, skill_slot (traits: no cost to trade); arcanist, physical_intelligence, everyman, field_experience, working_knowledge, decisive_strike, decisive_mastery, powerful, synergy, striking_intellect, elemental_mastery (a switch, selector or gate); generalist, journeyman, martialist, thaumaturgist, divinity, mastery, symphony, witchery (a build gate: an emblem off would strand picks); clairvoyance, peel, send_off, solar (rank buys only reach); mage_armor, manifest, relay (stat impact only: rank adds nothing yet); coalescing, stoneskin (a fixed roll or share: rank would need new tiers); armor (Defense by the item); oceanic, reckless_abandon, vaporize (a drawback only, an inherent trait, a toggled form); and the two Coyote skills (the floater's reasons).
     - **Tests:** new `param_test.test_density` (range, attack, forecast, slot weight both ways; Stun's DC; trait vs slotted; Clairvoyance); updated `modifiers_test.test_symbols`, `route_test.test_save_rank` / `test_area` / `test_aura` / `test_rift_look`, `param_test.test_move` / `test_clairvoyance` / `test_concrete_scaled`, `skills_test` QUIET; five mutations failed and `skill.py check` caught a dropped and a stale reason.
     - **New names to review:** `no_density` ?? (a Skill field).
-- [ ] **FLAG_CEILING raised for `no_density`:** keep the field, or replace it with a tag or a Terms-field entry (ceiling back to 103)? (?203)
+- [x] **FLAG_CEILING raised for `no_density`:** keep the field, or replace it with a tag or a Terms-field entry (ceiling back to 103)? (?203) Answered 2026-11-19 (?210): the no-new-flags rule is relaxed, the field stays; listed as a flag to confirm (?203).
 - [ ] **Passives' only trade is the disable weight:** is that a fair bargain? (?203)
 - [ ] **Give the 35 a rank-impact term where the user's "as few as possible" asks:** Solar's damage, Send Off's turns, Clairvoyance, Peel (reach only); mage_armor, manifest, relay (`per_rank` on the effect); coalescing, stoneskin (new tiers). Queued. (?203)
 - [ ] **The check-shift numbers** (`DENSE_CHECK` 5, `DILUTE_CHECK` 3) and the blows' new rank scaling are untuned. (?203)
@@ -1107,8 +1107,8 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **One skill each, to test the feature:** Kick `scaling range = 0.5` (docs/plans/ai-sim.md: "Kick dominates Strike on price even in the open"; reach now 1, 1, 1.5, 2, 2.5 tiles); Gank `beta_up` (weakest of the Slayer set, never chosen by the sim); Spike `cohen_up` (dear and weak early: rank I reads as III). `modified` has no skill. Alternative: other skills.
     - **Tests:** new `param_test.test_knobs`; `Test.untuned(id)`; `kick_test` and `ai_tactics_test` read an untuned Kick; five mutations failed and reverted.
     - **New names to review:** none (`scaling` is a Skill field, plain code name).
-- [ ] **Is the holder's int the viewer, is 16 "very high", are the dials (BETA 1.25, COHEN 1.5) right?** (?204)
-- [ ] **FLAG_CEILING raised for `scaling`:** keep the field, or replace it with tags or a Terms-field entry (ceiling back to 104)? (?204)
+- [ ] **Is the holder's int the viewer, is 16 "very high", are the dials (BETA 1.25, COHEN 1.5) right?** (?204) Answered in part (?211): 16 is the `very high` entry (`Modifiers.KNOB_SIGHT`); the viewer and the dials stay for review.
+- [x] **FLAG_CEILING raised for `scaling`:** keep the field, or replace it with tags or a Terms-field entry (ceiling back to 104)? (?204) Answered 2026-11-19 (?210): the field stays; listed as a flag to confirm (?204).
 - [ ] **The Guide does not list β and d** (the knob terms are kind `target`, which no Guide page lists); decide whether it should. (?204)
 - [ ] **No skill uses `modified`;** the AI does not read a knob beyond the numbers it changes. (?204)
 
@@ -1124,7 +1124,50 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **Density-ineligible 37 to 29.** Tests: `param_test` (`test_concrete_scaled` rows, new `test_impact_reads`), `water_test.test_drowning_dice_per_rank`; seven mutations failed and reverted. Suite 10189 checks, 0 failed.
     - **New names to review:** none.
 - [ ] **Are Drown, Peel, Solar rank II+ values right?** Untuned. (?205)
-- [ ] **Clairvoyance, Send Off, Stoneskin, Elemental Mastery:** give them rank impact (tiers for Stoneskin), or keep them concrete? (?205)
+- [x] **Clairvoyance, Send Off, Stoneskin, Elemental Mastery:** give them rank impact (tiers for Stoneskin), or keep them concrete? (?205) Clairvoyance, Send Off and Stoneskin built 2026-11-19 (?212); Elemental Mastery stays concrete (scales through Strike's `element`).
+
+## Wave 5 (2026-11-19): the AI's cc, saves, burn, difficulty words, density
+
+206. **The AI prices cc by the foe's next turn - built on judgement, open for review (2026-11-19).** Your card: the AI weighs `cc` and `shove` (?192), and casts Chaser's interrupt and Heavy Strike's pool well (?193, ?202). Plan: `docs/plans/w5-ai1.md`. Calls:
+    - **shove was already priced** (`Battle.foresee()` reads a skill's behaviours and its shove, fear and entrance stats; `_line_up` walks to the tile that tells most); checked by `ai_tactics_test`, no change.
+    - **cc was a flat rider before.** Now `Behaviour.foresee` reports an `afflicts` key: Stun's p, Hitch's p x 0.5, Jam and Slam Jam x 0.25; `_threat()` prices it by what the foe's next turn is worth (`BLOW` 5, `CC` 0.5), reading the foe's cc statuses through its Read, so a foe already stunned is not worth stunning again. Alternative: another weighting for the 0.5 and 0.25.
+    - **Chaser and Heavy Strike:** `friction_ahead()` counts a chase's later rolls at their friction; `Behaviour.Forecast` plus a `forecasting()` hook (Heavy Strike's pool: one blow lands only when its last roll does).
+    - **New names to review:** none (constants and keys, not content).
+- [ ] **A defensive cc read:** the AI backs off from a foe's Stun (reads `Unit.afflicted()` on the threat side). (?206)
+- [ ] **Crit-triggered loops are not forecast** (Chaser's chase, Jugular's recast). (?206, ?213)
+
+207. **Save the lapses; the museum sim check - built on judgement, open for review (2026-11-19).** Plan: `docs/plans/w5-save.md`. Calls:
+    - `Save.gd` keeps no unit state and learned skills are not saved, so `Unit.lapses_out()` / `lapses_in(d)` carry `{leaned, waived}` as plain JSON, `Game.lapses` holds it between battles, `Save` writes a `lapses` key only when non-empty (no version bump), `Battle.starter()` calls `lapses_in`. It keeps only skills the unit has learned, so in the live game it filters everything today; nothing calls `lapses_out()` at battle end.
+    - **Sim check, no tuning:** `worn` sim: Strike 12, Hex 3, damage 28.00 before; Strike 12, Hex 5, 29.88 after, so Hex does not outscore Strike in uses. Where the AI scores plans (`armor`): Hex 5 vs Strike 3, unchanged. `rider` and `kick` identical.
+    - **New names to review:** none.
+- [ ] **Save learned skills** (so `Game.lapses` fills), and call `lapses_out` at battle end. (?207)
+
+209. **Burnout is Exhaustion - built on judgement, open for review (2026-11-19).** Your words: "Burnout *is* RecoveryEndurance / Exhuastion functionally (effects that increase Burnout increase Exhaustion the same amount) it builds when casting and using int mod, and it decays slowly." Plan: `docs/plans/w5-burn.md`. Calls:
+    - **No fold, no code change:** `Burnout` holds no state; it is a penalty multiplier on `Exhaustion`'s one `uses` count, so anything that adds or relieves a use moves both equally. It builds on a cast and an `int` skill wears harder (1.25x, more on Mana); it decays 1 use a side-turn, more on a rest. One line added to `exhaustion_test.test_burnout`.
+    - **RecoveryEndurance stays separate:** a con-mod budget that counts down on recoveries and refills on a rest at full; folding it would drop your recovery design.
+    - **New names to review:** none.
+- [ ] **Should recoveries also add Exhaustion uses?** Only if "/" means RecoveryEndurance feeds the same count; a new rule, not done. (?209)
+
+210. **The no-new-flags rule is relaxed - built on judgement, open for review (2026-11-19).** Your words: "I don't fully remember why flags are banned: I want to restrict creep but not anything that alleviate's dry and build's rich systems. at the very least new flags could be confirmed but yes lets relax that." Calls:
+    - CLAUDE.md rewritten; `no_density` and `scaling` stay as Skill fields. FLAG_CEILING (105) is a creep alarm: raising it takes `python3 Util/skill.py ceiling "<field: why>"`, which records the reason.
+    - The w5-ceiling attempt to move them onto tags or Terms entries was dropped.
+    - **New names to review:** none.
+- [ ] **Confirm the two flags:** `no_density` (?203) and `scaling` (?204). (?210)
+
+211. **One difficulty table - built on judgement, open for review (2026-11-19).** Your words: "Let's standardize "high, very high" etc with obvious synonyms, based on previous scaling table for check difficulty: the same reference for setting difficulty checks on imposed effects, attack rolls, world interactions etc should be used". Plan: `docs/plans/w5-diff.md`. Calls:
+    - **One table:** `Difficulty.WORDS` maps synonyms onto the `LADDER` rungs (low, light, easy = easy; moderate, medium, normal = standard; high, hard, heavy = difficult; very high, very hard, very heavy = unfair; extreme = impossible; none = trivial); `Difficulty.word/index/magnitude/stat_at`.
+    - **Users:** `Modifiers.KNOB_SIGHT := &"very high"` replaces VERY_HIGH_INT (int 16 a named entry, `STAT_SCORE`); Pricing's cost levels hang on the rungs; Recovery Endurance's bare 12 is `dc(standard)`; `skill.py check_difficulty_words`.
+    - **To review:** the synonyms I added (effortless, simple, average, hard, very difficult, extremely high); "very high" intensity reads `intense`.
+    - **Left alone, with reasons:** DENSE_CHECK/DILUTE_CHECK (shifts, not rungs), Stun's roll_bonus -5 (a roll bonus), Gallantry, Interject and Snapping Turtle contests (the queue card for Interject and Snapping Turtle stays).
+    - **New names to review:** none (words, not content names).
+
+212. **Density: fewer ineligible skills - built on judgement, open for review (2026-11-19).** Plan: `docs/plans/w5-density.md`. Calls:
+    - `no_density` reasons 29 to 26 (Mage Armor, Manifest, Relay, Peel, Solar, Coalescing earlier; now Clairvoyance, Send Off, Stoneskin). Clairvoyance's stacks are rank impact (`Battle.ping(stacks)`) and reach takes Density's cut.
+    - **Send Off gained a ward** (mitigate 5% per rank from rank II, `turns_per_rank` 1); it lands on a foe sent away too: a design choice to review. `Battle._cast()` skips an effect below its `min_rank` (the generic hook for rank-gated effects).
+    - **Stoneskin has a new tier:** 5% per rank from II above 85% HP; rank I as before.
+    - **The remaining 26** are traits, switches, build gates, Armor, drawback and form skills.
+    - **New names to review:** none.
+- [ ] **Should a ward on Send Off reach a foe sent away?** (?212)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

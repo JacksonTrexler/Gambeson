@@ -16,7 +16,7 @@ Baseline suite: 9756 checks, 0 failed (936 tests).
    Skill.gd flag or an Effect field. Armor is the first user (call 3). An item's own `enchanted_as` stays the item-level form.
 2. **`equipment` tag (b).** Declared with `mechanic.py tag equipment --human --kind target` (the user's word: no ??). Colour
    `#a7a79a` (grey, beside trait): my pick.
-3. **Armor is a skill.** `Skills/armor.tres` ("Armor ??", passive, tagged `equipment`, `ai = true`) with `Behaviours/armor.gd`
+3. **Armor is a skill.** `Skills/armor.tres` ("Armor", passive, tagged `equipment`, `ai = true`) with `Behaviours/armor.gd`
    (new hook `Behaviour.armor(holder, rank, item)`, `NO_ARMOR` default). The formula moved out of `Unit.armor_defense()` into it
    unchanged; `armor_defense()` now adds up what the equipment skills the worn armor lends set (`Unit.armor_skills()`), and with none
    working is unarmored (dex mod + con mod). Armor owns its enchantment: +1 Defense when the item `enchanted()` (it used to be

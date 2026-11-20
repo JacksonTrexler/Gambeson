@@ -60,6 +60,13 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Density, Diluted and Cram: a skill is eligible if it has rank impact and something to trade (range, a check, a slot a foe can disable, a penalty); dense scales harder with shorter range and harder checks for its user (easier for foes), diluted the reverse; as few skills as possible are ineligible, each with a declared `no_density` reason; slot counts double under Density and Cram's penalties scale. (?185 to ?191, ?198, ?203) [user 2026-11-19]
 - Balance knobs: an optional scaling coefficient on Impact, Range or Modified (`Skill.scaling`), and the `β` and `d` (Cohen) tags, tweak an obviously dominant or weak skill without asking; not applied defensively, kept in the back pocket; β and d show only to a viewer with `very high` int; one skill each carries one to test, then left alone. (?204) [user 2026-11-19]
 
+## Wave 5 rules (2026-11-19)
+
+- Student is Mage-only; others reach it through a flex tree choice or an adventure. Journeyman is an optional Martial/Specialist tree (Physical Intelligence: Int mod to Str checks; Muscle Memory: Wis mod; up to rank). Armor is an equipment skill, never a hotbar skill. (?199, ?196, ?208)
+- Burnout is Exhaustion functionally (one count). (?195, ?209)
+- "High", "very high" and the like are synonyms on one check-difficulty table (`Difficulty.WORDS`), used everywhere a difficulty is set. (?204, ?211)
+- The no-new-flags rule is relaxed: restrict creep, confirm new flags. (?203, ?210)
+
 ## Equipping and traits
 - Every skill, active or passive, does nothing unless equipped (and toggled where relevant): auto-equipped on learn when a slot is free, manually when the bar is full; AI included. (?163) [user]
 - Slots: 4 + level/4, typed (martial, magic, specialist) or untyped; passives take the last slots; losing a slot depends on why. (?3) [call]

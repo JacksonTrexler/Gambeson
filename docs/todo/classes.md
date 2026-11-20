@@ -545,7 +545,7 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **Tools:** `Util/tres.py composition_problems()` (run by `skill.py check`, `role.py check`: loops, duplicates, a non-root include, a prerequisite not held or not a lower tier, an untiered branch in a tiered tree); `role.py include <into> <tree> [--root]` (rolls back if it makes new problems). `skill.py new --tree student` places a skill on Student.
     - **Tests:** `general_test.test_included_trees` (new), one assertion in `hud_test.test_every_tab_draws_its_skills`; three mutations failed.
     - **New names to review:** none.
-- [ ] **Mage-only or every caster?** Confirm the Caster tree reading; a per-role include is the alternative. (?199)
+- [x] **Mage-only or every caster?** Confirm the Caster tree reading; a per-role include is the alternative. (?199) Answered 2026-11-19 (?208): Mage-only, on its own general tab.
 - [ ] **Floater:** `.claude/skills/new-skill` and `new-class` should mention `role.py include` and Student. (?199)
 
 200. **Power Armor and Scrap Plating - built on judgement, open for review (2026-11-19).** Your words (answer 8): Power Armor "unit gets an additional armor slot. It stays enabled as long as the unit has 100% - (rank * 10%) power. Attacks blocked by this added armor deal damage to power, divided by rank"; Scrap Plating "Gain an armor slot. Armor equipped to this slot only confers up to rank defense. Armor AP penalty stacks additively". Plan: `docs/plans/w3-armor.md`. Calls:
@@ -562,7 +562,7 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **Tests:** `Tests/plating_test.gd` (4 tests, ~50 checks); five mutations failed and reverted. w4-density then parameterized both (?203).
     - **New names to review:** none (Abjuration, Smith are yours); the sheet's "Plate" label is my wording.
 - [ ] **Where Abjuration and Smith are offered** (a Mage school, a Specialist flex tree like Student): yours to place. (?200)
-- [ ] **The AI never equips or weighs plating**; the unit card's equipment trims show only three slots; Robe's magical Defense, Bracing and item effects ignore the slots; `plates()` doesn't read `lapsed()`. (?200)
+- [x] **The AI never equips or weighs plating**; the unit card's equipment trims show only three slots; Robe's magical Defense, Bracing and item effects ignore the slots; `plates()` doesn't read `lapsed()`. (?200) Built 2026-11-19 (?213): the unit card shows plate slots, `plate_works()`, `AI._dress()`, `AI._blocks()`; no unit carries a pack yet (below).
 - [x] **Power Armor and Scrap Plating** read `armor_skills()` and the `armor()` hook: built (?200, ?196).
 
 ## Wave 4 (2026-11-19): strike-only rules and friction
@@ -578,8 +578,31 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **Tests:** `check_test.test_glancing_and_opening`, `heavy_strike_test.test_strike_skills_only` and `test_last_roll`, `chaser_test` (rank II chases twice; new `test_chain_friction_and_heavy_strike`), `fighter_test.test_jugular_recasts`; six mutations failed and reverted.
     - **New names to review:** none (`strike`, `friction` are yours).
 - [ ] **Friction's numbers** (disadvantage plus -1 per roll, free rolls = rank) are as you wrote; not balanced. (?202)
-- [ ] **Friction is not shown on the HUD** except through the forecast's odds (no line naming it on a roll). (?202)
+- [x] **Friction is not shown on the HUD** except through the forecast's odds (no line naming it on a roll). (?202) Built 2026-11-19 (?213): the log and a float name it (`Check.Roll.friction`).
 - [ ] **Waterstrike and Silent Strike don't get Brutal, Decisive, Elemental, Strike Out, Strike! or Record Striker** (those need `_chain()`). (?202)
+
+## Wave 5 (2026-11-19): Student for Mages, Journeyman, plating in the AI
+
+208. **Student for Mages, the Journeyman tree, Armor - built on judgement, open for review (2026-11-19).** Your words: "?199 mage only, Mages are part of structured organizations: they are 'Students'. Wizards, Warlocks, Bards etc *may* be students, but aren't necessarily: it is a Caster/Specialist flex tree choice, or may be made available through an adventure." "Martial/Specialist optional tree 'Journeyman'. Physical intelligence: Int mod bonus to str checks. up to rank. Muscle Memory: Wis mod bonus to str checks. up to rank." "?196: ... it is an equipment skill, not a hotbar skill like most passives." Plan: `docs/plans/w5-tree.md`. Calls:
+    - **Student is a general tab of its own** (`Trees/general_student.tres`), not part of the Caster or Specialist tree. `SkillTab.grant` is the key that opens a general tab; a class lists it in `Role.general` (the Mage: `student`); `Unit.grant_tree(key)` is the adventure hook. `SkillRoot.includes` stays as machinery. Student keeps the caster gate.
+    - **No picker for the flex choice today** (`TreeChoice` picks class-tab trees): a Caster/Specialist choice of Student is not a box yet.
+    - **Discipline is back on the Specialist tab (T3) and stays on Student** (two branches of one skill).
+    - **Journeyman** (your name, `--human`): `Trees/journeyman.tres` in `Trees/general_journeyman.tres` (grant `journeyman`); offered natively by Fighter, Berserker, Paladin, Rogue, Ranger, Bard, Adventurer. Physical Intelligence (`physical_intelligence_check`) and Muscle Memory on one hook: a `check` Effect with `per_mod` adds the holder's mod to the checks it names, up to the skill's rank. Tier 2 and max rank 5 are guesses.
+    - **Name clashes:** the old `physical_intelligence` skill (a stand-in pillar) is renamed "Brawn as Brains ??" (id kept); the Journeyman tree shares a name with the Journeyman skill.
+    - **Armor** loses its " ??" (approved). New check `skill.py check_equipment`: an equipment skill is an always-on passive on no tree, role or unit, so it never takes a hotbar slot.
+    - **New names to review:** Brawn as Brains ??.
+- [ ] **A picker for the Student flex choice** (a TreeChoice whose pick calls `grant_tree`) and an adventure that grants it. (?208)
+- [ ] **Is Journeyman's tier 2 and max rank 5 right?** Guesses. (?208)
+
+213. **Plating, friction and postponement in the AI and HUD - built on judgement, open for review (2026-11-19).** Plan: `docs/plans/w5-ai2.md`. Calls:
+    - **Plates:** the unit card shows plate slots (`Unit.plate_works()`); new `@export Unit.pack` (armor carried; no unit has one yet) with `AI._dress()` and `Unit.plate_defense()`; hook `Behaviour.slot_toll()` (Power Armor); `AI._blocks()` prices a plated foe's blocks with `POINT`.
+    - **Friction** is named in the log and a float (`Check.Roll.friction`).
+    - **Postponement:** the AI weighs a postponed disable (`DELAY` 0.5, `Unit.postponing_in`).
+    - **Loot:** Coyote Charm and Scepter in `Loot/astral_princess.tres` at weight 1.
+    - **To review:** `Unit.pack`, `POINT`, `DELAY`, the loot table.
+    - **New names to review:** none.
+- [ ] **No unit carries a `pack`**: give one a pack (a unit and loot card). (?213)
+- [ ] **The AI ignores its own plates' tolls** (`slot_toll`). (?213)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

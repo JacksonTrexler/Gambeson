@@ -178,6 +178,13 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Density eligibility and `no_density` (?203) | `param_test.gd`, `skills_test.gd` |
 | — | Balance knobs: `scaling`, β and d tags (?204) | `param_test.gd`, `kick_test.gd` |
 | — | Aggressive tagging, `Cast.put()`, impact reads (?205) | `param_test.gd`, `water_test.gd` |
+| — | AI prices cc, friction and pooled blows (?206) | `ai_tactics_test.gd` |
+| — | Lapses saved (?207) | `lent_test.gd`, `save_test.gd` |
+| — | Student for Mages, Journeyman, `check_equipment` (?208) | `general_test.gd`, `lent_test.gd` |
+| — | Burnout is Exhaustion (?209) | `exhaustion_test.gd` |
+| — | Difficulty words (?211) | `param_test.gd` |
+| — | Density: Clairvoyance, Send Off, Stoneskin (?212) | `param_test.gd` |
+| — | Plating, friction and postponement in the AI and HUD (?213) | `plating_test.gd`, `ai_tactics_test.gd`, `coyote_charm_test.gd` |
 
 ## Questions to answer first
 

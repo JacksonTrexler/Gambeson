@@ -1,11 +1,11 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-19. Reconciled against the code after ?192 to ?205 (the next question is 206).
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-19. Reconciled against the code after ?192 to ?213 (the next question is 214).
 
 Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: Wave 2 (traits, facing, glance, Striking Features and Intellect, cost profiles, parameterized skills), traits, facing by move or aim, glance and its skills, test stubs Option A, the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), Skeleton, Deathlust, the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-Nothing. Built 2026-11-19 (?198 to ?205): Wave 3 cards 5, 6, 8, 9 and Wave 4 cards A to D.
+Nothing. Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
 
 ## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A to D built, ?202 to ?205)
 
@@ -64,79 +64,50 @@ All eleven cards are built (?192 to ?201). Nothing left here.
 - Model: sonnet/medium
 - Collides with: none
 
-## Wave 5: follow-ups from ?192 to ?203 (all need nothing from the user)
+## Wave 5: follow-ups from ?206 to ?213 (all need nothing from the user)
 
-### Floater: `.claude/skills` mention the new tool verbs
-- Source: docs/todo/systems.md (?192, ?194)
-- Scope: `.claude/` is out of bounds for builders and the docs keeper. `new-skill` and `new-unit` should mention `skill.py new --trait`, `skill.py trait`, `unit.py trait` and `unit.py new --trait`; `new-mechanic` should mention `mechanic.py carry`; `new-item` `item.py lend` and `skill.py new --lent`. Also mention `role.py include` and the Student tree in `new-class` and `new-skill` (?199). Also lower `FLAG_CEILING` in `Util/skill.py` if a merge removed a field (`python3 Util/skill.py check` says).
-- Model: sonnet/low (floater)
+### Save learned skills so `Game.lapses` fills
+- Source: docs/todo/systems.md (?207)
+- Scope: `Save` keeps no learned skills; save them (ids and ranks, as `equipped` does), load them into the starter, and call `Unit.lapses_out()` at battle end into `Game.lapses`, so a loaded unit that learned on a lent skill still lapses. Round-trip test in `lent_test` or `save_test`.
+- Read: docs/plans/w5-save.md
+- Files: Scripts/Save.gd, Scripts/Game.gd, Scripts/Battle.gd, Tests/save_test.gd
+- Model: sonnet/high
 - Collides with: none
 
-### The AI weighs `cc` and `shove`
-- Source: docs/todo/systems.md (?192)
-- Scope: the AI reads `Unit.afflicted()` to price what an enemy cc does to a unit's turn, and weighs a `shove` slam; use the tags, not skill names. Sim before and after.
-- Read: docs/plans/w3-facing.md
+### A defensive cc read in the AI
+- Source: docs/todo/systems.md (?206)
+- Scope: the AI backs off, or does not close, when a foe's Stun or other `cc` is likely to land on it (read `Unit.afflicted()` and the foe's `afflicts` forecast on the threat side). Sim before and after.
+- Read: docs/plans/w5-ai1.md
 - Files: Scripts/AI.gd, Tests/ai_tactics_test.gd
 - Model: sonnet/high
-- Collides with: the AI cards in Wave 1 (AI.gd)
+- Collides with: the AI cards in Wave 1 and below (AI.gd)
 
-### Save `Unit.leaned` and `waived`
-- Source: docs/todo/systems.md (?196)
-- Scope: the save carries `leaned` (and `waived`) so a loaded unit that learned on a lent skill still lapses when it loses it; a save/load round-trip test.
-- Read: docs/plans/w3-lent.md
-- Files: Scripts/Unit.gd, the save code, Tests/lent_test.gd
+### A unit carrying a `pack`
+- Source: docs/todo/classes.md (?213)
+- Scope: give one or two units an `@export Unit.pack` (armor carried) through `unit.py` and loot through `item.py`, so `AI._dress()` has something to equip; check it in a battle.
+- Read: docs/plans/w5-ai2.md
+- Files: Scenes/, Loot/, Tests/plating_test.gd
 - Model: sonnet/medium
 - Collides with: none
 
-### Exhaustion retune: museum sim check
-- Source: docs/todo/systems.md (?195)
-- Scope: run the museum sims before and after the retune (`Tests/sims/ai_sim.gd`, `sweep.sh`) and report whether Hex still outscores Strike; no tuning (the user said no balancing now), numbers only.
-- Read: docs/plans/w3-exhaust.md
-- Model: sonnet/medium
-- Collides with: none
-
-### The AI casts Chaser's interrupt and Heavy Strike's pool well
-- Source: docs/todo/classes.md (?193)
-- Scope: Wave 4 card A landed (?202): check the AI picks within the rank reach, the hit forecast counts a pooled blow and a friction roll's odds; tests in `chaser_test` and `heavy_strike_test`.
-- Files: Scripts/AI.gd, Tests/chaser_test.gd, Tests/heavy_strike_test.gd
+### Forecast crit-triggered loops
+- Source: docs/todo/systems.md (?206, ?213)
+- Scope: the forecast counts Chaser's chase and Jugular's recast when a crit triggers them (use `Behaviour.Forecast`, no per-skill case).
+- Read: docs/plans/w5-ai1.md
+- Files: Scripts/AI.gd, Tests/chaser_test.gd
 - Model: sonnet/high
-- Collides with: the AI cards in Wave 1 (AI.gd)
+- Collides with: the AI cards in Wave 1 and above (AI.gd)
 
-### Density: fewer ineligible skills
-- Source: docs/todo/systems.md (?203)
-- Scope: the user asked that as few skills as possible be ineligible. Give a rank-impact term where one fits: Solar's damage, Send Off's turns, Clairvoyance and Peel (reach only); `per_rank` on the effect for mage_armor, manifest, relay; new tiers for coalescing and stoneskin. Rank I unchanged; drop each skill's `no_density` reason as it qualifies (`skill.py check` holds it); a `param_test` table row each.
-- Read: docs/plans/w4-density.md, docs/plans/w2-param.md
-- Files: Skills/*.tres, Behaviours/*.gd, Tests/param_test.gd
-- Model: sonnet/high
-- Collides with: Wave 4 card D
-
-### Armor plating: the unit card, the AI and `lapsed()`
-- Source: docs/todo/classes.md (?200)
-- Scope: the unit card's equipment trims show plate slots; `plates()` reads `lapsed()`; the AI equips armor into a plate slot and weighs a plated unit's blocks. Sim before and after.
-- Read: docs/plans/w3-armor.md
-- Files: Scripts/HUD.gd, Scripts/Unit.gd, Scripts/AI.gd, Tests/plating_test.gd
-- Model: sonnet/high
-- Collides with: the AI cards in Wave 1 (AI.gd)
-
-### Friction on the HUD and the AI
-- Source: docs/todo/classes.md (?202)
-- Scope: a roll's log line or float names friction when it applies; the AI's forecast of a looping skill counts it. Use `Unit.friction`, no per-skill case.
-- Read: docs/plans/w4-friction.md
-- Files: Scripts/HUD.gd, Scripts/AI.gd, Tests/hud_test.gd
+### The AI weighs its own plates' tolls
+- Source: docs/todo/classes.md (?213)
+- Scope: the AI reads `Behaviour.slot_toll()` for its own plated slots (Power Armor's Power cost) when it decides to block or equip.
+- Read: docs/plans/w5-ai2.md
+- Files: Scripts/AI.gd, Tests/plating_test.gd
 - Model: sonnet/medium
-- Collides with: the AI cards in Wave 1 (AI.gd)
-
-### Coyote set: loot and AI
-- Source: docs/todo/systems.md (?201)
-- Scope: put Coyote Charm and Coyote Scepter in a loot table (`item.py`) and let the AI weigh a postponed disable (not a Coyote special case: read `Unit.postponed`).
-- Read: docs/plans/w4-coyote.md
-- Files: Items/, Scripts/AI.gd, Tests/coyote_charm_test.gd
-- Model: sonnet/medium
-- Collides with: the AI cards in Wave 1 (AI.gd)
+- Collides with: the AI cards in Wave 1 and above (AI.gd)
 
 ## Needs the user (not queued)
-- Wave 3 and 4 tail calls for review: ?198 (Cram's readings, tier 7, no swap on arrival), ?199 (Caster tree or Mage only), ?200 (Defense adds, Power is Energy share, where Abjuration and Smith are offered), ?201 (postpone and overcome stats), ?202 (the `strike` tag, friction's numbers), ?203 (the disable trade, FLAG_CEILING raised for `no_density`: a tag or Terms entry instead?).
-- Wave 3 calls for review: ?192 (cc audit edges, the slam on a flee), ?193 (Chaser placement), ?194 (Skill Slot +1 gating), ?195 (the numbers), ?196 (Armor ?? in the trait strip), ?197 (Wake and Rake's tier, "cast mod").
+- Calls for review: ?198 (Cram's readings, tier 7, no swap on arrival), ?200 (Defense adds, Power is Energy share, where Abjuration and Smith are offered), ?201 (postpone and overcome stats), ?202 (the `strike` tag, friction's numbers), ?203 and ?204 (the disable trade; confirm the flags `no_density` and `scaling`, the viewer and the dials), ?192 (cc audit edges, the slam on a flee), ?193 (Chaser placement), ?194 (Skill Slot +1 gating), ?195 (the numbers), ?197 (Wake and Rake's tier, "cast mod"), ?206 (cc prices), ?208 (Student flex picker, Journeyman's tier and max rank, "Brawn as Brains ??"), ?209 (do recoveries add Exhaustion uses?), ?211 (the synonyms), ?212 (Send Off's ward on a foe sent away), ?213 (`pack`, POINT, DELAY, the loot table).
 - Retuning colours: ?125.
 - Closed 2026-11-18: ?87, ?167, ?152, ?173 keep as built (the user: no balancing now); ?144, ?163, ?142 answered and built (?185 to ?188); ?131 and ?133 answered and built (?190, ?191).
 - Open from Wave 2: which more skills are traits, and whether `insignia` and `badge` reach a trait (?185); tier placement of Backstab, Glancing Strike and Heavy Strike and the natural-20 reading (?186); Striking Intellect's placement and whether `attack_stat` reaches other attacks (?189); whether the 26 "flat rank" profiles should scale, the 38 hand-set prices, health costs (?190); the 22 skills left concrete and Gallantry's check difficulty (?191).
