@@ -732,7 +732,7 @@ func check(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) -> Check.
 
 # u passed a check it rolled (check(), roll_attack()): its side's passives hear of it (Behaviour.passed(): Symphony).
 func _passed(u: Unit) -> void:
-	if Unit.reading > 0 or not u.faction:
+	if Unit.reading > 0 or u == null or not u.faction:
 		return
 	for o in members(u.faction):
 		for h in o.hooks():
