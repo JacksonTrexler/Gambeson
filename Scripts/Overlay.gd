@@ -519,19 +519,20 @@ func float_sign(u: Unit, icon: Texture2D, text: String, col: Color, rounded := 0
 	l.size.x = maxf(64.0, w + 24.0)  # room for the icon and glint, still centred on the unit
 	l.position.x = u.position.x - l.size.x / 2.0
 	var left := (l.size.x - w) / 2.0
+	var mid := l.get_minimum_size().y / 2.0  # the words sit at the top of the label
 	if icon:
 		var t := TextureRect.new()
 		t.texture = icon
 		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		t.size = Vector2(7, 7)
-		t.position = Vector2(left - 8.5, (l.size.y - 7.0) / 2.0)
+		t.position = Vector2(left - 8.5, mid - 3.5)
 		l.add_child(t)
 	if sparkle:  # a four-pointed glint off the end of the words, that turns and fades
 		var g := Polygon2D.new()
 		g.polygon = PackedVector2Array([Vector2(0, -3), Vector2(0.7, -0.7), Vector2(3, 0), Vector2(0.7, 0.7), Vector2(0, 3), Vector2(-0.7, 0.7), Vector2(-3, 0), Vector2(-0.7, -0.7)])
 		g.color = col.lightened(0.5)
-		g.position = Vector2(left + w + 3.5, l.size.y / 2.0 - 1.0)
+		g.position = Vector2(left + w + 3.5, mid)
 		g.scale = Vector2(0.2, 0.2)
 		l.add_child(g)
 		var gt := _paced(l)
