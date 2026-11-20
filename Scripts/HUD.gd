@@ -96,6 +96,9 @@ var _turn_show: Tween  # the turn change on screen
 var clock := 0.0  # seconds the player has left this turn (turn_clock)
 var clock_on := false  # the clock was set for this turn of the player's (_on_turn()); off once it ends
 var clock_label: Label  # the clock, top middle
+var phase_box: PhaseBox  # what the phase is for, top middle: "Preparing" and a line per use (prep_uses)
+var prep_uses: Dictionary[StringName, Callable] = {}  # preparation's uses, in order: each Callable gives its subline for phase_box ("Study: ..."), "" to leave it out. A new use (Survey, Evaluate, Inquire) adds itself here.
+var study_cursor: TextureRect  # a magnifying glass by the pointer over what a click would study (study_state()): grey when it can't
 
 signal intro_done
 signal refused(u: Unit, word: String)  # a click refused: the unit shook, saying one word (_refuse())
@@ -169,6 +172,15 @@ func _ready() -> void:
 	clock_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	clock_label.hide()
 	$Root.add_child(clock_label)
+	phase_box = PhaseBox.new()
+	$Root.add_child(phase_box)
+	prep_uses[&"study"] = _study_line
+	study_cursor = TextureRect.new()
+	study_cursor.name = &"StudyCursor"
+	study_cursor.texture = load("res://Icons/UI/study.png")
+	study_cursor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	study_cursor.hide()
+	$Root.add_child(study_cursor)
 	overlay = Overlay.new()
 	overlay.hud = self
 	battle.add_child(overlay)
@@ -417,6 +429,11 @@ func _process(delta: float) -> void:
 		_refresh()
 	if hover != NOWHERE and get_viewport().gui_get_hovered_control():
 		hover_cell(NOWHERE)  # the mouse went over a panel
+	var study := study_state(hover)
+	study_cursor.visible = study != &""
+	if study_cursor.visible:
+		study_cursor.modulate = Color.WHITE if study == &"open" else Color(1, 1, 1, 0.3)
+		study_cursor.position = Vector2(_mouse.x + 5, maxf(_mouse.y - 12, 0))
 	if tip.visible:
 		var room := tip.get_viewport_rect().size - tip.size
 		tip.position = Vector2(minf(_mouse.x + 10, room.x - 2), minf(_mouse.y + 10, room.y - 2))
@@ -875,6 +892,41 @@ func begin_battle() -> void:
 	_mark()
 
 
+# Whether a click on c would study something in preparation: &"open", &"spent" (already studied, or none
+# of its kind left: the cursor greys), or &"" (not preparing, off the map, or the leader itself).
+func study_state(c: Vector2i) -> StringName:
+	if battle.phase != Battle.Phase.PREP or c == NOWHERE or not battle.on_map(c):
+		return &""
+	var u := unit_seen(c)
+	if u and u == command.leader:
+		return &""
+	var k: Variant = u if u else c
+	if battle.studied.get(command.faction(), {}).has(k) or battle.studies_left(command.leader, battle._studies_ally(command.leader, k)) <= 0:
+		return &"spent"
+	return &"open"
+
+
+# Preparation's study line for phase_box: what the leader can still study.
+func _study_line() -> String:
+	var allies := battle.studies_left(command.leader, true)
+	var others := battle.studies_left(command.leader, false)
+	var parts: Array[String] = []
+	if allies > 0:
+		parts.append("%d ally" % allies if allies == 1 else "%d allies" % allies)
+	if others > 0:
+		parts.append("%d foe or tile" % others if others == 1 else "%d foes or tiles" % others)
+	return "Study: " + (", ".join(parts) if not parts.is_empty() else "none left")
+
+
+# The phase box: preparing lists each use in prep_uses; other phases say nothing.
+func _refresh_phase_box() -> void:
+	var sub: Array[String] = []
+	if battle.phase == Battle.Phase.PREP:
+		for use: Callable in prep_uses.values():
+			sub.append(use.call())
+	phase_box.show_lines("Preparing" if battle.phase == Battle.Phase.PREP else "", sub)
+
+
 # In preparation, a click studies what's there for the battle (Battle.study()): an ally by cha, a foe
 # or the tile by wis.
 func _study(c: Vector2i) -> void:
@@ -884,13 +936,12 @@ func _study(c: Vector2i) -> void:
 		select(u)
 	if u == command.leader:
 		return
-	var ally := battle._studies_ally(command.leader, k)
 	if battle.study(command.leader, k):
 		_log("%s studies %s" % [_tag(command.leader), _tag(u) if u else _seen_as(command.leader, c)])
 	elif battle.studied.get(command.faction(), {}).has(k):
 		_say("Already studied")
 	else:
-		_say("No %s studies left (your %s mod)" % ["ally" if ally else "foe or tile", "cha" if ally else "wis"])
+		_say("No studies left")
 	_mark()
 
 
@@ -2614,6 +2665,7 @@ func _refresh_buttons() -> void:
 	hint.text = _note if _note else _hint()
 	hint.visible = hint.text != ""
 	hint.add_theme_color_override(&"font_color", GOLD if _note else MUTED)
+	_refresh_phase_box()
 	var prepping := battle.phase == Battle.Phase.PREP
 	end_button.disabled = not (my_turn() or prepping)
 	end_button.text = "Begin  (Space)" if prepping else "End turn  (Space)"
@@ -2624,10 +2676,7 @@ func _hint() -> String:
 	if battle.phase == Battle.Phase.OVER:
 		return "The battle is over."
 	if battle.phase == Battle.Phase.PREP:
-		var allies := battle.studies_left(command.leader, true)
-		var others := battle.studies_left(command.leader, false)
-		return "Preparing. Studies left: %d all%s, %d foe%s or tile%s. Begin when ready." % [
-				allies, "y" if allies == 1 else "ies", others, "" if others == 1 else "s", "" if others == 1 else "s"]
+		return ""  # the phase box says it (_refresh_phase_box())
 	if not command.leader.is_alive():
 		return "Your leader has fallen; your allies fight on."
 	if %Initiative.visible:

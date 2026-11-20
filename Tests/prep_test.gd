@@ -44,12 +44,41 @@ func test_hud() -> void:
 	h._refresh()
 	ok(h.end_button.text.begins_with("Begin") and not h.end_button.disabled, "the end turn button begins")
 	ok(not h.my_turn(), "no orders in preparation")
+	v(1).wisdom = 12  # wis mod 1
+	h._mark()
+	h._refresh()
+	ok(h.phase_box.said() == ["Preparing", ["Study: 1 ally, 1 foe or tile"]], "the top box: the phase, and a study line (%s)" % [h.phase_box.said()])
+	ok(h.study_state(v(2).cell) == &"open" and h.study_state(v(3).cell) == &"open" and h.study_state(Vector2i(4, 4)) == &"open", "the cursor's open over an ally, a foe, a tile")
+	ok(h.study_state(v(1).cell) == &"" and h.study_state(HUD.NOWHERE) == &"", "none over the leader or nothing")
+	h.prep_uses[&"survey"] = func() -> String: return "Survey: 2"
+	h._refresh()
+	ok(h.phase_box.said()[1] == ["Study: 1 ally, 1 foe or tile", "Survey: 2"], "a later use adds a line through prep_uses")
+	h.prep_uses.erase(&"survey")
+	h.hover_cell(v(2).cell)
+	h._process(0.0)
+	ok(h.study_cursor.visible and h.study_cursor.modulate.a == 1.0, "a magnifier by the pointer over a studyable unit")
 	h.click(v(2).cell)
 	ok(b.studied[lancin].has(v(2)) and "studies" in h.log_box.get_parsed_text(), "a click studies")
+	h._refresh()
+	ok(h.phase_box.said()[1] == ["Study: 1 foe or tile"], "the line follows what's left")
+	h.click(v(2).cell)
+	ok(h._note == "Already studied", "the same twice")
+	h.click(v(3).cell)
+	h.click(Vector2i(4, 4))
+	h._refresh()
+	ok(h._note == "No studies left" and h.phase_box.said()[1] == ["Study: none left"], "click with none left: a short note, only on a click (%s)" % h._note)
+	h._note = ""
+	h.hover_cell(Vector2i(4, 4))
+	h._process(0.0)
+	ok(h._note == "" and h.study_state(Vector2i(4, 4)) == &"spent" and h.study_cursor.visible and h.study_cursor.modulate.a < 1.0, "hovering says nothing; the magnifier greys")
+	h.hover_cell(v(1).cell)
+	h._process(0.0)
+	ok(not h.study_cursor.visible, "no magnifier over the leader")
 	h._end_pressed()
 	for i in 4:
 		await tree.process_frame
 	ok(b.phase == Battle.Phase.TURNS and not h._opening, "begun")
+	ok(h.phase_box.said().is_empty() and h.study_state(v(3).cell) == &"", "the box and the cursor are gone once it's begun")
 	h.free()
 
 
