@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
-[ext_resource type="Texture2D" path="res://Units/Elmit.png" id="2_look"]
+[ext_resource type="Texture2D" path="res://Units/Siren.png" id="2_look"]
 [ext_resource type="Resource" path="res://Skills/oceanic.tres" id="3_oceanic"]
 [ext_resource type="Resource" path="res://Skills/tonefoolery.tres" id="4_tonefoolery"]
 [ext_resource type="Resource" path="res://Skills/alluring.tres" id="5_alluring"]
