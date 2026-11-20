@@ -185,7 +185,7 @@ func in_range(u: Unit) -> bool:
 
 # Whether l's orders carry to u: l itself, or an ally (or a traitor posing in its party) within its reach, the
 # party's PARTY_REACH times as far, or within `reach` where a stand-in mod carries further (reach_for()). The one
-# reading of "in command range", for what rewards it without a Command (Symphony).
+# reading of "in command range", for what rewards it without a Command (Harmony).
 static func hears(l: Unit, u: Unit, reach := 0) -> bool:
 	if u == l:
 		return true
