@@ -297,7 +297,7 @@ func _get_drag_data(_at: Vector2) -> Variant:
 
 
 func _can_drop_data(_at: Vector2, data: Variant) -> bool:
-	return editable and data is Dictionary and data.get("skill") is Skill and data.skill.fits_bar()
+	return editable and data is Dictionary and data.get("skill") is Skill and (holder.slot_cost(data.skill) > 0 if holder else data.skill.fits_bar())
 
 
 func _drop_data(_at: Vector2, data: Variant) -> void:
@@ -322,7 +322,7 @@ func _on_gui_input(e: InputEvent) -> void:
 # A skill dragged out of the skills screen (SkillWheel, SkillGrid) to equip it: one u has (learned or
 # lent) that goes on the bar. Null for anything else.
 static func drag_learned(from: Control, u: Unit, s: Skill) -> Variant:
-	if not u or not s or u.base_rank(s) == 0 or not s.fits_bar():
+	if not u or not s or u.base_rank(s) == 0 or u.slot_cost(s) == 0:
 		return null
 	from.set_drag_preview(chip(s, theme_of(from)))
 	return {skill = s, from = -1}
