@@ -200,7 +200,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, key_col)
 	if not skill and cover:
 		draw_rect(Rect2(12, 2, 1.5, size.y - 4), tint(cover) * Color(1, 1, 1, 0.5))
-		draw_string(font, Vector2(15, mid + 0.5), "%s (cont.)" % cover.name, HORIZONTAL_ALIGNMENT_LEFT, size.x - 18, 7, Color(0.92, 0.93, 0.96, 0.4))
+		draw_string(font, Vector2(15, mid + 0.5), "(continued)", HORIZONTAL_ALIGNMENT_LEFT, size.x - 18, 7, Color(0.92, 0.93, 0.96, 0.4))
 		return
 	if not skill:
 		var blank := "sealed" if sealed else "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "%s bonus" % ("caster" if bonus == &"magical" else String(bonus)) if bonus != &"" else "empty")

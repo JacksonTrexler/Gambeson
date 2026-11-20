@@ -152,7 +152,8 @@ class Applied:
 @export var learned: Array[Slot] = []  # per unit
 # Skills on the hotbar by slot, null where empty (see Skill.fits_bar() and slot_kinds()): its equipped
 # skills (equipped()), the only ones that work. Left empty, it fills at setup: pillars in the last sure
-# slots, actives and toggles from the left, always-on passives from the right (the bottom).
+# slots, actives and toggles from the left, always-on passives from the right (the bottom). A skill that takes several
+# slots (Skill.slots_taken()) is in its first slot alone; the slots after it are null here and covered() (a save keeps ids).
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
