@@ -3235,10 +3235,11 @@ func _apply_contrast() -> void:
 
 # How a unit is drawn for what the player is about - the one place glow, colour and tint are decided:
 # {glow: a strength (glow_of(), -1 plain), sat: how much colour it keeps (command_sat(): only the player's
-# own side drains), tint: its glow's colour, or null for its side's own}. An ally of another faction
+# own side drains), tint: its glow's colour, or null for its side's own, heading: its glow leans the way it
+# faces (heading_seen(): only to eyes wise enough, never on a silhouette)}. An ally of another faction
 # glows ally_glow (green by default) rather than its own primary: plainly on the player's side, not its.
 func look_of(u: Unit) -> Dictionary:
-	var look := {glow = glow_of(u), sat = command_sat(u) if known(u) else 1.0, tint = null}
+	var look := {glow = glow_of(u), sat = command_sat(u) if known(u) else 1.0, tint = null, heading = heading_seen(u)}
 	var f: Faction = u.faction if known(u) else view(u).faction
 	var doubt := not known(u) and view(u).mark() == Read.Mark.DOUBT
 	if f and f != command.faction() and Faction.friends(f, command.faction()) and not doubt and not (not known(u) and view(u).silhouette()):
@@ -3246,9 +3247,16 @@ func look_of(u: Unit) -> Dictionary:
 	return look
 
 
+# Whether the player reads which way u faces: through eyes() (the unit it commands, else its observer) with
+# wisdom Unit.HEADING_SIGHT, and not on a silhouette (nothing but a shape of it is made out).
+func heading_seen(u: Unit) -> bool:
+	return Unit.reads_heading(eyes()) and (known(u) or not view(u).silhouette())
+
+
 # Puts look_of() on the unit.
 func _apply_look(u: Unit, look: Dictionary) -> void:
 	u.set_saturation(look.sat)
+	u.see_heading(look.heading)
 	u.set_glow(look.glow, high_contrast and (known(u) or look.glow >= 0))
 	if look.tint != null and u.glow.visible:
 		u.glow.modulate = Color(look.tint, clampf(u.glow.modulate.a * ALLY_BOOST, 0.0, 1.0))

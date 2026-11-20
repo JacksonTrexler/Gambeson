@@ -1324,6 +1324,25 @@ func test_allied_glow() -> void:
 	h.free()
 
 
+# Which way a unit faces shows only to eyes with high wisdom (Unit.HEADING_SIGHT: 14), as its glow leaning
+# that way (the glow shader's `heading`), never as a mark drawn on it; the glow's targeting strengths unchanged.
+func test_facing_in_the_glow() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	v(3).facing = Vector2(-1, 0)
+	var h := await hud(v(1))
+	var lean := func(u: Unit) -> Vector2: return u.glow.material.get_shader_parameter(&"heading")
+	v(1).wisdom = Difficulty.stat_at(Unit.HEADING_SIGHT) - 1
+	h._refresh()
+	ok(lean.call(v(3)) == Vector2.ZERO and lean.call(v(1)) == Vector2.ZERO, "a viewer short of high wisdom reads no facing (%s)" % lean.call(v(3)))
+	v(1).wisdom = Difficulty.stat_at(Unit.HEADING_SIGHT)
+	h._refresh()
+	ok(lean.call(v(3)).is_equal_approx(Vector2(-Unit.HEADING, 0)), "at high wisdom the foe's glow leans the way it faces (%s)" % lean.call(v(3)))
+	v(3).facing = Vector2(0, 1)
+	ok(lean.call(v(3)).is_equal_approx(Vector2(0, Unit.HEADING)), "and follows when it turns (%s)" % lean.call(v(3)))
+	ok(v(3).sprite.get_node_or_null("Facing") == null and v(1).sprite.get_node_or_null("Facing") == null, "no arrow on anyone")
+	h.free()
+
+
 # "Will consume": a planned walk drains its movement off the bars and, for a known trap on the way, its
 # estimated damage off HP - while the unit has foresight left (int mod a turn, spent only by acting on an
 # estimate). Out of it, or at +0, HP gets a flashing "?" instead; below 0, nothing: it plans as if safe.
