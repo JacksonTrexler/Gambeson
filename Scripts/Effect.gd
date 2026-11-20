@@ -220,7 +220,7 @@ extends Resource
 
 const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_power": "Trap power",
 		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP", "trap_word": "Trap word",
-		"slots": "Skill slots", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
+		"slots": "Skill slots", "prep_use": "Preparation", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
 		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt",
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
@@ -443,6 +443,14 @@ func value(rank := 1) -> String:
 		text = "%s%% per strength mod off moving through units, for itself and allies through it (can become a boost)" % Skill.num(x * 100.0)
 	elif stat == "evaluates":
 		return "sees the rolls of allies using active skills within %s tile%s, its own too" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
+	elif stat == "prep_use" and not tags.is_empty() and tags[0] in Prep.USES:
+		var u: Dictionary = Prep.USES[tags[0]]
+		var got: Array[String] = []
+		if u.intel:
+			got.append("intel")
+		if u.suspicion:
+			got.append("suspicion")
+		return "%s %s in preparation: %s on %s%s" % [_signed(x), u.label, " and ".join(got), Prep.plural(u.noun, 2), ", at advantage" if u.edge > 0 else ""]
 	elif stat == "slots":
 		return "%s %s" % [_signed(x), Skill.CATEGORIES.get(tags[0], String(tags[0])) if not tags.is_empty() else "untyped"]
 	elif stat == "bonus_slots":

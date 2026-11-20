@@ -17,6 +17,8 @@
 [ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
 [ext_resource type="Resource" path="res://Trees/slayer.tres" id="r_slayer"]
 [ext_resource type="Resource" path="res://Trees/vanguard.tres" id="r_vanguard"]
+[ext_resource type="Resource" path="res://Skills/surveyor.tres" id="opt_surveyor"]
+[ext_resource type="Resource" path="res://Skills/evaluator.tres" id="opt_evaluator"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
 skill = ExtResource("4_strike")
@@ -29,7 +31,7 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 14, &"dexterity": 11, &"constitution": 14, &"intelligence": 8, &"wisdom": 10, &"charisma": 9})
-options = Array[ExtResource("20_skill")]([ExtResource("21_opt_wary"), ExtResource("22_opt_tenacity")])
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_wary"), ExtResource("22_opt_tenacity"), ExtResource("opt_surveyor"), ExtResource("opt_evaluator")])
 roots = Array[ExtResource("6_root")]([ExtResource("r_protector"), ExtResource("r_vanguard"), ExtResource("r_slayer")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"martial", &"journeyman"])

@@ -639,7 +639,10 @@ def put_in_options(role, sid):
     p = "Roles/%s.tres" % role
     text = read(p)
     secs = sections(text)
-    skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd") or die("%s: no Skill.gd ext_resource" % p)
+    skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd")
+    if not skill_ext:  # a class that has offered no skill outright yet (the Cleric, the Druid): its type comes with the first
+        skill_ext = free_id(secs, "skill_script")
+        text = add_ext(text, '[ext_resource type="Script" path="res://Scripts/Skill.gd" id="%s"]' % skill_ext)
     oid = free_id(secs, "opt_" + sid)
     item = 'ExtResource("%s")' % oid
     if re.search(r"^options = ", text, re.M):
