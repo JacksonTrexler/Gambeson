@@ -83,6 +83,7 @@ func test_passives() -> void:
 	var weighed := 0
 	var swept := 0
 	var inert := 0
+	var switched := 0
 	for s in _built:
 		if not s.passive:
 			continue
@@ -92,10 +93,16 @@ func test_passives() -> void:
 				u = x
 				break
 		var before := _readings(u, s.effects)
+		var had := s.tags.filter(func(t: StringName): return u.has_tag(t))
 		u.learned.append(slot(s, 2))
 		var r := u.rank(s)
 		ok(r > 0, "%s: learned at rank 2" % s.name)
 		weighed += _weigh(u, s.effects, before, func(_e): return r, func(_e): return 1.0, s.name)
+		if s.toggle and Unit.replacer(s) == null:  # a switch off does nothing: its stats and its tags (Hollow Bones' flight) go with it
+			u.toggle(s)
+			ok(not u.is_on(s) and _readings(u, s.effects) == before and s.tags.filter(func(t: StringName): return u.has_tag(t)) == had, "%s: switched off, inert, its tags gone" % s.name)
+			u.toggle(s)
+			switched += 1
 		if not s.is_trait() and not s.pillar():  # off the bar it does nothing: every stat back where it was (Unit.equipped()); pillars can't come off
 			ok(u.equipped(s), "%s: auto-equipped" % s.name)
 			u.bar_clear(u.hotbar.find(s))
@@ -105,6 +112,7 @@ func test_passives() -> void:
 		swept += 1
 	ok(weighed >= 60, "the passive sweep weighed %d stats" % weighed)
 	ok(inert >= 60, "the passive sweep unequipped %d" % inert)
+	ok(switched >= 5, "the passive sweep switched %d toggles off" % switched)
 	print("sweep: %d passives learned at rank 2, %d stats weighed, %d unequipped" % [swept, weighed, inert])
 
 
@@ -226,6 +234,7 @@ func test_item_skills() -> void:
 			v(1).learned.clear()
 			v(1).unequip(it.slot)
 			ok(v(1).equip(it) == null and (s in v(1).passives if s.passive else s in v(1).actives), "wearing %s lends %s" % [it.name, s.name])
+			ok((v(1).slot_cost(s) == 0 and s not in v(1).hotbar) if it.link(s) == &"free" else v(1).slot_cost(s) > 0, "%s: lent %s, %s" % [s.name, it.link(s), "no slot, off the bar (?214)" if it.link(s) == &"free" else "for a slot"])
 			ok(s.passive or _use(s, on), "%s: cast through %s" % [s.name, it.name])
 			n += 1
 	ok(n > 0, "some item lends a skill")

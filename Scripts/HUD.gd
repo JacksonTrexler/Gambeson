@@ -60,7 +60,7 @@ var log_open := false  # the whole log shows; collapsed (the default), only its 
 
 var command: Command
 var selected: Unit
-var slot := 0  # the selected hotbar slot of the selected unit: always set (the first, or with keep_slot the last used)
+var slot := 0  # the selected hotbar slot of the selected unit: always set (the first, or with keep_slot the last used); past its hotbar, the band's (band())
 var aim := false  # an area or trap skill in the slot is aimed: tile clicks cast it (its key again, or a right click, steps back)
 var picked: Array[Unit] = []  # picking(): the foes chosen so far, by click (empty: the skill chooses; Behaviour.picks())
 var keep_slot := false  # Settings: a unit keeps the slot it last used, rather than starting on the first
@@ -68,7 +68,7 @@ var _last_slot: Dictionary[Unit, int] = {}  # keep_slot: each unit's last used s
 var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing selected)
 	get:
 		var u := selected
-		return u.hotbar[slot] if u and hand(u) and slot >= 0 and slot < u.hotbar.size() else null
+		return _skill_in(u, slot) if u and hand(u) else null
 var hover := NOWHERE
 var busy := false  # units are acting on their own; the player waits
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
@@ -122,7 +122,7 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 
 @onready var card: UnitCard = %Card
 @onready var bar: SlotColumns = %Hotbar
-@onready var trait_bar: SlotColumns = %Traits  # after the hotbar: the unit's traits (Unit.traits()), no slots, not selectable
+@onready var trait_bar: SlotColumns = %Traits  # after the hotbar, greyed: what takes no slot (band(): traits, free lends); the ones cast or switched are keyed and used there
 @onready var book_button: Button = %BookButton
 @onready var hold_button: Button = %HoldButton
 @onready var party_button: Button = %PartyButton
@@ -508,10 +508,12 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func _slot_key(e: InputEvent) -> int:
-	for i in bar.get_child_count():
+	var n := bar.get_child_count()
+	var keyed := trait_bar.get_children().filter(func(c: SkillSlot): return c.keyed()).size()  # the band's numbers follow the bar's
+	for i in n + keyed:
 		var action := "hotbar_%d" % (i + 1)
 		if InputMap.has_action(action) and e.is_action_pressed(action):
-			return i
+			return i if i < n or not selected else selected.hotbar.size() + i - n
 	return -1
 
 
@@ -562,10 +564,11 @@ func use_slot(i: int) -> void:
 	var u := selected
 	if not u or not hand(u):
 		return
-	i = u.anchor(i)  # a slot a skill spanning several slots covers picks the skill: its first slot
-	if i < 0:
+	if i < u.hotbar.size():
+		i = u.anchor(i)  # a slot a skill spanning several slots covers picks the skill: its first slot
+	var s := _skill_in(u, i)
+	if i < 0 or not s:
 		return
-	var s: Skill = u.hotbar[i]
 	var again := i == slot
 	if s.passive and not s.toggle and not s.hybrid:
 		_say("%s works while it's equipped: nothing to use" % s.name)
@@ -575,7 +578,7 @@ func use_slot(i: int) -> void:
 		_say("Your side can't make out what %s could do there" % _name(u))
 	elif not command.slot_open(u, i):
 		_refuse(u, _why_locked(u))
-	elif not u.slot_works(i):
+	elif not _works(u, i):
 		_say(SkillSlot.NO_LUCK)
 	elif s in u.disabled:
 		_say("%s's %s is disabled for %d more turn%s" % [_name(u), s.name, u.disabled[s], "" if u.disabled[s] == 1 else "s"])
@@ -609,6 +612,31 @@ func use_slot(i: int) -> void:
 			aim = true  # a skill that takes picks: clicks on foes choose them, until its key again
 		_replan()
 		_mark()
+
+
+# The skill index i picks on u: its hotbar slot i, or past the hotbar the band's entry (band()) i - hotbar.size(); null for an
+# empty slot or nothing there.
+func _skill_in(u: Unit, i: int) -> Skill:
+	if i < 0:
+		return null
+	if i < u.hotbar.size():
+		return u.hotbar[i]
+	var b := band(u)
+	return b[i - u.hotbar.size()] if i - u.hotbar.size() < b.size() else null
+
+
+# Whether index i works on u now: a hotbar slot as Unit.slot_works() says (clover, sealed); the band always.
+func _works(u: Unit, i: int) -> bool:
+	return i >= u.hotbar.size() or u.slot_works(i)
+
+
+# What u shows past its hotbar, greyed (?214): what takes no slot (Unit.traits(): traits, skills its items lend free). The
+# ones cast or switched first, keyed with numbers after the bar's and used from there; always-on passives after, unkeyed.
+func band(u: Unit) -> Array[Skill]:
+	var all := u.traits() if u else ([] as Array[Skill])
+	var out: Array[Skill] = all.filter(func(s: Skill): return not SkillSlot.muted(s))
+	out.append_array(all.filter(func(s: Skill): return SkillSlot.muted(s)))
+	return out
 
 
 # Selects slot i of u's hotbar (remembered for keep_slot).
@@ -1695,11 +1723,11 @@ func next_able(u: Unit) -> Unit:
 # The skill a click on a foe uses: the first attack from the selected slot rightward, wrapping around,
 # that the unit may be told to use and can make out.
 func _primary(u: Unit) -> Skill:
-	var n := u.hotbar.size()
+	var n := u.hotbar.size() + band(u).size()  # the band's too: a free lend can be the attack (Hobnail Boots' Kick)
 	var from := slot if u == selected else 0
 	for k in n:
 		var i := (from + k) % n
-		var s: Skill = u.hotbar[i]
+		var s := _skill_in(u, i)
 		if s and s.for_foes() and not s.on_tile() and not self_skill(u, s) and _slot_usable(u, i):
 			return s
 	return null
@@ -1708,8 +1736,8 @@ func _primary(u: Unit) -> Skill:
 # Whether u may use the active skill in slot i now, as far as the bar goes: the slot's open to it (on
 # the leader's orders), works (clover), and the skill isn't disabled and can be made out.
 func _slot_usable(u: Unit, i: int) -> bool:
-	var s: Skill = u.hotbar[i] if i >= 0 and i < u.hotbar.size() else null
-	return s != null and not s.passive and command.slot_open(u, i) and u.slot_works(i) and s not in u.disabled \
+	var s := _skill_in(u, i)
+	return s != null and not s.passive and command.slot_open(u, i) and _works(u, i) and s not in u.disabled \
 			and skill_sense(u, s, view(u) if u != command.leader else null) > 0
 
 
@@ -2674,27 +2702,42 @@ func _refresh_bar() -> void:
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
 
 
-# The traits after the hotbar's last slot: one read-only SkillSlot each, drawn apart (SkillSlot.trait_slot). They
-# take no slot, so no number key, drag or clearing reaches them; suppressed ones dim.
+# The band after the hotbar's last slot (band()): one SkillSlot each, drawn apart (SkillSlot.trait_slot). They take no slot,
+# so no drag or clearing reaches them; suppressed ones dim. One cast or switched has a number after the bar's and is used
+# by it or a click, as a hotbar slot is (use_slot(): index hotbar.size() + its place); an always-on passive has none.
 func _refresh_traits(u: Unit) -> void:
-	var list: Array[Skill] = []
-	if u:
-		list = u.traits()
+	var list: Array[Skill] = band(u) if u else ([] as Array[Skill])
 	if trait_bar.get_child_count() != list.size():
 		for c in trait_bar.get_children():
 			trait_bar.remove_child(c)
 			c.queue_free()
-		for s in list:
+		for k in list.size():
 			var t := SkillSlot.new()
 			t.trait_slot = true
+			t.pressed.connect(_use_band.bind(k))
 			trait_bar.add_child(t)
 	var r := view(u) if u and u != command.leader else null
-	for i in list.size():
-		var t: SkillSlot = trait_bar.get_child(i)
-		var sense := skill_sense(u, list[i], r)
-		t.set_state(-1, list[i], u.rank(list[i]), false, true, not u.traits_suppressed(), false, false, sense, "", u)
+	var orders := u != null and _orders(u)
+	for k in list.size():
+		var t: SkillSlot = trait_bar.get_child(k)
+		var s := list[k]
+		var i := u.hotbar.size() + k
+		var sense := skill_sense(u, s, r)
+		var off: int = u.disabled.get(s, 0)
+		var on := u.is_on(s) if s.toggle else true
+		var usable := not u.traits_suppressed() if SkillSlot.muted(s) else \
+				(orders and sense > 0 and command.slot_open(u, i) and off == 0 and not u.traits_suppressed() and (s.passive or u.can_afford(s)))
+		t.set_state(bar.get_child_count() + k if not SkillSlot.muted(s) else -1, s, u.rank(s), s == armed and i == slot, on, usable, false, false, sense, u.mods(s).label(), u)
+		t.set_lent(u.lent_by(s) if sense == 2 else "")
+		t.set_off(off)
 		if u.traits_suppressed():
 			t.tooltip_text = "Suppressed: it does nothing while its traits are\n" + t.tooltip_text
+
+
+# A click on the band's entry k (band()): used as its number key is.
+func _use_band(k: int) -> void:
+	if selected:
+		use_slot(selected.hotbar.size() + k)
 
 
 # How much of u's skill s the player's side makes out (r: its read of u): 2 all of it (the leader's

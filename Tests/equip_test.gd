@@ -311,20 +311,19 @@ func test_multi_slot() -> void:
 	covered_slot.cleared.emit(3)
 	ok(rare not in u.hotbar, "unequipping from the covered slot takes the whole skill")
 	h.free()
-	# an item's innate link makes it slotless whatever its rarity; a plain one charges its price
+	# an item's free link makes it slotless whatever its rarity; an optional one charges its price
 	var calm: Skill = wary.duplicate()
 	calm.name = "Calm ??"
 	calm.tags = calm.tags + ([&"epic"] as Array[StringName])
 	var ring := Item.new()
 	ring.slot = "trinket"
 	ring.skills = [calm] as Array[Skill]
-	ring.innate = [calm] as Array[Skill]
 	var w := roomy(v(2), 3)
 	w.equip(ring)
-	ok(w.slot_cost(calm) == 0 and calm not in w.hotbar and w.equipped(calm), "a rare skill lent innate takes no slot")
-	ring.innate = [] as Array[Skill]
+	ok(w.slot_cost(calm) == 0 and calm not in w.hotbar and w.equipped(calm), "a rare skill lent free takes no slot")
+	ring.optional = [calm] as Array[Skill]
 	w.refit()
-	ok(w.slot_cost(calm) == 3 and w.span(calm).size() == 3 and w.equipped(calm), "lent plain it takes its three, on the bar by itself")
+	ok(w.slot_cost(calm) == 3 and calm not in w.hotbar and w.bar_place(calm, w.free_slot(calm)) and w.span(calm).size() == 3 and w.equipped(calm), "lent optional it takes its three, once its wearer slots it")
 	w.unequip("trinket")
 	# typed and bonus slots (Cram): every slot of the run must carry the type
 	var cram: Skill = load("res://Skills/cram.tres")
@@ -381,3 +380,86 @@ func test_slot_switch_dot() -> void:
 	sl.skill = load("res://Skills/stamina.tres")
 	ok(sl.brightness() < 1.0 and not is_equal_approx(sl.brightness(), 1.0), "a toggle that's off is dimmed, as an unusable active is")
 	sl.free()
+
+
+# The Harpy Hauberk lends Hollow Bones free (?214, the user's worked example): a toggle, on as it comes, that doubles what dex
+# mod gives the dex AP pool, halves the whole of Defense (a mul defense effect scales its armor's too: Unit.defense()) and
+# gives flight (the tag, read while the toggle is on: Unit.has_tag()) - every step costs 1 whatever the ground, and deep
+# water can't hold it under (Battle._cost(), submerged()). Switched off, all of it goes.
+func test_hauberk() -> void:
+	var bones: Skill = load("res://Skills/hollow_bones.tres")
+	var hauberk: Item = load("res://Items/harpy_hauberk.tres")
+	stage(lancin, {v(1): Vector2i(2, 1), v(3): Vector2i(6, 3)})
+	var u := v(1)
+	u.dexterity = 16
+	u.constitution = 18  # no armor drag on the dex pool, so the doubling shows whole
+	u.equip(hauberk)
+	ok(u.slot_cost(bones) == 0 and bones not in u.hotbar and bones in u.traits() and u.is_on(bones) and bones.toggle, "lent free: off the bar, beside it, a toggle that comes on")
+	var on_dex := u._pools()[1].amount
+	var on_def := u.defense()
+	var water: Terrain = load("res://Terrain/water.tres")
+	ok(u.has_tag(&"flight") and b._cost(u, water, water) == 1.0 and b._cost(v(3), water, water) > 1.0, "flight: deep water costs it 1, as any ground does")
+	b.flood(u.cell, 5, 2, v(3))
+	ok(not b.submerged(u), "over a flood: aloft, not under")
+	u.toggle(bones)
+	var off_dex := u._pools()[1].amount
+	var off_def := u.defense()
+	ok(not u.has_tag(&"flight") and b._cost(u, water, water) == b._cost(v(3), water, water) and b.submerged(u), "off: no flight, water costs what it costs anyone, and it is under")
+	ok(is_equal_approx(on_dex - off_dex, u.mod(&"dexterity")) and on_dex > off_dex, "dex AP: dex mod twice over while on (%.1f against %.1f)" % [on_dex, off_dex])
+	ok(on_def == roundi(off_def * 0.5) and off_def > 10, "Defense: half the whole of it, armor and all (%d against %d)" % [on_def, off_def])
+	u.toggle(bones)
+	u.unequip("armor")
+	ok(not u.has_tag(&"flight") and bones not in u.traits() and u.rank(bones) == 0, "the hauberk off: Hollow Bones goes with it")
+
+
+# The band (HUD.band(), ?214): what takes no slot sits after the hotbar, greyed. A skill cast or switched there has a number
+# after the bar's and is used by it or a click, as a hotbar slot is; an always-on passive has none. A free lend says it is
+# free; an ally takes orders for the band as for its first slot (Command).
+func test_band() -> void:
+	var bones: Skill = load("res://Skills/hollow_bones.tres")
+	var kick: Skill = load("res://Skills/kick.tres")
+	var darkvision: Skill = load("res://Skills/darkvision.tres")
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(3, 3), v(3): Vector2i(5, 3)})
+	var u := v(1)
+	u.equip(load("res://Items/harpy_hauberk.tres"))
+	var ring := Item.new()
+	ring.name = "Ring ??"
+	ring.slot = "trinket"
+	ring.skills = [darkvision, kick] as Array[Skill]
+	u.equip(ring)
+	var h := await hud(u)
+	h._refresh_bar()
+	var band: SlotColumns = h.get_node("%Traits")
+	var n := h.bar.get_child_count()
+	var shown: Array = band.get_children().map(func(c: SkillSlot): return c.skill)
+	ok(h.band(u) == ([bones, kick, darkvision] as Array[Skill]) and shown == [bones, kick, darkvision], "the band: what is switched or cast first, then the always-on passive (%s)" % [shown])
+	var first: SkillSlot = band.get_child(0)
+	var last: SkillSlot = band.get_child(2)
+	ok(first.keyed() and first._key() == str((n + 1) % 10) and first.tooltip_text.begins_with("[%d]" % ((n + 1) % 10)), "a toggle there has the number after the bar's (%s)" % first._key())
+	ok(not last.keyed() and last.tooltip_text.begins_with("Free") and "Lent by Ring" in last.tooltip_text, "a passive there has no number, and says it is free and whose")
+	ok(not first.editable and first._get_drag_data(Vector2.ZERO) == null, "nothing drags out of the band")
+	ok(h._slot_key(key(n + 1)) == u.hotbar.size() and h._slot_key(key(n + 2)) == u.hotbar.size() + 1, "its keys reach past the hotbar")
+	h._unhandled_input(key(n + 1))
+	ok(not u.is_on(bones) and not u.has_tag(&"flight"), "its key switches Hollow Bones off")
+	h._refresh_bar()
+	ok(not first.on and first.brightness() < 1.0, "and its slot shows it off")
+	first.pressed.emit()
+	ok(u.is_on(bones), "a click switches it on again")
+	(band.get_child(1) as SkillSlot).pressed.emit()
+	ok(h.armed == kick and h.slot == u.hotbar.size() + 1, "a click on Kick arms it")
+	ok(h._slot_usable(u, h.slot) and h._primary(u) == kick, "usable from the band, and the attack a click on a foe makes")
+	h.click(v(3).cell)
+	ok(v(3).hp < v(3).max_hp, "clicking the foe kicks it")
+	h.free()
+	var ally := v(2)  # an ally under orders: the band is open as its first slot is
+	ally.equip(ring)
+	u.charisma = 16
+	var cmd := Command.new(b, u)
+	ok(cmd.may_use(ally, kick) == cmd.slot_open(ally, 0) and cmd.slot_open(ally, ally.hotbar.size()) == cmd.slot_open(ally, 0) and cmd.slots(ally) > 0 and cmd.may_use(ally, kick), "an ally's band is open to orders as its first slot is")
+
+
+func key(n: int) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.physical_keycode = (KEY_0 + n % 10) as Key
+	e.pressed = true
+	return e

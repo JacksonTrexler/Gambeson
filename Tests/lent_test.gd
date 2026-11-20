@@ -3,7 +3,7 @@ extends Test
 # What an item lends (docs/plans/w3-lent.md): enchanted items lend enchanted skills (+1 rank) unless a skill has its own
 # enchanted effect (Armor: +1 Defense); armor sets Defense through the equipment skill it lends; and a lent skill is a
 # prerequisite - what was learned on it goes down with it (Unit.counts(), leaned, lapsed()); and how an item links a skill
-# to its wearer (docs/plans/w6-link.md): innate (no slot), optional (the wearer may put it on the bar), or plain (a slot).
+# to its wearer (docs/plans/w6-link.md, w8-bar.md): free (no slot, the default) or optional (for a slot, the wearer slots it or not).
 
 var armor_skill: Skill = load("res://Skills/armor.tres")
 var darkvision: Skill = load("res://Skills/darkvision.tres")
@@ -20,8 +20,7 @@ func lender(skills: Array, slot_name := "trinket") -> Item:
 	var it := Item.new()
 	it.name = "Lender"
 	it.slot = slot_name
-	it.skills.assign(skills)
-	it.innate.assign(skills.filter(func(s: Skill): return s.is_equipment()))  # armor's own link is innate, as on every armor in Items/
+	it.skills.assign(skills)  # lent free, as every lend is unless optional (armor's own Armor included)
 	return it
 
 
@@ -78,7 +77,7 @@ func test_armor_is_a_skill() -> void:
 	var seen := 0
 	for id in DEFENSE:
 		var it: Item = load("res://Items/%s.tres" % id)
-		ok(it.skills.has(armor_skill) and armor_skill.is_equipment() and it.innate.has(armor_skill) and not it.describe().contains("Gives the skill"), "%s lends Armor" % id)
+		ok(it.skills.has(armor_skill) and armor_skill.is_equipment() and it.link(armor_skill) == &"free" and not it.describe().contains("Gives the skill"), "%s lends Armor" % id)
 		var en: Item = it.duplicate()
 		en.enchant = 1
 		for i in 2:
@@ -94,7 +93,7 @@ func test_armor_is_a_skill() -> void:
 	ok(u.defense([&"magical"]) - u.defense([&"physical"]) == 2, "Robe: wis mod against magic")
 	ok(u.armor_skills() == ([armor_skill] as Array[Skill]) and u.traits().is_empty() and not armor_skill in u.hotbar and not u.has_tag(&"trait"), "Armor works without a slot, and isn't listed among its traits")
 	u.auto_fill()
-	ok(u.slot_cost(armor_skill) == 0 and not u.bar_place(armor_skill, 1) and not armor_skill.ai and armor_skill not in u.hotbar and not u.hotbar.any(func(x): return x != null and x.is_equipment()), "Armor is an equipment skill the armor lends innate: it takes no hotbar slot, auto-fill leaves it off, and it is the user's name (no ??)")
+	ok(u.slot_cost(armor_skill) == 0 and not u.bar_place(armor_skill, 1) and not armor_skill.ai and armor_skill not in u.hotbar and not u.hotbar.any(func(x): return x != null and x.is_equipment()), "Armor is an equipment skill the armor lends free: it takes no hotbar slot, auto-fill leaves it off, and it is the user's name (no ??)")
 	u.afflict(load("res://Effects/traits_suppressed.tres"), 2)
 	var bare := u.mod(&"dexterity") + u.mod(&"constitution")
 	ok(u.armor_defense() == bare and u.defense([&"magical"]) == u.defense([&"physical"]), "traits suppressed: the armor sets nothing, unarmored (%d)" % bare)
@@ -109,6 +108,7 @@ func test_lent_prerequisites() -> void:
 	var u := shrike()
 	ok(u.missing(meander) != "" and u.missing(magic_slot) != "", "without the lender: not yet")
 	var gift := lender([darkvision, astera])
+	gift.optional.assign([darkvision, astera])  # lent for a slot, so a disabling reaches them (a free lend has no slot to disable)
 	u.equip(gift)
 	ok(u.missing(meander) == "" and u.missing(magic_slot) == "Needs 3 Magic skills (1 so far)", "lent Darkvision opens Meander; lent Astera counts for the capstone (%s)" % u.missing(magic_slot))
 	ok(u.unlock(meander) and u.unlock(hide) and u.unlock(sola) and u.unlock(nadira) and u.unlock(magic_slot), "learned on them")
@@ -149,9 +149,9 @@ func test_lent_prerequisites() -> void:
 	u.free()
 
 
-# How an item links a skill it lends (Item.innate, Item.optional; Unit.link(), slot_cost()): the flags are on the link, so
-# the same skill is slotless from one item and costs a slot from another. Darkvision is a passive (innate means something),
-# Kick an active.
+# How an item links a skill it lends (?214: Item.optional; Unit.link(), slot_cost()): free by default, whatever kind of
+# skill (no slot, equipped while worn), or optional (lent for a slot: the wearer slots it or not). The flag is on the link,
+# so the same skill is free from one item and costs a slot from another. Darkvision is a passive, Kick an active.
 func test_links() -> void:
 	var kick := sk("kick")
 	var u := shrike()
@@ -159,40 +159,47 @@ func test_links() -> void:
 	u.hotbar.resize(u.bar_size())
 	for n in u.hotbar.size():
 		u.bar_clear(n)
-	var plain := lender([darkvision, kick], "armor")
-	u.equip(plain)
-	ok(darkvision in u.hotbar and kick in u.hotbar and u.slot_cost(darkvision) == 1 and u.link(kick) == &"", "plain: both take a slot, and go on the bar by themselves")
 	var robe := lender([darkvision, kick], "armor")
-	robe.innate.assign([darkvision, kick])  # innate on an active means nothing: nothing to work it without a slot
 	u.equip(robe)
-	ok(u.slot_cost(darkvision) == 0 and u.link(darkvision) == &"innate" and darkvision not in u.hotbar and u.equipped(darkvision) and darkvision in u.passives and darkvision in u.traits(), "innate: no slot, off the bar, working, listed with the traits")
-	ok(u.slot_cost(kick) == 1 and kick in u.hotbar, "innate on an active reads as plain")
+	ok(u.link(darkvision) == &"free" and u.link(kick) == &"free" and u.slot_cost(darkvision) == 0 and u.slot_cost(kick) == 0 and darkvision not in u.hotbar and kick not in u.hotbar, "free by default: a passive and an active alike take no slot and stay off the bar")
+	ok(u.equipped(darkvision) and darkvision in u.passives and u.equipped(kick) and kick in u.actives and u.traits() == ([darkvision, kick] as Array[Skill]), "both work, listed apart from the bar (the HUD's band)")
+	var c := Control.new()
+	ok(not u.bar_place(kick, 0) and SkillSlot.drag_learned(c, u, kick) == null, "nothing puts a free skill on the bar")
+	c.free()
 	u.disable(darkvision, 3)
-	ok(darkvision not in u.disabled, "nothing to disable: it has no slot")
-	u.equip(plain)
-	ok(u.slot_cost(darkvision) == 1 and darkvision in u.hotbar, "the same skill from another item: back to costing a slot, and on the bar again")
-	u.equip(robe)
-	ok(darkvision not in u.hotbar and u.equipped(darkvision), "and slotless again")
+	u.disable(kick, 3)
+	ok(darkvision not in u.disabled and kick not in u.disabled, "nothing to disable: they have no slot")
 	u.afflict(load("res://Effects/traits_suppressed.tres"), 2)
-	ok(not u.equipped(darkvision), "traits suppressed: an innate skill stops, as a trait does")
+	ok(not u.equipped(darkvision) and kick not in u.actives, "traits suppressed: free skills stop, as traits do")
 	u.tick()
 	u.tick()
 	var opt := lender([darkvision, kick], "armor")
 	opt.optional.assign([darkvision, kick])
-	u.bar_clear(u.hotbar.find(kick))
 	u.equip(opt)
-	ok(u.link(kick) == &"optional" and kick not in u.hotbar and darkvision not in u.hotbar and not u.equipped(kick), "optional: lent, left off the bar, and doesn't work there")
+	ok(u.link(kick) == &"optional" and u.slot_cost(kick) == 1 and u.slot_cost(darkvision) == 1 and kick not in u.hotbar and darkvision not in u.hotbar and not u.equipped(kick), "optional: lent for a slot, left off the bar, and doesn't work there")
 	u.auto_fill()
 	ok(kick not in u.hotbar and darkvision not in u.hotbar, "auto-fill leaves it too")
 	var i := u.free_slot()
 	ok(u.bar_place(kick, i) and u.equipped(kick) and kick in u.actives, "the wearer may put it on the bar: it works")
-	u.equip(plain)
-	ok(u.link(kick) == &"" and kick in u.hotbar, "a plain lend beats optional (it stays, and is put on if it isn't)")
+	u.equip(robe)
+	ok(u.link(kick) == &"free" and kick not in u.hotbar and u.equipped(kick), "the same skill from a free lend: it gives its slot up and still works")
+	var ring := lender([kick])
+	ring.optional.assign([kick])
+	u.equip(ring)
+	ok(u.link(kick) == &"free", "two items lending it: free beats optional")
 	u.unequip("armor")
-	ok(kick not in u.hotbar and u.slot_cost(kick) == 1, "off with the item, off the bar")
-	var own := shrike()  # learned as well as lent innate: its own, as it was
+	ok(u.link(kick) == &"optional" and kick not in u.hotbar and not u.equipped(kick), "the free one taken off, the optional one stands: off the bar until slotted")
+	u.unequip("trinket")
+	ok(u.link(kick) == &"" and kick not in u.hotbar and darkvision not in u.traits(), "off with the items, gone")
+	var own := shrike()  # learned as well as lent free: its own, as it was
 	own.unlock(darkvision)
 	own.equip(robe)
 	ok(own.link(darkvision) == &"" and own.slot_cost(darkvision) == 1, "a skill learned as well takes its slot whatever the link")
 	own.free()
 	u.free()
+	var fresh := Unit.new()  # a unit setting up elects to slot an optional lend when its bar has room (_fill_bar())
+	fresh.level = 20
+	fresh.trinket = ring
+	fresh._fill_bar()
+	ok(kick in fresh.hotbar and fresh.equipped(kick), "setting up with room, it slots the optional lend")
+	fresh.free()

@@ -9,4 +9,3 @@ script = ExtResource("1_item")
 name = "Gambeson"
 tags = Array[StringName]([&"light", &"cloth", &"padded"])
 skills = Array[ExtResource("3_skill")]([ExtResource("2_armor")])
-innate = Array[ExtResource("3_skill")]([ExtResource("2_armor")])

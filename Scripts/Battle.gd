@@ -3833,6 +3833,8 @@ func _marks_for(u: Unit, c: Vector2i, expected: bool) -> Array[Mark]:
 
 
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
+	if u and u.has_tag(&"flight"):  # aloft (Hollow Bones): the ground below costs nothing to leave, 1 to enter, nothing drags
+		return maxf(1.0 + u.stat(&"move_cost", to.tags), 0.0)
 	var swims := u != null and to.depth > 0 and u.has_tag(&"aquatic")  # water is plain going to the aquatic: 1 to enter, nothing dragging (a Pike)
 	var cost := maxf(from.exit + (1.0 if swims else to.enter + to.drag) + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
 	if u and u.form and &"tunneler" in FORMS[u.form][2] and to.tags.any(func(t: StringName): return t in TUNNELS):
@@ -5057,7 +5059,7 @@ func depth(c: Vector2i) -> int:
 
 # Whether u is under water: deeper than its size, or engulfed by whoever holds it on its own tile.
 func submerged(u: Unit) -> bool:
-	if depth(u.cell) > _size(u):
+	if depth(u.cell) > _size(u) and not u.has_tag(&"flight"):  # aloft over deep water; one held under goes down with its holder
 		return true
 	var a := held_by(u)
 	return a != null and a.by != null and a.by.cell == u.cell

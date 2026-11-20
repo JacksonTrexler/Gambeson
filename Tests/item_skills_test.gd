@@ -40,7 +40,7 @@ func test_grant_and_remove() -> void:
 	ok(u.rank(kick) == 0 and kick not in u.actives, "without the boots: no Kick")
 	u.equip(boots)
 	ok(u.rank(kick) == 1 and kick in u.actives and u.slots.any(func(x: Slot): return x.skill == kick and x.from == boots), "worn: Kick, a flagged slot from the boots")
-	ok(u.hotbar.has(kick) and u.lent_by(kick) == boots.name, "it goes on the bar, and says whose it is")
+	ok(not u.hotbar.has(kick) and u.slot_cost(kick) == 0 and kick in u.traits() and u.lent_by(kick) == boots.name, "lent free (?214): no slot, it sits beside the bar, and says whose it is")
 	ok("Kick" in boots.describe() and "can't be ranked" in boots.describe(), boots.describe())
 	u.unequip("trinket")
 	ok(u.rank(kick) == 0 and kick not in u.actives and not u.hotbar.has(kick) and u.lent_by(kick) == "", "taken off: the skill and its slot go")
@@ -91,7 +91,7 @@ func test_enchant() -> void:
 	ok(not heart_up.scales() and u.enchant(1) == 0 and u.trinket == heart_up, "Heart Up has nothing to scale: skipped, and it takes none of Pray's count")
 	u.equip(boots)
 	ok(boots.scales() and u.enchant(1) == 1 and u.trinket != boots and u.trinket.enchant == 1 and boots.enchant == 0, "boots with a skill: enchanted, a copy")
-	ok(u.trinket.ranked() == 2 and u.rank(kick) == 2 and u.hotbar.has(kick), "...rank +1 on the item, and so on its skill")
+	ok(u.trinket.ranked() == 2 and u.rank(kick) == 2 and u.equipped(kick), "...rank +1 on the item, and so on its skill")
 	ok(u.enchant(1) == 0, "once")
 	b.disenchant(u, 1)
 	ok(u.rank(kick) == 1, "disenchanted: back to its rank")
@@ -146,20 +146,19 @@ func test_emblem_on_an_item_skill() -> void:
 	var plain := Skill.new()
 	plain.name = "Plain"
 	plain.ap = 1.0
-	u.equip(lender([plain, s], "weapon", 2))
+	var lent := lender([plain, s], "weapon", 2)
+	u.equip(lent)
 	var sigil := Item.new()
 	sigil.name = "Sigil"
 	sigil.slot = "trinket"
 	sigil.emblem = &"rho_up"
 	sigil.scope = &"sigil"
 	u.equip(sigil)
-	ok(u.hotbar.has(s) and u.hotbar.find(plain) < u.hotbar.find(s), "both on the bar, in the order lent")
-	ok(u.mods(s).label() == "ρ↑" and u.mods(plain).empty(), "a Sigil: the leftmost eligible skill on the hotbar - Plain scales by nothing, so Scaler")
-	u.hotbar[u.hotbar.find(s)] = null
-	u.hotbar[u.hotbar.find(plain)] = null
-	u.hotbar[0] = s
-	u.hotbar[1] = plain
-	ok(u.mods(s).label() == "ρ↑", "and in whatever order it's arranged")
+	ok(not u.hotbar.has(s) and u.traits() == ([plain, s] as Array[Skill]), "both lent free: beside the bar, in the order lent")
+	ok(u.mods(s).label() == "ρ↑" and u.mods(plain).empty(), "a Sigil: the leftmost eligible skill on the hotbar, then beside it - Plain scales by nothing, so Scaler")
+	lent.optional = [plain, s] as Array[Skill]
+	u.refit()
+	ok(u.bar_place(s, 0) and u.bar_place(plain, 1) and u.mods(s).label() == "ρ↑", "lent for a slot, and in whatever order it's arranged")
 	var badge := Item.new()
 	badge.slot = "trinket"
 	badge.emblem = &"rho_up"

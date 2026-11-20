@@ -94,9 +94,12 @@ static func of(u: Unit, s: Skill) -> Modifiers:
 
 static func _reaches(u: Unit, s: Skill, it: Item) -> bool:
 	match it.scope:
-		&"sigil":  # the leftmost eligible skill on its hotbar, of those that work there (Unit.equipped())
+		&"sigil":  # the leftmost eligible skill on its hotbar, of those that work there (Unit.equipped()), then past it what takes no slot (a free lend: Unit.traits())
 			for x in u.hotbar:
 				if x and eligible(it.emblem, x) and u.equipped(x):
+					return x == s
+			for x in u.traits():
+				if eligible(it.emblem, x) and u.equipped(x):
 					return x == s
 			return false
 		&"crest":

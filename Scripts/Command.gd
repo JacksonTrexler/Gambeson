@@ -157,14 +157,17 @@ func slots(u: Unit = null) -> int:
 	return maxi(cha_for(u), 0)
 
 
-# Whether u may be told to use hotbar slot i: the leader uses all of its own.
+# Whether u may be told to use hotbar slot i: the leader uses all of its own. Past the bar (the HUD's band: skills that take
+# no slot, Unit.traits()) every one is open as its first slot is: to an ally that takes orders at all.
 func slot_open(u: Unit, i: int) -> bool:
-	return u == leader or i < slots(u)
+	return u == leader or i < slots(u) or (i >= u.hotbar.size() and slots(u) > 0)
 
 
-# Whether u may be told to use (or switch) s: it must sit in a slot that's open to orders.
+# Whether u may be told to use (or switch) s: it must sit in a slot that's open to orders, or take none (slot_open()).
 func may_use(u: Unit, s: Skill) -> bool:
 	if u == leader:
+		return true
+	if u.slot_cost(s) == 0 and slots(u) > 0:
 		return true
 	for i in mini(slots(u), u.hotbar.size()):
 		if u.hotbar[i] == s:

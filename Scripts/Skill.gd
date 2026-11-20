@@ -220,7 +220,7 @@ func is_trait() -> bool:
 
 
 # Equipment: an item lends it as part of what the item does (Item.skills; Armor), and the HUD doesn't list it among a unit's
-# traits (Unit.traits()). It takes no hotbar slot because the item lends it innate (Item.innate; skill.py check holds that).
+# traits (Unit.traits()). It takes no hotbar slot because the item lends it free (Item.link(); skill.py check holds that it is never lent optional).
 func is_equipment() -> bool:
 	return &"equipment" in tags
 
@@ -237,7 +237,7 @@ const RARITY_SLOTS := {&"rare": 2, &"epic": 3, &"legendary": 4, &"mythic": 5}
 
 # The hotbar slots it takes side by side on a bar that has room: a number a behaviour sets (SlotCost) over the most its
 # rarity tags give, over 1. A pillar always takes 1 (they sit pinned in the last sure slots). A trait, or a skill an item
-# lends innate, takes none: that is Unit.slot_cost(), the unit's answer, which starts here.
+# lends free, takes none: that is Unit.slot_cost(), the unit's answer, which starts here.
 func slots_taken() -> int:
 	var n := 1
 	for t in tags:
@@ -255,7 +255,7 @@ static func slots_line(n: int) -> String:
 	return "Takes %d hotbar slots, side by side: each must fit it, it works only while all of them do, and disabling one slot's worth disables it whole" % n
 
 
-# Goes on the hotbar to work: everything but a trait, which takes no slot (a lent skill an item makes innate takes none
+# Goes on the hotbar to work: everything but a trait, which takes no slot (a skill an item lends free takes none
 # either: Unit.slot_cost() is the unit's answer). Actives and toggles are
 # worked by hand from it; an always-on passive just sits there, working (Unit.equipped()).
 func fits_bar() -> bool:

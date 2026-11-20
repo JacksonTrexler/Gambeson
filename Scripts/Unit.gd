@@ -1247,41 +1247,33 @@ func equipped(s: Skill) -> bool:
 	return true
 
 
-# The hotbar slots s takes to be equipped: 0 for a trait and for a skill an item lends it innate (link()), else what the
-# skill takes (Skill.slots_taken(): 1, more by rarity or SlotCost). The one place a skill's price in slots is worked out: whatever puts a skill on the bar (bar_place(), equip_skill(),
+# The hotbar slots s takes to be equipped: 0 for a trait and for a skill an item lends it free (link(): any kind, active,
+# toggle or passive), else what the skill takes (Skill.slots_taken(): 1, more by rarity or SlotCost). The one place a skill's price in slots is worked out: whatever puts a skill on the bar (bar_place(), equip_skill(),
 # auto_fill(), the HUD's drags) asks this, never Skill.fits_bar() alone.
 func slot_cost(s: Skill) -> int:
-	return 0 if s.is_trait() or link(s) == &"innate" else s.slots_taken()
+	return 0 if s.is_trait() or link(s) == &"free" else s.slots_taken()
 
 
-# How its worn items link s to it: &"innate" (it works without a slot: a passive an item lends so), &"optional" (lent, and
-# left off the bar until it puts it there), or &"" (a plain lend: it takes a slot and goes on the bar by itself - or s
-# isn't lent, or it learned s as well: then it is its own). The same skill may be linked differently by two items: innate
-# beats a plain lend beats optional (Item.link()). Innate only means anything for an always-on passive: on anything it
-# is cast or switched it reads as plain.
+# How its worn items link s to it (?214, the user: "free and auto-equipped by default while eligible"): &"free" (it takes
+# no slot and is equipped while worn, whatever kind of skill it is: an always-on passive sits greyed beside the bar, one
+# cast or switched is used from there), &"optional" (lent for a slot: left off the bar until it puts it there), or &""
+# (s isn't lent, or it learned s as well: then it is its own, and takes its slot). The same skill linked differently by two
+# items: free beats optional.
 func link(s: Skill) -> StringName:
-	var lent := false
-	var innate := false
-	var plain := false
+	var how := &""
 	for it in items():
-		if s in it.skills:
-			lent = true
-			match it.link(s):
-				&"innate":
-					innate = true
-				&"optional":
-					pass
-				_:
-					plain = true
-	if not lent or own_rank(s) > 0:
-		return &""
-	if innate:
-		return &"innate" if s.passive and not s.toggle else &""
-	return &"" if plain else &"optional"
+		match it.link(s):
+			&"free":
+				how = &"free"
+			&"optional":
+				if how == &"":
+					how = &"optional"
+	return &"" if how == &"" or own_rank(s) > 0 else how
 
 
-# The traits it has (learned, lent innate or its own), in the order it holds them: what the HUD shows apart from the
-# hotbar, at its far end. They take no hotbar slot, so nothing that walks the hotbar reaches them.
+# The skills it has that take no slot (traits, learned or its own, and skills its items lend free), in the order it holds
+# them: what the HUD shows apart from the hotbar, at its far end - greyed, and the ones cast or switched usable there with
+# a number past the bar's (HUD.band_skill()). Nothing that walks the hotbar reaches them.
 func traits() -> Array[Skill]:
 	var out: Array[Skill] = []
 	for x in slots:
@@ -1852,7 +1844,7 @@ func _fill_bar() -> void:
 	hotbar.resize(bar_size())
 	_keys = _slot_keys()
 	for x in slots:
-		if slot_cost(x.skill) > 0:  # one that takes no slot is new when it does (an innate lend made plain: _sync_granted())
+		if slot_cost(x.skill) > 0:  # one that takes no slot is new when it does (a free lend now worn as its own: _sync_granted())
 			_seen[x.skill] = true
 	_seen_sig = _skill_sig()
 	if not fresh:
@@ -1863,7 +1855,7 @@ func _fill_bar() -> void:
 			hotbar[pinned] = x.skill
 			pinned -= 1
 	for pass_ in 2:  # the slots its passives grant join as they go on
-		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and (not y.skill.passive or y.skill.toggle)):
+		for x in slots.filter(func(y: Slot): return not y.skill.pillar() and (not y.skill.passive or y.skill.toggle) and slot_cost(y.skill) > 0):
 			if x.skill not in hotbar and link(x.skill) != &"optional":
 				var i := free_slot(x.skill)
 				if i >= 0:
@@ -1874,6 +1866,12 @@ func _fill_bar() -> void:
 				if i >= 0:
 					hotbar[i] = x.skill
 					_arrange()
+	for x in slots:  # a unit setting up elects to slot what its items lend optional if it has room left (one with a full bar doesn't)
+		if link(x.skill) == &"optional" and x.skill not in hotbar:
+			var i := free_slot(x.skill)
+			if i >= 0:
+				hotbar[i] = x.skill
+				_arrange()
 
 
 # Re-sorts the hotbar after its slots change (a level, a slot-granting skill equipped or not): each skill
@@ -1957,10 +1955,10 @@ func paused_on(ground_tags: Array[StringName]) -> Array[Skill]:
 # Base value (core stats only) plus every effect on that stat whose tags match the query;
 # "mul" effects then multiply the total (Stoneskin halves dexterity). As `viewer` sees it: timed
 # effects it saw through (Hide, against an investigator who passed) don't count.
-func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: Skill = null) -> float:
+func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: Skill = null, base := 0.0) -> float:
 	var t: Array[StringName] = []
 	var expanded := false  # the query's tags, expanded when the first effect that asks for tags turns up
-	var sum: float = 0.0
+	var sum: float = base  # what the stat stands at before its effects, where the asker works it out (defense(): its armor's)
 	if s == &"size" and race:
 		sum = race.size
 	elif s in CORE:
@@ -2233,7 +2231,8 @@ func mitigation(tags: Array[StringName]) -> float:
 # untagged ones always, tagged ones against attacks carrying that tag or a child of it (physical
 # Defense counts against a pierce).
 func defense(tags: Array[StringName] = []) -> int:
-	return armor_defense() + roundi(stat(&"defense", tags)) + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0) - (REAR_EDGE if &"rear" in tags else 0)
+	var base := armor_defense() + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0)
+	return roundi(stat(&"defense", tags, null, null, base)) - (REAR_EDGE if &"rear" in tags else 0)  # a mul defense effect scales the whole of it (Hollow Bones: half)
 
 
 # Defence its armor's mind_stat adds against magical attacks alone (Robe: wis mod). Untagged queries
@@ -2292,7 +2291,7 @@ func armor_skills(item: Item = armor) -> Array[Skill]:
 	var out: Array[Skill] = []
 	if item:
 		for s in item.skills:
-			if s and s.is_equipment() and (equipped(s) or (item.link(s) == &"innate" and not traits_suppressed())):  # armor in another slot (Plating) isn't in items(): its own link says it is innate
+			if s and s.is_equipment() and (equipped(s) or (item.link(s) == &"free" and not traits_suppressed())):  # armor in another slot (Plating) isn't in items(): its own link says it is free
 				out.append(s)
 	return out
 
@@ -2603,7 +2602,7 @@ func _sync_granted() -> void:
 		if i >= 0:
 			hotbar[i] = null
 	var free := now.filter(func(s: Skill): return slot_cost(s) == 0)
-	var freed := false  # one on the bar that an item now lends innate gives its slot up (it still works: not lost)
+	var freed := false  # one on the bar that an item now lends free gives its slot up (it still works: not lost)
 	for s in free:
 		var i := hotbar.find(s)
 		if i >= 0:
@@ -2622,10 +2621,10 @@ func _sync_granted() -> void:
 
 
 # Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
-# bane: earth; a passive only while equipped), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
+# bane: earth; a passive only while equipped, and a toggle only while on: Hollow Bones' flight), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
 	return t in tags or items().any(func(it: Item): return t in it.tags) \
-			or slots.any(func(x: Slot): return x.rank > 0 and (not x.skill.passive or equipped(x.skill)) and (t in x.skill.tags or (emblems() and t in mods(x.skill).tags))) \
+			or slots.any(func(x: Slot): return x.rank > 0 and (not x.skill.passive or (x.on and equipped(x.skill))) and (t in x.skill.tags or (emblems() and t in mods(x.skill).tags))) \
 			or (form != &"" and t in Battle.FORMS[form][2])
 
 

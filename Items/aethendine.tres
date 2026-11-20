@@ -19,4 +19,3 @@ full_dex = true
 eases = &"dexterity"
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_0")])
 skills = Array[ExtResource("4_skill")]([ExtResource("3_armor")])
-innate = Array[ExtResource("4_skill")]([ExtResource("3_armor")])
