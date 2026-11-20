@@ -20,6 +20,7 @@ const PARTY_REACH := 2.0
 var battle: Battle
 var leader: Unit
 var party: Array[Unit] = []
+var brought := 0  # how many came in its party (the Party a battle fields): its party is never smaller than that (party_size())
 var ordered: Dictionary[Unit, int] = {}  # orders given this turn, by unit (the leader's own moves count here too, uncapped)
 var linked: Unit  # the one ally Telepathy reaches this turn, once ordered through it (Behaviours/telepathy.gd)
 var locked: Dictionary[Unit, bool] = {}  # barred from more commands this faction turn, and from acting on its own as it ends: a wasted intent order (HUD.issue_intent), or held (HUD.hold)
@@ -30,7 +31,8 @@ func _init(b: Battle, l: Unit) -> void:
 	leader = l
 	for u in b.members(l.faction) if l.faction else []:
 		if u.follows == l and u != l:
-			party.append(u)  # in its party from the start (the Party a battle fields: Battle._field_party()), whatever party_size() says
+			party.append(u)  # in its party from the start (the Party a battle fields: Battle._field_party())
+	brought = party.size()
 
 
 # Tiles between two cells: the straight-line distance, rounded (a diagonal step is 1 tile).
@@ -87,7 +89,7 @@ static func party_reach_of(l: Unit) -> float:
 
 
 func party_size() -> int:
-	return maxi(cha() + roundi(leader.stat(&"party")), 1)
+	return maxi(maxi(cha() + roundi(leader.stat(&"party")), 1), brought)
 
 
 # How many allies the leader may give orders to in a turn: its cha mod, at least 1, and its strategy

@@ -1,5 +1,5 @@
 class_name PartyPanel
-extends PanelContainer
+extends Control
 
 # The Party screen, off the entry screen: the roster (Game.roster), one box each, ticked for those who go into battle
 # (Game.party) - the leader always, the rest while there's room (Game.leader_party_size()). Done closes it; the
@@ -13,9 +13,18 @@ var count: Label
 
 func _ready() -> void:
 	name = &"PartyPanel"
-	set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.85)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
+	var panel := PanelContainer.new()
+	center.add_child(panel)
 	var col := VBoxContainer.new()
-	add_child(col)
+	panel.add_child(col)
 	var title := Label.new()
 	title.text = "Party"
 	title.add_theme_font_size_override(&"font_size", 14)
@@ -32,7 +41,8 @@ func _ready() -> void:
 		var d: Dictionary = Game.roster[i]
 		var r = load(d.role) if ResourceLoader.exists(str(d.get("role", ""))) else null
 		var box := CheckBox.new()
-		box.text = "%s, %s, level %d" % [d.get("name", "?"), r.name if r else "?", int(d.get("level", 1))]
+		var who := str(d.get("name", "?"))
+		box.text = "%s, level %d" % [who if r and who == r.name else "%s, %s" % [who, r.name if r else "?"], int(d.get("level", 1))]
 		box.button_pressed = i in picked
 		box.disabled = i == 0  # the leader goes
 		box.toggled.connect(_toggled.unbind(1))
