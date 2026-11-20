@@ -3102,8 +3102,7 @@ static func _skill_id(s: Skill) -> String:
 
 
 static func _skill_by_id(id: Variant) -> Skill:
-	var path := "res://Skills/%s.tres" % str(id)
-	return load(path) if id is String and id != "" and ResourceLoader.exists(path) else null
+	return Skill.by_id(id)
 
 
 # A skill that stopped working: learned through a waiver whose waiver isn't working now (removed, disabled, or

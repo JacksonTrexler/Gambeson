@@ -45,6 +45,26 @@ def skill_refs(secs):  # Branch sub_resource id -> skill ext id
 
 # --- check
 
+def skill_names():
+    """{skill id: its shown name with any " ??" off} - the shown name is what the player sees, so two skills may not share one."""
+    out = {}
+    for p in files("Skills", ".tres"):
+        m = re.search(r'^\[resource\].*?^name = "([^"]*)"', read(p), re.M | re.S)
+        out[os.path.basename(p)[:-5]] = (m.group(1) if m else "").removesuffix("??").strip()
+    return out
+
+
+def check_names(problems):
+    """Ids are file names, so unique already; shown names are not, so each is checked (ignoring case and the " ??" of an
+    AI's name): Symphony was once two skills, the Bard's and the Wizard's. No exceptions."""
+    seen = {}
+    for sid, n in sorted(skill_names().items()):
+        seen.setdefault(n.lower(), []).append(sid)
+    for n, ids in seen.items():
+        if len(ids) > 1:
+            problems.append('Skills/%s.tres: the shown name "%s" is also on %s - a skill name is unique (rename one; its id and icon with it)' % (ids[0], n, ", ".join(ids[1:])))
+
+
 def check_refs(problems):
     for p in files(".", ".tres"):
         text = read(p)
@@ -429,7 +449,7 @@ def check_density(problems):  # Density's one rule (SkillTerms.density_why()) ag
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs, check_difficulty_words):
+    for f in (check_refs, check_names, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs, check_difficulty_words):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
@@ -665,6 +685,8 @@ def new(a):
     a.title = a.title or sid.replace("_", " ").title()
     if os.path.exists(os.path.join(ROOT, "Skills/%s.tres" % sid)):
         die("Skills/%s.tres exists" % sid)
+    clash = [i for i, n in skill_names().items() if n.lower() == a.title.removesuffix("??").strip().lower()]
+    clash and die('--title "%s": Skills/%s.tres already has that shown name - a skill name is unique (pick another)' % (a.title, clash[0]))
     if a.trait:  # declared here, never inferred: always on, no slot (Unit.equipped())
         a.passive = True
         a.tags = ",".join(filter(None, [a.tags, "trait"])) if "trait" not in (a.tags or "").split(",") else a.tags

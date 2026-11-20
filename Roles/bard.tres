@@ -34,7 +34,7 @@
 [ext_resource type="Resource" path="res://Skills/molothrus.tres" id="s_molothrus"]
 [ext_resource type="Resource" path="res://Skills/string_theory.tres" id="s_string_theory"]
 [ext_resource type="Resource" path="res://Skills/conductor.tres" id="s_conductor"]
-[ext_resource type="Resource" path="res://Skills/symphony_bard.tres" id="s_symphony_bard"]
+[ext_resource type="Resource" path="res://Skills/harmony.tres" id="s_harmony"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -71,9 +71,9 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_conductor")
 after = Array[ExtResource("5_skill")]([ExtResource("s_string_theory")])
 
-[sub_resource type="Resource" id="Branch_symphony_bard"]
+[sub_resource type="Resource" id="Branch_harmony"]
 script = ExtResource("7_branch")
-skill = ExtResource("s_symphony_bard")
+skill = ExtResource("s_harmony")
 after = Array[ExtResource("5_skill")]([ExtResource("s_conductor")])
 
 [sub_resource type="Resource" id="Branch_embellish"]
@@ -105,7 +105,7 @@ after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
 script = ExtResource("6_root")
 name = "Performance"
 tag = &"specialist"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_tonefoolery"), SubResource("Branch_glamour"), SubResource("Branch_manifest"), SubResource("Branch_personify"), SubResource("Branch_string_theory"), SubResource("Branch_conductor"), SubResource("Branch_symphony_bard"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_molothrus"), SubResource("Branch_conspire"), SubResource("Branch_bandwagon")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_tonefoolery"), SubResource("Branch_glamour"), SubResource("Branch_manifest"), SubResource("Branch_personify"), SubResource("Branch_string_theory"), SubResource("Branch_conductor"), SubResource("Branch_harmony"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_molothrus"), SubResource("Branch_conspire"), SubResource("Branch_bandwagon")])
 
 [sub_resource type="Resource" id="Tab_Freedom"]
 script = ExtResource("8_tab")

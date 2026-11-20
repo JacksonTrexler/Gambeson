@@ -43,7 +43,7 @@
 [ext_resource type="Resource" path="res://Skills/sanctum.tres" id="s_sanctum"]
 [ext_resource type="Resource" path="res://Skills/spell_share.tres" id="s_spell_share"]
 [ext_resource type="Resource" path="res://Skills/linked_casting.tres" id="s_linked_casting"]
-[ext_resource type="Resource" path="res://Skills/harmony.tres" id="s_harmony"]
+[ext_resource type="Resource" path="res://Skills/accord.tres" id="s_accord"]
 [ext_resource type="Resource" path="res://Trees/radiance.tres" id="r_radiance"]
 [ext_resource type="Resource" path="res://Trees/currents.tres" id="r_currents"]
 [ext_resource type="Resource" path="res://Trees/stone.tres" id="r_stone"]
@@ -233,16 +233,16 @@ skill = ExtResource("s_spell_share")
 script = ExtResource("9_branch")
 skill = ExtResource("s_linked_casting")
 
-[sub_resource type="Resource" id="Branch_harmony"]
+[sub_resource type="Resource" id="Branch_accord"]
 script = ExtResource("9_branch")
-skill = ExtResource("s_harmony")
+skill = ExtResource("s_accord")
 after = Array[ExtResource("7_skill")]([ExtResource("s_spell_share"), ExtResource("s_linked_casting")])
 
 [sub_resource type="Resource" id="Root_Concord_Concord"]
 script = ExtResource("8_root")
 name = "Concord"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_spell_share"), SubResource("Branch_linked_casting"), SubResource("Branch_harmony")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_spell_share"), SubResource("Branch_linked_casting"), SubResource("Branch_accord")])
 
 [sub_resource type="Resource" id="Tab_College_Concord"]
 script = ExtResource("10_tab")

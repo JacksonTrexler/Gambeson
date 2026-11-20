@@ -56,7 +56,7 @@ static func _equipped_out() -> Array:
 # Back into Game.equipped, slot by slot: an id with no file is an empty slot (Unit.set_equipped() skips
 # what the unit doesn't have).
 static func _equipped_in(ids: Array) -> void:
-	Game.equipped = ids.map(func(id): return load("res://Skills/%s.tres" % id) if id is String and id != "" and ResourceLoader.exists("res://Skills/%s.tres" % id) else null)
+	Game.equipped = ids.map(Skill.by_id)
 
 
 # d (from pack(), or a file) into Game. What it can't make sense of is left out, with a line in the log.
