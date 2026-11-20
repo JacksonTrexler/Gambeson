@@ -21,6 +21,8 @@
 [ext_resource type="Resource" path="res://Trees/xeric.tres" id="r_xeric"]
 [ext_resource type="Resource" path="res://Trees/nival.tres" id="r_nival"]
 [ext_resource type="Resource" path="res://Trees/thalassic.tres" id="r_thalassic"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill_script"]
+[ext_resource type="Resource" path="res://Skills/surveyor.tres" id="opt_surveyor"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -103,3 +105,4 @@ stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 11, &"constit
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"magical"])
 choices = Array[ExtResource("6_choice")]([SubResource("Choice_Biome"), SubResource("Choice_Guest")])
+options = Array[ExtResource("skill_script")]([ExtResource("opt_surveyor")])

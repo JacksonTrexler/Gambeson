@@ -28,6 +28,7 @@
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
+[ext_resource type="Resource" path="res://Skills/inquisitor.tres" id="opt_inquisitor"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -67,3 +68,4 @@ swaps = Dictionary[StringName, StringName]({&"charisma": &"wisdom", &"intelligen
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"magical"])
 choices = Array[ExtResource("c_choice")]([SubResource("Choice_God"), SubResource("Choice_Domain")])
+options = Array[ExtResource("5_skill")]([ExtResource("opt_inquisitor")])

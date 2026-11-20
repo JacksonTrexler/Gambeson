@@ -179,6 +179,8 @@ extends Resource
 # overcome: a debuff to be overcome first: cleansing takes its ranks before any other's, and a
 # heal (Battle.mend()) only wears max(its power, 1) of its ranks away, doing nothing else, until
 # it is gone (Curse of the Coyote; Battle._strip(), Battle.mend())
+# prep_use: preparation uses of the kind its tag names (survey, evaluate, inquire): how many times
+# in preparation it may spend that use on a target (Prep.total(); Battle.prepare())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -189,7 +191,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -218,7 +220,7 @@ extends Resource
 
 const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_power": "Trap power",
 		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP", "trap_word": "Trap word",
-		"slots": "Skill slots", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
+		"slots": "Skill slots", "prep_use": "Preparation", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
 		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt",
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
@@ -441,6 +443,14 @@ func value(rank := 1) -> String:
 		text = "%s%% per strength mod off moving through units, for itself and allies through it (can become a boost)" % Skill.num(x * 100.0)
 	elif stat == "evaluates":
 		return "sees the rolls of allies using active skills within %s tile%s, its own too" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
+	elif stat == "prep_use" and not tags.is_empty() and tags[0] in Prep.USES:
+		var u: Dictionary = Prep.USES[tags[0]]
+		var got: Array[String] = []
+		if u.intel:
+			got.append("intel")
+		if u.suspicion:
+			got.append("suspicion")
+		return "%s %s in preparation: %s on %s%s" % [_signed(x), u.label, " and ".join(got), Prep.plural(u.noun, 2), ", at advantage" if u.edge > 0 else ""]
 	elif stat == "slots":
 		return "%s %s" % [_signed(x), Skill.CATEGORIES.get(tags[0], String(tags[0])) if not tags.is_empty() else "untyped"]
 	elif stat == "bonus_slots":

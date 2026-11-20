@@ -639,7 +639,10 @@ def put_in_options(role, sid):
     p = "Roles/%s.tres" % role
     text = read(p)
     secs = sections(text)
-    skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd") or die("%s: no Skill.gd ext_resource" % p)
+    skill_ext = ext_id_for(secs, "res://Scripts/Skill.gd")
+    if not skill_ext:  # a class that has offered no skill outright yet (the Cleric, the Druid): its type comes with the first
+        skill_ext = free_id(secs, "skill_script")
+        text = add_ext(text, '[ext_resource type="Script" path="res://Scripts/Skill.gd" id="%s"]' % skill_ext)
     oid = free_id(secs, "opt_" + sid)
     item = 'ExtResource("%s")' % oid
     if re.search(r"^options = ", text, re.M):
@@ -677,8 +680,8 @@ def new(a):
         out.append(("Tests/%s_test.gd" % sid, TEST_STUB % {"title": a.title, "id": sid, "stub": STUB}))
     if a.tree:
         out.append(put_on_tree(a, sid))
-    if a.role:
-        out.append(put_in_options(a.role, sid))
+    for r in filter(None, (a.role or "").split(",")):  # several classes offer it outright: --role fighter,druid
+        out.append(put_in_options(r.strip(), sid))
     os.makedirs(os.path.join(ROOT, "Behaviours"), exist_ok=True)
     for p, text in out:
         write(p, text, a.dry_run)
@@ -812,7 +815,7 @@ def main():
     n.add_argument("--prereq", help="skills to learn first, comma separated (Branch.after)")
     n.add_argument("--needs", type=int, help="a capstone: how many of its root's other skills it needs (Branch.needs)")
     n.add_argument("--branch-tier", type=int, help="its tier on a general tree (Branch.tier)")
-    n.add_argument("--role", help="Roles/<x>.tres it's offered by outright (Role.options)")
+    n.add_argument("--role", help="Roles/<x>.tres it's offered by outright (Role.options); comma separated for several")
     n.add_argument("--lent", action="store_true", help="on no tree or role: an item lends it (Util/item.py new --skill), so nobody learns it")
     n.add_argument("--no-import", action="store_true")
     n.add_argument("--dry-run", action="store_true", help="print what it would write")

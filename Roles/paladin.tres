@@ -27,6 +27,7 @@
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
 [ext_resource type="Resource" path="res://Skills/final_act.tres" id="s_final_act"]
 [ext_resource type="Resource" path="res://Skills/gallantry.tres" id="s_gallantry"]
+[ext_resource type="Resource" path="res://Skills/inquisitor.tres" id="opt_inquisitor"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
@@ -77,7 +78,7 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 12, &"dexterity": 10, &"constitution": 13, &"intelligence": 8, &"wisdom": 11, &"charisma": 13})
-options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement"), ExtResource("s_discipline")])
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement"), ExtResource("s_discipline"), ExtResource("opt_inquisitor")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Idealism")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"martial", &"magical", &"journeyman"])

@@ -112,6 +112,9 @@ const COLOR := {
 	&"mythic": Color("#e05a5a"),
 	&"impact": Color("#f2a56b"),
 	&"first_chair": Color("#e8c547"),
+	&"survey": Color("#b9cf8a"),
+	&"evaluate": Color("#9fd6c8"),
+	&"inquire": Color("#e8c547"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
