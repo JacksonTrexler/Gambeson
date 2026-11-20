@@ -47,8 +47,10 @@ Follow the steps in order; each ends in something you can check.
 
 3. **Data or a behaviour?** If existing `Skill.gd` fields and `Effect` stats already say it (damage
    tiers, effects, range, push...), it's data only. Anything new it *does* goes in a behaviour,
-   `Behaviours/<name>.gd` (`extends Behaviour`), never a new `Skill.gd` flag (check fails past its
-   ceiling):
+   `Behaviours/<name>.gd` (`extends Behaviour`). A new `Skill.gd` field is allowed only when it removes
+   duplication or enables a shared system (the user, 2026-11-19); `check` trips its creep alarm past
+   `FLAG_CEILING`, so raise it with `python3 Util/skill.py ceiling "<field: why>"` and list the field as
+   a question for the user to confirm:
    - an active skill's verb: `apply(c: Cast)` (runs as it lands; see `Behaviours/kick.gd`);
    - a passive's: Behaviour's hooks - `lets_word` (word of suspicion: `bandwagon.gd`), `hurt` (hits it
      takes), `healing` (heals others get: `molothrus.gd`), `affinity` (what a picked tree's skill costs to
@@ -105,3 +107,5 @@ Follow the steps in order; each ends in something you can check.
    docs/todo file for its area (classes.md for a class's skill, systems.md for a general one), and add N to that file's row of the table at the bottom of todo.md.
 
 A skill that is a trait (always on, no hotbar slot) is declared explicitly: `python3 Util/skill.py new --trait` for a new one, `python3 Util/skill.py trait <id> [--off]` for an existing one; `check` fails a trait that is a toggle, hybrid or pillar. Tags on a skill and its statuses: `python3 Util/mechanic.py carry <tag> --skills --effects --inline skill:stat`; tag `cc` on anything that impairs a unit's ability to act, `shove` only where a skill's force itself moves a unit.
+
+A skill that sits on no tree because an item lends it: `skill.py new --lent` (see new-item, `item.py lend`). A tree reuses another's skills with `python3 Util/role.py include <into> <tree>` (the Student tab, new-class).

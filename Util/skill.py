@@ -31,7 +31,7 @@ and only then, a test stub, Tests/<id>_test.gd: a data-only skill is covered by 
 end of --root's) and in --role's options, imports, then checks. It edits text by anchors and stops if one is
 missing. Stubs carry STUB: check fails until they're filled in. Plain python3, no dependencies.
 """
-import argparse, os, re, subprocess, sys
+import argparse, datetime, os, re, subprocess, sys
 
 from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ext_id_for, items, add_ext, free_id,
                   literal, effect_section, names, composition_problems)

@@ -32,7 +32,7 @@ and set the `S = ` line in `S/brief-common.md`.
 
 ## Sanity check before landing
 - The suite line is real and ends `0 failed`; the count did not drop (`git diff <integration> -- Tests | grep '^-[^-]'`).
-- No test weakened, no stub tests kept for data-only skills, no `Skill.gd` flags.
+- No test weakened, no stub tests kept for data-only skills, no new `Skill.gd` field unless it removes duplication or enables a shared system and is listed as a question.
 - The builder stayed in its area and decided nothing listed under "Needs the user" in the queue or open in todo.md.
 - AI-made names carry " ??"; the user's names went in with `--human`.
 

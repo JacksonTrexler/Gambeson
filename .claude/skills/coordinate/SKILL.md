@@ -92,7 +92,7 @@ Builders hit the session or weekly limit often, and the error names the reset ti
 
 - **Composability:** shared tags and generic hooks over bespoke counters ("no hoagie tokens"), but don't over-abstract (`docs/plan-composability.md`).
 - **Lean tests:** extend `Tests/sweep_test.gd` and table tests, one test per seam, mutation spot-checks. Delete a stub test file the sweep covers.
-- **Behaviours, not flags.** New verbs go in `Behaviours/*.gd`, never a `Skill.gd` flag. `FLAG_CEILING` in `Util/skill.py` only goes down. The host lowers it after field-removing merges.
+- **Behaviours, not flags.** New verbs go in `Behaviours/*.gd`. A new `Skill.gd` field is allowed only when it removes duplication or enables a shared system (user, 2026-11-19); it is raised with `python3 Util/skill.py ceiling "<field: why>"` and listed as a question for the user. `FLAG_CEILING` is a creep alarm, not a ban; the host lowers it after field-removing merges.
 - **Names.** An AI-made name gets " ??"; a name the user gave goes in with the tools' `--human`.
 - **Calls.** Every judgement call goes in the builder's plan, and the docs keeper turns it into a question for the user.
 
