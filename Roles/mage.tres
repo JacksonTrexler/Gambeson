@@ -266,6 +266,6 @@ innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("
 options = Array[ExtResource("7_skill")]([ExtResource("s_mana"), ExtResource("s_mage_armor"), ExtResource("s_sola"), ExtResource("s_nadira"), ExtResource("s_astera"), ExtResource("s_terestera"), ExtResource("s_hydera"), ExtResource("s_igna"), ExtResource("s_aetha"), ExtResource("s_discipline")])
 reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_mana_potion")])
-general = Array[StringName]([&"magical"])
+general = Array[StringName]([&"magical", &"student"])
 roots = Array[ExtResource("8_root")]([SubResource("Root_Refinement"), SubResource("Root_Commitment")])
 choices = Array[ExtResource("11_choice")]([SubResource("Choice_School"), SubResource("Choice_College")])

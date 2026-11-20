@@ -26,8 +26,8 @@ func test_trees_by_class() -> void:
 		if f.ends_with(".tres") and (load("res://Roles/" + f) as Role).has_tree():
 			var u := unit_of(f.get_basename())
 			var got := u.general_trees()
-			ok(got[0].category == &"" and got.size() == 1 + u.role.general.size() and got.slice(1).all(func(g: SkillTab): return g.category in u.role.general),
-					"%s: the base tree and one for each general category it declares (%s)" % [f.get_basename(), names(u)])
+			ok(got[0].key() == &"" and got.size() == 1 + u.role.general.size() and got.slice(1).all(func(g: SkillTab): return g.key() in u.role.general),
+					"%s: the base tree and one for each general tree it declares, a category or a grant key (%s)" % [f.get_basename(), names(u)])
 	ok(unit_of("cleric").tier(sk("strike")) == 0 and sk("strike") in unit_of("wizard").actives, "Strike: tier 0 on the General tree, every class has it")
 
 
@@ -74,35 +74,68 @@ func test_category_gate() -> void:
 	ok(c.missing(sk("elemental_strike")) == "", "a Cleric's Luun skill (tier 2) opens Caster tier 2")
 
 
-# Tree composition (SkillRoot.includes): the Caster and Specialist trees include Student, so what is on it shows on
-# them with its tier and prerequisites, a Mage's general skills, nothing copied. Put a skill on Student and it is
-# there. A loop in the data ends rather than hangs. The tools' checks police the data (role.py, skill.py check).
+# Tree composition (SkillRoot.includes): a root's included trees show as its own, with their tiers and prerequisites,
+# nothing copied; a loop ends rather than hangs. No general tree includes one now (the Mage's Student is a tab of its
+# own, below), so it is tried on roots in memory. The tools' checks police the data (role.py, skill.py check).
 func test_included_trees() -> void:
 	var student: SkillRoot = load("res://Trees/student.tres")
-	var caster: SkillTab = load("res://Trees/general_caster.tres")
-	var specialist: SkillTab = load("res://Trees/general_specialist.tres")
 	var discipline := sk("discipline")
-	ok(student.branch(discipline) != null and caster.roots[0].includes == [student] and specialist.roots[0].includes == [student], "Student: Discipline, included by the Caster and Specialist trees")
-	ok(not caster.roots[0].branches.any(func(x: Branch): return x.skill == discipline) and caster.tier_of(discipline) == 3 and specialist.tier_of(discipline) == 3, "not copied: tier 3 on both, from Student's branch")
-	ok(discipline.kinds() == [&"specialist"] and caster.roots[0].source(discipline) == student, "it keeps its own tree's kind (specialist, not magical)")
-	var mage := unit_of("mage")
-	ok(discipline in mage.general_skills() and mage.tier(discipline) == 1, "a Mage's general skills (its own listed Discipline is its class's: tier 1)")
-	var wizard := unit_of("wizard")
-	ok(discipline in wizard.general_skills() and wizard.tier(discipline) == 3 and wizard.missing(discipline).begins_with("Needs a T3+ caster class skill"), "any caster has it from its tier on the Caster tree: %s" % wizard.missing(discipline))
 	var kick := sk("kick")
 	var put := Branch.new()
 	put.skill = kick
 	put.tier = 7
-	student.branches.append(put)  # put a skill on Student, and nothing else
-	ok(caster.offers(kick) and caster.tier_of(kick) == 7 and specialist.tier_of(kick) == 7 and kick in unit_of("mage").general_skills() and kick in unit_of("rogue").general_skills(), "a skill put on Student shows on the Caster and Specialist trees at its tier (T7: Cram's place)")
+	var into := SkillRoot.new()
+	into.includes = [student]
+	ok(into.branch(discipline) == student.branch(discipline) and into.source(discipline) == student and discipline.kinds() == [&"specialist"], "an included tree's skill shows as its own, from its branch, and keeps its own tree's kind (specialist)")
+	student.branches.append(put)
+	ok(into.branch(kick) == put and into.skills().has(kick), "a skill put on the included tree is there")
 	student.branches.erase(put)
-	ok(not caster.offers(kick) and not unit_of("mage").general_skills().has(kick), "taken off, gone from both")
+	ok(not into.skills().has(kick), "taken off, gone")
 	var a := SkillRoot.new()
 	var c := SkillRoot.new()
 	a.includes = [c]
 	c.includes = [a]
 	c.branches.append(put)
 	ok(a.skills() == [kick] and c.skills() == [kick] and a.source(kick) == c and a.source(discipline) == null, "a loop of included trees ends (and the tools refuse one)")
+
+
+# Student is the Mage's (a tab of its own, Role.general key student), no other caster's; Journeyman is the martial and
+# specialist classes'. Any other class gets one granted (Unit.grant_tree(): an adventure's reward, or a flex choice's pick).
+func test_granted_trees() -> void:
+	var discipline := sk("discipline")
+	var cram := sk("cram")
+	var mage := unit_of("mage")
+	ok(names(mage) == ["General", "Caster", "Student"] and cram in mage.general_skills() and discipline in mage.general_skills(), "a Mage: the Caster tree and Student's (%s)" % [names(mage)])
+	ok(not sk("cram") in load("res://Trees/general_caster.tres").roots[0].skills() and not "Student" in names(unit_of("wizard")) and not cram in unit_of("wizard").general_skills(), "the Caster tree has no Student: a Wizard hasn't it")
+	ok("Journeyman" in names(unit_of("fighter")) and "Journeyman" in names(unit_of("rogue")) and not "Journeyman" in names(unit_of("wizard")), "Journeyman: martial and specialist classes, not casters")
+	var f := unit_of("fighter")
+	ok(not cram in f.general_skills() and f.grant_tree(&"student") and not f.grant_tree(&"student") and not f.grant_tree(&"nonsense") and cram in f.general_skills() and f.tier(cram) == 7, "a Fighter granted Student has it at its tiers, once; an unknown key grants nothing")
+	ok(f.missing(cram).begins_with("Needs a T7+ caster class skill") and f.role.vigor_per_level() == 3 and unit_of("adventurer").role.vigor_per_level() == 2, "its caster gate stays; a grant key isn't a category for vigor")
+	ok(discipline.kinds() == [&"specialist"] and cram.kinds() == [&"specialist"], "Student's skills keep its root's kind on its tab")
+
+
+# One hook, two skills: a check effect with per_mod adds that stat's mod to the checks it names, from 0 up to the rank
+# (Unit.check_bonus(): Journeyman's Physical Intelligence, int to str, and Muscle Memory, wis to str).
+func test_stat_adds_to_checks() -> void:
+	var u := v(1)
+	u.intelligence = 18  # +4
+	u.wisdom = 14  # +2
+	u.dexterity = 10
+	var pi := sk("physical_intelligence_check")
+	var mm := sk("muscle_memory")
+	var row := func(rank_pi: int, rank_mm: int) -> int:
+		u.learned.clear()
+		if rank_pi:
+			u.learned.append(slot(pi, rank_pi))
+		if rank_mm:
+			u.learned.append(slot(mm, rank_mm))
+		return u.check_bonus(&"strength", &"offensive")
+	ok(row.call(1, 0) == 1 and row.call(2, 0) == 2 and row.call(4, 0) == 4 and row.call(5, 0) == 4, "int +4 to str checks, up to rank: I +1, II +2, IV and V +4 (the mod)")
+	ok(row.call(0, 1) == 1 and row.call(0, 3) == 2, "wis +2: Muscle Memory I +1, III +2 (the mod)")
+	ok(row.call(2, 2) == 4 and u.check_bonus(&"strength", &"defensive") == 4 and u.check_bonus(&"dexterity", &"offensive") == 0, "both add, to defensive checks too, and only to str")
+	u.intelligence = 6  # -2
+	ok(row.call(3, 0) == 0, "a negative mod adds nothing, never a penalty")
+	ok(pi.name == "Physical Intelligence" and sk("physical_intelligence").title() != pi.title(), "the Journeyman's skill has the user's name; the old stand-in is renamed")
 
 
 func test_exclusive() -> void:
