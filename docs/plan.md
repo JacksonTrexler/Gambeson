@@ -195,6 +195,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Level in the glow (?221) | `hud_test.gd` |
 | — | Preparation uses: Surveyor, Evaluator, Inquisitor (?222) | `prep_test.gd` |
 | — | Placeholder art from utumno (?223) | `icon.py check` |
+| — | Passive signage (?224) | `passive_signs_test.gd` |
+| — | Widescreen hotbar and merged leads (?225) | `slot_columns_test.gd`, `sweep_test.gd` |
 
 ## Questions to answer first
 

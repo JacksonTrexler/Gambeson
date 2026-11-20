@@ -1301,6 +1301,29 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **New names to review:** none.
 - [ ] **Do coloured icons read well under the state tint, or should they be white-tinted?** (?223)
 
+224. **Passive signage - built on judgement, open for review (2026-11-20).** Your words: passives muted on name and number, unmuting or flashing as they act; a passive acting on a unit shows "<icon> Name amount" above a non-viewed unit in the tag colour; Luck "+1" with a sparkle only when it enabled an action; amounts italic when rounded down, bold when rounded up; hold what cannot be done without noticeable performance cost. Plan: `docs/plans/w7-passives.md`. Calls:
+    - **One signal:** `Battle.passive_fired(u, skill, amount, stat, rounded)`, emitted only through `Battle.passive()`; the HUD is the one listener; never from previews, planned walks or the AI's weighing. `Luck.rounded()` is the one place rounding is named (-1 down, 1 up, 0 exact).
+    - **Call sites:** regen (signed by the skill that put it on), Luck (a step, a clover-slot use, or a target only luck's rounding reached), skills that spare hp or siphon a heal (Molothrus), and every reaction (the old gold `reacted` floater became this sign, in the skill's tag colour).
+    - **Shown how:** the viewed unit's slot lights (unmuted, gold rim fading over 0.8 s); **"often" = acting again within 4 s, then it only unmutes**; otherwise a floater "Name +amount stat" in the tag colour, a stat's own sign (Luck, Regen) in `HUD.SIGN_TINT` with a four-point glint (**the glint marks every stat-only sign, not Luck by name**); a regen floater stacks beside the existing "+4" hp number.
+    - **Who may see it:** own side always with amounts; another side's unit only as `skill_sense()` allows (none, name, name and amount).
+    - **Muted:** one rule for every always-on passive (not a toggle or hybrid), so traits and innate armor passives in the hotbar and the spellbook, not the class skills screen (a shop).
+    - **Rounding faces** (a font variation per direction) done for sign floaters and damage numbers. **Held (not for performance, for scope): rounding on heals other than regen, on the log, and on previews** (a range has no one rounding).
+    - **Performance:** `Tests/sims/busy_fight.gd -- 15 20 n=3`, before and after: 15v15 unit turn 64.1 / 63.0 against 64.3 / 64.0 ms, 20v20 76.1 / 74.8 against 75.9 / 75.7; within noise, fight digests unchanged; a sign costs 0.05 to 0.24 ms on the HUD.
+    - **Tests:** `Tests/passive_signs_test.gd` (2 tests); five mutations failed and reverted. Suite 10472 checks, 0 failed.
+    - **New names to review:** none.
+- [ ] **Are 4 s for "often", the glint on every stat-only sign, and one muted rule for all always-on passives right?** (?224)
+- [ ] **Should rounding italic and bold reach other heals, the log and previews?** Queued for heals and the log. (?224)
+
+225. **Widescreen hotbar and one lead per description line - built on judgement, open for review (2026-11-20).** Your words: "skills don't fit in widescreen"; "cut down / standardize skill verbiage: no multiple 'On a foe' lines". Plan: `docs/plans/w7-wide.md`. Calls:
+    - **Wrap, not scale:** the hotbar and traits are `SlotColumns` (one column while it fits, else the fewest that do, filled top to bottom); at 16:9 a level-20 bar is 2 columns, level 1 unchanged.
+    - **Room:** `HUD._fit_bar`; columns at least 62 px, the panel at most 0.45 of the window width, then squeezed to 40 px (names cut) rather than clip. Refit each frame, tightening only, so columns do not flip.
+    - **Wording:** one shared pass, `Skill.merge_leads()`, joins every later line with the same "On <who>: " lead to the first with "; ", order kept; facts unchanged; behaviour wording not rewritten and joined segments not lowercased. Sing's foe line keeps an inner sentence.
+    - **Undone:** a multi-slot skill's span is not kept whole across a column break; a very large bar at 16:9 (4 or more columns) squeezes names.
+    - **Tests:** `Tests/slot_columns_test.gd` (new), `sweep_test.test_description_leads`; two mutations failed and reverted. Suite 10532 checks, 0 failed.
+    - **New names to review:** none.
+- [ ] **Is wrapping into columns (with names squeezed at the extreme) the right widescreen answer, and is "; " the right way to join lines?** (?225)
+- [ ] **Keep a multi-slot skill whole across a column break.** Queued. (?225)
+
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 
 - **Stun, Stunned, Borrowed Time (?83, ?85, ?119).** Your words: "Martial prowess high tier skill: Stun: attempt a very difficult attack. on a hit target attempts a difficult constitution check. On a failure, target is stunned for rank rounds". "Stunned is an easy debuff to cleanse, it's rank for cleanse purposes is halved". "Stunned is a `wound`: it can be healed off with an active skill". "Stunned units are tapped". Downed: "It does not end for the berskerker variant who acts as normal on borrowed time, but does for adventurers etc. who are tapped until they're back up". Built in the section "Tapped, helpless, Stun, Mindless Fury, Drone" above.

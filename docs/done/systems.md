@@ -288,3 +288,5 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Studies UX and the top box** (`PhaseBox`, `HUD.prep_uses`, `study_state()`, `icon.py glyph`): plan `docs/plans/w7-studies.md`. `prep_test.test_hud`. (?219)
 - [x] **Preparation uses** (`Prep.USES`, `Battle.prepare()`, `Battle.prepped`, `Perception.sizing()`, tags survey / evaluate / inquire): plan `docs/plans/w7-prep.md`. `prep_test`. (?222)
 - [x] **`impact` and `first_chair` in the Glossary; the `rested` Effect condition; `Behaviour.opening` and `passed`** (`Battle.impact_of()`, `Command.hears()`): plan `docs/plans/w7-bard.md`. `symphony_bard_test`. (?220)
+- [x] **Passive signage** (`Battle.passive_fired`, `passive()`, `Luck.rounded()`, `HUD._on_passive`, `SkillSlot.muted()` / `flash()`, `Overlay.float_sign()` / `_face()`): plan `docs/plans/w7-passives.md`. `passive_signs_test`. (?224)
+- [x] **Widescreen hotbar and merged description leads** (`SlotColumns`, `HUD._fit_bar`, `Skill.merge_leads()`): plan `docs/plans/w7-wide.md`. `slot_columns_test`, `sweep_test.test_description_leads`. (?225)

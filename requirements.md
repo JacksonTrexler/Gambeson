@@ -80,6 +80,8 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Preparation uses (Study, Surveys, Evaluates, Inquisitions) share one table; the top box lists them. (?219, ?222)
 - Bard: String Theory, Conductor, Symphony (First Chair); `impact` is a Glossary term. (?220)
 - Placeholder art comes from `/Users/jtrex/assets/utumno` where a name fits. (?223)
+- Passives show muted until they act; an acting passive signs itself (a slot lighting or a floater, "Name +amount", in the tag colour), with nothing measurable added to a fight; rounding shows italic (down) or bold (up). (?224)
+- The hotbar wraps into columns on wide windows; a description has one lead per "On <who>" line. (?225)
 
 ## Equipping and traits
 - Every skill, active or passive, does nothing unless equipped (and toggled where relevant): auto-equipped on learn when a slot is free, manually when the bar is full; AI included. (?163) [user]

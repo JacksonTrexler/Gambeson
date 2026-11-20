@@ -1,28 +1,11 @@
 # Queue: the ready backlog for host sessions
 Tasks that need nothing from the user, as cards a host can launch straight into builders (`.claude/skills/coordinate/SKILL.md`).
-Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-20. Reconciled against the code after ?192 to ?217 (the next question is 224).
+Maintained by the docs keeper after each merge batch: built cards removed, follow-ups that need no user input added. Date: 2026-11-20. Reconciled against the code after ?192 to ?217 (the next question is 226).
 
-Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: Wave 7 cards A, B, C, E, F, H (facing and level in the glow, studies UX, preparation uses, the Bard skills, utumno art), Wave 6 (equipment links, multi-slot skills, the Party, the audit), Wave 2 (traits, facing, glance, Striking Features and Intellect, cost profiles, parameterized skills), traits, facing by move or aim, glance and its skills, test stubs Option A, the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), the AI casts Skeleton, Interject's and Snapping Turtle's bonus, the near hunt sim, Deathlust (its AI unwear), the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
+Before launching a wave, drop any card whose source line is now `[x]`. Built and gone: Wave 7 cards A to H (passive signage, widescreen and verbiage, facing and level in the glow, studies UX, preparation uses, the Bard skills, utumno art), Wave 6 (equipment links, multi-slot skills, the Party, the audit), Wave 2 (traits, facing, glance, Striking Features and Intellect, cost profiles, parameterized skills), traits, facing by move or aim, glance and its skills, test stubs Option A, the Meadows HUD tally, edge-pan, the cheaper unseen summon, allies' retreat tie-break, the AI findings from the sim (hunt-still, Poach, the line-up test), the AI casts Skeleton, Interject's and Snapping Turtle's bonus, the near hunt sim, Deathlust (its AI unwear), the big sims, the dictionary and glossary, unbounded maps, AI walks, the AI sim and tuning, forced moves, Warcry's preview, Guide rings, AI tuning, path foresight, the checks tail, equip follow-ups, tooling guards, AI support 2, param rest, save follow-ups, AI prices, search clues and the older cards. Run cards in parallel only where "Collides with" says none.
 
 ## In flight (not here to launch)
-Wave 7 cards D (passive signage) and G (widescreen and verbiage) are running. Built 2026-11-20 (?218 to ?223): Wave 7 cards A, B, C, E, F, H. Built 2026-11-20 (?214 to ?217): Wave 6 (equipment links `innate` / `optional`, multi-slot skills, the persistent roster and Party, the queue audit). Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
-
-## Wave 7: the user's answers of 2026-11-20, second batch (docs/agents/answers-2026-11-20b.md; cards A, B, C, E, F, H built, ?218 to ?223; D and G running)
-Builders read the verbatim file for exact wording. Names the user gave go in with `--human`.
-
-
-
-
-### D. Passive signage (only the parts with no noticeable performance cost; hold the rest and say so)
-- Scope: muted styling on passives' name and number, unmuting or flashing on activation (frequent ones just unmute); one generic signal (Behaviour to Battle to HUD) so a passive acting on a unit shows a brief floater `<icon> Name amount` above a non-viewed unit, in the tag colour; Luck shows "Luck +1" with a small sparkle only when it enabled an action; impact amounts italic when rounded down, bold when rounded up; spellbook traits and armor passives muted. Profile a busy fight before and after.
-- Model: opus/medium. Collides with: C (HUD)
-
-
-
-### G. Widescreen and verbiage
-- Scope: fix the hotbar at 16:9 and wider (screenshots); standardize and cut skill description wording (no multiple "On a foe" lines; one phrasing per outcome, shared across describe() helpers).
-- Files: HUD hotbar layout, describe helpers. Model: sonnet/high
-
+Built 2026-11-20 (?218 to ?225): Wave 7 cards A to H. Built 2026-11-20 (?214 to ?217): Wave 6 (equipment links `innate` / `optional`, multi-slot skills, the persistent roster and Party, the queue audit). Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
 
 ## Wave 4: the user's answers of 2026-11-19 (docs/agents/answers-2026-11-19.md; cards A to D built, ?202 to ?205)
 
@@ -117,7 +100,7 @@ All eleven cards are built (?192 to ?201). Nothing left here.
 - Model: sonnet/high
 - Collides with: none
 
-## Wave 7 follow-ups: from ?218 to ?223 (all need nothing from the user)
+## Wave 7 follow-ups: from ?218 to ?225 (all need nothing from the user)
 
 ### Forecast First Chair and show Cadence
 - Source: docs/todo/systems.md (?220)
@@ -143,10 +126,26 @@ All eleven cards are built (?192 to ?201). Nothing left here.
 - Model: sonnet/medium
 - Collides with: G (verbiage, only if it touches icons)
 
+### Rounding style on the other heals and the log
+- Source: docs/todo/systems.md (?224)
+- Scope: italic (rounded down) and bold (rounded up) for heals other than regen (thread `rounded` through the heal paths to the HUD), for the log's amounts (RichTextLabel italic/bold faces), and for previews only if one rounding can be named; keep the cost nil (re-run `Tests/sims/busy_fight.gd -- 15 20 n=3`).
+- Read: docs/plans/w7-passives.md
+- Files: Scripts/Battle.gd, Scripts/Unit.gd, Scripts/HUD.gd, Scripts/Overlay.gd, Tests/passive_signs_test.gd
+- Model: sonnet/high
+- Collides with: the AI cards (AI.gd), the forecast card (HUD)
+
+### Keep a multi-slot skill whole across a column break
+- Source: docs/todo/systems.md (?225)
+- Scope: `SlotColumns` may break a column inside a multi-slot skill's run, leaving "(continued)" in the next column; move the break off a span (or keep the span in one column) without more columns than now; extend `Tests/slot_columns_test.gd`; screenshot a level-20 bar at 16:9.
+- Read: docs/plans/w7-wide.md
+- Files: Scripts/SlotColumns.gd, Scripts/HUD.gd, Tests/slot_columns_test.gd
+- Model: sonnet/medium
+- Collides with: the forecast card (HUD)
+
 ## Needs the user (not queued)
 - Calls for review: ?198 (Cram's readings, tier 7, no swap on arrival), ?200 (Defense adds, Power is Energy share, where Abjuration and Smith are offered), ?201 (postpone and overcome stats), ?202 (the `strike` tag, friction's numbers), ?203 and ?204 (the disable trade; confirm the flags `no_density` and `scaling`, the viewer and the dials), ?192 (cc audit edges, the slam on a flee), ?193 (Chaser placement), ?194 (Skill Slot +1 gating), ?195 (the numbers), ?197 (Wake and Rake's tier, "cast mod"), ?206 (cc prices), ?208 (Student flex picker, Journeyman's tier and max rank; the "Brawn as Brains ??" skill is now the user's "Meathead", ?204), ?209 (do recoveries add Exhaustion uses?), ?211 (the synonyms), ?212 (Send Off's ward on a foe sent away), ?213 (`pack`, POINT, DELAY, the loot table), ?214 to ?217 (below).
 - Wave 6 (?214 to ?217): an innate active (Igna on a robe) needs a way to cast from outside the bar, and which item first uses `optional` (?214); which skill first carries a rarity or `slots`, a Mythic unplaceable before level 4, a wide skill cheaper to disable, runs across two granting skills (?215); the leader's level as "level", recruiting and dismissing members and where recruits come from, what a death does to a roster member (?216); Skeleton's AI numbers (?217).
-- Wave 7 (?218 to ?223): `STAT_SCORE[difficult]` 14 or 16 (?218); the `symphony_bard` against `symphony` id clash (?220); command readiness and the glow's size (?221); whether intel-only uses roll, tier 2 for "low" (?222); coloured against white-tinted icons (?223).
+- Wave 7 (?218 to ?223): `STAT_SCORE[difficult]` 14 or 16 (?218); the `symphony_bard` against `symphony` id clash (?220); command readiness and the glow's size (?221); whether intel-only uses roll, tier 2 for "low" (?222); coloured against white-tinted icons (?223). Wave 7 (?224, ?225): the passive-sign calls, the held rounding pieces, wrap rather than scale, merged "On <who>" lines (todo.md).
 - Retuning colours: ?125.
 - Closed 2026-11-18: ?87, ?167, ?152, ?173 keep as built (the user: no balancing now); ?144, ?163, ?142 answered and built (?185 to ?188); ?131 and ?133 answered and built (?190, ?191).
 - Open from Wave 2: which more skills are traits, and whether `insignia` and `badge` reach a trait (?185); tier placement of Backstab, Glancing Strike and Heavy Strike and the natural-20 reading (?186); Striking Intellect's placement and whether `attack_stat` reaches other attacks (?189); whether the 26 "flat rank" profiles should scale, the 38 hand-set prices, health costs (?190); the 22 skills left concrete and Gallantry's check difficulty (?191).
