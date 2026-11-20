@@ -16,6 +16,10 @@ const CLOVER := Color("#5fd068")  # the clover slot a lucky unit gets (Unit.clov
 const TYPES := {&"martial": Color("#b0574f"), &"magical": Color("#8d6bc9"), &"specialist": Color("#6b9a5e")}
 const LENT := Color("#8fb8d8")  # the pale blue ring of a skill an item lends (Unit.lent_by()), apart from the gold diamond of a worn emblem
 const NO_LUCK := "The clover slot only works while this unit is lucky"
+const MUTED_TEXT := Color(0.6, 0.63, 0.7)  # an always-on passive's name and numeral (muted()): nothing to select (the user, 2026-11-20)
+const MUTED_GOLD := Color("#a8996a")
+const FLASH := 0.8  # seconds a passive's slot stays lit after it acts (flash())
+const OFTEN := 4.0  # acting again within this many seconds, it only unmutes: no rim
 
 var index := 0
 var skill: Skill
@@ -44,6 +48,8 @@ var cover: Skill  # the skill before it that spans this slot (Unit.skill_at(): o
 var trait_slot := false  # a trait (Skill.is_trait()) shown after the hotbar: no number, no drag, no clearing, drawn in the trait colour
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
+var _lit := -100.0  # when (s) its passive last acted (flash()); -100: not lately
+var _rim := false  # ...and whether that lighting draws a gold rim (not when it acts often)
 
 
 # Stripe colour: the tag that marks the skill (Tags.mark(), as an item's trim), else PLAIN_TINT.
@@ -148,12 +154,34 @@ func set_off(n: int, by_curse := false, is_sealed := false) -> void:
 		tooltip_text = "%s for %d more turn%s\n%s" % ["Cursed" if by_curse else "Disabled", n, "" if n == 1 else "s", tooltip_text]
 	if sealed:
 		tooltip_text = "Sealed by a curse on its level: it comes back as the curse ends\n" + tooltip_text
-	set_process(cursed or switching)
+	set_process(cursed or switching or _glow() > 0.0)
 	queue_redraw()
 
 
 func _process(_delta: float) -> void:
-	queue_redraw()  # quivering, or a switch turning
+	queue_redraw()  # quivering, a switch turning, or a passive lit
+	if not (cursed or switching) and _glow() <= 0.0:
+		set_process(false)
+
+
+# An always-on passive: it can't be selected as an active, so its name and numeral are muted (unmuted a moment as it acts).
+static func muted(s: Skill) -> bool:
+	return s != null and s.passive and not s.toggle and not s.hybrid
+
+
+# Its passive just acted (HUD._on_passive(), Battle.passive_fired): lit up a moment, with a gold rim unless it acted
+# within OFTEN seconds (a frequent one only unmutes).
+func flash() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	_rim = now - _lit > OFTEN
+	_lit = now
+	set_process(true)
+	queue_redraw()
+
+
+# How lit it is now: 1 as it acts, fading to 0 over FLASH seconds.
+func _glow() -> float:
+	return clampf(1.0 - (Time.get_ticks_msec() / 1000.0 - _lit) / FLASH, 0.0, 1.0)
 
 
 # Marks (or clears) the slot of a Mana / Stamina toggle while its switch channels; to: what it
@@ -162,7 +190,7 @@ func set_switching(to: String) -> void:
 	switching = to != ""
 	if switching:
 		tooltip_text = "Switching to %s: takes effect as the channel ends\n%s" % [to, tooltip_text]
-	set_process(cursed or switching)
+	set_process(cursed or switching or _glow() > 0.0)
 	queue_redraw()
 
 
@@ -214,7 +242,8 @@ func _draw() -> void:
 	var right := size.x - 3
 	var numeral := Skill.roman(rank) if sense == 2 else ""
 	var nw := font.get_string_size(numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	draw_string(font, Vector2(right - nw, mid), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, GOLD * Color(1, 1, 1, dim))
+	var hush := 1.0 - _glow() if muted(skill) else 0.0  # muted, and how far: less while it's lit
+	draw_string(font, Vector2(right - nw, mid), numeral, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, GOLD.lerp(MUTED_GOLD, hush) * Color(1, 1, 1, dim))
 	right -= nw + 2
 	if lent != "" and sense == 2:  # the item's ring sits on the numeral's baseline, just left of it
 		draw_arc(Vector2(right - 1.7, mid - 1.9), 1.7, 0.0, TAU, 10, Color(LENT, 0.95), 1.0)
@@ -233,7 +262,7 @@ func _draw() -> void:
 		draw_texture_rect(tex, Rect2(15, 2, side, side), false, Color(0.92, 0.93, 0.96, dim))
 		left += side + 1.0
 	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
-			Color(0.92, 0.93, 0.96, dim))
+			Color(0.92, 0.93, 0.96).lerp(MUTED_TEXT, hush) * Color(1, 1, 1, dim))
 	if exhausted > 0.0001:
 		_pips()
 	if modded and sense == 2:
@@ -243,6 +272,8 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(GOLD, 0.35 + 0.25 * sin(Time.get_ticks_msec() / 220.0)), false, 1.0)
 	if armed:
 		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), GOLD, false, 1.0)
+	elif _rim and _glow() > 0.0:
+		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Color(GOLD, _glow()), false, 1.0)
 
 
 # How brightly its skill is drawn: dimmed for a skill that can't be used now, a switched-off toggle, a disabled or

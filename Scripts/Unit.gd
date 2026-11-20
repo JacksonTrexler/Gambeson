@@ -2178,7 +2178,7 @@ func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 	var taken := Luck.settle(raw * (1.0 - cut), net, false)
 	if by and by != self:
 		last_hit_by = by
-	var blow := {damage = taken, by = by, tags = tags}
+	var blow := {damage = taken, by = by, tags = tags, rounded = Luck.rounded(raw * (1.0 - cut), taken)}  # rounded: how luck rounded it (its floater's face)
 	taking_hit.emit(self, blow)  # its battle lets its passives have their say (Molothrus passes some on)
 	taken = blow.damage
 	damage(taken)

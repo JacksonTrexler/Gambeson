@@ -498,13 +498,70 @@ func _badge(c: Vector2i, filled: bool) -> void:
 	draw_polyline(pts, Color(0, 0, 0, 0.6) if filled else GOLD, 1.0)
 
 
-# A number (or word) that rises off a unit and fades. Ones that pop together stack upward.
-func float_text(u: Unit, text: String, col: Color) -> void:
+# A number (or word) that rises off a unit and fades. Ones that pop together stack upward. rounded: how its amount
+# was rounded (Luck.rounded()): down italic, up bold (the user, 2026-11-20).
+func float_text(u: Unit, text: String, col: Color, rounded := 0) -> void:
 	var l := _float(u, text, col)
+	_face(l, rounded)
 	var tw := _paced(l)
 	tw.tween_property(l, "position:y", l.position.y - 10, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
 	tw.tween_callback(l.queue_free)
+
+
+# A passive's sign over u (HUD._on_passive(), Battle.passive_fired): its icon before "Name amount", in its colour, rising
+# and fading as a number does. sparkle: a small glint beside it (Luck: pulling its weight without undue attention).
+func float_sign(u: Unit, icon: Texture2D, text: String, col: Color, rounded := 0, sparkle := false) -> void:
+	var l := _float(u, text, col)
+	_face(l, rounded)
+	var font := l.get_theme_font(&"font")
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	l.size.x = maxf(64.0, w + 24.0)  # room for the icon and glint, still centred on the unit
+	l.position.x = u.position.x - l.size.x / 2.0
+	var left := (l.size.x - w) / 2.0
+	var mid := l.get_minimum_size().y / 2.0  # the words sit at the top of the label
+	if icon:
+		var t := TextureRect.new()
+		t.texture = icon
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		t.size = Vector2(7, 7)
+		t.position = Vector2(left - 8.5, mid - 3.5)
+		l.add_child(t)
+	if sparkle:  # a four-pointed glint off the end of the words, that turns and fades
+		var g := Polygon2D.new()
+		g.polygon = PackedVector2Array([Vector2(0, -3), Vector2(0.7, -0.7), Vector2(3, 0), Vector2(0.7, 0.7), Vector2(0, 3), Vector2(-0.7, 0.7), Vector2(-3, 0), Vector2(-0.7, -0.7)])
+		g.color = col.lightened(0.5)
+		g.position = Vector2(left + w + 3.5, mid)
+		g.scale = Vector2(0.2, 0.2)
+		l.add_child(g)
+		var gt := _paced(l)
+		gt.tween_property(g, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		gt.parallel().tween_property(g, "rotation", PI / 4.0, 0.6)
+		gt.tween_property(g, "scale", Vector2(0.3, 0.3), 0.35)
+	var tw := _paced(l)
+	tw.tween_property(l, "position:y", l.position.y - 10, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.4).set_delay(0.75)
+	tw.tween_callback(l.queue_free)
+
+
+# The faces a rounded amount is drawn in (float_text(), float_sign()): made once from the floaters' font.
+static var _faces: Dictionary[int, FontVariation] = {}
+
+
+func _face(l: Label, rounded: int) -> void:
+	if rounded == 0:
+		return
+	var f: FontVariation = _faces.get(rounded)
+	if f == null:
+		f = FontVariation.new()
+		f.base_font = l.get_theme_font(&"font")
+		if rounded < 0:
+			f.variation_transform = Transform2D(Vector2(1, 0), Vector2(0.25, 1), Vector2.ZERO)  # slanted: rounded down
+		else:
+			f.variation_embolden = 0.8  # heavier: rounded up
+		_faces[rounded] = f
+	l.add_theme_font_override(&"font", f)
 
 
 # A roll an ally's Self-evaluation saw, tallied up above u like the initiative dice: the d20

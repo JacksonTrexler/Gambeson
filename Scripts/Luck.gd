@@ -15,3 +15,9 @@ static func settle(x: float, net: int, up_is_good: bool, standard_up := not up_i
 	elif net < 0:
 		up = not up_is_good
 	return ceili(x) if up else floori(x)
+
+
+# How settle() (or any rounding) took x to n, for the amount's sign (Battle.passive(), HUD floaters): -1 down, 1 up, 0 exact.
+static func rounded(x: float, n: int) -> int:
+	var d := n - snappedf(x, 0.0001)
+	return int(signf(d)) if absf(d) < 1.0 else 0
