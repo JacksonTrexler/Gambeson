@@ -1312,14 +1312,15 @@ func defaults_of(caster: Unit, skill: Skill) -> Array[Unit]:
 # land a glance), opening_rolls (+ that to its first that many rolls a use) and its friction (Unit.friction,
 # loops(): at disadvantage, - that). `tags` the attack's (hit_tags(): its skill's among them, strike for a
 # Strike skill). The attacker's modifier itself is the caller's: Unit.attack_mod(skill).
-static func attack_check(u: Unit, s: Skill, bonus: int, defense: int, edge: int, tags: Array[StringName] = []) -> Check:
+static func attack_check(u: Unit, s: Skill, bonus: int, defense: int, edge: int, tags: Array[StringName] = [], friction := -1) -> Check:
 	var glancing := u.stat(&"glancing", tags) > 0.0
 	if glancing:
 		edge -= 1
-	if u.friction > 0:
+	var rub := u.friction if friction < 0 else friction  # a forecast names the friction of a roll still to come
+	if rub > 0:
 		edge -= 1
 	var opening := roundi(u.stat(&"opening_rolls", tags))
-	var c := Check.attack(bonus + (opening if u.rolls_made < opening else 0) - u.friction, defense).edge(clampi(edge, -1, 1)).keen(crit_range(u, tags))
+	var c := Check.attack(bonus + (opening if u.rolls_made < opening else 0) - rub, defense).edge(clampi(edge, -1, 1)).keen(crit_range(u, tags))
 	c.glancing = glancing
 	return c
 
@@ -1414,6 +1415,18 @@ func loops(caster: Unit, skill: Skill, rank: int) -> bool:
 static func _friction_next(v: Behaviour.Volley) -> int:
 	var f: Array = v.chain.get(FRICTION, [])
 	return maxi(f[1] + 1 - f[0], 0) if not f.is_empty() else 0
+
+
+# The friction on the roll `ahead` rolls after u's next (0: the next), for a forecast. In a use, or in an interrupt
+# granted to carry a chain on (a Chaser's chase: u.friction is 0 until its use opens), the chain's count; else
+# whatever u.friction says, one more a roll (the forecast of a use that has none, a test's own).
+func friction_ahead(u: Unit, ahead := 0) -> int:
+	var v := use_of(u)
+	var chain: Dictionary = v.chain if v else (_interrupt_chain if u == interrupter else {})
+	var f: Array = chain.get(FRICTION, [])
+	if f.is_empty():
+		return u.friction + ahead if u.friction > 0 else 0
+	return maxi(f[1] + 1 + ahead - f[0], 0)
 
 
 # An attack of caster's use landed on t for `dealt` (roll hit, with bonus, defense and edge): its passives'
@@ -2506,14 +2519,15 @@ static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1
 
 # The chances (0-1) of an attack with s by u on t, unrolled as cast() rolls it (attack_check(): its crit range,
 # glancing, opening rolls): [hit (glances among them), critical, glance]. hit_chance()'s first; the HUD's
-# forecast and the AI read the glance share (half damage). `guess` as hit_chance()'s.
-static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1) -> Array[float]:
+# forecast and the AI read the glance share (half damage). `guess` as hit_chance()'s. `ahead`: the roll that many
+# rolls on in the use (friction_ahead(): the AI weighs a Strike's later rolls, a chase's first), `plus` to hit on it.
+static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1, ahead := 0, plus := 0) -> Array[float]:
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
 	var req: Array = b.requirement(u, s, t, u.rank(s)) if b else [0, 0, 0, 0, 0.0]  # its contingency, as cast() reads it
 	var tags := c.tags if c else hit_tags(u, s, t, b)
 	var defense := (t.defense(tags) if guess < 0 else guess + t.defense(tags) - t.defense()) + guard_of(c)
-	var bonus := u.attack_mod(s) + s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") + s.roll_bonus + int(req[0]) + passion(u, t) + u.check_bonus(u.attack_stat(s), &"offensive") + u.focus_forecast(s)
-	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags))
+	var bonus := u.attack_mod(s) + s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") + s.roll_bonus + int(req[0]) + passion(u, t) + u.check_bonus(u.attack_stat(s), &"offensive") + u.focus_forecast(s) + plus
+	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags, b.friction_ahead(u, ahead) if b else u.friction + ahead))
 
 
 # What s deals in u's hands, before the target's Defense, mitigation and damage effects: {lo, hi, avg}
@@ -2541,14 +2555,14 @@ static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) ->
 
 # What a hit with s by u on t would do beyond damage_range(), as its behaviours foresee it
 # (Behaviour.foresee(): Kick's tile, Displace's move) and its own forced-move effects (shove, fear, entrance:
-# foresee_drive()): {lo, hi: more HP off t, notes: a line for each rider, riders, spill: for the AI}. The HUD's
+# foresee_drive()): {lo, hi: more HP off t, notes: a line for each rider, riders, spill, afflicts: for the AI}. The HUD's
 # forecast (HUD._hurt()) and the AI's score (AI.score()) both read it. Empty: nothing more.
 func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
 	if not t or (s.behaviours.is_empty() and not s.effects.any(func(e: Effect): return DRIVES.has(StringName(e.stat)))):
 		return {}
 	var foe := t != u and not Faction.friends(t.faction, u.faction)
 	var c := cast_of(u, s, t, u.rank(s), foe)
-	var out := {lo = 0, hi = 0, notes = [] as Array[String], riders = 0.0, spill = 0.0}
+	var out := {lo = 0, hi = 0, notes = [] as Array[String], riders = 0.0, spill = 0.0, afflicts = 0.0}
 	var found: Array[Dictionary] = []
 	for bh in s.behaviours:
 		found.append(bh.foresee(c))
@@ -2565,6 +2579,7 @@ func foresee(u: Unit, s: Skill, t: Unit) -> Dictionary:
 		out.notes.append_array(notes)
 		out.riders += float(f.get("riders", notes.size()))
 		out.spill += float(f.get("spill", 0.0))
+		out.afflicts = minf(out.afflicts + float(f.get("afflicts", 0.0)), 1.0)
 	return out if out.hi > 0 or not out.notes.is_empty() or out.spill != 0.0 else {}
 
 

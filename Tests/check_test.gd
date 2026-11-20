@@ -164,7 +164,7 @@ func test_dc_and_rider_forecasts() -> void:
 			"stun": p = 1.0 - p
 			"hitch": p = Battle.odds(v(1), &"strength", v(3), HITCH.FOE_STATS, HITCH.grapple(c))
 			"slam_jam": p = Battle.odds(v(1), &"strength", v(3), &"constitution", SLAM_JAM.contest(c))
-		ok(note == "%s (%d%%)" % [pair[1], roundi(p * 100.0)] and is_equal_approx(more.riders, p) and p > 0.0 and p < 1.0, "%s: \"%s\" is the odds of its roll" % [pair[0], note])
+		ok(note == "%s (%d%%)" % [pair[1], roundi(p * 100.0)] and more.riders == 0.0 and more.afflicts > 0.0 and more.afflicts <= p and p > 0.0 and p < 1.0, "%s: \"%s\" is the odds of its roll" % [pair[0], note])
 	var s: Skill = load("res://Skills/stun.tres")
 	var c := b.cast_of(v(1), s, v(3), 2, true)
 	var held := 0

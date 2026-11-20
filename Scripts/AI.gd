@@ -64,6 +64,8 @@ const GUESS_DEFENSE := 12  # the Defense it takes a foe to have when it can't ma
 const POINT := 0.5  # what a point of Energy or other cost it gets back is worth, in the HP a blow takes (a 3 AP strike costs a few)
 const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
 const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
+const CC := 0.5  # the share of a foe's next turn a cc takes when what carries it can't say (no foresee() afflicts: Brainfog, Interdict, a grip's drowning): a guess (_afflicting())
+const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -388,11 +390,14 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	var spill := 0.0
 	var saved := 0.0
 	var toll := 0
+	var cc := 0.0
 	if b and t:
 		p = _chance(u, s, r, b, t)
 		if s.attacks() and not (s.check and not s.check.suspicion) and not s.levels_down and p > 0.0:
 			dmg *= 1.0 - 0.5 * Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # a glance lands half
+			dmg *= _use_ratio(b, u, s, t, r, d)  # friction on its rolls, a pool its passives make of them
 		var more := b.foresee(u, s, t)
+		cc = _afflicting(b, u, s, r, t, more)
 		if not more.is_empty():
 			dmg += (more.lo + more.hi) / 2.0
 			riders = more.riders
@@ -405,9 +410,59 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 				toll += bh.unguarded(c)
 			var fund: Variant = u.funding(s)
 			saved = minf(share, 1.0) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
-	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) else 0.0) \
+	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) and &"cc" not in u.skill_tags(s) else 0.0) + cc \
 			+ (KILL if s.drags() else 0.0) + RIDER * riders + spill  # into the water: the Siren's favourite
 	return p * value + saved - DEFENSE * toll - _hate(r)
+
+
+# What a skill's cc takes from the foe t's next turn, in HP: the share of the turn it takes (what its behaviours foresee,
+# Battle.foresee() `afflicts`: as likely as it lands; CC where only the skill's cc tag says it is one) of what that turn
+# is worth - the most blow t reads to have against u (_threat()) - and less for the cc t already bears: none from a
+# unit that is stopped, a share fewer for each status bearing cc it is read to have (Unit.bearing(): what r has of its
+# effects). 0 for a skill that isn't hostile, or carries none.
+static func _afflicting(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, more: Dictionary) -> float:
+	var share: float = more.get("afflicts", 0.0)
+	if share <= 0.0 and s.hostile and &"cc" in u.skill_tags(s):
+		share = CC
+	if share <= 0.0 or t.stopped():
+		return 0.0
+	return share * _threat(b, u, r, t) / (1.0 + Unit.bearing(r.effects, &"cc").size())
+
+
+# What a turn of t's is worth to it against u: the average blow of the best hostile skill it reads to have (r.skills,
+# at its hit chance on u, as it would be cast), BLOW if it can't make out any; never more than u has left.
+static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
+	var best := -1.0
+	for s in r.skills:
+		if s.hostile and s.attacks():
+			best = maxf(best, float(Battle.damage_range(t, s, u, b).get("avg", 0.0)) * Battle.hit_chance(t, s, u, b))
+	return minf(BLOW if best < 0.0 else best, float(u.hp))
+
+
+# How much more or less a use of s is expected to deal than score() reckons by its first roll's odds (hit chance x
+# every hit's damage): its rolls' own odds (friction: a use that loops, Chaser's chase, runs the later rolls at
+# disadvantage, Battle.friction_ahead(); a chain stops at its first miss) and what its holder's passives make of them
+# (Behaviour.forecasting(): Heavy Strike pools them behind a last roll), against the same reckoned without either.
+# 1 for the plain case, which it doesn't work out. `d`: s's damage_range().
+static func _use_ratio(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictionary) -> float:
+	var f := Behaviour.Forecast.new()
+	f.battle = b
+	f.caster = u
+	f.skill = s
+	f.target = t
+	f.tags = Battle.hit_tags(u, s, t, b)
+	f.guess = r.believed(GUESS_DEFENSE)
+	f.rolls = 1 if not s.chain else (1 if u.stat(&"single") > 0.0 else u.mods(s).irank(u.rank(s), &"rank_impact"))
+	f.per = float(d.get("avg", 0.0)) / f.rolls
+	for h in u.hooks():
+		h[0].forecasting(b, u, h[1], f)
+	if f.worth < 0.0:
+		if b.friction_ahead(u, f.rolls - 1) == 0:
+			return 1.0
+		f.worth = f.landings()
+	f.flat = true
+	var plain := f.landings()
+	return f.worth / plain if plain > 0.0 else 1.0
 
 
 # HUNT for a target it reads as one of a side it hunts.

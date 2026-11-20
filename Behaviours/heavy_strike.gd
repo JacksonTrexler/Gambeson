@@ -36,6 +36,20 @@ func striking(b: Battle, holder: Unit, rank: int, v: Volley) -> void:
 	v.dealt = Battle.as_rolled(p[0] + more, last)
 
 
+# For the AI: the use's expected damage is one blow, the pool of what lands (f.spread(): a chain stops at its first
+# miss, friction counted) + a success each + rank, that lands as often as the last roll does (+ the hits and rank, at
+# the friction of the roll after them): the same reading striking() makes, over every number of hits it may be.
+func forecasting(_b: Battle, holder: Unit, rank: int, f: Forecast) -> void:
+	if &"strike" not in f.tags:
+		return
+	var more := holder_rank(holder, rank)
+	var sum := 0.0
+	var spread := f.spread()
+	for k in range(1, spread.size()):
+		sum += spread[k] * (k * (f.per + 1.0) + more) * f.odds(k + (1 if k < f.rolls else 0), k + more)[0]
+	f.worth = sum
+
+
 # Its terms: rank adds to the last roll and its damage (impact); tame.
 func terms(t: SkillTerms) -> void:
 	t.add(&"rank_impact", "to hit and damage on the last roll")

@@ -290,7 +290,7 @@ func test_prices_the_rest() -> void:
 	ok(f.riders == 1.0 and "regains" in f.notes[0], "one that fells it does (%s)" % [f.notes])
 	var js := b.foresee(v(1), slam_jam, v(3))
 	var odds := Battle.odds(v(1), &"strength", v(3), &"constitution", {bonus = 2, tags = cp.tags, their_tags = slam_jam.tags, kind = Check.Kind.SAVE})
-	ok(is_equal_approx(js.riders, odds) and odds > 0.0 and odds < 1.0, "Slam Jam's interrupt is a rider as likely as its contest (%.2f)" % js.riders)
+	ok(is_equal_approx(js.afflicts, odds * load("res://Behaviours/jam.gd").JAMMED_TURN) and js.riders == 0.0 and odds > 0.0 and odds < 1.0, "Slam Jam's Jammed is a cc as likely as its contest (%.2f), a share of a turn" % js.afflicts)
 
 
 func trap_blast(radius: float) -> void:
