@@ -8,6 +8,7 @@
   python3 Util/icon.py item dagger                # Icons/Items/dagger.png: 32x32 drawn off Items/dagger.tres (slot, weapon's damage tag, trim)
   python3 Util/icon.py items                       # every item still missing one
   python3 Util/icon.py check                       # fails an item without an icon (skill.py check runs it too)
+  python3 Util/icon.py glyph study --shape magnifier  # Icons/UI/study.png: a small drawn mark the HUD shows by the cursor
   python3 Util/icon.py effect suspicion --shape eye [--text Su]  # Icons/Effects/suspicion.png: a status's icon on a unit card
 
 Skill and effect icons are white on clear, so the skills screen tints them by state (learned, open, a stub); draw real
@@ -336,7 +337,9 @@ def check_items():
 
 SHAPES = {  # pixel art by rows, '#' set
     "eye": "...#####... .##.....##. #...###...# #..#####..# #...###...# .##.....##. ...#####...",
+    "magnifier": ".#####..... #.....#.... #.....#.... #.....#.... #.....#.... #.....#.... .#####.#... .......##.. ........##. .........## ..........#",
 }
+GLYPHS = "Icons/UI"  # small marks the HUD draws itself (the study cursor), white on clear (tinted there)
 EFFECT_ICONS = "Icons/Effects"
 
 
@@ -351,6 +354,13 @@ def effect(eid, shape=None, text=None, dry=False):
         px = blank(w, h)
         letters(px, (text or eid[:2])[:2], 1, (255, 255, 255, 255))
     save("%s/%s.png" % (EFFECT_ICONS, eid), w, h, px, dry)
+
+
+def glyph(gid, shape, dry=False):
+    shape in SHAPES or die("--shape: one of %s" % ", ".join(SHAPES))
+    rows = SHAPES[shape].split(" ")
+    px = [[(255, 255, 255, 255) if ch == "#" else (0, 0, 0, 0) for ch in row] for row in rows]
+    save("%s/%s.png" % (GLYPHS, gid), len(rows[0]), len(rows), px, dry)
 
 
 # --- tiles and units
@@ -405,6 +415,9 @@ def main():
     e.add_argument("id")
     e.add_argument("--shape", help="drawn: %s" % ", ".join(SHAPES))
     e.add_argument("--text", help="or up to 2 letters (default: the id's first two)")
+    g = sub.add_parser("glyph", help="Icons/UI/<id>.png")
+    g.add_argument("id")
+    g.add_argument("--shape", required=True, help="drawn: %s" % ", ".join(SHAPES))
     for k in sub.choices.values():
         k.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -413,6 +426,8 @@ def main():
     elif a.cmd == "skills":
         for sid in missing_skill_icons():
             skill_icon(sid, None, a.dry_run)
+    elif a.cmd == "glyph":
+        glyph(a.id, a.shape, a.dry_run)
     elif a.cmd == "item":
         item_icon(a.id, a.dry_run)
     elif a.cmd == "items":
