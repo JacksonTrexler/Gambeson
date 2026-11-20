@@ -2088,7 +2088,7 @@ func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int)
 				slot.flash()
 				return
 	var text := u.skill_name(s) if s else String(stat).capitalize()
-	if amount != 0 and sense == 2:
+	if amount != 0 and (sense == 2 or known(u)):  # its amount: what the side makes out, or its own side's numbers (as _hp_shows())
 		text += " %+d%s" % [amount, " " + String(stat) if s and stat else ""]
 	var col: Color = SkillSlot.tint(s).lerp(Color.WHITE, 0.3) if s else SIGN_TINT.get(stat, MUTED)
 	overlay.float_sign(u, s.icon() if s else null, text, col, rounded, s == null)
