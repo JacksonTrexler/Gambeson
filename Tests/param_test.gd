@@ -112,11 +112,11 @@ func test_density_tiers() -> void:
 		v(2).timed.clear()
 		v(2).refresh()
 		var sent := b.cast(v(1), off, v(2))
-		return [sent, v(2).mitigation([]), v(2).timed.values()[0].turns if not v(2).timed.is_empty() else 0]
+		return [sent, v(2).mitigation([]), v(2).timed.values()[0].turns if not v(2).timed.is_empty() else 0, v(2).timed.size()]
 	var w1: Array = ward.call(1, false)
 	var w2: Array = ward.call(2, false)
 	var w3: Array = ward.call(1, true)
-	ok(w1[0] and w1[1] == 0.0 and w2[0] and is_equal_approx(w2[1], 0.1) and w2[2] >= 2 and w3[0] and is_equal_approx(w3[1], 0.1), "Send Off: no ward at I, 10%% for turns at II, Density I reads as II (%s %s %s)" % [w1, w2, w3])
+	ok(w1[0] and w1[1] == 0.0 and w1[3] == 0 and w2[0] and is_equal_approx(w2[1], 0.1) and w2[2] >= 2 and w3[0] and is_equal_approx(w3[1], 0.1), "Send Off: no ward put on at I, 10%% for turns at II, Density I reads as II (%s %s %s)" % [w1, w2, w3])
 	v(1).trinket = null
 
 
