@@ -41,3 +41,4 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-19,w5-diff,sonnet,high,112370,42,675895,landed
 2026-11-19,w5-ai2,sonnet,high,182704,80,1905859,landed
 2026-11-19,w5-density,sonnet,high,125942,40,526090,landed
+2026-11-20,w6-link,sonnet,high,124809,45,662307,landed

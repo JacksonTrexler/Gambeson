@@ -7,6 +7,41 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 ## In flight (not here to launch)
 Nothing. Built 2026-11-19 (?198 to ?213): Wave 3 cards 5, 6, 8, 9, Wave 4 cards A to D and Wave 5 (cc and shove, save lapses, museum sim, Chaser and Heavy Strike, density, plating, friction, Coyote, the Floater card, Student, Journeyman, difficulty words).
 
+## Wave 7: the user's answers of 2026-11-20, second batch (docs/agents/answers-2026-11-20b.md; run after Wave 6 lands)
+Builders read the verbatim file for exact wording. Names the user gave go in with `--human`.
+
+### A. Facing, shown subtly
+- Scope: remove the facing chevron or arrow. Show facing only to a viewer with high wis (the `Difficulty.WORDS` scale), as glow subtly stronger on the facing side.
+- Files: the unit glow shader, HUD. Model: sonnet/high. Collides with: B (same shader; B after A)
+
+### B. Glow by level
+- Scope: a unit's glow flashes to 2x intensity briefly on level up; a higher-level unit has a subtly larger glow and a lower-level one a subtly smaller one, against the viewer's side (record the reference chosen). Only while the glow is not showing targeting.
+- Model: sonnet/medium, after A
+
+### C. Studies UX
+- Scope: "No studies left" (only on click); a magnifying-glass cursor icon on a studyable tile or unit, greyed when none left; the preparation banner a top box, title "Preparing", then "Study: X" in smaller text (Surveys, Evaluates and Inquisitions show the same way).
+- Files: HUD. Model: sonnet/high. Collides with: D (HUD), E after C
+
+### D. Passive signage (only the parts with no noticeable performance cost; hold the rest and say so)
+- Scope: muted styling on passives' name and number, unmuting or flashing on activation (frequent ones just unmute); one generic signal (Behaviour to Battle to HUD) so a passive acting on a unit shows a brief floater `<icon> Name amount` above a non-viewed unit, in the tag colour; Luck shows "Luck +1" with a small sparkle only when it enabled an action; impact amounts italic when rounded down, bold when rounded up; spellbook traits and armor passives muted. Profile a busy fight before and after.
+- Model: opus/medium. Collides with: C (HUD)
+
+### E. Surveyor, Evaluator, Inquisitor (Specialist general, low tier)
+- Scope: also offered to Fighter and Druid (Surveyor), Fighter (Evaluator), Cleric and Paladin (Inquisitor). Rank uses during preparation (Surveys: tile intel only, with advantage; Evaluates: unit intel only, no suspicion; Inquisitions: suspicion only, extra investigation checks with advantage, no intel), and +rank on the matching checks in battle. One generic "preparation uses" mechanic that Study shares.
+- Model: sonnet/high, after C
+
+### F. Bard skills
+- Scope: String Theory (mid: the higher of int or cha for performance checks, via the `attack_stat` / `check` hook); Conductor (high: if the unit rested last turn, +rank to command limits and range); Symphony (units in command range get +1 on checks for each check a commanded unit passes, up to rank; the first unit to act is "First Chair" with +rank impact on its first skill); add `impact` to the Glossary as the user defined it.
+- Model: sonnet/high
+
+### G. Widescreen and verbiage
+- Scope: fix the hotbar at 16:9 and wider (screenshots); standardize and cut skill description wording (no multiple "On a foe" lines; one phrasing per outcome, shared across describe() helpers).
+- Files: HUD hotbar layout, describe helpers. Model: sonnet/high
+
+### H. Placeholder art from /Users/jtrex/assets/utumno
+- Scope: about 90 PNGs (skip .aseprite; a siren is there). Map them onto skill icons, unit sprites and status icons where a name or subject fits; copy each used file to its fixed path and leave the source untouched; record the mapping in docs; `icon.py check` passes.
+- Model: sonnet/medium
+
 ## Wave 6: the user's answers of 2026-11-20 (docs/agents/answers-2026-11-20.md; running)
 
 ### 1. Meathead (?204)
