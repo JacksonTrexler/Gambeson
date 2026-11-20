@@ -302,6 +302,12 @@ func slot_toll(_holder: Unit, _rank: int, _power: int) -> int:
 	return 0
 
 
+# How many hotbar slots its skill takes, where it says (SlotCost: a number of its own, over what the skill's rarity tag
+# gives); 0: it has no say. Skill.slots_taken() asks every behaviour, Unit.slot_cost() the unit.
+func slots_taken() -> int:
+	return 0
+
+
 # It is its skill's own effect of an enchanted item: lent by one, the skill isn't ranked up by the enchantment
 # (Item.skill_rank(), Skill.enchants()), it does its enchanted thing instead (Armor: +1 Defense).
 func owns_enchant() -> bool:

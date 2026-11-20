@@ -40,6 +40,7 @@ var switching := false  # its passive is a switch of what the unit runs on (Mana
 var holder: Unit  # whose slot it is: its tooltip describes the skill as this unit has it (Skill.markup())
 var modded := false  # a worn emblem puts a modifier on its skill (Unit.mods()): a small gold diamond, the tooltip's symbols without hovering
 var lent := ""  # the item lending its skill (Unit.lent_by()): a small pale ring at the slot's lower right, and its tooltip says whose
+var cover: Skill  # the skill before it that spans this slot (Unit.skill_at(): one that takes several), whose continuation it draws; skill is null
 var trait_slot := false  # a trait (Skill.is_trait()) shown after the hotbar: no number, no drag, no clearing, drawn in the trait colour
 var sense := 2  # how much of the skill the player's side makes out (HUD.skill_sense()): 2 all, 1 its name, 0 nothing
 var _dragging := false
@@ -91,6 +92,14 @@ func set_state(i: int, s: Skill, r: int, is_armed: bool, is_on: bool, can_use: b
 		tooltip_text = "%s %s\nYour side can't make out more of it" % [key, s.name]
 	else:
 		tooltip_text = "%s %s %s%s\n%s" % [key, s.title(), Skill.roman(r), "  " + mods if mods else "", s.markup(r, true, holder)]  # its modifiers, as symbols (Modifiers.label())
+	queue_redraw()
+
+
+# This slot is covered by a skill spanning several slots (Unit.covered()): marked, and the tooltip says whose it is.
+func set_cover(s: Skill, n: int) -> void:
+	cover = s
+	if s:
+		tooltip_text = "[%s] Taken by %s, which holds %d slots side by side: right-click to unequip it\n" % [_key(), s.name, n]
 	queue_redraw()
 
 
@@ -189,6 +198,10 @@ func _draw() -> void:
 	else:
 		var key_col := Color(tone.lightened(0.35), fade) if tone != null else Color(1, 1, 1, 0.55)
 		draw_string(font, Vector2(2, mid), _key(), HORIZONTAL_ALIGNMENT_CENTER, 9, fs, key_col)
+	if not skill and cover:
+		draw_rect(Rect2(12, 2, 1.5, size.y - 4), tint(cover) * Color(1, 1, 1, 0.5))
+		draw_string(font, Vector2(15, mid + 0.5), "%s (cont.)" % cover.name, HORIZONTAL_ALIGNMENT_LEFT, size.x - 18, 7, Color(0.92, 0.93, 0.96, 0.4))
+		return
 	if not skill:
 		var blank := "sealed" if sealed else "needs luck" if not works else ("%s only" % Skill.CATEGORIES[kind].to_lower() if kind in TYPES else "%s bonus" % ("caster" if bonus == &"magical" else String(bonus)) if bonus != &"" else "empty")
 		draw_string(font, Vector2(15, mid), blank, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.22))
@@ -312,7 +325,7 @@ func _notification(what: int) -> void:
 
 
 func _on_gui_input(e: InputEvent) -> void:
-	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT and skill and editable:
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT and (skill or cover) and editable:
 		cleared.emit(index)
 		accept_event()
 

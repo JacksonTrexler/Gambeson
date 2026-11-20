@@ -129,6 +129,11 @@ const TERMS := {
 	&"beta_down": ["β-", &"target", "A balance knob (visible only to a viewer with very high int): the skill's scaling is weaker, an outlier tweak. Its rank and stat scaling grow a fifth slower, on top of any modifier."],
 	&"cohen_up": ["d+", &"target", "Cohen's d, a balance knob (visible only to a viewer with very high int): the skill's impact is stronger at low rank, the boost smoothing out as rank rises."],
 	&"cohen_down": ["d-", &"target", "Cohen's d, a balance knob (visible only to a viewer with very high int): the skill's impact is weaker at low rank, the penalty smoothing out as rank rises."],
+	&"rare": ["Rare", &"target", "A skill of rare power: it takes 2 hotbar slots, unless it says otherwise. A skill that takes several sits in that many slots side by side, each fit for it, works while all of them do, and is disabled whole with one."],
+	&"epic": ["Epic", &"target", "A skill of epic power: it takes 3 hotbar slots, unless it says otherwise. See rare."],
+	&"very_rare": ["Very Rare", &"target", "Another name for epic: a skill of it takes 3 hotbar slots."],
+	&"legendary": ["Legendary", &"target", "A skill of legendary power: it takes 4 hotbar slots, unless it says otherwise. See rare."],
+	&"mythic": ["Mythic", &"target", "A skill of mythic power: it takes 5 hotbar slots, unless it says otherwise. See rare."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

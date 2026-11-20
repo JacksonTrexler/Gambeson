@@ -534,7 +534,10 @@ func hover_cell(c: Vector2i) -> void:
 # passive switches; Personify opens its panel; a skill with elements asks which.
 func use_slot(i: int) -> void:
 	var u := selected
-	if not u or not hand(u) or i < 0 or i >= u.hotbar.size() or not u.hotbar[i]:
+	if not u or not hand(u):
+		return
+	i = u.anchor(i)  # a slot a skill spanning several slots covers picks the skill: its first slot
+	if i < 0:
 		return
 	var s: Skill = u.hotbar[i]
 	var again := i == slot
@@ -2521,6 +2524,8 @@ func _refresh_bar() -> void:
 		var off: int = u.disabled.get(s, 0) if u and s else 0
 		var usable := orders and s != null and sense > 0 and not locked and works and off == 0 and not u.bonus_off(i) and (s.passive or u.can_afford(s))
 		slot.set_state(i, s, u.rank(s) if s else 0, s != null and s == armed, s != null and u.is_on(s), usable, edit and not (s and s.pillar()), locked, sense, u.mods(s).label() if s else "", u)
+		var holder: Skill = u.skill_at(i) if u and not s else null  # a slot another skill spans
+		slot.set_cover(holder, holder.slots_taken() if holder else 0)
 		slot.set_kind(u.slot_kind(i) if u else &"", works)
 		var bonus: Variant = u.bonus_slots().get(i) if u else null  # Cram's caster bonus slots
 		slot.set_bonus(bonus[0] if bonus != null else &"", bonus[1] if bonus != null else 0, u.bonus_why(i) if bonus != null else "")
@@ -2581,6 +2586,8 @@ func _on_dropped(i: int, s: Skill, _from: int) -> void:
 				_say("A curse has sealed this slot")
 			elif not u.slot_works(i):
 				_say(SkillSlot.NO_LUCK)
+			elif u.slot_cost(s) > 1:
+				_say("%s takes %d slots side by side: a run of them that each fit it" % [s.name, u.slot_cost(s)])
 			elif kind:
 				_say("%s slots hold only %s skills" % [kind, kind.to_lower()])
 		_keep_bar(u)

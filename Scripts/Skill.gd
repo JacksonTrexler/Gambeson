@@ -231,6 +231,30 @@ func enchants() -> bool:
 	return behaviours.any(func(b: Behaviour): return b and b.owns_enchant())
 
 
+# Hotbar slots by rarity tag (Tags: very_rare counts as epic): what a skill with one takes unless slots_taken() is told otherwise.
+const RARITY_SLOTS := {&"rare": 2, &"epic": 3, &"legendary": 4, &"mythic": 5}
+
+
+# The hotbar slots it takes side by side on a bar that has room: a number a behaviour sets (SlotCost) over the most its
+# rarity tags give, over 1. A pillar always takes 1 (they sit pinned in the last sure slots). A trait, or a skill an item
+# lends innate, takes none: that is Unit.slot_cost(), the unit's answer, which starts here.
+func slots_taken() -> int:
+	var n := 1
+	for t in tags:
+		if t == &"pillar" or t == &"foundation":
+			return 1
+		n = maxi(n, RARITY_SLOTS.get(Tags.PARENT.get(t, t), 1))  # a rarity tag, or a child of one (very_rare)
+	for b in behaviours:
+		if b and b.slots_taken() > 0:
+			return b.slots_taken()
+	return n
+
+
+# What a skill taking n hotbar slots says of it (n above 1).
+static func slots_line(n: int) -> String:
+	return "Takes %d hotbar slots, side by side: each must fit it, it works only while all of them do, and disabling one slot's worth disables it whole" % n
+
+
 # Goes on the hotbar to work: everything but a trait, which takes no slot (a lent skill an item makes innate takes none
 # either: Unit.slot_cost() is the unit's answer). Actives and toggles are
 # worked by hand from it; an always-on passive just sits there, working (Unit.equipped()).
@@ -615,6 +639,8 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 	var rr := m.irank(rank, &"rank_range")  # rank for how far it reaches
 	if with_spec:
 		lines.append(spec_line(u, rank) if not passive or not is_trait() else "Trait: always equipped at the far right of the hotbar, takes no slot, and can't be disabled")
+	if with_spec and slots_taken() > 1 and not is_trait() and not behaviours.any(func(b: Behaviour): return b and b.slots_taken() > 0):
+		lines.append(slots_line(slots_taken()))  # by its rarity: a SlotCost says its own
 	if requires:
 		lines.append(requires.markup(rank, m))
 	if not passive:

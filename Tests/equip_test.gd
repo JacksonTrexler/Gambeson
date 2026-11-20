@@ -223,6 +223,145 @@ func test_losing_slots() -> void:
 	ok(hex in lost and magic_slot in lost and other in lost, "what came off is announced (lost_skills: Battle ends a channel on one)")
 
 
+# A copy of Strike, tagged `tag` (a rarity: Skill.slots_taken()), for the multi-slot tests.
+func fat(name: String, tag := &"") -> Skill:
+	var s: Skill = strike.duplicate()
+	s.name = name + " ??"
+	if tag != &"":
+		s.tags = s.tags + ([tag] as Array[StringName])
+	return s
+
+
+# Skills that take several hotbar slots (docs/plans/w6-slots.md): the price (a rarity tag, SlotCost over it, a pillar or
+# a trait never), where it goes (a run of slots of one kind, each fit for it), what it takes with it and what takes it
+# (displacing, clearing from any of its slots, the sort when slots come and go), that it works while all its slots do
+# (typed and bonus slots), is disabled whole by one slot's worth, and rides a save through its first slot alone.
+func test_multi_slot() -> void:
+	var cost := func(tag: StringName) -> int: return fat("T", tag).slots_taken()
+	ok([&"", &"rare", &"epic", &"very_rare", &"legendary", &"mythic"].map(cost) == [1, 2, 3, 3, 4, 5], "a rarity tag sets what a skill takes: rare 2, epic and very rare 3, legendary 4, mythic 5, none 1")
+	var two := fat("Two")
+	two.behaviours = [load("res://Behaviours/slot_cost.gd").new()] as Array[Behaviour]
+	two.behaviours[0].slots = 2
+	var cheap := fat("Cheap", &"mythic")
+	cheap.behaviours = [load("res://Behaviours/slot_cost.gd").new()] as Array[Behaviour]
+	var pillar := fat("Pillar", &"mythic")
+	pillar.tags = pillar.tags + ([&"pillar"] as Array[StringName])
+	var both := fat("Both", &"rare")
+	both.tags = both.tags + ([&"legendary"] as Array[StringName])
+	ok(two.slots_taken() == 2 and cheap.slots_taken() == 1 and pillar.slots_taken() == 1 and both.slots_taken() == 4, "SlotCost stands over the rarity either way; a pillar always takes 1; two rarities, the dearer")
+	ok("Takes 2 hotbar slots" in two.markup(1) and "Takes 4 hotbar slots" in both.markup(1) and "hotbar slots" not in strike.markup(1), "the description says the cost, from a rarity or from SlotCost")
+	var u := roomy(v(1), 6)
+	var rare := fat("Rare", &"rare")
+	var epic := fat("Epic", &"epic")
+	var small := fat("Small")
+	for s in [rare, epic, small, two]:
+		u.learned.append(slot(s))
+	u.get_equipped()  # they go on by themselves (auto-equip): the test arranges its own bar
+	for i in u.bar_size():
+		u.bar_clear(i)
+	var lost: Array = []
+	u.lost_skills.connect(func(_u: Unit, s: Array[Skill]): lost.append_array(s))
+	u.hotbar[1] = small  # a one-slot gap at 0, a two-slot gap 2-3, a long one from 5
+	u.hotbar[4] = favour
+	ok(u.free_slot(rare) == 2 and u.free_slot(epic) == 5 and u.free_slot(small) == 0 and u.slot_cost(epic) == 3, "it goes where its run is free: the first gap it fits")
+	ok(u.bar_place(rare, 2) and u.hotbar[2] == rare and u.hotbar[3] == null and u.covered() == {3: 2} and u.anchor(3) == 2 and u.skill_at(3) == rare, "placed in its first slot, it covers the next")
+	ok(not u.slot_free(3) and u.free_slot(small) == 0 and u.equipped(rare) and rare in u.actives and u.span(rare) == ([2, 3] as Array[int]), "the covered slot is nobody's to fill; it works")
+	ok(not u.bar_place(rare, u.slot_count() - 1) and u.slot_kind(u.slot_count()) == &"clover" and u.hotbar[2] == rare, "no run, no place: not over the edge into a slot of another kind (here the clover slot)")
+	var bar := u.get_equipped()
+	ok(bar.slice(0, 5) == ([null, small, rare, null, favour] as Array[Skill]) and bar.slice(5).all(func(x): return x == null), "a save keeps the first slot alone: skill ids, none repeated")
+	u.set_equipped(bar)
+	ok(u.get_equipped() == bar and u.equipped(rare), "and set_equipped() puts it back whole")
+	ok(u.bar_place(small, 3) and u.hotbar[3] == small and u.span(rare) == ([1, 2] as Array[int]), "dropped on a slot another's run covers, a skill from the bar takes the run's place; the run takes the slots it left")
+	u.bar_clear(3)
+	ok(u.bar_place(small, 2) and rare not in u.hotbar and u.slot_free(1) and rare in lost, "one from off the bar displaces a run whole, announced")
+	u.bar_place(rare, 0)
+	ok(u.bar_place(epic, 1) and rare not in u.hotbar and small not in u.hotbar and u.span(epic) == ([1, 2, 3] as Array[int]), "a run drops everyone with a slot in it, those it only half covers too")
+	ok(u.bar_place(rare, 2) and epic not in u.hotbar and u.span(rare) == ([2, 3] as Array[int]), "...and a shorter one over it, the same")
+	u.bar_place(epic, 5)
+	u.bar_place(small, 8)
+	ok(u.bar_place(epic, 6) and u.span(epic) == ([6, 7, 8] as Array[int]) and u.hotbar[5] == small and rare in u.hotbar, "moved on the bar, it leaves its old slots: the skill in the way takes the first")
+	u.bar_clear(7)
+	ok(epic not in u.hotbar and u.slot_free(6) and u.slot_free(8), "cleared from any slot it spans, it goes whole")
+	u.bar_clear(5)
+	u.bar_place(epic, 5)
+	var sure := u.slot_count()
+	u.extra_slots += 1
+	u._arrange()
+	ok(u.hotbar[2] == rare and u.hotbar[5] == epic and u.span(epic) == ([5, 6, 7] as Array[int]) and u.slot_count() == sure + 1, "a slot more: the runs hold")
+	u.extra_slots -= 1
+	u._arrange()
+	ok(u.hotbar[5] == epic and u.span(epic) == ([5, 6, 7] as Array[int]) and u.slot_count() == sure, "a slot fewer, the same")
+	u.extra_slots -= 3  # the bar shrinks under it: a run cut short comes off the bar, not left half a skill
+	u._arrange()
+	ok(u.slot_count() == sure - 3 and epic not in u.hotbar and epic in lost and rare in u.hotbar, "a run the bar no longer holds comes off whole, announced")
+	# one disabling slot takes it whole: one entry in the order, whatever its slots
+	u.extra_slots += 3
+	u._arrange()
+	u.bar_place(epic, 5)
+	var order := u.disable_order()
+	ok(order.reduce(func(n, g): return n + g.count(epic), 0) == 1 and order.size() == u.hotbar.filter(func(s): return s != null).size(), "disabling: a skill spanning several slots is one slot's worth in the order")
+	u.disable(epic, 2)
+	ok(epic in u.disabled and epic not in u.actives, "and it is disabled whole")
+	# the HUD: a covered slot says whose it is, and clears the skill whole
+	var h := await hud(u)
+	u.bar_place(rare, 2)
+	h._refresh_bar()
+	var covered_slot: SkillSlot = h.bar.get_child(3)
+	ok(covered_slot.skill == null and covered_slot.cover == rare and (h.bar.get_child(2) as SkillSlot).skill == rare, "the HUD draws the slot after a two-slot skill as its continuation")
+	covered_slot.cleared.emit(3)
+	ok(rare not in u.hotbar, "unequipping from the covered slot takes the whole skill")
+	h.free()
+	# an item's innate link makes it slotless whatever its rarity; a plain one charges its price
+	var calm: Skill = wary.duplicate()
+	calm.name = "Calm ??"
+	calm.tags = calm.tags + ([&"epic"] as Array[StringName])
+	var ring := Item.new()
+	ring.slot = "trinket"
+	ring.skills = [calm] as Array[Skill]
+	ring.innate = [calm] as Array[Skill]
+	var w := roomy(v(2), 3)
+	w.equip(ring)
+	ok(w.slot_cost(calm) == 0 and calm not in w.hotbar and w.equipped(calm), "a rare skill lent innate takes no slot")
+	ring.innate = [] as Array[Skill]
+	w.refit()
+	ok(w.slot_cost(calm) == 3 and w.span(calm).size() == 3 and w.equipped(calm), "lent plain it takes its three, on the bar by itself")
+	w.unequip("trinket")
+	# typed and bonus slots (Cram): every slot of the run must carry the type
+	var cram: Skill = load("res://Skills/cram.tres")
+	w.learned.append(slot(cram, 2))
+	w.get_equipped()
+	var c := w.hotbar.find(cram)
+	var g := w.slot_count()
+	var mage := fat("Mage", &"rare")
+	mage.tags = mage.tags + ([&"magical"] as Array[StringName])
+	var brute := fat("Brute", &"rare")
+	brute.tags = brute.tags + ([&"martial"] as Array[StringName])
+	w.learned.append(slot(mage))
+	w.learned.append(slot(brute))
+	w.get_equipped()
+	for i in w.slot_count():
+		if i != c and w.hotbar[i] and w.hotbar[i] != cram:
+			w.bar_clear(i)
+	ok(w.slot_kind(g) == &"magical" and w.bar_place(mage, g) and w.span(mage) == ([g, g + 1] as Array[int]) and not w.bar_place(brute, g + 1), "a typed slot holds only its type, each slot of a run too")
+	w.bar_clear(g)
+	ok(w.bonus_slots().keys() == [c - 1, c - 2] and w.bar_place(brute, c - 2) and w.span(brute) == ([c - 2, c - 1] as Array[int]) and not w.equipped(brute) and w.bonus_why(c - 1) != "", "a bonus slot holds anything, but a skill spanning it works only if it carries the type")
+	ok(w.bar_place(mage, c - 2) and w.equipped(mage) and is_equal_approx(w.slot_penalty(mage), 2.0) and w.skill_at(c - 1) == mage, "a caster skill works across two, its wear x the bonus rank")
+	ok(w.bar_place(mage, c - 3) and w.equipped(mage) and w.bar_place(brute, c - 3) and not w.equipped(brute), "across one bonus slot and one plain: still every slot must carry the type")
+	w.bar_clear(c - 3)
+	for i in w.slot_count():
+		if i != c and i != c - 3 and i != c - 2 and not w.hotbar[i]:
+			w.hotbar[i] = Skill.new()  # fillers: only c-3 and c-2 stay free of the sure slots
+	ok(w.free_slot(brute) == -1 and w.free_slot(mage) == c - 3 and w.slot_cost(mage) == 2, "auto-placement leaves a skill out of a run a bonus slot would idle")
+	var badge := Item.new()  # a Density emblem doubles what slots rank grants, not what a skill takes
+	badge.slot = "trinket"
+	badge.emblem = &"rho_up"
+	badge.scope = &"insignia"
+	badge.rank = 3
+	w.equip(badge)
+	ok(w.slot_cost(mage) == 2 and mage.slots_taken() == 2, "Density leaves a skill's price alone")
+	u.free()
+
+
 # The hotbar slot shows the on/off dot for a toggle only; an always-on passive just works.
 func test_slot_switch_dot() -> void:
 	var sl := SkillSlot.new()

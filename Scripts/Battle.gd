@@ -5566,11 +5566,12 @@ func evade(u: Unit, dc: int) -> float:
 
 # Using a skill from a burning slot (Unit.burning_slots()) burns its user.
 func _burn(u: Unit, s: Skill) -> void:
-	var i := u.hotbar.find(s)
 	var hot := u.burning_slots()
-	if i >= 0 and i in hot:
-		var n := u.hit(hot[i][0], [&"fire"] as Array[StringName], hot[i][1])
-		burned.emit(u, n, "its slot burns")
+	for i in u.span(s):  # one that takes several slots burns once, from the first of its slots alight
+		if i in hot:
+			var n := u.hit(hot[i][0], [&"fire"] as Array[StringName], hot[i][1])
+			burned.emit(u, n, "its slot burns")
+			return
 
 
 # Discipline (a toggle): an attack on a foe burns all the AP its user has left (not dex move AP) into

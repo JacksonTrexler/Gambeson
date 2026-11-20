@@ -37,7 +37,7 @@ from tres import (ROOT, REF, die, read, write, rel, files, sections, ext_ids, ex
                   literal, effect_section, names, composition_problems)
 STUB = "STUB(skill.py)"
 FLAG_CEILING = 105  # (+1 2026-11-19: `scaling`, the Terms group's balance-knob coefficients, docs/plans/w4-knobs.md; +1 2026-11-19: `no_density`, the Terms group's declared reason a skill is ineligible for Density, docs/plans/w4-density.md; -1 2026-11-18: `inherent` went; `priced` became `costs`, the cost profile, docs/plans/w2-cost.md; -22 2026-11-15: tile skills and the self/utility block became behaviours, forced movement one Displace (docs/plans/consolidation.md, B4 and B5); -3 +1 2026-11-14: `save`, `resisted` and `drags_to` became one `check`, a SkillCheck (docs/plans/checks.md); +5 2026-11-14: the Terms group every skill shares - intensity, impact, penalty, requires, priced; -1: `pings` became Behaviours/clairvoyance.gd; -1: `cinders` was dead - its Effect does the work) @export vars on Skill.gd: new behaviour goes in Behaviours/, not a new flag (CLAUDE.md).
-HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking", "armor", "summon_ap", "armor_slot", "slot_works", "slot_defense", "slot_blocked", "slot_toll", "disabling", "slain")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
+HOOKS = ("apply_at", "lets_word", "hurt", "healing", "affinity", "command_mod", "ordered", "step_cost", "aim", "edge", "guard", "bonus", "felled", "held", "refunds", "unguarded", "foresee", "reprisal", "revives", "strides", "react", "neutralized", "wearing", "striking", "armor", "summon_ap", "armor_slot", "slot_works", "slot_defense", "slot_blocked", "slot_toll", "disabling", "slain", "slots_taken")  # Behaviour's hooks: what a passive's behaviour does outside a cast (apply_at: a tile skill's cast)
 def skill_refs(secs):  # Branch sub_resource id -> skill ext id
     return {s["attrs"]["id"]: REF.search(s["props"]["skill"]).group(2)
             for s in secs if s["kind"] == "sub_resource" and "skill" in s["props"] and REF.search(s["props"]["skill"])}
@@ -119,6 +119,9 @@ def check_uids(problems):
             problems.append("%s.uid: not committed beside %s (git add it)" % (p, p))
 
 
+UNUSED_OK = ("Behaviours/slot_cost.gd",)  # a behaviour that waits for the first skill to need it: slot_cost (a skill's slots, over its rarity's), tested on made skills
+
+
 def check_behaviours(problems):
     used = "\n".join(read(p) for p in files("Skills", ".tres"))
     for p in files("Behaviours", ".gd"):
@@ -127,7 +130,7 @@ def check_behaviours(problems):
             problems.append("%s: no describe() - a behaviour does and says, side by side" % p)
         if not any("func %s(" % f in text for f in ("apply", "dealt") + HOOKS):  # dealt: after an active's damage lands (Energy Transfer)
             problems.append("%s: no apply() or hook (%s) - it does nothing" % (p, ", ".join(HOOKS)))
-        if "res://" + p not in used:
+        if "res://" + p not in used and p not in UNUSED_OK:
             problems.append("%s: no skill uses it" % p)
         if "func react(" in text:  # the reaction seam (Battle.react()): effects tagged reaction count on what reacts
             for sp in files("Skills", ".tres"):

@@ -1,7 +1,7 @@
 class_name Tags
 
 # Child tags also count as their parent: a slash is a physical hit.
-const PARENT := {&"slash": &"physical", &"pierce": &"physical", &"blunt": &"physical", &"foundation": &"pillar"}
+const PARENT := {&"very_rare": &"epic", &"slash": &"physical", &"pierce": &"physical", &"blunt": &"physical", &"foundation": &"pillar"}
 
 # enchanted and honed: each gives rank +1 to the item or skill carrying it (Item.ranked(), Unit.rank()), and
 # never both (mechanic.py check, Tests/items_test.gd). Only enchanted is what Pray, Smite and the rest ask
@@ -106,6 +106,10 @@ const COLOR := {
 	&"beta_down": Color("#b8a9e8"),
 	&"cohen_up": Color("#a9d8e8"),
 	&"cohen_down": Color("#a9d8e8"),
+	&"rare": Color("#5aa0e8"),
+	&"epic": Color("#b06ae0"),
+	&"legendary": Color("#f0a030"),
+	&"mythic": Color("#e05a5a"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
@@ -114,7 +118,7 @@ const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with on
 const PLAIN: Array[StringName] = [&"metal", &"iron", &"cloth", &"padded", &"mail", &"wood", &"stone", &"rock", &"glass",
 		&"gem", &"blade", &"book", &"potion", &"ring", &"shackles", &"treat", &"stew", &"heavy", &"medium", &"enchanted",
 		&"honed", &"str", &"dex", &"con", &"int", &"wis", &"cha", &"offensive", &"defensive", &"supportive", &"beneficial",
-		&"detrimental", &"damage", &"unique", &"finesse", &"bracing", &"tall", &"sigil", &"insignia", &"crest", &"badge", &"trait", &"strike", &"friction", &"beta_up", &"beta_down", &"cohen_up", &"cohen_down"]
+		&"detrimental", &"damage", &"unique", &"finesse", &"bracing", &"tall", &"sigil", &"insignia", &"crest", &"badge", &"trait", &"strike", &"friction", &"beta_up", &"beta_down", &"cohen_up", &"cohen_down", &"rare", &"epic", &"very_rare", &"legendary", &"mythic"]
 # Words too broad to say what a blow is made of: a damage floater (HUD) passes over them too.
 const BROAD: Array[StringName] = [&"martial", &"magical", &"specialist", &"physical"]
 

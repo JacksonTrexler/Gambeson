@@ -403,6 +403,7 @@ var _ap_start: Array[float] = []  # each AP pool as its turn started, to tell ho
 var _walk_ap: Array[float] = []  # of each AP pool, what walking took this turn (activity(): standing still doesn't count)
 var _keys: Array = []  # the slot keys the hotbar was last arranged for (_slot_keys(), _arrange())
 var _bonus: Array = [0, {}]  # bonus_slots() as last worked out, with the hotbar's hash it was for; _arrange() drops it
+var _cover: Array = [0, {}]  # covered() as last worked out, with the hotbar's hash it was for
 var _bonus_busy := false  # bonus_slots() is being worked out: equipped() (asked by the modifiers it reads) doesn't ask it again
 var _seen: Dictionary[Skill, bool] = {}  # skills it has had since it was set up: one not among them is new, and auto-equips (_sync_new())
 var _seen_sig := -1  # _skill_sig() when _seen was last brought up to date (_sync_new(): cheap to check)
@@ -1101,7 +1102,8 @@ func bonus_why(i: int) -> String:
 		return ""
 	if hotbar.any(func(x: Skill): return x and x.pillar() and x in disabled):
 		return "a pillar skill is disabled"
-	if hotbar[i] and b[0] != &"" and not hotbar[i].tagged(b[0]):
+	var held := skill_at(i)  # a skill spanning several slots must find every one of them fit for it
+	if held and b[0] != &"" and not held.tagged(b[0]):
 		return "not a %s skill" % Skill.CATEGORIES.get(b[0], String(b[0])).to_lower()
 	return ""
 
@@ -1110,11 +1112,15 @@ func bonus_off(i: int) -> bool:
 	return bonus_why(i) != ""
 
 
-# What wear on s is multiplied by for the slot it sits in: a bonus slot's rank (Cram's caster bonus slots),
-# else 1. Burnout.penalty() reads it.
+# What wear on s is multiplied by for the slot it sits in: a bonus slot's rank (Cram's caster bonus slots), the
+# highest of them where it spans several, else 1. Burnout.penalty() reads it.
 func slot_penalty(s: Skill) -> float:
-	var b: Variant = bonus_slots().get(hotbar.find(s)) if s else null
-	return float(b[1]) if b != null else 1.0
+	var out := 1.0
+	for i in span(s):
+		var b: Variant = bonus_slots().get(i)
+		if b != null:
+			out = maxf(out, float(b[1]))
+	return out
 
 
 # Whether s goes in slot i when slotted by itself (auto-equip, a unit setting up): it fits, and a bonus slot
@@ -1124,6 +1130,80 @@ func _suits(s: Skill, i: int) -> bool:
 		return true
 	var b: Variant = bonus_slots().get(i)
 	return fits(s, i) and (b == null or b[0] == &"" or s.tagged(b[0]))
+
+
+# --- Skills that take several slots (Skill.slots_taken(): a rarity tag, or SlotCost). Such a skill is on the hotbar at its
+# first slot, and the slots after it, as many as it takes, hold nothing of their own: they are covered (covered()). They
+# must be one run of slots of a kind (_run_ok()), each fit for it. It works while all of them do (equipped()), a disabling
+# takes it whole (disable_order() meets it once), and whatever drops its first slot drops it (bar_clear(), _arrange()).
+
+# The slots another skill's span holds, by index -> the index of the skill covering it. Read from the hotbar alone.
+func covered() -> Dictionary:
+	var h := hotbar.hash()
+	if _cover[0] == h:
+		return _cover[1]
+	var out := {}
+	for i in hotbar.size():
+		if hotbar[i]:
+			for j in range(i + 1, mini(i + hotbar[i].slots_taken(), hotbar.size())):
+				out[j] = i
+	_cover = [h, out]
+	return out
+
+
+# The slot holding the skill that has slot i: i itself, or the one before it that spans it; -1 for an empty slot.
+func anchor(i: int) -> int:
+	if i < 0 or i >= hotbar.size():
+		return -1
+	return i if hotbar[i] else covered().get(i, -1)
+
+
+# The skill that has slot i, spanned or not.
+func skill_at(i: int) -> Skill:
+	var a := anchor(i)
+	return hotbar[a] if a >= 0 else null
+
+
+# Whether slot i holds nothing and is nobody's span.
+func slot_free(i: int) -> bool:
+	return i >= 0 and i < hotbar.size() and not hotbar[i] and not covered().has(i)
+
+
+# The slots s has on the bar: its first and those it spans, none if it's off the bar.
+func span(s: Skill) -> Array[int]:
+	var out: Array[int] = []
+	var i := hotbar.find(s) if s else -1
+	if i >= 0:
+		for j in range(i, mini(i + s.slots_taken(), hotbar.size())):
+			out.append(j)
+	return out
+
+
+# Whether s's slots, from i, are there as one run: every slot of one kind (one granting skill's, or the sure slots),
+# working and fit for it - as many as it takes. Occupancy aside. `works` false: slots that don't work now count (a skill
+# swapped into where another was).
+func _run_ok(s: Skill, i: int, works := true) -> bool:
+	var c := s.slots_taken()
+	var keys := _slot_keys()
+	if i < 0 or i + c > keys.size():
+		return false
+	var kind := _key_name(keys[i])
+	for j in range(i, i + c):
+		if (works and not slot_works(j)) or not fits(s, j) or _key_name(keys[j]) != kind:
+			return false
+	return true
+
+
+# Whether s goes by itself in the run from i: it is there (_run_ok()), empty and suits each slot (_suits()).
+func _room(s: Skill, i: int) -> bool:
+	if s == null:
+		return slot_free(i) and slot_works(i)
+	if not _run_ok(s, i):
+		return false
+	for j in range(i, i + s.slots_taken()):
+		if not slot_free(j) or not _suits(s, j):
+			return false
+	return true
 
 
 # Whether s can go in hotbar slot i: a typed slot only holds skills carrying its type, and the clover
@@ -1152,14 +1232,19 @@ func equipped(s: Skill) -> bool:
 		return not traits_suppressed()
 	_sync_new()
 	var i := hotbar.find(s)
-	return i >= 0 and not _sealed_now(i) and not bonus_off(i)
+	if i < 0:
+		return false
+	for j in range(i, mini(i + s.slots_taken(), hotbar.size())):
+		if _sealed_now(j) or bonus_off(j):
+			return false
+	return true
 
 
-# The hotbar slots s takes to be equipped: 0 for a trait and for a skill an item lends it innate (link()), 1 otherwise.
-# The one place a skill's price in slots is worked out: whatever puts a skill on the bar (bar_place(), equip_skill(),
+# The hotbar slots s takes to be equipped: 0 for a trait and for a skill an item lends it innate (link()), else what the
+# skill takes (Skill.slots_taken(): 1, more by rarity or SlotCost). The one place a skill's price in slots is worked out: whatever puts a skill on the bar (bar_place(), equip_skill(),
 # auto_fill(), the HUD's drags) asks this, never Skill.fits_bar() alone.
 func slot_cost(s: Skill) -> int:
-	return 0 if s.is_trait() or link(s) == &"innate" else 1
+	return 0 if s.is_trait() or link(s) == &"innate" else s.slots_taken()
 
 
 # How its worn items link s to it: &"innate" (it works without a slot: a passive an item lends so), &"optional" (lent, and
@@ -1300,7 +1385,7 @@ func _auto_slot(s: Skill) -> int:
 		if not s.pillar():
 			order += range(hotbar.size() - 1, sure - 1, -1)
 		for i in order:
-			if not hotbar[i] and slot_works(i) and _suits(s, i):
+			if _room(s, i):
 				return i
 		return -1
 	return free_slot(s)
@@ -1327,27 +1412,41 @@ func rounded(x: float) -> int:
 # the bar swaps places with whatever is in i - which comes off the bar if it doesn't fit there. Pillar
 # skills keep the last sure slots: they can't be moved, and nothing takes their place.
 # Pillar skills keep the last sure slots: they can't be moved, and nothing takes their place - one off the
-# bar goes only into an empty sure slot. Whatever drops off the bar by it, or with the slots it took
+# bar goes only into an empty sure slot. A skill taking several slots (slots_taken()) needs a run of them, each fit for it
+# (_run_ok()), and takes the place of every skill with a slot in it; one that swaps with it gets s's old slots if it fits
+# them, else it comes off. Whatever drops off the bar by it, or with the slots it took
 # (a slot-granting skill moved out), is announced (lost_skills).
 func bar_place(s: Skill, i: int) -> bool:
-	if i < 0 or i >= hotbar.size() or not slot_works(i) or not s or slot_cost(s) == 0 or base_rank(s) == 0 or not fits(s, i):
+	if i < 0 or i >= hotbar.size() or not s or slot_cost(s) == 0 or base_rank(s) == 0 or not _run_ok(s, i):
 		return false
-	if (hotbar[i] and hotbar[i].pillar()) or (s.pillar() and (s in hotbar or hotbar[i] or i >= slot_count())):
+	var c := s.slots_taken()
+	if range(i, i + c).any(func(j: int): return hotbar[j] and hotbar[j].pillar()) or (s.pillar() and (s in hotbar or not slot_free(i) or i >= slot_count())):
 		return false
 	var was := hotbar.duplicate()
 	var old := hotbar.find(s)
 	if old >= 0:
-		hotbar[old] = hotbar[i] if hotbar[i] and fits(hotbar[i], old) else null
+		hotbar[old] = null
+	var hit: Array[int] = []  # the skills it takes the place of: whoever has a slot it needs, spanning or not
+	for j in range(i, i + c):
+		var a := anchor(j)
+		if a >= 0 and a not in hit:
+			hit.append(a)
+	var swap: Skill = hotbar[hit[0]] if hit.size() == 1 else null
+	for a in hit:
+		hotbar[a] = null
 	hotbar[i] = s
+	if old >= 0 and swap and _run_ok(swap, old, false) and range(old, old + swap.slots_taken()).all(func(j: int): return slot_free(j)):
+		hotbar[old] = swap  # one skill for another: it takes the slots s left, if it fits there
 	_settle(was)
 	return true
 
 
 # Unequips the skill in slot i (not a pillar). One that granted slots takes them with it, and their skills.
 func bar_clear(i: int) -> void:
-	if i >= 0 and i < hotbar.size() and not (hotbar[i] and hotbar[i].pillar()):
+	var a := anchor(i)  # any slot of a skill spanning several clears it whole
+	if a >= 0 and not hotbar[a].pillar():
 		var was := hotbar.duplicate()
-		hotbar[i] = null
+		hotbar[a] = null
 		_settle(was)
 
 
@@ -1422,7 +1521,7 @@ func gain_xp(n: int) -> int:
 # The first empty hotbar slot that works (and that s fits, given one), or -1.
 func free_slot(s: Skill = null) -> int:
 	for i in hotbar.size():
-		if not hotbar[i] and slot_works(i) and _suits(s, i):
+		if _room(s, i):
 			return i
 	return -1
 
@@ -1785,8 +1884,11 @@ func _arrange() -> void:
 			break
 		grew = grew or now.size() > _keys.size()
 		var queues := {}
+		var spread := hotbar.duplicate()  # a skill taking several slots goes through the sort as that many copies, side by side
+		for i in covered():
+			spread[i] = hotbar[covered()[i]]
 		for i in hotbar.size():
-			queues.get_or_add(_key_name(_keys[i] if i < _keys.size() else &""), []).append(hotbar[i])
+			queues.get_or_add(_key_name(_keys[i] if i < _keys.size() else &""), []).append(spread[i])
 		var sure: Array = queues.get_or_add("", [])
 		var more: int = now.count(&"") - sure.size() - (queues.get("clover", []).size() if &"clover" not in now else 0)
 		if more > 0:  # new sure slots go in above the passives and pillars at the bottom, which stay there
@@ -1801,11 +1903,32 @@ func _arrange() -> void:
 			if from.is_empty() and k is StringName and k == &"" and &"clover" not in now:
 				from = queues.get("clover", [])
 			out.append(from.pop_front() if not from.is_empty() else null)
-		hotbar = out
+		hotbar = _gather(out, now)
 		_keys = now
 	if grew and auto_equip:
 		auto_fill()
 		_arrange()
+
+
+# `out`, the hotbar as _arrange() sorted it with each skill that takes several slots in as many copies: those back to its
+# first slot with nothing after it - or off the bar, any copy of it missing or parted from the rest by another kind of slot.
+func _gather(out: Array[Skill], keys: Array) -> Array[Skill]:
+	var i := 0
+	while i < out.size():
+		var s := out[i]
+		if not s:
+			i += 1
+			continue
+		var n := 1
+		while i + n < out.size() and out[i + n] == s and _key_name(keys[i + n]) == _key_name(keys[i]):
+			n += 1
+		var c := s.slots_taken()
+		for j in range(i + 1, i + n):
+			out[j] = null
+		if n != c:
+			out[i] = null  # a copy of it was cut off: it has no room
+		i += n
+	return out
 
 
 static func _key_name(k: Variant) -> String:
