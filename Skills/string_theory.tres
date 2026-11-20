@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "String Theory"
+glyph = "St"
+passive = true
+tags = Array[StringName]([&"cha"])
+stand_in = &"intelligence"
+replaces = Array[StringName]([&"charisma"])
+no_density = "a stat stands in for another: on or off, nothing scales"

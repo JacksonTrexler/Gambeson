@@ -187,6 +187,7 @@ const IRE: Skill = preload("res://Skills/ramuts_ire.tres")
 @export var ire_grace := 1.0
 var stalled_turns: Dictionary[Faction, int] = {}  # each side's turns in a row ended with none of its units making out a foe
 var hastened: Dictionary[Faction, int] = {}  # turns taken off each side's wait for the Ire (Pray, to Ramut)
+var acted: Dictionary[Unit, int] = {}  # unit -> the turns_begun of the last turn it used a skill in (first_to_act())
 var turns_begun := 0  # sides' turns started so far this battle: when an effect was put on (Unit.Applied.since)
 var stalling: Array[Unit] = []  # units stalling the fight as the last turn ended: Ramut's Ire builds on them (_check_stall())
 var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), over the ground
@@ -723,7 +724,19 @@ func beats(a: Check, b: Check, a_wins_ties := true) -> Check.Contest:
 # their_bonus still adds; ties as above.
 func check(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) -> Check.Contest:
 	var s := sides(a, stat, b, against, o)
-	return beats(s[0], s[1], o.get("ties", true))
+	var c := beats(s[0], s[1], o.get("ties", true))
+	if c.won:
+		_passed(a)
+	return c
+
+
+# u passed a check it rolled (check(), roll_attack()): its side's passives hear of it (Behaviour.passed(): Symphony).
+func _passed(u: Unit) -> void:
+	if Unit.reading > 0 or u == null or not u.faction:
+		return
+	for o in members(u.faction):
+		for h in o.hooks():
+			h[0].passed(self, o, h[1], u)
 
 
 # The chance (0-1) `a` wins check(a, stat, b, against, o), without rolling.
@@ -899,6 +912,8 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: 
 	var done := _cast(caster, skill, target, spreading)
 	if opened:
 		_end_use(opened)
+		if done:
+			acted[caster] = turns_begun
 	_aims.pop_back()
 	_casting -= 1
 	if _casting == 0:
@@ -1174,7 +1189,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_link(caster, skill, r)
 	if not foe and skill.heals():
 		target.healed_by = caster
-		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri)
+		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) + impact_of(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri)
 		target.regain(skill.restores * ri)
 	if not foe:
 		_lovely(caster, skill, target)
@@ -1187,6 +1202,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			if not target.is_alive():
 				break
 			var bonus := m.stat(caster.mod(caster.wielded(t.stat, stags), stags), &"stat_impact") + caster.weapon_bonus(t.stat) + (zeal if t.stat == skill.stat() else 0) if t.stat else 0
+			bonus += impact_of(caster)
 			if acts:
 				for bh in skill.behaviours:
 					bonus += bh.bonus(acts)  # Spike: + rank
@@ -1379,6 +1395,8 @@ func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
 		caster.friction = _friction_next(v)
 	attacked.emit(caster, target, hit.d20, hit.total, hit.target)
 	attack_rolled.emit(caster, target, hit)
+	if hit.hit:
+		_passed(caster)
 	if hit.crit and hit.hit:
 		react(&"crit", target, caster)  # a critical: reactions to it (Chaser)
 	if not hit.hit and not target.plating.is_empty():
@@ -1426,7 +1444,23 @@ func _begin_use(caster: Unit, skill: Skill) -> Behaviour.Volley:
 		v.chain = _interrupt_chain  # an interrupt granted to carry a use on (a Chaser's chase): it joins that chain
 	caster.friction = _friction_next(v)
 	_uses[caster] = v
+	v.first = first_to_act(caster)
+	if Unit.reading == 0:
+		for o in members(caster.faction):
+			for h in o.hooks():
+				h[0].opening(self, o, h[1], v)  # Symphony: First Chair's impact
 	return v
+
+
+# Whether caster, as its side's turn goes, would be the first of its side to use a skill in it (acted: a use done). Not on another side's turn (a reaction). The one reading of "first to act" (First Chair).
+# The impact its passives added to the use under way (Volley.impact): every blow and heal of it carries it.
+func impact_of(caster: Unit) -> int:
+	var v := use_of(caster)
+	return v.impact if v else 0
+
+
+func first_to_act(caster: Unit) -> bool:
+	return turn == caster.faction and not members(caster.faction).any(func(o: Unit): return acted.get(o, -1) == turns_begun)
 
 
 const FRICTION := &"friction"  # in a use chain: [rolls free, attack rolls since it began looping]
@@ -2728,6 +2762,8 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	var done := _cast_at(caster, skill, c, held)
 	if opened:
 		_end_use(opened)
+		if done:
+			acted[caster] = turns_begun
 	_casting -= 1
 	_done_casting(caster, done)
 	return done
@@ -5466,6 +5502,7 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 		var power := tier.power + roll(tier.dice) - penalty + int(req[1])
 		if stat:
 			power += m.stat(caster.mod(caster.wielded(stat, tags), tags), &"stat_impact") + caster.weapon_bonus(stat) + (zeal if stat == skill.stat() else 0)
+		power += impact_of(caster)
 		if acts:
 			for bh in skill.behaviours:
 				power += bh.bonus(acts)

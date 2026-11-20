@@ -134,6 +134,8 @@ const TERMS := {
 	&"very_rare": ["Very Rare", &"target", "Another name for epic: a skill of it takes 3 hotbar slots."],
 	&"legendary": ["Legendary", &"target", "A skill of legendary power: it takes 4 hotbar slots, unless it says otherwise. See rare."],
 	&"mythic": ["Mythic", &"target", "A skill of mythic power: it takes 5 hotbar slots, unless it says otherwise. See rare."],
+	&"impact": ["Impact", &"target", "The intensity of an effect, usually damage dealt or amount healed. The impact mod is usually a stat mod plus bonuses; bonuses to impact can be stand-ins for or accompaniments to stat mods."],
+	&"first_chair": ["First Chair", &"target", "The first unit of a side to use a skill in a turn. Symphony gives it bonus impact on that skill."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],
