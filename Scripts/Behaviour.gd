@@ -296,6 +296,12 @@ func slot_blocked(_b: Battle, _holder: Unit, _rank: int, _power: int) -> void:
 	pass
 
 
+# The points of its holder's Power (Energy, or the reserve it runs on) that same block takes off it: what slot_blocked() takes,
+# said before the roll so a foe can price it (AI.score()). 0: a plain slot.
+func slot_toll(_holder: Unit, _rank: int, _power: int) -> int:
+	return 0
+
+
 # It is its skill's own effect of an enchanted item: lent by one, the skill isn't ranked up by the enchantment
 # (Item.skill_rank(), Skill.enchants()), it does its enchanted thing instead (Armor: +1 Defense).
 func owns_enchant() -> bool:

@@ -1009,6 +1009,27 @@ func test_a_lied_defense_is_believed() -> void:
 	h.free()
 
 
+# A roll made under friction (Unit.friction: a use that loops, Battle.loops()) is named on its log line and floats a note over its caster; one
+# made without it is as it was. (A chase's chain is seeded by hand: the first roll is already past its free rolls.)
+func test_friction_named() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	soak(v(3))
+	var h := await hud(v(1))
+	var rubs := []
+	b.attack_rolled.connect(func(_c, _t, r: Check.Roll): rubs.append(r.friction))
+	b.interrupter = v(1)
+	b._interrupt_chain = {Battle.FRICTION: [0, 1]}
+	b.cast(v(1), strike, v(3))
+	b.interrupter = null
+	b._interrupt_chain = {}
+	var text := h.log_box.get_parsed_text()
+	ok(rubs == [2] and "(friction: disadvantage, -2)" in text, "a roll at friction 2 says so in the log (%s, %s)" % [rubs, text])
+	ok(h.overlay.top.get_children().any(func(f): return f is Label and f.text == "Friction -2"), "and floats it")
+	b.cast(v(1), strike, v(3))
+	ok(rubs[1] == 0 and text.count("friction") == 1 and h.log_box.get_parsed_text().count("friction") == 1, "a plain roll doesn't")
+	h.free()
+
+
 func shrike() -> Unit:
 	var u := b.starter({faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Shrike"})
 	b.get_node("Units").add_child(u)

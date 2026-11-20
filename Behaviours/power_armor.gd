@@ -16,7 +16,11 @@ func slot_works(holder: Unit, rank: int) -> bool:
 
 
 func slot_blocked(_b: Battle, holder: Unit, rank: int, power: int) -> void:
-	holder.sap_power(ceili(power / float(maxi(holder_rank(holder, rank), 1))))
+	holder.sap_power(slot_toll(holder, rank, power))
+
+
+func slot_toll(holder: Unit, rank: int, power: int) -> int:
+	return ceili(power / float(maxi(holder_rank(holder, rank), 1)))
 
 
 func terms(t: SkillTerms) -> void:

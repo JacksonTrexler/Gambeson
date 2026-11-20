@@ -69,6 +69,19 @@ func test_slots() -> void:
 	ok(u.defense() == 3, "armor in the slot and none proper: it is armor, not unarmored (%d)" % u.defense())
 
 
+# A skill that lapsed (waived by a skill that no longer holds) works no slot: the armor stays worn, counts for nothing, and
+# the unit card still shows it (HUD.trims()); the waiver back, it works again.
+func test_lapsed() -> void:
+	villagers_only()
+	var u := plated(scrap_plating, 3)
+	ok(u.defense() == 14 and u.plates().size() == 1, "Scrap Plating works")
+	u.waived[scrap_plating] = load("res://Skills/generalist.tres")  # (never learned: the waiver doesn't hold)
+	ok(u.lapsed(scrap_plating) and u.plates().is_empty() and u.defense() == 11, "lapsed: off")
+	ok(u.get(Unit.plate_slot(scrap_plating)) != null and HUD.trims(u).any(func(t: Array) -> bool: return t[1] == "Bulwark (Scrap Plating)"), "the armor stays worn, and on the card as the slot's")
+	u.waived.clear()
+	ok(u.defense() == 14, "waiver gone: works")
+
+
 # Armor in the slots drags in full on top of the armor proper's, each worked out alone - and weighs - whatever caps its Defense.
 func test_drag() -> void:
 	villagers_only()
@@ -124,6 +137,45 @@ func test_blocks() -> void:
 			break
 	ok(not seen.is_empty() and not seen.back()[0] and seen.back()[1] >= 11 and u.energy == 7 and u.defense() == 11,
 			"a real miss that would have hit Defense 11: Energy 10 -> 7, and under 80%% the armor is off (%s, Energy %d)" % [seen.back() if seen else "no rolls", u.energy])
+
+
+# The AI: a unit with armor in its pack dresses a plate slot of its own when it has no blow to strike (the armor that adds most
+# under the slot's rules, the old one back in the pack, one a turn), and prices a foe's Power Armor blocks (Power off it).
+func test_ai() -> void:
+	villagers_only()
+	var u := plated(scrap_plating, 3)
+	u.plating.clear()
+	var weak := bulwark()
+	weak.defense = 2
+	u.pack.assign([weak, bulwark()])
+	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	var log := AI.act(b, u)
+	ok(u.get(Unit.plate_slot(scrap_plating)) != weak and u.defense() == 14 and u.pack == [weak] and log.any(func(l: String) -> bool: return "puts on Bulwark, +3 Defense" in l),
+			"out of reach: it puts on the one that adds most under Scrap Plating's cap (%s)" % [log])
+	u.pack.assign([bulwark()])
+	ok(u.get(Unit.plate_slot(scrap_plating)) != null and AI.act(b, u).all(func(l: String) -> bool: return "puts on" not in l) and u.pack.size() == 1, "nothing more to gain: it keeps what it has")
+	u.plating.clear()
+	u.refresh()
+	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var fight := AI.act(b, u)
+	ok(fight.any(func(l: String) -> bool: return "uses Strike" in l) and fight.all(func(l: String) -> bool: return "puts on" not in l) and u.get(Unit.plate_slot(scrap_plating)) == null,
+			"with a foe to strike it strikes, with its AP, and does not dress first (%s)" % [fight])
+	var power := v(4)  # (plated() dresses v(1) only)
+	var scrap := v(3)
+	for foe in [power, scrap]:
+		foe.learned.clear()
+		foe.plating.clear()
+		foe.armor = null
+		soak(foe)
+	power.learned.append(slot(power_armor, 3))
+	power.equip(bulwark(), Unit.plate_slot(power_armor))
+	scrap.armor = bulwark()
+	var me := v(1)
+	ok(b.read(me, power).defense == 20 and power.defense() == 20 and scrap.defense() == 20, "two foes of Defense 20, read")
+	var worth := func(foe: Unit) -> float: return AI.score(me, strike, b.read(me, foe), b, foe)
+	ok(worth.call(power) > worth.call(scrap) and AI._blocks(b, me, strike, b.read(me, scrap), scrap, 5.0) == 0.0, "its Power Armor's blocks are worth something to a foe striking it, Scrap Plating's nothing")
+	power.energy = 0
+	ok(AI._blocks(b, me, strike, b.read(me, power), power, 5.0) == 0.0, "off (no Power left): no blocks to count")
 
 
 # The sheet: a row for the slot, an Equip button into it for armor, kept in the outfit and the save.

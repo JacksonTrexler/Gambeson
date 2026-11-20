@@ -127,6 +127,7 @@ class Applied:
 @export var with_player := false  # joins whichever side the player's starter is on (Battle._ready(): the Astral Envoy's villagers and shades)
 @export var hearts := 0  # extra lives of its own, on top of its items' (lives())
 @export var loot: Loot  # what it may drop as it falls (Battle._on_died())
+@export var pack: Array[Item] = []  # armor it carries to put on in a plate slot it has empty (AI._dress(): what it does with a spare turn); not worn, so it counts for nothing till it is
 @export var summons: PackedScene  # comes with each heart it spends, as it gets up (the Astral Princess: a Regeneration Probe)
 @export_file("*.tscn") var reverts_to := ""  # what it falls back into as it dies, on its tile (a Starman: a Starmote; Battle._on_died()) - a path: the two scenes name each other
 @export_file("*.tscn") var reforms_into := ""  # what it becomes once its Reforming stacks reach its level (a Starmote: a Starman; Battle._starkind())
@@ -2348,16 +2349,35 @@ func _set(property: StringName, value: Variant) -> bool:
 
 
 # The armor it wears in the slots its skills give that work now (Behaviour.slot_works()), with the skill giving each:
-# [skill, item] pairs, in the order it learned them. None while nothing is worn in one (the usual: it reads nothing).
+# [skill, item] pairs, in the order it learned them. None while nothing is worn in one (the usual: it reads nothing). A skill
+# that has lapsed (learned through a waiver or a lent skill that no longer holds, lapsed()) works no slot: `passives` leaves it out.
 func plates() -> Array:
 	var out := []
 	if plating.is_empty():
 		return out
 	for s in plate_skills():
 		var it: Item = plating.get(plate_slot(s))
-		if it and can_wear(it) and s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s))):
+		if it and can_wear(it) and plate_works(s):
 			out.append([s, it])
 	return out
+
+
+# Whether the slot its skill s gives works now: the skill does (equipped, on, not disabled, not lapsed: `passives`) and its
+# own rules say so (Behaviour.slot_works()).
+func plate_works(s: Skill) -> bool:
+	return s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s)))
+
+
+# The Defense `it` would confer in the slot skill s gives, by that slot's rules (Behaviour.slot_defense() applied to what the
+# equipment skills it lends set): NO_ARMOR where it sets none. Worn or not, working or not.
+func plate_defense(s: Skill, it: Item) -> int:
+	var d := _set_by(it)
+	if d == Behaviour.NO_ARMOR:
+		return d
+	for b in s.behaviours:
+		if b:
+			d = b.slot_defense(self, own_rank(s), d)
+	return d
 
 
 # The Defense each worn armor in those slots confers: [skill, Defense] pairs, for the armor that sets any (the slot's
@@ -2365,14 +2385,9 @@ func plates() -> Array:
 func plated_defense() -> Array:
 	var out := []
 	for pair in plates():
-		var s: Skill = pair[0]
-		var d := _set_by(pair[1])
-		if d == Behaviour.NO_ARMOR:
-			continue
-		for b in s.behaviours:
-			if b:
-				d = b.slot_defense(self, own_rank(s), d)
-		out.append([s, d])
+		var d := plate_defense(pair[0], pair[1])
+		if d != Behaviour.NO_ARMOR:
+			out.append([pair[0], d])
 	return out
 
 
@@ -3521,7 +3536,12 @@ func disable(s: Skill, turns: int, curse := false, by: Unit = null) -> void:
 
 # It holds disablings off for now (the postpone stat: Coyote Charm): they and its curse debuffs wait.
 func postponing() -> bool:
-	return timed.keys().any(func(e: Effect): return e.stat == "postpone")
+	return Unit.postponing_in(timed.keys())
+
+
+# Whether those statuses (a Read's effects, as afflicted() reads them) hold disablings off.
+static func postponing_in(effects: Array) -> bool:
+	return effects.any(func(e: Effect): return e.stat == "postpone")
 
 
 # What it postponed lands, once nothing postpones it any longer (tick(), Battle._strip()): each disabling for

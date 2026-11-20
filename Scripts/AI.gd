@@ -67,6 +67,7 @@ const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by 
 const CC := 0.5  # the share of a foe's next turn a cc takes when what carries it can't say (no foresee() afflicts: Brainfog, Interdict, a grip's drowning): a guess (_afflicting())
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
+const DELAY := 0.5  # the share of a disable's worth left it when its target postpones disablings (the postpone stat: Coyote Charm): it lands as the postpone ends, and one more held adds less (_held()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -148,6 +149,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			return log
 	if posture == &"" and (_steady(b, u, reads, log) or _starve(b, u, reads, log)):
 		return log
+	if posture == &"" and not u.pack.is_empty() and not _could_strike(b, u, reads):  # nothing to strike from here: armor first, then the walk
+		_dress(b, u, log)
 	if temper != &"stoic" and not rooted and _emboldened(u, reads):
 		_line_up(b, u, reads, log)  # to the tile its shoves tell most from, if there is one
 	if not _strike(b, u, reads, log) and temper != &"stoic":  # the stoic hold, striking only what comes into reach
@@ -171,6 +174,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		_support(b, u, reads, log)
 	if posture == &"":
 		_replenish(b, u, log)
+		_dress(b, u, log)
 	return log
 
 
@@ -392,11 +396,13 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	var saved := 0.0
 	var toll := 0
 	var cc := 0.0
+	var blocked := 0.0
 	if b and t:
 		p = _chance(u, s, r, b, t)
 		if s.attacks() and not (s.check and not s.check.suspicion) and not s.levels_down and p > 0.0:
 			dmg *= 1.0 - 0.5 * Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # a glance lands half
 			dmg *= _use_ratio(b, u, s, t, r, d)  # friction on its rolls, a pool its passives make of them
+		blocked = _blocks(b, u, s, r, t, float(d.get("avg", 0.0)))
 		var more := b.foresee(u, s, t)
 		cc = _afflicting(b, u, s, r, t, more)
 		if not more.is_empty():
@@ -411,9 +417,68 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 				toll += bh.unguarded(c)
 			var fund: Variant = u.funding(s)
 			saved = minf(share, 1.0) * (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT)
-	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + (1.0 if s.hostile and (not s.effects.is_empty() or s.disables) and &"cc" not in u.skill_tags(s) else 0.0) + cc \
+	var held := _held(r, t) if s.disables else 1.0  # (a disable that waits)
+	var value := minf(dmg, hp) + (KILL if dmg >= hp else 0.0) + ((1.0 if not s.effects.is_empty() else held) if s.hostile and (not s.effects.is_empty() or s.disables) and &"cc" not in u.skill_tags(s) else 0.0) + cc * held \
 			+ (KILL if s.drags() else 0.0) + RIDER * riders + spill  # into the water: the Siren's favourite
-	return p * value + saved - DEFENSE * toll - _hate(r)
+	return p * value + saved + blocked - DEFENSE * toll - _hate(r)
+
+
+# A self-directed turn with no blow to strike from where it stands, and what is left of one that struck, go to armor it carries (Unit.pack): the one that adds most Defense to an armor slot its
+# skills give (Unit.plate_slots()) that works now, over what is worn in it (Unit.plate_defense(): that slot's rules, so
+# Scrap Plating's cap and Power Armor's gate are read, not guessed). One a turn (armor takes most of one: Item.ap_cost());
+# none where nothing would add any, or the AP is short (Battle.equip()). What it takes off goes back in the pack.
+static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
+	if u.pack.is_empty():
+		return
+	var best: Array = []
+	var gain := 0
+	for s in u.plate_skills():
+		if not u.plate_works(s):
+			continue
+		var slot := Unit.plate_slot(s)
+		var worn: Item = u.get(slot)
+		var now := 0
+		if worn:
+			now = maxi(u.plate_defense(s, worn), 0) if u.can_wear(worn) else 0
+		for it in u.pack:
+			var d := u.plate_defense(s, it) if it and it.slot == "armor" and u.can_wear(it) else Behaviour.NO_ARMOR
+			if d != Behaviour.NO_ARMOR and d - now > gain:
+				gain = d - now
+				best = [slot, it]
+	if gain > 0:
+		var worn: Item = u.get(best[0])
+		if b.equip(u, best[1], best[0]):
+			u.pack.erase(best[1])
+			if worn:
+				u.pack.append(worn)
+			log.append("%s puts on %s, +%d Defense" % [u.name, best[1].name, gain])
+
+
+# What the plates t wears cost it when they block u's s: each armor slot its skills give it (Unit.plated_defense(), seen once
+# its armor shows: Read.defense) blocks the blows that would have hit without it - the chance s has with its Defense, less
+# the plate's, over the chance it has - and each block takes its skill's toll (Behaviour.slot_toll(): Power Armor's Power) off t
+# at POINT a point, for an attack of `dmg`. 0 for a foe in no plate, one whose armor isn't read, or a plate that takes nothing.
+static func _blocks(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, dmg: float) -> float:
+	if t.plating.is_empty() or r.defense == null or not s.attacks() or (s.check and not s.check.suspicion) or s.levels_down:
+		return 0.0
+	var worth := 0.0
+	var with := Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE))
+	for pair in t.plated_defense():
+		var toll := 0
+		for bh in pair[0].behaviours:
+			toll += bh.slot_toll(t, t.own_rank(pair[0]), roundi(dmg)) if bh else 0
+		if toll > 0 and pair[1] > 0:
+			worth += maxf(Battle.hit_chance(u, s, t, b, r.believed(GUESS_DEFENSE) - pair[1]) - with, 0.0) * toll * POINT
+	return worth
+
+
+# What is left of a disable's worth against t: all of it, unless r reads t to postpone disablings (Unit.postponing_in(): a status
+# with the postpone stat, so any source of one, not the Coyote Charm alone). Then it is held, not working, till that ends: DELAY, and
+# less for each disabling t already holds (Unit.postponed: what its side cast into the wait).
+static func _held(r: Read, t: Unit) -> float:
+	if t == null or not Unit.postponing_in(r.effects):
+		return 1.0
+	return DELAY / (1.0 + t.postponed.size())
 
 
 # What a skill's cc takes from the foe t's next turn, in HP: the share of the turn it takes (what its behaviours foresee,

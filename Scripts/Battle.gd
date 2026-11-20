@@ -1337,7 +1337,9 @@ static func crit_range(u: Unit, tags: Array[StringName] = []) -> int:
 # Rolls attack c by caster on target (attack_check()), counted among the caster's rolls this battle, and
 # tells who listens: attacked (the faces) and attack_rolled (the whole outcome: a Check.Roll, hit, crit or glance).
 func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
+	var rub := caster.friction  # (what c was made with: attack_check())
 	var hit := resolve(c)
+	hit.friction = rub
 	caster.rolls_made += 1
 	var v := use_of(caster)
 	hit.use = v.id if v else 0
