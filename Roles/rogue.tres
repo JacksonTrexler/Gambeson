@@ -169,5 +169,5 @@ stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 15, &"consti
 roots = Array[ExtResource("6_root")]([SubResource("Root_Blade")])
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom"), SubResource("Tab_trickster")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
-general = Array[StringName]([&"specialist"])
+general = Array[StringName]([&"specialist", &"journeyman"])
 choices = Array[ExtResource("treechoice")]([SubResource("Choice_illusion")])

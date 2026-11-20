@@ -91,6 +91,8 @@ func test_armor_is_a_skill() -> void:
 	u.armor = load("res://Items/robe.tres")
 	ok(u.defense([&"magical"]) - u.defense([&"physical"]) == 2, "Robe: wis mod against magic")
 	ok(u.armor_skills() == ([armor_skill] as Array[Skill]) and u.traits().is_empty() and not armor_skill in u.hotbar and not u.has_tag(&"trait"), "Armor works without a slot, and isn't listed among its traits")
+	u.auto_fill()
+	ok(not armor_skill.fits_bar() and not armor_skill.ai and armor_skill not in u.hotbar and not u.hotbar.any(func(x): return x != null and x.is_equipment()), "Armor is an equipment skill: it fits no hotbar slot, auto-fill leaves it off, and it is the user's name (no ??)")
 	u.afflict(load("res://Effects/traits_suppressed.tres"), 2)
 	var bare := u.mod(&"dexterity") + u.mod(&"constitution")
 	ok(u.armor_defense() == bare and u.defense([&"magical"]) == u.defense([&"physical"]), "traits suppressed: the armor sets nothing, unarmored (%d)" % bare)

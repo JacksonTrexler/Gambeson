@@ -8,6 +8,7 @@ extends Resource
 @export var kind := ""  # the kind of path it is, shown before its name ("Calling"); empty: the class's own
 @export var radial := false  # drawn as a wheel (the Adventurer's own: SkillWheel) rather than growing from the bottom (SkillGrid)
 @export var category := &""  # a general tree's (kind General): martial, specialist or magical (the Caster tree); empty: the base General tree (Unit.general_trees())
+@export var grant := &""  # a general tree only some units get (kind General): the key a class lists in Role.general, or a unit is granted at run time (Unit.grant_tree(): an adventure's reward) - Student, Journeyman. Empty: by its category. Its category still sets what its tiers need
 @export var color := Color(0, 0, 0, 0)  # its colour, if set; else by what it is (tone())
 @export var center: Skill
 @export var core: Array[Skill] = []
@@ -49,6 +50,11 @@ func offers(s: Skill) -> bool:
 # class opens it (Role.general), or who has learned what opens it (Martialist, Thaumaturgist).
 func general() -> bool:
 	return kind == "General"
+
+
+# What opens it: its grant key, else its category (&"": the base General tree, everyone's).
+func key() -> StringName:
+	return grant if grant else category
 
 
 # Its colour (its primary) on the skills screen: its own text in it, its background and its tree's in

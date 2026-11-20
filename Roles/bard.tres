@@ -115,4 +115,4 @@ innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("
 stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Song"), SubResource("Tab_Freedom")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
-general = Array[StringName]([&"specialist", &"magical"])
+general = Array[StringName]([&"specialist", &"magical", &"journeyman"])
