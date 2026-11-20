@@ -60,6 +60,7 @@ signal disciplined(u: Unit, burned: int)  # u burned AP into an attack (Discipli
 signal neutralized(u: Unit, by: Unit, how: StringName)  # taken out of the fight (neutralize()): &"downed", &"down" (Downed), &"killed"; by: who last hit it
 signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
 signal reacted(u: Unit, skill: Skill, r: Behaviour.Reaction)  # u's passive reacted to a moment (react()): r.trigger, r.subject, r.by
+signal passive_fired(u: Unit, skill: Skill, amount: int, stat: StringName, rounded: int)  # a passive (or what a skill put on: regen) acted on u: amount of stat (&"hp"; null skill: the stat itself acted, &"luck"), rounded -1 down, 1 up, 0 exact (passive()); the HUD signs it
 signal interrupt_began(u: Unit)  # u acts out of turn (grant_interrupt(): Final Act); the turn under way waits
 signal interrupt_ended(u: Unit)  # ...and the interrupted turn resumes
 
@@ -521,8 +522,12 @@ func _listen(u: Unit) -> void:
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
 	_note_attack(u, blow)
-	for h in u.hooks():
-		blow.damage = h[0].hurt(self, u, h[1], blow.damage)
+	for x in u.on_passives:  # (Unit.hooks(), with the skill each comes from: one that spares it some signs it)
+		for h in x.skill.behaviours:
+			var was: int = blow.damage
+			blow.damage = h.hurt(self, u, x.rank, was)
+			if blow.damage < was:
+				passive(u, x.skill, was - blow.damage, &"hp")
 
 
 # u's skills are about to be disabled (Unit.disabling, d): the passives of whoever disables it, then its own,
@@ -549,8 +554,12 @@ func _on_recovered(u: Unit, pool: Variant, n: int) -> void:
 func _on_being_healed(u: Unit, got: Dictionary) -> void:
 	for o: Unit in units.values():
 		if o != u and o.is_alive():
-			for h in o.hooks():
-				got.hp = h[0].healing(self, o, h[1], u, got.hp)
+			for x in o.on_passives:  # (Unit.hooks(), with the skill each comes from: one that takes a cut signs it on its holder)
+				for h in x.skill.behaviours:
+					var was: int = got.hp
+					got.hp = h.healing(self, o, x.rank, u, was)
+					if got.hp < was:
+						passive(o, x.skill, was - got.hp, &"hp")
 
 
 func unit_at(c: Vector2i) -> Unit:
@@ -1011,6 +1020,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	var strength := decay(caster, skill, target)  # set before paying: mana spent is no decay
 	if not spreading and not caster.pay_for(skill, rebate(caster, skill, target, foe).x):
 		return false
+	if not spreading:
+		_lucky_use(caster, skill, target)
 	caster.face(target.cell)  # aiming it turns the caster to face its target (a miss too)
 	var r := caster.rank(skill)
 	var m := caster.mods(skill)  # its modifiers: per-rank and per-stat values go through them (Modifiers)
@@ -1751,6 +1762,7 @@ func react_with(r: Behaviour.Reaction, holder: Unit, x: Slot) -> bool:
 		var n: Dictionary = _reacted.get_or_add(holder, {})
 		n[x.skill] = n.get(x.skill, 0) + 1
 		reacted.emit(holder, x.skill, r)
+		passive(holder, x.skill, 0, &"")
 	return did
 
 
@@ -1781,6 +1793,13 @@ static func reactions_of(u: Unit) -> Array[Slot]:
 		return i if i >= 0 else 1000 + out.find(x)
 	out.sort_custom(func(a: Slot, b: Slot): return at.call(a) < at.call(b))
 	return out
+
+
+# The one call every passive that acts on a unit makes so the player can see it (passive_fired; docs/plans/w7-passives.md):
+# u, the skill (null: a stat acting by itself, as Luck), the amount of stat it moved and how that was rounded (Luck.rounded()).
+# Only when it really acts: never from a preview, a plan or the AI's weighing.
+func passive(u: Unit, skill: Skill, amount: int, stat: StringName, rounded := 0) -> void:
+	passive_fired.emit(u, skill, amount, stat, rounded)
 
 
 # How many times u's passive s has reacted this battle (Final Act: once).
@@ -3211,6 +3230,20 @@ func in_reach(caster: Unit, skill: Skill, target: Unit) -> bool:
 	return over < Luck.MARGIN and caster.luck - target.luck > 0
 
 
+# A use luck alone made possible signs itself (passive(), "Luck +n"): from the clover slot (Unit.clover(): working only
+# while lucky), or a target in reach only by luck's rounding (in_reach()). Asked once a use is paid for, never in planning.
+func _lucky_use(caster: Unit, skill: Skill, target: Unit) -> void:
+	var c := caster.clover()
+	if c >= 0 and c < caster.hotbar.size() and caster.hotbar[c] == skill:
+		var luck := caster.luck
+		if luck > 0:
+			passive(caster, null, luck, &"luck")
+	elif target and target != caster and Vector2(caster.cell).distance_to(Vector2(target.cell)) > skill_range(caster, skill, target) + 0.0001:
+		var net := caster.luck - target.luck
+		if net > 0:
+			passive(caster, null, net, &"luck")
+
+
 # --- Movement
 
 # Walks the straight line toward `dest` (see walk()), paying movement and the same AP per step.
@@ -3224,6 +3257,8 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		return passed
 	var w := walk(u, dest)
 	passed = w.path
+	if w.squeezed > 0 and w.squeezed <= passed.size():  # a step only luck paid for, and it stood or passed there
+		passive(u, null, u.luck, &"luck")
 	if w.blocker and not read(u, w.blocker).located():  # it walked into something it couldn't place: that it's there, at least
 		note(u, w.blocker)
 		bumped.emit(u, w.blocker)
@@ -3373,6 +3408,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 	var costs: Array[float] = []
 	var blocker: Unit = null
 	var bag := {}  # its steps' hooks' scratch (Behaviour.step_cost()); kept on the unit as it walks (Unit.tally)
+	var squeezed := 0  # the step (1 the first) luck squeezed in, 0 none: travel() signs it
 	var left := u.move_left() - escape_cost(u)
 	if held_by(u) and not expected:
 		left = 0.0  # held: travel() breaks it free first
@@ -3391,6 +3427,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 					blocker = other  # it could have paid for the ground, not for getting past
 				break
 			cost = left  # squeezed in on what was left
+			squeezed = path.size() + 1
 		left -= cost
 		costs.append(cost)
 		path.append(c)
@@ -3403,7 +3440,7 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		costs.pop_back()
 	if expected:
 		rng.state = state
-	return {line = ln, path = path, costs = costs, blocker = blocker, bag = bag}
+	return {line = ln, path = path, costs = costs, blocker = blocker, bag = bag, squeezed = squeezed}
 
 
 # What one step of u's costs in movement, from tile `prev` (ground `from`) onto c (ground `t`) with `other`
@@ -4129,10 +4166,28 @@ func _mend(u: Unit) -> void:
 		for pair in u._effects():
 			if pair[0].stat in ["regen", "regen_hp"]:
 				power = maxi(power, pair[1])
-		mend(u, Luck.settle(regen * u.max_hp + flat, u.luck, true), power)
+		var raw := regen * u.max_hp + flat
+		var hp := Luck.settle(raw, u.luck, true)
+		var was := u.hp
+		mend(u, hp, power)
+		if u.hp > was:  # signed by what put the regen on (Rejuvinate), else as Regen itself
+			var by := _regen_source(u)
+			passive(u, by, u.hp - was, &"hp" if by else &"regen", Luck.rounded(raw, hp) if u.hp - was == hp else 0)  # capped at max HP: not the rounded amount
 	var poison := u.stat(&"poison")
 	if poison > 0.0 and u.is_alive():
 		u.damage(Luck.settle(poison * u.max_hp, u.luck, false))
+
+
+# The skill behind u's regen, for its sign (passive()): a passive of its own that regens, else what put a regen on it.
+func _regen_source(u: Unit) -> Skill:
+	for x in u.on_passives:
+		for e in x.skill.effects:
+			if e.stat in ["regen", "regen_hp"]:
+				return x.skill
+	for e in u.timed:
+		if e.stat in ["regen", "regen_hp"] and u.timed[e].skill:
+			return u.timed[e].skill
+	return null
 
 
 # The effect e has just been put on u as a (a.by set): if it's a forced move (shove, fear, entrance) u is driven

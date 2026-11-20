@@ -222,8 +222,8 @@ func _ready() -> void:
 	battle.revived.connect(_on_revived)
 	battle.reacted.connect(func(u: Unit, s: Skill, r: Behaviour.Reaction):
 		_log("%s %s%s" % [_tag(u), u.skill_name(s), " (%d vs %d)" % r.rolled if r.rolled.size() == 2 else ""])
-		overlay.float_text(u, u.skill_name(s), GOLD)
-		_mark())
+		_mark())  # its sign: passive_fired, right after
+	battle.passive_fired.connect(_on_passive)
 	battle.directed = _directs
 	battle.interrupt_began.connect(func(u: Unit): _log("%s acts out of turn" % _tag(u)))  # now, not deferred: Battle's AI acts as it opens
 	battle.interrupt_began.connect(_on_interrupt, CONNECT_DEFERRED)
@@ -2046,14 +2046,14 @@ var _blows := {}
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
-	_blows[u] = blow.tags
+	_blows[u] = blow
 	(func() -> void: _blows.erase(u)).call_deferred()
 
 
 # A damage number in the colour of what the blow was made of (Tags.mark() past the broad words: a
 # fireball's in fire's), else red.
 func _hurt_colour(u: Unit) -> Color:
-	var t := Tags.mark(_blows.get(u, []), Tags.BROAD)
+	var t := Tags.mark(_blows[u].tags if u in _blows else [], Tags.BROAD)
 	return Tags.color(t) if t else FOE
 
 
@@ -2062,9 +2062,36 @@ func _on_hp(was: int, now: int, u: Unit) -> void:
 	if not _hp_shows(u):
 		return
 	if now < was:
-		overlay.float_text(u, "-%d" % (was - now), _hurt_colour(u))
+		var blow: Variant = _blows.get(u)  # rounded as the blow it came from was, if it all came from one (Unit.hit())
+		overlay.float_text(u, "-%d" % (was - now), _hurt_colour(u), blow.rounded if blow != null and blow.damage == was - now else 0)
 	elif now > was:
 		overlay.float_text(u, "+%d" % (now - was), FRIEND)
+
+
+# Signs for what isn't the stat itself (null skill: Luck, Regen): their colours. Anything else takes the tag colour of its name.
+const SIGN_TINT := {&"luck": SkillSlot.CLOVER, &"regen": FRIEND}
+
+
+# A passive acted on u (Battle.passive_fired, docs/plans/w7-passives.md). On the unit the player views, its slot (hotbar
+# or traits) lights up (SkillSlot.flash()); otherwise, or with no slot to light, its sign floats over the unit: icon,
+# name, amount, in its tag's colour (a stat acting by itself, as Luck, with a glint). Only what the player's side can
+# see, and only as much of it as it makes out (skill_sense()).
+func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int) -> void:
+	if not is_instance_valid(u) or unit_seen(u.cell) != u:
+		return
+	var sense := skill_sense(u, s, view(u) if u != command.leader else null) if s else 2
+	if sense == 0:
+		return
+	if s and u == selected and bar.visible:
+		for slot: SkillSlot in bar.get_children() + trait_bar.get_children():
+			if slot.skill == s:
+				slot.flash()
+				return
+	var text := u.skill_name(s) if s else String(stat).capitalize()
+	if amount != 0 and sense == 2:
+		text += " %+d%s" % [amount, " " + String(stat) if s and stat else ""]
+	var col: Color = SkillSlot.tint(s).lerp(Color.WHITE, 0.3) if s else SIGN_TINT.get(stat, MUTED)
+	overlay.float_sign(u, s.icon() if s else null, text, col, rounded, s == null)
 
 
 func _watch_unit(u: Unit) -> void:
