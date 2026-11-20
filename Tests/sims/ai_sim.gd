@@ -13,6 +13,7 @@ extends SceneTree
 #   rider    Poach and Slam Jam among Strike and Hex, foes near falling: the choices, the rounds to win
 #   cc       Stun among Strike against a hard hitter and a weak foe (what a cc is worth, AI._afflicting()): who is stunned, idle turns
 #   armor    a foe in plate or in rags, its Defense not read: Strike or Hex (GUESS_DEFENSE)
+#   plate    plated foes (Power Armor, Scrap Plating): v(1) carrying spare armor dresses (rounds, Defense) with a foe near and far; Strike at two foes of one Defense, only one's blocks costing it Power
 #   worn     Strike and Hex worn by exhaustion, 10 rounds on a soaker (WORN)
 #   hide     Invisibility offered to an ally with a watcher of rising wisdom (SEEN)
 # Saves and settings go to per-process files, as run.gd (a sim must never touch the player's own).
@@ -97,7 +98,7 @@ func _initialize() -> void:
 	var keys: GDScript = load("res://Scripts/KeyBinds.gd")
 	keys.set("SAVE", "user://keybinds_sim_%d.cfg" % pid)
 	_museum = load(MUSEUM)
-	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "worn", "hide"]:
+	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide"]:
 		if words.is_empty() or words.any(func(w: String): return w in sc):
 			await call("_" + sc, n)
 	for p in [Prefs.SAVE, keys.get("SAVE"), save.get("PATH"), save.get("PATH") + ".bad", save.get("PATH") + ".tmp"]:
@@ -510,6 +511,58 @@ func _armor(n: int) -> void:
 		worth["hp_read"] = read.hp
 		_drop(t)
 		_say("armor-" + ("plated" if plated else "bare"), worth.merged({strike = float(strikes) / n, hex = float(hexes) / n, damage = dmg / n, unread = unread}))
+	await process_frame
+
+
+# v(1) carries a Bulwark and has Scrap Plating: a foe v(3) far off or in reach (it dresses in the first round it has AP over:
+# Defense after 3 rounds, strikes); then v(1) at two foes of Defense 20 - v(4) in the slot of Power Armor, v(3) wearing it proper (listed first: a tie goes to it)
+# - its first blow's target and the Power it drains.
+func _plate(n: int) -> void:
+	for near in [false, true]:
+		var defense := 0.0
+		var dressed := 0
+		var strikes := 0
+		for seed in n:
+			var t := await _fresh(seed)
+			t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3) if near else Vector2i(8, 6)})
+			t.v(1).learned.append(t.slot(t.sk("scrap_plating"), 3))
+			t.v(1).pack.append(t.bulwark())
+			t.v(1).refresh()
+			t.soak(t.v(3), 300)
+			for r in 3:
+				t.turn([t.v(1)])
+				t.b.end_turn()
+			defense += t.v(1).defense()
+			dressed += 1 if t.v(1).get(&"plate_scrap_plating") != null else 0
+			strikes += t.uses("Villager1", "Strike")
+			_drop(t)
+		_say("plate-dress-" + ("near" if near else "far"), {defense = defense / n, dressed = dressed, strikes = float(strikes) / n})
+	var first := 0
+	var power := 0.0
+	var power_hits := 0
+	for seed in n:
+		var t := await _fresh(seed)
+		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3), t.v(4): Vector2i(3, 3)})
+		for foe: Unit in [t.v(3), t.v(4)]:
+			foe.learned.clear()
+			foe.armor = null
+			foe.plating.clear()
+			t.soak(foe, 300)
+		t.v(4).learned.append(t.slot(t.sk("power_armor"), 3))
+		t.v(3).learned.append(t.slot(t.sk("scrap_plating"), 5))
+		t.v(4).equip(t.bulwark(), Unit.plate_slot(t.sk("power_armor")))
+		t.v(3).armor = t.bulwark()
+		t.v(3).refresh()
+		t.v(4).refresh()
+		var scrap := AI.score(t.v(1), t.strike, t.b.read(t.v(1), t.v(3)), t.b, t.v(3))
+		var power_armor := AI.score(t.v(1), t.strike, t.b.read(t.v(1), t.v(4)), t.b, t.v(4))
+		var pre := t.v(4).energy
+		t.turn([t.v(1)])
+		first += 1 if t.uses("Villager1", "Strike") > 0 and t.logs.any(func(l: String): return l.begins_with("Villager1 uses Strike on") and t.v(4).name in l) else 0
+		power += pre - t.v(4).energy
+		power_hits += 1 if power_armor > scrap else 0
+		_drop(t)
+	_say("plate-blocks", {struck_power_armor_first = first, of = n, power_drained = power / n, scored_higher = power_hits})
 	await process_frame
 
 
