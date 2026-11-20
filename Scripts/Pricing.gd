@@ -36,15 +36,31 @@ const TABLE := {
 	&"ap_max": 12.0,
 	&"energy_per": 0.5,
 	# Cost profiles (Skill.costs): "[level] [only|needs|prefers] <dimension>" clauses, or "<word> rank", or "even".
-	&"levels": {&"none": 0.0, &"no": 0.0, &"free": 0.0, &"low": 0.5, &"light": 0.5, &"cheap": 0.5,
-			&"moderate": 1.0, &"medium": 1.0, &"normal": 1.0, &"even": 1.0, &"high": 1.5, &"heavy": 1.5,
-			&"very high": 2.0, &"very heavy": 2.0},
+	# The weight of each Difficulty rung a profile can name (none/low/moderate/high/very high and every synonym
+	# Difficulty.WORDS has for them); LEVEL_WORDS adds what only a cost says.
+	&"levels": {&"trivial": 0.0, &"easy": 0.5, &"standard": 1.0, &"difficult": 1.5, &"unfair": 2.0},
+	&"level_words": {&"no": &"trivial", &"free": &"trivial", &"cheap": &"easy", &"even": &"standard"},
 	&"rank": {&"flat": 0.0, &"scaled": 1.0, &"steep": 2.0},  # x rank's growth past rank I
 	&"generic": [&"cost", &"energy", &"resource"],  # the resource cost, paid by whatever its tags let pay
 	&"reserves": [&"mana", &"stamina", &"focus", &"sweet_nothings"],  # Reserves/<id>.tres
 }
 
 static var _profiles := {}  # profile text -> its parse (profile())
+
+
+# A cost level word's weight (Difficulty's words, TABLE's levels), or -1 if it isn't one.
+static func level_weight(word: StringName) -> float:
+	var rung: StringName = TABLE[&"level_words"].get(word, Difficulty.word(word))
+	return TABLE[&"levels"].get(rung, -1.0)
+
+
+# Every word a profile takes as a level, in the order the error lists them.
+static func level_names() -> Array:
+	var out := []
+	for w in Difficulty.WORDS:
+		if level_weight(w) >= 0.0:
+			out.append(w)
+	return out + TABLE[&"level_words"].keys()
 
 
 # A cost profile read: {ap, cost (weights), rank (growth), reserve (a Reserves/ id or &""), only (bool),
@@ -79,10 +95,10 @@ static func profile(text: String) -> Dictionary:
 		var level := 1.0
 		if not words.is_empty():
 			var lw := StringName(" ".join(PackedStringArray(words)))
-			if not TABLE[&"levels"].has(lw):
-				out[&"error"] = "\"%s\": no level \"%s\" (%s)" % [raw.strip_edges(), lw, ", ".join(PackedStringArray(TABLE[&"levels"].keys()))]
+			level = level_weight(lw)
+			if level < 0.0:
+				out[&"error"] = "\"%s\": no level \"%s\" (%s)" % [raw.strip_edges(), lw, ", ".join(PackedStringArray(level_names()))]
 				break
-			level = TABLE[&"levels"][lw]
 		if dim in [&"health", &"hp", &"life"]:
 			out[&"error"] = "\"%s\": no skill costs health yet (a mechanic first: new-mechanic)" % raw.strip_edges()
 			break

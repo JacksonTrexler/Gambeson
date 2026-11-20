@@ -125,5 +125,5 @@ func describe_as(c: Cast) -> String:
 	var lines := ["A {r:%d} degree cone, {r:%d} tiles long: it lands on every unit in it but the caster" % [roundi(degrees), long]]
 	if s and s.difficulty:
 		lines.append("%s: a %s %s (%s, DC {r:%d}) - passing, none of it lands; failing by a quarter of the DC or less, half"
-				% [Glossary.term(&"evadable"), Glossary.term(s.difficulty), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true), Difficulty.dc(s.difficulty, m.irank(c.rank, &"rank_impact")) + m.check])
+				% [Glossary.term(&"evadable"), Glossary.term(Difficulty.word(s.difficulty)), Glossary.term(&"check", "check"), Glossary.mod(&"dex", true), Difficulty.dc(s.difficulty, m.irank(c.rank, &"rank_impact")) + m.check])
 	return "\n".join(lines)

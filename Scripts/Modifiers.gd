@@ -41,12 +41,12 @@ const DILUTE_CHECK := 3.0
 #   beta_up / beta_down (tags, β+ / β-)   every channel's k x (1 + BETA) or / (1 + BETA)
 #   cohen_up / cohen_down (tags, d+ / d-) rank impact reads COHEN / rank more (or less) than the rank
 #                   itself: a big nudge at rank I, smoothing out as rank rises
-# Only the tags β and d are secret: sees_knobs() says who they're shown to (very high int).
+# Only the tags β and d are secret: sees_knobs() says who they're shown to (KNOB_SIGHT int).
 const COEFFICIENTS := {&"impact": [&"rank_impact"], &"range": [&"rank_range"], &"modified": [&"stat_impact", &"stat_range"]}
 const KNOBS: Array[StringName] = [&"beta_up", &"beta_down", &"cohen_up", &"cohen_down"]
 const BETA := 0.25
 const COHEN := 1.5
-const VERY_HIGH_INT := 16  # an int score at which a viewer sees β and d (Unit.stat(int)): the adventurer's 16 does
+const KNOB_SIGHT := &"very high"  # the int a viewer needs to see β and d (Difficulty.stat_at: 16, which the adventurer has across)
 
 static var NONE := Modifiers.new()  # no modifiers: shared, never added to
 
@@ -137,9 +137,9 @@ func copy() -> Modifiers:
 	return m
 
 
-# Whether a viewer is shown the secret knobs (β and d): very high int.
+# Whether a viewer is shown the secret knobs (β and d): an int of KNOB_SIGHT (very high).
 static func sees_knobs(u: Unit) -> bool:
-	return u != null and u.stat(&"intelligence") >= VERY_HIGH_INT
+	return u != null and u.stat(&"intelligence") >= Difficulty.stat_at(KNOB_SIGHT)
 
 
 # These modifiers without the skill's own knobs: what its price is read under (Pricing.ap_at()), so a
@@ -281,7 +281,7 @@ static func why_not(word: StringName, s: Skill) -> String:
 			return "" if t.beneficial_contingency() else "no contingency"
 	if word in s.tags:
 		return "already %s" % word
-	if word in Difficulty.LADDER or word in Difficulty.MAGNITUDE:
+	if word in Difficulty.LADDER or word in Difficulty.MAGNITUDE:  # the rungs, not their synonyms: light and heavy are tags too
 		return "a difficulty, not a tag"
 	match kind(word):
 		&"damage":

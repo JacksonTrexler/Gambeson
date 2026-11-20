@@ -104,9 +104,9 @@ func describe() -> String:
 	if binding:
 		lines.append("Bound on: locked while Shackled; unlocked, taking it off takes %d AP" % ranked())
 		if picks:
-			lines.append("Lockpicked off: a %s dex check (DC %d)" % [Glossary.name_of(picks).to_lower(), Difficulty.dc(picks, ranked())])
+			lines.append("Lockpicked off: a %s dex check (DC %d)" % [Glossary.name_of(Difficulty.word(picks)).to_lower(), Difficulty.dc(picks, ranked())])
 		if prised:
-			lines.append("Pried apart: a %s str check (DC %d)" % [Glossary.name_of(prised).to_lower(), Difficulty.dc(prised, ranked())])
+			lines.append("Pried apart: a %s str check (DC %d)" % [Glossary.name_of(Difficulty.word(prised)).to_lower(), Difficulty.dc(prised, ranked())])
 		lines.append("Weight %d" % heft())
 	if burning:
 		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * ranked()))

@@ -16,8 +16,8 @@ extends RefCounted
 
 const CHANNELS: Array[StringName] = [&"rank_range", &"rank_impact", &"stat_range", &"stat_impact"]
 
-# The user's damage intensities (low, moderate low, moderate, high, extreme) on Difficulty.MAGNITUDE.
-const INTENSITY := {&"low": &"faint", &"moderate_low": &"mild", &"moderate": &"moderate", &"high": &"strong", &"extreme": &"severe"}
+# The user's damage intensities (low, moderate low, moderate, high, extreme) are words on Difficulty's ladder:
+# Difficulty.magnitude() gives the MAGNITUDE each reads as (faint, mild, moderate, strong, severe).
 # A tier's average damage at rank I (no mod) -> its intensity, for skills that don't name one.
 const BANDS := [[3.0, &"faint"], [4.5, &"mild"], [6.0, &"moderate"], [8.0, &"strong"], [10.0, &"intense"], [14.0, &"severe"]]
 const IMPACTS: Array[StringName] = [&"tame", &"impactful"]

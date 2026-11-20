@@ -16,6 +16,33 @@ func test_ladder() -> void:
 	ok(Check.versus(2, &"unfair", 2).target == 13, "a Check against a difficulty at a rank")
 
 
+# The one table of difficulty words (Difficulty.WORDS): every word resolves to a rung, a synonym is its rung's
+# DC, the old numbers stand, and the words the other scales used (cost levels, the user's intensities, "very
+# high" int) are the same words.
+func test_words() -> void:
+	var rows := [["none", &"trivial"], ["easy", &"easy"], ["low", &"easy"], ["light", &"easy"], ["moderate low", &"approachable"], ["Moderate_Low", &"approachable"],
+			["moderate", &"standard"], ["medium", &"standard"], ["normal", &"standard"], ["high", &"difficult"], ["hard", &"difficult"], ["heavy", &"difficult"],
+			["very high", &"unfair"], ["very  hard", &"unfair"], ["very_heavy", &"unfair"], ["extreme", &"impossible"], ["impossible", &"impossible"]]
+	ok(rows.all(func(r): return Difficulty.word(r[0]) == r[1]), "synonyms, any case, _ or a space: %s" % [rows.filter(func(r): return Difficulty.word(r[0]) != r[1])])
+	ok(Difficulty.LADDER.keys().all(func(r): return Difficulty.word(r) == r) and Difficulty.WORDS.values().all(func(r): return r in Difficulty.LADDER), "every rung names itself; every word lands on a rung")
+	ok(Difficulty.word("nonsense") == &"" and Difficulty.word(&"") == &"" and Difficulty.index("nonsense") == -1 and Difficulty.index("very high") == 5, "a non-word is none")
+	ok(Difficulty.dc(&"hard", 3) == Difficulty.dc(&"difficult", 3) and Difficulty.dc(&"hard", 3) == 16 and Difficulty.dc(&"very high") == 20 and Difficulty.dc(&"low", 2) == 5, "a synonym sets the rung's own DC")
+	var old := {&"trivial": [1, 1, 1, 1, 1, 1], &"easy": [4, 3, 5, 7, 9, 11], &"approachable": [8, 5, 8, 11, 14, 17], &"standard": [12, 6, 9, 12, 15, 18],
+			&"difficult": [16, 8, 12, 16, 20, 24], &"unfair": [20, 9, 13, 17, 21, 25], &"impossible": [30, 10, 14, 18, 22, 26]}  # ranks 0 (flat) to 5, before the table
+	ok(old.keys().all(func(r): return range(6).map(func(k): return Difficulty.dc(r, k)) == old[r]), "no DC moved: the ladder at ranks 0 to 5 is as it was")
+	ok(Difficulty.dc(RecoveryEndurance.CHECK_DC) == 12, "Recovery Endurance's save is the flat Standard rung, 12")
+	# the user's intensities and "very high" are words on the ladder, a magnitude each
+	var mags := {"low": &"faint", "moderate_low": &"mild", "moderate": &"moderate", "high": &"strong", "extreme": &"severe", "very high": &"intense"}
+	ok(mags.keys().all(func(w): return Difficulty.magnitude(w) == mags[w]) and Difficulty.magnitude("nonsense") == &"", "the user's intensities read through the ladder")
+	# cost levels: the old words, the old weights (prices never move); the rest of the ladder is no cost level
+	var cost := {"none": 0.0, "no": 0.0, "free": 0.0, "low": 0.5, "light": 0.5, "cheap": 0.5, "moderate": 1.0, "medium": 1.0, "normal": 1.0, "even": 1.0,
+			"high": 1.5, "heavy": 1.5, "very high": 2.0, "very heavy": 2.0, "hard": 1.5, "very hard": 2.0}
+	ok(cost.keys().all(func(w): return Pricing.level_weight(StringName(w)) == cost[w]), "cost levels, old words and new, weigh what they did")
+	ok(Pricing.profile("very hard ap, light mana")[&"ap"] == 2.0 and Pricing.profile("extreme ap")[&"error"] != "" and Pricing.profile("moderate low ap")[&"error"] != "", "a profile reads the shared words; a rung with no weight is no level")
+	# who sees the knobs: very high int, 16
+	ok(Difficulty.stat_at(Modifiers.KNOB_SIGHT) == 16 and Difficulty.stat_at(&"very high") == 16 and Difficulty.stat_at(&"low") == 0, "very high is an int of 16 (the adventurer's)")
+
+
 func test_evade() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2)})
 	var seen := []

@@ -53,7 +53,7 @@ func test_terms() -> void:
 	var t := SkillTerms.of(s)
 	ok(t.has(&"rank_range") and t.has(&"rank_impact") and t.has(&"stat_range") and t.has(&"stat_impact"), "derived from its fields: all four channels %s" % [t.channels])
 	ok(t.intensity == &"mild" and t.damage and t.check and t.impact == &"tame", "d6: mild (the user's moderate low); it attacks; its effect is tame")
-	ok(SkillTerms.INTENSITY[&"extreme"] == &"severe" and SkillTerms.INTENSITY[&"low"] == &"faint", "the user's intensities on Difficulty.MAGNITUDE")
+	ok(Difficulty.magnitude(&"extreme") == &"severe" and Difficulty.magnitude(&"low") == &"faint", "the user's intensities on Difficulty.MAGNITUDE")
 	var ts := SkillTerms.of(stoneskin)
 	ok(ts.beneficial_contingency() and is_equal_approx(ts.contingencies[0][1], 0.15), "Stoneskin's above 85% HP is a contingency, share 0.15")
 	var kick: Skill = load("res://Skills/kick.tres")

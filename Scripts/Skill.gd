@@ -693,7 +693,7 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			lines.append("Gives %s for {t:%d turn%s}" % [grants.name, lasts(rank, u), "" if lasts(rank, u) == 1 else "s"])
 		if binds:
 			lines.append("On a hit: %s, weight {r:%d}, take the place of its trinket. Taking them off once unlocked takes {r:%d} AP; locked, they're lockpicked (%s, DC {r:%d}) or pried apart (%s, DC {r:%d})"
-					% [binds.name, ri, ri, Glossary.term(binds.picks), Difficulty.dc(binds.picks, ri), Glossary.term(binds.prised), Difficulty.dc(binds.prised, ri)])
+					% [binds.name, ri, ri, Glossary.term(Difficulty.word(binds.picks)), Difficulty.dc(binds.picks, ri), Glossary.term(Difficulty.word(binds.prised)), Difficulty.dc(binds.prised, ri)])
 		if chain:
 			lines.append("Attacks cease on a miss. -1 to hit and damage for each hit in a row")
 		if opening:

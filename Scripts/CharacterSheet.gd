@@ -75,8 +75,8 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		if it and editable and it.binding:  # shackles: locked, pick or pry them; unlocked, off for their rank in AP
 			var ap := " · %d AP" % it.rank
 			if u.shackled():
-				row.add_child(_button("Pick (%s %d)%s" % [Glossary.name_of(it.picks), Difficulty.dc(it.picks, it.rank), ap], func() -> void: unshackled.emit(unit, &"pick")))
-				row.add_child(_button("Pry (%s %d)%s" % [Glossary.name_of(it.prised), Difficulty.dc(it.prised, it.rank), ap], func() -> void: unshackled.emit(unit, &"pry")))
+				row.add_child(_button("Pick (%s %d)%s" % [Glossary.name_of(Difficulty.word(it.picks)), Difficulty.dc(it.picks, it.rank), ap], func() -> void: unshackled.emit(unit, &"pick")))
+				row.add_child(_button("Pry (%s %d)%s" % [Glossary.name_of(Difficulty.word(it.prised)), Difficulty.dc(it.prised, it.rank), ap], func() -> void: unshackled.emit(unit, &"pry")))
 			else:
 				row.add_child(_button("Take off" + ap, func() -> void: unshackled.emit(unit, &"unlock")))
 		elif it and editable:

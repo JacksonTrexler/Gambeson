@@ -21,7 +21,7 @@
 
 A cost profile (Skill.costs; Scripts/Pricing.gd profile(), docs/plans/w2-cost.md) skews the computed price:
 comma-separated clauses "[level] [only|prefers] <dimension>" - levels no, low, moderate (the default), high,
-very high (light/heavy, free/cheap too); dimensions ap, cost (whatever pays), or a reserve: mana, stamina, focus,
+very high (light/heavy, free/cheap too; every word is a rung of the check ladder, Difficulty.WORDS: hard, very hard...); dimensions ap, cost (whatever pays), or a reserve: mana, stamina, focus,
 sweet nothings ("mana" alone: preferred, paid with first; "mana only": nothing else pays) - plus "flat rank"
 (every rank costs as rank I) or "steep rank" (rank's growth doubled), or "even" (the baseline).
 
@@ -242,9 +242,32 @@ def raise_ceiling(note):
     return 0
 
 
-# Cost profiles (Skill.costs), as Scripts/Pricing.gd profile() reads them: keep the two in step.
-LEVELS = {"none": 0.0, "no": 0.0, "free": 0.0, "low": 0.5, "light": 0.5, "cheap": 0.5, "moderate": 1.0, "medium": 1.0,
-          "normal": 1.0, "even": 1.0, "high": 1.5, "heavy": 1.5, "very high": 2.0, "very heavy": 2.0}
+def _gd_dict(path, name, key_re=r'&"([^"]+)"', val_re=r'(&"\w+"|[-\d.]+)'):
+    """The `name`-keyed dictionary literal (one `&"key": value` pair per match) in a Scripts/*.gd file, as a dict."""
+    t = read(path)
+    m = re.search(r"(?:const %s :=|&\"%s\":) \{(.*?)\}" % (name, name), t, re.S) or die("%s: no %s" % (path, name))
+    out = {}
+    for k, v in re.findall(key_re + r":\s*" + val_re, m.group(1)):
+        out[k] = v[2:-1] if v.startswith("&") else (v if v == "[" else float(v))
+    return out
+
+
+# The one table of difficulty words (Scripts/Difficulty.gd WORDS: word -> rung, in LADDER's order) and what Pricing makes of
+# them for a cost profile (its levels by rung, plus the cost-only words): read from the .gd files, never restated here.
+DIFFICULTY_WORDS = _gd_dict("Scripts/Difficulty.gd", "WORDS")
+LADDER_RUNGS = list(_gd_dict("Scripts/Difficulty.gd", "LADDER", val_re=r"(\[)").keys())
+MAGNITUDES = list(_gd_dict("Scripts/Difficulty.gd", "MAGNITUDE").keys())
+_RUNG_WEIGHT = _gd_dict("Scripts/Pricing.gd", "levels")
+_COST_WORDS = _gd_dict("Scripts/Pricing.gd", "level_words")
+LEVELS = {w: _RUNG_WEIGHT[r] for w, r in {**DIFFICULTY_WORDS, **_COST_WORDS}.items() if r in _RUNG_WEIGHT}
+
+
+def difficulty_word(word):
+    """The ladder rung a difficulty word names (Difficulty.word()), or ""."""
+    return DIFFICULTY_WORDS.get(" ".join(word.lower().replace("_", " ").split()), "")
+
+
+# Cost profiles (Skill.costs), as Scripts/Pricing.gd profile() reads them: LEVELS comes from the same tables.
 RANK_WORDS = {"flat": 0.0, "scaled": 1.0, "steep": 2.0}
 GENERIC = ("cost", "energy", "resource")
 RESERVES = ("mana", "stamina", "focus", "sweet_nothings")  # Reserves/<id>.tres
@@ -338,6 +361,14 @@ def check_icons(problems):
     problems.extend(item.problems())  # every item and loot table: icons, tags, rarity, qualities, lent skills (item.py check)
 
 
+def check_difficulty_words(problems):  # every difficulty a skill imposes or an item sets (difficulty, picks, prised) is a word on the ladder (Difficulty.WORDS)
+    for top in ("Skills", "Items"):
+        for p in files(top, ".tres"):
+            for m in re.finditer(r'^(difficulty|picks|prised) = &"([^"]*)"', read(p), re.M):
+                if m.group(2) and not difficulty_word(m.group(2)):
+                    problems.append('%s: %s "%s" is no difficulty word (Scripts/Difficulty.gd WORDS: %s)' % (p, m.group(1), m.group(2), ", ".join(LADDER_RUNGS)))
+
+
 def check_knobs(problems):  # balance knobs (Skill.scaling, the β and d tags) against what each skill scales by (SkillTerms.knob_problems()), read headless
     r = subprocess.run(["godot", "--headless", "--path", ROOT, "-s", "Util/terms.gd", "--", "knobs-check"], capture_output=True, text=True)
     problems.extend(l for l in r.stdout.split("\n") if l.startswith("Skills/"))
@@ -394,7 +425,7 @@ def check_density(problems):  # Density's one rule (SkillTerms.density_why()) ag
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs):
+    for f in (check_refs, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs, check_difficulty_words):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
@@ -421,9 +452,10 @@ def tier_section(i, spec, ext):
     return "\n".join(lines)
 
 
-# The user's damage intensities -> (Difficulty.MAGNITUDE word, the dice a new skill's rank I tier rolls).
-INTENSITY = {"low": ("faint", "1d4"), "moderate_low": ("mild", "1d6"), "moderate": ("moderate", "1d10"),
-             "high": ("strong", "2d6"), "extreme": ("severe", "2d12")}
+# The user's damage intensities (words on Difficulty's ladder) -> (the Difficulty.MAGNITUDE word each reads as, the dice a
+# new skill's rank I tier rolls). The magnitude is Difficulty.magnitude(): the rung's place less one.
+INTENSITY = {w: (MAGNITUDES[max(LADDER_RUNGS.index(difficulty_word(w)) - 1, 0)], dice) for w, dice in
+             {"low": "1d4", "moderate_low": "1d6", "moderate": "1d10", "high": "2d6", "extreme": "2d12"}.items()}
 REQUIRES = ("hp_below", "hp_above", "energy_above", "energy_below", "target_hp_below", "target_hp_above", "ally_within", "concealed")
 
 

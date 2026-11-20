@@ -342,8 +342,8 @@ func test_knobs() -> void:
 	ok(is_equal_approx(dense.k[&"rank_impact"], 1.5 * 1.25) and dense.label() == "ρ↑" and dense.tuned, "a symbol stacks with it, and alone is what's shown (%s)" % dense.label())
 	v(1).trinket = null
 	# Whom they're shown to: very high int only; the others see the numbers, never the tag.
-	v(1).intelligence = Modifiers.VERY_HIGH_INT
-	v(3).intelligence = Modifiers.VERY_HIGH_INT - 1
+	v(1).intelligence = Difficulty.stat_at(Modifiers.KNOB_SIGHT)
+	v(3).intelligence = Difficulty.stat_at(Modifiers.KNOB_SIGHT) - 1
 	v(1).refresh()
 	v(3).refresh()
 	ok(Modifiers.sees_knobs(v(1)) and not Modifiers.sees_knobs(v(3)) and not Modifiers.sees_knobs(null), "int 16 sees them, 15 doesn't, nobody doesn't")

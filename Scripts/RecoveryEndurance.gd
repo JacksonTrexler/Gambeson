@@ -12,7 +12,7 @@ extends RefCounted
 #  - Energy (Power, Overcharge, a reserve) always spends 1 RE, depleted or not.
 #  - One heal of more than max(con mod, 0) x BIG of max HP: a con check against the excess; failing, -1 RE.
 
-const CHECK_DC := 12  # the flat Standard rung (Difficulty)
+const CHECK_DC := &"standard"  # its difficulty (Difficulty: the flat Standard rung, 12)
 const LOSS := 0.1
 const BIG := 0.2  # of max HP, a con mod
 
@@ -23,7 +23,7 @@ static func recovered(b: Battle, u: Unit, pool: Variant, n: int) -> void:
 		return
 	var hp: bool = pool is StringName and pool == &"hp"
 	var re := u.endurance
-	if re <= 0 and not _passes(b, u, CHECK_DC):
+	if re <= 0 and not _passes(b, u, Difficulty.dc(CHECK_DC)):
 		u.burn(pool, maxi(u.rounded(LOSS * (1 + absi(re)) * n), 1))
 		if hp:
 			u.endurance -= 1
