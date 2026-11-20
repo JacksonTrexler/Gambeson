@@ -3286,7 +3286,7 @@ func _apply_contrast() -> void:
 # {glow: a strength (glow_of(), -1 plain), sat: how much colour it keeps (command_sat(): only the player's
 # own side drains), tint: its glow's colour, or null for its side's own, heading: its glow leans the way it
 # faces (heading_seen(): only to eyes wise enough, never on a silhouette), reach: its glow's size by level
-# (level_reach(): only while the glow says nothing else, so targeting keeps its look)}. An ally of another faction
+# (level_reach(): not while a skill is targeting, which keeps its look)}. An ally of another faction
 # glows ally_glow (green by default) rather than its own primary: plainly on the player's side, not its.
 func look_of(u: Unit) -> Dictionary:
 	var look := {glow = glow_of(u), sat = command_sat(u) if known(u) else 1.0, tint = null, heading = heading_seen(u), reach = level_reach(u)}
@@ -3298,10 +3298,10 @@ func look_of(u: Unit) -> Dictionary:
 
 
 # How large u's glow is for its level, against the average level of the player's side (the units standing,
-# Battle.members()): Unit.level_reach(). 1 whenever the glow is saying something else (glow_of() isn't -1:
-# targeting, reach, readiness), and on a silhouette (nothing but a shape of it is made out).
+# Battle.members()): Unit.level_reach(). 1 whenever the glow shows targeting (_target_glow()); readiness for an order
+# doesn't count, and on a silhouette (nothing but a shape of it is made out).
 func level_reach(u: Unit) -> float:
-	if glow_of(u) >= 0 or (not known(u) and view(u).silhouette()):
+	if _target_glow(u) != NOT_TARGETED or (not known(u) and view(u).silhouette()):
 		return 1.0
 	var side := battle.members(command.faction())
 	if side.is_empty():
@@ -3349,19 +3349,28 @@ func command_state(u: Unit) -> StringName:
 # units it's for glow by how reachable they are (skill_glow()); with none, on the player's turn, its
 # own side glows by how ready each is for an order (command_glow()).
 func glow_of(u: Unit) -> int:
+	var g := _target_glow(u)
+	return g if g != NOT_TARGETED else command_glow(u)
+
+
+const NOT_TARGETED := -2  # _target_glow(): a skill's reach has nothing to say of this unit
+
+# What a skill being armed or aimed says of u's glow (-1 plain, or a strength), or NOT_TARGETED when none does:
+# then glow_of() is only how ready u is for an order, and level_reach() may size it.
+func _target_glow(u: Unit) -> int:
 	var me := selected if _orders(selected) else null
 	var s := armed
 	if me and aiming():
-		return Unit.Intensity.FULLY if u in caught else command_glow(u)
+		return Unit.Intensity.FULLY if u in caught else NOT_TARGETED
 	if me and s and support_view():  # the support view: the units it's for glow by reach, foes fall back
 		if unit_seen(u.cell) != u:
 			return -1
 		var g := skill_glow(me, s, u)
-		return g if g >= 0 else (Unit.Intensity.BARELY if foe(u) else command_glow(u))
+		return g if g >= 0 else (Unit.Intensity.BARELY if foe(u) else NOT_TARGETED)
 	if me and foe(u) and unit_seen(u.cell) == u:
 		var p := _primary(me)
 		return skill_glow(me, p, u) if p else -1
-	return command_glow(u)
+	return NOT_TARGETED
 
 
 # The selected slot holds a skill for allies, not foes (support or defence), used on a unit: the map
