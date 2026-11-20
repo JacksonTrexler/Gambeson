@@ -2077,9 +2077,14 @@ const SIGN_TINT := {&"luck": SkillSlot.CLOVER, &"regen": FRIEND}
 # name, amount, in its tag's colour (a stat acting by itself, as Luck, with a glint). Only what the player's side can
 # see, and only as much of it as it makes out (skill_sense()).
 func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int) -> void:
-	if not is_instance_valid(u) or unit_seen(u.cell) != u:
+	if not is_instance_valid(u):
 		return
-	var sense := skill_sense(u, s, view(u) if u != command.leader else null) if s else 2
+	var sense := 2  # its own side's passives are its own to see; another's, only seen and as far as it makes them out (one read)
+	if not known(u):
+		var r := view(u)
+		if r.cell != u.cell:
+			return
+		sense = skill_sense(u, s, r) if s else 2
 	if sense == 0:
 		return
 	if s and u == selected and bar.visible:
@@ -2088,7 +2093,7 @@ func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int)
 				slot.flash()
 				return
 	var text := u.skill_name(s) if s else String(stat).capitalize()
-	if amount != 0 and (sense == 2 or known(u)):  # its amount: what the side makes out, or its own side's numbers (as _hp_shows())
+	if amount != 0 and sense == 2:
 		text += " %+d%s" % [amount, " " + String(stat) if s and stat else ""]
 	var col: Color = SkillSlot.tint(s).lerp(Color.WHITE, 0.3) if s else SIGN_TINT.get(stat, MUTED)
 	overlay.float_sign(u, s.icon() if s else null, text, col, rounded, s == null)
