@@ -265,3 +265,5 @@ Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?
 - [x] **Chaser rank chases, strike-only Heavy and Glancing Strike** (tag `strike`, `Behaviour.Volley.chain`): plan `docs/plans/w4-friction.md`. `chaser_test`, `heavy_strike_test`, `check_test`. (?202)
 - [x] **Student for Mages and the Journeyman tree** (`Trees/general_student.tres`, `general_journeyman.tres`, `journeyman.tres`, `SkillTab.grant`, `Unit.grant_tree()`, a `check` Effect with `per_mod`; `skill.py check_equipment`): plan `docs/plans/w5-tree.md`. `general_test`, `lent_test`. (?208)
 - [x] **Meathead** (the old `physical_intelligence` skill renamed by the user; no `??`). (?204, ?208)
+- [x] **String Theory, Conductor, Symphony (Bard)** (`Skills/string_theory`, `conductor`, `symphony_bard`, `Effects/cadence.tres`; id clash with the Wizard's `symphony`): plan `docs/plans/w7-bard.md`. `symphony_bard_test`. (?220)
+- [x] **Surveyor, Evaluator, Inquisitor** (Specialist general tier 2; offered to Fighter, Druid, Cleric, Paladin): plan `docs/plans/w7-prep.md`. `prep_test`. (?222)

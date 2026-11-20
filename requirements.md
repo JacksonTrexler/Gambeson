@@ -73,6 +73,14 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Multi-slot skills: 1 slot by default; a rarity takes Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5; an explicit slots property overrides. (?215)
 - Party size is level / 4 + the base cha mod if positive, at least 2; the player's units persist in a roster. (?216)
 
+## Wave 7 rules (2026-11-20)
+
+- Facing shows only to a viewer with "high" wisdom, as a subtly stronger glow on the facing side, not an arrow. (?218)
+- On level up a unit's glow flashes to 2x; a higher level is a subtly larger glow, a lower one smaller, unless the glow is showing targeting. (?221)
+- Preparation uses (Study, Surveys, Evaluates, Inquisitions) share one table; the top box lists them. (?219, ?222)
+- Bard: String Theory, Conductor, Symphony (First Chair); `impact` is a Glossary term. (?220)
+- Placeholder art comes from `/Users/jtrex/assets/utumno` where a name fits. (?223)
+
 ## Equipping and traits
 - Every skill, active or passive, does nothing unless equipped (and toggled where relevant): auto-equipped on learn when a slot is free, manually when the bar is full; AI included. (?163) [user]
 - Slots: 4 + level/4, typed (martial, magic, specialist) or untyped; passives take the last slots; losing a slot depends on why. (?3) [call]

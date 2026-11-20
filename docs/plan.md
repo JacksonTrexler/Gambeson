@@ -189,6 +189,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Multi-slot skills (?215) | `equip_test.gd` |
 | — | Roster and Party, Save version 2 (?216) | `save_test.gd` |
 | — | The AI casts Skeleton (?217) | `summon_test.gd`, `ai_sim.gd` |
+| — | Facing in the glow (?218) | `hud_test.gd` |
+| — | Studies UX and the top box (?219) | `prep_test.gd` |
+| — | Bard: String Theory, Conductor, Symphony (?220) | `symphony_bard_test.gd` |
+| — | Level in the glow (?221) | `hud_test.gd` |
+| — | Preparation uses: Surveyor, Evaluator, Inquisitor (?222) | `prep_test.gd` |
+| — | Placeholder art from utumno (?223) | `icon.py check` |
 
 ## Questions to answer first
 

@@ -283,3 +283,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Multi-slot skills** (rarity tags, `Skill.RARITY_SLOTS`, `Behaviours/slot_cost.gd`, `Behaviour.slots_taken()`, covered slots, `bar_place` runs, HUD "(continued)"): plan `docs/plans/w6-slots.md`. `equip_test.test_multi_slot`. (?215)
 - [x] **Persistent roster and Party** (`Game.roster`, `party`, `keep()`, `party_size()`, `Unit.to_dict/from_dict`, Save version 2 with migration, `PartyPanel.gd`, `Battle._field_party()`): plan `docs/plans/w6-party.md`. `save_test`. (?216)
 - [x] **Queue audit: the AI casts Skeleton** (`AI._summon()`, `Behaviour.bodies()`, sim `host`), **Interject and Snapping Turtle bonus, hunt sim `near`, edge-pan middle-drag** found built: plan `docs/plans/w6-audit.md`. `summon_test.test_ai_raises_host`. (?217)
+- [x] **Facing in the glow** (`unit_glow.gdshader`, `Unit.glow_param()`, `reads_heading()`, `HUD.eyes()`, `STAT_SCORE[difficult]`): plan `docs/plans/w7-facing.md`. `hud_test.test_facing_in_the_glow`. (?218)
+- [x] **Level in the glow** (`Unit.leveled_up`, `level_reach()`, `HUD._target_glow()`): plan `docs/plans/w7-glow.md`. `hud_test.test_glow_by_level`. (?221)
+- [x] **Studies UX and the top box** (`PhaseBox`, `HUD.prep_uses`, `study_state()`, `icon.py glyph`): plan `docs/plans/w7-studies.md`. `prep_test.test_hud`. (?219)
+- [x] **Preparation uses** (`Prep.USES`, `Battle.prepare()`, `Battle.prepped`, `Perception.sizing()`, tags survey / evaluate / inquire): plan `docs/plans/w7-prep.md`. `prep_test`. (?222)
+- [x] **`impact` and `first_chair` in the Glossary; the `rested` Effect condition; `Behaviour.opening` and `passed`** (`Battle.impact_of()`, `Command.hears()`): plan `docs/plans/w7-bard.md`. `symphony_bard_test`. (?220)

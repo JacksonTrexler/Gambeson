@@ -112,3 +112,7 @@ Plans and calls: `docs/plans/ui-small.md` (`ui_small_test`, 5 tests), `docs/plan
 
 - [x] **Guide line for the near-miss rings; Hitch and Level Down proven by mutation** (`Guide.gd`; `check_test`): plan `docs/plans/tails-11-15.md`. (?172)
 - [x] **Path foresight** (`Battle.hazard()` Meander and `at_end`, `route(.., price)`, `AI._approach` on that price, `SUSPECT_TILES`, `HAZARD_TILES` 0.5 to 2.0): plan `docs/plans/path-foresight.md`. `path_test`. (?174)
+
+## Wave 7 art (2026-11-20)
+
+- [x] **Placeholder art from utumno** (38 skill icons, `Units/Siren.png`; `Scenes/siren.tscn` re-pointed): plan `docs/plans/w7-art.md`. (?223)

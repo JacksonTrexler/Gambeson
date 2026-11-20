@@ -1232,6 +1232,75 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
 - [ ] **Retune `AI.LOST` with the near hunt sim.** Queued. (?217)
 - [ ] **A sim where Skeleton reaches the foe** (damage in `host` is 0 both ways). Queued. (?217)
 
+## Wave 7 (2026-11-20): facing and level in the glow, studies, Bard, preparation uses, art
+
+Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to review.
+
+218. **Facing in the glow - built on judgement, open for review (2026-11-20).** Plan: `docs/plans/w7-facing.md`. Calls:
+    - **High wisdom is the word "high"** (`Unit.HEADING_SIGHT`); `Difficulty.STAT_SCORE` gains `difficult: 14`, beside `unfair: 16`. **14 is a pick: say if it should be 16** (then only adventurers and such read it).
+    - **The viewer is `HUD.eyes()`** (the selected unit, else the observer); `Unit.reads_heading(viewer)` is the one rule.
+    - **Every visible unit, own side and foes alike, except a silhouette**; a disguise gives nothing away (the lean is its true facing).
+    - **A lean, not a pointer:** alpha up to 1.5x (`Unit.HEADING` 0.5) on the facing side, fading by `smoothstep(-0.1, 1, cos)`; the old chevron (`heading_tick`) is gone.
+    - **Glow API:** `Scenes/UI/unit_glow.gdshader` on each unit's own `Glow` material; one uniform per thing the glow says; `Unit.glow_param(name, value)` is the one way in. `HUD.look_of()` gains `heading`.
+    - **Tests:** `hud_test.test_facing_in_the_glow`; one mutation failed and reverted.
+    - **New names to review:** none.
+- [ ] **Is wisdom 14 right for "high" in `STAT_SCORE`, or 16?** (?218)
+
+219. **Studies UX and the top box - built on judgement, open for review (2026-11-20).** Your words: cut the message to "No studies left" and only on click; a magnifying glass by the mouse on a studyable tile or unit, grey if none left; the banner a top box, "Preparing" over a smaller "Study: X". Plan: `docs/plans/w7-studies.md`. Calls:
+    - **`PhaseBox`** (`Scripts/PhaseBox.gd`): `show_lines(title, sublines)`, knows nothing of studies. **`HUD.prep_uses`** (a `Dictionary[StringName, Callable]`, insertion order, each returns its subline) is how a later use adds a line.
+    - **Wording:** "Study: 1 ally, 2 foes or tiles" (zero parts left out; "Study: none left"); the bottom hint says nothing in preparation.
+    - **The cursor is a sprite** following the pointer, up and to the right of the arrow so the unit tooltip is not covered; placeholder `Icons/UI/study.png` (`icon.py glyph study --shape magnifier`).
+    - **Grey (`spent`)** when no study of that kind is left (ally by cha, foe or tile by wis) **or the thing is already studied** (my call: the same dead end the click calls "Already studied"). Not shown over the leader.
+    - **Tests:** `prep_test.test_hud` extended; four mutations failed and reverted.
+    - **New names to review:** none.
+- [ ] **Should an already-studied thing grey the magnifier?** (?219)
+
+220. **Bard: String Theory, Conductor, Symphony, `impact` - built on judgement, open for review (2026-11-20).** Your words: mid String Theory (the higher of int or cha for performance checks), high Conductor (rested last turn: + rank to command limits and range), Symphony (a bonus on checks for every check a commanded unit passes, up to rank; the first to act is First Chair, +rank impact on its first skill), `impact` in the Glossary. Plan: `docs/plans/w7-bard.md`. Calls:
+    - **Performance checks are checks of `cha`-tagged skills.** String Theory is a stand-in (`Skill.stand_in`, the Meathead seam), tagged only `cha`; the stand-in's rank gate (the replaced stat at least 80/60/40/20% of the stand-in below rank 5) stays, so "the higher of" is rank-gated. Bandwagon's DC reads it too.
+    - **Placement:** Bard's Performance root, Freedom tab: String Theory after Personify (mid), Conductor after it (high), Symphony after Conductor.
+    - **Conductor is data:** a new Effect condition `rested` (`Unit.rested_turns > 0`); `strategy`, `tactics`, `command` +1 a rank. "Command limits" read as allies commanded a turn, orders each and reach; party size is not one.
+    - **Symphony's id is `symphony_bard`**; `Skills/symphony.tres` is the Wizard's expanded study. **Rename either as you like.**
+    - **"Commanded unit" is a unit in the holder's command range** (`Command.hears()`), not one given an order; the holder's own passes do not count. A check passes when `Battle.check()` is won or an attack lands; hook `Behaviour.passed`. The reward is the status Cadence ?? (`Effects/cadence.tres`, `check` +1 a rank, 1 turn, up to Symphony's rank).
+    - **First Chair is a use-scoped impact bonus** (`Behaviour.opening`, `Volley.first`, `Volley.impact`, `Battle.impact_of`), carried by every blow of the first unit's first use and a data heal.
+    - **`impact` and `first_chair`** are Glossary terms (kind `target`, your words; colour `#f2a56b`).
+    - **Tests:** `symphony_bard_test` (four tests); five mutations failed and reverted. Suite 10393 checks.
+    - **New names to review:** Cadence ??.
+- [ ] **Rename `symphony_bard` or the Wizard's `symphony`** (the id clash). (?220)
+- [ ] **Not forecast:** the HUD's and AI's damage previews ignore First Chair; Cadence shows only in the status line. Queued. (?220)
+
+221. **Level in the glow - built on judgement, open for review (2026-11-20).** Your words: "On level up, flash a units glow to 2x intensity briefly. Units with a higher level have a subtly larger glow, lower level have a subtly smaller glow. (while not indicating targeting)". Plan: `docs/plans/w7-glow.md`. Calls:
+    - **Flash:** `Unit.leveled_up` tweens the shader's `flash` from `Unit.FLASH` 2.0 to 1 over 0.6 s; alpha is clamped on screen, so a glow near full gains less than a true 2x.
+    - **Reference:** the average level of the player's side, not the selected unit, so sizes do not jump with selection.
+    - **Scale:** `Unit.level_reach(level, ref)` = 1 + 0.03 a level, within +-0.15, by growing the shader's quad.
+    - **Not while targeting:** `HUD._target_glow()` says what an armed skill does to a unit; such a unit keeps plain size. **Command readiness is not targeting, so it is sized**; say if it should hold the size.
+    - **Silhouettes** plain; everyone else its true level, disguises included. The size follows on the next HUD refresh.
+    - **Tests:** `hud_test.test_glow_by_level`; two mutations failed and reverted.
+    - **New names to review:** none.
+- [ ] **Should command readiness also hold the glow's plain size?** (?221)
+
+222. **Preparation uses: Surveyor, Evaluator, Inquisitor - built on judgement, open for review (2026-11-20).** Your words: three low-tier Specialist skills, each a rank of a preparation use and +rank on its kind of check in battle (Surveys: tile intel with advantage; Evaluates: unit intel; Inquisitions: suspicion, extra investigation checks with advantage). Plan: `docs/plans/w7-prep.md`. Calls:
+    - **One table `Prep.USES`** (`of`, `intel`, `suspicion`, `edge`, a count from a stat mod or the Effect stat `prep_use` tagged with the use): `study_ally`, `study`, `survey`, `evaluate`, `inquire`. `Battle.study()` became `prepare()`; `studied_allies` became `Battle.prepped`.
+    - **The tag is the use and the check:** `survey ??`, `evaluate ??`, `inquire ??` (Glossary, kind check); the stat `prep_use` is "Preparation" ??.
+    - **A click spends the first fitting use** in table order that has one left and still gives the target something; a studied unit goes to an Inquisition else "Already studied"; **no picker**.
+    - **Outcomes:** intel is a recon level better, once per target across uses; suspicion inspects a tile or doubts a unit that fools the leader; an Inquisition on an honest unit spends the use for nothing.
+    - **Advantage on an intel-only use is carried and changes nothing** (intel is a level, not a roll); an Inquisition's is a real advantage on `doubt()`.
+    - **In battle:** Surveyor on `inspect()`; Inquisitor on `doubt()`, `investigate()` and `seen_odds()` (not the trickster's side); Evaluator is `recon` tagged `evaluate` (`Perception.sizing`), which also counts against trickery.
+    - **Placement:** tier 2 on `general_specialist` ("low"; Synergy and Decisive Strike are 2); offered outright: Surveyor to Fighter and Druid, Evaluator to Fighter, Inquisitor to Cleric and Paladin; `skill.py new --role` takes several roles.
+    - **HUD:** a line per use in the top box ("Surveys: 2 tiles"); the log says "X surveys / evaluates / inquires about Y".
+    - **Tests:** `prep_test` extended (four tests); six mutations failed and reverted. Not covered: `their_tags = []`, Inquisition's advantage.
+    - **New names to review:** survey ??, evaluate ??, inquire ??, prep_use ??.
+- [ ] **Should intel-only uses roll?** (advantage means nothing on them today.) (?222)
+- [ ] **Is tier 2 right for "low"?** (?222)
+
+223. **Placeholder art from utumno - built on judgement, open for review (2026-11-20).** Your words: "use assets in /Users/jtrex/assets/utumno for placeholder icons where possible, there's one for siren as well". Plan: `docs/plans/w7-art.md` (the full mapping). Calls:
+    - **39 mapped:** 38 skill icons and `Units/Siren.png`; all 32x32, copied unchanged; the source is untouched; `icon.py check` and `skill.py check` pass.
+    - **Coloured, not white:** skill icons are meant to be white on clear and tinted by state; the utumno ones are coloured and the tint multiplies over them. Revisit if it reads badly.
+    - **Only drawn placeholders overwritten;** `Shade.png` and `Elmit.png` were skipped (odd sizes, possibly real art), so the silhouette icon is Invisibility's.
+    - **Siren:** `Units/Siren.png` is new and `Scenes/siren.tscn` points at it (the one scene edit); Undine keeps Elmit.
+    - **No status mapped** (only Suspicion has an icon, drawn in code); Surveyor, Evaluator, Inquisitor skipped (a sibling's ids).
+    - **New names to review:** none.
+- [ ] **Do coloured icons read well under the state tint, or should they be white-tinted?** (?223)
+
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 
 - **Stun, Stunned, Borrowed Time (?83, ?85, ?119).** Your words: "Martial prowess high tier skill: Stun: attempt a very difficult attack. on a hit target attempts a difficult constitution check. On a failure, target is stunned for rank rounds". "Stunned is an easy debuff to cleanse, it's rank for cleanse purposes is halved". "Stunned is a `wound`: it can be healed off with an active skill". "Stunned units are tapped". Downed: "It does not end for the berskerker variant who acts as normal on borrowed time, but does for adventurers etc. who are tapped until they're back up". Built in the section "Tapped, helpless, Stun, Mindless Fury, Drone" above.
