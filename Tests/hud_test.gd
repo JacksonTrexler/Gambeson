@@ -1464,3 +1464,29 @@ func test_every_tab_draws_its_skills() -> void:
 			n += 1
 		h.free()
 	ok(n >= 13, "tabs swept (%d)" % n)
+
+
+# A glow's size follows the unit's level against the viewer's side's average (Unit.level_reach(), HUD.level_reach()),
+# only while the glow isn't targeting; a level up flashes it to Unit.FLASH x.
+func test_glow_by_level() -> void:
+	for row in [[5, 5.0, 1.0], [10, 5.0, 1.15], [1, 5.0, 0.88], [1, 20.0, 1.0 - Unit.REACH_MAX], [6, 5.0, 1.03], [4, 5.0, 0.97]]:
+		ok(is_equal_approx(Unit.level_reach(row[0], row[1]), row[2]), "level %s vs %s: %s" % [row[0], row[1], Unit.level_reach(row[0], row[1])])
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	v(1).level = 2
+	v(3).level = 8
+	var h := await hud(v(1))
+	var size := func(u: Unit) -> float: return u.glow.material.get_shader_parameter(&"reach")
+	var strike: Skill = h.armed
+	h.selected = null  # nobody commanded: the foes' glows say nothing but their level
+	h.armed = null
+	h._refresh()
+	var mine := float(b.members(h.command.faction()).map(func(m: Unit): return m.level).reduce(func(a, c): return a + c, 0)) / b.members(h.command.faction()).size()
+	ok(is_equal_approx(size.call(v(3)), Unit.level_reach(8, mine)) and size.call(v(3)) > 1.0, "a high-level foe's glow is larger (%s)" % size.call(v(3)))
+	h.select(v(1))  # commanding with a skill armed: the foe glows by reach, at its plain size
+	h.armed = strike
+	h._refresh()
+	ok(h.glow_of(v(3)) >= 0 and size.call(v(3)) == 1.0, "while it shows targeting, the size is plain (%s)" % size.call(v(3)))
+	v(3).level_up()
+	await tree.process_frame
+	ok(v(3).glow.material.get_shader_parameter(&"flash") > 1.5, "a level up flashes the glow (%s)" % v(3).glow.material.get_shader_parameter(&"flash"))
+	h.free()

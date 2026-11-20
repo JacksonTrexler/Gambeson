@@ -6,6 +6,7 @@ signal energy_changed(was: int, now: int)
 signal overcharge_changed(was: int, now: int)  # its Overcharge buffer (overcharge) changed
 signal reserve_changed(r: Reserve, was: int, now: int)
 signal died(u: Unit)
+signal leveled_up(u: Unit)  # level_up(): it gained a level (its glow flashes: _on_leveled_up(); the HUD sizes the glow by level)
 signal taking_hit(u: Unit, blow: Dictionary)  # hit(): about to take blow.damage (from blow.by, tagged blow.tags); listeners may change it (Battle: Molothrus)
 signal being_healed(u: Unit, heal: Dictionary)  # heal(): about to get heal.hp back; listeners may take a cut (Battle: Molothrus)
 signal recovered(u: Unit, pool: Variant, n: int)  # n came back to pool (&"hp", &"energy" or a Reserve) by heal(), grant_energy() or note_recovery() - never regen (Battle: RecoveryEndurance)
@@ -47,6 +48,10 @@ const DESATURATE := preload("res://Scenes/UI/desaturate.gdshader")
 const GLOW_SHADER := preload("res://Scenes/UI/unit_glow.gdshader")  # shapes its glow: where it faces, and what later builds add (glow_param())
 const HEADING_SIGHT := &"high"  # the wisdom a viewer needs to see which way a unit faces (Difficulty.stat_at: 14), as a lean in its glow
 const HEADING := 0.5  # how much stronger the glow is on the side it faces, at its most (a share of its alpha): a lean, not a pointer
+const FLASH := 2.0  # a level up flashes the glow this much stronger, settling back over FLASH_TIME
+const FLASH_TIME := 0.6
+const REACH_PER_LEVEL := 0.03  # a glow is this much larger per level above the viewer's side's average, smaller per level below
+const REACH_MAX := 0.15  # ... never more than this either way
 const PROMINENCE := 1.6  # a commandable unit's glow, this much stronger; x2 in high contrast
 # The four strengths a unit's glow takes when the HUD has something to say with it (set_glow();
 # HUD.glow_of()): barely for one out of reach this turn, somewhat for one only a walk that can't be
@@ -582,6 +587,7 @@ func _ready() -> void:
 	sprite.add_child(banner)
 	glow.material = ShaderMaterial.new()  # its own: each unit's glow takes its own parameters
 	glow.material.shader = GLOW_SHADER
+	leveled_up.connect(_on_leveled_up)
 	sprite.material = ShaderMaterial.new()
 	sprite.material.shader = DESATURATE
 	set_saturation(1.0)
@@ -1471,6 +1477,7 @@ func level_up() -> void:
 	if is_alive():
 		hp += maxi(max_hp - was, 0)  # what the level brings, it gets at once
 	_arrange()
+	leveled_up.emit(self)
 
 
 # --- Experience
@@ -4195,6 +4202,25 @@ func set_glow(level: int, contrast := false) -> void:
 func glow_param(name: StringName, value: Variant) -> void:
 	if glow and glow.material:
 		(glow.material as ShaderMaterial).set_shader_parameter(name, value)
+
+
+# A level up: the glow flashes to FLASH times its strength and settles back.
+func _on_leveled_up(_u: Unit) -> void:
+	if not is_inside_tree():
+		return
+	var tw := create_tween()
+	tw.tween_method(func(v: float): glow_param(&"flash", v), FLASH, 1.0, FLASH_TIME).set_ease(Tween.EASE_OUT)
+
+
+# How large a glow of this level is against `reference` (the average level of the viewer's side): 1 at it,
+# REACH_PER_LEVEL more or less per level, within REACH_MAX.
+static func level_reach(lvl: int, reference: float) -> float:
+	return 1.0 + clampf((lvl - reference) * REACH_PER_LEVEL, -REACH_MAX, REACH_MAX)
+
+
+# Sizes the glow by `r` (level_reach()); 1, the plain size.
+func see_reach(r: float) -> void:
+	glow_param(&"reach", r)
 
 
 # Whether a viewer reads which way a unit faces: wisdom at HEADING_SIGHT.

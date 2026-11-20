@@ -3285,15 +3285,31 @@ func _apply_contrast() -> void:
 # How a unit is drawn for what the player is about - the one place glow, colour and tint are decided:
 # {glow: a strength (glow_of(), -1 plain), sat: how much colour it keeps (command_sat(): only the player's
 # own side drains), tint: its glow's colour, or null for its side's own, heading: its glow leans the way it
-# faces (heading_seen(): only to eyes wise enough, never on a silhouette)}. An ally of another faction
+# faces (heading_seen(): only to eyes wise enough, never on a silhouette), reach: its glow's size by level
+# (level_reach(): only while the glow says nothing else, so targeting keeps its look)}. An ally of another faction
 # glows ally_glow (green by default) rather than its own primary: plainly on the player's side, not its.
 func look_of(u: Unit) -> Dictionary:
-	var look := {glow = glow_of(u), sat = command_sat(u) if known(u) else 1.0, tint = null, heading = heading_seen(u)}
+	var look := {glow = glow_of(u), sat = command_sat(u) if known(u) else 1.0, tint = null, heading = heading_seen(u), reach = level_reach(u)}
 	var f: Faction = u.faction if known(u) else view(u).faction
 	var doubt := not known(u) and view(u).mark() == Read.Mark.DOUBT
 	if f and f != command.faction() and Faction.friends(f, command.faction()) and not doubt and not (not known(u) and view(u).silhouette()):
 		look.tint = ally_glow
 	return look
+
+
+# How large u's glow is for its level, against the average level of the player's side (the units standing,
+# Battle.members()): Unit.level_reach(). 1 whenever the glow is saying something else (glow_of() isn't -1:
+# targeting, reach, readiness), and on a silhouette (nothing but a shape of it is made out).
+func level_reach(u: Unit) -> float:
+	if glow_of(u) >= 0 or (not known(u) and view(u).silhouette()):
+		return 1.0
+	var side := battle.members(command.faction())
+	if side.is_empty():
+		return 1.0
+	var total := 0
+	for m: Unit in side:
+		total += m.level
+	return Unit.level_reach(u.level, float(total) / side.size())
 
 
 # Whether the player reads which way u faces: through eyes() (the unit it commands, else its observer) with
@@ -3306,6 +3322,7 @@ func heading_seen(u: Unit) -> bool:
 func _apply_look(u: Unit, look: Dictionary) -> void:
 	u.set_saturation(look.sat)
 	u.see_heading(look.heading)
+	u.see_reach(look.reach)
 	u.set_glow(look.glow, high_contrast and (known(u) or look.glow >= 0))
 	if look.tint != null and u.glow.visible:
 		u.glow.modulate = Color(look.tint, clampf(u.glow.modulate.a * ALLY_BOOST, 0.0, 1.0))
