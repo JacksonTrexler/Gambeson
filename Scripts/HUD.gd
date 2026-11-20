@@ -427,6 +427,7 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	_tick_clock(delta)
+	_fit_bar()  # what wraps in the panel settles over a few frames (a hint, a name): cheap once it has
 	_hurry()
 	for l in _spinning:
 		l.text = str(randi_range(1, 20))
@@ -2562,6 +2563,10 @@ func _rebuild_bar() -> void:
 		bar.add_child(s)
 
 
+var _fit_key: Array = []  # what _fit_bar last fitted for, and the room it gave
+var _fit_room := INF
+
+
 # The hotbar and the traits wrap into columns when the left panel (as tall as the window) can't hold them in one: a
 # widescreen window is wider, not taller. Each gets what the panel's other rows leave; the panel may take up to
 # BAR_SHARE of the window's width before the columns squeeze.
@@ -2572,10 +2577,15 @@ func _fit_bar() -> void:
 	var pad := panel.get_combined_minimum_size() - col.get_combined_minimum_size()
 	var others := col.get_combined_minimum_size().y - (bar.get_combined_minimum_size().y if bar.visible else 0.0) \
 			- (trait_bar.get_combined_minimum_size().y if trait_bar.visible else 0.0)
-	var room := view.y - panel.position.y * 2.0 - pad.y - others
+	var room := view.y - panel.offset_top + panel.offset_bottom - pad.y - others  # (the offsets: its position drifts while it overflows)
+	var key := [view, selected, bar.get_child_count(), trait_bar.get_child_count(), bar.visible, trait_bar.visible]
+	if key == _fit_key:  # the panel's own wrapping (a hint, a name) answers to the columns: only ever tighten, so they can't flip back and forth
+		room = minf(room, _fit_room)
+	_fit_key = key
+	_fit_room = room
 	var tall := _bar_height(trait_bar.get_child_count()) if trait_bar.visible else 0.0  # the traits first stand in one column: they never starve the bar
 	var bar_room := maxf(room - tall, _bar_height(mini(bar.get_child_count(), MIN_ROWS)))
-	var wide := view.x * BAR_SHARE - panel.position.x - pad.x
+	var wide := view.x * BAR_SHARE - panel.offset_left - pad.x
 	bar.set_limits(bar_room, wide)
 	trait_bar.set_limits(maxf(room - bar.get_combined_minimum_size().y - 3.0, _bar_height(1)), wide)
 
