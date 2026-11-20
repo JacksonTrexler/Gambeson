@@ -23,14 +23,25 @@ $cmd = 'run'
 $rest = @($args)
 if ($rest.Count -and $rest[0] -notlike '-*' -and $rest[0] -ne '++') { $cmd, $rest = $rest[0], @($rest | Select-Object -Skip 1) }
 
-# .godot/ is gitignored, so a fresh clone needs one import before assets load.
-if ($cmd -in 'run', 'debug' -and -not (Test-Path "$root\.godot")) { & $godot --headless --path $root --import }
+# .godot/ is gitignored, so a fresh clone needs one import before assets load, and a script or asset
+# added or changed outside the editor (a pull, a merge) leaves the class_name cache stale: parse errors
+# like 'Could not find type "Modifiers"'. Re-import when anything is newer than the last import's stamp.
+$stamp = "$root\.godot\god-import.stamp"
+function Test-Stale {
+    if (-not (Test-Path $stamp)) { return $true }
+    $since = (Get-Item $stamp).LastWriteTime
+    $skip = '\\(\.[^\\]*|docs|Util)(\\|$)'
+    [bool](Get-ChildItem $root -Recurse -File -Include *.gd, *.tscn, *.tres, *.png, *.svg, project.godot |
+        Where-Object { $_.FullName.Substring($root.Length) -notmatch $skip -and $_.LastWriteTime -gt $since } | Select-Object -First 1)
+}
+function Invoke-Import { & $godot --headless --path $root --import @args; if ($LASTEXITCODE -eq 0) { New-Item $stamp -ItemType File -Force | Out-Null } }
+if ($cmd -in 'run', 'debug' -and (Test-Stale)) { Write-Host 'god: re-importing (files changed since the last import)'; Invoke-Import *> $null }
 
 switch ($cmd) {
     'run'    { & $godot --path $root @rest }
     'debug'  { & $godot --path $root -d @rest }
-    'import' { & $godot --headless --path $root --import @rest }
-    'test'   { & $godot --headless --path $root --import *> $null; & $godot --headless --path $root -s res://Tests/run.gd @rest }
+    'import' { Invoke-Import @rest }
+    'test'   { Invoke-Import *> $null; & $godot --headless --path $root -s res://Tests/run.gd @rest }
     'editor' { Start-Process ($godot -replace '_console', '') -ArgumentList (@('-e', '--path', "`"$root`"") + $rest); exit 0 }
     default  { Get-Content $PSCommandPath -TotalCount 10 | ForEach-Object { $_ -replace '^# ?', '' }; exit [int]($cmd -ne 'help') }
 }
