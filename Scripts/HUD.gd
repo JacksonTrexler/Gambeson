@@ -895,7 +895,7 @@ func begin_battle() -> void:
 # Whether a click on c would study something in preparation: &"open", &"spent" (already studied, or none
 # of its kind left: the cursor greys), or &"" (not preparing, off the map, or the leader itself).
 func study_state(c: Vector2i) -> StringName:
-	if battle.phase != Battle.Phase.PREP or c == NOWHERE or not battle.on_map(c):
+	if not is_instance_valid(battle) or battle.phase != Battle.Phase.PREP or c == NOWHERE or not battle.on_map(c):
 		return &""
 	var u := unit_seen(c)
 	if u and u == command.leader:
