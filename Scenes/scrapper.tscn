@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="2_nemes"]
+[ext_resource type="Resource" path="res://Roles/fighter.tres" id="3_fighter"]
+[ext_resource type="Texture2D" path="res://Units/Scrapper.png" id="4_scrapper"]
+[ext_resource type="Script" path="res://Scripts/Bio.gd" id="5_bio"]
+[ext_resource type="Resource" path="res://Skills/scrap_plating.tres" id="6_scrap_plating"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="7_slot"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="9_item"]
+[ext_resource type="Resource" path="res://Items/brigandine.tres" id="9_brigandine"]
+[ext_resource type="Resource" path="res://Items/habergeon.tres" id="9_habergeon"]
+
+[sub_resource type="Resource" id="Bio_scrapper"]
+script = ExtResource("5_bio")
+behaviour = &"brave"
+appearance = "Soldier"
+adjectives = Array[String](["Scrappy"])
+text = "A soldier who carries a spare hauberk or two and straps one on when there is a moment."
+
+[sub_resource type="Resource" id="Slot_scrap_plating"]
+script = ExtResource("7_slot")
+skill = ExtResource("6_scrap_plating")
+rank = 3
+
+[node name="Scrapper" instance=ExtResource("1_unit")]
+nick = "Scrapper ??"
+faction = ExtResource("2_nemes")
+role = ExtResource("3_fighter")
+level = 3
+look = ExtResource("4_scrapper")
+bio = SubResource("Bio_scrapper")
+learned = Array[ExtResource("7_slot")]([SubResource("Slot_scrap_plating")])
+strength = 12
+dexterity = 12
+constitution = 12
+wisdom = 12
+pack = Array[ExtResource("9_item")]([ExtResource("9_brigandine"), ExtResource("9_habergeon")])

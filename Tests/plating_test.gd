@@ -219,3 +219,16 @@ func test_sheet() -> void:
 	Game.stash.clear()
 	Game.outfit = {}
 	Game.hero = {}
+
+
+# The units that carry a pack (Scenes/scrapper.tscn, bulwarker.tscn): out of reach of any foe, each dresses its plate slot from it on its
+# turn, the better of its spares under its skill's rules.
+func test_packs() -> void:
+	for id in [&"scrapper", &"bulwarker"]:
+		var u: Unit = b.summon(load("res://Scenes/%s.tscn" % id), nemes, Vector2i(8, 6))
+		ok(not u.pack.is_empty() and not u.plate_skills().is_empty(), "%s carries a pack and has a plate slot" % id)
+		var n := u.pack.size()
+		stage(nemes, {u: Vector2i(8, 6), v(1): Vector2i(0, 0)})
+		var log := AI.act(b, u)
+		var slot := Unit.plate_slot(u.plate_skills()[0])
+		ok(u.get(slot) != null and u.pack.size() == n - 1 and log.any(func(l: String) -> bool: return "puts on" in l), "%s dresses from its pack (%s)" % [id, log])
