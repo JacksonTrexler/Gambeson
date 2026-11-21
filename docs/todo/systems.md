@@ -1219,7 +1219,7 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **New names to review:** none (class names are yours).
 - [ ] **Recruiting and dismissing roster members in play** (needs the user: where recruits come from, names). (?216)
 - [ ] **What a death does to a roster member** (a fallen member is not removed; permadeath is a design call). (?216)
-- [ ] **Party members' outfits can't be changed between battles** (the stash screen is the leader's): a card. (?216)
+- [x] **Party members' outfits can't be changed between battles.** Built (?234). (?216)
 - [ ] **Is "level" the leader's the right reading** (vs the highest or the average on the roster)? (?216)
 
 217. **Queue audit - built on judgement, open for review (2026-11-20).** Plan: `docs/plans/w6-audit.md` (skipped by instruction: the AI turn cost card). Verdicts:
@@ -1229,8 +1229,8 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **Edge-pan sideways: built** (`BattleCamera.gd` middle-drag; `meadows_test`).
     - **Deathlust AI awareness: partly.** Built: `AI._wear()` asks `wearing()` hooks, so a killing blow's exhaustion is unworn. Not built: the HUD float or log line on its relief; the AI pricing the relief a death in reach gives other counts.
     - **New names to review:** none.
-- [ ] **Retune `AI.LOST` with the near hunt sim.** Queued. (?217)
-- [ ] **A sim where Skeleton reaches the foe** (damage in `host` is 0 both ways). Queued. (?217)
+- [x] **Retune `AI.LOST` with the near hunt sim.** Built, 0.5 to 0.35; the user picks (?233). (?217)
+- [x] **A sim where Skeleton reaches the foe** (`hostnear`). Built (?233). (?217)
 
 ## Wave 7 (2026-11-20): facing and level in the glow, studies, Bard, preparation uses, art
 
@@ -1266,7 +1266,7 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Tests:** `symphony_bard_test` (four tests); five mutations failed and reverted. Suite 10393 checks.
     - **New names to review:** Cadence ??.
 - [x] **Rename `symphony_bard` or the Wizard's `symphony`** (the id clash): answered, the Bard's is Harmony (?227). (?220)
-- [ ] **Not forecast:** the HUD's and AI's damage previews ignore First Chair; Cadence shows only in the status line. Queued. (?220)
+- [x] **Not forecast:** First Chair is now in `damage_range`, Cadence shown as a numeral and a sign (?232). (?220)
 
 221. **Level in the glow - built on judgement, open for review (2026-11-20).** Your words: "On level up, flash a units glow to 2x intensity briefly. Units with a higher level have a subtly larger glow, lower level have a subtly smaller glow. (while not indicating targeting)". Plan: `docs/plans/w7-glow.md`. Calls:
     - **Flash:** `Unit.leveled_up` tweens the shader's `flash` from `Unit.FLASH` 2.0 to 1 over 0.6 s; alpha is clamped on screen, so a glow near full gains less than a true 2x.
@@ -1312,7 +1312,7 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Tests:** `Tests/passive_signs_test.gd` (2 tests); five mutations failed and reverted. Suite 10472 checks, 0 failed.
     - **New names to review:** none.
 - [ ] **Are 4 s for "often", the glint on every stat-only sign, and one muted rule for all always-on passives right?** (?224)
-- [ ] **Should rounding italic and bold reach other heals, the log and previews?** Queued for heals and the log. (?224)
+- [x] **Should rounding italic and bold reach other heals, the log and previews?** Heals and the log built, previews held (?232). (?224)
 
 225. **Widescreen hotbar and one lead per description line - built on judgement, open for review (2026-11-20).** Your words: "skills don't fit in widescreen"; "cut down / standardize skill verbiage: no multiple 'On a foe' lines". Plan: `docs/plans/w7-wide.md`. Calls:
     - **Wrap, not scale:** the hotbar and traits are `SlotColumns` (one column while it fits, else the fewest that do, filled top to bottom); at 16:9 a level-20 bar is 2 columns, level 1 unchanged.
@@ -1390,6 +1390,36 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
 - [ ] **No Deathlust log line** (the sign is a slot light or floater only). (?231)
 - [ ] **The plate slot does not switch off as Power runs down in the AI's reckoning**, and tolls are not weighed in `_threat()`. (?231)
 - [ ] **`sure_crit` damage doubling is not priced** in the crit-loop forecast, and allies' Deathlust is not in `_relief`. (?231)
+
+## Wave 8 batch 3 (2026-11-21): First Chair forecast, misc follow-ups, party outfits
+
+232. **First Chair forecast, Cadence shown, rounding on heals and the log - built on judgement, open for review (2026-11-21).** Cards from ?220, ?224. Plan: `docs/plans/w8-fc.md`. Calls:
+    - **One seam:** `Battle.damage_range()` adds `Battle.impact_ahead(caster, skill)` (the impact a use would carry were it opened now, via the shared `_open()` / `opening()` hook) to every blow's bonus, so the HUD span and every AI read forecast First Chair with no per-skill case. A foe's threat read on our turn is not "first". No heal preview exists, so nothing to forecast there.
+    - **Cadence shown twice, both generic:** the status chip's corner numeral shows the stack for any `per_rank` effect above rank 1 with no roll of its own (Charge, Winded, Soaked now show too); Harmony signs each build through `Battle.passive()` ("Harmony +1 cadence" on every unit it grew on).
+    - **Rounding on heals:** `Unit.heal(h, heard, rounded)`; threaded through potions, skill stat mods (`Skill.heal_raw()`), regen and Regeneration Pulse. The Heal skill, Lovely Caster and Resuscitate are not luck-rounded, so plain. The log's two RichTextLabels take italic and bold from `Overlay.face()`; a log line is styled only if every blow rounded one way and the post-cut sum is the amount shown; a mix is plain. **Previews stay unstyled** (a span has no one rounding).
+    - **Perf unchanged** (`busy_fight` 15v15 unit turn 69.0 to 69.2 ms, digests identical). Mutation spot-checks failed the right tests. 10672 checks, 0 failed.
+    - **New names to review:** none.
+233. **Prep tests, Scrapper and Bulwarker, the hostnear sim, AI.LOST, item icons - built on judgement, open for review (2026-11-21).** Cards from ?222, ?213, ?217, ?178, ?223. Plan: `docs/plans/w8-misc.md`. Calls:
+    - **Prep tests:** `prep_test.test_doubt_sides` (a trickster's `their_tags = []`, an Inquisition's advantage on `doubt()`); no rules change.
+    - **Two units with a `pack`:** Scrapper ?? (level 3, Scrap Plating 3, Brigandine + Habergeon) and Bulwarker ?? (level 5, Power Armor 2, Half Plate + Plate), Fighter role, faction nemes, sprites `--color` placeholders. **`unit.py --set` cannot write an item array, so the `pack =` lines were added to the .tscn by hand** (`unit.py check` ok). No new items, no loot drop; in no battle scene. Their stats are the villager's (at the default 5s a unit has 4 AP and armor costs 10 - dex mod, so it never dresses: armor in battle is dear). `plating_test.test_packs`.
+    - **Sim `hostnear`** (`ai_sim.gd`, soaker 5 tiles off): BODY 0 against 5 is about neutral (30.50 against 30.25 at n=8; 30.83 against 32.83 at n=24); **`SUMMON_CAP` 4 did better (41.6, +35%)**. Left as is: a body's worth as target and blocker is not measured. **Question for the user: should the cap drop?**
+    - **`AI.LOST` 0.5 to 0.35 (a call to review):** the near hunt sim found 0.70 to 0.75 at 0 to 0.35 against 0.32 to 0.53 at 0.5 (at or above `WORTH` the ranger casts the look and stands still); the lone-hunter sim (`ai_sim hunt`) prefers 0.5 (4.67 / 5.10 rounds against 5.07 / 5.37), so 0.35 all but switches off the stuck-hunter fix. No value serves both. **The user should pick;** 0.5 back with "stop the look repeating where it stands" is the alternative.
+    - **Utumno second pass:** eight item icons mapped in `Icons/Items/` (plate, robe, starblade, burning_blade, heart, heart_up, hobnail_boots, shackles; matches are guesses by name and look). **Locked coloured icons (0.4 at 0.55 opacity) are nearly illegible on the dark field.** No status art (a status has no icon field: code, not a mapping); `Shade.png` and `Elmit.png` untouched.
+    - **New names to review:** Scrapper ??, Bulwarker ??.
+234. **Party members' outfits - built on judgement, open for review (2026-11-21).** Card from ?216. Plan: `docs/plans/w8-outfits.md`. Calls:
+    - **An Outfit button per member in the Party panel** opens the existing `CharacterSheet` (`between` hides Use on potions; a consumable offers Use only for hearts) on a unit built from the roster entry (hidden, freed on close). Grid now 4 columns. Each change writes `Game.roster[i]` and saves; the leader is pickable too and also writes `Game.outfit` / `Game.equipped`.
+    - **Items conserve** (stash loses what is worn, gains what it replaced); no AP is charged; a bound item can't come off. No bar editor: items change the bar as in battle.
+    - **Not done:** the Party button hides on a solo roster, so a solo new game has no between-battle stash screen; `PartyPanel.outfit()` copies `Battle.from_role()` rather than sharing it.
+    - **Tests:** `save_test.test_member_outfit`; three mutations failed and reverted.
+    - **New names to review:** none.
+- [ ] **Locked coloured icons are nearly illegible** (0.4 at 0.55 opacity): try a lighter dim such as 0.55. (?233)
+- [ ] **Statuses have no art** (an `Effect` icon is code; needs the user's wish). (?233)
+- [ ] **No Deathlust log line:** carried from ?231; the log's `Overlay.face()` work (?232) makes one cheap. (?232)
+- [ ] **No HUD test for the band's row reservation.** (?230)
+- [ ] **A pack does not drop as loot** when its unit falls. (?233)
+- [ ] **`Battle.from_role()` is copied into `PartyPanel.outfit()`**: make it static and share. (?234)
+- [ ] **A solo roster has no Party button, so no stash screen between battles:** show it. (?234)
+- [ ] **The Heal skill's and Lovely Caster's heals have no luck rounding** to show (not a rule: a roll is a roll); heal previews do not exist. (?232)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

@@ -601,7 +601,7 @@ Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_te
     - **Loot:** Coyote Charm and Scepter in `Loot/astral_princess.tres` at weight 1.
     - **To review:** `Unit.pack`, `POINT`, `DELAY`, the loot table.
     - **New names to review:** none.
-- [ ] **No unit carries a `pack`**: give one a pack (a unit and loot card). (?213)
+- [x] **No unit carries a `pack`:** Scrapper ?? and Bulwarker ?? do (?233); a pack dropping as loot is open. (?213)
 - [x] **The AI ignores its own plates' tolls** (`slot_toll`): built in ?231 (`AI._plated()`); lapsing as Power runs down and `_threat()` are not. (?213)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations

@@ -203,6 +203,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Coloured and white icons (?229) | `skills_test.gd` |
 | — | Band names, tall multi-slot button, spans kept whole (?230) | `slot_columns_test.gd`, `equip_test.gd` |
 | — | The AI: Deathlust relief, plate tolls, crit loops, cc dread (?231) | `deathlust_test.gd`, `plating_test.gd`, `chaser_test.gd`, `ai_tactics_test.gd` |
+| — | First Chair forecast, Cadence shown, rounding on heals and the log (?232) | `harmony_test.gd`, `passive_signs_test.gd` |
+| — | Prep tests, packs, hostnear, AI.LOST, item icons (?233) | `prep_test.gd`, `plating_test.gd` |
+| — | Party members' outfits (?234) | `save_test.gd` |
 
 ## Questions to answer first
 
