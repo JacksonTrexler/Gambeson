@@ -14,6 +14,7 @@ extends SceneTree
 #   cc       Stun among Strike against a hard hitter and a weak foe (what a cc is worth, AI._afflicting()): who is stunned, idle turns
 #   armor    a foe in plate or in rags, its Defense not read: Strike or Hex (GUESS_DEFENSE)
 #   plate    plated foes (Power Armor, Scrap Plating): v(1) carrying spare armor dresses (rounds, Defense) with a foe near and far; Strike at two foes of one Defense, only one's blocks costing it Power
+#   dread    v(1), foes' skills read, against a Stunner v(3) starting `gap` tiles off (AI._shy(), DREAD): stuns it takes, turns it holds or backs off, who strikes first, the winner
 #   worn     Strike and Hex worn by exhaustion, 10 rounds on a soaker (WORN)
 #   host     a Skeleton caster 10 tiles from a soaker, 8 rounds: bodies raised, damage dealt (AI._summon(), BODY)
 #   hide     Invisibility offered to an ally with a watcher of rising wisdom (SEEN)
@@ -99,7 +100,7 @@ func _initialize() -> void:
 	var keys: GDScript = load("res://Scripts/KeyBinds.gd")
 	keys.set("SAVE", "user://keybinds_sim_%d.cfg" % pid)
 	_museum = load(MUSEUM)
-	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host"]:
+	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host", "dread"]:
 		if words.is_empty() or words.any(func(w: String): return w in sc):
 			await call("_" + sc, n)
 	for p in [Prefs.SAVE, keys.get("SAVE"), save.get("PATH"), save.get("PATH") + ".bad", save.get("PATH") + ".tmp"]:
@@ -466,6 +467,40 @@ func _cc_at(n: int, recon: int) -> void:
 		first += 1 if not opening.is_empty() and "on Villager4" in opening[0] else 0
 		_drop(t)
 	_say("cc-recon%d" % recon, {strike = float(tally.Strike) / n, stun = float(tally.Stun) / n, stun_hard_hitter = float(hard) / n, stun_weak_foe = float(weak) / n, first_stun_on_hard_hitter = float(first) / n, idle_turns = float(idle) / n, of_turns = float(turns) / n, rounds = rounds / n, won = wins, lancin_hp = hp / n})
+	await process_frame
+
+
+# v(1) (the foes' skills read) closes on a plain foe v(3), 3 tiles east and 3 north; v(4) with Stun stands to the west, its reach
+# covering the side of v(3) nearest v(1) and not the far one (AI._stunners(), DREAD): 4 rounds, the foes acting after it. Stuns v(1)
+# took, the share of its blows (Strike) that were at v(3), its HP left, who is left of the foes.
+func _dread(n: int) -> void:
+	var stuns := 0
+	var blows := 0
+	var at_plain := 0
+	var hp := 0.0
+	var left := 0
+	for seed in n:
+		var t := await _fresh(seed)
+		t.v(1).afflict(t.effect("recon", 3), 99)
+		t.v(4).learned.append(t.slot(t.sk("stun"), 2))
+		t.roomy(t.v(1))
+		t.v(4).refresh()
+		t.stage(t.lancin, {t.v(1): Vector2i(4, 6), t.v(3): Vector2i(7, 3), t.v(4): Vector2i(0, 3)})
+		t.v(3).strength = 1
+		for r in 4:
+			if t.v(1).is_alive():
+				t.logs.append_array(AI.act(t.b, t.v(1)))
+			t.b.end_turn()
+			t.turn([t.v(3), t.v(4)])
+			if t.b.phase != Battle.Phase.TURNS:
+				break
+		stuns += t.count("uses Stun on Villager1")
+		blows += t.count("Villager1 uses Strike")
+		at_plain += t.count("Villager1 uses Strike on Villager3")
+		hp += t.v(1).hp
+		left += int(t.v(3).is_alive()) + int(t.v(4).is_alive())
+		_drop(t)
+	_say("dread", {stuns = float(stuns) / n, blows = float(blows) / n, blows_at_plain_foe = float(at_plain) / n, v1_hp = hp / n, foes_left = float(left) / n})
 	await process_frame
 
 

@@ -71,6 +71,7 @@ const CC := 0.5  # the share of a foe's next turn a cc takes when what carries i
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
 const DELAY := 0.5  # the share of a disable's worth left it when its target postpones disablings (the postpone stat: Coyote Charm): it lands as the postpone ends, and one more held adds less (_held()); a guess
+const DREAD := 4.0  # what a cc certain to land costs a tile it would end a turn on, in tiles of walking (_approach(), _retreat(): _dread()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -1252,8 +1253,8 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads :=
 	return best != u.cell and not b.travel(u, best).is_empty()
 
 
-# The tile u would back off to, by (in order): the least the foes it reads could drive it into (_shoved(), `reads`),
-# the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
+# The tile u would back off to, by (in order): the least the foes it reads could drive it into (_shoved(), `reads`), the
+# least their cc would likely take of its next turn there (_dread(), a tile out of their reach over one in it), the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
 # on it, as _approach() does: dread of ground it knows or suspects, marks), then room to back off again. `safe` > 0:
 # any tile that far counts as far enough, and of those the one with the most room to back off again next round wins (_room(): a
 # corner is a tile `from` need only close on); on a tie, one an ally still to back off wouldn't choose for itself (_claimed();
@@ -1264,9 +1265,10 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 	var claimed: Array[Vector2i] = []
 	if safe > 0 and claim:
 		claimed = _claimed(b, u, from, safe, reads)
+	var stunners := _stunners(b, u, reads)
 	var key := func(c: Vector2i, extra: float) -> Array:
 		var g: int = gap.call(c)
-		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
+		return [-roundi(_shoved(b, u, c, reads)), -roundi(DREAD * _dread(stunners, c)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
 	var best := u.cell
 	var best_key: Array = key.call(best, 0.0)
 	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
@@ -1455,6 +1457,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 	var state := b.rng.state
 	var best: Vector2i = r.cell
 	var best_cost := INF
+	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
 	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
 	for dx in [-1, 0, 1]:
 		for dy in [-1, 0, 1]:
@@ -1464,7 +1467,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			var price := {&"wary": true}  # it weighs what it only suspects, too
 			b.route(u, c, b.line(u.cell, c, u.luck, u), price)
 			var away := Vector2(u.cell).distance_to(Vector2(c))
-			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c)
+			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) + DREAD * _dread(stunners, c)
 			for o in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:
@@ -1475,6 +1478,48 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 	Unit.end_read()
 	b.rng.state = state
 	return best
+
+
+# The foes whose cc is likely to land on u, as it reads them (Read.skills: the ones it makes out), for _dread(): [foe, the
+# furthest it could cast from (walking up: its movement and the skill's reach), the odds it lands: the cast's own (hit_chance())
+# x the share of u's turn it takes if it does - what the skill's behaviours foresee (Battle.foresee() `afflicts`: Stun's save, a
+# grip), else CC for one that only carries the cc tag] - the best of each foe's skills, and none for a foe that is helpless, or that
+# u can't read the skills of. A unit already bearing a cc (Unit.afflicted()) fears one more less: the odds over 1 + what it bears.
+static func _stunners(b: Battle, u: Unit, reads: Dictionary) -> Array:
+	var out := []
+	if u.stopped():
+		return out
+	var borne := 1.0 + u.afflicted(&"cc").size()
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if not o.is_alive() or o.stopped() or not _foe(u, r):
+			continue
+		var best := [0.0, 0.0]
+		for s in r.skills:
+			if not s.hostile or s.on_tile():
+				continue
+			var share: float = b.foresee(o, s, u).get("afflicts", 0.0)
+			if share <= 0.0 and &"cc" in o.skill_tags(s):
+				share = CC
+			if share <= 0.0:
+				continue
+			var odds := Battle.hit_chance(o, s, u, b) * share / borne
+			if odds > best[0]:
+				best = [odds, ceili(o.stat(&"movement")) + b.skill_range(o, s, u)]
+		if best[0] > 0.0:
+			out.append([o, best[1], best[0]])
+	return out
+
+
+# The share of its next turn the foes _stunners() lists would likely take from u standing at c: each that could get to it
+# (within its walk and its skill's reach of where it stands now), as likely as it lands; one at least of them, as the chance
+# that none does: 1 - the product of the odds that each doesn't.
+static func _dread(foes: Array, c: Vector2i) -> float:
+	var clear := 1.0
+	for f in foes:
+		if Vector2(f[0].cell).distance_to(Vector2(c)) <= f[1] + 0.0001:
+			clear *= 1.0 - f[2]
+	return 1.0 - clear
 
 
 # The points of Defense t loses to an attack made from tile c, by the side of t it lies on (Unit.side_of(): rear,
