@@ -126,6 +126,42 @@ func test_check_channels() -> void:
 	ok(totals.size() == 3 and totals[2] > 20, "so does looking into what a skill hid (%s)" % [totals])
 
 
+# The two sides of doubt(): a trickster's own Inquisition doesn't help it lie (their_tags = []), and an
+# Inquisition's use looks at advantage (Prep.USES.inquire.edge), through prepare().
+func test_doubt_sides() -> void:
+	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(0, 6), v(2): Vector2i(8, 5), v(3): Vector2i(2, 6)})
+	var leader := v(1)
+	leader.wisdom = 10
+	give(leader, inquisitor, 1)
+	var against := []
+	b.doubted.connect(func(_by, _of, _a, vs: int): against.append(vs))
+	for i in 60:
+		b.doubt(leader, siren())
+	var base: int = against.max()
+	against.clear()
+	siren().afflict(effect("check", 30, [&"inquire"]), 99)
+	for i in 20:
+		b.doubt(leader, siren())
+	ok(against.max() <= base + 10, "a trickster's own inquire bonus adds nothing to its side (%d vs %d)" % [against.max(), base])
+	siren().timed.clear()
+	var tally := func(use: bool) -> int:
+		var n := 0
+		for i in 400:
+			leader.suspicion.clear()
+			if use:
+				b.prepped.clear()
+				b.studied.clear()
+				n += int(b.prepare(leader, siren()) == &"inquire" and leader.suspects(siren()) > 0)
+			else:
+				n += int(b.doubt(leader, siren()))
+		return n
+	b.phase = Battle.Phase.PREP
+	leader.wisdom = 10
+	var plain: int = tally.call(false)
+	var edged: int = tally.call(true)
+	ok(edged > plain + 30, "an Inquisition's doubt is at advantage: %d well over %d (of 400)" % [edged, plain])
+
+
 func test_hud() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(5, 2)})
 	b.player = v(1)
