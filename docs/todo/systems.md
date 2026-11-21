@@ -900,8 +900,8 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Settled at the outermost cast's end**, so reactions inside it settle too.
     - **Generic pieces:** `Exhaustion.relieve(n, skill = null)` (turn-end `recover()` uses it), `Exhaustion.Wear`, `Unit.paid` signal, `Battle._settle_wear()`; Behaviour hooks `neutralized(b, holder, rank, u, by, how)` and `wearing(b, holder, rank, wear)` (`Util/skill.py` `HOOKS`). No HUD float or log line.
     - **Tests:** `Tests/deathlust_test.gd` (two tests, 11 checks); five mutations fail them.
-- [ ] **The AI doesn't seek kills for Deathlust's discount** (its `wearing` unwear of a killing blow is built, ?217; pricing the relief a death in reach gives other counts is not), and has no word of it. (?182)
-- [ ] **Deathlust gives no HUD float or log line** when it eases a count. (?182)
+- [x] **The AI doesn't seek kills for Deathlust's discount:** the relief is priced by a dry run of the `neutralized` hooks (`AI._relief()`, ?231); allies' Deathlust is not weighed. (?182)
+- [x] **Deathlust gives no HUD float or log line** when it eases a count: it signs through `Battle.passive()` (?231); a log line is not built. (?182)
 - [ ] **A channel's later strike (Metea) and an area skill's kills** don't count as a skill's kill (only `last_hit_by` and the cast's aim do). (?182)
 
 183. **Big sims and AI cost - built on judgement, open for review (2026-11-16).** Your brief: M3 test box, a target 4x stronger, larger zoomed-out hunts, busy fights. My calls (full tables in `docs/plans/r-sims.md`):
@@ -1133,7 +1133,7 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **cc was a flat rider before.** Now `Behaviour.foresee` reports an `afflicts` key: Stun's p, Hitch's p x 0.5, Jam and Slam Jam x 0.25; `_threat()` prices it by what the foe's next turn is worth (`BLOW` 5, `CC` 0.5), reading the foe's cc statuses through its Read, so a foe already stunned is not worth stunning again. Alternative: another weighting for the 0.5 and 0.25.
     - **Chaser and Heavy Strike:** `friction_ahead()` counts a chase's later rolls at their friction; `Behaviour.Forecast` plus a `forecasting()` hook (Heavy Strike's pool: one blow lands only when its last roll does).
     - **New names to review:** none (constants and keys, not content).
-- [ ] **A defensive cc read:** the AI backs off from a foe's Stun (reads `Unit.afflicted()` on the threat side). (?206)
+- [x] **A defensive cc read:** built in ?231 (`AI._dread()`). (?206)
 - [ ] **Crit-triggered loops are not forecast** (Chaser's chase, Jugular's recast). (?206, ?213)
 
 207. **Save the lapses; the museum sim check - built on judgement, open for review (2026-11-19).** Plan: `docs/plans/w5-save.md`. Calls:
@@ -1181,8 +1181,8 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
     - **No demonstration of `optional`:** Hobnail Boots' Kick is an active, and making it optional would change how the boots play; not done.
     - **Tests:** `lent_test.test_links` (24 checks); `equip_test`, `lent_test`, `test.gd` changed to the new rule; two mutations failed and reverted. Suite 10265 checks before.
     - **New names to review:** none.
-- [ ] **Innate on an active** (your Igna on a robe): needs a way to cast from outside the bar. A design call. (?214)
-- [ ] **Which item first uses `optional`?** (?214)
+- [x] **Innate on an active** (your Igna on a robe): answered and reworked in ?228 (a lend is free by default, a free active sits in the band and is used from it). (?214)
+- [x] **Which item first uses `optional`?** None yet; `item.py lend <skill> --ids <item> --as optional` makes one (?228). (?214)
 - [ ] **`SkillTerms` and `Skill.describe()` still decide "Trait" from the skill alone** (Armor reads "Always on", shown nowhere). (?214)
 
 215. **Multi-slot skills - built on judgement, open for review (2026-11-20).** Your words: "some skills take up multiple slots. if no slots property / tag is specified it's default 1 / restricted as usual (martial skills may use martial bonus slots etc). Skills with a rarity take up multiple slots by default: Rare: 2, Epic / Very Rare: 3, Legendary: 4, Mythic: 5" and "most often, this will come up for high tier skills that need to be nerfed in some fashion." Plan: `docs/plans/w6-slots.md`. Calls:
@@ -1203,11 +1203,11 @@ The user's second batch of 2026-11-18 (`docs/agents/answers-2026-11-18b.md`) bui
 - [ ] **Which skill is the first to carry a rarity or `slots`?** and is a Mythic unplaceable before level 4 meant? (?215)
 - [ ] **A disabling effect counts slots as ever**, so a wide skill is cheaper to disable; keep as the nerf or weight by span (`slot_weight` is rank alone)? (?215)
 - [ ] **A rare pillar skill (Cram) stays 1 slot; Density leaves the price alone.** Right? (?215)
-- [ ] **Runs across two granting skills' slots** are not allowed; a wider HUD slot is not built; `Item.rarity` is not the same tags. (?215)
+- [ ] **Runs across two granting skills' slots** are not allowed; the wider HUD slot is built (?230); `Item.rarity` is not the same tags. (?215)
 
-216. **Persistent roster and Party - built on judgement, open for review (2026-11-20).** Your words: "Go ahead and set up persistent units to keep track of saved skills / a configurable 'Party'. Party size is level / 4, + base cha mod if positive. at least 2." Plan: `docs/plans/w6-party.md` (two builders; the first was interrupted). Calls:
+216. **Persistent roster and Party - built on judgement, open for review (2026-11-20).** Your words: "Go ahead and set up persistent units to keep track of saved skills / a configurable 'Party'. Party size is level / 4, + base cha mod if positive. at least 2." (the floor was replaced in ?226) Plan: `docs/plans/w6-party.md` (two builders; the first was interrupted). Calls:
     - **The roster:** `Game.roster`, the player's persistent units, each a `Unit.to_dict()` (side, class, name, level, XP, hearts, learned skills with rank, points and on, purchases, trees opened and picked, the bar by skill id, worn items by `Save.item_out()`, `lapses_out()`); `Unit.from_dict()` puts it back on a fresh unit of its class; a gone skill or item is left out; unspent points are level - 1 less what `purchases` spent.
-    - **"Level" is the leader's:** `Game.party_size(lvl, cha) = max(lvl / 4 + max(cha mod, 0), 2)` from `Game.level` (the hero, roster entry 0) and its class's base charisma (`Role.stats`), not effects in play; the leader counts toward the size.
+    - **"Level" is the leader's:** `Game.party_size(lvl, cha) = max(lvl / 4 + max(cha mod, 0), 2)` (superseded by ?226: `max(cha mod, 0) + max(lvl / 4, 1)`, solo at 1) from `Game.level` (the hero, roster entry 0) and its class's base charisma (`Role.stats`), not effects in play; the leader counts toward the size.
     - **`Game.hero` stays the leader's record** and entry 0; `Game.level/xp/hearts/outfit/equipped/lapses` stay its live fields and win over the entry where both speak; its hearts are its class's plus `Game.hearts`, not the entry's.
     - **Who is on the roster:** a new game makes the leader plus one recruit of each other starting class, as new as it, named by its class (a stand-in until recruiting exists; no made-up names). The party starts as the first that fit.
     - **The Party screen** (`Scripts/PartyPanel.gd`): a "Party: n of m" button on Entry (when the roster has more than the leader); a box per member, the leader always ticked, others while there's room.
@@ -1244,7 +1244,7 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Glow API:** `Scenes/UI/unit_glow.gdshader` on each unit's own `Glow` material; one uniform per thing the glow says; `Unit.glow_param(name, value)` is the one way in. `HUD.look_of()` gains `heading`.
     - **Tests:** `hud_test.test_facing_in_the_glow`; one mutation failed and reverted.
     - **New names to review:** none.
-- [ ] **Is wisdom 14 right for "high" in `STAT_SCORE`, or 16?** (?218)
+- [x] **Is wisdom 14 right for "high" in `STAT_SCORE`, or 16?** Confirmed by the user (answers-2026-11-20c). (?218)
 
 219. **Studies UX and the top box - built on judgement, open for review (2026-11-20).** Your words: cut the message to "No studies left" and only on click; a magnifying glass by the mouse on a studyable tile or unit, grey if none left; the banner a top box, "Preparing" over a smaller "Study: X". Plan: `docs/plans/w7-studies.md`. Calls:
     - **`PhaseBox`** (`Scripts/PhaseBox.gd`): `show_lines(title, sublines)`, knows nothing of studies. **`HUD.prep_uses`** (a `Dictionary[StringName, Callable]`, insertion order, each returns its subline) is how a later use adds a line.
@@ -1265,7 +1265,7 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **`impact` and `first_chair`** are Glossary terms (kind `target`, your words; colour `#f2a56b`).
     - **Tests:** `symphony_bard_test` (four tests); five mutations failed and reverted. Suite 10393 checks.
     - **New names to review:** Cadence ??.
-- [ ] **Rename `symphony_bard` or the Wizard's `symphony`** (the id clash). (?220)
+- [x] **Rename `symphony_bard` or the Wizard's `symphony`** (the id clash): answered, the Bard's is Harmony (?227). (?220)
 - [ ] **Not forecast:** the HUD's and AI's damage previews ignore First Chair; Cadence shows only in the status line. Queued. (?220)
 
 221. **Level in the glow - built on judgement, open for review (2026-11-20).** Your words: "On level up, flash a units glow to 2x intensity briefly. Units with a higher level have a subtly larger glow, lower level have a subtly smaller glow. (while not indicating targeting)". Plan: `docs/plans/w7-glow.md`. Calls:
@@ -1299,7 +1299,7 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Siren:** `Units/Siren.png` is new and `Scenes/siren.tscn` points at it (the one scene edit); Undine keeps Elmit.
     - **No status mapped** (only Suspicion has an icon, drawn in code); Surveyor, Evaluator, Inquisitor skipped (a sibling's ids).
     - **New names to review:** none.
-- [ ] **Do coloured icons read well under the state tint, or should they be white-tinted?** (?223)
+- [x] **Do coloured icons read well under the state tint, or should they be white-tinted?** Answered: coloured or white-and-tinted, both fine; built as ?229. (?223)
 
 224. **Passive signage - built on judgement, open for review (2026-11-20).** Your words: passives muted on name and number, unmuting or flashing as they act; a passive acting on a unit shows "<icon> Name amount" above a non-viewed unit in the tag colour; Luck "+1" with a sparkle only when it enabled an action; amounts italic when rounded down, bold when rounded up; hold what cannot be done without noticeable performance cost. Plan: `docs/plans/w7-passives.md`. Calls:
     - **One signal:** `Battle.passive_fired(u, skill, amount, stat, rounded)`, emitted only through `Battle.passive()`; the HUD is the one listener; never from previews, planned walks or the AI's weighing. `Luck.rounded()` is the one place rounding is named (-1 down, 1 up, 0 exact).
@@ -1322,7 +1322,74 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Tests:** `Tests/slot_columns_test.gd` (new), `sweep_test.test_description_leads`; two mutations failed and reverted. Suite 10532 checks, 0 failed.
     - **New names to review:** none.
 - [ ] **Is wrapping into columns (with names squeezed at the extreme) the right widescreen answer, and is "; " the right way to join lines?** (?225)
-- [ ] **Keep a multi-slot skill whole across a column break.** Queued. (?225)
+- [x] **Keep a multi-slot skill whole across a column break.** Built in ?230. (?225)
+
+226. **Party size without the floor - built on judgement, open for review (2026-11-21).** Your words (?216): "base cha mod increases party size (at least +0) + level/4 (at least +1); unit can't market themselves / has nothing to market? they'll have to go solo." Plan: `docs/plans/w8-party.md`. Calls:
+    - **The rule:** `Game.party_size(lvl, cha) = max(cha mod, 0) + max(lvl / 4, 1)`, the leader's level and base charisma as before; level 1, cha 10 is now 1 (was 2), level 1, cha 16 is 4 (was 3).
+    - **Size 1 is solo:** no one to bring; `party_now()` already returned `[0]` at cap 1.
+    - **Wording:** Entry's button "Party: solo" at 1 (else "Party: n of m"); the panel reads "Going solo: no one to bring yet".
+    - **Left alone:** `Command.party_size()` (in-battle allies who hear orders, cha mod at least 1) is a different number. A new game starts solo for most classes at level 1 (the default Adventurer, cha 16, brings 3).
+    - **Tests:** `save_test.test_party_size` (table, a Fighter solo case, the Entry text); one mutation failed and reverted.
+    - **New names to review:** none.
+
+227. **Harmony, unique skill names, ?? only on tags' shown names - built on judgement, open for review (2026-11-21).** Your words (?220, ?222): "call the new one 'harmony' instead we should keep the string names unique"; "don't add ?? to tags that might break functionality unless you are inventing a new tag". Plan: `docs/plans/w8-names.md`. Calls:
+    - **The Bard's skill is Harmony** (`harmony.tres`, `Behaviours/harmony.gd`, `Tests/harmony_test.gd`; yours, no ??); the Wizard's `symphony` stays; `symphony_bard` is gone from code.
+    - **The Mage's old Harmony stub became "Accord ??"** (`accord`; the nearest word to its Concord college; icon and Roles/mage.tres moved). **A call to confirm: another name, or give the Mage that Harmony and rename the Bard's?**
+    - **Saves:** `Skill.RENAMED` (old id to new) and `Skill.by_id()`, read by `Unit._skill_by_id` and `Save._equipped_in`; `save_test.test_renamed_skill`.
+    - **Unique names:** `skill.py check_names` (shown name without " ??", case-insensitive) and `skill.py new` refuses a clashing `--title`. Items, classes, tiles, units are not covered.
+    - **?? on tags is display-only already** (an id is lower_snake; the ?? sits in the Glossary term's shown name). `mechanic.py check` now fails a tag id that isn't lower_snake or a ?? not at a name's end; `mechanic.py tag --human` strips a typed ??; `tag_colors_test.test_marked_names_are_display_only`. The rule is in CLAUDE.md and `new-mechanic`.
+    - **Names:** `survey`, `evaluate`, `inquire` lost their ?? (yours); `prep_use` was never marked in code. **Cadence ?? kept** (a status I named, not a tag).
+    - **Tests:** the two new ones; four mutations failed and reverted.
+    - **New names to review:** Accord ??, Cadence ??.
+- [ ] **Is "Accord ??" right for the Mage's stub, or should the Mage have Harmony and the Bard another name?** (?227)
+- [ ] **Should unique names also be checked for items, classes, tiles and units?** (?227)
+
+228. **Free lends and the band - built on judgement, open for review (2026-11-21).** Your words (?214, reworked): "armor passives are similar to innate passives: they both should be grayed out and not take a numbered hotbar slot unless activatable. The skills provided by innates / equipment *may* be considered "equippable" but are free and auto-equipped by default... (e.g. if a robe provides "Igna B" as an optional slot in skill, some units will elect not to slot it, whereas a harpy hauberk might provide a toggle skill Hollow Bones: double dex ap generation and gain flight, halve defense.)" Plan: `docs/plans/w8-bar.md` (15 calls). Main calls:
+    - **A lend is free by default** (no slot, equipped while worn, any kind of skill); **`optional` costs a slot** and is not slotted by itself (read: "optional slot-in" means it costs a slot, why a unit may elect not to); free beats optional when two items lend one. `Item.innate` is removed (nine armors, `item.py`).
+    - **Existing plain lends became free** (my call): Broadsword's Strike, Hobnail Boots' Kick, the Coyote Scepter's and Charm's skills; `item.py lend <skill> --ids <item> --as optional` restores a slot. A skill both learned and lent keeps its slot.
+    - **"Innates" read as traits** (already free); a role's or species' own skills (a villager's Strike) still take slots, as freeing them would empty most bars. **Question.**
+    - **Optional and setup:** a unit filling its bar slots an optional lend last into a leftover slot; auto-equip leaves it; a saved bar keeps the player's choice.
+    - **The band** (`HUD.band()`): every slotless skill under the hotbar; activatable first, on the number keys after the bar's, used like a slot; always-on passives follow unkeyed. Orders reach an ally's band; free actives can't be disabled and stop under suppressed traits; Sigil reaches the band.
+    - **Hollow Bones** (yours, lent only, data): a toggle; `dex_ap` +1, Defense x0.5, tag `flight`; tags `flight, dex`. **Harpy Hauberk** (yours): rare medium mail, lends Armor and Hollow Bones; no loot table (a drop would shift every seeded drop). The AI never switches Hollow Bones.
+    - **`flight`** (yours, no ??; Glossary "Aloft"): every step costs 1 movement, deep water neither slows nor drowns. Not done: flying over walls or units, traps skipping a flyer, the AI weighing flight, height.
+    - **A toggle's tags count only while it is on** (`Unit.has_tag`), for every toggle; **a `defense` mul scales the whole of Defense** (`Unit.stat(base)`), adds still add.
+    - **Tests:** `equip_test.test_hauberk`, `test_band`; `lent_test.test_links` rewritten; eight mutations failed and reverted.
+    - **New names to review:** none (Hollow Bones, Harpy Hauberk and `flight` are yours).
+- [ ] **Should a role's or species' own skills (a villager's Strike) also be free?** (?228)
+- [ ] **What does flight mean beyond its movement cost** (over walls and units, traps, height, the AI)? (?228)
+- [ ] **Existing plain lends (Broadsword, Hobnail Boots, the Coyote kit) became free: keep, or make some `optional`?** (?228)
+- [ ] **Hollow Bones is never switched by the AI** (an NPC in the Hauberk flies at half Defense always); should it? (?228)
+- [ ] **The band's wrapping into columns at 16:9 beyond the names** (seen in `S/shot_w8-bar/`; fixed for names in ?230). (?228)
+
+229. **Coloured against white icons - built on judgement, open for review (2026-11-21).** Your words (?223): skill icons should be coloured or white-and-tinted, expected to be icons / thumbnails. Plan: `docs/plans/w8-icons.md`. Calls:
+    - **`Skill.is_coloured(tex)`** scans once, cached by path: any solid pixel (alpha >= 0.78) not near white (a min channel below 0.78); 38 of 272 icons are coloured art.
+    - **`Skill.icon_ink(tex, ink, dim, alpha)`:** a placeholder keeps its tag tint; coloured art gets grey `dim` at `alpha`. Learned 1.0, open 0.85, locked 0.4 at 0.55, stub 0.5, learned-but-unworn x0.8; the hotbar's brightness as alpha. Dimmed, not framed, not desaturated (modulate only darkens; a shader per slot was over-abstract).
+    - **Used in** SkillSlot, SkillGrid, SkillWheel; the spellbook list draws no icon.
+    - **Tests:** `skills_test.test_icon_ink_tints_placeholders_not_coloured_art`; a mutation failed and reverted. Not screenshotted: a white-placeholder skill on the hotbar, the hotbar's lit state.
+    - **New names to review:** none.
+- [ ] **Do coloured icons read right with a dimmed grey state instead of a tag tint?** (?229)
+
+230. **The hotbar's layout - built on judgement, open for review (2026-11-21).** Your words (?215, ?225): multi-slot skills; "skills don't fit in widescreen". Plan: `docs/plans/w8-layout.md`. Calls:
+    - **Band names whole:** `_fit_bar` reserved a row too few and counted a 3 px gap twice (fixed: the bar may stand 3 px taller in a few windows); a slot says what it wants (`SkillSlot.want_width()`), a column is at least that wide while `max_width` holds, and the band reserves the rows its names stand in (`SlotColumns.standing_rows()`). At 16:9 a level-20 mage's band is two columns with whole names; the hotbar uses the same rule; where the width cannot hold them names are still cut (tooltips whole).
+    - **A multi-slot skill is one tall button** over its slots' rows (raised, covered slots unseen); it answers drops and right-clicks for every slot it covers (`SkillSlot.slot_at(y)`); a click is `use_slot(anchor)`; covered slots' numbers are not drawn but their keys work; "(continued)" stays only where a span had to be cut.
+    - **Spans kept whole across a column break:** `SlotColumns.starts(runs, cols, fit)` cuts at most `cols` columns of at most `fit` rows between spans (tallest column shortest, then most even); a column may be taller than the even share but not past `fit`; with no such cut the even columns and a cut span as before.
+    - **Tests:** `slot_columns_test.test_runs`, `test_names`, `equip_test.test_multi_slot`; three mutations failed and reverted. Screenshots `S/shot_w8-layout/`.
+    - **New names to review:** none.
+- [ ] **A 9-slot bar with three spans still needs its full `fit` rows**, leaving the band one row so names are cut again at 16:9. (?230)
+- [ ] **No HUD test for the band's reservation**, and covered slots' keys aren't drawn. (?230)
+
+231. **The AI: Deathlust's relief, plate tolls, crit loops, a defensive cc read - built on judgement, open for review (2026-11-21).** Cards from ?182, ?206, ?213, ?217. Plan: `docs/plans/w8-ai1.md`. Calls:
+    - **Deathlust's sign is `Battle.passive()`, no HUD edit:** `neutralize()` and `_settle_wear()` sign any passive whose `neutralized` / `wearing` hook lowered its holder's total count (`Exhaustion.total()`); generic, amount 0; a kill signs twice. No log line (Battle has none; a sibling edits the HUD).
+    - **The relief is priced by a dry run** (`AI._relief()`): a killing blow asks u's own passives, the largest fall in another skill's wear counts (not the sum), added in `_strike()` over the KILL bonus; allies' passives are not asked.
+    - **Own plates' tolls** (`_dress()`, `_plated()`): the Defense times the share a block keeps after `Behaviour.slot_toll()`; a swap only when the net gain is positive. With `BLOW` 5 a toll chooses between slots, it never refuses armor.
+    - **Crit loops** in the forecast: `Behaviour.Forecast` gains `loops`, `grace`, `rolled`, `crits()`; `Battle.attack_odds()` takes `rub`; `_use_ratio()` adds each follow-up at its chain's friction; Chaser's `forecasting()` hook and Jugular's `recast_on_crit` flag read generically. A chase is valued as the use again; free of AP.
+    - **A defensive cc read** (`AI._stunners()`, `_dread()`): the chance a foe's best cc lands from where it could reach; `DREAD` 4.0 tiles of walking in `_approach()` and a key in `_retreat()`. Insensitive for 1 to 8. **Tried and dropped: a gate** (hold off or back off), which made the unit lose more (stuns 1.88 to 2.25, wins 2 to 1 of 8).
+    - **Sim:** every scenario unchanged except `dread` (stuns taken 2.25 to 0.00, still lost 1-v-2). `soak` 10812 checks, 0 failed.
+    - **Tests:** `deathlust_test.test_ai_prices_relief`, `plating_test.test_ai_weighs_tolls`, `chaser_test.test_forecast_counts_crit_loops`, `ai_tactics_test.test_dreads_a_cc`; eight mutations failed and reverted (the `_strike` relief line is not covered).
+    - **New names to review:** none (`DREAD`, `_relief` and the rest are code names).
+- [ ] **No Deathlust log line** (the sign is a slot light or floater only). (?231)
+- [ ] **The plate slot does not switch off as Power runs down in the AI's reckoning**, and tolls are not weighed in `_threat()`. (?231)
+- [ ] **`sure_crit` damage doubling is not priced** in the crit-loop forecast, and allies' Deathlust is not in `_relief`. (?231)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

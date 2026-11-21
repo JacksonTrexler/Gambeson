@@ -166,5 +166,5 @@ Every skill follows these, so skill descriptions don't repeat them.
 - [x] **The no-new-flags rule is relaxed:** restrict creep, not anything that lessens repetition and builds rich systems; new flags are to be confirmed. (the user, 2026-11-19, ?203, ?210)
 - [x] **Equipment links:** `optional` (the wearer may add the lent skill to the hotbar) and `innate` (the lent skill needs no slot) belong to an item's link to a skill, not to the skill; keep them light. (the user, 2026-11-20, ?196, ?214)
 - [x] **Multi-slot skills:** a skill takes 1 slot unless a slots property says otherwise (restricted as usual); a skill with a rarity takes Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5. (the user, 2026-11-20, ?215)
-- [x] **Party size** is level / 4 plus the base cha mod if positive, at least 2; the player's persistent units keep their learned skills. (the user, 2026-11-20, ?216)
+- [x] **Party size** is level / 4 plus the base cha mod if positive; size is max(cha mod, 0) + max(level / 4, 1), so 1 is solo (no "at least 2"); the player's persistent units keep their learned skills. (the user, 2026-11-20, ?216, ?226)
 - [x] **"Meathead"** is the name of the old Physical Intelligence stand-in skill. (the user, 2026-11-20, ?204)
