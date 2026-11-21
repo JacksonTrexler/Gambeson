@@ -61,3 +61,7 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-21,w8-icons,sonnet,medium,73937,33,4039949,ok
 2026-11-21,w8-layout,sonnet,high,167794,61,5921587,ok
 2026-11-21,w8-ai1,sonnet,high,230620,91,6380015,ok
+2026-11-21,w8-fc,sonnet,high,186368,104,1154839,ok
+2026-11-21,w8-misc,sonnet,medium,134443,77,3918065,ok
+2026-11-21,w8-outfits,sonnet,high,98704,37,431890,ok
+2026-11-21,w8-docs,sonnet,medium,91729,18,118966,ok
