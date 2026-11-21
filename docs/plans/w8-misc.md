@@ -26,3 +26,33 @@ and **Bulwarker ??** (level 5, stoic, Power Armor 2, pack Half Plate + Plate). C
 Reading: with the foe in reach, raising a host is about neutral on damage over 10 rounds (the caster's AP goes to casts rather than its own Strikes, and Skeletons strike weakly); a small
 cap (fewer casts) does clearly better here (+35%). The soaker never fights back, so what bodies are worth as targets and blockers is not measured. Call: left BODY, SUMMON_SEEN and SUMMON_CAP
 as they are (the value of a body is a design call; if damage is what matters, a cap near 4 is the number to look at). Question for the user.
+
+## 4. Retune AI.LOST (0.5 -> 0.35)
+Sweep: `SIM=hunt_10v10 Tests/sims/sweep.sh LOST "..." near n=4` (find_rate over 20 rounds, 10 rangers vs 10 hiders, near start; first find round in brackets):
+| LOST | still-near | moving-near |
+|---|---|---|
+| 0 | 0.70 (12.3) | 0.72 (13.3) |
+| 0.25 | 0.70 (12.3) | 0.72 (13.3) |
+| 0.35 | 0.72 (12.3) | 0.75 (13.5) |
+| 0.45 | 0.70 (12.3) | 0.57 (13.5) |
+| 0.5 (was) | 0.32 (8.3) | 0.53 (12.5) |
+| 1, 2 | = 0.5 | = 0.5 |
+Reading: the lost-foe guess is a look from where the hunter stands. From 0.5 (= WORTH, the least a look must take in to be cast) up, the rangers cast it and stand looking
+where they already are, and find less than half as many in this field (0.32 vs 0.70), though the first find comes sooner (8 vs 12). Below WORTH it is never cast alone (it only adds to another guess
+at its tile), and the results are flat from 0 to 0.35; 0.45 is mixed. The original fix's own sim (`ai_sim hunt`, n=30, one hunter, found-rounds): 0.5 gives 4.67 / 5.10 (still / moving), anything below 0.5
+gives 5.07 / 5.37, the pre-fix numbers. So no value serves both: the near hunt wants it under WORTH, the lone stuck hunter wants it at WORTH.
+Call: **0.35**, the best near numbers, a value inside the flat region and not on the edge. This all but turns off the stuck-hunter fix (0.4 of a round slower in the lone hunt sim); if the
+stuck hunter matters more, put it back to 0.5 and instead stop the look repeating where it stands. Question for the user.
+Tests: `evidence`, `sight`, `hunt`, `search`, `ai` words pass unchanged (none pins the value).
+
+## 5. Utumno art, second pass
+Screenshots: the sibling's own (`scratchpad/shot_w8-icons/02_skills.png`, `03_skills_scrolled.png`, from the code with `Skill.icon_ink`) show the skills screen with the coloured icons under each state; I did not take new ones.
+Reading: learned (Mana, Mage Armor): full colour, read well. Open (Clairvoyance, Forage): slightly dimmed, read well. Locked/unknown ("?" dashed, e.g. the 4th-tier icon): at 0.4 x 0.55 alpha a dark coloured icon is
+close to illegible on the dark red field; the grey letter placeholders in the same state are likelier readable. Not changed (the tint is the sibling's).
+Items (`Icons/Items/`, copied from `/Users/jtrex/assets/utumno`, sources untouched, 16x16 copied as is like the skills; the item icons are drawn untinted and `icon.py check` fixes no size):
+- broken-doom-plate (32x32) -> plate; broken-blue-robes (32x32) -> robe; rare-blade -> starblade; shadowflame-sword -> burning_blade; bronze-lil-heart -> heart; body-plus -> heart_up; lil-speed -> hobnail_boots;
+  cursed-accessory -> shackles (a cursed binding trinket).
+Leaving the matching up to the user's eye: these are guesses by name and look. Left unused: the helms (no helm item), the shields (no shield item), broken-astral-robes (no astral robe), fear, poison,
+snake-debuff, the grave, the tilesets and the rest of the old list.
+Statuses: none mapped. A status has no icon field: a unit card shows a text mark and only Suspicion's eye is a texture, wired in HUD.gd. Giving statuses art is code (an `Effect` icon), not a mapping, so it needs the user's call.
+`Shade.png`, `Elmit.png`: left alone.
