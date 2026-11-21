@@ -3126,7 +3126,7 @@ func effect_icons(u: Unit, only: Variant = null) -> Array:
 		var known_roll := a.evaluated and a.roll != 0 and u.faction == command.faction()
 		out.append([a.skill.mark() if a.skill else _chip_mark(e.label()), FRIEND if e.helps() > 0 else FOE,
 				(a.skill.name + "\n" if a.skill else "") + line + ("\nRolled %d" % a.roll if known_roll else ""),
-				str(a.roll) if known_roll else ""])
+				corner])
 	return out
 
 
@@ -3169,6 +3169,7 @@ func _time_left(a: Unit.Applied) -> String:
 
 
 # "76 BST": its six core stats added up (what Embellish inflates).
+		var corner := str(a.roll) if known_roll else (str(a.rank) if e.per_rank and a.rank > 1 else "")  # its roll, else the rank a stacking effect has built to (Cadence)
 func _bst_line(stats: Array) -> String:
 	return "%d BST" % roundi(stats.reduce(func(sum, x): return sum + x, 0.0))
 

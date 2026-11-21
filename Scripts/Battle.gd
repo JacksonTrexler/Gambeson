@@ -1483,21 +1483,44 @@ func _begin_use(caster: Unit, skill: Skill) -> Behaviour.Volley:
 	_uses[caster] = v
 	v.first = first_to_act(caster)
 	if Unit.reading == 0:
-		for o in members(caster.faction):
-			for h in o.hooks():
-				h[0].opening(self, o, h[1], v)  # Harmony: First Chair's impact
+		_open(v)
 	return v
 
 
-# Whether caster, as its side's turn goes, would be the first of its side to use a skill in it (acted: a use done). Not on another side's turn (a reaction). The one reading of "first to act" (First Chair).
+# Asks every passive on v's caster's side to open it (Behaviour.opening(): Harmony's First Chair adds impact).
+func _open(v: Behaviour.Volley, side: Array[Unit] = []) -> void:
+	for o in side if not side.is_empty() else members(v.caster.faction):
+		for x in o.on_passives:
+			for h in x.skill.behaviours:
+				h.opening(self, o, x.rank, v)
+
+
 # The impact its passives added to the use under way (Volley.impact): every blow and heal of it carries it.
 func impact_of(caster: Unit) -> int:
 	var v := use_of(caster)
 	return v.impact if v else 0
 
 
-func first_to_act(caster: Unit) -> bool:
-	return turn == caster.faction and not members(caster.faction).any(func(o: Unit): return acted.get(o, -1) == turns_begun)
+# The impact caster's use of s would carry were it opened now, for a forecast (damage_range(): the HUD's preview and the AI's
+# score read it): the use under way's own, else the one its side's passives would add to a fresh one (opening(), the same
+# hook _begin_use() asks, on a Volley nothing keeps). Pure: opening() only adds to the Volley.
+func impact_ahead(caster: Unit, s: Skill) -> int:
+	var v := use_of(caster)
+	if v:
+		return v.impact
+	v = Behaviour.Volley.new()
+	v.battle = self
+	v.caster = caster
+	v.skill = s
+	var side := members(caster.faction)  # (one read of it: the AI asks this for every skill and target it weighs)
+	v.first = first_to_act(caster, side)
+	_open(v, side)
+	return v.impact
+
+
+# Whether caster, as its side's turn goes, would be the first of its side to use a skill in it (acted: a use done). Not on another side's turn (a reaction). The one reading of "first to act" (First Chair).
+func first_to_act(caster: Unit, side: Array[Unit] = []) -> bool:
+	return turn == caster.faction and not (side if not side.is_empty() else members(caster.faction)).any(func(o: Unit): return acted.get(o, -1) == turns_begun)
 
 
 const FRICTION := &"friction"  # in a use chain: [rolls free, attack rolls since it began looping]
@@ -2675,6 +2698,8 @@ static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) ->
 	if b and t:
 		bonus += int(b.requirement(u, s, t, r)[1])
 	var lo := maxi(tier.power + count + bonus, 1) * hits
+	if b:
+		bonus += b.impact_ahead(u, s)  # First Chair and the like: every blow of the use carries it (impact_of())
 	var hi := maxi(tier.power + count * tier.dice.y + bonus, 1) * hits
 	return {lo = lo, hi = hi, avg = (lo + hi) / 2.0}
 

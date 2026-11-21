@@ -102,6 +102,45 @@ func test_first_chair() -> void:
 	ok(healed.call(true) - healed.call(false) == 3, "and +3 on a heal")
 
 
+# The previews read First Chair: damage_range() (the HUD's span, the AI's score) of the first to act carries its +rank on each
+# blow, once it is no longer first or not in range it doesn't, and a use under way reports what it really carries.
+func test_first_chair_forecast() -> void:
+	var lead := v(1)
+	lead.learned.append(slot(harmony, 3))
+	lead.charisma = 14
+	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 2), b.get_node("Units/Alabaster"): Vector2i(9, 3)})
+	v(2).learned.append(slot(strike, 1))
+	var far: Unit = b.get_node("Units/Alabaster")
+	far.learned.append(slot(strike, 1))
+	var plain := Battle.damage_range(v(2), strike, v(3))  # (no battle: no passives to ask)
+	var first := Battle.damage_range(v(2), strike, v(3), b)
+	ok(first.lo == plain.lo + 3 and first.hi == plain.hi + 3 and first.avg == plain.avg + 3, "first to act, in range: + rank on the span (%s against %s)" % [first, plain])
+	ok(Battle.damage_range(far, strike, v(3), b).hi == Battle.damage_range(far, strike, v(3)).hi, "out of its command range: nothing added")
+	ok(AI.score(v(2), strike, b.read(v(1), v(3)), b, v(3)) > AI.score(v(2), strike, b.read(v(1), v(3)), null, v(3)), "the AI's score counts it too")
+	b.acted[v(1)] = b.turns_begun
+	ok(Battle.damage_range(v(2), strike, v(3), b).hi == plain.hi, "someone has acted: no longer first, the span is the plain one")
+	b.acted.clear()
+	b.turn = nemes
+	ok(Battle.damage_range(v(2), strike, v(3), b).hi == plain.hi, "not its side's turn (a reaction): not first")
+
+
+func test_cadence_shown() -> void:
+	var lead := v(1)
+	lead.learned.append(slot(harmony, 2))
+	lead.charisma = 14
+	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 4)})
+	var signs := []
+	b.passive_fired.connect(func(u: Unit, s: Skill, n: int, stat: StringName, _r: int): signs.append([u, s, n, stat]))
+	b.check(v(2), &"strength", null, -50)
+	ok(signs.size() == 2 and signs.map(func(x): return x[0]).has(lead) and signs.all(func(x): return x[1] == harmony and x[2] == 1 and x[3] == &"cadence"), "each unit Cadence grows on (the holder, v(2); v(3) is a foe) gets a sign, in Harmony's name (%d)" % signs.size())
+	var h := await hud(lead)
+	var chip := func(u: Unit) -> Array: return h.effect_icons(u).filter(func(i: Array): return i[0].begins_with("Ca"))
+	ok(chip.call(v(2))[0][3] == "", "rank I: no numeral")
+	b.check(v(2), &"strength", null, -50)
+	ok(chip.call(v(2))[0][3] == "2", "rank II: the chip carries it (%s)" % [chip.call(v(2))])
+	h.free()
+
+
 # The HP v(3) loses to caster's use of s on t, from the same rolls, as the first of its side to act or not.
 func _blows(caster: Unit, s: Skill, t: Unit, first: bool) -> int:
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 2)})  # (a kick drives its target off)

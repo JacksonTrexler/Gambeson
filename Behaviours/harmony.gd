@@ -23,6 +23,15 @@ func passed(b: Battle, holder: Unit, rank: int, u: Unit) -> void:
 			var now: int = o.timed[CADENCE].rank if CADENCE in o.timed else 0
 			if now < cap:
 				o.afflict(CADENCE, 1, now + 1)
+				b.passive(o, _skill_of(holder), 1, &"cadence")  # its sign over the unit (the chip on its card carries the rank)
+
+
+# The skill of the holder's that this is a behaviour of, for its sign.
+func _skill_of(holder: Unit) -> Skill:
+	for x in holder.on_passives:
+		if self in x.skill.behaviours:
+			return x.skill
+	return null
 
 
 # Its terms: rank is both the most Cadence stacks and First Chair's impact.
