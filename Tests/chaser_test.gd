@@ -75,7 +75,7 @@ func test_ai_picks_the_best_in_reach() -> void:
 # opens; the AI prices the rolls of a Strike's use from there (_use_ratio(): each later roll at more), a plain use at 1.
 func test_forecast_counts_friction() -> void:
 	var row := _kit(1)
-	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab"))  # its crit range would make every roll a hit
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab") and x.skill != chaser)  # its crit range would make every roll a hit; its chases are priced by test_forecast_counts_crit_loops
 	v(1).refresh()
 	v(3).afflict(effect("defense", 16), 99)  # a roll that can miss
 	b.directed = func(u: Unit): return u == v(1)
@@ -94,6 +94,38 @@ func test_forecast_counts_friction() -> void:
 	ok(is_equal_approx(Battle.hit_chance(v(1), row[1], v(3), b), chased), "the same odds as the roll it is")
 	v(1).friction = 0
 	b.directed = Callable()
+
+
+# The AI's forecast counts the uses a crit sets off (Behaviour.Forecast.loops: AI._use_ratio()), each as likely as the crits before
+# it and at its chain's friction: Chaser's chases (rank of them, so a higher rank adds more) and, from the skill's own flag, a
+# Jugular's recasts. A use that can't crit (no crit range, a natural 20 only) adds little; no Chaser, nothing.
+func test_forecast_counts_crit_loops() -> void:
+	var row := _kit(1)
+	v(3).afflict(effect("defense", 16), 99)  # a roll that can miss
+	var ratio := func(s: Skill) -> float:
+		return AI._use_ratio(b, v(1), s, v(3), b.read(v(1), v(3)), Battle.damage_range(v(1), s, v(3), b))
+	var with_one: float = ratio.call(row[2])
+	v(1).learned.append(slot(chaser, 3))
+	v(1).refresh()
+	var with_three: float = ratio.call(row[2])
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != chaser)
+	v(1).refresh()
+	var none: float = ratio.call(row[2])
+	ok(with_one > none + 0.05 and with_three > with_one + 0.02, "Chaser counts its chase, and a chase more for each rank: x%.2f (none), x%.2f (I), x%.2f (III)" % [none, with_one, with_three])
+	var j: Skill = load("res://Skills/jugular.tres").duplicate()
+	j.disadvantage = false  # (a crit range to see it)
+	var k: Skill = j.duplicate()
+	k.recast_on_crit = false
+	for s in [j, k]:
+		v(1).learned.append(slot(s, 1))
+	v(1).refresh()
+	var recasts: float = ratio.call(j)
+	var once: float = ratio.call(k)
+	var read := b.read(v(1), v(3))
+	ok(recasts > once + 0.05 and AI.score(v(1), j, read, b, v(3)) > AI.score(v(1), k, read, b, v(3)), "a skill that recasts on a crit counts its recasts: x%.2f against x%.2f" % [recasts, once])
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab"))
+	v(1).refresh()
+	ok(ratio.call(j) < recasts - 0.05, "with only a natural 20 to crit on, it counts far fewer (x%.2f)" % ratio.call(j))
 
 
 # The user's case: a non-Strike attack (Left, a Jam: three rolls, no strike tag) crits; Chaser II follows up

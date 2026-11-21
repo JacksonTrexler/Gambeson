@@ -35,6 +35,16 @@ func react(r: Reaction, holder: Unit, rank: int) -> bool:
 	return true
 
 
+# For the AI: a crit chases, once a use and as often as its rank a chain, if anything is in reach to chase with; each chase is a use
+# like the one that crit, in a chain that loops (its first n rolls free: Battle.loops()).
+func forecasting(_b: Battle, holder: Unit, rank: int, f: Forecast) -> void:
+	var n := holder_rank(holder, rank)
+	if reach(holder, n).is_empty():
+		return
+	f.loops = maxi(f.loops, n)
+	f.grace = n
+
+
 # The actives a chase may use: the holder's usable actives on its hotbar, the rightmost n of them.
 static func reach(holder: Unit, n: int) -> Array[Skill]:
 	var row: Array[Skill] = []

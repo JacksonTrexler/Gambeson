@@ -531,10 +531,33 @@ static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
 
 # How much more or less a use of s is expected to deal than score() reckons by its first roll's odds (hit chance x
 # every hit's damage): its rolls' own odds (friction: a use that loops, Chaser's chase, runs the later rolls at
-# disadvantage, Battle.friction_ahead(); a chain stops at its first miss) and what its holder's passives make of them
-# (Behaviour.forecasting(): Heavy Strike pools them behind a last roll), against the same reckoned without either.
+# disadvantage, Battle.friction_ahead(); a chain stops at its first miss), what its holder's passives make of them
+# (Behaviour.forecasting(): Heavy Strike pools them behind a last roll) and the uses a critical sets off (Forecast.loops:
+# a Chaser's chases, a Jugular's recasts): each as likely as the crits before it, and itself a use like this one, the rolls
+# its chain has made so far at friction (Forecast.rolled), against the same reckoned without any of it.
 # 1 for the plain case, which it doesn't work out. `d`: s's damage_range().
 static func _use_ratio(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictionary) -> float:
+	var f := _forecast(b, u, s, t, r, d, -1)
+	var worth := f.worth
+	if worth < 0.0:
+		if f.loops == 0 and b.friction_ahead(u, f.rolls - 1) == 0:
+			return 1.0
+		worth = f.landings()
+	var live := 1.0
+	var more := f
+	for k in f.loops:
+		live *= more.crits()
+		if live < 0.001:
+			break
+		more = _forecast(b, u, s, t, r, d, k * f.rolls)
+		worth += live * (more.worth if more.worth >= 0.0 else more.landings())
+	f.flat = true
+	var plain := f.landings()
+	return worth / plain if plain > 0.0 else 1.0
+
+
+# A use of s as the Forecast reads it, the passives of u asked what they make of it (a follow-up a crit sets off: rolled).
+static func _forecast(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictionary, rolled: int) -> Behaviour.Forecast:
 	var f := Behaviour.Forecast.new()
 	f.battle = b
 	f.caster = u
@@ -544,18 +567,15 @@ static func _use_ratio(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictio
 	f.guess = r.believed(GUESS_DEFENSE)
 	f.rolls = 1 if not s.chain else (1 if u.stat(&"single") > 0.0 else u.mods(s).irank(u.rank(s), &"rank_impact"))
 	f.per = float(d.get("avg", 0.0)) / f.rolls
+	f.rolled = rolled
+	if s.recast_on_crit:  # (a flag of the skill's, read as Battle.cast() reads it)
+		f.loops = Battle.RECAST_LIMIT
+		f.grace = u.mods(s).irank(u.rank(s), &"rank_impact")
 	for h in u.hooks():
 		h[0].forecasting(b, u, h[1], f)
-	if f.worth < 0.0:
-		if b.friction_ahead(u, f.rolls - 1) == 0:
-			return 1.0
-		f.worth = f.landings()
-	f.flat = true
-	var plain := f.landings()
-	return f.worth / plain if plain > 0.0 else 1.0
+	return f
 
 
-# HUNT for a target it reads as one of a side it hunts.
 static func _hunted(u: Unit, r: Read) -> float:
 	return HUNT if r.faction != null and r.faction in u.hunts else 0.0
 
