@@ -230,20 +230,25 @@ func _node(s: Skill, at: Vector2, tone: Color, font: Font) -> void:
 	var fill := FILL
 	var edge := Color(tone, 0.35)
 	var ink := Color(tone.lightened(0.2), 0.45)
+	var lit := Vector2(0.4, 0.55)  # a coloured icon's brightness and opacity: locked
 	match state:
 		&"learned":
 			fill = tone.darkened(0.1)
 			edge = tone.lightened(0.35)
 			ink = Color(0.05, 0.05, 0.07)
+			lit = Vector2(1.0, 1.0)
 		&"open":
 			edge = tone
 			ink = tone.lightened(0.45)
+			lit = Vector2(0.85, 1.0)
 		&"stub":
 			edge = Color(STUB, 0.7)
 			ink = STUB
+			lit = Vector2(0.5, 0.5)
 	var unworn := state == &"learned" and not unit.equipped(s)  # learned, not on the bar: a dashed rim, a darker fill
 	if unworn:
 		fill = fill.darkened(0.35)
+		lit.x *= 0.8
 	draw_circle(at, R, fill)
 	if state == &"stub" or unworn:
 		for i in 8:  # dashed: not built yet
@@ -258,7 +263,7 @@ func _node(s: Skill, at: Vector2, tone: Color, font: Font) -> void:
 		draw_arc(at, R + 2.5, 0.0, TAU, 24, Color(1, 1, 1, 0.45), 1.0)
 	var tex := s.icon()
 	if tex:
-		draw_texture_rect(tex, Rect2(at - Vector2(R - 1.0, R - 1.0), Vector2(R - 1.0, R - 1.0) * 2.0), false, ink)
+		draw_texture_rect(tex, Rect2(at - Vector2(R - 1.0, R - 1.0), Vector2(R - 1.0, R - 1.0) * 2.0), false, Skill.icon_ink(tex, ink, lit.x, lit.y))
 	else:
 		var text := s.mark()
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 5).x

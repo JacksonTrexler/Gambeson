@@ -135,6 +135,7 @@ const CATEGORIES := {&"magical": "Magic", &"martial": "Martial", &"specialist": 
 const ICONS := "res://Icons/Skills/"  # <skill file>.png each: icon()
 
 static var _icons := {}  # skill file -> its icon, or null
+static var _coloured := {}  # texture path -> whether it's real art rather than a white placeholder
 static var _kinds := {}  # skill -> the broad kinds its trees give it (kinds()), found on first ask
 static var _kinds_found := false
 
@@ -456,7 +457,7 @@ func title() -> String:
 	return name + " ??" if ai else name
 
 
-# Its icon: Icons/Skills/<its file>.png, white on clear so the skills screen tints it by state. Until
+# Its icon: Icons/Skills/<its file>.png, a white placeholder the skills screen tints by state, or coloured art (is_coloured()). Until
 # art replaces the file it's a placeholder of its mark (Util/icon.py draws one); null: none, the mark's
 # drawn as text instead.
 func icon() -> Texture2D:
@@ -465,6 +466,32 @@ func icon() -> Texture2D:
 		var p := ICONS + id + ".png"
 		_icons[id] = load(p) if id and ResourceLoader.exists(p) else null
 	return _icons[id]
+
+
+# Whether an icon is coloured art (a utumno icon) rather than a white placeholder (Util/icon.py: white letters, a
+# translucent black edge). Any solid pixel that isn't near white says coloured. One scan per texture, cached by path.
+static func is_coloured(tex: Texture2D) -> bool:
+	var key := tex.resource_path if tex.resource_path else str(tex.get_instance_id())
+	if key not in _coloured:
+		var img := tex.get_image()
+		var found := false
+		if img:
+			for y in img.get_height():
+				for x in img.get_width():
+					var c := img.get_pixel(x, y)
+					if c.a >= 0.78 and minf(c.r, minf(c.g, c.b)) < 0.78:
+						found = true
+						break
+				if found:
+					break
+		_coloured[key] = found
+	return _coloured[key]
+
+
+# What to modulate an icon by: a white placeholder takes the state's ink (the tag-coloured tint); coloured art
+# keeps its own colours, darkened to `dim` and faded to `alpha` so the state still reads, never tinted.
+static func icon_ink(tex: Texture2D, ink: Color, dim: float = 1.0, alpha: float = 1.0) -> Color:
+	return Color(dim, dim, dim, alpha) if is_coloured(tex) else ink
 
 
 # Up to 2 characters for it on skill trees, its placeholder icon: its glyph, or its initials (a stub's

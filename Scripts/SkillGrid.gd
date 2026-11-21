@@ -271,20 +271,25 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 	var fill := FILL
 	var edge := Color(tone, 0.35)
 	var ink := Color(tone.lightened(0.2), 0.5)
+	var lit := Vector2(0.4, 0.55)  # a coloured icon's brightness and opacity: locked
 	match state:
 		&"learned":
 			fill = tone.darkened(0.25)
 			edge = tone.lightened(0.35)
 			ink = Color(0.95, 0.96, 0.98)
+			lit = Vector2(1.0, 1.0)
 		&"open":
 			edge = tone
 			ink = tone.lightened(0.45)
+			lit = Vector2(0.85, 1.0)
 		&"stub":
 			edge = Color(STUB, 0.7)
 			ink = STUB
+			lit = Vector2(0.5, 0.5)
 	var unworn := state == &"learned" and not unit.equipped(s)  # learned, not on the bar: a dashed edge, a darker fill
 	if unworn:
 		fill = fill.darkened(0.35)
+		lit.x *= 0.8
 	draw_rect(box, fill)
 	if state == &"stub" or unworn:
 		for i in int(box.size.x / 4.0):  # dashed all round: not built yet
@@ -303,7 +308,7 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 		draw_rect(box.grow(2.5), Color(1, 1, 1, 0.45), false, 1.0)
 	var tex := s.icon()
 	if tex:
-		draw_texture_rect(tex, box.grow(-2.0), false, ink)
+		draw_texture_rect(tex, box.grow(-2.0), false, Skill.icon_ink(tex, ink, lit.x, lit.y))
 	else:
 		var text := s.mark()
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x

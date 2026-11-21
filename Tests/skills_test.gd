@@ -129,3 +129,19 @@ func test_flags_described() -> void:
 			if d.markup(3) == said:
 				unsaid.append("%s.%s" % [s.name, p.name])
 	ok(unsaid.is_empty(), "every flag a skill sets changes what it says - a flag or behaviour without its line (%s)" % [unsaid])
+
+
+# Skill.is_coloured() tells coloured art from a white placeholder (white letters, a translucent black edge) and
+# icon_ink() tints only the placeholder: coloured art keeps its colours, dimmed for state.
+func test_icon_ink_tints_placeholders_not_coloured_art() -> void:
+	var img := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	img.set_pixel(1, 1, Color.WHITE)
+	img.set_pixel(2, 1, Color(0, 0, 0, 0.59))  # the placeholder's edge
+	var white := ImageTexture.create_from_image(img)
+	img.set_pixel(2, 2, Color(0.8, 0.1, 0.1))
+	var art := ImageTexture.create_from_image(img)
+	var ink := Color(0.3, 0.6, 0.9, 0.5)
+	ok(not Skill.is_coloured(white) and Skill.icon_ink(white, ink, 0.4, 0.5) == ink, "a white placeholder takes the state's ink")
+	ok(Skill.is_coloured(art) and Skill.icon_ink(art, ink, 0.4, 0.5) == Color(0.4, 0.4, 0.4, 0.5), "coloured art is dimmed, not tinted")
+	ok(not Skill.is_coloured(load("res://Icons/Skills/sanctum.png")) and Skill.is_coloured(load("res://Icons/Skills/heal.png")), "the shipped icons sort as placeholder and art")
+

@@ -259,7 +259,7 @@ func _draw() -> void:
 	var tex := skill.icon()
 	if tex:  # its icon before its name
 		var side := size.y - 4.0
-		draw_texture_rect(tex, Rect2(15, 2, side, side), false, Color(0.92, 0.93, 0.96, dim))
+		draw_texture_rect(tex, Rect2(15, 2, side, side), false, Skill.icon_ink(tex, Color(0.92, 0.93, 0.96, dim), 1.0, dim))
 		left += side + 1.0
 	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
 			Color(0.92, 0.93, 0.96).lerp(MUTED_TEXT, hush) * Color(1, 1, 1, dim))
