@@ -546,22 +546,28 @@ func float_sign(u: Unit, icon: Texture2D, text: String, col: Color, rounded := 0
 
 
 # The faces a rounded amount is drawn in (float_text(), float_sign()): made once from the floaters' font.
-static var _faces: Dictionary[int, FontVariation] = {}
+static var _faces: Dictionary = {}  # [base font, rounded] -> FontVariation
 
 
 func _face(l: Label, rounded: int) -> void:
-	if rounded == 0:
-		return
-	var f: FontVariation = _faces.get(rounded)
+	if rounded != 0:
+		l.add_theme_font_override(&"font", face(l.get_theme_font(&"font"), rounded))
+
+
+# base slanted (rounded < 0: rounded down) or emboldened (rounded > 0: up), made once. The log's RichTextLabels take
+# these as their italics and bold faces (HUD._ready()).
+static func face(base: Font, rounded: int) -> FontVariation:
+	var key := [base, signi(rounded)]
+	var f: FontVariation = _faces.get(key)
 	if f == null:
 		f = FontVariation.new()
-		f.base_font = l.get_theme_font(&"font")
+		f.base_font = base
 		if rounded < 0:
 			f.variation_transform = Transform2D(Vector2(1, 0), Vector2(0.25, 1), Vector2.ZERO)  # slanted: rounded down
 		else:
 			f.variation_embolden = 0.8  # heavier: rounded up
-		_faces[rounded] = f
-	l.add_theme_font_override(&"font", f)
+		_faces[key] = f
+	return f
 
 
 # A roll an ally's Self-evaluation saw, tallied up above u like the initiative dice: the d20

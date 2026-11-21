@@ -164,6 +164,10 @@ func _ready() -> void:
 	col.minimum_size_changed.connect(_fit_bar, CONNECT_DEFERRED)  # what the panel holds besides the bar changes (a hint wraps, a card row appears)
 	$Root.resized.connect(_fit_bar, CONNECT_DEFERRED)  # ...and the window does
 	command = Command.new(battle, battle.player if battle.player else _stand_in())
+	for box: RichTextLabel in [log_box, %LogLine]:  # an amount rounded down is italic, up bold (amount_text()): slanted and emboldened faces of the log's own
+		var base := box.get_theme_font(&"normal_font")
+		box.add_theme_font_override(&"italics_font", Overlay.face(base, -1))
+		box.add_theme_font_override(&"bold_font", Overlay.face(base, 1))
 	clock_label = Label.new()
 	clock_label.name = &"Clock"
 	clock_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
@@ -1620,7 +1624,7 @@ func _on_gripped(u: Unit, by: Unit, dealt: int) -> void:
 		return
 	var a := battle.held_by(u)
 	var grip := "%s %s" % [a.skill.name, Skill.roman(by.rank(a.skill))] if a and a.skill else "grip"
-	_log("%s %s%s%s%s" % [_tag(by), grip, _arrow(true), _tag(u), " [color=#ff6b5e]-%d[/color]" % dealt if _hp_shows(u) else ""])
+	_log("%s %s%s%s%s" % [_tag(by), grip, _arrow(true), _tag(u),  " " + amount_text("-", dealt, "#ff6b5e", _taken_rounded(u, dealt)) if _hp_shows(u) else ""])
 	_mark()
 
 
@@ -1974,7 +1978,7 @@ func _on_used(caster: Unit, skill: Skill, at: Variant, dealt: int) -> void:
 			overlay.float_text(at, "Glance", MUTED)
 	if at is Unit and dealt > 0:
 		if _hp_shows(at):
-			text += " [color=#ff6b5e]-%d[/color]" % dealt
+			text += " " + amount_text("-", dealt, "#ff6b5e", _taken_rounded(at, dealt))
 		elif known(caster):
 			overlay.float_text(at, "Hit!", FOE)
 	_log(text)
@@ -2081,7 +2085,50 @@ var _blows := {}
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
 	_blows[u] = blow
-	(func() -> void: _blows.erase(u)).call_deferred()
+	if u not in _taken:
+		_taken[u] = []
+		(func() -> void:
+			_blows.erase(u)
+			_taken.erase(u)).call_deferred()
+	_taken[u].append(blow)
+
+
+# The blows each unit is taking, until the frame ends: the log's line for a use (several blows) and a blast reads them.
+var _taken := {}
+var _healed := {}  # the heal each is getting (_on_being_healed())
+
+
+# How the n a unit took was rounded, if it all came of its blows this frame (the sum of their damage after listeners cut it)
+# and they were all rounded one way: -1 down, 1 up, else 0 (exact, mixed, or not what the blows made up).
+func _taken_rounded(u: Unit, n: int) -> int:
+	var sum := 0
+	var way := 0
+	for blow: Dictionary in _taken.get(u, []):
+		sum += blow.damage
+		if blow.rounded != 0:
+			if way != 0 and way != blow.rounded:
+				return 0
+			way = blow.rounded
+	return way if sum == n else 0
+
+
+# An amount for the log in its colour, in italics if luck rounded it down, bold if up (the log's RichTextLabels carry
+# those faces: _ready()).
+static func amount_text(sign_: String, n: int, colour: String, rounded: int) -> String:
+	var text := "[color=%s]%s%d[/color]" % [colour, sign_, n]
+	return text if rounded == 0 else ("[i]%s[/i]" if rounded < 0 else "[b]%s[/b]") % text
+
+
+# The heal a unit is about to get (Unit.being_healed), for its number's face: kept (its hp is cut by what listens after this) until the frame ends.
+func _on_being_healed(u: Unit, got: Dictionary) -> void:
+	_healed[u] = got
+	(func() -> void: _healed.erase(u)).call_deferred()
+
+
+# How the n it was healed was rounded, if all of it came of its latest heal this frame (_on_being_healed()).
+func _healed_rounded(u: Unit, n: int) -> int:
+	var got: Variant = _healed.get(u)
+	return got.rounded if got != null and got.hp == n else 0
 
 
 # A damage number in the colour of what the blow was made of (Tags.mark() past the broad words: a
@@ -2099,7 +2146,8 @@ func _on_hp(was: int, now: int, u: Unit) -> void:
 		var blow: Variant = _blows.get(u)  # rounded as the blow it came from was, if it all came from one (Unit.hit())
 		overlay.float_text(u, "-%d" % (was - now), _hurt_colour(u), blow.rounded if blow != null and blow.damage == was - now else 0)
 	elif now > was:
-		overlay.float_text(u, "+%d" % (now - was), FRIEND)
+		# (rounded as the heal was, if it was the whole of the change)
+		overlay.float_text(u, "+%d" % (now - was), FRIEND, _healed_rounded(u, now - was))
 
 
 # Signs for what isn't the stat itself (null skill: Luck, Regen): their colours. Anything else takes the tag colour of its name.
@@ -2136,6 +2184,7 @@ func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int)
 func _watch_unit(u: Unit) -> void:
 	u.hp_changed.connect(_on_hp.bind(u))
 	u.taking_hit.connect(_on_taking_hit)
+	u.being_healed.connect(_on_being_healed)
 	u.energy_changed.connect(_on_energy.bind(u))
 	u.reserve_changed.connect(_mark.unbind(3))
 	u.overcharge_changed.connect(_mark.unbind(2))
@@ -2194,13 +2243,13 @@ func _on_sapped(u: Unit, drained: Dictionary) -> void:
 func _on_pulsed(u: Unit, healed: Dictionary) -> void:
 	if unit_seen(u.cell) != u:
 		return
-	var parts := healed.keys().filter(func(o: Unit): return healed[o] > 0).map(func(o: Unit): return "%s [color=#3fbf4f]+%d[/color]" % [_tag(o), healed[o]])
+	var parts := healed.keys().filter(func(o: Unit): return healed[o] > 0).map(func(o: Unit): return "%s %s" % [_tag(o), amount_text("+", healed[o], "#3fbf4f", _healed_rounded(o, healed[o]))])
 	_log("%s pulses%s" % [_tag(u), ": " + ", ".join(parts) if parts else ", healing no one"])
 
 
 # A channeled skill's blast: what it did to each unit caught in it.
 func _on_exploded(_u: Unit, s: Skill, _at: Vector2i, hit: Dictionary) -> void:
-	var parts := hit.keys().map(func(o: Unit): return "%s [color=#ff6b5e]-%d[/color]" % [_tag(o), hit[o]] if _hp_shows(o) else _tag(o))
+	var parts := hit.keys().map(func(o: Unit): return "%s %s" % [_tag(o), amount_text("-", hit[o], "#ff6b5e", _taken_rounded(o, hit[o]))] if _hp_shows(o) else _tag(o))
 	_log("%s's blast%s" % [s.name, " catches " + ", ".join(parts) if parts else " catches no one"])
 	_mark()
 
@@ -3124,6 +3173,7 @@ func effect_icons(u: Unit, only: Variant = null) -> Array:
 			continue
 		at[key] = out.size()
 		var known_roll := a.evaluated and a.roll != 0 and u.faction == command.faction()
+		var corner := str(a.roll) if known_roll else (str(a.rank) if e.per_rank and a.rank > 1 else "")  # its roll, else the rank a stacking effect has built to (Cadence)
 		out.append([a.skill.mark() if a.skill else _chip_mark(e.label()), FRIEND if e.helps() > 0 else FOE,
 				(a.skill.name + "\n" if a.skill else "") + line + ("\nRolled %d" % a.roll if known_roll else ""),
 				corner])
@@ -3169,7 +3219,6 @@ func _time_left(a: Unit.Applied) -> String:
 
 
 # "76 BST": its six core stats added up (what Embellish inflates).
-		var corner := str(a.roll) if known_roll else (str(a.rank) if e.per_rank and a.rank > 1 else "")  # its roll, else the rank a stacking effect has built to (Cadence)
 func _bst_line(stats: Array) -> String:
 	return "%d BST" % roundi(stats.reduce(func(sum, x): return sum + x, 0.0))
 

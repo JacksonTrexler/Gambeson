@@ -375,10 +375,15 @@ func clears(rank: int) -> int:
 
 # HP it heals, cast by u (at least 1).
 func healing(u: Unit) -> int:
+	return maxi(u.rounded(heal_raw(u)) + heal_bonus, 1)
+
+
+# What healing() rounds: its stat mods through u's modifiers, split (before luck's rounding).
+func heal_raw(u: Unit) -> float:
 	var sum := 0
 	for s in heal_mods:
 		sum += u.mod(s, tags)
-	return maxi(u.rounded(u.mods(self).statf(sum, &"stat_impact") / float(heal_split)) + heal_bonus, 1)
+	return u.mods(self).statf(sum, &"stat_impact") / float(heal_split)
 
 
 # Its AP and cost come from the cost calculator (Pricing), by its cost profile.

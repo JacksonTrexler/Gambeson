@@ -1226,7 +1226,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		_link(caster, skill, r)
 	if not foe and skill.heals():
 		target.healed_by = caster
-		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) + impact_of(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri)
+		var raw := skill.heal_raw(caster) if skill.heal_mods else 0.0  # luck's rounding of it, for the number's face (the rest is whole)
+		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) + impact_of(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri, Luck.rounded(raw, caster.rounded(raw)) if raw != 0.0 else 0)
 		target.regain(skill.restores * ri)
 	if not foe:
 		_lovely(caster, skill, target)
@@ -2697,9 +2698,9 @@ static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) ->
 	var bonus := (m.stat(u.mod(u.wielded(tier.stat, tags), tags), &"stat_impact") + u.weapon_bonus(tier.stat)) if tier.stat else 0
 	if b and t:
 		bonus += int(b.requirement(u, s, t, r)[1])
-	var lo := maxi(tier.power + count + bonus, 1) * hits
 	if b:
 		bonus += b.impact_ahead(u, s)  # First Chair and the like: every blow of the use carries it (impact_of())
+	var lo := maxi(tier.power + count + bonus, 1) * hits
 	var hi := maxi(tier.power + count * tier.dice.y + bonus, 1) * hits
 	return {lo = lo, hi = hi, avg = (lo + hi) / 2.0}
 
@@ -3105,7 +3106,8 @@ func restore(u: Unit, it: Item) -> int:
 	match it.restores:
 		&"hp":
 			var was := u.hp
-			u.heal(n)
+			var raw: float = most * it.restore_share * it.ranked()
+			u.heal(n, true, Luck.rounded(raw, u.rounded(raw)))
 			return u.hp - was
 		&"energy":
 			return u.grant_energy(n)
@@ -4205,7 +4207,7 @@ func _mend(u: Unit) -> void:
 		var raw := regen * u.max_hp + flat
 		var hp := Luck.settle(raw, u.luck, true)
 		var was := u.hp
-		mend(u, hp, power)
+		mend(u, hp, power, 0, Luck.rounded(raw, hp))
 		if u.hp > was:  # signed by what put the regen on (Rejuvinate), else as Regen itself
 			var by := _regen_source(u)
 			passive(u, by, u.hp - was, &"hp" if by else &"regen", Luck.rounded(raw, hp) if u.hp - was == hp else 0)  # capped at max HP: not the rounded amount
@@ -4277,7 +4279,8 @@ func _pulse(u: Unit) -> void:
 		if Command.tiles(o.cell, u.cell) <= PULSE_REACH:
 			var was := o.hp
 			o.healed_by = u
-			o.heal(k * (roll(Vector2i(1, 4)) + Luck.settle(0.05 * o.max_hp, o.luck, true)))
+			var share := Luck.settle(0.05 * o.max_hp, o.luck, true)
+			o.heal(k * (roll(Vector2i(1, 4)) + share), true, Luck.rounded(0.05 * o.max_hp, share))
 			healed[o] = o.hp - was
 	pulsed.emit(u, healed)
 
@@ -5258,8 +5261,8 @@ func place(u: Unit, c: Vector2i) -> bool:
 # A heal: its wounds of rank `power` or less cleared (an effect's wound flag), then hp back, plus
 # per_wound for each wound cleared (First Aid: rank). Returns the wounds cleared. A debuff to be overcome
 # on t (the overcome stat: Curse of the Coyote) takes it instead: it wears max(power, 1) of its ranks away,
-# and the heal does nothing else.
-func mend(t: Unit, hp: int, power: int, per_wound := 0) -> int:
+# and the heal does nothing else. rounded: how luck rounded the hp (Luck.rounded(): Unit.heal()).
+func mend(t: Unit, hp: int, power: int, per_wound := 0, rounded := 0) -> int:
 	for e: Effect in t.timed.keys():
 		if e.stat == "overcome" and e.helps() < 0:
 			t.timed[e].rank -= maxi(power, 1)
@@ -5271,7 +5274,7 @@ func mend(t: Unit, hp: int, power: int, per_wound := 0) -> int:
 		if e.wound and t.timed[e].rank <= power:
 			t.timed.erase(e)
 			n += 1
-	t.heal(hp + per_wound * n)
+	t.heal(hp + per_wound * n, true, rounded)
 	return n
 
 
