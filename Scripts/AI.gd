@@ -617,6 +617,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
 				v = maxf(v - _wear(u, s, b, t, r), v * (1.0 - WORN))  # and what its own wear adds to the price
+				v += _relief(b, u, s, t, r)  # and what a death gives its other counts back
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -704,6 +705,31 @@ static func _wear(u: Unit, s: Skill, b: Battle = null, t: Unit = null, r: Read =
 			h[0].wearing(b, u, h[1], w)
 		cost *= clampf(w.uses / w.gain, 0.0, 1.0)  # the share of the use it keeps
 	return cost
+
+
+# What a death it would cause gives its other skills' counts back, in the HP their extra cost is worth (_wear()'s terms): a blow of s
+# that would kill t (its average meets t's HP) is asked of u's passives as Battle.neutralize() asks them, neutralized() with the dying
+# unit and how = killed, on u's own counts (any other holder is not weighed), and the most any other skill's extra cost falls by is the
+# worth (it spends its next blow on one of them: the largest, not the sum). The counts are put back after. Not by name: any passive
+# whose neutralized() eases its holder's exhaustion joins. 0 for a blow that wouldn't kill, a unit with no passive, or nothing worn.
+static func _relief(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
+	if not Exhaustion.on or u.exhaustion.uses.is_empty() or r.hp == null or u.on_passives.is_empty() or Battle.damage_range(u, s, t, b).get("avg", 0.0) < r.hp:
+		return 0.0
+	var extra := func(k: Skill) -> float:
+		var fund: Variant = u.funding(k)
+		return (1.0 - 1.0 / u.exhaustion.rate(k)) * (u.ap_cost(k, fund) * AP + u.cost_from(k, fund) * POINT)
+	var was: Dictionary[Skill, float] = u.exhaustion.uses.duplicate()
+	var before := {}
+	for k in was:
+		if k != s and not k.passive:
+			before[k] = extra.call(k)
+	var best := 0.0
+	for h in u.hooks():
+		h[0].neutralized(b, u, h[1], t, u, &"killed")
+	for k in before:
+		best = maxf(best, before[k] - extra.call(k))
+	u.exhaustion.uses = was
+	return best
 
 
 # What share of its worth a skill keeps for what exhaustion has added to its cost: 1 fresh, 1 / rate worn, never

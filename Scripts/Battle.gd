@@ -1680,8 +1680,12 @@ func neutralize(u: Unit, how: StringName) -> void:
 			w.felled[u] = how
 	for o: Unit in units.values():
 		if o != u and o.is_alive():
-			for h in o.hooks():
-				h[0].neutralized(self, o, h[1], u, u.last_hit_by, how)  # Deathlust
+			for x in o.on_passives:  # (Unit.hooks(), with the skill each comes from: one that eased its holder's exhaustion signs it, Deathlust)
+				var worn := o.exhaustion.total()
+				for h in x.skill.behaviours:
+					h.neutralized(self, o, x.rank, u, u.last_hit_by, how)
+				if o.exhaustion.total() < worn - 0.0001:
+					passive(o, x.skill, 0, &"")
 
 
 # A use of s was paid for (Unit.paid) inside a cast: held open, aimed at the cast's target, until the
@@ -1700,8 +1704,12 @@ func _settle_wear() -> void:
 	var open := _wears
 	_wears = []
 	for w in open:
-		for h in w.caster.hooks():
-			h[0].wearing(self, w.caster, h[1], w)
+		for x in w.caster.on_passives:  # a passive that kept some of the use off its count signs itself (Deathlust)
+			for h in x.skill.behaviours:
+				var kept := w.uses
+				h.wearing(self, w.caster, x.rank, w)
+				if w.uses < kept - 0.0001:
+					passive(w.caster, x.skill, 0, &"")
 		w.caster.exhaustion.relieve(w.gain - w.uses, w.skill)
 
 
