@@ -58,3 +58,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-20,w8-party,sonnet,medium,56195,21,219661,ok
 2026-11-20,w8-names,sonnet,high,115499,55,475216,ok
 2026-11-20,w8-bar,opus,medium,231727,106,1514148,ok
+2026-11-21,w8-icons,sonnet,medium,73937,33,4039949,ok
+2026-11-21,w8-layout,sonnet,high,167794,61,5921587,ok
+2026-11-21,w8-ai1,sonnet,high,230620,91,6380015,ok
