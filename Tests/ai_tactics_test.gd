@@ -604,3 +604,33 @@ func test_prices_a_cc() -> void:
 	var fog := sk("brainfog")
 	ok(AI._afflicting(b, v(1), fog, b.read(v(1), v(3)), v(3), {}) > 0.0 and is_equal_approx(AI._afflicting(b, v(1), fog, b.read(v(1), v(3)), v(3), {}) / AI._threat(b, v(1), b.read(v(1), v(3)), v(3)), AI.CC), "a cc with nothing foreseen is worth the CC share")
 	ok(AI._afflicting(b, v(1), hex, b.read(v(1), v(3)), v(3), {}) == 0.0, "a hostile skill with no cc tag is worth none")
+
+
+# A foe's cc is read on the threat side (AI._stunners(): the foe's skills it makes out, each foresee()'s `afflicts` as likely as it
+# lands, over 1 + the cc it already bears; AI._dread(): the share of its next turn they take at a tile their walk and reach cover):
+# it closes on a target from the side out of a Stunner's reach (_approach()) and backs off to a tile out of it (_retreat()).
+func test_dreads_a_cc() -> void:
+	var stun := sk("stun")
+	v(4).learned.append(slot(stun, 2))
+	stage(lancin, {v(1): Vector2i(4, 6), v(3): Vector2i(7, 3), v(4): Vector2i(0, 3)})
+	soak(v(1), 500)
+	soak(v(3), 500)
+	v(4).refresh()
+	var reads := {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	ok(AI._stunners(b, v(1), reads).is_empty(), "unread, the foe's Stun is unknown: nothing to dread")
+	sharp(v(1))
+	reads = {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	var foes := AI._stunners(b, v(1), reads)
+	var reach: float = foes[0][1]
+	ok(foes.size() == 1 and foes[0][0] == v(4) and foes[0][2] > 0.0 and foes[0][2] < 1.0 and reach > 4.0, "read, v(4)'s Stun counts, v(3)'s Strike doesn't (%s)" % [foes])
+	ok(AI._dread(foes, Vector2i(ceili(reach) - 1, 3)) == foes[0][2] and AI._dread(foes, Vector2i(ceili(reach) + 1, 3)) == 0.0, "its odds in its reach, none out of it")
+	var winded := load("res://Effects/winded.tres")
+	v(1).afflict(winded, 3)
+	ok(is_equal_approx(AI._stunners(b, v(1), reads)[0][2], foes[0][2] / 2.0), "a cc it already bears halves it (Unit.afflicted())")
+	v(1).timed.clear()
+	var plain := AI._approach(b, v(1), v(3), {v(3): reads[v(3)]})
+	var wary := AI._approach(b, v(1), v(3), reads)
+	ok(AI._dread(foes, plain) > 0.0 and AI._dread(foes, wary) == 0.0 and Command.tiles(wary, v(3).cell) == 1, "it closes from a side out of the Stunner's reach, not the one that is nearer: %s, not %s" % [wary, plain])
+	var from: Array[Vector2i] = [v(3).cell]
+	var back := AI._retreat(b, v(1), from, 0, reads)
+	ok(AI._dread(foes, back) == 0.0, "backing off from another foe, it keeps out of the Stunner's reach (%s)" % back)

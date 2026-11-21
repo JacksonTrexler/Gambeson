@@ -71,6 +71,7 @@ const CC := 0.5  # the share of a foe's next turn a cc takes when what carries i
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
 const DELAY := 0.5  # the share of a disable's worth left it when its target postpones disablings (the postpone stat: Coyote Charm): it lands as the postpone ends, and one more held adds less (_held()); a guess
+const DREAD := 4.0  # what a cc certain to land costs a tile it would end a turn on, in tiles of walking (_approach(), _retreat(): _dread()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
 
@@ -429,8 +430,8 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	return p * value + saved + blocked - DEFENSE * toll - _hate(r)
 
 
-# A self-directed turn with no blow to strike from where it stands, and what is left of one that struck, go to armor it carries (Unit.pack): the one that adds most Defense to an armor slot its
-# skills give (Unit.plate_slots()) that works now, over what is worn in it (Unit.plate_defense(): that slot's rules, so
+# A self-directed turn with no blow to strike from where it stands, and what is left of one that struck, go to armor it carries (Unit.pack): the one that adds most (_plated(): its Defense, less its
+# tolls) to an armor slot its skills give (Unit.plate_slots()) that works now, over what is worn in it (Unit.plate_defense(): that slot's rules, so
 # Scrap Plating's cap and Power Armor's gate are read, not guessed). One a turn (armor takes most of one: Item.ap_cost());
 # none where nothing would add any, or the AP is short (Battle.equip()). What it takes off goes back in the pack.
 static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
@@ -438,6 +439,7 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 		return
 	var best: Array = []
 	var gain := 0
+	var net := 0.0001
 	for s in u.plate_skills():
 		if not u.plate_works(s):
 			continue
@@ -448,16 +450,27 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 			now = maxi(u.plate_defense(s, worn), 0) if u.can_wear(worn) else 0
 		for it in u.pack:
 			var d := u.plate_defense(s, it) if it and it.slot == "armor" and u.can_wear(it) else Behaviour.NO_ARMOR
-			if d != Behaviour.NO_ARMOR and d - now > gain:
+			if d != Behaviour.NO_ARMOR and d > now and _plated(u, s, d) - _plated(u, s, now) > net:
+				net = _plated(u, s, d) - _plated(u, s, now)
 				gain = d - now
 				best = [slot, it]
-	if gain > 0:
+	if not best.is_empty():
 		var worn: Item = u.get(best[0])
 		if b.equip(u, best[1], best[0]):
 			u.pack.erase(best[1])
 			if worn:
 				u.pack.append(worn)
 			log.append("%s puts on %s, +%d Defense" % [u.name, best[1].name, gain])
+
+
+# What `defense` points in the slot skill s gives are worth u, in Defense, for what its blocks cost it: each blow the plate blocks
+# saves the blow (BLOW) and takes its skill's toll off u's Power (Behaviour.slot_toll() at that blow, POINT a point), so the Defense
+# keeps the share of a block's worth the toll leaves (none, at a toll of BLOW / POINT or more). Scrap Plating's toll is 0: all of it.
+static func _plated(u: Unit, s: Skill, defense: int) -> float:
+	var toll := 0
+	for bh in s.behaviours:
+		toll += bh.slot_toll(u, u.own_rank(s), roundi(BLOW)) if bh else 0
+	return float(defense) * clampf(1.0 - toll * POINT / BLOW, 0.0, 1.0)
 
 
 # What the plates t wears cost it when they block u's s: each armor slot its skills give it (Unit.plated_defense(), seen once
@@ -519,10 +532,33 @@ static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
 
 # How much more or less a use of s is expected to deal than score() reckons by its first roll's odds (hit chance x
 # every hit's damage): its rolls' own odds (friction: a use that loops, Chaser's chase, runs the later rolls at
-# disadvantage, Battle.friction_ahead(); a chain stops at its first miss) and what its holder's passives make of them
-# (Behaviour.forecasting(): Heavy Strike pools them behind a last roll), against the same reckoned without either.
+# disadvantage, Battle.friction_ahead(); a chain stops at its first miss), what its holder's passives make of them
+# (Behaviour.forecasting(): Heavy Strike pools them behind a last roll) and the uses a critical sets off (Forecast.loops:
+# a Chaser's chases, a Jugular's recasts): each as likely as the crits before it, and itself a use like this one, the rolls
+# its chain has made so far at friction (Forecast.rolled), against the same reckoned without any of it.
 # 1 for the plain case, which it doesn't work out. `d`: s's damage_range().
 static func _use_ratio(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictionary) -> float:
+	var f := _forecast(b, u, s, t, r, d, -1)
+	var worth := f.worth
+	if worth < 0.0:
+		if f.loops == 0 and b.friction_ahead(u, f.rolls - 1) == 0:
+			return 1.0
+		worth = f.landings()
+	var live := 1.0
+	var more := f
+	for k in f.loops:
+		live *= more.crits()
+		if live < 0.001:
+			break
+		more = _forecast(b, u, s, t, r, d, k * f.rolls)
+		worth += live * (more.worth if more.worth >= 0.0 else more.landings())
+	f.flat = true
+	var plain := f.landings()
+	return worth / plain if plain > 0.0 else 1.0
+
+
+# A use of s as the Forecast reads it, the passives of u asked what they make of it (a follow-up a crit sets off: rolled).
+static func _forecast(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictionary, rolled: int) -> Behaviour.Forecast:
 	var f := Behaviour.Forecast.new()
 	f.battle = b
 	f.caster = u
@@ -532,18 +568,15 @@ static func _use_ratio(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Dictio
 	f.guess = r.believed(GUESS_DEFENSE)
 	f.rolls = 1 if not s.chain else (1 if u.stat(&"single") > 0.0 else u.mods(s).irank(u.rank(s), &"rank_impact"))
 	f.per = float(d.get("avg", 0.0)) / f.rolls
+	f.rolled = rolled
+	if s.recast_on_crit:  # (a flag of the skill's, read as Battle.cast() reads it)
+		f.loops = Battle.RECAST_LIMIT
+		f.grace = u.mods(s).irank(u.rank(s), &"rank_impact")
 	for h in u.hooks():
 		h[0].forecasting(b, u, h[1], f)
-	if f.worth < 0.0:
-		if b.friction_ahead(u, f.rolls - 1) == 0:
-			return 1.0
-		f.worth = f.landings()
-	f.flat = true
-	var plain := f.landings()
-	return f.worth / plain if plain > 0.0 else 1.0
+	return f
 
 
-# HUNT for a target it reads as one of a side it hunts.
 static func _hunted(u: Unit, r: Read) -> float:
 	return HUNT if r.faction != null and r.faction in u.hunts else 0.0
 
@@ -617,6 +650,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
 				v = maxf(v - _wear(u, s, b, t, r), v * (1.0 - WORN))  # and what its own wear adds to the price
+				v += _relief(b, u, s, t, r)  # and what a death gives its other counts back
 			if t.dbno != null and t.stopped():
 				v = minf(v, FINISH)  # down and no threat: finished off only when there's nothing better to do
 			if v > best_score:
@@ -704,6 +738,31 @@ static func _wear(u: Unit, s: Skill, b: Battle = null, t: Unit = null, r: Read =
 			h[0].wearing(b, u, h[1], w)
 		cost *= clampf(w.uses / w.gain, 0.0, 1.0)  # the share of the use it keeps
 	return cost
+
+
+# What a death it would cause gives its other skills' counts back, in the HP their extra cost is worth (_wear()'s terms): a blow of s
+# that would kill t (its average meets t's HP) is asked of u's passives as Battle.neutralize() asks them, neutralized() with the dying
+# unit and how = killed, on u's own counts (any other holder is not weighed), and the most any other skill's extra cost falls by is the
+# worth (it spends its next blow on one of them: the largest, not the sum). The counts are put back after. Not by name: any passive
+# whose neutralized() eases its holder's exhaustion joins. 0 for a blow that wouldn't kill, a unit with no passive, or nothing worn.
+static func _relief(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
+	if not Exhaustion.on or u.exhaustion.uses.is_empty() or r.hp == null or u.on_passives.is_empty() or Battle.damage_range(u, s, t, b).get("avg", 0.0) < r.hp:
+		return 0.0
+	var extra := func(k: Skill) -> float:
+		var fund: Variant = u.funding(k)
+		return (1.0 - 1.0 / u.exhaustion.rate(k)) * (u.ap_cost(k, fund) * AP + u.cost_from(k, fund) * POINT)
+	var was: Dictionary[Skill, float] = u.exhaustion.uses.duplicate()
+	var before := {}
+	for k in was:
+		if k != s and not k.passive:
+			before[k] = extra.call(k)
+	var best := 0.0
+	for h in u.hooks():
+		h[0].neutralized(b, u, h[1], t, u, &"killed")
+	for k in before:
+		best = maxf(best, before[k] - extra.call(k))
+	u.exhaustion.uses = was
+	return best
 
 
 # What share of its worth a skill keeps for what exhaustion has added to its cost: 1 fresh, 1 / rate worn, never
@@ -1194,8 +1253,8 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads :=
 	return best != u.cell and not b.travel(u, best).is_empty()
 
 
-# The tile u would back off to, by (in order): the least the foes it reads could drive it into (_shoved(), `reads`),
-# the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
+# The tile u would back off to, by (in order): the least the foes it reads could drive it into (_shoved(), `reads`), the
+# least their cc would likely take of its next turn there (_dread(), a tile out of their reach over one in it), the furthest from the nearest of `from` less what its way there costs beyond its steps (the price route() puts
 # on it, as _approach() does: dread of ground it knows or suspects, marks), then room to back off again. `safe` > 0:
 # any tile that far counts as far enough, and of those the one with the most room to back off again next round wins (_room(): a
 # corner is a tile `from` need only close on); on a tie, one an ally still to back off wouldn't choose for itself (_claimed();
@@ -1206,9 +1265,10 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 	var claimed: Array[Vector2i] = []
 	if safe > 0 and claim:
 		claimed = _claimed(b, u, from, safe, reads)
+	var stunners := _stunners(b, u, reads)
 	var key := func(c: Vector2i, extra: float) -> Array:
 		var g: int = gap.call(c)
-		return [-roundi(_shoved(b, u, c, reads)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
+		return [-roundi(_shoved(b, u, c, reads)), -roundi(DREAD * _dread(stunners, c)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
 	var best := u.cell
 	var best_key: Array = key.call(best, 0.0)
 	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
@@ -1397,6 +1457,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 	var state := b.rng.state
 	var best: Vector2i = r.cell
 	var best_cost := INF
+	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
 	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
 	for dx in [-1, 0, 1]:
 		for dy in [-1, 0, 1]:
@@ -1406,7 +1467,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			var price := {&"wary": true}  # it weighs what it only suspects, too
 			b.route(u, c, b.line(u.cell, c, u.luck, u), price)
 			var away := Vector2(u.cell).distance_to(Vector2(c))
-			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c)
+			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) + DREAD * _dread(stunners, c)
 			for o in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:
@@ -1417,6 +1478,48 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 	Unit.end_read()
 	b.rng.state = state
 	return best
+
+
+# The foes whose cc is likely to land on u, as it reads them (Read.skills: the ones it makes out), for _dread(): [foe, the
+# furthest it could cast from (walking up: its movement and the skill's reach), the odds it lands: the cast's own (hit_chance())
+# x the share of u's turn it takes if it does - what the skill's behaviours foresee (Battle.foresee() `afflicts`: Stun's save, a
+# grip), else CC for one that only carries the cc tag] - the best of each foe's skills, and none for a foe that is helpless, or that
+# u can't read the skills of. A unit already bearing a cc (Unit.afflicted()) fears one more less: the odds over 1 + what it bears.
+static func _stunners(b: Battle, u: Unit, reads: Dictionary) -> Array:
+	var out := []
+	if u.stopped():
+		return out
+	var borne := 1.0 + u.afflicted(&"cc").size()
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if not o.is_alive() or o.stopped() or not _foe(u, r):
+			continue
+		var best := [0.0, 0.0]
+		for s in r.skills:
+			if not s.hostile or s.on_tile():
+				continue
+			var share: float = b.foresee(o, s, u).get("afflicts", 0.0)
+			if share <= 0.0 and &"cc" in o.skill_tags(s):
+				share = CC
+			if share <= 0.0:
+				continue
+			var odds := Battle.hit_chance(o, s, u, b) * share / borne
+			if odds > best[0]:
+				best = [odds, ceili(o.stat(&"movement")) + b.skill_range(o, s, u)]
+		if best[0] > 0.0:
+			out.append([o, best[1], best[0]])
+	return out
+
+
+# The share of its next turn the foes _stunners() lists would likely take from u standing at c: each that could get to it
+# (within its walk and its skill's reach of where it stands now), as likely as it lands; one at least of them, as the chance
+# that none does: 1 - the product of the odds that each doesn't.
+static func _dread(foes: Array, c: Vector2i) -> float:
+	var clear := 1.0
+	for f in foes:
+		if Vector2(f[0].cell).distance_to(Vector2(c)) <= f[1] + 0.0001:
+			clear *= 1.0 - f[2]
+	return 1.0 - clear
 
 
 # The points of Defense t loses to an attack made from tile c, by the side of t it lies on (Unit.side_of(): rear,

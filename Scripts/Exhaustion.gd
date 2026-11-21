@@ -97,6 +97,14 @@ func relieve(n: float, s: Skill = null) -> void:
 				uses.erase(k)
 
 
+# Every skill's count added up: what a hook that eased them changed (Battle.neutralize() signs it).
+func total() -> float:
+	var sum := 0.0
+	for k in uses:
+		sum += uses[k]
+	return sum
+
+
 # Takes a share (0 to 1) of every skill's count off it (Deathlust), through relieve().
 func relieve_share(share: float) -> void:
 	for k in uses.keys():

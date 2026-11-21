@@ -178,6 +178,23 @@ func test_ai() -> void:
 	ok(AI._blocks(b, me, strike, b.read(me, power), power, 5.0) == 0.0, "off (no Power left): no blocks to count")
 
 
+# What a plate's blocks cost its wearer is weighed when it dresses (AI._plated(): Behaviour.slot_toll()): armor of Defense 6 fits
+# Power Armor I (all 6, but each block takes the blow's damage off its Power: half its worth) and Scrap Plating IV (4, no toll): the
+# slot with the toll loses to the one with none, though it adds more Defense. Without the toll, Power Armor.
+func test_ai_weighs_tolls() -> void:
+	villagers_only()
+	var u := plated(power_armor, 1)
+	u.learned.append(slot(scrap_plating, 4))
+	u.plating.clear()
+	var mid := bulwark()
+	mid.defense = 6
+	u.pack.assign([mid])
+	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
+	ok(u.plate_defense(power_armor, mid) == 6 and u.plate_defense(scrap_plating, mid) == 4 and AI._plated(u, power_armor, 6) == 3.0 and AI._plated(u, scrap_plating, 4) == 4.0, "6 in Power Armor I is worth 3 for its tolls, 4 in Scrap Plating 4")
+	var log := AI.act(b, u)
+	ok(u.get(Unit.plate_slot(scrap_plating)) == mid and u.get(Unit.plate_slot(power_armor)) == null, "it puts it in the slot with no toll (%s)" % [log])
+
+
 # The sheet: a row for the slot, an Equip button into it for armor, kept in the outfit and the save.
 func test_sheet() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})

@@ -464,10 +464,24 @@ class Forecast:
 	var per := 0.0  # the damage of each that lands, average
 	var worth := -1.0
 	var flat := false  # odds() as the first roll's all through: no friction
+	var loops := 0  # follow-ups a critical may set off, at most: each the use again, free, in a chain that loops (Chaser's chases: rank; a skill's recast_on_crit: Battle.RECAST_LIMIT)
+	var grace := 0  # rolls of such a chain that run free before its friction begins (Battle.loops())
+	var rolled := -1  # a follow-up the AI is weighing, not begun: the rolls its chain has made since the critical set it off (-1: the use itself)
 
 	# [hit, critical, glance] odds of the use's roll `i` (0 first), `plus` more to hit.
 	func odds(i: int, plus := 0) -> Array[float]:
-		return Battle.attack_odds(caster, skill, target, battle, guess, 0 if flat else i, plus)
+		return Battle.attack_odds(caster, skill, target, battle, guess, 0 if flat else i, plus, maxi(rolled + i + 1 - grace, 0) if rolled >= 0 and not flat else -1)
+
+	# The chance that one of its rolls crits (a use that loops chases on one): each roll that lands and crits, the ones before it
+	# landing without; the chain of them stops at its first miss.
+	func crits() -> float:
+		var sum := 0.0
+		var live := 1.0
+		for i in rolls:
+			var o := odds(i)
+			sum += live * o[1]
+			live *= maxf(o[0] - o[1], 0.0)
+		return sum
 
 	# The chance that exactly k of its rolls land, k = 0 up: each lands with its own odds, and it ends at the first miss.
 	func spread() -> Array[float]:
@@ -496,7 +510,8 @@ func striking(_b: Battle, _holder: Unit, _rank: int, _v: Volley) -> void:
 
 
 # The holder's skill use, as the AI weighs it (f: a Forecast): a passive that changes how the blows of a use land
-# (Heavy Strike pools them behind one last roll) tells what the use is then expected to deal in f.worth. Pure.
+# (Heavy Strike pools them behind one last roll) tells what the use is then expected to deal in f.worth, one that sets off
+# more uses when a roll crits (Chaser) says how many and how soon friction begins in f.loops and f.grace. Pure.
 func forecasting(_b: Battle, _holder: Unit, _rank: int, _f: Forecast) -> void:
 	pass
 

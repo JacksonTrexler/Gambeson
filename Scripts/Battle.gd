@@ -1680,8 +1680,12 @@ func neutralize(u: Unit, how: StringName) -> void:
 			w.felled[u] = how
 	for o: Unit in units.values():
 		if o != u and o.is_alive():
-			for h in o.hooks():
-				h[0].neutralized(self, o, h[1], u, u.last_hit_by, how)  # Deathlust
+			for x in o.on_passives:  # (Unit.hooks(), with the skill each comes from: one that eased its holder's exhaustion signs it, Deathlust)
+				var worn := o.exhaustion.total()
+				for h in x.skill.behaviours:
+					h.neutralized(self, o, x.rank, u, u.last_hit_by, how)
+				if o.exhaustion.total() < worn - 0.0001:
+					passive(o, x.skill, 0, &"")
 
 
 # A use of s was paid for (Unit.paid) inside a cast: held open, aimed at the cast's target, until the
@@ -1700,8 +1704,12 @@ func _settle_wear() -> void:
 	var open := _wears
 	_wears = []
 	for w in open:
-		for h in w.caster.hooks():
-			h[0].wearing(self, w.caster, h[1], w)
+		for x in w.caster.on_passives:  # a passive that kept some of the use off its count signs itself (Deathlust)
+			for h in x.skill.behaviours:
+				var kept := w.uses
+				h.wearing(self, w.caster, x.rank, w)
+				if w.uses < kept - 0.0001:
+					passive(w.caster, x.skill, 0, &"")
 		w.caster.exhaustion.relieve(w.gain - w.uses, w.skill)
 
 
@@ -2637,14 +2645,15 @@ static func hit_chance(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1
 # The chances (0-1) of an attack with s by u on t, unrolled as cast() rolls it (attack_check(): its crit range,
 # glancing, opening rolls): [hit (glances among them), critical, glance]. hit_chance()'s first; the HUD's
 # forecast and the AI read the glance share (half damage). `guess` as hit_chance()'s. `ahead`: the roll that many
-# rolls on in the use (friction_ahead(): the AI weighs a Strike's later rolls, a chase's first), `plus` to hit on it.
-static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1, ahead := 0, plus := 0) -> Array[float]:
+# rolls on in the use (friction_ahead(): the AI weighs a Strike's later rolls, a chase's first), `plus` to hit on it; `rub` (not -1): the
+# friction it has, whatever the chain says (a follow-up a crit would set off, not begun: Behaviour.Forecast.loops).
+static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -1, ahead := 0, plus := 0, rub := -1) -> Array[float]:
 	var c: Behaviour.Cast = b.cast_of(u, s, t, u.rank(s), true) if b and not s.behaviours.is_empty() else null
 	var req: Array = b.requirement(u, s, t, u.rank(s)) if b else [0, 0, 0, 0, 0.0]  # its contingency, as cast() reads it
 	var tags := c.tags if c else hit_tags(u, s, t, b)
 	var defense := (t.defense(tags) if guess < 0 else guess + t.defense(tags) - t.defense()) + guard_of(c)
 	var bonus := u.attack_mod(s) + s.roll_per_rank * u.mods(s).irank(u.rank(s), &"rank_impact") + s.roll_bonus + int(req[0]) + passion(u, t) + u.check_bonus(u.attack_stat(s), &"offensive") + u.focus_forecast(s) + plus
-	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags, b.friction_ahead(u, ahead) if b else u.friction + ahead))
+	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags, rub if rub >= 0 else (b.friction_ahead(u, ahead) if b else u.friction + ahead)))
 
 
 # What s deals in u's hands, before the target's Defense, mitigation and damage effects: {lo, hi, avg}
