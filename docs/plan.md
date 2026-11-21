@@ -197,6 +197,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Placeholder art from utumno (?223) | `icon.py check` |
 | — | Passive signage (?224) | `passive_signs_test.gd` |
 | — | Widescreen hotbar and merged leads (?225) | `slot_columns_test.gd`, `sweep_test.gd` |
+| — | Party size without the floor (?226) | `save_test.gd` |
+| — | Harmony, unique names, ?? on tags (?227) | `harmony_test.gd`, `tag_colors_test.gd`, `save_test.gd` |
+| — | Free lends and the band, Hollow Bones (?228) | `lent_test.gd`, `equip_test.gd` |
+| — | Coloured and white icons (?229) | `skills_test.gd` |
+| — | Band names, tall multi-slot button, spans kept whole (?230) | `slot_columns_test.gd`, `equip_test.gd` |
+| — | The AI: Deathlust relief, plate tolls, crit loops, cc dread (?231) | `deathlust_test.gd`, `plating_test.gd`, `chaser_test.gd`, `ai_tactics_test.gd` |
 
 ## Questions to answer first
 

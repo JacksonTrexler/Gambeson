@@ -71,7 +71,7 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 
 - Equipment links: `optional` and `innate` are flags on an item's link to a skill, not on the skill; armor lends Armor innate. (?196, ?214)
 - Multi-slot skills: 1 slot by default; a rarity takes Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5; an explicit slots property overrides. (?215)
-- Party size is level / 4 + the base cha mod if positive, at least 2; the player's units persist in a roster. (?216)
+- Party size is max(base cha mod, 0) + max(level / 4, 1); size 1 is solo (a unit with nothing to market goes alone); the player's units persist in a roster. (?216, ?226) [user]
 
 ## Wave 7 rules (2026-11-20)
 
@@ -82,6 +82,10 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Placeholder art comes from `/Users/jtrex/assets/utumno` where a name fits. (?223)
 - Passives show muted until they act; an acting passive signs itself (a slot lighting or a floater, "Name +amount", in the tag colour), with nothing measurable added to a fight; rounding shows italic (down) or bold (up). (?224)
 - The hotbar wraps into columns on wide windows; a description has one lead per "On <who>" line. (?225)
+- Skill names are unique (`skill.py check` holds it); a ?? goes on an AI-invented tag's shown name only, never its id, and never on the user's words. (?227) [user]
+- A skill an item lends is free by default (no slot, equipped while worn); `optional` is the link that costs a slot and is slotted by choice; the band under the hotbar holds slotless skills, activatable ones first on the next number keys. (?228) [user]
+- Skill icons are coloured art or white placeholders; placeholders are tinted by state, coloured art is only dimmed. (?229)
+- A band's names show whole and a multi-slot skill is one tall button kept whole across a column break. (?230)
 
 ## Equipping and traits
 - Every skill, active or passive, does nothing unless equipped (and toggled where relevant): auto-equipped on learn when a slot is free, manually when the bar is full; AI included. (?163) [user]
