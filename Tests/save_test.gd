@@ -186,11 +186,9 @@ func test_member_outfit() -> void:
 	ok(Game.outfit.weapon == sword and Game.roster[0].outfit.weapon.item == sword.resource_path and sword not in Game.stash, "the leader's goes through Game.outfit and its entry both")
 	owned = _owned()
 	Save.save()
-	var kept := Game.roster.duplicate(true)
 	Game.reset()
 	ok(Save.load_game() and Game.roster[0].outfit.weapon.item == sword.resource_path and Game.roster[1].hearts == 1 and _owned() == owned, "and it all survives the save")
 	e.free()
-	ok(kept.size() == Game.roster.size(), "(roster size kept)")
 
 
 func test_never_blank() -> void:

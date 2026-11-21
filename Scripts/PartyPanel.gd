@@ -12,6 +12,7 @@ signal closed
 var boxes: Array[CheckBox] = []
 var count: Label
 var sheet := CharacterSheet.new()
+var shade: ColorRect
 var member := -1  # the roster entry the sheet shows
 var unit: Unit  # standing for it while the sheet is open (in the tree: its bar follows what its items lend)
 
@@ -39,7 +40,7 @@ func _ready() -> void:
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(count)
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4  # a member's box and its Outfit button, two members to a row
 	col.add_child(grid)
 	var picked := Game.party_now()
 	for i in Game.roster.size():
@@ -58,13 +59,16 @@ func _ready() -> void:
 		wear.text = "Outfit"
 		wear.pressed.connect(outfit.bind(i))
 		grid.add_child(wear)
-		var gap := Control.new()  # (the grid's third column: the next member's box starts a row)
-		grid.add_child(gap)
 	var done := Button.new()
 	done.name = &"Done"
 	done.text = "Done"
 	done.pressed.connect(_done)
 	col.add_child(done)
+	shade = ColorRect.new()  # the stash screen's own backdrop: the sheet is see-through, and the party list is behind it
+	shade.color = Color(0, 0, 0, 0.97)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.hide()
+	add_child(shade)
 	sheet.between = true
 	sheet.hide()
 	sheet.equipped.connect(_on_equipped)
@@ -123,9 +127,11 @@ func outfit(i: int) -> Unit:
 		if not Game.equipped.is_empty():
 			u.ready.connect(func(): u.set_equipped(Game.equipped), CONNECT_ONE_SHOT)
 	Battle.refill(u)
+	u.hide()  # only its sheet is shown
 	add_child(u)
 	unit = u
 	member = i
+	shade.show()
 	sheet.open(u, true)
 	return u
 
@@ -181,6 +187,7 @@ func _on_used_up(u: Unit, it: Item) -> void:
 
 func _sheet_shut() -> void:
 	if not sheet.visible:
+		shade.hide()
 		_drop()
 
 
