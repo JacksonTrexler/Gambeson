@@ -32,3 +32,5 @@ So: prefer shared tags and one generic hook over a bespoke counter or a one-off 
 
 ## Report
 Under the word limit your prompt gives: what was built, every judgement call, tests changed, files touched, the suite's final line, commit hashes, anything undone.
+
+**Staging:** never `git add -A`, `git add .` or `git commit -a` in the main tree: the user keeps untracked work there (art, maps, imports) and it must never be committed. Stage files by path. (2026-11-21: a floater pushed them once.)

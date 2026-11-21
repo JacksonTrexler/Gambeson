@@ -43,3 +43,5 @@ and set the `S = ` line in `S/brief-common.md`.
 ## Final report (one message, 300 words or fewer)
 What landed (hashes, suite lines); calls to review, with question numbers; what's blocked and why; metrics totals
 (tokens and time by model, from `docs/agents/metrics.csv`). Then stop.
+
+**Staging:** never `git add -A`, `git add .` or `git commit -a` in the main tree: the user keeps untracked work there (art, maps, imports) and it must never be committed. Stage files by path. (2026-11-21: a floater pushed them once.)
