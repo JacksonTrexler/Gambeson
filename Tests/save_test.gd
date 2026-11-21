@@ -146,6 +146,51 @@ func test_party_size() -> void:
 	e.free()
 
 
+# Every item the player owns, by name: the stash and what each roster entry wears (the leader's entry counted once).
+func _owned() -> Array:
+	var out := Game.stash.map(func(it: Item): return it.name)
+	for d in Game.roster:
+		for slot in d.get("outfit", {}):
+			out.append(Save.item_in(d.outfit[slot]).name)
+	out.sort()
+	return out
+
+
+# The Party panel's Outfit buttons: the stash screen on any roster member, saved through its entry (Game.roster), the leader's
+# also its own fields; what's worn leaves and returns to the stash with nothing lost or duplicated.
+func test_member_outfit() -> void:
+	var e := _entry()
+	e._play()  # an Adventurer leader and one recruit of each other class
+	var sword: Item = load("res://Items/rapier.tres")
+	var heart: Item = load("res://Items/heart.tres")
+	Game.stash.append_array([sword, heart])
+	var owned := _owned()
+	var p: PartyPanel = e.open_party()
+	(p.find_child("Outfit1", true, false) as Button).pressed.emit()
+	var m := p.unit
+	ok(p.sheet.visible and p.member == 1 and m.nick == Game.roster[1].name and m.is_inside_tree(), "Outfit opens the stash screen on that member, made from its roster entry")
+	var was := m.weapon
+	var other := str(Game.roster[2].get("outfit"))
+	p._on_equipped(m, sword)
+	ok(m.weapon == sword and sword not in Game.stash and (was == null or was in Game.stash), "it puts on a stash item; what it wore goes back")
+	ok(Game.roster[1].outfit.weapon.item == sword.resource_path and _owned() == owned, "kept in its roster entry, nothing lost or doubled (%s)" % [_owned()])
+	ok(str(Game.roster[2].get("outfit")) == other and Game.outfit.get("weapon") != sword, "no one else's entry, nor the leader's, moves")
+	p.outfit(1)
+	ok(p.unit != m and p.unit.weapon == sword, "opened again, it is wearing it: the round trip through Game.roster")
+	p._on_unequipped(p.unit, "weapon")
+	ok(not Game.roster[1].outfit.has("weapon") and sword in Game.stash and _owned() == owned, "taking it off returns it to the stash")
+	p._on_used_up(p.unit, heart)
+	ok(Game.roster[1].hearts == 1 and heart not in Game.stash and Game.hearts == 0, "a Heart is a member's own extra life, not the leader's")
+	p.outfit(0)
+	p._on_equipped(p.unit, sword)
+	ok(Game.outfit.weapon == sword and Game.roster[0].outfit.weapon.item == sword.resource_path and sword not in Game.stash, "the leader's goes through Game.outfit and its entry both")
+	owned = _owned()
+	Save.save()
+	Game.reset()
+	ok(Save.load_game() and Game.roster[0].outfit.weapon.item == sword.resource_path and Game.roster[1].hearts == 1 and _owned() == owned, "and it all survives the save")
+	e.free()
+
+
 func test_never_blank() -> void:
 	Game.stash = [load("res://Items/dagger.tres")]
 	ok(not Save.save() and not FileAccess.file_exists(Save.PATH), "no hero picked (a scene played from the editor): nothing is written over a save")

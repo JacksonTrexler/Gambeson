@@ -15,6 +15,7 @@ signal unshackled(u: Unit, how: StringName)  # unlock, pick or pry its shackles 
 const SLOTS := ["weapon", "armor", "trinket"]
 
 var unit: Unit
+var between := false  # a roster member's between battles (PartyPanel): nothing to restore yet, so a potion can't be used - a Heart still can
 var ap_of := func(_it: Item, _u: Unit) -> float: return 0.0  # AP an item takes its unit to put on or use now (HUD: Battle.item_ap())
 var _column: VBoxContainer
 
@@ -70,7 +71,7 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		l.mouse_filter = MOUSE_FILTER_PASS
 		l.size_flags_horizontal = SIZE_EXPAND_FILL
 		row.add_child(l)
-		if it and editable and it.restores and not it.empty:
+		if it and editable and it.restores and not it.empty and not between:
 			row.add_child(_button("Use" + _ap(it), func() -> void: used_up.emit(unit, it)))
 		if it and editable and it.binding:  # shackles: locked, pick or pry them; unlocked, off for their rank in AP
 			var ap := " · %d AP" % it.rank
@@ -95,7 +96,7 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		l.mouse_filter = MOUSE_FILTER_PASS
 		l.size_flags_horizontal = SIZE_EXPAND_FILL
 		row.add_child(l)
-		if editable and it.slot == "consumable":
+		if editable and it.slot == "consumable" and (not between or it.hearts > 0):
 			row.add_child(_button("Use" + _ap(it), func() -> void: used_up.emit(unit, it)))
 		elif editable and u.can_wear(it):
 			row.add_child(_button("Equip" + _ap(it), func() -> void: equipped.emit(unit, it, "")))
