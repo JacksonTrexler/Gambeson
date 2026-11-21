@@ -308,6 +308,27 @@ func test_multi_slot() -> void:
 	h._refresh_bar()
 	var covered_slot: SkillSlot = h.bar.get_child(3)
 	ok(covered_slot.skill == null and covered_slot.cover == rare and (h.bar.get_child(2) as SkillSlot).skill == rare, "the HUD draws the slot after a two-slot skill as its continuation")
+	var anchor := h.bar.get_child(2) as SkillSlot
+	ok(anchor.get_meta(SlotColumns.RUN) == 2 and covered_slot.get_meta(SlotColumns.RUN) == 1 and (h.bar.get_child(0) as SkillSlot).get_meta(SlotColumns.RUN) == 1, "the bar tells its columns which skill spans how many slots")
+	# drawn as one tall button (laid by SlotColumns), it answers for every slot it covers: a drop or a right-click on its second row is the covered slot's
+	var wide := SkillSlot.new()
+	wide.index = 2
+	wide.size = Vector2(60, 2 * 13 + SlotColumns.GAP)
+	var got: Array = []
+	wide.dropped.connect(func(i: int, _s: Skill, _f: int): got.append(i))
+	wide.cleared.connect(func(i: int): got.append(i))
+	wide.holder = u
+	wide._drop_data(Vector2(5, 5), {skill = rare, from = -1})
+	wide._drop_data(Vector2(5, 20), {skill = rare, from = -1})
+	wide.skill = rare
+	for y in [5.0, 20.0]:
+		var right := InputEventMouseButton.new()
+		right.button_index = MOUSE_BUTTON_RIGHT
+		right.pressed = true
+		right.position = Vector2(5, y)
+		wide._on_gui_input(right)
+	ok(wide.rows() == 2 and got == [2, 3, 2, 3], "a tall slot's drops and right-clicks land on the slot under them (%s)" % [got])
+	wide.free()
 	covered_slot.cleared.emit(3)
 	ok(rare not in u.hotbar, "unequipping from the covered slot takes the whole skill")
 	h.free()
