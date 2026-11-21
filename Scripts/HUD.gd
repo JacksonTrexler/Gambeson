@@ -2703,6 +2703,7 @@ func _refresh_bar() -> void:
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
 		slot.set_meta(SlotColumns.RUN, u.span(s).size() if u and s else 1)  # a skill spanning several slots is one tall button: kept in a column
 		slot.set_meta(SlotColumns.WANT, slot.want_width())  # and a column is wide enough for the whole name, room allowing
+	bar.update_minimum_size()  # (what they say of themselves changes how it wraps)
 
 
 # The band after the hotbar's last slot (band()): one SkillSlot each, drawn apart (SkillSlot.trait_slot). They take no slot,
@@ -2736,6 +2737,7 @@ func _refresh_traits(u: Unit) -> void:
 		t.set_meta(SlotColumns.WANT, t.want_width())
 		if u.traits_suppressed():
 			t.tooltip_text = "Suppressed: it does nothing while its traits are\n" + t.tooltip_text
+	trait_bar.update_minimum_size()
 
 
 # A click on the band's entry k (band()): used as its number key is.

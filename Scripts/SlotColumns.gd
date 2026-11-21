@@ -8,9 +8,9 @@ extends Container
 # unless `max_width` can't hold that many, and then they share what there is.
 #
 # Two things a child may say of itself (meta, so any Control will do):
-#  - WANT: the width its content needs (a skill's whole name). Names first: when that many columns would not fit max_width
-#    each that wide, there are fewer, taller columns, provided the room (max_height) still holds the rows; if it doesn't,
-#    the columns squeeze as before and the names are cut (the tooltip has them whole).
+#  - WANT: the width its content needs (a skill's whole name). A column is that wide at least (not just MIN_WIDTH) while
+#    max_width holds the columns; past that they squeeze as before and the names are cut (the tooltip has them whole).
+#    A neighbour above can ask standing_rows(): the rows it takes in the fewest columns that many names fit, to leave room.
 #  - RUN: how many slots it spans, itself and the RUN-1 children after it (a skill that takes several slots). A run stays in
 #    one column (the break moves off it, never adding a column) and is laid as one tall button over its slots; the slots it
 #    covers stay beneath it, unseen, so a drop or a click reaching one of them is still its own.
@@ -86,31 +86,61 @@ func standing_rows() -> int:
 	return ceili(float(n) / clampi(floori((max_width + GAP) / (want + GAP)), 1, n))
 
 
-# The first slot of each column. runs[i]: how many slots slot i spans (1 for most). The columns are the evenly shared ones
-# of layout_for(), but a break that would fall inside a run moves to either end of it (the nearer, whichever keeps every
-# column within `fit` rows); never more than `cols` columns. If nothing does, the break stays.
-static func starts(runs: Array[int], cols: int, fit: int) -> Array[int]:
+# The first slot of each column. runs[i]: how many slots slot i spans (1 for most). With no runs, the evenly shared columns of
+# layout_for(). With any, the columns never break inside a run: of the ways to cut the slots into at most `cols` columns of at
+# most `fit` rows with every cut between runs, the one whose tallest column is shortest, then whose columns are most even.
+# None (a run taller than a column, too many runs): the even columns, and a run may be cut.
+static func starts(runs: Array, cols: int, fit: int) -> Array[int]:
 	var n := runs.size()
-	var out: Array[int] = []
+	var even: Array[int] = []
 	if n > 0:
-		out.append(0)
+		even.append(0)
+	var y := ceili(float(n) / maxi(cols, 1))
 	for k in range(1, cols):
-		var prev: int = out[k - 1]
-		var t := prev + ceili(float(n - prev) / (cols - k + 1))  # the rest shared evenly between the columns left
-		if t >= n:
-			break
-		var a := t - 1
-		while a > prev and a + runs[a] <= t:
-			a -= 1
-		if a + runs[a] > t:  # the run from a spans the break
-			var best := t
-			var gap := n
-			for c: int in [a, a + runs[a]]:
-				if c > prev and c < n and c - prev <= fit and n - c <= (cols - k) * fit and absi(c - t) < gap:
-					best = c
-					gap = absi(c - t)
-			t = best
-		out.append(t)
+		if k * y < n:
+			even.append(k * y)
+	if runs.all(func(r: int): return r <= 1):
+		return even
+	var inside := {}  # the slots a run covers: no column starts at one
+	for a in n:
+		for c in range(a + 1, mini(a + runs[a], n)):
+			inside[c] = true
+	# best[k][i]: the cost of the first i slots in k columns, whose last column ends at i; a cost is the tallest column
+	# first (its height times a big number), then the sum of squared heights (the more even, the less).
+	var big := 1000000
+	var best: Array = []
+	var cut: Array = []
+	for k in cols + 1:
+		best.append([])
+		cut.append([])
+		for i in n + 1:
+			best[k].append(-1)
+			cut[k].append(-1)
+	best[0][0] = 0
+	for k in range(1, cols + 1):
+		for i in range(1, n + 1):
+			if i < n and inside.has(i):
+				continue
+			for p in range(i - 1, maxi(i - fit, 0) - 1, -1):
+				if best[k - 1][p] < 0 or inside.has(p):
+					continue
+				var h := i - p
+				var tallest: int = maxi(best[k - 1][p] / big, h)
+				var cost: int = tallest * big + best[k - 1][p] % big + h * h
+				if best[k][i] < 0 or cost < best[k][i]:
+					best[k][i] = cost
+					cut[k][i] = p
+	var kbest := -1
+	for k in range(1, cols + 1):
+		if best[k][n] >= 0 and (kbest < 0 or best[k][n] < best[kbest][n]):
+			kbest = k
+	if kbest < 0:
+		return even
+	var out: Array[int] = []
+	var at := n
+	for k in range(kbest, 0, -1):
+		at = cut[k][at]
+		out.push_front(at)
 	return out
 
 
@@ -122,13 +152,7 @@ func _plan(kids: Array[Control], row_h: float) -> Array[int]:
 	for c in kids:
 		runs.append(maxi(1, int(c.get_meta(RUN, 1))))
 		_want = maxf(_want, float(c.get_meta(WANT, 0.0)))
-	var fit := _fit_rows(row_h, n)
-	var cols := layout_for(n, row_h).x
-	if _want > 0.0 and cols > 1 and is_finite(max_width):
-		var by_width := maxi(1, floori((max_width + GAP) / (_want + GAP)))  # names first: as many columns as are that wide
-		if by_width < cols and ceili(float(n) / by_width) <= fit:
-			cols = by_width
-	return starts(runs, cols, fit)
+	return starts(runs, layout_for(n, row_h).x, _fit_rows(row_h, n))
 
 
 func _min_width(cols: int) -> float:

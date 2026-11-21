@@ -21,7 +21,6 @@ const MUTED_GOLD := Color("#a8996a")
 const FLASH := 0.8  # seconds a passive's slot stays lit after it acts (flash())
 const OFTEN := 4.0  # acting again within this many seconds, it only unmutes: no rim
 const ROW := 13.0  # a slot's height; one that spans several is drawn as one tall button
-const TALL := 2  # rows a tall slot's icon and name stand over, centred: a longer span just has more room
 
 var index := 0
 var skill: Skill
@@ -208,7 +207,7 @@ func _mark() -> Variant:
 func _draw() -> void:
 	var font := get_theme_font(&"font")
 	var fs := 6
-	var h := minf(size.y, _span_height(TALL))  # a slot spanning several: its content stands over the first TALL rows' height, centred
+	var h := minf(size.y, ROW)  # a slot spanning several (rows()) draws its content as one row's, centred
 	var top := (size.y - h) / 2.0
 	var mid := top + (h - font.get_height(fs)) / 2.0 + font.get_ascent(fs)
 	if cursed:  # a gentle quiver
@@ -331,11 +330,6 @@ func _key() -> String:
 	return str((index + 1) % 10)
 
 
-# The height of n rows with their gaps.
-static func _span_height(n: int) -> float:
-	return n * ROW + (n - 1) * SlotColumns.GAP
-
-
 # How many slots tall it is drawn now (SlotColumns lays a skill that takes several as one tall button over them): 1 for most.
 func rows() -> int:
 	return maxi(1, roundi((size.y + SlotColumns.GAP) / (ROW + SlotColumns.GAP)))
@@ -356,7 +350,7 @@ func want_width() -> float:
 		return 0.0
 	var w := 16.0 + 3.0
 	if skill.icon():
-		w += _span_height(mini(skill.slots_taken(), TALL)) - 4.0 + 1.0
+		w += ROW - 4.0 + 1.0
 	w += font.get_string_size(label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
 	if sense == 2:
 		w += font.get_string_size(Skill.roman(rank), HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x + 2.0
