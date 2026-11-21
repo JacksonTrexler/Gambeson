@@ -429,8 +429,8 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	return p * value + saved + blocked - DEFENSE * toll - _hate(r)
 
 
-# A self-directed turn with no blow to strike from where it stands, and what is left of one that struck, go to armor it carries (Unit.pack): the one that adds most Defense to an armor slot its
-# skills give (Unit.plate_slots()) that works now, over what is worn in it (Unit.plate_defense(): that slot's rules, so
+# A self-directed turn with no blow to strike from where it stands, and what is left of one that struck, go to armor it carries (Unit.pack): the one that adds most (_plated(): its Defense, less its
+# tolls) to an armor slot its skills give (Unit.plate_slots()) that works now, over what is worn in it (Unit.plate_defense(): that slot's rules, so
 # Scrap Plating's cap and Power Armor's gate are read, not guessed). One a turn (armor takes most of one: Item.ap_cost());
 # none where nothing would add any, or the AP is short (Battle.equip()). What it takes off goes back in the pack.
 static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
@@ -438,6 +438,7 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 		return
 	var best: Array = []
 	var gain := 0
+	var net := 0.0001
 	for s in u.plate_skills():
 		if not u.plate_works(s):
 			continue
@@ -448,16 +449,27 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 			now = maxi(u.plate_defense(s, worn), 0) if u.can_wear(worn) else 0
 		for it in u.pack:
 			var d := u.plate_defense(s, it) if it and it.slot == "armor" and u.can_wear(it) else Behaviour.NO_ARMOR
-			if d != Behaviour.NO_ARMOR and d - now > gain:
+			if d != Behaviour.NO_ARMOR and d > now and _plated(u, s, d) - _plated(u, s, now) > net:
+				net = _plated(u, s, d) - _plated(u, s, now)
 				gain = d - now
 				best = [slot, it]
-	if gain > 0:
+	if not best.is_empty():
 		var worn: Item = u.get(best[0])
 		if b.equip(u, best[1], best[0]):
 			u.pack.erase(best[1])
 			if worn:
 				u.pack.append(worn)
 			log.append("%s puts on %s, +%d Defense" % [u.name, best[1].name, gain])
+
+
+# What `defense` points in the slot skill s gives are worth u, in Defense, for what its blocks cost it: each blow the plate blocks
+# saves the blow (BLOW) and takes its skill's toll off u's Power (Behaviour.slot_toll() at that blow, POINT a point), so the Defense
+# keeps the share of a block's worth the toll leaves (none, at a toll of BLOW / POINT or more). Scrap Plating's toll is 0: all of it.
+static func _plated(u: Unit, s: Skill, defense: int) -> float:
+	var toll := 0
+	for bh in s.behaviours:
+		toll += bh.slot_toll(u, u.own_rank(s), roundi(BLOW)) if bh else 0
+	return float(defense) * clampf(1.0 - toll * POINT / BLOW, 0.0, 1.0)
 
 
 # What the plates t wears cost it when they block u's s: each armor slot its skills give it (Unit.plated_defense(), seen once
