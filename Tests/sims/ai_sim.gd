@@ -17,6 +17,7 @@ extends SceneTree
 #   dread    v(1), foes' skills read, against a Stunner v(3) starting `gap` tiles off (AI._shy(), DREAD): stuns it takes, turns it holds or backs off, who strikes first, the winner
 #   worn     Strike and Hex worn by exhaustion, 10 rounds on a soaker (WORN)
 #   host     a Skeleton caster 10 tiles from a soaker, 8 rounds: bodies raised, damage dealt (AI._summon(), BODY)
+#   hostnear the same with the soaker 5 tiles off, in the skeletons' walk: damage with and without them (sweep BODY "0 5")
 #   hide     Invisibility offered to an ally with a watcher of rising wisdom (SEEN)
 # Saves and settings go to per-process files, as run.gd (a sim must never touch the player's own).
 
@@ -100,7 +101,7 @@ func _initialize() -> void:
 	var keys: GDScript = load("res://Scripts/KeyBinds.gd")
 	keys.set("SAVE", "user://keybinds_sim_%d.cfg" % pid)
 	_museum = load(MUSEUM)
-	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host", "dread"]:
+	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host", "hostnear", "dread"]:
 		if words.is_empty() or words.any(func(w: String): return w in sc):
 			await call("_" + sc, n)
 	for p in [Prefs.SAVE, keys.get("SAVE"), save.get("PATH"), save.get("PATH") + ".bad", save.get("PATH") + ".tmp"]:
@@ -634,13 +635,22 @@ func _worn(n: int) -> void:
 
 # v(1) with Skeleton against a soaker v(3) 9 tiles off, ROUNDS rounds: the bodies it raises and the damage to the foe.
 func _host(n: int) -> void:
+	await _hosts(n, 13, "host")
+
+
+# The same with the soaker 5 tiles off: within the skeletons' walk, so what they raise strikes it (BODY 0 is the AI that never raised them).
+func _hostnear(n: int) -> void:
+	await _hosts(n, 8, "hostnear")
+
+
+func _hosts(n: int, foe_x: int, name: String) -> void:
 	var bodies := 0
 	var dmg := 0.0
 	for seed in n:
 		var t := await _fresh(seed)
 		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres")))
 		t.roomy(t.v(1))
-		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(13, 3)})
+		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(foe_x, 3)})
 		t.soak(t.v(3), 900)
 		var before: int = t.b.members(t.lancin).size()
 		for r in ROUNDS:
@@ -648,7 +658,7 @@ func _host(n: int) -> void:
 		bodies += t.b.members(t.lancin).size() - before
 		dmg += 900 - t.v(3).hp
 		_drop(t)
-	_say("host", {bodies = float(bodies) / n, damage = dmg / n})
+	_say(name, {bodies = float(bodies) / n, damage = dmg / n})
 	await process_frame
 
 
