@@ -2643,11 +2643,12 @@ func _fit_bar() -> void:
 		room = minf(room, _fit_room)
 	_fit_key = key
 	_fit_room = room
-	var tall := _bar_height(trait_bar.get_child_count()) if trait_bar.visible else 0.0  # the traits first stand in one column: they never starve the bar
-	var bar_room := maxf(room - tall, _bar_height(mini(bar.get_child_count(), MIN_ROWS)))
 	var wide := view.x * BAR_SHARE - panel.offset_left - pad.x
+	trait_bar.set_limits(trait_bar.max_height, wide)  # (its width first: how many rows its names need stand in it)
+	var tall := _bar_height(trait_bar.standing_rows()) if trait_bar.visible else 0.0  # the band reserves the rows its whole names need: it never starves the bar
+	var bar_room := maxf(room - tall, _bar_height(mini(bar.get_child_count(), MIN_ROWS)))
 	bar.set_limits(bar_room, wide)
-	trait_bar.set_limits(maxf(room - bar.get_combined_minimum_size().y - 3.0, _bar_height(1)), wide)
+	trait_bar.set_limits(maxf(room - bar.get_combined_minimum_size().y, _bar_height(1)), wide)  # (`room` is the rows' own height: the gaps between rows of the panel are in `others`)
 
 
 func _bar_height(n: int) -> float:
@@ -2700,6 +2701,8 @@ func _refresh_bar() -> void:
 		if locked:
 			slot.tooltip_text += "\n" + _why_locked(u)
 		slot.set_exhausted(u.exhaustion.of(s) if u and s and sense == 2 and not s.passive else 0.0)
+		slot.set_meta(SlotColumns.RUN, u.span(s).size() if u and s else 1)  # a skill spanning several slots is one tall button: kept in a column
+		slot.set_meta(SlotColumns.WANT, slot.want_width())  # and a column is wide enough for the whole name, room allowing
 
 
 # The band after the hotbar's last slot (band()): one SkillSlot each, drawn apart (SkillSlot.trait_slot). They take no slot,
@@ -2730,6 +2733,7 @@ func _refresh_traits(u: Unit) -> void:
 		t.set_state(bar.get_child_count() + k if not SkillSlot.muted(s) else -1, s, u.rank(s), s == armed and i == slot, on, usable, false, false, sense, u.mods(s).label(), u)
 		t.set_lent(u.lent_by(s) if sense == 2 else "")
 		t.set_off(off)
+		t.set_meta(SlotColumns.WANT, t.want_width())
 		if u.traits_suppressed():
 			t.tooltip_text = "Suppressed: it does nothing while its traits are\n" + t.tooltip_text
 

@@ -20,6 +20,8 @@ const MUTED_TEXT := Color(0.6, 0.63, 0.7)  # an always-on passive's name and num
 const MUTED_GOLD := Color("#a8996a")
 const FLASH := 0.8  # seconds a passive's slot stays lit after it acts (flash())
 const OFTEN := 4.0  # acting again within this many seconds, it only unmutes: no rim
+const ROW := 13.0  # a slot's height; one that spans several is drawn as one tall button
+const TALL := 2  # rows a tall slot's icon and name stand over, centred: a longer span just has more room
 
 var index := 0
 var skill: Skill
@@ -206,7 +208,9 @@ func _mark() -> Variant:
 func _draw() -> void:
 	var font := get_theme_font(&"font")
 	var fs := 6
-	var mid := (size.y - font.get_height(fs)) / 2.0 + font.get_ascent(fs)
+	var h := minf(size.y, _span_height(TALL))  # a slot spanning several: its content stands over the first TALL rows' height, centred
+	var top := (size.y - h) / 2.0
+	var mid := top + (h - font.get_height(fs)) / 2.0 + font.get_ascent(fs)
 	if cursed:  # a gentle quiver
 		var t := Time.get_ticks_msec() / 1000.0
 		draw_set_transform(Vector2(sin(t * 23.0) * 0.6, sin(t * 17.0 + 1.3) * 0.35))
@@ -258,8 +262,8 @@ func _draw() -> void:
 	var left := 16.0
 	var tex := skill.icon()
 	if tex:  # its icon before its name
-		var side := size.y - 4.0
-		draw_texture_rect(tex, Rect2(15, 2, side, side), false, Color(0.92, 0.93, 0.96, dim))
+		var side := h - 4.0
+		draw_texture_rect(tex, Rect2(15, top + 2, side, side), false, Color(0.92, 0.93, 0.96, dim))
 		left += side + 1.0
 	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
 			Color(0.92, 0.93, 0.96).lerp(MUTED_TEXT, hush) * Color(1, 1, 1, dim))
@@ -327,6 +331,40 @@ func _key() -> String:
 	return str((index + 1) % 10)
 
 
+# The height of n rows with their gaps.
+static func _span_height(n: int) -> float:
+	return n * ROW + (n - 1) * SlotColumns.GAP
+
+
+# How many slots tall it is drawn now (SlotColumns lays a skill that takes several as one tall button over them): 1 for most.
+func rows() -> int:
+	return maxi(1, roundi((size.y + SlotColumns.GAP) / (ROW + SlotColumns.GAP)))
+
+
+# The slot under y (in this control): its own for a plain one, else the slot of the span it's over: a tall button answers
+# for every slot it covers, so a drop, a right-click or a tooltip there is as on that slot.
+func slot_at(y: float) -> int:
+	var n := rows()
+	return index + clampi(floori(y / (ROW + SlotColumns.GAP)), 0, n - 1)
+
+
+# The width its content wants (a column of slots is this wide, or the names are cut): the key, icon, whole name, numeral, a
+# switch's dot and an item's ring, as _draw() lays them out. 0 until it's in the tree (no font yet) or holds nothing.
+func want_width() -> float:
+	var font := get_theme_font(&"font")
+	if not skill or not font or sense == 0:
+		return 0.0
+	var w := 16.0 + 3.0
+	if skill.icon():
+		w += _span_height(mini(skill.slots_taken(), TALL)) - 4.0 + 1.0
+	w += font.get_string_size(label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+	if sense == 2:
+		w += font.get_string_size(Skill.roman(rank), HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x + 2.0
+		w += 5.0 if lent != "" else 0.0
+	w += 6.0 if shows_switch() else 0.0
+	return ceilf(w)
+
+
 # What its tooltip leads with: its number key, or for a band slot with none "Trait" (a trait) or "Free" (a free lend).
 func _tag() -> String:
 	if keyed():
@@ -351,8 +389,8 @@ func _can_drop_data(_at: Vector2, data: Variant) -> bool:
 	return editable and data is Dictionary and data.get("skill") is Skill and (holder.slot_cost(data.skill) > 0 if holder else data.skill.fits_bar())
 
 
-func _drop_data(_at: Vector2, data: Variant) -> void:
-	dropped.emit(index, data.skill, data.from)
+func _drop_data(at: Vector2, data: Variant) -> void:
+	dropped.emit(slot_at(at.y), data.skill, data.from)
 
 
 func _notification(what: int) -> void:
@@ -364,7 +402,7 @@ func _notification(what: int) -> void:
 
 func _on_gui_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT and (skill or cover) and editable:
-		cleared.emit(index)
+		cleared.emit(slot_at(e.position.y))
 		accept_event()
 
 
