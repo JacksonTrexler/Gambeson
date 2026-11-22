@@ -518,7 +518,9 @@ var actives: Array[Skill]:
 	get:
 		var s: Array[Skill] = []
 		var lost := unranked()
+		begin_read()  # each rank() asks its effects: found once
 		s.assign(slots.filter(func(x: Slot): return not x.skill.passive and (allowed.is_empty() or allowed.has(x.skill)) and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill) and rank(x.skill) > 0).map(func(x: Slot): return x.skill))
+		end_read()
 		return s
 
 # Passive entries that work: equipped (equipped()), on, and not disabled. Every reader of what a passive
@@ -642,10 +644,13 @@ func _process(_delta: float) -> void:
 # Strike; Record Striker's curse), a primed Chant (a Warlock skill, once) and +1 if the skill is enchanted
 # or honed (Tags.quality_rank(): a capstone's weight); 0 if it doesn't have s, or it's cursed down to nothing.
 func rank(s: Skill) -> int:
+	begin_read()  # its affinity and rank stats: its effects found once
 	var r: int = base_rank(s) - unranked().get(s, 0)
 	if r <= 0:
+		end_read()
 		return 0
 	r = maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags) + Tags.quality_rank(s.tags), 0)
+	end_read()
 	return mini(r, allowed[s]) if allowed.has(s) else r
 
 
@@ -3915,13 +3920,19 @@ func state_tags() -> Array[StringName]:
 # Under something that takes away all its actions: a helpless effect (Stunned), sleep, or Downed
 # without the will to fight on (Tenacity; Downed.acts). The source; whether it stops it is stopped().
 func helpless() -> bool:
-	return stat(&"helpless") > 0.0 or asleep() or (dbno != null and not dbno.rule.acts)
+	begin_read()  # a few stats of one unit: its effects found once (nothing changes meanwhile)
+	var out := stat(&"helpless") > 0.0 or asleep() or (dbno != null and not dbno.rule.acts)
+	end_read()
+	return out
 
 
 # Helpless with nothing letting it act: a permit (the mindless stat: Mindless Fury) lets it take that
 # many skill uses a turn anyway; spent, it's stopped too. It can't act, move or take orders.
 func stopped() -> bool:
-	return helpless() and fury_acts >= roundi(stat(&"mindless"))
+	begin_read()
+	var out := helpless() and fury_acts >= roundi(stat(&"mindless"))
+	end_read()
+	return out
 
 
 # Disturbed (Effects/disturbed.tres, Disturbance; a trait may hold it with no end): it can't be commanded or
@@ -3941,7 +3952,10 @@ func restless() -> bool:
 # and obstruct (Battle.obstruction()). Lost to Jam (the jammed stat) and to being stopped(): helpless,
 # it does none of these. Watching isn't one of them: a helpless unit still sees (Battle._watch()).
 func reacts() -> bool:
-	return stat(&"jammed") <= 0.0 and not stopped()
+	begin_read()
+	var out := stat(&"jammed") <= 0.0 and not stopped()
+	end_read()
+	return out
 
 
 # Tapped, as far as the unit itself can tell: out of AP, or stopped(). Never stored or cleansed: it
