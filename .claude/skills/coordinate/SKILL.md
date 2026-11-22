@@ -16,7 +16,7 @@ To hand a whole prompt to one delegate that runs this loop (the master stays asl
 
 - `S` = your session scratchpad (the absolute path from your environment). Worktrees go in `S/wt-<branch>`, never inside the repo.
 - Copy the helpers: `cp .claude/skills/coordinate/{t.sh,verify.sh,union.py,land.sh,metrics.sh,brief-common.md} $S/`. Builders read `S/brief-common.md` and run `S/t.sh`. Put S's real path into its `S =` line.
-- The integration branch is the one checked out in `/Users/jtrex/projects/Gambeson` (check `git status -sb`; lately `adventurer-skills`). Pushing it to origin is authorized. Never commit in that tree except a fast-forward. The user and other sessions edit it; if `git status -s` shows their changes, wait or ask.
+- The trunk is `origin/main` (user, 2026-11-22: consolidate branches so several machines and sessions can work). Builders branch from it in worktrees and land by `git fetch`, merge `origin/main`, verify, `git push origin HEAD:main` (fast-forward only, never force; if rejected, fetch, merge, re-verify, retry). `adventurer-skills` is retired: do not branch from or push to it. Never run a git command that writes in `/Users/jtrex/projects/Gambeson` (checkout, merge, add, commit, reset): the user and other sessions work there, and its untracked files are theirs. Delete no remote branch; list stale ones for the user.
 - The AI sim harness is `Tests/sims/ai_sim.gd` plus `Tests/sims/sweep.sh`, for tuning AI constants outside the suite.
 - Read `docs/queue.md` for the ready tasks and `todo.md`'s "next is N" for the next question number.
 
@@ -29,7 +29,7 @@ To hand a whole prompt to one delegate that runs this loop (the master stays asl
 | Small HUD or settings items, table tests, mechanical moves | `sonnet` / `medium` |
 | Docs keeper (questions, todo upkeep) | `sonnet` / `low`-`medium` |
 
-- Run 3-6 builders at once, split by file area so they don't collide. Name every sibling's area in each prompt.
+- Run 2-3 builders at once, split by file area so they don't collide (3-6 only when nearly all are tiny). Name every sibling's area in each prompt.
 - Give each builder only the plans it needs (`docs/plans/<x>.md`).
 - Anything still in the user's court stays out. That covers designs they haven't given (stub trees, new resources) and open questions marked as needing them. Note these in the queue instead.
 
@@ -49,21 +49,17 @@ touched, the suite's final line (and the starting count), commit hashes, what's 
 
 Create the worktree first:
 
-`git worktree add -q -b <b> $S/wt-<b> HEAD && cp -R .godot $S/wt-<b>/`
+`git fetch -q && git worktree add -q -b <b> $S/wt-<b> origin/main && cp -R $S/godot-template $S/wt-<b>/.godot` (`S/godot-template` is a copy of any worktree's `.godot`)
 
 Launch with `run_in_background: true`, then end the turn. Never poll; reports arrive as messages.
 
 ## When a builder reports: the merge gate
 
-1. In its worktree, run `git merge -q --no-edit <integration>`.
+1. In its worktree, run `git fetch -q && git merge -q --no-edit origin/main`.
    - If the only conflicts are sections both sides appended (plans, glossary, var lists), keep both: `python3 $S/union.py <files>`.
    - Otherwise read the hunks and keep both sides' behaviour. For a big merge, send it back to the builder: it has the context.
 2. Run `caffeinate -dims $S/verify.sh $S/wt-<b>` in the background. It needs every tool `check` ok, `N checks, 0 failed`, and a clean launch log (only "resources still in use at exit" is known).
-3. In the main tree:
-   ```
-   git merge --ff-only -q <b> && git push -q origin <integration>
-   git worktree remove $S/wt-<b> && git branch -d <b>
-   ```
+3. From the worktree, never the main tree: `git push origin HEAD:main`. On rejection (someone landed first): fetch, merge `origin/main`, re-verify, retry. Then `git worktree remove $S/wt-<b> && git branch -D <b>` (local only). `land.sh` does 1 to 3.
 4. Batch clean merges where you can. For example, merge two finished branches into one worktree and verify once.
 5. When main moves under a running builder that shares files with it, tell it (SendMessage): merge main before reporting.
 
@@ -74,6 +70,12 @@ Builders never edit `todo.md`, `docs/todo/`, `CLAUDE.md` or `.claude/`. A docs k
 > Record the merged branches exactly the way commit <last docs commit> did (`git show` it): a numbered question per piece in todo.md, a section in the right docs/todo file with the builder's calls and choices, close the matching `[ ]` items, turn not-done lists into `[ ]` items tagged with the number, docs/done entries, docs/plan.md rows, "next is" note. Also update `docs/queue.md`: remove what was built, add the follow-ups that need no user input.
 
 Fast-forward its commit like any other (docs-only: no suite needed).
+
+## Lighter-model practice (the user, 2026-11-22: "20/80 and have delegates make liberal use of .md files to keep track of their work with limited context space, have them use compact language / follow best practices for lighter model efficiency and efficacy")
+- One card per builder. Briefs are compact: what to do, the exact files, the acceptance check; no prose padding.
+- Each builder keeps `docs/plans/<branch>.md` in its worktree (goal, files, decisions, done, next), updates it after each step and re-reads it after any interruption.
+- Grep and read ranges, not whole files. Stop and write notes before context runs out; commit them.
+- Sonnet medium for contained cards; Opus for design-heavy ones.
 
 ## Usage limits
 

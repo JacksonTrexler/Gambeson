@@ -78,6 +78,42 @@ The user's third batch (docs/agents/answers-2026-11-20c.md) is all built (?226 t
 - Model: sonnet/high
 - Collides with: none
 
+## Wave 9: the user's answers of 2026-11-22 (docs/agents/answers-2026-11-22*.md; first question is 235)
+Run 2-3 at a time, Sonnet unless noted. One card per builder; compact briefs; each keeps `docs/plans/<branch>.md`. Land on `origin/main` (SKILL.md).
+
+### 1. Docs keeper: the behaviour rule; Accord confirmed (sonnet/low)
+- Scope: add to docs/requirements.md the user's rule of thumb: a unit's behaviour should be inferable from the unit itself (prideful, pitiful, pragmatic, capable: plain targeting, going for downs, squaring up, hedging); player units and those they command have behaviour too (autobattle, or control stripped by cognitive disruption). Accord is confirmed: drop its ?? (the Mage's old Harmony stub; every place the name appears) and close ?227's question.
+- Collides with: none
+
+### 2. Disturbed and Disturbance
+- Scope: Warlock mid tier skill Disturbance: one unit in rank range; check very difficult against a non-leader, easy against a leader. Failing: Disturbed for rank rounds: cannot be commanded or give commands, acts only on its own behaviour (AI-driven even on the player's side). Disturbed is a reusable status tagged `cc`.
+- Files: Skills/, Behaviours/, Scripts/AI.gd, Scripts/Battle.gd, Tests/
+- Model: sonnet/high. Collides with: 3, 7 (AI.gd)
+
+### 3. Undead and Restless Dead (after 2)
+- Scope: tag `undead` on skeletons (and zombies if one exists or is trivial). `undead` + Disturbed uses the behaviour "Restless Dead ??": attacks the nearest visible non-undead, allies preferred on ties. Allies who notice (medium-easy persona check) treat it as an enemy; brainwashed or hostile allies move after the noticing ones. Removing Disturbed from an undead unit eliminates it. A separate Undead faction is allowed if healthier: record the call. Necro summon soft cap: rank + skill stat mod; summons over the cap gain Disturbed as a trait, furthest from the summoner first, until under the cap (replaces the `SUMMON_CAP` idea, ?233).
+- Model: opus/medium. Collides with: 2, 4, 7
+
+### 4. Grave Aura (after 3)
+- Scope: tier 3 on Warlock necromancy and death-cleric (place on the trees that exist, record the call). Gives the holder persona: undead; allied undead make no checks against persona.
+- Model: sonnet/medium. Collides with: 3
+
+### 5. Icon states
+- Scope: disabled icons 25% saturation, 70% brightness; untoggled 15% saturation, 85% brightness. One hook so each disabling effect shows why a skill is disabled, plus one example. A non-colour cue for colourblind players. Covers locked coloured icons (the Utumno third pass above).
+- Files: Scripts/Skill.gd (`icon_ink`), Scripts/HUD.gd, Scripts/IconButton.gd if present, Tests/
+- Model: sonnet/medium. Collides with: none
+
+### 6. Siren trait passive
+- Scope: from commit 4fe2c05 (`git show 4fe2c05`) make one `trait` passive on the current Siren: Oceanic (+2 str, dex, con; cheaper movement in water; needs a generic terrain condition on effects), Rake (double damage against trusting targets), the `aquatic` tag, movement 2, `shows_boon`. Rebuild Detective, Ambush, Opportunist if they fit the current systems, else record a question.
+- Model: sonnet/high. Collides with: none
+
+### 7. Typing pilot
+- Scope: GDScript untyped-declaration warnings on, as warnings. Type the hot paths in AI.gd and Battle's planning code. Measure AI turn cost before and after (timing driver or `Tests/sims/busy_fight.gd`). If it speeds things up or catches real bugs, expand file by file with spare capacity.
+- Model: sonnet/medium. Collides with: 2, 3 (AI.gd): run after or rebase
+
+### 8. Remaining follow-ups
+- The cards above under "Wave 8 follow-ups" and "AI turn cost" that need no user input, when slots are free.
+
 ## Needs the user (not queued)
 - Calls for review: ?198 (Cram's readings, tier 7, no swap on arrival), ?200 (Defense adds, Power is Energy share, where Abjuration and Smith are offered), ?201 (postpone and overcome stats), ?202 (the `strike` tag, friction's numbers), ?203 and ?204 (the disable trade; confirm the flags `no_density` and `scaling`, the viewer and the dials), ?192 (cc audit edges, the slam on a flee), ?193 (Chaser placement), ?194 (Skill Slot +1 gating), ?195 (the numbers), ?197 (Wake and Rake's tier, "cast mod"), ?206 (cc prices), ?208 (Student flex picker, Journeyman's tier and max rank; the "Brawn as Brains ??" skill is now the user's "Meathead", ?204), ?209 (do recoveries add Exhaustion uses?), ?211 (the synonyms), ?212 (Send Off's ward on a foe sent away), ?213 (`pack`, POINT, DELAY, the loot table), ?214 to ?217 (below; ?214 was reworked and closed in ?228).
 - Wave 6 (?214 to ?217): which skill first carries a rarity or `slots`, a Mythic unplaceable before level 4, a wide skill cheaper to disable, runs across two granting skills (?215); recruiting and dismissing members and where recruits come from, what a death does to a roster member (?216); Skeleton's AI numbers (?217).

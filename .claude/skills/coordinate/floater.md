@@ -18,12 +18,12 @@ Copy the helpers into S if missing: `cp .claude/skills/coordinate/{t.sh,verify.s
 and set the `S = ` line in `S/brief-common.md`.
 
 ## Loop
-1. **Builders.** One worktree each: `git worktree add -q -b <b> $S/wt-<b> HEAD && cp -R .godot $S/wt-<b>/`. SKILL.md's
+1. **Builders.** One worktree each: `git fetch -q && git worktree add -q -b <b> $S/wt-<b> origin/main && cp -R $S/godot-template $S/wt-<b>/.godot`. One card per builder; compact briefs (see SKILL.md, lighter-model practice). SKILL.md's
    prompt template; sonnet high or medium by default, opus medium only for design-heavy work; 2-4 at a time; commit
    after every step. Name each sibling's area in every prompt.
 2. **On a report:** sanity-check it (below), log it (`S/metrics.sh <b> <model> <effort> <tokens> <tool_uses> <ms> <result>`
-   from the notification's usage, in the batch worktree), then land: `S/land.sh <b> [<more branches>]` merges main and the
-   others into the first one's worktree, unions appended docs, verifies, fast-forwards, pushes and removes them.
+   from the notification's usage, in the batch worktree), then land: `S/land.sh <b> [<more branches>]` merges `origin/main` and the
+   others into the first one's worktree, unions appended docs, verifies, pushes `HEAD:main` (fast-forward only; retries after a fetch if someone landed first) and removes the local worktrees and branches. It never writes in the main tree.
    It stops and says why on a real conflict (send it back to the builder) or a failed suite.
 3. **Docs keeper** (sonnet medium) after each batch, as SKILL.md describes; land it the same way.
 4. **Queue.** If budget remains, launch `docs/queue.md` cards that need no user input.
@@ -31,7 +31,7 @@ and set the `S = ` line in `S/brief-common.md`.
    (SendMessage), so nothing idles.
 
 ## Sanity check before landing
-- The suite line is real and ends `0 failed`; the count did not drop (`git diff <integration> -- Tests | grep '^-[^-]'`).
+- The suite line is real and ends `0 failed`; the count did not drop (`git diff origin/main -- Tests | grep '^-[^-]'`).
 - No test weakened, no stub tests kept for data-only skills, no new `Skill.gd` field unless it removes duplication or enables a shared system and is listed as a question.
 - The builder stayed in its area and decided nothing listed under "Needs the user" in the queue or open in todo.md.
 - AI-made names carry " ??"; the user's names went in with `--human`.
@@ -43,5 +43,7 @@ and set the `S = ` line in `S/brief-common.md`.
 ## Final report (one message, 300 words or fewer)
 What landed (hashes, suite lines); calls to review, with question numbers; what's blocked and why; metrics totals
 (tokens and time by model, from `docs/agents/metrics.csv`). Then stop.
+
+**Trunk:** `origin/main`. Never run a git command that writes in `/Users/jtrex/projects/Gambeson`, delete no remote branch, and `adventurer-skills` is retired.
 
 **Staging:** never `git add -A`, `git add .` or `git commit -a` in the main tree: the user keeps untracked work there (art, maps, imports) and it must never be committed. Stage files by path. (2026-11-21: a floater pushed them once.)

@@ -3,13 +3,19 @@
 S = the host session's scratchpad (the host gives the absolute path in each prompt)
 
 ## Where
-- Work ONLY in your own worktree `S/wt-<name>` on branch `<name>` (given in your prompt). Never touch `/Users/jtrex/projects/Gambeson` (the user and other sessions edit it). Never push.
+- Work ONLY in your own worktree `S/wt-<name>` on branch `<name>` (given in your prompt). Never touch `/Users/jtrex/projects/Gambeson` (the user and other sessions edit it). Never push: the host lands branches onto `origin/main`.
 - Read `CLAUDE.md` in your worktree first. It is the house guidance: new content only through the tools and processes in `.claude/skills/` (`new-skill` / `Util/skill.py`, `new-mechanic` / `Util/mechanic.py` for tags, statuses, properties, Effect stats, `new-class` / `Util/role.py`, `new-unit` / `Util/unit.py`, `new-tile`); `--human` for names the user gave; " ??" after any name you make up; Unit, Battle and HUD talk through signals; big files (Battle.gd, HUD.gd, Unit.gd) grep and read ranges, never whole.
 - Prior plans live in `docs/plans/*.md`; read only the ones your prompt names.
 
 ## Design principle from the user (verbatim, applies to every call you make)
 "please feel empowered to make any composability calls that would enable future development / emerging gameplay, players should be delighted in finding powerful new synergies and creative approaches to solving problems during their runs, as long as we don't over-abstract. I'd like to keep 'unit does a thing and gets a hoagie token, which is only used for hoagie skills' to a minimum. skills that give benefits / negative effects to units with certain tagged debuffs ('love', 'cursed', 'light', 'heavy metal') are fine, there may be skills that apply them to a wider range of skills than usual. Basically: it's better for unintended interactions to happen compared to sandboxed and boring but tightly coupled systems."
 So: prefer shared tags and one generic hook over a bespoke counter or a one-off flag; let a rule read tags on whatever it meets, so later content joins in without knowing about you.
+
+## Working light (the user, 2026-11-22: "20/80 ... liberal use of .md files to keep track of their work with limited context space ... compact language")
+- Keep `docs/plans/<branch>.md` in your worktree: goal, files, decisions, done, next. Update it after each step; re-read it first after any interruption or when context runs low. Commit it.
+- Compact language in notes, commits and your report: facts, paths, numbers; no padding.
+- Grep and read ranges, never whole files. One card per builder; do only that card.
+- Stop and write notes before context runs out.
 
 ## Tests
 - `godot --headless --path . --import` once first, again after adding a script with a class_name or new art.
