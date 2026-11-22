@@ -2697,7 +2697,8 @@ func _fit_bar() -> void:
 	var wide := view.x * BAR_SHARE - panel.offset_left - pad.x
 	trait_bar.set_limits(trait_bar.max_height, wide)  # (its width first: how many rows its names need stand in it)
 	var tall := _bar_height(trait_bar.standing_rows()) if trait_bar.visible else 0.0  # the band reserves the rows its whole names need: it never starves the bar
-	var bar_room := maxf(room - tall, _bar_height(mini(bar.get_child_count(), MIN_ROWS)))
+	var floor_rows := mini(bar.get_child_count(), MIN_ROWS if bar.tallest_run() <= 1 else mini(MIN_ROWS, bar.tallest_run()))  # (spans: a column as tall as its tallest, and the bar takes a column more instead of rows)
+	var bar_room := maxf(room - tall, _bar_height(floor_rows))
 	bar.set_limits(bar_room, wide)
 	trait_bar.set_limits(maxf(room - bar.get_combined_minimum_size().y, _bar_height(1)), wide)  # (`room` is the rows' own height: the gaps between rows of the panel are in `others`)
 

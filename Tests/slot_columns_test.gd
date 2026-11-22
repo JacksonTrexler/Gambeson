@@ -93,6 +93,21 @@ func test_runs() -> void:
 	ok(rows_ok and c.get_child(4).self_modulate.a == 0.0 and c.get_child(5).self_modulate.a == 0.0 and c.get_child(2).self_modulate.a == 1.0, "a span is one tall raised button, its slots unseen beneath")
 	ok(c.get_child(4).position.x == tall.position.x and c.get_child(4).position.y == tall.position.y + 13 + SlotColumns.GAP, "...which stay where they were, for a drop or a click there")
 	c.free()
+	# spans 2, 3, 2 in 9 slots with 3 rows to give: three columns would cut a span, so a fourth (down to FLOOR_WIDTH), not more rows;
+	# with no width for a fourth, the even columns as ever
+	c = SlotColumns.new()
+	b.add_child(c)
+	for span: int in [1, 1, 2, 1, 3, 1, 1, 2, 1]:
+		var k := Control.new()
+		k.custom_minimum_size = Vector2(0, 13)
+		k.set_meta(SlotColumns.RUN, span)
+		c.add_child(k)
+	c.set_limits(43.0, 200.0)
+	var four := c._plan(c._slots(), 13.0)
+	ok(four == ([0, 2, 4, 7] as Array[int]) and c.get_combined_minimum_size().x <= 200.0 and c.get_combined_minimum_size().y == 43.0, "3 rows, 3 spans: a fourth column keeps them whole (%s)" % [four])
+	c.set_limits(43.0, 100.0)
+	ok(c._plan(c._slots(), 13.0).size() == 3, "no width for a fourth: the three even columns")
+	c.free()
 
 
 # Names (WANT): a column is as wide as the widest name while max_width holds the columns; else squeezed, and a neighbour can ask

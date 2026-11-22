@@ -232,3 +232,10 @@ func test_packs() -> void:
 		var log := AI.act(b, u)
 		var slot := Unit.plate_slot(u.plate_skills()[0])
 		ok(u.get(slot) != null and u.pack.size() == n - 1 and log.any(func(l: String) -> bool: return "puts on" in l), "%s dresses from its pack (%s)" % [id, log])
+	# a pack is loot: it spills as the unit falls, one drop each, the side that beat it takes it home (v(1) stands for the foe's victor)
+	var d: Unit = b.summon(load("res://Scenes/bulwarker.tscn"), nemes, Vector2i(8, 6))
+	var kit := d.pack.duplicate()
+	var seen := []
+	b.dropped.connect(func(who: Unit, it: Item): seen.append([who, it]))
+	d.slay()
+	ok(not kit.is_empty() and seen.map(func(p): return p[1]) == kit and d.pack.is_empty() and b.winnings(lancin).has(kit[0]), "a fallen unit's pack drops as loot (%s)" % [seen])

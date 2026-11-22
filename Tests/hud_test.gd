@@ -1490,3 +1490,51 @@ func test_glow_by_level() -> void:
 	await tree.process_frame
 	ok(v(3).glow.material.get_shader_parameter(&"flash") > 1.5, "a level up flashes the glow (%s)" % v(3).glow.material.get_shader_parameter(&"flash"))
 	h.free()
+
+
+# The panel's room at 16:9 (the 480x270 design): the band keeps the rows its whole names stand in, and a bar of spans takes a column
+# more rather than rows or a cut span, so neither is starved (docs/plans/w9-band.md).
+func test_band_rows() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var u := roomy(v(1), 5)
+	var spans: Array[Skill] = []
+	for n in [2, 3, 2]:
+		spans.append(load("res://Skills/strike.tres").duplicate())
+		spans[-1].name = "Span %d ??" % n
+		spans[-1].tags = spans[-1].tags + ([[&"", &"", &"rare", &"epic"][n]] as Array[StringName])
+		u.learned.append(slot(spans[-1]))
+	u.get_equipped()
+	for i in u.bar_size():
+		u.bar_clear(i)
+	var at := 2
+	for s in spans:
+		ok(u.bar_place(s, at), "%s goes on the bar at slot %d" % [s.name, at])
+		at += s.slots_taken()
+	u.hotbar[0] = load("res://Skills/strike.tres")
+	u.hotbar[1] = load("res://Skills/kick.tres")
+	var ring := Item.new()
+	ring.name = "Ring ??"
+	ring.slot = "trinket"
+	for lent in ["Hollow Bones ??", "Darkvision ??", "Night Sight ??", "Long Names ??"]:
+		var t: Skill = load("res://Skills/darkvision.tres").duplicate()
+		t.name = lent
+		ring.skills.append(t)
+	u.equip(ring)
+	var was := tree.root.size
+	tree.root.size = Vector2i(480, 270)  # 16:9, the design's own size
+	var h := await hud(u)
+	h._refresh_bar()
+	for i in 4:
+		await tree.process_frame
+	var band: SlotColumns = h.get_node("%Traits")
+	var want := h._bar_height(band.standing_rows())
+	var tall := band.get_combined_minimum_size().y
+	ok(band.get_children().size() >= 4 and band.standing_rows() > 0, "the band has its names to hold (%d)" % band.get_children().size())
+	ok(tall >= want - 0.5, "the band stands as tall as its whole names need: %d rows' height %s, has %s (room %s, bar %s)" % [band.standing_rows(), want, tall, h._fit_room, h.bar.get_combined_minimum_size().y])
+	var kids := h.bar._slots()
+	var runs: Array = kids.map(func(c: Control): return int(c.get_meta(SlotColumns.RUN, 1)))
+	var plan := h.bar._plan(kids, 13.0)
+	ok(runs.max() == 3 and SlotColumns.whole(runs, plan), "a bar of spans is cut between them, never inside (runs %s, columns at %s)" % [runs, plan])
+	ok(h.bar.get_combined_minimum_size().y + tall <= h._fit_room, "bar and band together fit the room: %s + %s in %s" % [h.bar.get_combined_minimum_size().y, tall, h._fit_room])
+	h.free()
+	tree.root.size = was
