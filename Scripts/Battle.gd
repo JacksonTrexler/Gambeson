@@ -60,7 +60,7 @@ signal disciplined(u: Unit, burned: int)  # u burned AP into an attack (Discipli
 signal neutralized(u: Unit, by: Unit, how: StringName)  # taken out of the fight (neutralize()): &"downed", &"down" (Downed), &"killed"; by: who last hit it
 signal gained_xp(u: Unit, n: int, levels: int, from: Unit, saved: bool)  # u earned n XP from `from` falling, or being brought back (saved), and levels (Unit.gain_xp())
 signal reacted(u: Unit, skill: Skill, r: Behaviour.Reaction)  # u's passive reacted to a moment (react()): r.trigger, r.subject, r.by
-signal passive_fired(u: Unit, skill: Skill, amount: int, stat: StringName, rounded: int)  # a passive (or what a skill put on: regen) acted on u: amount of stat (&"hp"; null skill: the stat itself acted, &"luck"), rounded -1 down, 1 up, 0 exact (passive()); the HUD signs it
+signal passive_fired(u: Unit, skill: Skill, amount: int, stat: StringName, rounded: int)  # a passive (or what a skill put on: regen) acted on u: amount of stat (&"hp", or &"exhaustion" for a passive that eased its holder's count; null skill: the stat itself acted, &"luck"), rounded -1 down, 1 up, 0 exact (passive()); the HUD signs it
 signal interrupt_began(u: Unit)  # u acts out of turn (grant_interrupt(): Final Act); the turn under way waits
 signal interrupt_ended(u: Unit)  # ...and the interrupted turn resumes
 
@@ -1715,7 +1715,7 @@ func neutralize(u: Unit, how: StringName) -> void:
 				for h in x.skill.behaviours:
 					h.neutralized(self, o, x.rank, u, u.last_hit_by, how)
 				if o.exhaustion.total() < worn - 0.0001:
-					passive(o, x.skill, 0, &"")
+					passive(o, x.skill, 0, &"exhaustion")
 
 
 # A use of s was paid for (Unit.paid) inside a cast: held open, aimed at the cast's target, until the
@@ -1739,7 +1739,7 @@ func _settle_wear() -> void:
 				var kept := w.uses
 				h.wearing(self, w.caster, x.rank, w)
 				if w.uses < kept - 0.0001:
-					passive(w.caster, x.skill, 0, &"")
+					passive(w.caster, x.skill, 0, &"exhaustion")
 		w.caster.exhaustion.relieve(w.gain - w.uses, w.skill)
 
 
