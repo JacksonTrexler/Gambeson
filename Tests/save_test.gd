@@ -52,7 +52,7 @@ func test_round_trip() -> void:
 
 # A roster member as a battle leaves it: level 5, a skill learned and raised, its bar, an item, XP, a lapse.
 func _veteran() -> Unit:
-	var u := b.from_role(lancin, load("res://Roles/fighter.tres"), "Brann")
+	var u := Battle.from_role(lancin, load("res://Roles/fighter.tres"), "Brann")
 	u.level = 5
 	u.skill_points = 4
 	u.cell = b.free_near(Vector2i(0, 0))
@@ -81,7 +81,7 @@ func test_roster() -> void:
 	Game.roster = []
 	Game.party = []
 	ok(Save.load_game() and Game.roster.size() == 2 and Game.party == ([0, 1] as Array[int]), "the roster and the party (leader first) come back")
-	var w := b.from_role(lancin, load(Game.roster[1].role), Game.roster[1].name)
+	var w := Battle.from_role(lancin, load(Game.roster[1].role), Game.roster[1].name)
 	w.from_dict(Game.roster[1])
 	b.get_node("Units").add_child(w)
 	ok(w.nick == "Brann" and w.level == 5 and w.xp == 9 and w.weapon == u.weapon, "name, level, XP, the item worn")
@@ -143,6 +143,9 @@ func test_party_size() -> void:
 	ok(Game.leader_party_size() == 1 and Game.party_now() == ([0] as Array[int]), "a leader with charisma 9 at level 1 goes solo: the party is the leader alone, though others are picked")
 	var e := _entry()
 	ok(e.party.text == "Party: solo", "Entry says so: %s" % e.party.text)
+	Game.roster.assign([Game.roster[0]])
+	e._show_save()
+	ok(e.party.visible, "the button shows on a solo roster too: the stash is reachable between battles")
 	e.free()
 
 

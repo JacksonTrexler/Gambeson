@@ -105,16 +105,7 @@ func outfit(i: int) -> Unit:
 	if i < 0 or i >= Game.roster.size() or not ResourceLoader.exists(str(Game.roster[i].get("role", ""))):
 		return null
 	var d: Dictionary = Game.roster[i]
-	var u: Unit = Battle.UNIT.instantiate()
-	var nick := str(d.get("name", ""))
-	u.name = nick.validate_node_name()
-	u.nick = nick
-	u.faction = load(d.faction) if ResourceLoader.exists(str(d.get("faction", ""))) else null
-	u.role = load(d.role)
-	u.max_hp = Unit.CLASS_HP
-	for k in u.role.stats:
-		u.set(k, u.role.stats[k])
-	u.reserves.merge(u.role.reserves)
+	var u := Battle.from_role(load(d.faction) if ResourceLoader.exists(str(d.get("faction", ""))) else null, load(d.role), str(d.get("name", "")))
 	var class_hearts := u.hearts
 	u.from_dict(d)
 	if i == 0:  # the leader as a battle starts it (Battle.starter()): its own fields win over its entry
