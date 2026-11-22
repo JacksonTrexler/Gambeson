@@ -525,10 +525,15 @@ var actives: Array[Skill]:
 # does goes through here, or through equipped() itself.
 var on_passives: Array[Slot]:
 	get:
-		var s: Array[Slot] = []
-		var lost := unranked()
-		s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
-		return s
+		if reading > 0:  # a stretch changes no one's passives (begin_read()): found once, with the effects (_held_fx()), whoever asks (mod() asks it every time)
+			return _held_fx(null).vals[&"on_passives"].duplicate()
+		return _on_passives()
+
+func _on_passives() -> Array[Slot]:
+	var s: Array[Slot] = []
+	var lost := unranked()
+	s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
+	return s
 
 var passives: Array[Skill]:
 	get:
@@ -539,10 +544,14 @@ var passives: Array[Skill]:
 # What it can do, as others read it: its actives and passives that are on, and what's disabled.
 var kit: Array[Skill]:
 	get:
+		var kept: Variant = held(&"kit")  # asked by every reader of it in a stretch (a read asks twice): once
+		if kept != null:
+			return kept.duplicate()
 		var s: Array[Skill] = actives + passives
 		for x in disabled:
 			if x not in s:
 				s.append(x)
+		hold(&"kit", s.duplicate())
 		return s
 
 var luck: int:
@@ -2236,6 +2245,16 @@ func mitigation(tags: Array[StringName]) -> float:
 # untagged ones always, tagged ones against attacks carrying that tag or a child of it (physical
 # Defense counts against a pierce).
 func defense(tags: Array[StringName] = []) -> int:
+	if tags.is_empty() and reading > 0:  # what every read of it shows: once a stretch
+		var kept: Variant = held(&"defense")
+		if kept == null:
+			kept = _defense(tags)
+			hold(&"defense", kept)
+		return kept
+	return _defense(tags)
+
+
+func _defense(tags: Array[StringName]) -> int:
 	var base := armor_defense() + armor_mind(tags) + (hearts_used if trinket and trinket.spent_defense else 0)
 	return roundi(stat(&"defense", tags, null, null, base)) - (REAR_EDGE if &"rear" in tags else 0)  # a mul defense effect scales the whole of it (Hollow Bones: half)
 
@@ -3995,7 +4014,8 @@ func _held_fx(viewer: Unit) -> Dictionary:
 		if viewer != null and not saw:
 			held = _held_fx(null)  # nothing it saw through: the list is the same as anyone's
 		else:
-			held = {all = _gather_effects(viewer), by = {}, vals = {}}
+			var ps: Array[Slot] = _on_passives() if viewer == null else _held_fx(null).vals[&"on_passives"]
+			held = {all = _gather_effects(viewer, ps), by = {}, vals = {&"on_passives": ps} if viewer == null else {}}
 		_fx[viewer] = held
 	return held
 
@@ -4038,11 +4058,11 @@ static func end_read() -> void:
 	reading = maxi(reading - 1, 0)
 
 
-func _gather_effects(viewer: Unit) -> Array:
+func _gather_effects(viewer: Unit, passives: Variant = null) -> Array:
 	var out := []
 	var own := {}
 	var modded := emblems()
-	for x in on_passives:
+	for x: Slot in (passives if passives != null else _on_passives()):
 		var m := mods(x.skill) if modded else Modifiers.NONE
 		for e in x.skill.effects:
 			out.append([e, x.rank, 1.0] if m.empty() else m.effect(e, x.rank))  # its modifiers (Modifiers.effect())
