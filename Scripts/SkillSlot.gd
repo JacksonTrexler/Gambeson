@@ -34,6 +34,7 @@ var kind := &""  # its unit's slot kind (Unit.slot_kinds()): &"" plain, &"clover
 var clover := false  # the unit's clover slot
 var works := true  # false: a clover slot whose unit isn't lucky now - greyed out until it is
 var off := 0  # turns its skill is disabled for (Brainfog: Unit.disabled); 0: it isn't - dimmed while it is
+var off_by: Skill  # what disabled it, if it said (Unit.disabled_by): its mark rides the icon, its name the tooltip
 var cursed := false  # a curse disabled it (Brainfog), or sealed the slot (a level curse: Unit.sealed()): it quivers gently
 var sealed := false  # a level curse took the slot: it stays, unusable, till the curse ends
 var bonus := &""  # a bonus slot's type (Unit.bonus_slots(): Cram's caster bonus slots, magical), &"" none: a dashed rim in its colour
@@ -147,12 +148,13 @@ func set_bonus(type: StringName, r: int, why: String) -> void:
 
 # Its skill is disabled for n more turns (0: it isn't): dimmed. Cursed (Brainfog), or a slot a level
 # curse sealed, it also quivers gently.
-func set_off(n: int, by_curse := false, is_sealed := false) -> void:
+func set_off(n: int, by_curse := false, is_sealed := false, src: Skill = null) -> void:
 	off = n
+	off_by = src if n > 0 else null
 	sealed = is_sealed
 	cursed = (by_curse and n > 0) or is_sealed
 	if n > 0:
-		tooltip_text = "%s for %d more turn%s\n%s" % ["Cursed" if by_curse else "Disabled", n, "" if n == 1 else "s", tooltip_text]
+		tooltip_text = "%s%s for %d more turn%s\n%s" % ["Cursed" if by_curse else "Disabled", " by " + src.name if src else "", n, "" if n == 1 else "s", tooltip_text]
 	if sealed:
 		tooltip_text = "Sealed by a curse on its level: it comes back as the curse ends\n" + tooltip_text
 	set_process(cursed or switching or _glow() > 0.0)
@@ -262,7 +264,7 @@ func _draw() -> void:
 	var tex := skill.icon()
 	if tex:  # its icon before its name
 		var side := h - 4.0
-		draw_texture_rect(tex, Rect2(15, top + 2, side, side), false, Skill.icon_ink(tex, Color(0.92, 0.93, 0.96, dim), 1.0, dim))
+		Skill.draw_icon(self, tex, Rect2(15, top + 2, side, side), Color(0.92, 0.93, 0.96, dim), 1.0, dim, icon_look(), off_by.mark().left(1) if off_by and off > 0 else "")
 		left += side + 1.0
 	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
 			Color(0.92, 0.93, 0.96).lerp(MUTED_TEXT, hush) * Color(1, 1, 1, dim))
@@ -287,6 +289,15 @@ func brightness() -> float:
 		return 0.25
 	var steady := skill != null and skill.passive and not skill.toggle and not trait_slot
 	return 1.0 if works and (steady or (usable and (on or not skill.passive))) else 0.45
+
+
+# Its icon's look (Skill.LOOK_*): disabled, or an untoggled toggle; zero is the plain one.
+func icon_look() -> Vector2:
+	if off > 0 or sealed or (bonus_why != "" and skill != null):
+		return Skill.LOOK_DISABLED
+	if shows_switch() and not on:
+		return Skill.LOOK_UNTOGGLED
+	return Vector2.ZERO
 
 
 # A bonus slot's rim: dashes along its edge.

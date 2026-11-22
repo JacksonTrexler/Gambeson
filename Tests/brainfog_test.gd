@@ -97,4 +97,8 @@ func test_hotbar() -> void:
 	ok(c.skill == strike and c.off == 2 and not c.usable and "Disabled for 2" in c.tooltip_text, "greyed out, struck through, saying for how long")
 	h.use_slot(0)
 	ok(not h.aiming() and "disabled for 2" in h._note, h._note)
+	ok(c.icon_look() == Skill.LOOK_DISABLED and c.off_by == null, "disabled without saying by what: the disabled look, no badge")
+	v(1).disable(strike, 3, true, v(3), brainfog)  # a disabling that says what did it: its mark and name show
+	h._refresh()
+	ok(v(1).disabled_by[strike] == brainfog and c.off_by == brainfog and "Cursed by Brainfog for 3" in c.tooltip_text, c.tooltip_text)
 	h.free()

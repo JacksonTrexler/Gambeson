@@ -2745,7 +2745,7 @@ func _refresh_bar() -> void:
 		slot.set_lent(u.lent_by(s) if u and s and sense == 2 else "")
 		slot.label = u.skill_name(s) if u and s else ""
 		var taken := u != null and s != null and u.base_rank(s) > 0 and u.rank(s) == 0  # a level curse took it back (Unit.unranked())
-		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i))
+		slot.set_off(maxi(off, 1) if taken else off, u != null and s != null and (u.cursed.has(s) or taken), u != null and u.sealed(i), u.disabled_by.get(s) if u != null and s != null else null)
 		var to: Variant = u.switching() if u and s and u.channel and u.channel.skill == s else null
 		slot.set_switching("" if to == null else "Energy" if to is StringName else to.name)
 		if locked:

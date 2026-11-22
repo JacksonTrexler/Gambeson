@@ -307,8 +307,11 @@ func _node(s: Skill, box: Rect2, tone: Color, font: Font) -> void:
 	elif s == _hover:
 		draw_rect(box.grow(2.5), Color(1, 1, 1, 0.45), false, 1.0)
 	var tex := s.icon()
+	var look := Vector2.ZERO  # coloured art only: locked reads as disabled, learned-but-unworn as untoggled (Skill.LOOK_*)
+	if tex and Skill.is_coloured(tex):
+		look = Skill.LOOK_DISABLED if state == &"locked" else Skill.LOOK_UNTOGGLED if unworn else Vector2.ZERO
 	if tex:
-		draw_texture_rect(tex, box.grow(-2.0), false, Skill.icon_ink(tex, ink, lit.x, lit.y))
+		Skill.draw_icon(self, tex, box.grow(-2.0), ink, lit.x, lit.y, look)
 	else:
 		var text := s.mark()
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 6).x
