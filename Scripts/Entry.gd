@@ -79,7 +79,7 @@ func _show_save() -> void:
 	wipe.text = "New game: delete the save"
 	wipe.visible = not Game.hero.is_empty() or FileAccess.file_exists(Save.PATH)
 	resume.visible = not Game.hero.is_empty()
-	party.visible = Game.roster.size() > 1
+	party.visible = not Game.roster.is_empty()  # a solo roster too: the stash is reachable between battles
 	party.text = "Party: solo" if Game.leader_party_size() <= 1 else "Party: %d of %d" % [Game.party_now().size(), Game.leader_party_size()]
 	if resume.visible:
 		resume.text = "Continue: %s, %s, level %d" % [Game.hero.name, Game.hero.role.name, Game.level]

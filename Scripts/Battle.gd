@@ -637,7 +637,7 @@ func _field_party() -> void:
 
 
 # A level 1 unit of a class: its stats and reserves, on side f.
-func from_role(f: Faction, role: Role, nick: String) -> Unit:
+static func from_role(f: Faction, role: Role, nick: String) -> Unit:
 	var u: Unit = UNIT.instantiate()
 	u.name = nick.validate_node_name()
 	u.nick = nick
@@ -6086,6 +6086,18 @@ func _pay(o: Unit, n: int, from: Unit, saved: bool) -> void:
 	gained_xp.emit(o, n, levels, from, saved)
 
 
+# What a unit leaves as it falls: a roll of its loot table, and the pack it was still carrying (Unit.pack: armor it never
+# got to put on), each as its own item - the pack spills whole, emptied, so nothing is dropped twice.
+func _drops(u: Unit) -> Array[Item]:
+	var out: Array[Item] = []
+	var it := u.loot.roll(rng) if u.loot else null
+	if it:
+		out.append(it)
+	out.append_array(u.pack)
+	u.pack.clear()
+	return out
+
+
 func _on_died(u: Unit) -> void:
 	if inside.has(u):
 		inside.erase(u)
@@ -6096,8 +6108,7 @@ func _on_died(u: Unit) -> void:
 	end_channel(u)
 	neutralize(u, &"killed")
 	_award(u)
-	var it := u.loot.roll(rng) if u.loot else null
-	if it:
+	for it in _drops(u):
 		spoils.append([it, u.faction])
 		dropped.emit(u, it)
 	if u.reverts_to:  # a Starman falls back into a Starmote, keeping what Power it had
