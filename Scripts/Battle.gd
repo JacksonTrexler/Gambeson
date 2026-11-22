@@ -2222,8 +2222,9 @@ func _look_harder(u: Unit) -> void:
 				doubt(u, t)
 				seen.clear()
 				Unit.begin_read()
+	var near := suspicious(u, seen)  # in the same stretch: nothing has changed since the last read
 	Unit.end_read()
-	_first_look(u, seen)
+	_inspect_first(u, near)
 
 
 # Tiles where o makes out something suspicious but not what: a hint (a vague shape, a vibe) of a
@@ -2313,7 +2314,12 @@ func _maybe_hidden(around: Variant = null, r := -1.0) -> Array[Vector2i]:
 
 # The first time o sees something suspicious, it inspects the nearest such thing it hasn't yet.
 func _first_look(o: Unit, known: Dictionary[Unit, Read] = {}) -> void:
-	for c in suspicious(o, known):
+	_inspect_first(o, suspicious(o, known))
+
+
+# o inspects the first of these suspicious tiles (suspicious()) it hasn't noticed.
+func _inspect_first(o: Unit, near: Array[Vector2i]) -> void:
+	for c in near:
 		if c not in o.noticed:
 			o.noticed[c] = true
 			inspect(o, c)
@@ -2680,7 +2686,7 @@ static func seen_odds(caster: Unit, skill: Skill, target: Unit, eyes: Array[Unit
 func evaluators(u: Unit) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for o: Unit in units.values():
-		if o.faction == u.faction and o.is_alive() and not o.asleep() and o.evaluates() > 0 and Command.tiles(o.cell, u.cell) <= o.evaluates():
+		if o.faction == u.faction and o.is_alive() and o.evaluates() > 0 and not o.asleep() and Command.tiles(o.cell, u.cell) <= o.evaluates():  # (evaluates() first: few have it)
 			out.append(o)
 	return out
 

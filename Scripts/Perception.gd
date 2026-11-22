@@ -484,7 +484,10 @@ static func _kind(k: StringName) -> Dictionary:
 
 # How much concealment a unit has where it stands, before anyone's nullify (exposure taken off).
 static func cover(b: Battle, t: Unit) -> int:
-	return _levels(b, t.cell, t).values().reduce(func(sum, x): return sum + x, 0)
+	Unit.begin_read()  # one read of t's effects for the concealment of every kind
+	var out: int = _levels(b, t.cell, t).values().reduce(func(sum, x): return sum + x, 0)
+	Unit.end_read()
+	return out
 
 
 # Concealment levels at a cell by kind: zones over it, plus the unit's own (less what `viewer` saw

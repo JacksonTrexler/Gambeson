@@ -463,9 +463,10 @@ var allowed: Dictionary = {}  # Skill -> highest rank: while not empty, its only
 var slots: Array[Slot]:
 	get:
 		var best := {}
-		for s in _own() + granted():
-			if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
-				best[s.skill] = s
+		for list: Array[Slot] in [_role_slots, innate, learned, granted()]:  # one pass over _own() and granted(): each skill's first entry of its highest rank
+			for s in list:
+				if s and s.skill and (s.skill not in best or s.rank > best[s.skill].rank):
+					best[s.skill] = s
 		var out: Array[Slot] = []
 		out.assign(best.values())
 		return out
@@ -1286,7 +1287,9 @@ func slot_cost(s: Skill) -> int:
 # items: free beats optional.
 func link(s: Skill) -> StringName:
 	var how := &""
-	for it in items():
+	for it: Item in [weapon, armor, trinket]:  # (items(), less the ones lending nothing: most)
+		if it == null or it.skills.is_empty():
+			continue
 		match it.link(s):
 			&"free":
 				how = &"free"
@@ -3953,7 +3956,7 @@ func disturbed() -> bool:
 # Restless Dead ??: undead and Disturbed, from any source of either. It attacks the nearest living unit it sees
 # (AI._restless(), Read.dead_eye), its own side first on ties; losing Disturbed lays it to rest (Scripts/Undead.gd).
 func restless() -> bool:
-	return disturbed() and has_tag(&"undead")
+	return has_tag(&"undead") and disturbed()  # (the tag first: far fewer are undead than the stat's effects cost to find)
 
 
 # Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())
