@@ -1,6 +1,13 @@
 extends Test
 
-# Strike and Hex: reach, size, net luck, AP and energy, turn rules, timed effects.
+# Strike and Hex: reach, size, net luck, AP and energy, turn rules, timed effects. And every skill's
+# wiring (Util/skill.py check), and every flag a skill sets saying so in its description.
+
+# Fields that shape how a skill works without a line of their own (its name, its glyph; whether it rolls).
+const QUIET := ["name", "glyph", "ai", "max_rank", "min_tier", "hostile", "rolls", "weapon_tag", "needs", "hybrid",
+		"difficulty", "reach_scale", "dice_scale", "no_density"]  # no_density: a design note skill.py check reads, no rule
+# Flags set before this check that their skills don't mention yet. Shrink it; never grow it.
+const UNSAID := []
 
 
 func test_strike_damage() -> void:
@@ -99,3 +106,42 @@ func test_costs_and_turns() -> void:
 	stage(nemes, {v(3): Vector2i(4, 3), v(1): Vector2i(5, 3), v(2): Vector2i(0, 7)})
 	v(1).damage(99)
 	ok(b.phase == Battle.Phase.TURNS and not b.cast(v(3), strike, v(1)), "no casting at the dead (battle still on)")
+
+
+func test_wiring() -> void:
+	tool_check("skill")
+
+
+func test_flags_described() -> void:
+	var blank := Skill.new()
+	var unsaid: Array[String] = []
+	for f in DirAccess.get_files_at("res://Skills"):
+		var s: Skill = load("res://Skills/" + f) if f.ends_with(".tres") else null
+		if not s or s.stub:
+			continue
+		var said := s.markup(3)
+		for p in s.get_property_list():
+			if not (p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and p.usage & PROPERTY_USAGE_STORAGE) or p.name in QUIET \
+					or s.get(p.name) == blank.get(p.name) or "%s.%s" % [s.name, p.name] in UNSAID:
+				continue
+			var d: Skill = s.duplicate()
+			d.set(p.name, blank.get(p.name))
+			if d.markup(3) == said:
+				unsaid.append("%s.%s" % [s.name, p.name])
+	ok(unsaid.is_empty(), "every flag a skill sets changes what it says - a flag or behaviour without its line (%s)" % [unsaid])
+
+
+# Skill.is_coloured() tells coloured art from a white placeholder (white letters, a translucent black edge) and
+# icon_ink() tints only the placeholder: coloured art keeps its colours, dimmed for state.
+func test_icon_ink_tints_placeholders_not_coloured_art() -> void:
+	var img := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	img.set_pixel(1, 1, Color.WHITE)
+	img.set_pixel(2, 1, Color(0, 0, 0, 0.59))  # the placeholder's edge
+	var white := ImageTexture.create_from_image(img)
+	img.set_pixel(2, 2, Color(0.8, 0.1, 0.1))
+	var art := ImageTexture.create_from_image(img)
+	var ink := Color(0.3, 0.6, 0.9, 0.5)
+	ok(not Skill.is_coloured(white) and Skill.icon_ink(white, ink, 0.4, 0.5) == ink, "a white placeholder takes the state's ink")
+	ok(Skill.is_coloured(art) and Skill.icon_ink(art, ink, 0.4, 0.5) == Color(0.4, 0.4, 0.4, 0.5), "coloured art is dimmed, not tinted")
+	ok(not Skill.is_coloured(load("res://Icons/Skills/sanctum.png")) and Skill.is_coloured(load("res://Icons/Skills/heal.png")), "the shipped icons sort as placeholder and art")
+

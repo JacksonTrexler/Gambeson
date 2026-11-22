@@ -1,0 +1,136 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://Units/Doebour.png" id="2_sprite"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/meander.tres" id="s_meander"]
+[ext_resource type="Resource" path="res://Skills/clever_disguise.tres" id="s_clever_disguise"]
+[ext_resource type="Resource" path="res://Skills/move_plus_one.tres" id="s_move_plus_one"]
+[ext_resource type="Resource" path="res://Skills/self_evaluation.tres" id="s_self_evaluation"]
+[ext_resource type="Resource" path="res://Skills/tonefoolery.tres" id="s_tonefoolery"]
+[ext_resource type="Resource" path="res://Skills/glamour.tres" id="s_glamour"]
+[ext_resource type="Resource" path="res://Skills/manifest.tres" id="s_manifest"]
+[ext_resource type="Resource" path="res://Skills/sola.tres" id="s_sola"]
+[ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
+[ext_resource type="Resource" path="res://Skills/persona.tres" id="s_personify"]
+[ext_resource type="Resource" path="res://Skills/embellish.tres" id="s_embellish"]
+[ext_resource type="Resource" path="res://Skills/brood.tres" id="s_brood"]
+[ext_resource type="Resource" path="res://Skills/conspire.tres" id="s_conspire"]
+[ext_resource type="Resource" path="res://Skills/first_aid.tres" id="s_first_aid"]
+[ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="s_eyes_forward"]
+[ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
+[ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
+[ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
+[ext_resource type="Resource" path="res://Trees/song.tres" id="r_song"]
+[ext_resource type="Resource" path="res://Skills/bandwagon.tres" id="s_bandwagon"]
+[ext_resource type="Resource" path="res://Skills/molothrus.tres" id="s_molothrus"]
+[ext_resource type="Resource" path="res://Skills/string_theory.tres" id="s_string_theory"]
+[ext_resource type="Resource" path="res://Skills/conductor.tres" id="s_conductor"]
+[ext_resource type="Resource" path="res://Skills/harmony.tres" id="s_harmony"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
+[sub_resource type="Resource" id="Slot_meander"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_meander")
+
+[sub_resource type="Resource" id="Branch_tonefoolery"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_tonefoolery")
+
+[sub_resource type="Resource" id="Branch_glamour"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_glamour")
+
+[sub_resource type="Resource" id="Branch_manifest"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_manifest")
+after = Array[ExtResource("5_skill")]([ExtResource("s_glamour")])
+
+[sub_resource type="Resource" id="Branch_personify"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_personify")
+
+[sub_resource type="Resource" id="Branch_string_theory"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_string_theory")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Branch_conductor"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_conductor")
+after = Array[ExtResource("5_skill")]([ExtResource("s_string_theory")])
+
+[sub_resource type="Resource" id="Branch_harmony"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_harmony")
+after = Array[ExtResource("5_skill")]([ExtResource("s_conductor")])
+
+[sub_resource type="Resource" id="Branch_embellish"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_embellish")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Branch_brood"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_brood")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Branch_molothrus"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_molothrus")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Branch_conspire"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_conspire")
+after = Array[ExtResource("5_skill")]([ExtResource("s_embellish"), ExtResource("s_brood")])
+
+[sub_resource type="Resource" id="Branch_bandwagon"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_bandwagon")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Root_Performance"]
+script = ExtResource("6_root")
+name = "Performance"
+tag = &"specialist"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_tonefoolery"), SubResource("Branch_glamour"), SubResource("Branch_manifest"), SubResource("Branch_personify"), SubResource("Branch_string_theory"), SubResource("Branch_conductor"), SubResource("Branch_harmony"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_molothrus"), SubResource("Branch_conspire"), SubResource("Branch_bandwagon")])
+
+[sub_resource type="Resource" id="Tab_Freedom"]
+script = ExtResource("8_tab")
+name = "Freedom"
+kind = "Calling"
+center = ExtResource("s_clever_disguise")
+core = Array[ExtResource("5_skill")]([ExtResource("s_meander"), ExtResource("s_move_plus_one"), ExtResource("s_self_evaluation"), ExtResource("s_first_aid"), ExtResource("s_eyes_forward"), ExtResource("s_special_eyes")])
+roots = Array[ExtResource("6_root")]([SubResource("Root_Performance")])
+
+[sub_resource type="Resource" id="Tab_Song"]
+script = ExtResource("8_tab")
+name = "Song"
+kind = "Genre"
+glyph = "Sg"
+color = Color(0.85, 0.55, 0.69, 1)
+roots = Array[ExtResource("6_root")]([ExtResource("r_song")])
+
+[resource]
+script = ExtResource("1_script")
+noun = "Tradefolk"
+name = "Bard"
+look = ExtResource("2_sprite")
+race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_meander")])
+stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 12, &"constitution": 10, &"intelligence": 11, &"wisdom": 10, &"charisma": 15})
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Song"), SubResource("Tab_Freedom")])
+items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
+general = Array[StringName]([&"specialist", &"magical", &"journeyman"])

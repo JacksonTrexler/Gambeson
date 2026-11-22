@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/snapping_turtle.gd" id="b_snapping_turtle"]
+
+[sub_resource type="Resource" id="Behaviour_snapping_turtle"]
+script = ExtResource("b_snapping_turtle")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Snapping Turtle"
+glyph = "St"
+passive = true
+tags = Array[StringName]([&"martial", &"defensive", &"reaction"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_snapping_turtle")])

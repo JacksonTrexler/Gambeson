@@ -1,0 +1,136 @@
+extends Test
+
+# The Bracing passives on the general tree (Unit.check_bonus()): armor ranks added to checks, by the
+# armor's weight, the check's stat and whether it's offensive or defensive, up to the passive's rank -
+# only while the armor is worn to some effect (Unit.armored()).
+
+var gambeson: Item = load("res://Items/gambeson.tres")
+var habergeon: Item = load("res://Items/habergeon.tres")
+var brigandine: Item = load("res://Items/brigandine.tres")
+
+
+func brace(n: String) -> Skill:
+	return load("res://Skills/%s_bracing.tres" % n)
+
+
+# A piece of armor at a rank.
+func at(it: Item, r: int) -> Item:
+	var x: Item = it.duplicate()
+	x.rank = r
+	return x
+
+
+func test_tree() -> void:
+	var u := b.starter({faction = lancin, role = load("res://Roles/adventurer.tres"), name = "Shrike"})
+	for n in ["agility", "balanced", "vanguard", "combat", "meditative", "invigorating"]:
+		ok(brace(n) in u.sources()[&"class"] and u.tier(brace(n)) == 5, "%s: on the general trees an Adventurer gets, tier 5" % n)
+	u.free()
+	ok(&"martial" in brace("agility").tags and &"specialist" in brace("agility").tags and &"magical" in brace("meditative").tags, "martial, specialist and caster passives")
+	ok("Rollers" in brace("agility").describe() and "Doozers" in brace("combat").describe(), "each with its gang's lore")
+
+
+func test_agility() -> void:
+	v(1).learned.append(slot(brace("agility"), 2))
+	v(1).armor = at(gambeson, 3)
+	ok(v(1).check_bonus(&"dexterity", &"offensive") == 2 and v(1).check_bonus(&"dexterity", &"defensive") == 2, "light rank 3: +3 to dex rolls, up to rank II")
+	ok(v(1).check_bonus(&"strength", &"offensive") == 0, "not str")
+	v(1).armor = at(habergeon, 3)
+	ok(v(1).check_bonus(&"dexterity", &"offensive") == 0, "not in medium armor")
+
+
+func test_balanced_and_vanguard() -> void:
+	v(1).learned.append(slot(brace("balanced"), 5))
+	v(1).armor = at(habergeon, 2)
+	ok(v(1).check_bonus(&"strength", &"defensive") == 2 and v(1).check_bonus(&"dexterity", &"offensive") == 0, "Balanced: defensive str and dex")
+	v(1).learned.append(slot(brace("vanguard"), 5))
+	ok(v(1).check_bonus(&"dexterity", &"offensive") == 2, "Vanguard: offensive")
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(3).armor = bulwark()
+	var with := Battle.hit_chance(v(1), strike, v(3))
+	v(1).armor = null
+	ok(with > Battle.hit_chance(v(1), strike, v(3)), "attack rolls take it")
+
+
+func test_combat() -> void:
+	v(1).learned.append(slot(brace("combat"), 5))
+	v(1).armor = at(brigandine, 3)
+	ok(v(1).check_bonus(&"strength", &"offensive") == 3 and v(1).check_bonus(&"strength", &"defensive") == 3 and v(1).check_bonus(&"dexterity", &"defensive") == 0, "heavy: str rolls")
+	var heavy: Item = at(brigandine, 3)
+	heavy.requires = &"intelligence"
+	v(1).intelligence = 8
+	v(1).armor = heavy
+	ok(not v(1).armored() and v(1).check_bonus(&"strength", &"offensive") == 0, "armor it can't wear to effect: nothing")
+
+
+func test_mental() -> void:
+	v(1).learned.append(slot(brace("meditative"), 5))
+	v(1).learned.append(slot(brace("invigorating"), 2))
+	v(1).armor = at(gambeson, 4)
+	ok(v(1).check_bonus(&"wisdom", &"defensive") == 4 and v(1).check_bonus(&"charisma", &"defensive") == 4, "Meditative: defensive mental checks, any armor")
+	ok(v(1).check_bonus(&"intelligence", &"offensive") == 2, "Invigorating: half the armor's rank to offensive mental checks")
+	v(1).refresh()
+	var skill_ap := v(1).ap[2].amount
+	v(1).armor = null
+	v(1).refresh()
+	ok(skill_ap == v(1).ap[2].amount + 2, "and rank more skill AP, while armored")
+
+
+# A watcher near the one it investigates looks at advantage (within its wis mod - rank tiles), against the
+# hider's roll, which isn't rolled again (Battle.investigate() through Battle.check()).
+func test_investigate_close() -> void:
+	var seen := {}
+	b.investigated.connect(func(_by, _of, _s, total, against, close): seen.get_or_add(close, []).append([total, against]))
+	for n in 300:
+		stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3)})
+		v(3).wisdom = 20  # mod 5: close within 5 - rank
+		b.investigate(v(1), load("res://Skills/hide.tres"), [v(3)] as Array[Unit], 12)
+		stage(lancin, {v(1): Vector2i(1, 3), v(3): Vector2i(8, 3)})
+		v(3).wisdom = 20
+		b.investigate(v(1), load("res://Skills/hide.tres"), [v(3)] as Array[Unit], 12)
+	var avg := func(k: bool) -> float: return seen.get(k, []).map(func(x): return x[0]).reduce(func(a, x): return a + x, 0) / maxf(seen.get(k, []).size(), 1.0)
+	ok(seen.get(true, []).size() == 300 and seen.get(false, []).size() == 300 and seen[true][0][1] == 12, "300 looks near, 300 far, each against the roll it was given (12)")
+	ok(avg.call(true) > avg.call(false) + 1.5, "near: the better of two d20s (%.1f vs %.1f)" % [avg.call(true), avg.call(false)])
+
+
+# What investigating forecasts (Battle.seen_odds()): the hider's guise is one roll for every watcher, so a
+# lone watcher's chance is that contest's odds, and several watchers' is not the independent chain of them.
+func test_seen_odds() -> void:
+	var hide: Skill = load("res://Skills/hide.tres")
+	v(1).learned.append(slot(hide, 2))
+	v(1).refresh()
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(8, 3), v(4): Vector2i(9, 3)})
+	for i in [3, 4]:
+		v(i).wisdom = 12
+	var eyes: Array[Unit] = [v(3)]
+	var solo := Battle.seen_odds(v(1), hide, v(1), eyes, b)
+	var contest := Battle.odds(v(3), &"wisdom", v(1), hide.stat(), {role = &"offensive", their_bonus = 2 - v(1).dissonance_penalty(), their_tags = v(1).skill_tags(hide)})
+	ok(solo > 0.1 and solo < 0.9 and is_equal_approx(solo, contest), "one watcher: that contest's odds (%.3f vs %.3f)" % [solo, contest])
+	eyes = [v(3), v(4)]
+	var both := Battle.seen_odds(v(1), hide, v(1), eyes, b)
+	ok(both > solo and both < 1.0 - pow(1.0 - solo, 2) - 0.01, "two: likelier, but not as the chance each would alone chained (%.3f)" % both)
+	var seen := 0
+	var n := 1500
+	for i in n:
+		var g := b.resolve(Battle.guise(v(1), hide, v(1), 2))
+		seen += 1 if eyes.any(func(o: Unit): return b.check(o, &"wisdom", null, g.total).won) else 0
+	ok(absf(seen / float(n) - both) < 0.04, "and the shared roll rolled as often (%.3f vs %.3f)" % [seen / float(n), both])
+
+
+# Bracing and other check effects reach investigations (offensive), hiding (defensive) and last stands
+# (the best defensive bonus over its stats).
+func test_more_checks() -> void:
+	v(1).learned.append(slot(load("res://Skills/turtle_tactics.tres"), 2))
+	ok(v(1).best_defensive_bonus() == 4, "Turtle Tactics II: +4 to defensive checks")
+	var lowest := 99
+	for n in 200:
+		lowest = mini(lowest, b.last_stand(v(1)))
+	ok(lowest >= 1 + v(1).average_mod() + 4, "a last stand takes it (lowest %d)" % lowest)
+	var keen := effect("check", 30.0)
+	keen.kind = &"offensive"
+	v(3).afflict(keen, 9)
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3)})
+	var looks := []
+	b.investigated.connect(func(_by, _of, _s, total, _against, _close): looks.append(total))
+	b.investigate(v(1), load("res://Skills/hide.tres"), [v(3)] as Array[Unit], 25)
+	ok(looks.size() == 1 and looks[0] >= 31 + v(3).mod(&"wisdom"), "an investigation is offensive: +30 (%s)" % [looks])
+	ok(b._hide_roll(v(1)) >= 1 + v(1).mod(&"dexterity") + 4, "hiding is defensive")

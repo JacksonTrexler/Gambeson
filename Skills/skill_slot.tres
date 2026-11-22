@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_slot"]
+script = ExtResource("2_effect")
+stat = "slots"
+amount = 1.0
+
+[resource]
+script = ExtResource("1_skill")
+name = "Skill Slot +1"
+passive = true
+tags = Array[StringName]([&"trait"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_slot")])
+max_rank = 1
+no_density = "a trait: no slot a foe can disable, no range, check or cost, so Density would be all gain"

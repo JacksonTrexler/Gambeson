@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="God" format=3]
+
+[ext_resource type="Script" path="res://Scripts/God.gd" id="god"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="rs"]
+[ext_resource type="Resource" path="res://Trees/hogel.tres" id="r_own"]
+
+[sub_resource type="Resource" id="Tab_own"]
+script = ExtResource("tab")
+name = "Hogel"
+kind = "Patron"
+devotes = true
+satisfied_by = &"rest_whole"
+roots = Array[ExtResource("rs")]([ExtResource("r_own")])
+
+[resource]
+script = ExtResource("god")
+id = &"hogel"
+patron = true
+own = SubResource("Tab_own")
+pool = Array[ExtResource("tab")]([])

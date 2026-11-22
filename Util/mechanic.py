@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""Gambeson mechanic authoring: the words and numbers rules are built from, each in its one place.
+
+  python3 Util/mechanic.py tag acid --define "Eats through armor: Defense counts half." [--term Acid] \\
+      --kind damage|condition|ground|check|target --color "#7fd04a" [--parent physical] [--human]
+  python3 Util/mechanic.py color acid "#7fd04a"
+  python3 Util/mechanic.py property rotting --effect "stat=mitigate amount=-0.5 tags=fire" \\
+      [--tags undead] [--text "Fire takes it apart."] [--name Rotting] [--human]
+  python3 Util/mechanic.py effect scorched --effect "stat=poison amount=0.05" [--name Scorched] [--human]
+  python3 Util/mechanic.py stat word_reach --doc "tiles more its word carries (Battle.spread())"
+  python3 Util/mechanic.py carry cc --skills stun,jam --effects stunned --inline drown:grappled
+  python3 Util/mechanic.py check
+
+tag: a word skills, tiles and units carry (Skill.tags, Terrain.tags, Unit.tags), defined once in the
+  Glossary (Glossary.TERMS) so descriptions can say {k:acid}; --parent makes it count as another (Tags.PARENT:
+  a slash is physical). The rules ask for it by &"name" - in a behaviour, or where the system lives.
+  --color: its colour (Tags.COLOR), required unless --parent (a child takes its parent's).
+color: sets or changes any tag's colour - one carried by things without a Glossary term too.
+property: what a unit is made of (Properties/<id>.tres, Bio.properties): effects always on it.
+effect: a reusable status (Effects/<id>.tres) skills and tiles put on units.
+stat: a new Effect stat (Effect.gd's list and its doc line). Read it with unit.stat(&"name") where it acts:
+  a behaviour (Behaviours/*.gd) for a skill's own verb, else the one system it changes - never a Skill.gd flag.
+carry: puts a tag on what exists - skills (Skill.tags), reusable statuses (Effects/<id>.tres) and a status written inside
+  a skill (--inline skill:stat). A status carries a tag in Effect.bears, never Effect.tags (that one filters what the
+  effect's stat counts on). Read with Unit.afflicted(tag). Tags only: nothing here makes a rule.
+A name an AI invented gets " ??" on its shown name (never the id, which every rule looks up by); a word from the user's own words
+goes in with --human, no ??. check fails a tag id that isn't lower_snake. .claude/skills/new-mechanic has the process.
+"""
+import argparse, re, sys, textwrap
+
+from tres import Doc, ai_name, die, exists, files, literal, names, read, write
+import tres
+
+KINDS = ("check", "damage", "condition", "ground", "target")
+TEST_STUB = '''extends Test
+
+# %(what)s. STUB(mechanic.py): what it does, where the rule reads it, and what these tests pin down.
+# Units: v(1), v(2) Lancin, v(3), v(4) Nemes (Tests/Test.gd); a property goes on before the unit is in
+# the tree (bio_test.gd: properties' tags are taken as it readies), an effect with v(1).afflict(e, turns).
+
+
+func test_%(id)s() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
+	ok(false, "STUB(mechanic.py): %(id)s does what it says")
+'''
+
+
+def test_stub(a, what):
+    p = "Tests/%s_test.gd" % a.id
+    if not a.test or exists(p):  # opt-in: the rule that reads it is tested where it lives (CLAUDE.md)
+        return
+    write(p, TEST_STUB % {"what": what, "id": a.id}, a.dry_run)
+
+
+def edit(p, old, new, dry):
+    text = read(p)
+    text.count(old) == 1 or die("%s: the anchor %r isn't there once - has the file changed shape?" % (p, old[:60]))
+    write(p, text.replace(old, new), dry)
+
+
+HEX = re.compile(r"#[0-9a-fA-F]{6}")
+COLOR_LINE = re.compile(r'&"(\w+)": Color\("([^"]*)"\)')
+
+
+def colour_block(text):
+    start = text.index("const COLOR := {")
+    return start, text.index("\n}\n", start)
+
+
+def colours():
+    """Tags.COLOR as {word: "#rrggbb"}."""
+    text = read("Scripts/Tags.gd")
+    start, end = colour_block(text)
+    return dict(COLOR_LINE.findall(text[start:end]))
+
+
+def set_colour(word, hexa, dry):
+    HEX.fullmatch(hexa or "") or die('a colour is "#rrggbb": %r' % hexa)
+    text = read("Scripts/Tags.gd")
+    start, end = colour_block(text)
+    block = text[start:end]
+    m = re.search(r'&"%s": Color\("[^"]*"\)' % word, block)
+    if m:
+        block = block[:m.start()] + '&"%s": Color("%s")' % (word, hexa.lower()) + block[m.end():]
+        text = text[:start] + block + text[end:]
+    else:
+        text = text[:end] + '\n\t&"%s": Color("%s"),' % (word, hexa.lower()) + text[end:]
+    write("Scripts/Tags.gd", text, dry)
+
+
+def color(a):
+    re.fullmatch(r"[a-z][a-z0-9_]*", a.id) or die("a tag is lower_snake")
+    set_colour(a.id, a.hex, a.dry_run)
+    return 0
+
+
+def tag(a):
+    t = a.id
+    re.fullmatch(r"[a-z][a-z0-9_]*", t) or die("a tag is lower_snake: acid, holy_fire")
+    gl = read("Scripts/Glossary.gd")
+    re.search(r'^\t&"%s": \[' % t, gl, re.M) and die("%s is already in Glossary.TERMS" % t)
+    a.kind in KINDS or die("--kind: one of %s" % ", ".join(KINDS))
+    a.color or a.parent or die('--color "#rrggbb": every tag has a colour (Tags.COLOR); a --parent\'s child may take its parent\'s')
+    '"' not in a.define and "[" not in a.define or die("--define: no double quotes or square brackets (BBCode)")
+    shown = a.term or t.replace("_", " ").title()
+    term = shown.removesuffix("??").strip() if a.human else ai_name(shown)  # --human: the user's word, no ??
+    line = '\t&"%s": ["%s", &"%s", "%s"],\n' % (t, term, a.kind, a.define)
+    end = gl.index("\n}\n", gl.index("const TERMS := {"))
+    write("Scripts/Glossary.gd", gl[:end + 1] + line + gl[end + 1:], a.dry_run)
+    if a.parent:
+        edit("Scripts/Tags.gd", "const PARENT := {", 'const PARENT := {&"%s": &"%s", ' % (t, a.parent), a.dry_run)
+    if a.color:
+        set_colour(t, a.color, a.dry_run)
+    test_stub(a, "The %s tag (Glossary.TERMS)" % t)
+    print('\nnext: put it on what carries it (skill.py --tags, tile.py --tags, unit.py --tags), and make the rules ask for '
+          '&"%s" where it acts; a test that it does. The Glossary page shows it now.' % t)
+    return 0
+
+
+def _add_name(lines, start, end, key, tag):
+    """Put &"tag" on the `key = Array[StringName]([...])` line of the section lines[start:end], making the line if need be."""
+    for i in range(start, end):
+        if lines[i].startswith(key + " = "):
+            if '&"%s"' % tag in lines[i]:
+                return False
+            lines[i] = lines[i].rstrip()[:-2] + (", " if "([&" in lines[i] else "") + '&"%s"])' % tag
+            return True
+    at = end
+    while at > start + 1 and not lines[at - 1].strip():
+        at -= 1
+    lines.insert(at, '%s = Array[StringName]([&"%s"])' % (key, tag))
+    return True
+
+
+def _span(lines, first):
+    """The section whose header is lines[first]: its (start, end)."""
+    end = first + 1
+    while end < len(lines) and not tres.HEADER.match(lines[end]):
+        end += 1
+    return first, end
+
+
+def carry(a):
+    t = a.id
+    re.search(r'^\t&"%s": \[' % t, read("Scripts/Glossary.gd"), re.M) or die("%s has no Glossary term: mechanic.py tag %s first" % (t, t))
+    a.skills or a.effects or a.inline or die("--skills, --effects or --inline: what carries it")
+    done = []
+    jobs = [("Skills/%s.tres" % x, None, "tags") for x in a.skills] + [("Effects/%s.tres" % x, None, "bears") for x in a.effects]
+    jobs += [("Skills/%s.tres" % x.partition(":")[0], x.partition(":")[2], "bears") for x in a.inline]
+    for path, stat_, key in jobs:
+        exists(path) or die("%s doesn't exist" % path)
+        lines = read(path).split("\n")
+        heads = [i for i, l in enumerate(lines) if tres.HEADER.match(l)]
+        if stat_ is None:
+            first = [i for i in heads if lines[i].startswith("[resource]")]
+        else:
+            first = [i for i in heads if lines[i].startswith("[sub_resource") and any(
+                l == 'stat = "%s"' % stat_ for l in lines[_span(lines, i)[0]:_span(lines, i)[1]])]
+        len(first) == 1 or die("%s: %s section%s found for %s" % (path, len(first) or "no", "" if len(first) == 1 else "s", stat_ or "[resource]"))
+        if _add_name(lines, *_span(lines, first[0]), key, t):
+            write(path, "\n".join(lines), a.dry_run)
+            done.append(path)
+    print("%s on %d file(s)" % (t, len(done)))
+    return 0
+
+
+def property_(a):
+    pid = a.id
+    exists("Properties/%s.tres" % pid) and die("Properties/%s.tres exists" % pid)
+    a.effect or a.tags or die("a property does something: --effect (resist, weakness...) and/or --tags")
+    d = Doc('[gd_resource type="Resource" script_class="Property" format=3]')
+    d.props = ["script = " + d.res("Script", "res://Scripts/Property.gd"), 'name = "%s"' % ai_name(a.name or pid.replace("_", " ").title(), a.human)]
+    if a.tags:
+        d.props.append("tags = " + names(a.tags))
+    if a.effect:
+        refs = [d.effect("Effect_%d" % (i + 1), s, a.human) for i, s in enumerate(a.effect)]
+        d.props.append("effects = " + tres.typed("res://Scripts/Effect.gd", d, refs))
+    if a.text:
+        d.props.append('text = "%s"' % a.text.replace('"', '\\"'))
+    write("Properties/%s.tres" % pid, d.text(), a.dry_run)
+    test_stub(a, "The %s property (Properties/%s.tres)" % (pid, pid))
+    print("\nnext: give it to units (unit.py --properties %s), and a test of what it does" % pid)
+    return 0
+
+
+def effect(a):
+    eid = a.id
+    exists("Effects/%s.tres" % eid) and die("Effects/%s.tres exists" % eid)
+    len(a.effect) == 1 or die("one --effect: an Effects/ file is a single effect")
+    d = Doc('[gd_resource type="Resource" script_class="Effect" format=3]')
+    d.props = ["script = " + d.res("Script", "res://Scripts/Effect.gd")] + tres.effect_props(a.effect[0], a.human)
+    if not any(x.startswith("name = ") for x in d.props):
+        d.props.append('name = "%s"' % ai_name(a.name or eid.replace("_", " ").title(), a.human))
+    write("Effects/%s.tres" % eid, d.text(), a.dry_run)
+    test_stub(a, "The %s status (Effects/%s.tres)" % (eid, eid))
+    return 0
+
+
+def stat(a):
+    s = a.id
+    re.fullmatch(r"[a-z][a-z0-9_]*", s) or die("a stat is lower_snake")
+    gd = read("Scripts/Effect.gd")
+    m = re.search(r'@export_enum\(([^)]*)\) var stat', gd, re.S) or die("Effect.gd: no stat enum")
+    '"%s"' % s in m.group(1) and die("Effect.gd already has %s" % s)
+    last = list(re.finditer(r'"\w+"', m.group(1)))[-1]
+    at = m.start(1) + last.end()
+    gd = gd[:at] + ', "%s"' % s + gd[at:]
+    doc = "\n".join(textwrap.wrap("%s: %s" % (s, a.doc), 98, initial_indent="# ", subsequent_indent="# ")) + "\n"
+    gd = gd.replace("@export_enum(\"luck\"", doc + "@export_enum(\"luck\"", 1)
+    write("Scripts/Effect.gd", gd, a.dry_run)
+    test_stub(a, "The %s Effect stat" % s)
+    print('\nnext: read it where it acts - unit.stat(&"%s") in a behaviour or the system it changes - and test it' % s)
+    return 0
+
+
+def check(_a=None):
+    problems = []
+    gl = read("Scripts/Glossary.gd")
+    for p in files("Properties", ".tres"):
+        if not re.search(r"^(effects|tags) = ", read(p), re.M):
+            problems.append("%s: does nothing (no effects or tags)" % p)
+    for t, parent in re.findall(r'&"(\w+)": &"(\w+)"', read("Scripts/Tags.gd")):
+        if not re.search(r'^\t&"%s": \[' % t, gl, re.M) and t not in ("slash", "pierce", "blunt", "foundation"):
+            problems.append('Scripts/Tags.gd: %s has no Glossary entry (mechanic.py tag %s --define ...)' % (t, t))
+    stats = re.search(r'@export_enum\(([^)]*)\) var stat', read("Scripts/Effect.gd"), re.S).group(1)
+    for p in list(files("Properties", ".tres")) + list(files("Effects", ".tres")):
+        for s in re.findall(r'^stat = "(\w+)"', read(p), re.M):
+            if '"%s"' % s not in stats:
+                problems.append('%s: stat "%s" isn\'t in Effect.gd (mechanic.py stat %s)' % (p, s, s))
+    for p in files("Skills", ".tres"):  # enchanted and honed never together (Tags.QUALITIES); items: item.py check
+        m = re.search(r"^tags = .*$", read(p), re.M)
+        if m and '&"enchanted"' in m.group(0) and '&"honed"' in m.group(0):
+            problems.append("%s: enchanted and honed together - pick one (they exclude each other)" % p)
+    check_colours(problems, gl)
+    check_tag_ids(problems, gl)
+    for p in problems:
+        print(p)
+    print("mechanic.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
+    return 1 if problems else 0
+
+
+def check_tag_ids(problems, gl):
+    """A tag id is a lower_snake word, whatever name it is shown by: a ?? (or a space) in one would make every lookup by it
+    (has_tag, Tags.PARENT, a Glossary link) miss. A shown name's ?? goes after it, in the Glossary term."""
+    bad = re.compile(r"[a-z][a-z0-9_]*")
+    for t in re.findall(r'^\t&"([^"]*)": \[', gl, re.M):
+        if not bad.fullmatch(t):
+            problems.append('Scripts/Glossary.gd: the tag id "%s" must be lower_snake (a ?? goes on the shown name only)' % t)
+    for n in re.findall(r'^\t&"[^"]*": \["([^"]*)"', gl, re.M):
+        if "??" in n and not n.endswith(" ??"):
+            problems.append('Scripts/Glossary.gd: the term "%s": a ?? goes at the end of the name, after a space' % n)
+    for t in re.findall(r'&"([^"]*)"', " ".join(re.findall(r"const PARENT := \{[^}]*\}", read("Scripts/Tags.gd")))):
+        bad.fullmatch(t) or problems.append('Scripts/Tags.gd: the PARENT tag id "%s" must be lower_snake' % t)
+    for top in ("Skills", "Items", "Terrain", "Properties", "Effects", "Scenes", "Races", "Roles"):
+        for f in sorted(list(files(top, ".tres")) + list(files(top, ".tscn"))):
+            for line in re.findall(r"^(?:tags|bears) = .*$", read(f), re.M):
+                for t in re.findall(r'&"([^"]*)"', line):
+                    bad.fullmatch(t) or problems.append('%s: the tag id "%s" must be lower_snake (a ?? goes on the shown name only)' % (f, t))
+
+
+def check_colours(problems, gl):
+    """Every tag has a colour (Tags.COLOR), its own or its parent's: Glossary terms, Tags.PARENT's words, and
+    every word on a resource or scene (tags = ...)."""
+    cols = colours()
+    for w, c in cols.items():
+        if not HEX.fullmatch(c):
+            problems.append('Scripts/Tags.gd: %s\'s colour "%s" isn\'t "#rrggbb"' % (w, c))
+    parent = dict(re.findall(r'&"(\w+)": &"(\w+)"', read("Scripts/Tags.gd")))
+    words = {}
+    for t in re.findall(r'^\t&"(\w+)": \[', gl, re.M):
+        words.setdefault(t, "Scripts/Glossary.gd")
+    for c, p in parent.items():
+        words.setdefault(c, "Scripts/Tags.gd")
+        words.setdefault(p, "Scripts/Tags.gd")
+    for top in ("Skills", "Items", "Terrain", "Properties", "Effects", "Scenes", "Races", "Roles"):
+        for f in sorted(list(files(top, ".tres")) + list(files(top, ".tscn"))):
+            for line in re.findall(r"^tags = .*$", read(f), re.M):
+                for t in re.findall(r'&"(\w+)"', line):
+                    words.setdefault(t, f)
+    for t, where in sorted(words.items()):
+        if t not in cols and parent.get(t) not in cols:
+            problems.append('%s: tag "%s" has no colour (mechanic.py color %s "#rrggbb")' % (where, t, t))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    t = sub.add_parser("tag", help="a word the rules ask about, defined in the Glossary")
+    t.add_argument("id")
+    t.add_argument("--define", required=True, help="one plain sentence or two: what it means in play")
+    t.add_argument("--term", help="shown name (default: from the id)")
+    t.add_argument("--kind", required=True, help="its Glossary kind: %s" % ", ".join(KINDS))
+    t.add_argument("--parent", help="a tag it also counts as (Tags.PARENT)")
+    t.add_argument("--color", help='"#rrggbb", its colour (Tags.COLOR); required unless --parent')
+    c = sub.add_parser("color", help="set or change a tag's colour (Tags.COLOR)")
+    c.add_argument("id")
+    c.add_argument("hex", help='"#rrggbb"')
+    c.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("property", help="what a unit is made of: Properties/<id>.tres")
+    p.add_argument("id")
+    p.add_argument("--effect", action="append", default=[], help='"stat=mitigate amount=-0.5 tags=fire" (below 0: a weakness)')
+    p.add_argument("--tags", help="what it makes the unit count as")
+    p.add_argument("--text", help="one line: what it does")
+    p.add_argument("--name")
+    e = sub.add_parser("effect", help="a reusable status: Effects/<id>.tres")
+    e.add_argument("id")
+    e.add_argument("--effect", action="append", default=[], required=True)
+    e.add_argument("--name")
+    s = sub.add_parser("stat", help="a new Effect stat")
+    s.add_argument("id")
+    s.add_argument("--doc", required=True, help="what it means, and where it's read")
+    for x in (t, p, e, s):
+        x.add_argument("--human", action="store_true", help="a person named it: no ??")
+        x.add_argument("--dry-run", action="store_true")
+        x.add_argument("--test", action="store_true", help="stub Tests/<id>_test.gd (default none: test the rule that reads it, in the file beside that system, or its own for a new seam)")
+    k = sub.add_parser("carry", help="put a tag on skills and statuses that exist")
+    k.add_argument("id", help="the tag")
+    k.add_argument("--skills", type=lambda v: [x for x in v.split(",") if x], default=[], help="skill ids: Skill.tags")
+    k.add_argument("--effects", type=lambda v: [x for x in v.split(",") if x], default=[], help="Effects/<id>.tres ids: Effect.bears")
+    k.add_argument("--inline", type=lambda v: [x for x in v.split(",") if x], default=[], help="skill:stat, an effect written inside the skill: Effect.bears")
+    k.add_argument("--dry-run", action="store_true")
+    sub.add_parser("check")
+    a = ap.parse_args()
+    sys.exit({"tag": tag, "color": color, "property": property_, "effect": effect, "stat": stat, "carry": carry, "check": check}[a.cmd](a))
+
+
+if __name__ == "__main__":
+    main()

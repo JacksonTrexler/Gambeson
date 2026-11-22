@@ -1,0 +1,32 @@
+extends Behaviour
+
+# Jam: a light blow that breaks the foe's concentration. Landing, it interrupts the foe
+# (Battle.interrupt(): its channel, hiding, guard, a primed Chant, its resting watch all end) and, the
+# instant stun, leaves it Jammed - no reactions (no dodging, guarding or obstructing) - until its next
+# turn is over. Its damage comes off the foe's Focus too, as much as the HP it took (dealt()).
+
+const JAMMED_TURN := 0.25  # the share of a foe's turn losing its reactions takes: what the AI counts (Behaviour.foresee() `afflicts`)
+const JAMMED: Effect = preload("res://Effects/jammed.tres")
+const FOCUS: Reserve = preload("res://Reserves/focus.tres")
+
+
+func apply(c: Cast) -> void:
+	if not c.foe or not c.target.is_alive():
+		return
+	c.bag[&"interrupted"] = c.battle.interrupt(c.target)
+	c.put(JAMMED, 1)
+
+
+# For the AI and the forecast: the interrupt and Jammed it puts on a foe, one rider (Slam Jam: as likely as its contest).
+func foresee(c: Cast) -> Dictionary:
+	return {notes = ["Interrupts it, Jammed"] as Array[String], riders = 0.0, afflicts = JAMMED_TURN} if c.foe else {}
+
+
+func dealt(c: Cast, n: int) -> void:
+	if c.foe and n > 0 and c.target.store(FOCUS) > 0:
+		c.target.set_store(FOCUS, c.target.store(FOCUS) - n)
+
+
+func describe(_rank: int) -> String:
+	return "Interrupts it: what it keeps up by constant attention ends - a %s, hiding, a guard, a primed Chant, its watch from resting. Then %s (no reactions: it can't dodge, guard or obstruct) through its next turn. The HP its blow takes comes off the foe's Focus too" % [
+			Glossary.term(&"channeled", "channel"), Glossary.term(&"jammed", "Jammed")]

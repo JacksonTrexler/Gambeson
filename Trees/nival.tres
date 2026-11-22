@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/gale.tres" id="s_gale"]
+[ext_resource type="Resource" path="res://Skills/hoarfrost.tres" id="s_hoarfrost"]
+[ext_resource type="Resource" path="res://Skills/weathercraft.tres" id="s_weathercraft"]
+[ext_resource type="Resource" path="res://Skills/whiteout.tres" id="s_whiteout"]
+
+[sub_resource type="Resource" id="Branch_gale"]
+script = ExtResource("branch")
+skill = ExtResource("s_gale")
+
+[sub_resource type="Resource" id="Branch_hoarfrost"]
+script = ExtResource("branch")
+skill = ExtResource("s_hoarfrost")
+after = Array[ExtResource("skill")]([ExtResource("s_gale")])
+
+[sub_resource type="Resource" id="Branch_weathercraft"]
+script = ExtResource("branch")
+skill = ExtResource("s_weathercraft")
+after = Array[ExtResource("skill")]([ExtResource("s_gale")])
+
+[sub_resource type="Resource" id="Branch_whiteout"]
+script = ExtResource("branch")
+skill = ExtResource("s_whiteout")
+after = Array[ExtResource("skill")]([ExtResource("s_hoarfrost")])
+
+[resource]
+script = ExtResource("root")
+name = "Nival"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_gale"), SubResource("Branch_hoarfrost"), SubResource("Branch_weathercraft"), SubResource("Branch_whiteout")])

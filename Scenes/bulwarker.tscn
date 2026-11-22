@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="2_nemes"]
+[ext_resource type="Resource" path="res://Roles/fighter.tres" id="3_fighter"]
+[ext_resource type="Texture2D" path="res://Units/Bulwarker.png" id="4_bulwarker"]
+[ext_resource type="Script" path="res://Scripts/Bio.gd" id="5_bio"]
+[ext_resource type="Resource" path="res://Skills/power_armor.tres" id="6_power_armor"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="7_slot"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="9_item"]
+[ext_resource type="Resource" path="res://Items/half_plate.tres" id="9_half_plate"]
+[ext_resource type="Resource" path="res://Items/plate.tres" id="9_plate"]
+
+[sub_resource type="Resource" id="Bio_bulwarker"]
+script = ExtResource("5_bio")
+behaviour = &"stoic"
+appearance = "Soldier"
+adjectives = Array[String](["Armoured"])
+text = "Hauls a spare suit of plate about for the day it can be worn."
+
+[sub_resource type="Resource" id="Slot_power_armor"]
+script = ExtResource("7_slot")
+skill = ExtResource("6_power_armor")
+rank = 2
+
+[node name="Bulwarker" instance=ExtResource("1_unit")]
+nick = "Bulwarker ??"
+faction = ExtResource("2_nemes")
+role = ExtResource("3_fighter")
+level = 5
+look = ExtResource("4_bulwarker")
+bio = SubResource("Bio_bulwarker")
+learned = Array[ExtResource("7_slot")]([SubResource("Slot_power_armor")])
+strength = 14
+dexterity = 12
+constitution = 14
+wisdom = 12
+pack = Array[ExtResource("9_item")]([ExtResource("9_half_plate"), ExtResource("9_plate")])

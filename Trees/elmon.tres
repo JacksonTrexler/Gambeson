@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Skills/hex.tres" id="s_hex"]
+[ext_resource type="Resource" path="res://Skills/sweet_nothings.tres" id="s_sweet_nothings"]
+[ext_resource type="Resource" path="res://Skills/analysis_dialysis.tres" id="s_analysis_dialysis"]
+[ext_resource type="Resource" path="res://Skills/wauaw.tres" id="s_wauaw"]
+[ext_resource type="Resource" path="res://Skills/brainfog.tres" id="s_brainfog"]
+[ext_resource type="Resource" path="res://Skills/haluca.tres" id="s_haluca"]
+[ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
+[ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
+
+[sub_resource type="Resource" id="Branch_analysis_dialysis"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_analysis_dialysis")
+after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
+
+[sub_resource type="Resource" id="Branch_wauaw"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_wauaw")
+after = Array[ExtResource("5_skill")]([ExtResource("s_sweet_nothings")])
+
+[sub_resource type="Resource" id="Branch_brainfog"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_brainfog")
+after = Array[ExtResource("5_skill")]([ExtResource("s_hex")])
+
+[sub_resource type="Resource" id="Branch_haluca"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_haluca")
+after = Array[ExtResource("5_skill")]([ExtResource("s_hex")])
+
+[sub_resource type="Resource" id="Branch_level_down"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_level_down")
+needs = 4
+
+[sub_resource type="Resource" id="Branch_death"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_death")
+needs = 5
+
+[resource]
+script = ExtResource("6_root")
+name = "Elmon"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_analysis_dialysis"), SubResource("Branch_wauaw"), SubResource("Branch_brainfog"), SubResource("Branch_haluca"), SubResource("Branch_level_down"), SubResource("Branch_death")])

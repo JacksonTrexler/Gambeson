@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/warcry.tres" id="s_warcry"]
+[ext_resource type="Resource" path="res://Skills/inspire.tres" id="s_inspire"]
+[ext_resource type="Resource" path="res://Skills/deathlust.tres" id="s_deathlust"]
+
+[sub_resource type="Resource" id="Branch_warcry"]
+script = ExtResource("branch")
+skill = ExtResource("s_warcry")
+
+[sub_resource type="Resource" id="Branch_inspire"]
+script = ExtResource("branch")
+skill = ExtResource("s_inspire")
+after = Array[ExtResource("skill")]([ExtResource("s_warcry")])
+
+[sub_resource type="Resource" id="Branch_deathlust"]
+script = ExtResource("branch")
+skill = ExtResource("s_deathlust")
+
+[resource]
+script = ExtResource("root")
+name = "Vanguard"
+tag = &"martial"
+branches = Array[ExtResource("branch")]([SubResource("Branch_warcry"), SubResource("Branch_inspire"), SubResource("Branch_deathlust")])

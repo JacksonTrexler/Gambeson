@@ -5,15 +5,33 @@
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="6_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="20_skill"]
+[ext_resource type="Resource" path="res://Skills/wary.tres" id="21_opt_wary"]
+[ext_resource type="Resource" path="res://Skills/tenacity.tres" id="22_opt_tenacity"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Trees/protector.tres" id="r_protector"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/half_plate.tres" id="i_half_plate"]
+[ext_resource type="Resource" path="res://Items/broadsword.tres" id="i_broadsword"]
+[ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
+[ext_resource type="Resource" path="res://Trees/slayer.tres" id="r_slayer"]
+[ext_resource type="Resource" path="res://Trees/vanguard.tres" id="r_vanguard"]
+[ext_resource type="Resource" path="res://Skills/surveyor.tres" id="opt_surveyor"]
+[ext_resource type="Resource" path="res://Skills/evaluator.tres" id="opt_evaluator"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
 skill = ExtResource("4_strike")
 
-
 [resource]
 script = ExtResource("1_script")
+noun = "Soldier"
 name = "Fighter"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 14, &"dexterity": 11, &"constitution": 14, &"intelligence": 8, &"wisdom": 10, &"charisma": 9})
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_wary"), ExtResource("22_opt_tenacity"), ExtResource("opt_surveyor"), ExtResource("opt_evaluator")])
+roots = Array[ExtResource("6_root")]([ExtResource("r_protector"), ExtResource("r_vanguard"), ExtResource("r_slayer")])
+items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
+general = Array[StringName]([&"martial", &"journeyman"])

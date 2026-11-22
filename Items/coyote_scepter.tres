@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://Skills/coyote_scepter.tres" id="2_coyote_scepter"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="3_skill"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Coyote Scepter"
+slot = "weapon"
+tags = Array[StringName]([&"magical"])
+rarity = "epic"
+damage_tag = &"blunt"
+skills = Array[ExtResource("3_skill")]([ExtResource("2_coyote_scepter")])

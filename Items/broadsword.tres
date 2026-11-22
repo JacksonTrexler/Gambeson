@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="3_strike"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
+
+[sub_resource type="Resource" id="Effect_reach"]
+script = ExtResource("2_effect")
+stat = "range"
+amount = 0.5
+tags = Array[StringName]([&"damage"])
+per_rank = true
+
+[sub_resource type="Resource" id="Effect_strike"]
+script = ExtResource("2_effect")
+stat = "rank"
+skills = Array[ExtResource("4_skill")]([ExtResource("3_strike")])
+per_rank = true
+
+[resource]
+script = ExtResource("1_item")
+name = "Broadsword"
+slot = "weapon"
+damage_tag = &"slash"
+tags = Array[StringName]([&"blade", &"martial"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_reach"), SubResource("Effect_strike")])

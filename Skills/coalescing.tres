@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_grappled"]
+script = ExtResource("2_effect")
+stat = "grappled"
+amount = 1.0
+name = "Grappled"
+bears = Array[StringName]([&"cc"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Coalescing"
+tags = Array[StringName]([&"water", &"physical", &"str", &"cc", &"held"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_grappled")])
+radius = 1.0
+rolls = false
+mist_only = true
+engulfs = true
+drowns = Vector2i(1, 12)
+dice_per_rank = true
+costs = "high ap"

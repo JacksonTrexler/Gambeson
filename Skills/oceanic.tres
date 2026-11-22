@@ -21,33 +21,10 @@ stat = "constitution"
 amount = -4.0
 unless_on = Array[StringName]([&"water", &"wet", &"moist"])
 
-[sub_resource type="Resource" id="Effect_wet_str"]
-script = ExtResource("2_effect")
-stat = "strength"
-amount = 2.0
-only_on = Array[StringName]([&"water"])
-
-[sub_resource type="Resource" id="Effect_wet_dex"]
-script = ExtResource("2_effect")
-stat = "dexterity"
-amount = 2.0
-only_on = Array[StringName]([&"water"])
-
-[sub_resource type="Resource" id="Effect_wet_con"]
-script = ExtResource("2_effect")
-stat = "constitution"
-amount = 2.0
-only_on = Array[StringName]([&"water"])
-
-[sub_resource type="Resource" id="Effect_swim"]
-script = ExtResource("2_effect")
-stat = "move_cost"
-amount = -2.0
-tags = Array[StringName]([&"water"])
-
 [resource]
 script = ExtResource("1_script")
 name = "Oceanic"
 passive = true
 tags = Array[StringName]([&"physical"])
-effects = Array[ExtResource("2_effect")]([SubResource("Effect_str"), SubResource("Effect_dex"), SubResource("Effect_con"), SubResource("Effect_wet_str"), SubResource("Effect_wet_dex"), SubResource("Effect_wet_con"), SubResource("Effect_swim")])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_str"), SubResource("Effect_dex"), SubResource("Effect_con")])
+no_density = "a drawback only: nothing to boost"

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/final_act.gd" id="b_final_act"]
+
+[sub_resource type="Resource" id="Behaviour_final_act"]
+script = ExtResource("b_final_act")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Final Act"
+passive = true
+tags = Array[StringName]([&"specialist", &"defensive", &"reaction"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_final_act")])

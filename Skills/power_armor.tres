@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/power_armor.gd" id="b_power_armor"]
+
+[sub_resource type="Resource" id="Behaviour_power_armor"]
+script = ExtResource("b_power_armor")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Power Armor"
+glyph = "PA"
+passive = true
+tags = Array[StringName]([&"martial", &"defensive"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_power_armor")])
+max_rank = 5

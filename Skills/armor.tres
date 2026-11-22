@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/armor.gd" id="b_armor"]
+
+[sub_resource type="Resource" id="Behaviour_armor"]
+script = ExtResource("b_armor")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Armor"
+glyph = "Ar"
+passive = true
+tags = Array[StringName]([&"equipment"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_armor")])
+no_density = "sets Defense by its armor item, not by rank (it is not ranked up)"

@@ -3,9 +3,241 @@
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/RedMage.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="5_reserve"]
+[ext_resource type="Resource" path="res://Reserves/mana.tres" id="6_mana"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="7_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="8_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="9_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="10_tab"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="11_choice"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/robe.tres" id="i_robe"]
+[ext_resource type="Resource" path="res://Items/staff.tres" id="i_staff"]
+[ext_resource type="Resource" path="res://Items/mana_potion.tres" id="i_mana_potion"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/mana.tres" id="s_mana"]
+[ext_resource type="Resource" path="res://Skills/mage_armor.tres" id="s_mage_armor"]
+[ext_resource type="Resource" path="res://Skills/darkstone.tres" id="s_darkstone"]
+[ext_resource type="Resource" path="res://Skills/sola.tres" id="s_sola"]
+[ext_resource type="Resource" path="res://Skills/nadira.tres" id="s_nadira"]
+[ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
+[ext_resource type="Resource" path="res://Skills/terestera.tres" id="s_terestera"]
+[ext_resource type="Resource" path="res://Skills/hydera.tres" id="s_hydera"]
+[ext_resource type="Resource" path="res://Skills/igna.tres" id="s_igna"]
+[ext_resource type="Resource" path="res://Skills/aetha.tres" id="s_aetha"]
+[ext_resource type="Resource" path="res://Skills/arcana.tres" id="s_arcana"]
+[ext_resource type="Resource" path="res://Skills/dispel.tres" id="s_dispel"]
+[ext_resource type="Resource" path="res://Skills/blink.tres" id="s_blink"]
+[ext_resource type="Resource" path="res://Skills/spellweave.tres" id="s_spellweave"]
+[ext_resource type="Resource" path="res://Skills/counterspell.tres" id="s_counterspell"]
+[ext_resource type="Resource" path="res://Skills/emergency_exit.tres" id="s_emergency_exit"]
+[ext_resource type="Resource" path="res://Skills/magic_slot.tres" id="s_magic_slot"]
+[ext_resource type="Resource" path="res://Skills/overchannel.tres" id="s_overchannel"]
+[ext_resource type="Resource" path="res://Skills/blood_magic.tres" id="s_blood_magic"]
+[ext_resource type="Resource" path="res://Skills/wild_magic.tres" id="s_wild_magic"]
+[ext_resource type="Resource" path="res://Skills/forbidden_lore.tres" id="s_forbidden_lore"]
+[ext_resource type="Resource" path="res://Skills/rift.tres" id="s_rift"]
+[ext_resource type="Resource" path="res://Skills/unbound.tres" id="s_unbound"]
+[ext_resource type="Resource" path="res://Skills/divinity.tres" id="s_divinity"]
+[ext_resource type="Resource" path="res://Skills/symphony.tres" id="s_symphony"]
+[ext_resource type="Resource" path="res://Skills/witchery.tres" id="s_witchery"]
+[ext_resource type="Resource" path="res://Skills/mastery.tres" id="s_mastery"]
+[ext_resource type="Resource" path="res://Skills/attunement.tres" id="s_attunement"]
+[ext_resource type="Resource" path="res://Skills/draw_from_the_land.tres" id="s_draw_from_the_land"]
+[ext_resource type="Resource" path="res://Skills/weathercraft.tres" id="s_weathercraft"]
+[ext_resource type="Resource" path="res://Skills/ley_sense.tres" id="s_ley_sense"]
+[ext_resource type="Resource" path="res://Skills/ley_tap.tres" id="s_ley_tap"]
+[ext_resource type="Resource" path="res://Skills/clairvoyance.tres" id="s_clairvoyance"]
+[ext_resource type="Resource" path="res://Skills/borrowed_time.tres" id="s_borrowed_time"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
+[sub_resource type="Resource" id="Slot_mana"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_mana")
+
+[sub_resource type="Resource" id="Branch_arcana"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_arcana")
+
+[sub_resource type="Resource" id="Branch_dispel"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_dispel")
+
+[sub_resource type="Resource" id="Branch_blink"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_blink")
+
+[sub_resource type="Resource" id="Branch_borrowed_time"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_borrowed_time")
+after = Array[ExtResource("7_skill")]([ExtResource("s_blink")])
+needs = 3
+
+[sub_resource type="Resource" id="Branch_spellweave"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_spellweave")
+after = Array[ExtResource("7_skill")]([ExtResource("s_arcana")])
+
+[sub_resource type="Resource" id="Branch_counterspell"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_counterspell")
+after = Array[ExtResource("7_skill")]([ExtResource("s_dispel")])
+
+[sub_resource type="Resource" id="Branch_emergency_exit"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_emergency_exit")
+
+[sub_resource type="Resource" id="Branch_magic_slot"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_magic_slot")
+needs = 3
+
+[sub_resource type="Resource" id="Branch_clairvoyance"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_clairvoyance")
+
+[sub_resource type="Resource" id="Root_Arcane"]
+script = ExtResource("8_root")
+name = "Arcane"
+tag = &"magical"
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_arcana"), SubResource("Branch_dispel"), SubResource("Branch_blink"), SubResource("Branch_borrowed_time"), SubResource("Branch_spellweave"), SubResource("Branch_counterspell"), SubResource("Branch_emergency_exit"), SubResource("Branch_clairvoyance"), SubResource("Branch_magic_slot")])
+
+[sub_resource type="Resource" id="Branch_overchannel"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_overchannel")
+
+[sub_resource type="Resource" id="Branch_blood_magic"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_blood_magic")
+
+[sub_resource type="Resource" id="Branch_wild_magic"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_wild_magic")
+
+[sub_resource type="Resource" id="Branch_forbidden_lore"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_forbidden_lore")
+after = Array[ExtResource("7_skill")]([ExtResource("s_overchannel")])
+
+[sub_resource type="Resource" id="Branch_rift"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_rift")
+
+[sub_resource type="Resource" id="Branch_unbound"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_unbound")
+needs = 4
+
+[sub_resource type="Resource" id="Root_Transgression"]
+script = ExtResource("8_root")
+name = "Transgression"
+tag = &"magical"
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_overchannel"), SubResource("Branch_blood_magic"), SubResource("Branch_wild_magic"), SubResource("Branch_forbidden_lore"), SubResource("Branch_rift"), SubResource("Branch_unbound")])
+
+[sub_resource type="Resource" id="Branch_divinity"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_divinity")
+
+[sub_resource type="Resource" id="Branch_symphony"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_symphony")
+
+[sub_resource type="Resource" id="Branch_witchery"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_witchery")
+
+[sub_resource type="Resource" id="Branch_mastery"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_mastery")
+
+[sub_resource type="Resource" id="Root_Dabblings"]
+script = ExtResource("8_root")
+name = "Dabblings"
+tag = &"magical"
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_divinity"), SubResource("Branch_symphony"), SubResource("Branch_witchery"), SubResource("Branch_mastery")])
+
+[sub_resource type="Resource" id="Branch_attunement"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_attunement")
+
+[sub_resource type="Resource" id="Branch_draw_from_the_land"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_draw_from_the_land")
+
+[sub_resource type="Resource" id="Branch_weathercraft"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_weathercraft")
+after = Array[ExtResource("7_skill")]([ExtResource("s_attunement")])
+
+[sub_resource type="Resource" id="Root_Nature_Elements"]
+script = ExtResource("8_root")
+name = "Elements"
+tag = &"magical"
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_attunement"), SubResource("Branch_draw_from_the_land"), SubResource("Branch_weathercraft")])
+
+[sub_resource type="Resource" id="Branch_ley_sense"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_ley_sense")
+
+[sub_resource type="Resource" id="Branch_ley_tap"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_ley_tap")
+after = Array[ExtResource("7_skill")]([ExtResource("s_ley_sense")])
+
+[sub_resource type="Resource" id="Root_Nature_Leylines"]
+script = ExtResource("8_root")
+name = "Leylines"
+tag = &"magical"
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_ley_sense"), SubResource("Branch_ley_tap")])
+
+[sub_resource type="Resource" id="Tab_Nature"]
+script = ExtResource("10_tab")
+name = "Nature"
+kind = "World"
+roots = Array[ExtResource("8_root")]([SubResource("Root_Nature_Elements"), SubResource("Root_Nature_Leylines")])
+
+[sub_resource type="Resource" id="Choice_Domain"]
+script = ExtResource("11_choice")
+name = "Domain"
+borrows = Array[String](["Divinity"])
+by = ExtResource("s_divinity")
+affinity = -1
+
+[sub_resource type="Resource" id="Choice_Genre"]
+script = ExtResource("11_choice")
+name = "Genre"
+borrows = Array[String](["Genre"])
+by = ExtResource("s_symphony")
+affinity = -1
+
+[sub_resource type="Resource" id="Choice_Pact"]
+script = ExtResource("11_choice")
+name = "Pact"
+borrows = Array[String](["Patron"])
+by = ExtResource("s_witchery")
+affinity = -1
+
+[sub_resource type="Resource" id="Choice_School"]
+script = ExtResource("11_choice")
+name = "School"
+borrows = Array[String](["School"])
+by = ExtResource("s_mastery")
 
 [resource]
 script = ExtResource("1_script")
+noun = "Caster"
 name = "Wizard"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_mana")])
+options = Array[ExtResource("7_skill")]([ExtResource("s_mana"), ExtResource("s_mage_armor"), ExtResource("s_darkstone"), ExtResource("s_sola"), ExtResource("s_nadira"), ExtResource("s_astera"), ExtResource("s_terestera"), ExtResource("s_hydera"), ExtResource("s_igna"), ExtResource("s_aetha")])
+reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10})
+items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_mana_potion")])
+general = Array[StringName]([&"magical"])
+roots = Array[ExtResource("8_root")]([SubResource("Root_Arcane"), SubResource("Root_Transgression"), SubResource("Root_Dabblings")])
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Nature")])
+choices = Array[ExtResource("11_choice")]([SubResource("Choice_Domain"), SubResource("Choice_Genre"), SubResource("Choice_Pact"), SubResource("Choice_School")])

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/coyote_charm.gd" id="b_coyote_charm"]
+
+[sub_resource type="Resource" id="Behaviour_coyote_charm"]
+script = ExtResource("b_coyote_charm")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Coyote Charm"
+passive = true
+tags = Array[StringName]([&"magical", &"curse"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_coyote_charm")])

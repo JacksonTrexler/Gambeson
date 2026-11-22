@@ -1,0 +1,217 @@
+extends Test
+
+# Exhaustion (Scripts/Exhaustion.gd): a unit's uses of each skill counted as pressure, whole against the
+# skill used, half against its others of the same broad kind (from its trees), a third against every other
+# skill: it bites at 1 (the 2nd use of a skill, the 3rd of a kind, the 4th of any), mild below; Burnout on
+# int skills, harsher, harsher on Mana; divided by Stamina's rank + 1; AP and cost both rising with it; a
+# channel and its strike one use; a use got over as each turn ends, more for a turn rested (by con
+# mod); a Strike of three hits against three Strikes; a raised cost a unit can't pay; and what the
+# HUD says of it. A villager has 11 AP for skills (10, and 1 from its wis mod) and 10 Energy.
+
+var crushing: Skill = load("res://Skills/crushing_blow.tres")  # martial, like Strike: 4 AP, 2 cost
+var missile: Skill = load("res://Skills/energy_missile.tres").duplicate()  # of no broad kind: 3 AP, 1 cost - a copy on no tree (Energy Missile itself is magical now, on the Sorcerer's Stellar Soul)
+var kick: Skill = load("res://Skills/kick.tres")  # martial, on the General Martial tree
+var solar: Skill = load("res://Skills/solar.tres")  # no category tag, on a Cleric's Sol
+var metea: Skill = load("res://Skills/metea.tres")  # magical, like Hex; channeled: 6 AP, 5 cost, then 2 AP, 1 cost to strike
+var mana: Reserve = load("res://Reserves/mana.tres")
+var sola: Skill = load("res://Skills/sola.tres")  # int, magical: 3 AP, 2 cost - Burnout
+var igna: Skill = load("res://Skills/igna.tres")  # int, magical
+
+
+# stage(), with exhaustion on (staged tests run without it: Test.calm()).
+func worn(f: Faction, placed: Dictionary) -> void:
+	stage(f, placed)
+	Exhaustion.on = true
+
+
+# The side whose turn it is ends it, and the other side its own: the first side's turn again.
+func round_passes() -> void:
+	b.end_turn()
+	b.end_turn()
+
+
+# u's uses of s not yet got over.
+func uses(u: Unit, s: Skill) -> float:
+	return u.exhaustion.uses.get(s, 0.0)
+
+
+func same(a: float, x: float) -> bool:
+	return is_equal_approx(a, x)
+
+
+func test_counts() -> void:
+	for s in [crushing, missile, hex, kick, sola, igna]:
+		v(1).learned.append(slot(s))
+	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	soak(v(3), 100)
+	var e := v(1).exhaustion
+	ok(Exhaustion.kinds(crushing) == [&"martial"] and Exhaustion.kinds(hex) == [&"magical"] and Exhaustion.kinds(missile).is_empty(), "a skill's broad kinds: its trees', else its category tags")
+	ok(strike.kinds() == [&"general"] and strike.general() and Exhaustion.kinds(strike).is_empty(), "Strike, tagged martial, is on the base General tree: general")
+	ok(solar.kinds() == [&"magical"] and Exhaustion.kinds(solar) == [&"magical"], "Solar, untagged, is on Sol's magical roots: magical")
+	ok(same(e.of(strike), 0.0) and same(e.rate(strike), 1.0) and e.note(strike) == "", "fresh: nothing counted")
+	ok(b.cast(v(1), strike, v(3)), "a Strike")
+	ok(same(e.of(strike), 1.0) and e.bites(strike) and same(e.rate(strike), 1.5), "the same skill's 2nd use bites: x1.5")
+	ok(same(e.of(crushing), 1.0 / 3) and same(e.of(hex), 1.0 / 3) and same(e.of(missile), 1.0 / 3) and not e.bites(crushing), "a third against every other skill: mild")
+	ok(same(v(1).ap_cost(crushing, &"energy"), 4.0 * (1.0 + 0.1 / 3)) and v(1).cost_from(crushing, &"energy") == 2, "Crushing Blow after a Strike: a tenth a third more AP, and no cost under half a point")
+	ok(b.cast(v(1), crushing, v(3)) and v(1).energy == 8, "paid at that")
+	ok(same(e.of(kick), 1.0 / 3 + 0.5) and not e.bites(kick), "Crushing Blow counts half on Kick, the other martial skill: still mild")
+	ok(e.note(crushing) == "exhausted x1.33", e.note(crushing))
+	ok(b.cast(v(1), missile, v(3)) and same(e.of(hex), 1.0) and e.bites(hex), "three different skills in a turn: the 4th (Hex) bites")
+	ok(same(v(1).ap_cost(hex, &"energy"), 6.0) and v(1).cost_from(hex, &"energy") == 3, "Hex as 4th: 4 x 1.5 AP, 2 + 1 Energy")
+	ok(same(v(3).exhaustion.of(strike), 0.0), "each unit keeps its own count")
+	e.uses.clear()
+	e.used(sola)
+	ok(same(e.of(igna), 0.5) and not e.bites(igna), "one caster skill: half against the next of its kind")
+	e.used(igna)
+	ok(same(e.of(metea), 1.0) and e.bites(metea), "the 3rd caster skill in a row bites")
+	Exhaustion.on = false
+	ok(same(e.of(strike), 0.0) and same(v(1).ap_cost(strike, &"energy"), 3.0), "switched off (staged tests), nothing costs more")
+
+
+# Burnout (Scripts/Burnout.gd): an int skill wears by the same thresholds, a quarter harsher, and on a cost
+# paid in Mana half as harsh again; a single read (Burnout.penalty()) the rate multiplies by.
+func test_burnout() -> void:
+	for s in [sola, hex]:
+		v(1).learned.append(slot(s))
+	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var u := v(1)
+	ok(Burnout.of(sola) and not Burnout.of(hex) and same(Burnout.penalty(u, sola), 1.25) and same(Burnout.penalty(u, hex), 1.0), "Sola (int) burns out; Hex (wis) only exhausts")
+	u.exhaustion.used(sola)
+	u.exhaustion.used(hex)
+	ok(same(u.exhaustion.of(sola), 1.5) and same(u.exhaustion.of(hex), 1.5), "the same pressure on both")
+	ok(same(u.exhaustion.rate(hex), 1.75) and same(u.exhaustion.rate(sola), 1.9375), "harsher on the int skill: 1 + 0.75 x 1.25")
+	ok(u.price(hex) == 4 and u.price(hex, mana) == 4, "Hex: 2 + 1.5 -> 4, Mana or not")
+	ok(u.price(sola) == 4 and u.price(sola, mana) == 5, "Sola: 2 + 1.875 -> 4 in Energy; in Mana 2 + 2.8 -> 5")
+	ok(same(u.ap_cost(sola, &"energy"), 3.0 * 1.9375), "its AP harsher too, not by Mana")
+	ok(u.exhaustion.note(sola) == "burnout x1.5" and u.exhaustion.note(hex) == "exhausted x1.5", "and says so")
+	u.exhaustion.uses.clear()
+	u.exhaustion.used(hex)
+	ok(same(u.exhaustion.rate(sola), 1.0 + 0.1 * 0.5 * 1.25) and u.price(sola, mana) == 2, "below the bite, mild for it too")
+	# ?195: Burnout is Exhaustion's one count, not a second meter: relief (a turn's end, Deathlust) lowers both alike, slowly (1 use a turn)
+	u.exhaustion.uses.clear()
+	u.exhaustion.used(sola)
+	u.exhaustion.used(sola)
+	u.exhaustion.used(hex)
+	u.exhaustion.recover(false, 0)
+	ok(same(u.exhaustion.uses[sola], 1.0) and not u.exhaustion.uses.has(hex),
+			"one count for int and non-int skills: a turn's end takes 1 use off each, a slow decay")
+
+
+func test_costs() -> void:
+	worn(nemes, {v(3): Vector2i(5, 3), v(1): Vector2i(4, 3)})
+	var u := v(3)
+	ok(same(u.ap_cost(hex, &"energy"), 4.0) and u.cost_from(hex, &"energy") == 2, "Hex fresh: 4 AP, 2 Energy")
+	ok(b.cast(u, hex, v(1)) and u.energy == 8 and same(u.ap_for(&"skill"), 7.0), "paid")
+	ok(same(u.ap_cost(hex, &"energy"), 6.0) and u.cost_from(hex, &"energy") == 3 and u.price(hex) == 3, "used once: half as much again, 6 AP and 3 Energy")
+	ok("exhausted x1" in Skill.base_note(u, hex) and Skill.base_note(v(1), hex) == "", "the skills screen's base view says so for the unit that has worn it")
+	ok(same(u.ap_cost(strike, &"energy"), 3.1) and u.price(strike) == 0, "Strike after a Hex: a third of a use, mild: 3.1 AP")
+	ok(b.cast(u, hex, v(1)) and u.energy == 5 and same(u.ap_for(&"skill"), 1.0), "paid at the raised cost: both AP and Energy")
+	ok(same(u.ap_cost(hex, &"energy"), 8.0) and u.cost_from(hex, &"energy") == 4, "used twice: 8 AP, 4 Energy")
+	ok(same(u.ap_cost(hex, mana), 4.0), "a reserve's saving and exhaustion multiply: half AP with Mana, doubled")
+	ok(not u.can_afford(hex) and not b.cast(u, hex, v(1)), "1 AP left of the 8 it takes now: it can't")
+	ok(u.energy == 5 and same(u.ap_for(&"skill"), 1.0) and same(uses(u, hex), 2.0), "nothing spent, and no use counted")
+	u.ap[0].amount = 20.0
+	ok(b.cast(u, hex, v(1)) and u.energy == 1 and same(u.ap_for(&"skill"), 12.0), "with the AP, a third: 8 AP, 4 Energy")
+	ok(u.price(hex) == 5 and u.funding(hex) == null and not b.cast(u, hex, v(1)), "a fourth costs 5 Energy: with 1 left it can't, whatever its AP")
+	ok(u.energy == 1 and same(u.ap_for(&"skill"), 12.0) and same(uses(u, hex), 3.0), "nothing spent")
+	ok(b.cast(u, strike, v(1)) and same(u.ap_for(&"skill"), 7.5), "a cost of 0 stays 0: Strike still goes, at 4.5 AP - three uses before it bite")
+	ok(b.cast(u, strike, v(1)) and same(u.ap_for(&"skill"), 1.5) and u.energy == 1, "its AP rises all the same: 6")
+
+
+func test_channel_is_one_use() -> void:
+	v(3).learned.append(slot(metea))
+	worn(nemes, {v(3): Vector2i(8, 2), v(1): Vector2i(1, 7)})
+	var u := v(3)
+	var at := Vector2i(5, 2)
+	ok(b.cast_at(u, metea, at) and u.channel != null and u.energy == 5 and same(u.ap_for(&"skill"), 5.0), "Metea begun: 6 AP, 5 Energy")
+	ok(same(uses(u, metea), 1.0) and same(u.exhaustion.of(hex), 0.5), "one use, half against Hex")
+	ok(same(u.strike_ap(metea), 2.0) and u.strike_cost(metea) == 1, "its strike is part of that use: its plain 2 AP and 1 Energy")
+	ok(b.cast_at(u, metea, at) and u.channel == null and u.energy == 4 and same(u.ap_for(&"skill"), 3.0), "struck, for that")
+	ok(same(uses(u, metea), 1.0), "channel and strike: still one use")
+	u.energy = 10
+	u.ap[0].amount = 30.0
+	ok(same(u.ap_cost(metea, &"energy"), 9.75) and u.cost_from(metea, &"energy") == 8, "a second Metea (int: Burnout, x1.625): 9.75 AP, 5 + 3.1 -> 8 Energy")
+	ok(b.cast_at(u, metea, at) and u.energy == 2 and same(uses(u, metea), 2.0), "begun: a second use")
+	ok(same(u.strike_ap(metea), 3.25) and u.strike_cost(metea) == 2, "its strike at the rate its channel was paid at: 3.25 AP, 1 + 0.6 -> 2 Energy")
+	u.exhaustion.used(hex)
+	ok(same(u.exhaustion.of(metea), 2.5) and same(u.strike_ap(metea), 3.25), "whatever else it uses meanwhile")
+	ok(b.cast_at(u, metea, at) and u.energy == 0 and same(uses(u, metea), 2.0), "struck: two Meteas, two uses")
+
+
+func test_recovery() -> void:
+	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	soak(v(3), 100)
+	var u := v(1)
+	ok(b.cast(u, strike, v(3)) and b.cast(u, strike, v(3)) and same(uses(u, strike), 2.0), "two Strikes in a turn")
+	b.end_turn()
+	ok(same(uses(u, strike), 1.0), "its turn ends: one use of each skill got over")
+	b.end_turn()
+	ok(same(uses(u, strike), 1.0), "not as another side's turn ends")
+	ok(same(u.ap_cost(strike, &"energy"), 4.5), "next turn, a Strike still costs 4.5 AP")
+	u.exhaustion.uses[strike] = 3.0
+	u.exhaustion.uses[hex] = 1.0
+	ok(b.cast(u, strike, v(3)), "a busy turn")
+	round_passes()
+	ok(same(uses(u, strike), 3.0) and same(uses(u, hex), 0.0) and hex not in u.exhaustion.uses, "busy: one off every skill's count, and no more (4 - 1; 1 - 1)")
+
+
+func test_resting() -> void:
+	ok(same(Exhaustion.resting(3), 3.0) and same(Exhaustion.resting(1), 1.0), "resting takes off the con mod more")
+	ok(same(Exhaustion.resting(0), 1.0) and same(Exhaustion.resting(-1), 0.5) and same(Exhaustion.resting(-3), 0.25), "below 1, a part of a use: 1 / (1 - mod)")
+	worn(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 5)})
+	var u := v(1)
+	u.exhaustion.uses[strike] = 10.0
+	ok(u.mod(&"constitution") == 1 and u.activity() == &"rest", "a villager, con mod +1, resting")
+	round_passes()
+	ok(same(uses(u, strike), 8.0), "a turn rested: 1, and its con mod 1 more")
+	u.constitution = 16
+	round_passes()
+	ok(same(uses(u, strike), 4.0), "con mod +3: 1 + 3")
+	u.constitution = 10
+	u.exhaustion.uses[strike] = 10.0
+	round_passes()
+	ok(same(uses(u, strike), 8.0), "con mod 0: 1 + 1 / (1 - 0)")
+	u.constitution = 4
+	u.exhaustion.uses[strike] = 10.0
+	ok(u.mod(&"constitution") == -3, "con 4: mod -3")
+	round_passes()
+	ok(same(uses(u, strike), 8.75), "con mod -3: 1, and a quarter of a use more")
+	for i in 3:
+		round_passes()
+	ok(same(uses(u, strike), 5.0), "four turns rested: 4, and one use more")
+	for i in 4:
+		round_passes()
+	ok(same(uses(u, strike), 0.0) and same(u.ap_cost(strike, &"energy"), 3.0), "it never falls below nothing: fresh again")
+
+
+func test_strike_ranks() -> void:
+	v(1).learned.append(slot(strike, 3))
+	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(4, 6), v(4): Vector2i(5, 6)})
+	for t in [v(3), v(4)]:
+		soak(t, 100)
+	var rolls := [0]
+	b.attacked.connect(func(_c: Unit, _t: Unit, _d20: int, _total: int, _def: int): rolls[0] += 1)
+	ok(v(1).rank(strike) == 3 and v(2).rank(strike) == 1, "Strike III, and Strike I")
+	ok(b.cast(v(1), strike, v(3)) and rolls[0] >= 1 and rolls[0] <= 3, "Strike III: up to three hits")
+	ok(same(uses(v(1), strike), 1.0) and same(v(1).ap_for(&"skill"), 8.0), "one use, 3 AP")
+	v(2).ap[0].amount = 20.0
+	var before := v(2).ap_for(&"skill")
+	ok(b.cast(v(2), strike, v(4)) and b.cast(v(2), strike, v(4)) and b.cast(v(2), strike, v(4)), "three Strikes at rank I")
+	ok(same(uses(v(2), strike), 3.0) and same(before - v(2).ap_for(&"skill"), 13.5), "three uses: 3 + 4.5 + 6 = 13.5 AP for the same three hits")
+	ok(same(v(1).ap_cost(strike, &"energy"), 4.5) and same(v(2).ap_cost(strike, &"energy"), 7.5), "and the next costs the one 4.5 AP, the other 7.5")
+
+
+func test_ai_and_hud() -> void:
+	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	soak(v(3), 100)
+	var log := AI.act(b, v(1))
+	ok(log.filter(func(l: String): return "uses Strike" in l).size() == 2 and same(v(1).ap_for(&"skill"), 3.5), "the AI Strikes while it can pay: 3 + 4.5 of its 11 AP, not the 6 a third would take (%s)" % [log])
+	b.end_turn()
+	b.end_turn()
+	var h := await hud(v(1))
+	h._refresh()
+	ok(is_equal_approx(h.drain(h.intent(v(3).cell)).get(&"ap", 0.0), 4.5), "hovering the foe drains its raised cost off the AP bar: 4.5 (%s)" % h.drain(h.intent(v(3).cell)))
+	var sl := h.bar.get_child(v(1).hotbar.find(strike)) as SkillSlot
+	ok(is_equal_approx(sl.exhausted, 1.0) and not Glossary.plain(sl.tooltip_text).begins_with("Exhausted"), "its slot shows the use counted as a pip, not in words (%s)" % sl.tooltip_text)
+	ok(&"exhaustion" in Glossary.TERMS and "Exhaustion" in Guide.text(&"skills") and "Exhaustion" in Guide.text(&"conditions"), "and the Guide explains it")
+	h.free()

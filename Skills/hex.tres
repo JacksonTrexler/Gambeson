@@ -27,11 +27,10 @@ stat = &"wisdom"
 [resource]
 script = ExtResource("1_script")
 name = "Hex"
-tags = Array[StringName]([&"dark", &"magic", &"wis"])
+tags = Array[StringName]([&"dark", &"magical", &"wis"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_unluck")])
-ap = 4.0
-cost = 2
 ap_with = Dictionary[ExtResource("4_reserve"), float]({ExtResource("5_mana"): 0.5})
 radius = 5.0
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1"), SubResource("Tier_3")])
 turns = 3
+costs = "high ap, flat rank"

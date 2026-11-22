@@ -1,12 +1,29 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
+
+[sub_resource type="Resource" id="Effect_submerged"]
+script = ExtResource("2_effect")
+stat = "grappled"
+amount = 1.0
+name = "Grappled"
+bears = Array[StringName]([&"cc"])
+
+[sub_resource type="Resource" id="SkillCheck_1"]
+script = ExtResource("6_skill_check")
+range_penalty = 1
+drags_to = &"water"
 
 [resource]
 script = ExtResource("1_script")
 name = "Drown"
-tags = Array[StringName]([&"physical", &"water"])
-ap = 4.0
-radius = 1.5
-drown = Vector2i(1, 12)
-drown_aquatic = Vector2i(1, 4)
+tags = Array[StringName]([&"physical", &"str", &"water", &"cc", &"held"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_submerged")])
+radius = 1.0
+rolls = false
+drowns = Vector2i(1, 12)
+dice_per_rank = true
+check = SubResource("SkillCheck_1")
+costs = "very high ap, flat rank"

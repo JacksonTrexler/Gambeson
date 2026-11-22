@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Whiteout"
+ai = true
+passive = false
+tags = Array[StringName]([&"magical", &"ice", &"wind", &"wis"])
+stub = "?82"
+plan = "Nival: snow in a radius-rank zone: sight kind light concealment +rank and movement +1 a tile for everyone but nival units."

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_role"]
+[ext_resource type="Texture2D" path="res://Units/Sorcerer.png" id="2_sorcerer"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_human"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="5_slot"]
+[ext_resource type="Resource" path="res://Trees/stellar_soul.tres" id="6_stellar_soul"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="7_skillroot"]
+[ext_resource type="Resource" path="res://Items/robe.tres" id="8_robe"]
+[ext_resource type="Resource" path="res://Items/staff.tres" id="9_staff"]
+[ext_resource type="Resource" path="res://Items/energy_potion.tres" id="10_energy_potion"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="11_item"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("5_slot")
+skill = ExtResource("4_strike")
+
+[resource]
+script = ExtResource("1_role")
+name = "Sorcerer"
+noun = "Caster"
+god = &"urlo"
+look = ExtResource("2_sorcerer")
+race = ExtResource("3_human")
+innate = Array[ExtResource("5_slot")]([SubResource("Slot_strike")])
+stats = Dictionary[StringName, int]({&"strength": 8, &"dexterity": 10, &"constitution": 10, &"intelligence": 10, &"wisdom": 12, &"charisma": 15})
+roots = Array[ExtResource("7_skillroot")]([ExtResource("6_stellar_soul")])
+items = Array[ExtResource("11_item")]([ExtResource("8_robe"), ExtResource("9_staff"), ExtResource("10_energy_potion")])
+general = Array[StringName]([&"magical"])

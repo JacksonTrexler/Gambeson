@@ -4,6 +4,14 @@
 [ext_resource type="Theme" path="res://Scenes/UI/theme.tres" id="2_theme"]
 [ext_resource type="Script" path="res://Scripts/UnitCard.gd" id="3_card"]
 [ext_resource type="Script" path="res://Scripts/Spellbook.gd" id="4_book"]
+[ext_resource type="Script" path="res://Scripts/IconButton.gd" id="5_icon"]
+[ext_resource type="Script" path="res://Scripts/SkillTree.gd" id="6_tree"]
+[ext_resource type="Script" path="res://Scripts/SkillWheel.gd" id="7_wheel"]
+[ext_resource type="Script" path="res://Scripts/SkillGrid.gd" id="7_grid"]
+[ext_resource type="Script" path="res://Scripts/CostButton.gd" id="7_cost"]
+[ext_resource type="Script" path="res://Scripts/GuideLink.gd" id="7_link"]
+[ext_resource type="Script" path="res://Scripts/SkillDetail.gd" id="8_detail"]
+[ext_resource type="Script" path="res://Scripts/SlotColumns.gd" id="9_cols"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -57,8 +65,7 @@ alignment = 1
 [node name="Name" type="Label" parent="Root/Left/Column/Card/Head/Names"]
 layout_mode = 2
 theme_type_variation = &"Title"
-clip_text = true
-text_overrun_behavior = 3
+autowrap_mode = 3
 
 [node name="Sub" type="Label" parent="Root/Left/Column/Card/Head/Names"]
 layout_mode = 2
@@ -83,10 +90,15 @@ layout_mode = 2
 theme_type_variation = &"Muted"
 text = "HOTBAR"
 
-[node name="Hotbar" type="VBoxContainer" parent="Root/Left/Column"]
+[node name="Hotbar" type="Container" parent="Root/Left/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 2
+script = ExtResource("9_cols")
+
+[node name="Traits" type="Container" parent="Root/Left/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("9_cols")
 
 [node name="Spacer" type="Control" parent="Root/Left/Column"]
 layout_mode = 2
@@ -175,8 +187,17 @@ theme_override_constants/separation = 1
 [node name="Sep2" type="HSeparator" parent="Root/Right/Column"]
 layout_mode = 2
 
-[node name="LogTitle" type="Label" parent="Root/Right/Column"]
+[node name="LogGap" type="Control" parent="Root/Right/Column"]
+unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="LogTitle" type="Label" parent="Root/Right/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 0
+mouse_default_cursor_shape = 2
 theme_type_variation = &"Muted"
 text = "LOG"
 
@@ -187,13 +208,12 @@ size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
 
-[node name="Keys" type="Label" parent="Root/Right/Column"]
+[node name="LogLine" type="RichTextLabel" parent="Root/Right/Column"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"Muted"
-theme_override_colors/font_color = Color(0.42, 0.44, 0.5, 1)
-theme_override_font_sizes/font_size = 5
-text = "Click foe: attack · Ctrl-click: strike tile · Shift-click: inspect · 1-4 skills · B spellbook · H hold · P party · Tab next · Esc back"
-autowrap_mode = 3
+mouse_default_cursor_shape = 2
+bbcode_enabled = true
+fit_content = true
 
 [node name="EndTurn" type="Button" parent="Root/Right/Column"]
 unique_name_in_owner = true
@@ -201,6 +221,46 @@ layout_mode = 2
 focus_mode = 0
 tooltip_text = "Allies you haven't given an order act on their own, then the turn passes (Space)"
 text = "End turn  (Space)"
+
+[node name="Dock" type="HBoxContainer" parent="Root/Right/Column"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 2
+
+[node name="CogIcon" type="Button" parent="Root/Right/Column/Dock"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Settings (coming soon)"
+script = ExtResource("5_icon")
+glyph = "cog"
+
+[node name="CharacterIcon" type="Button" parent="Root/Right/Column/Dock"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Character sheet (coming soon)"
+script = ExtResource("5_icon")
+glyph = "character"
+
+[node name="BookIcon" type="Button" parent="Root/Right/Column/Dock"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Spellbook (B)"
+script = ExtResource("5_icon")
+glyph = "book"
+
+[node name="SkillsIcon" type="Button" parent="Root/Right/Column/Dock"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(15, 15)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Skills: spend skill points (S)"
+script = ExtResource("5_icon")
 
 [node name="Banner" type="Label" parent="Root"]
 unique_name_in_owner = true
@@ -219,6 +279,114 @@ theme_override_font_sizes/font_size = 14
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Curtain" type="ColorRect" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="Band" type="Control" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -18.0
+offset_bottom = 18.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BandFill" type="ColorRect" parent="Root/Band"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.2, 0.3, 0.6, 0.9)
+
+[node name="BandTitle" type="Label" parent="Root/Band"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BandSub" type="Label" parent="Root/Band"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -11.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 0.8)
+theme_override_font_sizes/font_size = 6
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Initiative" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -110.0
+offset_top = -40.0
+offset_right = 110.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="InitColumn" type="VBoxContainer" parent="Root/Initiative"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="InitTitle" type="Label" parent="Root/Initiative/InitColumn"]
+layout_mode = 2
+theme_type_variation = &"Title"
+text = "INITIATIVE"
+horizontal_alignment = 1
+
+[node name="InitRows" type="VBoxContainer" parent="Root/Initiative/InitColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="InitFoot" type="Label" parent="Root/Initiative/InitColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"Muted"
+horizontal_alignment = 1
+
 [node name="Spellbook" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true
 visible = false
@@ -229,9 +397,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -150.0
-offset_top = -110.0
+offset_top = -128.0
 offset_right = 150.0
-offset_bottom = 110.0
+offset_bottom = 128.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("4_book")
@@ -248,6 +416,12 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"Title"
+
+[node name="BookGuide" type="Button" parent="Root/Spellbook/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("7_link")
+page = &"hotbar"
 
 [node name="BookClose" type="Button" parent="Root/Spellbook/Column/Head"]
 unique_name_in_owner = true
@@ -301,11 +475,206 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
+[node name="BookDetail" type="VBoxContainer" parent="Root/Spellbook/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+script = ExtResource("8_detail")
+
 [node name="BookHint" type="Label" parent="Root/Spellbook/Column"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Muted"
 autowrap_mode = 3
+
+[node name="Skills" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -225.0
+offset_top = -128.0
+offset_right = 225.0
+offset_bottom = 128.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("6_tree")
+
+[node name="Column" type="VBoxContainer" parent="Root/Skills"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Head" type="HBoxContainer" parent="Root/Skills/Column"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillsTitle" type="Label" parent="Root/Skills/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Title"
+
+[node name="SkillPoints" type="Label" parent="Root/Skills/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"Chip"
+theme_override_font_sizes/font_size = 6
+
+[node name="SkillsGuide" type="Button" parent="Root/Skills/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("7_link")
+page = &"skills"
+
+[node name="SkillsClose" type="Button" parent="Root/Skills/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Close (S or Esc)"
+text = "Close"
+
+[node name="WheelTabs" type="HFlowContainer" parent="Root/Skills/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 1
+theme_override_constants/v_separation = 1
+
+[node name="Body" type="PanelContainer" parent="Root/Skills/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TreeScroll" type="ScrollContainer" parent="Root/Skills/Column/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Grid" type="Control" parent="Root/Skills/Column/Body/TreeScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("7_grid")
+
+[node name="Wheel" type="Control" parent="Root/Skills/Column/Body"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(196, 176)
+layout_mode = 2
+script = ExtResource("7_wheel")
+
+[node name="DetailCol" type="VBoxContainer" parent="Root/Skills/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+script = ExtResource("8_detail")
+
+[node name="Foot" type="HBoxContainer" parent="Root/Skills/Column"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+
+[node name="LevelUp" type="Button" parent="Root/Skills/Column/Foot"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 10
+focus_mode = 0
+tooltip_text = "Debug builds only: gain a level, and a skill point"
+text = "Level up (debug)"
+
+[node name="Settings" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -175.0
+offset_top = -110.0
+offset_right = 175.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Root/Settings"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Head" type="HBoxContainer" parent="Root/Settings/Column"]
+layout_mode = 2
+
+[node name="SettingsTitle" type="Label" parent="Root/Settings/Column/Head"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Title"
+text = "Settings"
+
+[node name="SettingsClose" type="Button" parent="Root/Settings/Column/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Close (Esc)"
+text = "Close"
+
+[node name="Options" type="HFlowContainer" parent="Root/Settings/Column"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 2
+
+[node name="HighContrast" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "High contrast"
+
+[node name="SuspiciousMarks" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Mark suspicious tiles"
+
+[node name="KeepSlot" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Keep the last used skill selected"
+
+[node name="HandOver" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Next unit when one is spent"
+
+[node name="AutoEquip" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Skills your units learn or are lent, and skills for slots they gain, go on the hotbar by themselves"
+text = "Auto-equip new skills"
+
+[node name="EdgePan" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Pushing the mouse to the edge of the screen pans the camera (the arrow keys always do)"
+text = "Edge-pan the camera"
+
+[node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="Guide" type="RichTextLabel" parent="Root/Settings/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
 
 [node name="Over" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true
@@ -399,13 +768,6 @@ theme_type_variation = &"Title"
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"Muted"
-
-[node name="EffectsTitle" type="Label" parent="Root/TilePane/Column"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"Muted"
-theme_override_font_sizes/font_size = 5
-text = "EFFECTS"
 
 [node name="TileScroll" type="ScrollContainer" parent="Root/TilePane/Column"]
 unique_name_in_owner = true

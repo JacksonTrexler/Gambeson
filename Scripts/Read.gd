@@ -20,7 +20,10 @@ var hint := ""  # "disturbed earth?" (-2), "a prickle of unease" (-3)
 var aura: Variant = null  # -2 ominous .. +2 benevolent (-3 up)
 
 var name := ""  # unit name, tile name (or what the tile looks like)
+var face := ""  # text standing in for the sprite a persona's name claims (";)"); empty: its own
 var faction: Faction
+var assumed := false  # its side is only what it seemed before it vanished before the observer's eyes (Unit.assumed)
+var defense: Variant = null  # its Defense, once its armor shows (net 0 up): what the player's odds read (HUD._defense_shows()), and the AI's hit chance (AI.score())
 var hp: Variant = null
 var max_hp: Variant = null
 var energy: Variant = null
@@ -29,12 +32,24 @@ var healthy: Variant = null  # unbloodied: above half HP
 var cost: Variant = null  # tile: movement to enter
 var exit: Variant = null  # tile: extra movement to leave
 var trap: Variant = null  # tile: springs when entered
+var obscured := false  # tile: under a layer that hides what's beneath (Leaves), nobody standing on it
+var concealed := false  # unit: something stands between it and the observer - concealment the observer hasn't got through (darkness, fog, its own hiding), or sight too far to tell how it looks
+var doubted := false  # unit: the observer suspects it or its tile (Unit.suspicion)
+var trick := false  # unit, doubted: it would fool the observer but for that suspicion (trickery, a front, Conspire)
 
 var tags: Array[StringName] = []  # identity: race, role, unit tags (Halfling Paladin, holy); tile: what the ground is (water, sticky)
 var stats := {}
 var strengths: Array[StringName] = []
 var weaknesses: Array[StringName] = []
 var vibe := ""
+var traits: Array[String] = []  # words for it in place of details, from a low-wisdom ally ("Strong")
+var looks := ""  # what it looks like, where its class can't be made out ("Injured Soldier"; Perception.looks()) - all an ally of wis mod -4 or less makes out
+var properties: Array[Property] = []  # what it's made of (Bio.properties: Aquatic), with its identity (1)
+var temper := &""  # how it behaves (Unit.temper()), read by an insightful observer at 2
+var stance := &""  # the side it presents as to this observer (Unit.stance, lowercase): friendly, enemy, aggressive, passive, traitor
+var insight := ""  # how true its presentation is, read by an insightful observer (Perception.insight())
+var intention := ""  # what it means to do, and how it picks its targets: read by an insightful observer at 2 (the Astral Princess)
+var strategy: Array[StringName] = []
 var affected: Variant = null  # under timed effects (buffs and debuffs aren't told apart yet)
 var worth: Variant = null  # tile: +1 beneficial, -1 detrimental (Terrain.worth())
 
@@ -42,14 +57,58 @@ var level: Variant = null
 var role: Role
 
 var skills: Array[Skill] = []
+var kit: Array[Skill] = []  # an ally's skills, by name only: allies tell each other what they can do (net 0); the details take net 3 (skills)
 var effects: Array[Effect] = []  # unit: timed effects on it (3); tile: on whoever stands there (0)
+var suspects := {}  # unit: the units it's grown suspicious of -> stacks (3)
 var afflicts: Array[Effect] = []  # tile: put on whoever steps there (0)
 var at_end: Array[Effect] = []  # tile: put on whoever ends its turn there (0)
-var boon := ""  # what a deceiver claims to be doing for you
+var marks: Array = []  # tile: the Battle.Marks laid on it that this observer knows of (Battle.lay_mark(): told, plainly visible, or read well enough)
+
+
+# How observer o takes it: &"ally", &"foe", &"avoid" (aggressive), &"ignore" (passive), or &""
+# when it can't tell its side.
+func attitude(o: Unit) -> StringName:
+	if faction == null:
+		return &""
+	if stance == &"passive":
+		return &"ignore"
+	if Faction.friends(faction, o.faction):
+		return &"ally"
+	return &"avoid" if stance == &"aggressive" else &"foe"
+
+
+# The Defense argument Battle.hit_chance() takes for what o reads of t: the Defense it makes out (a lie
+# too), or `unknown` (-1: the truth, for the player's own; AI._chance() passes GUESS_DEFENSE).
+func believed(unknown := -1) -> int:
+	return unknown if defense == null else defense
+
+
+# How far the Defense it makes out lies from t's true one, to carry a roll's own figure (tagged, guarded) over.
+func skew(t: Unit) -> int:
+	return 0 if defense == null else defense - t.defense()
 
 
 func located() -> bool:
 	return cell != null
+
+
+# Drawn as a black shape: what might be a monster in the brush - a unit it has placed that hides or
+# stands in concealment, whose side it can't tell or suspects is a lie. One in plain view isn't, even
+# suspected (it keeps its colours: mark()), nor is a concealed one whose side shows honestly.
+func silhouette() -> bool:
+	return located() and concealed and (faction == null or (doubted and deceived))
+
+
+enum Mark { NONE, DOUBT, CAUGHT }
+
+# What suspicion makes of a trick in plain view: DOUBT ("?"), the observer suspects it but it still
+# fools it or its side can't be told - drawn as if unaffiliated; CAUGHT ("!"), the suspicion has seen
+# through it to its true side - drawn as that side. NONE: not located, concealed (a black shape:
+# silhouette()), not suspected, or no trick.
+func mark() -> Mark:
+	if not located() or concealed or not doubted or not trick:
+		return Mark.NONE
+	return Mark.CAUGHT if faction != null and not deceived else Mark.DOUBT
 
 
 # Ground it knows is bad (or knows is a trap).

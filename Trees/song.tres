@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Skills/sola.tres" id="s_sola"]
+[ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
+
+[sub_resource type="Resource" id="Branch_sola"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_sola")
+
+[sub_resource type="Resource" id="Branch_astera"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_astera")
+after = Array[ExtResource("5_skill")]([ExtResource("s_sola")])
+
+[resource]
+script = ExtResource("6_root")
+name = "Song"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_sola"), SubResource("Branch_astera")])

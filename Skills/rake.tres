@@ -5,14 +5,15 @@
 
 [sub_resource type="Resource" id="Tier_1"]
 script = ExtResource("2_tier")
+rank = 1
 dice = Vector2i(1, 4)
 stat = &"strength"
 
 [resource]
 script = ExtResource("1_script")
 name = "Rake"
-tags = Array[StringName]([&"physical", &"slash"])
+tags = Array[StringName]([&"physical", &"slash", &"str"])
 ap = 3.0
-radius = 1.5
+radius = 1.0
 tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
-crit_trusting = true
+dice_per_rank = true

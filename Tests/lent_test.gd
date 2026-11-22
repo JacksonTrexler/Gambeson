@@ -1,0 +1,205 @@
+extends Test
+
+# What an item lends (docs/plans/w3-lent.md): enchanted items lend enchanted skills (+1 rank) unless a skill has its own
+# enchanted effect (Armor: +1 Defense); armor sets Defense through the equipment skill it lends; and a lent skill is a
+# prerequisite - what was learned on it goes down with it (Unit.counts(), leaned, lapsed()); and how an item links a skill
+# to its wearer (docs/plans/w6-link.md, w8-bar.md): free (no slot, the default) or optional (for a slot, the wearer slots it or not).
+
+var armor_skill: Skill = load("res://Skills/armor.tres")
+var darkvision: Skill = load("res://Skills/darkvision.tres")
+var meander: Skill = load("res://Skills/meander.tres")
+var hide: Skill = load("res://Skills/hide.tres")
+var sola: Skill = load("res://Skills/sola.tres")
+var nadira: Skill = load("res://Skills/nadira.tres")
+var astera: Skill = load("res://Skills/astera.tres")
+var magic_slot: Skill = load("res://Skills/magic_slot.tres")
+var adventurer: Role = load("res://Roles/adventurer.tres")
+
+
+func lender(skills: Array, slot_name := "trinket") -> Item:
+	var it := Item.new()
+	it.name = "Lender"
+	it.slot = slot_name
+	it.skills.assign(skills)  # lent free, as every lend is unless optional (armor's own Armor included)
+	return it
+
+
+func shrike() -> Unit:
+	var u := b.starter({faction = lancin, role = adventurer, name = "Shrike"})
+	b.get_node("Units").add_child(u)
+	u.trinket = null
+	u.skill_points = 30
+	return u
+
+
+func works(u: Unit, s: Skill) -> bool:
+	return s in u.actives or s in u.passives
+
+
+# Enchanted items lend enchanted skills: +1 rank each, however the item came by it, except the skill with its own
+# enchanted effect (Armor), which keeps the item's rank and gives +1 Defense instead. Pray's enchantment doesn't raise
+# the item's own rank (armor drag stays); an item authored enchanted (the tag) does, as it always did.
+func test_enchanted_lends() -> void:
+	var u := shrike()
+	for slot_name in ["trinket", "weapon", "armor"]:
+		for how in ["pray", "tag"]:
+			u.trinket = null
+			u.weapon = null
+			var it := lender([darkvision, armor_skill], slot_name)
+			if how == "tag":
+				it.tags.assign([&"enchanted"])
+			u.equip(it)
+			var label := "%s %s" % [slot_name, how]
+			var plain := it.skill_rank(darkvision) - (1 if how == "tag" else 0)
+			if how == "pray":
+				ok(u.enchant(1) == 1, "%s: Pray enchants it" % label)
+			it = u.get(slot_name)
+			ok(it.enchanted() and it.skill_rank(darkvision) == 2 and it.skill_rank(armor_skill) == 1, "%s: what it lends is +1 rank, Armor keeps rank 1 (%d, %d)" % [label, it.skill_rank(darkvision), it.skill_rank(armor_skill)])
+			ok(u.rank(darkvision) == 2 and u.rank(armor_skill) == 1, "%s: and so does its wearer have them" % label)
+			ok(how == "tag" or it.ranked() == (2 if slot_name == "trinket" else 1), "%s: Pray raises the item's own rank only for a trinket (%d)" % [label, it.ranked()])
+			u.unequip(slot_name)
+	u.free()
+
+
+# Every armor's Defense, as it was before armor became a skill it lends (rows measured on the old rule): level 1 /
+# dex 6 and level 30 / dex 20 (con 12, wis 14), plain then enchanted; Robe adds wis mod as magical Defense.
+const DEFENSE := {
+	"aethendine": [12, 13, 35, 36], "brigandine": [13, 14, 32, 33], "gambeson": [8, 9, 20, 21], "habergeon": [11, 12, 26, 27],
+	"half_plate": [11, 12, 26, 27], "heart_up_link": [-1, 0, 6, 7], "ignauldron": [13, 14, 32, 33], "plate": [13, 14, 32, 33],
+	"robe": [10, 11, 15, 16],
+}
+
+
+func test_armor_is_a_skill() -> void:
+	var u := v(1)
+	u.constitution = 12
+	u.wisdom = 14
+	var seen := 0
+	for id in DEFENSE:
+		var it: Item = load("res://Items/%s.tres" % id)
+		ok(it.skills.has(armor_skill) and armor_skill.is_equipment() and it.link(armor_skill) == &"free" and not it.describe().contains("Gives the skill"), "%s lends Armor" % id)
+		var en: Item = it.duplicate()
+		en.enchant = 1
+		for i in 2:
+			u.level = [1, 30][i]
+			u.dexterity = [6, 20][i]
+			u.armor = it
+			var plain := u.armor_defense()
+			u.armor = en
+			ok(plain == DEFENSE[id][i * 2] and u.armor_defense() == DEFENSE[id][i * 2 + 1], "%s at level %d: Defense %d, enchanted %d" % [id, u.level, plain, u.armor_defense()])
+			seen += 1
+	ok(seen == 18, "every armor")
+	u.armor = load("res://Items/robe.tres")
+	ok(u.defense([&"magical"]) - u.defense([&"physical"]) == 2, "Robe: wis mod against magic")
+	ok(u.armor_skills() == ([armor_skill] as Array[Skill]) and u.traits().is_empty() and not armor_skill in u.hotbar and not u.has_tag(&"trait"), "Armor works without a slot, and isn't listed among its traits")
+	u.auto_fill()
+	ok(u.slot_cost(armor_skill) == 0 and not u.bar_place(armor_skill, 1) and not armor_skill.ai and armor_skill not in u.hotbar and not u.hotbar.any(func(x): return x != null and x.is_equipment()), "Armor is an equipment skill the armor lends free: it takes no hotbar slot, auto-fill leaves it off, and it is the user's name (no ??)")
+	u.afflict(load("res://Effects/traits_suppressed.tres"), 2)
+	var bare := u.mod(&"dexterity") + u.mod(&"constitution")
+	ok(u.armor_defense() == bare and u.defense([&"magical"]) == u.defense([&"physical"]), "traits suppressed: the armor sets nothing, unarmored (%d)" % bare)
+	u.armor = null
+	ok(u.armor_defense() == bare, "no armor: the same")
+
+
+# Lent skills count: a skill learned on one is learned for good only while it's lent. Darkvision opens Meander opens Hide
+# (a chain, so the loss runs down it); Astera is one of the three Magic skills its capstone wants. Each way of losing
+# the skill, and back.
+func test_lent_prerequisites() -> void:
+	var u := shrike()
+	ok(u.missing(meander) != "" and u.missing(magic_slot) != "", "without the lender: not yet")
+	var gift := lender([darkvision, astera])
+	gift.optional.assign([darkvision, astera])  # lent for a slot, so a disabling reaches them (a free lend has no slot to disable)
+	u.equip(gift)
+	ok(u.missing(meander) == "" and u.missing(magic_slot) == "Needs 3 Magic skills (1 so far)", "lent Darkvision opens Meander; lent Astera counts for the capstone (%s)" % u.missing(magic_slot))
+	ok(u.unlock(meander) and u.unlock(hide) and u.unlock(sola) and u.unlock(nadira) and u.unlock(magic_slot), "learned on them")
+	ok(u.leaned.has(meander) and u.leaned.has(hide) and u.leaned.has(magic_slot) and not u.leaned.has(sola), "those that needed what was lent are marked (Hide through Meander)")
+	u.bar_clear(1)
+	ok(u.bar_place(meander, 1) and u.bar_place(hide, 2) and u.bar_place(magic_slot, 3), "on the bar: they work")
+	var chain := [meander, hide, magic_slot]
+	ok(chain.all(func(s: Skill): return not u.lapsed(s) and u.rank(s) > 0), "all there while it's lent")
+	var causes := {
+		"unequipped": [func(): u.unequip("trinket"), func(): u.equip(gift)],
+		"disabled": [func(): u.disable(darkvision, 3); u.disable(astera, 3), func(): u.disabled.clear()],
+		"traits suppressed": [func(): darkvision.tags.append(&"trait"); astera.tags.append(&"trait"); u.afflict(load("res://Effects/traits_suppressed.tres"), 2), func(): u.tick(); u.tick(); darkvision.tags.erase(&"trait"); astera.tags.erase(&"trait")],
+	}
+	for why in causes:
+		causes[why][0].call()
+		ok(chain.all(func(s: Skill): return u.lapsed(s) and not works(u, s) or s == magic_slot), "%s: what was learned on them stops working, Hide with Meander" % why)
+		ok(u.rank(meander) == 1 and not u.lapsed(sola) and u.rank(sola) == 1, "%s: still learned, and what stood on its own is untouched" % why)
+		ok(u.missing(meander) != "", "%s: and Meander is out of reach again" % why)
+		causes[why][1].call()
+		ok(chain.all(func(s: Skill): return not u.lapsed(s)) and works(u, meander) and works(u, hide), "%s: back as they are" % why)
+	var own := shrike()  # a skill learned the usual way isn't a dependent
+	own.unlock(darkvision)
+	ok(own.unlock(meander) and not own.leaned.has(meander) and not own.lapsed(meander), "learned, not lent: nothing leans")
+	own.free()
+	# saved and loaded (Save carries lapses_out() as JSON): a unit that comes back lapses all the same, an old save leans on nothing
+	var out: Dictionary = JSON.parse_string(JSON.stringify(u.lapses_out()))
+	var back := shrike()
+	back.equip(gift)
+	ok(back.unlock(meander) and back.unlock(hide) and back.unlock(sola) and back.unlock(nadira) and back.unlock(magic_slot), "a loaded unit has what was learned")
+	back.leaned.clear()
+	back.lapses_in(out)
+	ok(back.leaned.has(meander) and back.leaned.has(hide) and back.leaned.has(magic_slot) and not back.leaned.has(sola), "leaned comes back through JSON")
+	back.unequip("trinket")
+	ok(back.lapsed(meander) and back.lapsed(hide), "and it lapses when the lent skill goes")
+	back.lapses_in({})
+	ok(back.leaned.is_empty() and not back.lapsed(meander), "a save with no lapses: nothing leans")
+	back.free()
+	u.free()
+
+
+# How an item links a skill it lends (?214: Item.optional; Unit.link(), slot_cost()): free by default, whatever kind of
+# skill (no slot, equipped while worn), or optional (lent for a slot: the wearer slots it or not). The flag is on the link,
+# so the same skill is free from one item and costs a slot from another. Darkvision is a passive, Kick an active.
+func test_links() -> void:
+	var kick := sk("kick")
+	var u := shrike()
+	u.level = 20  # room on the bar for what it is lent
+	u.hotbar.resize(u.bar_size())
+	for n in u.hotbar.size():
+		u.bar_clear(n)
+	var robe := lender([darkvision, kick], "armor")
+	u.equip(robe)
+	ok(u.link(darkvision) == &"free" and u.link(kick) == &"free" and u.slot_cost(darkvision) == 0 and u.slot_cost(kick) == 0 and darkvision not in u.hotbar and kick not in u.hotbar, "free by default: a passive and an active alike take no slot and stay off the bar")
+	ok(u.equipped(darkvision) and darkvision in u.passives and u.equipped(kick) and kick in u.actives and u.traits() == ([darkvision, kick] as Array[Skill]), "both work, listed apart from the bar (the HUD's band)")
+	var c := Control.new()
+	ok(not u.bar_place(kick, 0) and SkillSlot.drag_learned(c, u, kick) == null, "nothing puts a free skill on the bar")
+	c.free()
+	u.disable(darkvision, 3)
+	u.disable(kick, 3)
+	ok(darkvision not in u.disabled and kick not in u.disabled, "nothing to disable: they have no slot")
+	u.afflict(load("res://Effects/traits_suppressed.tres"), 2)
+	ok(not u.equipped(darkvision) and kick not in u.actives, "traits suppressed: free skills stop, as traits do")
+	u.tick()
+	u.tick()
+	var opt := lender([darkvision, kick], "armor")
+	opt.optional.assign([darkvision, kick])
+	u.equip(opt)
+	ok(u.link(kick) == &"optional" and u.slot_cost(kick) == 1 and u.slot_cost(darkvision) == 1 and kick not in u.hotbar and darkvision not in u.hotbar and not u.equipped(kick), "optional: lent for a slot, left off the bar, and doesn't work there")
+	u.auto_fill()
+	ok(kick not in u.hotbar and darkvision not in u.hotbar, "auto-fill leaves it too")
+	var i := u.free_slot()
+	ok(u.bar_place(kick, i) and u.equipped(kick) and kick in u.actives, "the wearer may put it on the bar: it works")
+	u.equip(robe)
+	ok(u.link(kick) == &"free" and kick not in u.hotbar and u.equipped(kick), "the same skill from a free lend: it gives its slot up and still works")
+	var ring := lender([kick])
+	ring.optional.assign([kick])
+	u.equip(ring)
+	ok(u.link(kick) == &"free", "two items lending it: free beats optional")
+	u.unequip("armor")
+	ok(u.link(kick) == &"optional" and kick not in u.hotbar and not u.equipped(kick), "the free one taken off, the optional one stands: off the bar until slotted")
+	u.unequip("trinket")
+	ok(u.link(kick) == &"" and kick not in u.hotbar and darkvision not in u.traits(), "off with the items, gone")
+	var own := shrike()  # learned as well as lent free: its own, as it was
+	own.unlock(darkvision)
+	own.equip(robe)
+	ok(own.link(darkvision) == &"" and own.slot_cost(darkvision) == 1, "a skill learned as well takes its slot whatever the link")
+	own.free()
+	u.free()
+	var fresh := Unit.new()  # a unit setting up elects to slot an optional lend when its bar has room (_fill_bar())
+	fresh.level = 20
+	fresh.trinket = ring
+	fresh._fill_bar()
+	ok(kick in fresh.hotbar and fresh.equipped(kick), "setting up with room, it slots the optional lend")
+	fresh.free()

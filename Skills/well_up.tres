@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/well_up.gd" id="b_well_up"]
+
+[sub_resource type="Resource" id="Behaviour_well_up"]
+script = ExtResource("b_well_up")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Well Up"
+tags = Array[StringName]([&"water", &"magical", &"cha"])
+ap = 3.0
+cost = 2
+radius_per_rank = 1.0
+rolls = false
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_well_up")])

@@ -1,0 +1,269 @@
+# Done: classes
+
+`[x]` done · `(?N)` an open question in `docs/todo/` that may still change it · *Now:* what the game does today. Index: `completed.md`.
+
+## Adventurer
+
+*Now:* the tree is built (`Roles/adventurer.tres`; the skills screen draws it as a wheel). Skills that wait on a question are stubs: on the wheel with their question number, but they can't be learned.
+
+Starting skills, unlocked from the start:
+- [x] **Field Experience** (passive): resource bonuses (Stamina, Rage, Focus…) apply when paying Energy for martial skills. *Now:* no martial resource exists yet, so it does nothing.
+- [x] **Working Knowledge** (passive): resource bonuses (Mana, Sweet Nothings, Power…) apply when paying Energy for magic skills. *Now:* Hex costs half AP paid with Energy, as with Mana.
+- [x] **Everyman** (passive): resource bonuses (Hype, Clout, Gold…) apply when paying Energy for specialist skills. *Now:* no specialist resource exists yet.
+
+Core: **Hex** and **Rejuvinate** (built; see Paladin).
+
+**Magic root.** Starter spells, also Wizard options (?10). On an ally: the listed effect. On an enemy: an attack roll (d20 + int mod), then 1d4 + int mod damage. Range: int mod, reaching an adjacent unit at least. Each is 3 AP and 2 Energy × rank; Mana pays half, for a unit with the Mana passive (Adventurers don't have it).
+- [x] **Sola** (light): ally +1 persona rank for rank turns. (?10)
+- [x] **Nadira** (dark): ally +1 `dark` concealment rank for rank turns.
+- [x] **Astera** (magic): ally +1 luck for rank turns.
+- [x] **Terestera** (earth): ally gains rank `physical` Defense, for 3 turns.
+- [x] **Hydera** (water): ally gains rank `magical` Defense, for 3 turns.
+- [x] **Renew** (see Paladin): Divinity is in the caster family, so renewal sits in the caster tree. Tier 1.
+- [x] Capstone: **Basic Magic Skill Slot +1**, after 3 Magic skills. (?15)
+
+**Martial root.** *Now:* Wary, then the capstone, **Basic Martial Skill Slot +1** (built; needs 3 Martial skills, so it can't be reached yet). (?15)
+
+**Specialist root.** *Now:* First Aid; Snare, then Hazard Expert and Move +1; Darkvision, then Meander, then Hide and Clever Disguise; Self-evaluation; Personify, then Embellish and Brood, then Conspire; and the capstone, **Basic Specialist Skill Slot +1** (built; needs 3 Specialist skills). (?15 ?18)
+- [x] **First Aid** (tier 1 active, `physical`, `specialist`; also on Calling: Freedom's core): heals an adjacent ally (or itself) (dex mod + wis mod) / 2 + 1 HP, at least 1, clearing wounds up to its rank, and rank more HP for each wound it treats. *Now:* 3 AP, 1 Energy.
+- [x] **Snare**: its trap leaves **Bleeding** on whoever it hits: 1d4 + the setter's dex mod as each of its side's turns ends, not the one it was sprung on (at least 1), a wound at the snare's rank, for rank + the setter's dex mod turns (at least 1).
+- [x] **Self-evaluation** (tier 1 passive): when an ally uses an active skill within rank tiles, its roll pops up above that ally, tallied up like the initiative rolls. Then, if the skill's effects show on the unit, the roll labels the effect's icon in the top right. *Now:* its holder's own rolls count too. It shows attack rolls, and the one roll Hide and Clever Disguise make (which investigators must beat). Without it, the log keeps that roll hidden. (?20)
+- [x] **Move +1** (tier 2 passive, after Snare): +1 movement, so the unit can move one more tile before AP penalties start.
+- [x] **Meander** (tier 2 passive, switched on and off, after Darkvision): the unit can move rank tiles while technically **standing still**, for resting, concealment and skill purposes. Standing still, it passes by tile effects that trigger on passing whose level isn't greater than its rank. It also takes no damage from effects that proc when it moves, if its rank is higher than the effect's. *Now:* the first rank tiles it walks each turn count as standing still: it still rests, stays hidden, and walks over traps and ground effects of its rank or lower without setting them off. Nothing deals damage for moving yet, so that last part waits. (?18)
+- [x] **Hide** (tier 3 active, after Meander): the unit gains rank levels of concealment, lasting until it moves (by default). Enemy units that can see it investigate at once (see Investigating). *Now:* used on itself from the hotbar (no target to pick). An investigator who passes keeps seeing it; the log shows each investigation. (?18)
+- [x] **Personify** (tier 1 hybrid, `specialist`): a passive and an active effect. Passive: + rank persona while it advertises. Active (2 AP): opens the persona modal (see Persona and insight). *Now:* the Persona skill, renamed.
+- [x] **Embellish** (tier 2 active, after Personify): gasses up a unit, itself or an ally within rank − 1 tiles (self only at rank I). Rank of its stats, highest first, seem 20% higher, inflating its perceived BST. Past six it loops back to the highest (rank 7: the highest +40%). No effect on enemies it doesn't fool. Insightful units who see through it read the stats it fronts ("strong", "charming"). *Now:* 2 AP, 2 cost, 3 turns.
+- [x] **Conspire** (tier 4 passive, switched on and off, after Embellish and Brood; Adventurers and Bards): while on, allies within rank + cha mod tiles fail persona checks against it on purpose. Switched off on its turn, its allies pass them automatically. It gets up to (rank − 1) trickery for each ally it fools. No infighting between allies using trickery: they "defect" together. Rank × 33% less friendly-fire damage. *Now:* (rank − 1) trickery per ally in range, uncapped; allies in on it take its Enemy or Traitor stance for Friendly.
+- [x] **Brood** (tier 2 passive, switched on and off, after Personify; Bards, Adventurers and Rogues): its stats seem 25% lower a rank when advertised, to no less than 1. Rank 5+: allies within rank − 4 tiles seem 10% × (rank − 4) lower. Insightful units who see through it read "weak". *Now:* only to those it fools; the aura only to those the brooder fools.
+- [x] **Clever Disguise** (tier 3 active, after Meander): the unit gains rank levels of trickery. Enemy units within sight investigate at once (see Investigating). The disguise holds for rank turns, then decays a level a turn. Its ranks cost more: a high base, growing exponentially. *Now:* II costs 4 points, then double each rank. Enemies it fools may take it for one of their own. (?18)
+
+- [x] **Observe** (Specialist root, after Darkvision; Rogue's Eyes root; 2 AP, 1 Energy, range wis mod + rank): pick a tile; the unit investigates every tile around it (`Battle.observe()`: within max(wis mod, 1) + rank) as if it had rested rank turns, the distance penalty counted from that tile. The AI, with no foe to go after, Observes the tile in reach whose area holds the most it finds suspicious; with no clues it doesn't search.
+- [x] **Eyes Forward** (passive, after Observe; the `eyes_forward` stat): ending its turn after completing a move (moving was the last thing it did), the unit investigates every tile rank + wis mod tiles forward the way it moved, and rank tiles to either side, in place of looking around. Non-adjacent tiles take −1 a tile.
+- [x] **Special Eyes** (passive, after Observe; the `keen_eyes` stat): the distance penalty on non-adjacent tiles is cut to distance / (rank + 1).
+
+## Wizard / Mage
+
+- [x] **Mana** (tier 1 passive; Mages and Wizards start with it at rank I): the starter spells cost half paid with Mana, up to its rank in tier. *Now:* a Wizard option and starting skill. Wizards start with 10 Mana. (?16)
+- [x] **Mage Armor** (passive, `magical`, switched on and off; early in the tree): + int mod to Defense while on. *Now:* a Wizard option, unlocked with a skill point. (?10)
+- [x] The Adventurer's starter spells (Sola, Nadira, Astera, Terestera, Hydera, Igna, Aetha) are Wizard and Mage options too. (?10)
+- [x] **Two classes**: the Wizard (flexible, many tabs) and the Mage (`Roles/mage.tres`: a school, the Mage tree, a college). Their trees are laid out: the Wizard's own tab (Arcane, Transgression), Pact: Elmon / Hogel and Affiliation: Urlo / Sol (one of each, `SkillTab.one_of`), World: Nature; the Mage's own (Refinement, Commitment), five School tabs and three College tabs (one of each). New skills are stubs with their plans (`docs/todo/classes.md`, ?70). `casters_test.gd`.
+- [x] **Picking trees** (`Role.choices`, `TreeChoice`; `Unit.pick()`, `picks()`, `pick_missing()`, `class_trees()`): a class's choices of trees sit on its own tab as boxes of tier 0 roots, "Pick up to x". Picking one is free and opens its tab; skills on a tree not picked wait ("Pick School: Shadow first"). Paladin Prowess, Warlock Patron, Cleric God (Luun, Sol, Eros), Mage School and College. Shared trees live in `Trees/` (Luun, Sol, Elmon, Hogel, Song, Eros, the five schools). (?71)
+- [x] **Dabblings** (Wizard): Divinity, Symphony, Witchery and Mastery (`Skill.studies`) each open a choice, picking up to their rank, of every caster tree of a kind, whichever class it's on, found as the game runs (`TreeChoice.borrows`, `all()`, `caster()`): Divinity tabs (Luun, Sol, Eros), Genre tabs (the Bard's Song), Patron tabs (Elmon, Hogel), School tabs (the Mage's five), each with its class's shared row (Pray and Renew; Hex, Sweet Nothings and Chant). Guest trees' skills rank at -1 Affinity (`TreeChoice.affinity`, `Unit.guest_affinity()`); Mastery's schools at none. A Wizard can serve gods and a patron at once (`Unit.devotions()`). (?71 ?76)
+- [x] **Class features** (`Skill.classes`; `Unit.missing()`): a skill tagged with a class is that class's alone; anyone else meeting it on a tree it borrowed sees it locked ("Paladin only"), its class first in its tags. The Paladin's Smite, Lovely Caster and Impassioned Fighter, on Eros. (?76)
+- [x] **Rift** (Wizard, Transgression; `Skill.rifts`, `Battle.open_rift()`, `close_rift()`): a door on a tile in a clear line (over walls from rank III) to a domain - an 8x8 diamond of grass with demons at 0.5 x rank difficulty and the Wizard's level - open both ways while channeled (infinite), or cast unchanneled (Alt-click). Its count of 3 x its difficulty turns starts once the channel stops (used again, another channel, falling: `Battle.end_channel()`), or at once unchanneled; then the Wizard's side comes back. (?75 ?76)
+- [x] **Emergency Exit** (Wizard, Arcane, high tier; `Skill.exits`, `Battle.emergency_exit()`): a forming escape portal opens rank turns sooner (`Meadows.hasten()`); else the Wizard and its allies within rank tiles warp to a pocket of stone for rank turns, a door back and forth, then come back in a clump. Pockets: `Battle.Pocket`, `Battle.paint()`, `pockets_test.gd`. (?75)
+- [x] **The tab row wraps**: a class with more tabs than fit across takes a second row (`SkillTree._fill_tabs()`, an HFlowContainer).
+
+## Warlock
+
+`Roles/warlock.tres`: cha 15, "Caster", the Gaunt sprite; on the entry screen. A tab per patron, **Patron: Elmon** and **Patron: Hogel** (light and death magic), each opening with the shared tier 1 row (`Role.shared`): Hex, Sweet Nothings and Chant. Hex and Sweet Nothings are learned from the start. A Warlock serves one patron: its first skill on a patron's roots devotes it, and the other patron's tab closes ("Devoted to Elmon"; `SkillTab.devotes`, `Unit.devotion()`). Its magical skills use cha where they'd use wis (`Role.swaps`): Hex rolls and hits with cha mod.
+
+- [x] **Sweet Nothings** (tier 1 passive, `warlock`, switched on and off from the hotbar; `Reserves/sweet_nothings.tres`, pink): a reserve of cha mod × rank (none at +0), full as each battle starts. Switched on, one Sweet Nothing pays a Warlock skill's whole cost, whatever it is, when that saves Energy; switched off, nothing is spent from it (it's kept), and skills that need one can't be used (`Unit.spends()`). Higher-tier skills can need one (`Skill.needs`). One back for each foe the Warlock's skills slay, and more as its patron is satisfied.
+- [x] **Chant** (tier 1 passive, shared row): waiting a turn out (resting: no move, no AP spent) primes it: its next rank Sweet Nothing gains each bring one more, and its next Warlock skill is used a rank higher (`Battle._chant()`, `Unit.chant_gains`, `Unit.chant_up`). (?42)
+- [x] **Analysis Dialysis** (Elmon, tier 2 passive, after Sweet Nothings): unmasking a foe it took for friendly or neutral gives 2 Sweet Nothings × rank; each level of concealment its suspicion takes off a hiding foe, 1 × rank (`unmask_gain`, `uncover_gain`; `Battle._dialysis()`).
+- [x] **wauaw** (Elmon, tier 2 active, after Sweet Nothings; 3 AP, cost 2, range rank): on any unit, ally or foe, with no roll, for 3 + 2 × rank turns: more damage taken and more damage dealt, both 10% steps climbing to the middle of its turns and back down (rank I: 10, 20, 30, 20, 10%).
+- [x] **Brainfog** (Elmon, tier 2 curse, after Hex; 4 AP, cost 3, range cha mod + rank): the foe saves, d20 + wis mod + the ranks of the skills it would lose, against d20 + cha mod + rank (the caster wins ties). Failing, the caster's sqrt(rank) - rounded down, up while lucky - of its skill slots are disabled from the right (see Pillar skills) for rank + 1 turns. Passing, it grows suspicious of the caster.
+- [x] **Level Down** (Elmon, tier 5: 4 of Elmon's skills first; 5 AP, cost 4 and a Sweet Nothing, range cha mod + rank; `warlock`, `curse`): rank rolls of d20 + cha mod, each against the higher of the foe's average stat mod + level and its last stand. Each that beats it takes a level off the foe, for as many turns (rank − misses). The curse is easy to cleanse (×2). Clerics of Luun have it too, without the Sweet Nothing (a skill needs one only from a unit that has them).
+- [x] **Death** (Elmon capstone: 5 of Elmon's skills first; 6 AP, cost 6 and a Sweet Nothing, range cha mod + rank; `dark`, `execute`): the foe's last stand × (HP left / max HP) / rank, against d20 + cha mod (the caster wins ties). Failing, it takes 1 true damage and dies; a heart left, it goes down as usual. Luun Clerics have it too; Luun Paladins will.
+- [x] **Haluca** (Elmon, tier 2, after Hex): as before; a foe that saves now grows a stack of suspicion of the caster.
+- [x] **Hogel is satisfied** by rest: a Hogel Warlock resting a turn out at full HP gets a Sweet Nothing (`SkillTab.satisfied_by`).
+- [x] **Humble** (Hogel, tier 1 active, `curse`; 2 AP, cost 1; range rank − 1, so rank I is on itself): caps a unit's max HP at its HP now less 1% of its max, for rank × 4 × (1 − the share cut) turns, at least 1 - the less it cuts, the longer it holds (`Battle._humble()`). On itself at full HP, with Hogel's rest: a Sweet Nothing a turn. (?45)
+- [x] **Gasp** (Hogel, tier 1 active, `light`, `curse`; 2 AP, cost 1; range cha itself + rank: `Skill.radius_stat`): 1 light curse damage. Easy to hit: the better of two d20s (`Skill.advantage`), + rank (`Skill.roll_per_rank`).
+- [x] **Breathtaking** (Hogel, tier 2 passive, after Gasp): its curses that land (effects put on, or damage) give the target a stack of **Asphyxia**: 1% × rank of its max HP gone a stack (`Unit.refit()`), holding for 1 + rank of its turns after the last, then falling a stack a turn (`Battle._choke()`).
+- [x] **Irradiate** (Hogel, tier 3 passive, after Breathtaking): an offensive light-damage skill whose roll beats Defense deals the overage as more light damage, up to rank + cha mod.
+
+## Rogue and Bard
+
+Stub trees from skills that exist, each with its own tab and **Calling: Freedom** beside it. (?19)
+- [x] **Rogue** (`Roles/rogue.tres`; dex 15; "Tradefolk"). Starts with Strike and Move +1. Its own tab: Strike; **Blade** (martial): Wary. Calling: Freedom: centre **Hide** (tier 1 here); core **Move +1**, **Darkvision**, **Self-evaluation**, **First Aid**; **Shadow** (specialist): Meander, then Clever Disguise and Brood; **Traps** (specialist): Snare, then Hazard Expert; **Eyes** (specialist): Observe, then Eyes Forward and Special Eyes.
+- [x] **Bard** (`Roles/bard.tres`; cha 15; "Tradefolk"). Starts with Strike and Meander. Its own tab: Strike; **Song** (magical): Sola, then Astera. Calling: Freedom: centre **Clever Disguise** (tier 1 here); core **Meander**, **Move +1**, **Self-evaluation**, **First Aid**; **Performance** (specialist): Tonefoolery; Glamour, then Manifest; Personify, then Embellish and Brood, then Conspire. Eyes Forward and Special Eyes are on its Freedom core.
+
+## Cleric
+
+`Roles/cleric.tres`: wis 15, "Caster", `Units/Cleric.png` (a placeholder: u.u over <> over / \); on the entry screen and among the Wayfarers. A **Divinity** tab per god, one god per Cleric (`SkillTab.god`, `devotes`: its first skill on a god's roots devotes it, and it prays to that god: `Unit.deity()`), each opening with Pray and Renew (learned from the start). Its magical skills use wis where they'd use cha (`Role.swaps`). Robe, Staff, Energy Potion.
+- **Luun**: Level Down (after Pray), then Death.
+- **Sol**, a path of fire, each after the one before (Flamecharmed after Igna). Fire damage is tagged `fire`; burning ground is also `environmental`. (?46)
+- [x] **Igna** (I; also the Adventurer's): on an ally, int mod (a Cleric: wis) + rank skill AP at once; on a foe, 1d4 + int mod.
+- [x] **Flamewall** (II; 4 AP, cost 3, range rank, on a tile): sets the tile, and rank tiles to either side of it across the caster's line to it, on fire for rank of the caster's side's turns. Entering a burning tile, or ending a turn on one, deals 1d8 + the caster's wis mod (`Battle.flames`, `Battle._flame()`). Someone standing there makes a dex check against the caster's d20 + wis mod to get clear as it goes up.
+- [x] **Flamecharmed** (II, passive): 25% × rank fire mitigation. From rank V, an ally's fire heals it for 25% × (rank − 4) of what it deals.
+- [x] **Inner Fire** (III; 2 AP, cost 2, on itself, rank turns): +10% × rank AP and damage dealt; loses 5% × rank of max HP as each turn starts.
+- [x] **Burning Bag** (IV; 2 AP, cost 2): takes the one Burning Bag from wherever it is (another unit, the stash) and puts it on at the skill's rank: rank more untyped skill slots, which burn; the wearer burns for 10% × rank of max HP as its turns start, and again for each skill used from them (`Unit.burning_slots()`, `Battle._burn()`).
+- [x] **Flamecharm** (V; 3 AP, cost 3, rank turns): 20% × rank fire mitigation on itself and its allies within rank tiles; from rank V, only the nearest rank of them, the mitigation split among them (`Battle._aura()`).
+- [x] **Cindering** (VI; 4 AP, cost 4, range wis mod + rank, rolls to hit): the foe's rightmost rank hotbar slots burn for rank turns: each skill used from one burns it for 10% × rank of max HP + the caster's wis mod.
+- [x] **Level Up** (VII; 5 AP, 5 cost, range wis mod + rank, on an ally): it gains rank levels for rank turns. Exceptionally easy to remove: dispelling takes 4 of its ranks for each spent.
+- [x] **Flamedance** (VIII; 2 AP, cost 3): only as its turn opens (before it moves or spends AP). It and its allies within rank tiles take no environmental fire, and deal 10% × rank more fire, until their next turn ends.
+- [x] **Solar** (IX, capstone; 8 AP, cost 8, on a tile): a 45° cone (+ 15° a rank past I), wis mod tiles long: d20 + the caster's wis score in fire to everyone in it, the caster too.
+
+## The general trees
+
+Four trees beside every class's own, on the far right of the skills screen (`Trees/general*.tres`; `Unit.general_trees()`), their tiers set on their branches (`Branch.tier`). Which a class gets: `Role.general` (Adventurer all; Fighter Martial; Paladin Martial, Caster; Rogue Specialist; Bard Specialist, Caster; Wizard, Warlock, Cleric Caster).
+
+**General** (dark gray): Strike (tier 0); Generalist, Martialist, Journeyman, Thaumaturgist (I); Strike! (VII).
+- [x] **Generalist** (Foundation): General-tree skills up to its rank in tier, without needing 3 of that tier. **Martialist**, **Journeyman**, **Thaumaturgist**: the same for the Martial, Specialist and Caster trees, opening them to a class that lacks them a tier lower (Journeyman III on a Fighter: up to tier 2) - but two tiers sooner for a class with the Specialist tree (`Unit.SPECIALIST_EDGE`: Martialist I on a Rogue reaches tier 2). (?51) Skills learned through one stop working while it's gone or disabled (`Unit.waived`, `Unit.lapsed()`).
+- [x] **Strike!** (VII): landing 12 Strike hits in one use strikes again at once (a strike, bowled); from rank II with rank − 1 more hits. A reuse can trigger again, up to three in a row; 36 hits in a row is a **Perfect**: 300 HP healed at once (`Battle.PERFECT_HITS`, `Battle.PERFECT_HEAL`, the `perfect` signal, logged). (?52)
+
+**Martial** (red): Brutal Strike (II), Strike Out (IV), the Bracing passives (V), Brutal Mastery (VII).
+- [x] **Brutal Strike** (low tier, exclusive): Strike becomes Brutal Strike, a single attack adding its weapon's rank + rank to the damage. (?50)
+- [x] **Strike Out** (mid): its first rank hits take no penalty, and a miss among them doesn't end the attacks.
+- [x] **Brutal Mastery** (high, stacks): Strike's first hit adds its weapon's rank + rank.
+
+**Specialist** (green): Synergy, Decisive Strike (II), Striking Features (IV), Agility and Balanced Bracing (V), Decisive Mastery (VII).
+- [x] **Decisive Strike** (low tier, exclusive): Strike becomes Decisive Strike. After a critical, the rest of its hits land; damage by the higher of dex and str mod.
+- [x] **Striking Features** (mid): its first rank hits add cha mod, up to rank; Strike may also use cha for its attack mod if higher (?189).
+- [x] **Decisive Mastery** (high, stacks): the same as Decisive Strike, as a passive.
+- [x] **Kick** (Martial, tier 1; 4 AP, 1 Energy; `Behaviours/kick.gd`): an attack at rank range for 1d4 + str, and what the tile at the kicker's feet does, rank turns: a trap springs on the foe (and stays, revealed); water Soaks (movement -rank); leaves, sand or debris Blind (offensive checks -rank); a hole, edge or off-map tile pushes rank tiles; bare ground is plain damage; adjacent, a 1-tile push. (?88)
+- [x] **Strategist** and **Tactician** (tier 3, passives, beside Discipline; the usual point curve, no rank cap): rank more allies a turn, rank more orders per ally. Only the Adventurer, Bard, Rogue and Ranger have this tree natively. (?86)
+
+**Caster** (light purple): Elemental Strike (II), Record Striker (IV), Meditative and Invigorating Bracing (V), Elemental Mastery (VII).
+- [x] **Elemental Strike** (low tier, exclusive; active, 2 AP, cost 2): pick an element (fire, water, earth, air, light, dark: a menu as it's used); the next rank Strikes become <Element>strike (Firestrike), dealing it, the first hit of each + the highest mental mod (`Battle.imbue()`).
+- [x] **Record Striker** (mid, `curse`): its first rank hits each try a curse - the foe's wis against the striker's highest mental mod; failing, the skill in its leftmost slot goes a rank down for its next turn. (?50)
+- [x] **Elemental Mastery** (high, stacks): Strike always carries the unit's element (its last pick, else its god's, else fire), the first hit + its highest mental mod.
+
+The Bracing passives (V; `brace` effects, `Unit.check_bonus()`) add equipped armor ranks to checks, up to their rank, while armor is worn to effect; each carries its gang's lore (`Skill.lore`). (?48)
+- [x] **Agility Bracing** (Martial, Specialist): light armor ranks to dex rolls.
+- [x] **Balanced Bracing** (Martial, Specialist): medium armor ranks to defensive str and dex rolls.
+- [x] **Vanguard Bracing** (Martial): medium armor ranks to offensive str and dex rolls.
+- [x] **Combat Bracing** (Martial): heavy armor ranks to str rolls.
+- [x] **Meditative Bracing** (Caster): armor ranks to defensive mental (int, wis, cha) checks.
+- [x] **Invigorating Bracing** (Caster): half armor ranks to offensive mental checks; rank more skill AP a turn while armored.
+- Checks that take bracing: attack rolls (offensive, in the stat used), saves (the caster offensive, the foe defensive), drags, breaking free, Sing's resist, Flamewall's dodge (dex) and its caster (wis), Level Down's, Death's and Record Striker's rolls. Not yet: investigations, hiding, last stands.
+- [x] **Synergy** (Specialist, II; also on the Human tree): see Vision. It reaches as far as the leader's command range over its party (2 × (cha mod + command)); a Quartz Ring makes that endless.
+
+## Paladin
+
+- [x] **Pray** (`Skills/pray.tres`; 2 AP, 2 Energy, on itself, or for Drael on an ally within rank tiles: `Skill.on_self()`; `Battle.pray()`): by the god the unit worships (`Unit.god`, else its class's: `Role.god`, Paladin: Eros; `Unit.GODS` with domains).
+  - Ramut: its side waits rank turns less for the Ire.
+  - Eros: up to rank units within rank tiles that can see it, nearest first, lose a stack of suspicion of it.
+  - Sol: darkness zones lose every tile within rank tiles (any side's, Luun's included).
+  - Urlo: its side's units within rank tiles, nearest first (itself first), get unenchanted items enchanted, weapon then armor, rank items in all (`Unit.enchant()`): what the item becomes enchanted (`Item.enchanted_as`), else a copy at `enchant` 1. Armor: +1 Defense; a weapon: +1 damage on strength attacks (`Unit.weapon_bonus()`). There are no trinkets or item skills yet.
+  - Luun: the ground within rank tiles under dark concealment 1 for rank turns, hiding only its side's units from the rest (`Zone.allied`); the ground isn't shrouded.
+  - Drael: `Battle.cleanse()`: debuffs (effects that hurt their holder) lose ranks, highest first, rank ranks in all; one at 0 is gone. Ramut's Ire isn't lifted.
+  - Vetruvis: every tile within rank tiles becomes its side's disturbed earth (`Battle.earthworks`) for rank of its side's turns: entering costs enemies ×1.5 (`Battle.wading()`). Drawn as a furrowed brown wash.
+  - *Now:* on the Paladin's Divinity root, open from the start.
+- [x] **Coordinate** (Idealism root · active · 1 AP · 3 Energy · on itself; `Skills/coordinate.tres`): links the caster with its teammates within its cha mod in tiles (at least 1) and its leader, wherever it is, until the end of its side's next turn. Linked, each makes out units and tiles as well as the best of them does, up to rank levels better (`Battle.read()`): with the player's view being the leader's, it's how the rest of a side's sight reaches the player. *Now:* opens the Paladin's Idealism root.
+- [x] **Smite** (tier 3: two skills learned first; active · 5 AP · 4 cost · adjacent, `divine`, `cha`; `Skills/smite.tres`): 2d12 / 3d12 / 4d12 + cha mod at ranks I / III / V, with an attack roll. Its damage carries the tag of the caster's god (`Skill.god_tag`, `Unit.GOD_TAGS`), and on a hit its god adds (`Battle._smite()`):
+  - **Eros** (love): used on an ally, it heals what it would deal, overhealing what's left over at rank × 20%.
+  - **Luun** (dark): a foe left at rank × 5% of its max HP or less dies (an execute).
+  - **Sol** (fire): it burns again as its side's turn ends, for 20% × rank of the damage, pure fire.
+  - **Urlo** (energy): drains Energy (or Power) first, from rank II (rank − 1) × 20% of what's left going on to HP; takes rank enchantments off its items, and enchants the caster's with what it didn't find.
+  - **Drael** (water): takes rank ranks of its buffs off (`Battle.dispel()`).
+  - **Vetruvis** (earth): radiates earth damage to everyone within rank tiles but the caster, the damage / (tiles away + 1).
+  - **Ramut** (physical): nothing more.
+  - *Now:* on the Paladin's Divinity root (still tier 3).
+- [x] **Renew** (tier 1 active, `divine`, `wis`; Divinity): restores wis mod HP (at least 1), and the recipient gets rank AP back. Against wounds it counts rank × rank: Renew II clears wounds up to rank 4. *Now:* on the Paladin's Divinity root (3 AP, 2 Energy, range 2); also on the Adventurer's Magic root.
+- [x] The **Adventurer** starts at 16 in every stat - a sandbox for the attribute-driven Actualization abilities (respec, Hardy, Self-reflection) to come.
+- [x] **Hardy** (Actualization passive; `Skills/hardy.tres`): con mod counts (1 + rank) times in the HP each level brings. Alabaster borrows it at I: 30 + 25 = 55 max HP. Its home tree waits on the Actualization tree (?57).
+- [x] **Judgement** (Paladin; Cleric, Sol): an attack within rank tiles, 1d4 + wis mod. On a hit, **Shackles** of the rank's weight replace the target's trinket (kept till they come off), locked for rank turns by a Shackled debuff (cleansing unlocks them). Locked: pick (approachable, dex) or pry (unfair, str), each try their rank in AP. Unlocked: off for their rank in AP. (?65 ?66)
+- [x] **Wildfire** (Cleric, Sol, after Solar): evadable at difficult; a 60 degree cone, intense (2.5 x rank) tiles long; severe ((3 x rank)d6 + wis) fire to every unit in it but the caster; units carrying earth (`Unit.has_tag()`) dodge at impossible and are hit as a crit; it burns leaves in its path. (?64)
+- [x] **The Paladin's tree** (`Roles/paladin.tres`): **Divinity: Eros** (magical: Rejuvinate, Pray, Renew and Smite open, Send Off, Lovely Caster and Impassioned Fighter after Rejuvinate), **Idealism: Chivalry** (specialist: Coordinate, then Final Act and Gallantry, stubs waiting on Reactions) and **Prowess: Protector** (the Fighter's root, `Trees/protector.tres`). Favour, Lightvision and Judgement stay on its core ring. (?12 ?67)
+- [x] **Rejuvinate** (Divinity root; also the Adventurer's core ring · 3 AP · 5 Energy · range rank · `divine`, `cha`, `love`, `magical`; `Skills/rejuvinate.tres`): regeneration for 3 turns of 10% + 5% × rank of the recipient's max HP, + the caster's cha mod in HP (`regen`, `regen_hp`). Its strength falls 5% a tile past the first between caster and target, set as it's cast (`Skill.decays`, `Battle.decay()`, `Unit.Applied.scale`), none when paid wholly with mana; the cha mod is fixed then too (`Effect.by_mod`). (?12)
+- [x] **Send Off** (after Rejuvinate · 3 AP · 3 Energy · adjacent, ally or foe; `Skills/send_off.tres`): teleports the unit cha mod + rank tiles straight away from the caster, to the furthest free tile on that line (`Skill.sends`, `Battle.send()`, `Battle.place()`). A foe gets an attack roll first. (?12)
+- [x] **Lovely Caster** (after Rejuvinate, passive; the `lovely` stat; `Battle._lovely()`): a `love` skill used on an adjacent ally - one tagged love, or an Eros Paladin's Smite - also heals it 10% × rank of its max HP at once.
+- [x] **Impassioned Fighter** (after Rejuvinate, passive; the `impassioned` stat; `Battle.passion()`): + rank to a skill's primary mod used on an adjacent unit - its attack roll, its contest or save, and damage and heals that scale on that stat. Strike's chain takes it too.
+- [x] **The Berserker**: Reckless Abandon (Offender, Unsupportive, Indefensible; skipping defensive and supportive steps), Affinity's live rank curves, three Prowess tabs. (?58)
+- [x] **Actualization** (the Adventurer's Path tab): Self-reflection, Hardy, Meditate and its respec. (?57)
+
+## Fighter
+
+`Roles/fighter.tres`: three martial roots - **Protector** (`Trees/protector.tres`, also the Paladin's Prowess), **Vanguard** and **Slayer** - with Wary on the core ring. Each opens on its active; unbuilt skills are stubs (Interject, Snapping Turtle, Warcry, Inspire, Sundering, Silent Strike, Gank). Protector's capstone is a Basic Martial Skill Slot +1. (?67)
+
+- [x] **Shields Up!** (Protector root · active · 3 AP · aimed at a tile within 8; `Skills/shields_up.tres`; `Skill.guards`, `Battle._guard()`): the unit faces the tile (`Unit.guard`); until its next turn is through, damage from a source whose tile lies within the 90° cone that way is cut by 20% + 10% × rank (the `guard` stat; `Unit.guarding()`, `Unit.hit()`). A DEFEND order faces the nearest foe it makes out (`AI._defend()`).
+- [x] **Obstruct** (after Shields Up!, passive; the `obstruct` stat; `Battle.obstruction()`): a foe entering a tile beside it pays the larger of half the size penalty of moving through it and half its con mod / 10 more movement, × (1 + 25% × rank). Its allies pass freely. Walks, step costs and the AI's expected walks all count it.
+- [x] **Interdict** (after Shields Up! · 3 AP · 2 Energy · adjacent; `Skills/interdict.tres`): a str save (d20 + str mod + rank against the foe's d20 + str mod). Won: **Attack Down**, -20% × rank damage dealt, and the caster's str mod off the foe's general AP (`base_ap`, scaled by `Effect.by_mod`), for one of its turns.
+- [x] **Turtle Tactics** (after Shields Up!, passive; the `check` effect, `Unit.check_bonus()`): +2 × rank to its defensive checks and -rank to its offensive ones - attack rolls among them - armor or not.
+- [x] **Jugular** (Slayer root · 4 AP · 2 Energy · adjacent · 1d6 + str mod, its weapon's blow; `Skills/jugular.tres`): an attack at disadvantage (`Skill.disadvantage`), + (rank - 1) to the roll (`roll_per_rank`, `roll_bonus`); a hit is a critical (`sure_crit`). A natural 20 casts it again at once on the same foe, free (`recast_on_crit`), up to 20 in a row.
+
+## Downed: Tenacity and Grudge (2026-11-09)
+
+The rule is in `docs/done/rules.md`.
+- [x] **Tenacity** (Adventurer, Fighter; passive; beside Wary): at 0 HP it lingers downed, helpless, for rank rounds. (?85)
+- [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`, open from the start; a Paladin borrowing Fury sees it locked): downed, it keeps acting for rank rounds. (?85)
+- [x] The Adventurer's wheel on the skills screen is 37 skills (was 36).
+
+## Clairvoyance (2026-11-09)
+
+- [x] **Clairvoyance** (`Skills/clairvoyance.tres`; magical, wis; 3 AP, 3 cost, self only; flag `pings`): channeled. The caster's side senses every unseen foe within wisdom + rank, location only, and the caster builds suspicion of each tile; each of the caster's turn ends it holds, the pings update and its rank rises by 1. Moving doesn't end it; casting it again does, free. On the Wizard's Arcane root, the Mage's Refinement root and Luun's tree after Pray. (?89)
+
+## Jam, Stamina and Move ?? (2026-11-10)
+
+- [x] **Jam** (`Skills/jam.tres`, `Behaviours/jam.gd`; martial, dex; 3 AP, 1 Energy, reach 1; 1d4 + dex mod, 1d6 from rank III): a physical blunt hit that interrupts the foe, then leaves it **Jammed ??** until its next turn is over (`Effects/jammed.tres`, stat `jammed`): no dodge, no guard, no obstruction. On the Rogue's Blade root beside Wary and on the Slayer tree beside Jugular, so the Fighter and Berserker get it too. It also drains the target's Focus by the HP lost. `jam_test.gd`. (?97, ?100)
+- [x] **Stamina** (`Skills/stamina.tres`; passive, martial and specialist): the Stamina reserve and `stamina` 1 a rank, cutting its holder's exhaustion counts by rank + 1. Open from the start on the Rogue's Blade, the Ranger's Scout, Fury and Slayer roots (a Fighter can learn it through Slayer). (?98)
+- [x] **Focus** (2026-11-11; `Skills/focus.tres`, `Reserves/focus.tres`, `Unit.focus_bonus()`; passive, specialist and magical, human): a reserve of (wis mod + 2) x rank that starts empty, builds half its max on each resting turn, pays first for a ranged attack and gives + rank to that roll when it empties. On the Ranger's Bounty root and the Mage's Commitment root; the stub there is now Fixation ??. `focus_test.gd`. (?97, ?100)
+- [x] **Move ??** (`Skills/move.tres`, `Behaviours/move.gd`; base General tree, tier 1; 2 AP, 1 cost, on itself, tag `stamina`): rank more tiles this turn, 2 x rank if paid with Stamina. `move_test.gd`. (?98)
+
+## Bandwagon, Molothrus and Blinthe (2026-11-10)
+
+- [x] **Bandwagon** (`Skills/bandwagon.tres`, `Behaviours/bandwagon.gd`; passive, specialist, cha): word of suspicion of its holder takes a cha check against the standard rung at its rank + the holder's cha mod, while no more than rank + 1 foes suspect it. (?94)
+- [x] **Molothrus** (`Skills/molothrus.tres`, `Behaviours/molothrus.gd`; passive, specialist, cha): those it fools within rank tiles give up rank x 10% of their heals to it and take rank x 20% of its hits, shared; its persona goes by Precious. (?94)
+- [x] **Blinthe** (`Scenes/blinthe.tscn`, `Factions/unaligned.tres`): a level 16 Bard, his own side, made with `Util/unit.py` as the example of a unit with a bio. `blinthe_test.gd`. (?94)
+
+## Energy Transfer and the Sorcerer ?? (2026-11-11)
+
+- [x] **Energy Transfer** (`Skills/energy_transfer.tres`, `Behaviours/energy_transfer.gd`; caster, int; 3 AP, 1 Energy, range 4; 1d4, 1d6 from III): a siphoning `energy` attack; the caster gains what it drained as Energy, the rest as Overcharge at rank x 20% for rank turns. General Caster tree, tier 2. (?117)
+- [x] **Sorcerer** (`Roles/sorcerer.tres`, `Trees/stellar_soul.tres`, `Units/Sorcerer.png` placeholder): Powerful (root, so energy grants arrive as Power), Energy Missile and Starsap; int 10, cha 15, no Mana, robe, staff, Energy Potion, god Urlo. Energy Missile and Powerful are now magical by kind. `sorcerer_test.gd`. (?117)
+
+## Trickster and Illusion (2026-11-11)
+
+- [x] **Trickster** (`Roles/rogue.tres` tab; `Trees/showmanship.tres`, `deception.tres`, `legerdemain.tres`): Flourish, Stage Presence, Showstopper; Vanishing Act, Double Bluff, Illusionist; Phantasm, Switcheroo (`Behaviours/switcheroo.gd`), Prestidigitation. `trickster_test.gd` and a test per skill. (?109)
+- [x] **Illusionist and the Illusion school** (`Behaviours/illusionist.gd`, `Trees/illusion.tres`; a choice on the Rogue, a school of the Mage's): Blur, Disguise Self, Mirror Image, Phantasmal Force, Invisibility; the first rank spells free of the guest penalty. `illusionist_test.gd`. (?110)
+
+## Tapped, Stun, Mindless Fury, Drone (2026-11-14)
+
+- [x] **Stun** (`Skills/stun.tres`; Brawn tree after Crushing Blow, Paladin and Berserker; 4 AP, 2 Energy, reach 1, 1d6 + str, -5 to hit): on a failed difficult con save, Stunned (`Effects/stunned.tres`: stat `helpless`, a wound, `ease` 2) for rank turns, interrupting what it stops. `stun_test.gd`. (?119)
+- [x] **Mindless Fury** (`Skills/mindless_fury.tres`; Fury, after Grudge and Frenzy, Berserker only): rank skill uses a turn while helpless, mental mods as 1. `mindless_fury_test.gd`. (?119)
+- [x] **Drone** (`Skills/drone.tres`; general Caster tier 4): past both command caps without tapping, mental mods capped at its rank. `drone_test.gd`. (?119)
+
+## Telepathy, Word to the Wise, Pike, Meditate, Discipline (2026-11-14)
+
+- [x] **Telepathy** (`Skills/telepathy.tres`; general Caster tier 3, passive): within rank tiles an ally counts rank in place of the leader's cha; the first one ordered while rank beats cha mod is bound for the turn. `telepathy_test.gd`. (?120)
+- [x] **Word to the Wise** (`Skills/word_to_the_wise.tres`; general Specialist tier 3, passive): commanding by wis, bounded by min(leader wis mod, ally wis mod + rank). `word_to_the_wise_test.gd`. (?120)
+- [x] **Meditate**: a zero-sum trade of up to rank stat points a use, nothing below 1 (`Unit.respec_by()`). (?57, ?120)
+- [x] **Discipline**: burns all AP left on a curve, P = AP ^ (rank / (rank + 1)): to hit, damage by stat mod, crit faces, Focus back (`Battle.discipline_curve()`). (?80, ?120)
+- [x] **Pike** (`Scenes/pike.tscn`, `Units/Pike.png` placeholder; `Battle.FORMS.pike`): Thalassic's beast and a level 2 unit; swims by the `aquatic` rule. `pike_test.gd`, `aquatic_test.gd`. (?82, ?120)
+
+## Gods and the Ranger's capstones (2026-11-14)
+
+- [x] **One god system** (`Scripts/God.gd`, `Gods/<id>.tres`, `Gods/tabs/`; `TreeChoice` kinds, gods, grants, burns, after; `Unit.offered()`, `picks()`, `burnable()`, `burned()`): a god or patron offers its own tree and a pool of tabs; Cleric (God, then Domain granted), Paladin (Prowess, Domain, Flex), Warlock (Patron, then 2 Flex after Bargaining, with burns). `god_slots_test.gd`. (?65, ?122)
+- [x] **Efficiency stacks** (`Unit.efficiency()`, `Behaviours/efficiency.gd`): +1 Affinity on a tree up to a tier; **Bargaining** (t5) and **Acceptance** (t10) on the Warlock, max rank 5, stacking. `bargaining_test.gd`, `acceptance_test.gd`. (?65, ?122)
+- [x] **Ranger capstones** Quarry (opens Prowess: Slayer), Survivalist (Survival ??, one stub, Forage) and Wildcaller (opens Nature): each a passive efficiency stack on its tree. `quarry_test.gd`, `survivalist_test.gd`, `wildcaller_test.gd`, `forage_test.gd`. (?81, ?122)
+
+## Recovery and rescue (2026-11-14)
+
+- [x] **Energize** (`Skills/energize.tres`, `Behaviours/energize.gd`; general tier 4, 0 Energy, 2 AP a pair, up to rank pairs): 1 Energy a pair, the rest Overcharge. `energize_test.gd`. (?117, ?121)
+- [x] **Heal** and **Megaheal** (`Skills/heal.tres`, `megaheal.tres`, `Behaviours/heal.gd`; Eros, after Rejuvinate / Heal; wis): the dice x moderate / severe + wis mod + rank. `megaheal_test.gd`. (?117, ?121)
+- [x] **Resuscitate** (`Skills/resuscitate.tres`; general Specialist tier 4; 3 AP, 2 Energy, reach 1): a Downed ally comes back with rank x 5% of its max HP; `Behaviour.fits()` filters its target. `resuscitate_test.gd`. (?85, ?124)
+- [x] **Intervention** (`Skills/intervention.tres`; Eros after Renew; 3 AP, 2 Energy): Bless for rank turns: regen while Downed, `hale` (executes read full HP), a check bonus tagged `taps` and `execute`. `intervention_test.gd`, `hale_test.gd`. (?85, ?124)
+- [x] **Borrowed Time** (`Skills/borrowed_time.tres`; Wizard Arcane after Blink; passive `defer`): death put off rank rounds, harms replayed, an execute check at the end. `borrowed_time_test.gd`. (?85, ?124)
+
+## Slayer skills (2026-11-14)
+
+Plan and calls: `docs/plans/slayer.md`. `slayer_test` and one test per skill. (?126)
+
+- [x] **Gank** (`Skills/gank.tres`; after Jugular; 4 AP, 2 Energy): 1d10 + str at reach 1, only with an ally within rank tiles of the target; disadvantage unless it ambushes. `gank_test.gd`. Replaces the stub.
+- [x] **Peel** (passive; beside Jam): moves toward a foe near an engaged ally are cheaper, at most half a step, for rank steps a turn; the HUD's reach and preview agree (`Behaviour.step_cost`). `peel_test.gd`.
+- [x] **Poach** (3 AP, 2 Energy; Rangers too): 1d6 + dex; advantage and half the cost back on a bloodied target it never aimed at; its target neutralized, Energy, Focus and Stamina back. `poach_test.gd`.
+- [x] **Sutemi** and **Spike** (after Jugular): a lunge up to rank tiles then 1d10 + str, Off Balance a Defense per tile; 1d10 + str against Defense plus the target's unspent AP, +rank damage. `sutemi_test.gd`, `spike_test.gd`.
+- [x] **Hitch** and **Bludgeon** (Hitch beside Jam; Bludgeon after it): 1d4 + str then a grapple contest, Hitched ?? towing rank tiles; 1d8 + str, +1d4 blunt, Winded. `hitch_test.gd`, `bludgeon_test.gd`.
+- [x] **Slam Jam** (after Jam): 1d10 + str, a contest to interrupt as Jam does, a hit refunds 1/(rank + 2) of its cost. `slam_jam_test.gd`.
+- [x] **Off Balance, Winded, Hitched ??** (`Effects/off_balance.tres`, `winded.tres`, `hitched.tres`).
+
+## Warcry and reactions (2026-11-14)
+
+- [x] **Warcry** (Vanguard; `Behaviours/warcry.gd`, `Effects/charge.tres`, `charge_ap.tres`): lays Charge! and Routed! marks on the lines toward the nearest rank foes. `warcry_test.gd`. (?139)
+- [x] **Interject** (Protector, after Shields Up!), **Snapping Turtle** (after Turtle Tactics), **Final Act** and **Gallantry** (Chivalry, after Coordinate): reactions through `Behaviour.react`. (?140)
+- [x] **Price rebates** (`Behaviour.rebate()`, `Battle.rebate()`, `Unit.pay_for(s, cut)`): Poach's and Slam Jam's discounts show in the forecast and are paid beforehand. Plan: `docs/plans/price-refunds.md`. `poach_test`. (?151)
+- [x] **Skeleton and Mortis Arcalís** (`Skills/skeleton.tres`, `Scenes/skeleton.tscn`, `Trees/mortis_arcalis.tres`, `Behaviours/summon_per_rank.gd`): plan `docs/plans/r-skeleton.md`. `summon_test`. (?181)
+- [x] **Backstab, Glancing Strike, Heavy Strike** (`Skills/backstab.tres`, `glancing_strike.tres`, `heavy_strike.tres`, `Behaviours/heavy_strike.gd`): plan `docs/plans/w2-glance.md`. `check_test`, `heavy_strike_test`. (?186)
+- [x] **Striking Features and Striking Intellect** (`Skills/striking_features.tres`, `striking_intellect.tres`, Effect stat `attack_stat`, `Unit.attack_stat()`, `attack_mod()`; Striking Intellect on the Caster general tree, tier 4): cha or int for Strike's attack mod if higher. Plan: `docs/plans/w2-striking.md`. `general_test.test_attack_stat`. (?189)
+- [x] **Concrete skills parameterized** (Favour, Hazard Expert, Move +1, the three Skill Slot +1, Final Act, Gallantry, Stonegift: `per_rank`, `Unit._grants()`, `Reaction` `bonus`): 29 ineligible became 22. Plan: `docs/plans/w2-param.md`. `param_test`. (?191)
+- [x] **Chaser** (Rogue Blade root, after Backstab; `Skills/chaser.tres`, `Behaviours/chaser.gd`, reaction trigger `crit`): plan `docs/plans/w3-strike.md`. `chaser_test`. Glancing Strike counts per skill use and Heavy Strike pools any skill's use. (?193)
+- [x] **Skill Slot +1** (Adventurer centre, a trait adding one hotbar slot): plan `docs/plans/w3-traits.md`. (?194, ?3)
+- [x] **Wake and Rake and summoned AP** (`Skills/wake_and_rake.tres`, `Behaviour.summon_ap`, tag `summon`; Skeleton keeps rank + cast mod AP): plan `docs/plans/w3-skeleton.md`. `summon_test`. (?197)
+- [x] **Cram** (`Skills/cram.tres`, Effect stat `bonus_slots`, `Unit.bonus_slots()`, `bonus_off()`, `slot_penalty()`; on the Student tree, tier 7, placed there by the floater): Caster Skill Slots 1 + rank, converts rank slots to caster bonus slots, Burnout penalty times rank. Plan: `docs/plans/w3-cram.md`. `equip_test.test_cram`. (?198)
+- [x] **Student tree composed into the Caster general tree** (`Trees/student.tres`, `SkillRoot.includes`, `role.py include`): plan `docs/plans/w3-student.md`. `general_test.test_included_trees`. (?199)
+- [x] **Power Armor and Scrap Plating** (`Skills/power_armor.tres`, `scrap_plating.tres`, `Behaviours/power_armor.gd`, `scrap_plating.gd`, trees Abjuration and Smith): plan `docs/plans/w3-armor.md`. `plating_test`. (?200)
+- [x] **Chaser rank chases, strike-only Heavy and Glancing Strike** (tag `strike`, `Behaviour.Volley.chain`): plan `docs/plans/w4-friction.md`. `chaser_test`, `heavy_strike_test`, `check_test`. (?202)
+- [x] **Student for Mages and the Journeyman tree** (`Trees/general_student.tres`, `general_journeyman.tres`, `journeyman.tres`, `SkillTab.grant`, `Unit.grant_tree()`, a `check` Effect with `per_mod`; `skill.py check_equipment`): plan `docs/plans/w5-tree.md`. `general_test`, `lent_test`. (?208)
+- [x] **Meathead** (the old `physical_intelligence` skill renamed by the user; no `??`). (?204, ?208)
+- [x] **String Theory, Conductor, Symphony (Bard)** (`Skills/string_theory`, `conductor`, `symphony_bard`, `Effects/cadence.tres`; id clash with the Wizard's `symphony`): plan `docs/plans/w7-bard.md`. `symphony_bard_test`. (?220)
+- [x] **Surveyor, Evaluator, Inquisitor** (Specialist general tier 2; offered to Fighter, Druid, Cleric, Paladin): plan `docs/plans/w7-prep.md`. `prep_test`. (?222)

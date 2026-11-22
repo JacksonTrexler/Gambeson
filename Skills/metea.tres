@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="2_tier"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("2_tier")
+dice = Vector2i(1, 12)
+stat = &"intelligence"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Metea"
+tags = Array[StringName]([&"earth", &"fire", &"magical", &"int"])
+ap = 6.0
+cost = 5
+radius = 5.0
+radius_per_rank = 1.0
+tiers = Array[ExtResource("2_tier")]([SubResource("Tier_1")])
+channel = true
+strike_ap = 2.0
+strike_cost = 1
+blast = 1.0
+dice_per_rank = true

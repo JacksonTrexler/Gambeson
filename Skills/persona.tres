@@ -11,7 +11,10 @@ per_rank = true
 
 [resource]
 script = ExtResource("1_script")
-name = "Persona"
+name = "Personify"
 passive = true
 toggle = true
+hybrid = true
+ap = 2.0
+tags = Array[StringName]([&"specialist", &"cha"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_persona")])

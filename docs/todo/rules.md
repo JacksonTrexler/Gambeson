@@ -1,0 +1,14 @@
+# Todo: rules
+
+`[ ]` to do · `(?N)` waits on open question N (numbered across all todo files) · *Now:* what the game does today. Done items and decided rules: `docs/done/`. Index: `todo.md`.
+
+**Kept as built unless you say otherwise (moved from todo.md, 2026-11-19):** ?42, 1, 2, 3, 5, 6, 8, 10 to 16, 18 to 21, 29. Each is a call a builder made that you have not reviewed; they stay listed in their files, but nobody keeps asking. Confirmed as built (2026-11-06): ?45 to ?48, ?50 to ?54.
+
+
+1. Attacker-side effects can't take an attack below 1. Can the *defender's* mitigation still reduce it to 0? Earlier wording was "at least 1 damage if they hit and aren't mitigated".
+2. Are the stat caps (con mod martial, int mod magic, cha mod specialist) gone now that typed slots exist? If so, Trade Skills and Grind need new definitions, since both modify those caps.
+5. Attack rolls, as built (each can change):
+    - A natural 20 hits even when the total is short of Defense. Right?
+    - A natural 1 has no special effect. Should it always miss?
+    - Hostile skills without damage roll too, and their effects land only on a hit (Hex's luck penalty). Is that right for Silent Strike-style skills too?
+6. Is the clover slot untyped, like a base slot? (Built that way.)

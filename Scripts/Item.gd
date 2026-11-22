@@ -1,0 +1,322 @@
+class_name Item
+extends Resource
+
+# Something a unit equips in one of its slots (Unit.armor, Unit.weapon, Unit.trinket), or uses up
+# (a consumable: Battle.use_item()). Items come from drops and scenario rewards (Battle.spoils), kept
+# between battles in Game.stash.
+@export var name := ""
+@export_enum("armor", "weapon", "trinket", "consumable") var slot := "armor"
+@export var tags: Array[StringName] = []  # what it is: cloth, enchanted...
+@export var enchant := 0  # enchanted (Pray, to Urlo): armor +1 Defense, a weapon +1 damage to strength attacks
+@export var enchanted_as: Item  # its own enchantment: enchanted, it becomes this instead of taking the +1
+@export var effects: Array[Effect] = []  # on its wearer while it's equipped (Burning Blade: str mod to max HP)
+@export var skills: Array[Skill] = []  # skills its wearer has while it's worn (Unit.granted()): on loan, so they can't be ranked; they rank with the item (skill_rank()) and come off with it. Free by default: no hotbar slot, equipped while worn (an always-on passive greyed beside the bar, anything cast or switched usable there: Unit.link(), ?214)
+@export var optional: Array[Skill] = []  # of `skills`, the ones lent for a slot: they take their hotbar slots like any skill, and aren't put on the bar by themselves - its wearer slots them or not (the user's robe lending Igna as an optional slot-in skill). The flag is on the link, not the skill (Unit.link())
+@export var requires := &""  # it can only be worn with a positive mod in this (Heart Up-Link: constitution)
+@export var hearts := 0  # extra lives: while it's worn (Heart Up), or given for good as it's used (a Heart)
+@export var hearts_mod := &""  # ...plus its wearer's mod in this, while positive (Heart Up-Link: con mod)
+@export var rank := 1  # how good it is: what its effects scale by (per_rank)
+@export var weight := -1  # what it adds to its wearer's weight while equipped (heft()); -1: by its kind - armor by class (light 0, medium 1, heavy 2), a weapon medium (1) unless tagged light (0) or heavy (2), anything else 0
+@export_enum("common", "uncommon", "rare", "epic", "legendary", "mythic") var rarity := "common"  # how often it turns up as a drop (Loot weights by it): mundane armor common, armor with added effects rare; epic, legendary, mythic: rarer still, and RANK_COST times a common item's resources a rank (worth())
+
+@export_group("Armor")  # sets its wearer's Defense (Unit.armor_defense())
+@export var defense := 0  # the least it gives (Gambeson: 10)
+@export var per_level := 0.0  # or the wearer's level times this, when that's higher (Gambeson: 0.5)
+@export var dex_share := 0.0  # then adds the wearer's dex x this, luck-rounded (Half Plate: dex / 4)
+@export var plus_dex := false  # then adds the wearer's dex mod; armor setting none of these, and of no weight, leaves Defense unarmored (Heart Up-Link)
+@export var full_dex := false  # heavy armor that takes its wearer's whole dex mod all the same (Aethendine)
+@export var no_dex := false  # weighted armor that adds no dex mod to Defense at all (Robe: cloth)
+@export var mind_stat := &""  # ...adds its wearer's mod in this as magical Defense instead (Robe: wisdom)
+@export var eases := &""  # the heavy-armor AP drag it lifts from a wearer strong enough: dexterity (with con: Aethendine) or wisdom (with str: Ignauldron) (Unit.armor_drag())
+@export var heat := 0  # fire it deals its wearer as each of its turns starts, x rank (Ignauldron)
+
+@export_group("Weapon")
+@export var damage_tag := &""  # what its blows deal, for skills that take it (Strike): slash, pierce, blunt (Skill.weapon_tag)
+@export var attack_stats: Array[StringName] = []  # strength attacks may use the best of these instead (Rapier: dexterity)
+@export var refills := 0.0  # a melee hit gives back (gross damage / the target's base stat total) x this x (1 + enchant) of its wielder's max Energy (Power) (Starblade)
+
+@export_group("Trinket")
+@export var spent_defense := false  # adds the hearts its wearer has spent to its Defense (Heart Up)
+@export var revives := 0.0  # a life once a battle: falling, its wearer gets up with this x rank of its max HP - past 100%, more than full - and Resurrection Sickness for rank turns (Red Spinel Ring; Battle._revive())
+@export var restores := &""  # used up from its slot, it gives back hp, energy or reserve (its `reserve`)... (potions; Battle.use_item())
+@export var reserve: Reserve  # ...this one (Mana Potion: mana; Sweet Something: Sweet Nothings)
+@export var restore_share := 0.0  # ...this x rank of its max (potions: 15%)...
+@export var restore_mod := &""  # ...plus the user's mod in this (potions: constitution)...
+@export var restore_flat := 0  # ...plus this (Sweet Something: 1)
+@export var burning := false  # its wearer burns for 10% x rank of its max HP (fire) as its turns start, and again each time it uses a skill in the slots it grants (Burning Bag; Unit.burning_slots())
+@export var empty := false  # used: a potion is emptied rather than used up, and fills again as the battle ends (Battle.refill())
+@export var binding := false  # put on a unit against its will (Shackles: Skill.binds): it can't be taken off for free or swapped out; while Shackled it's locked, after that taking it off costs its rank in AP (Battle.unshackle())
+@export var picks := &""  # it can be lockpicked off: a dex check at this difficulty, at its rank (Shackles: approachable)
+@export var prised := &""  # it can be pried apart: a str check at this difficulty, at its rank (Shackles: unfair - built not to break)
+
+@export_group("Emblem")  # a modifier it puts on its wearer's skills (Modifiers.of()): its rank feeds !RSC (Modifiers.rsc())
+@export var emblem := &""  # a symbol (rho_up, rho_down, sigma_up, sigma_down, lambda_up, lambda_down) or a tag (fire, execute)
+@export var scope := &""  # sigil: the leftmost eligible skill on the hotbar; insignia: every skill; crest: actives; badge: passives
+
+const ICONS := "res://Icons/Items/"  # <item file>.png each: icon()
+static var _icons := {}
+
+# Armor by weight (its tag: light, medium, heavy) shares its basic piece's scaling: Defense the higher of
+# a floor and level x a share, + dex mod x a share (Unit.armor_defense()). Heavy armor also drags at
+# its wearer's dex and wis AP (Unit.armor_drag()).
+const WEIGHTS := {
+	&"light": [10, 0.5, 1.0],  # Gambeson: low level scaling, high dex scaling
+	&"medium": [12, 0.75, 0.5],  # Habergeon: balanced
+	&"heavy": [14, 1.0, 0.25],  # Brigandine: high level scaling, low dex scaling
+}
+const ARMOR_AP := 10  # armor takes this - its wearer's dex mod in AP to put on in battle: hardly worth it mid-fight
+const RARITY_WEIGHT := {"common": 1.0, "uncommon": 0.4, "rare": 0.15, "epic": 0.08, "legendary": 0.05, "mythic": 0.02}  # a drop table's relative pull, before its own weights
+const RANK_COST := {"common": 1.0, "uncommon": 1.5, "rare": 2.0, "epic": 3.0, "legendary": 4.0, "mythic": 5.0}  # the one table: the resources each of an item's ranks takes, against a common item's 1 (rank_cost(), worth()); the user's ruling - a legendary rank costs what four do
+
+
+# "Defense: the higher of 10 and level / 2, + dex mod".
+func describe() -> String:
+	var plus := ", enchanted +%d" % enchant if enchant else ""
+	var lines: PackedStringArray = []
+	match slot:
+		"weapon":
+			lines.append("Weapon" + (": strength attacks may use %s" % " or ".join(attack_stats) if not attack_stats.is_empty() else "") + plus)
+			if refills > 0.0:
+				lines.append("A melee hit gives back Power: damage / the target's base stats x %s of max" % Skill.num(refills * (1 + enchant)))
+		"armor":
+			lines.append(_armor() + plus)
+		"trinket":
+			lines.append("Trinket" + plus)
+		"consumable":
+			lines.append("Used up")
+	if rank_cost() != 1.0:
+		lines.append("%s: a rank takes %sx a common item's resources" % [rarity.capitalize(), Skill.num(rank_cost())])
+	if &"honed" in tags:
+		lines.append("Honed: rank +1")
+	elif &"enchanted" in tags:
+		lines.append("Enchanted: rank +1")
+	if restores:
+		lines.append(("Empty: it fills again as the battle ends" if empty else "Used from its slot: gives back %s; emptied, it fills again as the battle ends" % restoring()))
+	if hearts or hearts_mod:
+		var n := ("%d" % hearts if hearts else "") + (" + " if hearts and hearts_mod else "") + ("%s mod" % String(hearts_mod).left(3) if hearts_mod else "")
+		lines.append(("Gives %s extra li%s for good" if slot == "consumable" else "%s extra li%s while worn") % [n, "fe" if n == "1" else "ves"])
+	if spent_defense:
+		lines.append("+1 Defense for each heart its wearer has spent")
+	if revives > 0.0:
+		lines.append("Once a battle, falling: gets up at %d%% of max HP, with Resurrection Sickness for %d turn%s (-10%% HP as each turn starts, gone if one starts at full HP)"
+				% [roundi(revives * ranked() * 100.0), ranked(), "" if ranked() == 1 else "s"])
+	if damage_tag:
+		lines.append("Deals %s blows" % damage_tag)
+	if binding:
+		lines.append("Bound on: locked while Shackled; unlocked, taking it off takes %d AP" % ranked())
+		if picks:
+			lines.append("Lockpicked off: a %s dex check (DC %d)" % [Glossary.name_of(Difficulty.word(picks)).to_lower(), Difficulty.dc(picks, ranked())])
+		if prised:
+			lines.append("Pried apart: a %s str check (DC %d)" % [Glossary.name_of(Difficulty.word(prised)).to_lower(), Difficulty.dc(prised, ranked())])
+		lines.append("Weight %d" % heft())
+	if burning:
+		lines.append("Burns its wearer for %d%% of max HP as its turns start, and again for each skill used from the slots it grants" % (10 * ranked()))
+	if requires:
+		lines.append("Needs a positive %s mod" % String(requires).left(3))
+	if emblem:
+		var word: String = Modifiers.SYMBOLS[emblem][0] if emblem in Modifiers.SYMBOLS else String(emblem)
+		var reach: String = {"sigil": "the leftmost skill on the hotbar it fits", "insignia": "every skill it fits", "crest": "every active skill it fits", "badge": "every passive skill it fits"}.get(String(scope), "every skill it fits")
+		lines.append("Puts %s on %s: x%s" % [word, reach, Skill.num(snappedf(1.0 + Modifiers.rsc(ranked(), Modifiers.SCOPES.get(scope, &"all")), 0.01))])
+	for e in effects:
+		lines.append(e.describe(ranked()))
+	for sk in skills:
+		if sk and not sk.is_equipment():  # equipment is what the item does: its own line says it
+			lines.append("Gives the skill %s %s while worn (can't be ranked up; it ranks with the item)" % [sk.title(), Skill.roman(skill_rank(sk))])
+	lines.append(("%d - dex mod AP to put on in battle" % ARMOR_AP) if slot == "armor" else "%s AP to put on or use in battle" % Skill.num(ap_cost()))
+	return "\n".join(lines)
+
+
+# AP it takes in battle to put on (or use, for a trinket or a consumable): a trinket or a consumable 1;
+# a weapon 2, 3 if heavy; armor ARMOR_AP - its wearer's dex mod, at least 1. Taking anything off is
+# free.
+func ap_cost(u: Unit = null) -> float:
+	match slot:
+		"armor":
+			return float(maxi(ARMOR_AP - (u.mod(&"dexterity") if u else 0), 1))
+		"weapon":
+			return 3.0 if &"heavy" in tags else 2.0
+	return 1.0
+
+
+# "15% x rank of max HP + con mod", "1 Sweet Nothing".
+func restoring() -> String:
+	var what: String = reserve.name if restores == &"reserve" and reserve else ("HP" if restores == &"hp" else String(restores).capitalize())
+	var parts: PackedStringArray = []
+	if restore_share > 0.0:
+		parts.append("%s%% x %d of max %s" % [Skill.num(restore_share * 100.0), ranked(), what])
+	if restore_mod:
+		parts.append("%s mod" % String(restore_mod).left(3))
+	if restore_flat:
+		parts.append("%d %s" % [restore_flat, what])
+	return " + ".join(parts)
+
+
+# Copies of itself emptied (used) and filled again: a potion's own state, not every potion's.
+func emptied() -> Item:
+	var it: Item = duplicate()
+	it.empty = true
+	return it
+
+
+func filled() -> Item:
+	var it: Item = duplicate()
+	it.empty = false
+	return it
+
+
+# Sets its wearer's Defense (armor): it has a floor or a level rule. One that doesn't (Heart Up-Link)
+# leaves Defense as if unarmored.
+const HEFT := {&"light": 0, &"medium": 1, &"heavy": 2}  # weight by class (heft())
+
+
+# What it adds to its wearer's weight while equipped (Unit.weight()): its own weight if it has one,
+# else by its kind - armor and weapons by their class (a weapon is medium unless tagged otherwise).
+func heft() -> int:
+	if weight >= 0:
+		return weight
+	match slot:
+		"armor":
+			return HEFT.get(weight_class(), 0)
+		"weapon":
+			return HEFT.get(weight_class(), HEFT[&"medium"])
+	return 0
+
+
+# How much a drop table leans toward it, by rarity (Loot.weight()).
+func rarity_pull() -> float:
+	return RARITY_WEIGHT.get(rarity, 1.0)
+
+
+# What one rank of it costs, in ranks of a common item (RANK_COST): 1.5 uncommon, 2 rare, 3 epic, 4 legendary, 5 mythic.
+func rank_cost() -> float:
+	return RANK_COST.get(rarity, 1.0)
+
+
+# What it's worth, in ranks of a common item: its rank x what a rank of its rarity costs - a rank 1
+# legendary is a rank 4 common, a rank 2 one a rank 8. What ranking an item up is to charge and trade by.
+# Its learned rank: the +1 of enchanted or honed is a quality, not bought.
+func worth() -> float:
+	return rank * rank_cost()
+
+
+# The rank its effects scale by: rank, +1 for enchanted or honed (Tags.quality_rank()), whatever its rarity.
+# A trinket's Pray enchantment (enchant) has no +1 of its own to give, so it is the +1 rank too.
+func ranked() -> int:
+	return rank + Tags.quality_rank(tags) + (1 if enchant > 0 and slot == "trinket" else 0)
+
+
+# The rank its skills have on its wearer (Unit.granted()): ranked(), and one more for Pray's enchantment on a
+# weapon or armor (whose +1 is Defense or damage, and leaves ranked() alone), capped at a skill's max_rank. The item
+# is enchanted, so what it lends is: +1 rank each, but a skill with its own enchanted effect (Skill.enchants(): Armor's
+# +1 Defense) takes that instead and keeps the item's plain rank. Never raises the item's own rank (ranked(), armor drag).
+func skill_rank(s: Skill) -> int:
+	var r := ranked() + (1 if enchant > 0 and slot != "trinket" else 0)
+	if enchanted() and s.enchants():
+		r -= 1
+	return mini(r, s.max_rank) if s.max_rank > 0 else r
+
+
+# How this item links the skill s it lends to its wearer: &"free" (no slot, equipped while worn: the default) or &"optional"
+# (it takes its slots if the wearer puts it on the hotbar); &"" if it doesn't lend s.
+func link(s: Skill) -> StringName:
+	return &"" if s not in skills else (&"optional" if s in optional else &"free")
+
+
+# Whether Pray's enchantment (Unit.enchant()) would do anything to it: a weapon or armor always (+1), a trinket if
+# it has skills, an effect that scales by rank, a life-giving revive, heat, burning or an emblem to scale - or an
+# enchanted form of its own. Heart Up and the like (hearts, a flat effect) have nothing to scale: skipped.
+func scales() -> bool:
+	if enchanted_as or slot in ["weapon", "armor"]:
+		return true
+	return slot == "trinket" and (not skills.is_empty() or revives > 0.0 or heat > 0 or burning or emblem != &"" \
+			or effects.any(func(e: Effect): return e.per_rank))
+
+
+func sets_defense() -> bool:
+	return weight_class() != &"" or defense > 0 or per_level > 0.0
+
+
+# Its weight, by tag: light, medium, heavy, or none (armor of its own sort: Heart Up-Link).
+func weight_class() -> StringName:
+	for w in [&"heavy", &"medium", &"light"]:
+		if w in tags:
+			return w
+	return &""
+
+
+func _armor() -> String:
+	if not sets_defense():
+		return "Armor: Defense as if unarmored (dex mod + con mod)"
+	var w := weight_class()
+	if w:
+		var base: Array = WEIGHTS[w]
+		var lv := "level" if base[1] == 1.0 else ("level / %s" % Skill.num(1.0 / base[1]) if base[1] <= 0.5 else "level x %s" % Skill.num(base[1]))
+		var dex := "no dex mod" if no_dex else ("dex mod" if full_dex or base[2] == 1.0 else "dex mod / %s" % Skill.num(1.0 / base[2]))
+		var text := "%s armor: Defense the higher of %d and %s, + %s" % [String(w).capitalize(), base[0], lv, dex]
+		if mind_stat:
+			text += ", and %s mod as magical Defense" % String(mind_stat).left(3)
+		if w == &"heavy":
+			text += "\nHeavy: %s" % ("costs dex AP (less with con: none at con mod 2+ for this one) and wis AP (less with str)" if eases == &"dexterity"
+					else "costs dex AP (less with con) and wis AP (less with str: none at str mod 2+ for this one)" if eases == &"wisdom"
+					else "costs dex AP (less with con) and wis AP (less with str)")
+		if heat:
+			text += "\nBurns its wearer for %d as each of its turns starts" % (heat * ranked())
+		return text
+	var text := "Defense: %d" % defense
+	if per_level > 0.0:
+		var by := "level"
+		if per_level < 1.0:
+			by += " / " + Skill.num(1.0 / per_level)
+		elif per_level > 1.0:
+			by += " x " + Skill.num(per_level)
+		text = "Defense: the higher of %d and %s" % [defense, by]
+	return text + (", + dex mod" if plus_dex else "") + (", + dex / %s" % Skill.num(1.0 / dex_share) if dex_share > 0.0 else "")
+
+
+func enchanted() -> bool:  # honed never counts: it's the other quality, and nothing keyed on enchanted fires for it
+	return enchant > 0 or &"enchanted" in tags
+
+
+func honed() -> bool:
+	return &"honed" in tags
+
+
+# The tag its trim shows (Tags.mark()): its first coloured tag that isn't a plain word, light, medium
+# and heavy read as its weight (WEIGHTS) rather than an element. &"" untrimmed. An emblem carrying a tag
+# or a symbol in its tags (a Fire Insignia) is trimmed in it.
+# An emblem's modifier (Item.emblem: a symbol or a tag) marks it first: the Fire Insignia is trimmed fire.
+func trim_tag() -> StringName:
+	var marks: Array[StringName] = ([emblem] as Array[StringName]) + tags if emblem else tags
+	return Tags.mark(marks, WEIGHTS.keys())
+
+
+# Its trim colour (Tags.color() of trim_tag()), clear when it has none: drawn on the character sheet,
+# the unit card and, for a trinket, the banner its wearer carries (Unit).
+func trim() -> Color:
+	var t := trim_tag()
+	return Tags.color(t) if t else Color(0, 0, 0, 0)
+
+
+# Its icon: Icons/Items/<its file>.png, 32x32 in colour (Util/icon.py draws a placeholder by slot and kind; real
+# art replaces the file). A copy made at run time has no file: its name's slug finds it. null: none.
+func icon() -> Texture2D:
+	var id := resource_path.get_file().get_basename()
+	if id == "":
+		id = name.to_lower().replace("'", "").replace(" ", "_")
+	if id not in _icons:
+		var p := ICONS + id + ".png"
+		_icons[id] = load(p) if ResourceLoader.exists(p) else null
+	return _icons[id]
+
+
+# Its trim drawn as a little banner (placeholder art): a pole at `at`, a swallowtail of `cloth` edged in
+# the trim colour with a diamond insignia of it. On the wearer's sprite (a trinket: Unit), the unit card
+# and the character sheet.
+static func draw_banner(ci: CanvasItem, at: Vector2, trim_colour: Color, cloth: Color) -> void:
+	ci.draw_line(at, at + Vector2(0, 9), Color("#6b5a44"), 1.0)
+	var flag := PackedVector2Array([at + Vector2(0.5, 0), at + Vector2(6, 0), at + Vector2(6, 6), at + Vector2(3.25, 4.5), at + Vector2(0.5, 6)])
+	ci.draw_colored_polygon(flag, cloth)
+	flag.append(flag[0])
+	ci.draw_polyline(flag, trim_colour, 1.0)
+	var m := at + Vector2(3.25, 2.5)
+	ci.draw_colored_polygon(PackedVector2Array([m + Vector2(0, -1.5), m + Vector2(1.5, 0), m + Vector2(0, 1.5), m + Vector2(-1.5, 0)]), trim_colour)

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Downed.gd" id="2_downed"]
+
+[sub_resource type="Resource" id="Downed_rule"]
+script = ExtResource("2_downed")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Tenacity"
+passive = true
+tags = Array[StringName]([&"martial", &"con", &"defensive"])
+downed = SubResource("Downed_rule")

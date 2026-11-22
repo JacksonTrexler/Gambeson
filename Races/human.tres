@@ -1,9 +1,12 @@
 [gd_resource type="Resource" script_class="Race" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Race.gd" id="1_script"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="2_skill"]
+[ext_resource type="Resource" path="res://Skills/synergy.tres" id="3_synergy"]
 
 
 [resource]
 script = ExtResource("1_script")
 name = "Human"
 size = 3
+options = Array[ExtResource("2_skill")]([ExtResource("3_synergy")])

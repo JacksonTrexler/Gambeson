@@ -14,5 +14,5 @@ tags = Array[StringName]([&"dark"])
 script = ExtResource("1_script")
 name = "Darkvision"
 passive = true
-tags = Array[StringName]([&"dark", &"sight"])
+tags = Array[StringName]([&"dark", &"sight", &"specialist"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_see")])

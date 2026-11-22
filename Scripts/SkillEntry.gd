@@ -2,19 +2,28 @@ class_name SkillEntry
 extends PanelContainer
 
 # A skill in the spellbook: rank numeral, name and a one-line summary (the full text is the
-# tooltip). Skills with an active part drag onto the hotbar; toggled passives switch from here.
+# tooltip; a click shows it in full below). Skills with an active part drag onto the hotbar;
+# toggled passives switch from here.
 
 signal switched(skill: Skill)
+signal picked(skill: Skill)  # clicked: shown in full (Spellbook.pick())
 
 var skill: Skill
 var draggable := false
+var lit := false:  # the one shown in full
+	set(v):
+		lit = v
+		self_modulate = Color(1.35, 1.3, 1.1) if v else Color.WHITE
 
 
-func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> void:
+func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool, holder: Unit = null) -> void:
 	skill = s
-	draggable = can_drag and s.fits_bar()
+	draggable = can_drag and (holder.slot_cost(s) > 0 if holder else s.fits_bar())
 	theme_type_variation = &"Card"
-	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.describe(rank)]
+	tooltip_text = "%s %s\n%s" % [s.name, Skill.roman(rank), s.markup(rank, true, holder)]  # as its holder has it: its modifiers, its price
+	if holder and holder.slot_cost(s) == 0:
+		tooltip_text += "\nAlways on: it takes no hotbar slot, so it can't be slotted or unslotted." if SkillSlot.muted(s) else \
+				"\nFree: it takes no hotbar slot; use it from beside the hotbar, where it sits keyed."
 	if draggable:
 		tooltip_text += "\nDrag onto the hotbar."
 		mouse_default_cursor_shape = CURSOR_DRAG
@@ -25,7 +34,8 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 	numeral.text = Skill.roman(rank)
 	numeral.custom_minimum_size.x = 14
 	numeral.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	numeral.add_theme_color_override(&"font_color", SkillSlot.GOLD)
+	var hush := SkillSlot.muted(s)  # an always-on passive: muted, as on the hotbar; a trait or a free lend can't be slotted at all
+	numeral.add_theme_color_override(&"font_color", SkillSlot.MUTED_GOLD if hush else SkillSlot.GOLD)
 	row.add_child(numeral)
 	var stripe := ColorRect.new()
 	stripe.color = SkillSlot.tint(s)
@@ -38,10 +48,12 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 	row.add_child(text)
 	var title := Label.new()
 	title.text = s.name
+	if hush:
+		title.add_theme_color_override(&"font_color", SkillSlot.MUTED_TEXT)
 	text.add_child(title)
 	var line := Label.new()
 	line.theme_type_variation = &"Muted"
-	line.text = s.summary()
+	line.text = Glossary.plain(s.spec_line(holder, rank)) if holder else s.summary()
 	text.add_child(line)
 	if s.passive and s.toggle:
 		var b := Button.new()
@@ -57,8 +69,18 @@ func _init(s: Skill, rank: int, on: bool, can_drag: bool, can_switch: bool) -> v
 		row.add_child(b)
 
 
+func _gui_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
+		picked.emit(skill)
+
+
 func _get_drag_data(_at: Vector2) -> Variant:
 	if not draggable:
 		return null
 	set_drag_preview(SkillSlot.chip(skill, SkillSlot.theme_of(self)))
 	return {skill = skill, from = -1}
+
+
+# Its tooltips are Glossary markup, shown rich.
+func _make_custom_tooltip(for_text: String) -> Object:
+	return Glossary.tooltip(for_text)

@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Resource" path="res://Factions/unaligned.tres" id="2_unaligned"]
+[ext_resource type="Texture2D" path="res://Units/Pike.png" id="3_pike"]
+[ext_resource type="Resource" path="res://Properties/aquatic.tres" id="4_aquatic"]
+[ext_resource type="Script" path="res://Scripts/Property.gd" id="5_property"]
+[ext_resource type="Script" path="res://Scripts/Bio.gd" id="6_bio"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="7_strike"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="8_slot"]
+
+[sub_resource type="Resource" id="Bio_pike"]
+script = ExtResource("6_bio")
+behaviour = &"aggressive"
+appearance = "Fish"
+adjectives = Array[String](["Sleek"])
+properties = Array[ExtResource("5_property")]([ExtResource("4_aquatic")])
+text = "A long, lean ambush fish of reeds and still water: it lies in wait below and strikes up at whatever wades in. Its shape is the one a Thalassic Druid takes."
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("8_slot")
+skill = ExtResource("7_strike")
+rank = 1
+
+[node name="Pike" instance=ExtResource("1_unit")]
+faction = ExtResource("2_unaligned")
+level = 2
+look = ExtResource("3_pike")
+tags = Array[StringName]([&"monster", &"beast", &"fish"])
+bio = SubResource("Bio_pike")
+learned = Array[ExtResource("8_slot")]([SubResource("Slot_strike")])
+max_hp = 8
+strength = 12
+dexterity = 14
+constitution = 10
+intelligence = 2
+wisdom = 12
+charisma = 4

@@ -11,5 +11,5 @@ amount = 0.1
 [resource]
 script = ExtResource("1_terrain")
 name = "Shrine"
-tags = Array[StringName]([&"beneficial", &"shrine"])
+tags = Array[StringName]([&"beneficial", &"shrine", &"stone"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_heal")])

@@ -9,6 +9,7 @@ stat = "luck"
 amount = 1.0
 per_stat = &"charisma"
 per = 10
+per_rank = true
 
 [resource]
 script = ExtResource("1_skill")

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/vanishing_act.tres" id="s_vanishing_act"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/double_bluff.tres" id="s_double_bluff"]
+[ext_resource type="Resource" path="res://Skills/illusionist.tres" id="s_illusionist"]
+
+[sub_resource type="Resource" id="Branch_vanishing_act"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_vanishing_act")
+
+[sub_resource type="Resource" id="Branch_double_bluff"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_double_bluff")
+after = Array[ExtResource("skill")]([ExtResource("s_vanishing_act")])
+
+[sub_resource type="Resource" id="Branch_illusionist"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_illusionist")
+after = Array[ExtResource("skill")]([ExtResource("s_double_bluff")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Deception"
+tag = &"specialist"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_vanishing_act"), SubResource("Branch_double_bluff"), SubResource("Branch_illusionist")])

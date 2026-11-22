@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_command"]
+script = ExtResource("2_effect")
+stat = "command"
+amount = 999.0
+
+[resource]
+script = ExtResource("1_item")
+name = "Quartz Ring"
+slot = "trinket"
+tags = Array[StringName]([&"ring", &"gem"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_command")])

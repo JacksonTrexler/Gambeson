@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Resource" path="res://Reserves/sweet_nothings.tres" id="3_sn"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Death"
+tags = Array[StringName]([&"warlock", &"magical", &"cha", &"dark", &"execute"])
+glyph = "De"
+ap = 6.0
+cost = 6
+needs = ExtResource("3_sn")
+radius_per_rank = 1.0
+radius_mod = &"charisma"
+kills = true

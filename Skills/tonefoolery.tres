@@ -15,5 +15,5 @@ script = ExtResource("1_script")
 name = "Tonefoolery"
 passive = true
 toggle = true
-tags = Array[StringName]([&"sound"])
+tags = Array[StringName]([&"sound", &"specialist"])
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_trick")])

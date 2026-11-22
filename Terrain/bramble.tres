@@ -6,4 +6,4 @@
 script = ExtResource("1_terrain")
 name = "Bramble"
 exit = 1
-tags = Array[StringName]([&"bramble", &"sticky"])
+tags = Array[StringName]([&"bramble", &"sticky", &"shrubbery"])

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "dex_ap"
+amount = 1.0
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "defense"
+op = "mul"
+amount = 0.5
+
+[resource]
+script = ExtResource("1_skill")
+name = "Hollow Bones"
+glyph = "HB"
+passive = true
+tags = Array[StringName]([&"flight", &"dex"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2")])
+toggle = true
+no_density = "a switch: on or off, doubled dex AP, flight and half Defense; nothing scales by rank"

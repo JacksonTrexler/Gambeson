@@ -8,6 +8,7 @@
 [ext_resource type="Resource" path="res://Reserves/mana.tres" id="7_mana"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
 
+[ext_resource type="Resource" path="res://Loot/icor.tres" id="90_loot"]
 [sub_resource type="Resource" id="Slot_hex"]
 script = ExtResource("9_slot")
 skill = ExtResource("4_hex")
@@ -19,6 +20,7 @@ skill = ExtResource("5_arcanist")
 rank = 3
 
 [node name="Icor" instance=ExtResource("1_unit")]
+loot = ExtResource("90_loot")
 vibe = "Smouldering"
 aura = -1
 role = ExtResource("2_wizard")

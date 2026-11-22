@@ -1,0 +1,79 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="1_tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="2_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="3_branch"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
+[ext_resource type="Resource" path="res://Skills/elemental_strike.tres" id="s_elemental_strike"]
+[ext_resource type="Resource" path="res://Skills/record_striker.tres" id="s_record_striker"]
+[ext_resource type="Resource" path="res://Skills/meditative_bracing.tres" id="s_meditative_bracing"]
+[ext_resource type="Resource" path="res://Skills/invigorating_bracing.tres" id="s_invigorating_bracing"]
+[ext_resource type="Resource" path="res://Skills/elemental_mastery.tres" id="s_elemental_mastery"]
+[ext_resource type="Resource" path="res://Skills/energy_transfer.tres" id="s_energy_transfer"]
+[ext_resource type="Resource" path="res://Skills/telepathy.tres" id="s_telepathy"]
+[ext_resource type="Resource" path="res://Skills/drone.tres" id="s_drone"]
+[ext_resource type="Resource" path="res://Skills/striking_intellect.tres" id="s_striking_intellect"]
+[ext_resource type="Resource" path="res://Skills/wake_and_rake.tres" id="s_wake_and_rake"]
+
+[sub_resource type="Resource" id="Branch_elemental_strike"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_elemental_strike")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_energy_transfer"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_energy_transfer")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_telepathy"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_telepathy")
+tier = 3
+
+[sub_resource type="Resource" id="Branch_record_striker"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_record_striker")
+tier = 4
+
+[sub_resource type="Resource" id="Branch_striking_intellect"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_striking_intellect")
+tier = 4
+
+[sub_resource type="Resource" id="Branch_drone"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_drone")
+tier = 4
+
+[sub_resource type="Resource" id="Branch_meditative_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_meditative_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_invigorating_bracing"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_invigorating_bracing")
+tier = 5
+
+[sub_resource type="Resource" id="Branch_elemental_mastery"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_elemental_mastery")
+tier = 7
+
+[sub_resource type="Resource" id="Branch_wake_and_rake"]
+script = ExtResource("3_branch")
+skill = ExtResource("s_wake_and_rake")
+tier = 4
+
+[sub_resource type="Resource" id="Root_main"]
+script = ExtResource("2_root")
+name = "Caster"
+tag = &"magical"
+branches = Array[ExtResource("3_branch")]([SubResource("Branch_elemental_strike"), SubResource("Branch_energy_transfer"), SubResource("Branch_telepathy"), SubResource("Branch_record_striker"), SubResource("Branch_striking_intellect"), SubResource("Branch_drone"), SubResource("Branch_meditative_bracing"), SubResource("Branch_invigorating_bracing"), SubResource("Branch_elemental_mastery"), SubResource("Branch_wake_and_rake")])
+
+[resource]
+script = ExtResource("1_tab")
+name = "Caster"
+kind = "General"
+category = &"magical"
+roots = Array[ExtResource("2_root")]([SubResource("Root_main")])

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Dungeon" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Dungeon.gd" id="1_dungeon"]
+[ext_resource type="PackedScene" path="res://Scenes/siren.tscn" id="2_siren"]
+[ext_resource type="PackedScene" path="res://Scenes/undine.tscn" id="3_undine"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="4_item"]
+[ext_resource type="Resource" path="res://Items/health_potion.tres" id="5_health"]
+[ext_resource type="Resource" path="res://Items/mana_potion.tres" id="6_mana"]
+[ext_resource type="Resource" path="res://Items/heart.tres" id="7_heart"]
+[ext_resource type="Resource" path="res://Items/heart_up.tres" id="8_heart_up"]
+
+[resource]
+script = ExtResource("1_dungeon")
+name = "Infernal Meadows"
+scene = "res://Scenes/meadows_play.tscn"
+blurb = "A paradise of grass, light brush, ponds and thin streams that goes on as far as you walk, and demons that keep coming out of the water."
+goal = "Slay 30 demons. The escape portal forms where the last one falls and opens {turns} turns later; step onto it to win."
+enemies = Array[PackedScene]([ExtResource("2_siren"), ExtResource("3_undine")])
+rewards = Array[ExtResource("4_item")]([ExtResource("5_health"), ExtResource("6_mana"), ExtResource("7_heart"), ExtResource("8_heart_up")])
+reward_floors = Array[float]([0.5, 0.5, 1.0, 1.5])
+color = Color(0.71, 0.55, 1, 1)

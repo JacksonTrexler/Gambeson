@@ -1,0 +1,610 @@
+# Todo: classes
+
+`[ ]` to do · `(?N)` waits on open question N (numbered across all todo files) · *Now:* what the game does today. Done items and decided rules: `docs/done/`. Index: `todo.md`.
+
+Every tree's capstone, for now (later a mid-tree capstone), is a **Basic Martial / Magic / Specialist Skill Slot +1**. (?10)
+
+## Adventurer
+
+Three roots, **Magic**, **Martial** and **Specialist**, with flat, radial trees: most paths are a few nodes long, and each root branches into about 6 strong applications of the basics. Paths are shallow slices of other classes' trees, but Adventurers can learn core skills many classes share: **Hex** and **Rejuvinate** are a first choice at any time. The three starting passives are separate skills on purpose, since each takes a slot; once Adventurers have skills that use them, they can become mid-tier passives in the tree instead.
+
+- [x] **Rejuvinate** on the core ring (see Paladin): built (`docs/done/classes.md`). (?12)
+- [x] **Skill Slot +1** (unspecified type): answered 2026-11-18: a trait adding one hotbar slot, far right, costing a point to learn. Built 2026-11-19 (?194). The "slightly darker" look and "locked until slots are filled" are not built. (?3)
+- [ ] **Trade Skills** (passive): skill limits scale partly with wis: (base stat + wis × rank) / rank. *Now:* a stub on the core ring. (?2 ?11)
+- [ ] **Grind** (passive): str mod can count toward martial limits; max HP drops by the % overage. *Now:* a stub on the core ring. (?2 ?11)
+  - Rank 2+: bonus slots, each −10 × (rank − 1)% max HP while in use.
+  - Rank 11+: bonus slots also cut max energy the same way.
+- [x] If a skill that grants slots is unequipped, its slots disappear, skills and all (Losing a slot). Built 2026-11-15 (?163).
+- [x] **Igna** and **Aetha**: built as starter spells (`docs/done/classes.md`), the AP at once.
+- [ ] **Martial root**: not designed yet. *Now:* Wary, then the capstone; the general Martial tree helps. (?15)
+- [ ] **Specialist root**: more specialist skills to come.
+
+3. The Adventurer's extra slot "sits at the center, locked until current slots are filled". Center of the hotbar (its middle slot) or of the radial tree? Does it unlock once every slot holds a skill?
+10. Adventurer: is Mage (Red Mage) a class separate from Wizard? *(Answered 2026-11-07: yes - see Wizard / Mage, ?70.)* The Wizard uses the Red Mage sprite, and has the Mana passive. Do Igna and Aetha grant AP immediately, or for rank turns? Sola's +1 persona does nothing on a unit with no disguise set up: intended? The Magic root now has 8 branches against "about 6": fine? Which slot type does each tree's capstone give (Divinity: Magic, Prowess: Martial, Idealism: Specialist)?
+11. Trade Skills and Grind formulas, once 2 is settled. As written, (base + wis × rank) / rank works out to base / rank + wis.
+15. Adventurer, as built (each can change):
+    - Capstones need 3 of their root's skills learned (tier 4). The Martial root has only Wary so far, so its capstone can't be reached yet. Is 3 right, or should a capstone come after particular skills?
+    - The starting passives and the capstones stop at rank I, since ranks would do nothing for them. Fine?
+18. Specialist skills, as built (each can change):
+    - Clever Disguise's ranks: unlocking costs 1 like any skill, then II costs 4, doubling each rank (8, 16, 32). Right base and growth?
+    - Move +1 stops at rank I. Hide and Clever Disguise are used on the unit itself only.
+    - Meander counts tiles walked each turn: the first rank tiles count as standing still. A tile effect's level is a laid trap's rank; map traps and ground are level 1. Nothing deals damage for moving yet, so its last part waits for something that does.
+    - Effects put on your own side during your turn used to count that turn as one of theirs, so Sola I or Nadira I on an ally wore off before any enemy acted. Now the current turn doesn't count (see Effect durations). Right?
+20. Self-evaluation, as built (each can change):
+    - The rolls it shows are attack rolls and the one roll of a deceiving skill (Hide, Clever Disguise). Are there others?
+    - Its rank is its reach in tiles, and its holder's own rolls count. Asleep allies don't see them.
+    - Without it, the log keeps the imposter's roll hidden ("(9)"), but still says whether each investigator saw through. Should the outcome be hidden too?
+    - Effect icons show on the cards of units the player knows (its own side's, or ones it has seen through). Should enemies' advertised effects show too, and which?
+
+## Wizard / Mage
+
+Two classes now (your answer to the first part of 10, 2026-11-07). **Wizards** are flexible casters, biased toward the arcane, with a tab for everything they dabble in: pacts with patrons, affiliations with gods, the world's natural and magical powers. They screw with powers they ought not to: great potential, a major liability. **Mages** are dedicated and limited, but their trees feed each other: a school of magic, the general Mage tree, and a magical college. They're conventional: their spells are more refined and safer, and commitment takes their element further (still a large overlap with Wizards and other arcane casters).
+
+*Now:* both trees are laid out with every new skill a stub carrying its plan (`Skills/*.tres`, `plan`), so the skills screen shows the shape. Nothing new is learnable but the starter spells and what was built before. (?70)
+
+- [ ] **Wizard** (`Roles/wizard.tres`): its own tab keeps Mana, Mage Armor, Darkstone and every starter spell (Igna and Aetha added) on the core ring.
+  - **Arcane** root (the bias): Arcana, Dispel, Blink; Spellweave after Arcana, Counterspell after Dispel (a reaction); the Magic Skill Slot +1 capstone.
+  - **Transgression** root (the liability): Overchannel, Blood Magic, Wild Magic; Forbidden Lore after Overchannel; Rift after Wild Magic (lets demons through: spawning mid-battle); Unbound, a capstone needing 4.
+  - **Pact: Elmon** and **Pact: Hogel** (one of them, `one_of = pact`): the Pact skill first, then two of the patron's own skills behind it (Brainfog and Haluca; Gasp and Humble).
+  - **Affiliation: Urlo** and **Affiliation: Sol** (one of them, `one_of = affiliation`): the god's Favour first, then Wellspring (Urlo) or Flamewall (Sol). Other gods can get a tab each.
+  - **World: Nature**: an **Elements** root (Attunement, Draw from the Land, Weathercraft) and a **Leylines** root (Ley Sense, Ley Tap).
+- [ ] **Mage** (`Roles/mage.tres`, new; "Caster", the Red Mage sprite, 10 Mana, robe, staff and a mana potion; not on the entry screen, like the Wizard): its own tab is the general Mage tree, with Mana, Mage Armor and every starter spell on the core ring.
+  - **Refinement** root (safer, refined): Precise Casting, Extend Spell, Reach Spell; Quicken after both; the Magic Skill Slot +1 capstone.
+  - **Commitment** root (the extra mile): Focus, then Resonance, then Piercing Focus.
+  - **Schools**, one of them (`one_of = school`), each opening after its starter spells: **Radiance** (fire and light: Searing, Radiant Lance, Sunburst), **Currents** (water and wind: Undertow, Gale, Maelstrom), **Stone** (Quake, Rampart, Bedrock), **Shadow** (Darkstone, built, then Umbral Step and Eclipse), **Stars** (Fortune, Constellation, Starfall).
+  - **Colleges**, one of them (`one_of = college`): **Battle** (Battle Casting, Volley, Spellstrike), **Wards** (Ward, Counterspell, Sanctum), **Concord** (Spell Share, Linked Casting, Harmony).
+
+16. Mana, as built (each can change):
+    - A Wizard's starter spells are all tier 1 on its core ring, so ranking Mana past I does nothing for them yet. Fine?
+    - Only the starter spells are "basic spells". Hex stays 2 Energy flat (half AP paid with Mana), and Darkstone 3. Right?
+    - Starting Wizards get 10 Mana (Icor, level 5, has 12). Right amount?
+    - With Working Knowledge, Energy would get Mana's half cost too, but only for a unit that also has the Mana passive. Adventurers can't learn it, so this doesn't come up yet. Right?
+
+70. **Wizard and Mage trees - stubbed on judgement, open for review (2026-11-07).** The shape is what to look at; every new skill's plan is my sketch.
+    - Wizards' variety vs Mages' commitment is the spine: Spellweave and Attunement reward switching spells and elements; Focus and Resonance reward sticking to one.
+    - The Wizard's liability lives in its Transgression root: Backlash (Overchannel, Unbound), paying Mana in HP (Blood Magic), surges (Wild Magic), Taint (Forbidden Lore, a new liability resource, undesigned), demons through a Rift. Should the liability be in every Wizard tab instead (pacts and affiliations cost something too)?
+    - A pact and an affiliation are each a choice of one, but a Wizard can have both. Pacts borrow two of the patron's real skills, behind the stubbed Pact skill; a Wizard's pact uses int for Sweet Nothings. Only Urlo and Sol have affiliation tabs so far.
+    - Schools are elements, paired the way the gods pair them (Sol fire and light, Drael water and wind), each opening after its starter spells. Colleges are postures: Battle offensive, Wards defensive, Concord supportive. "Synergized" read as the three trees feeding each other, and Concord casting with other casters.
+    - Counterspell sits on both (the Wizard's Arcane root, the Mage's Wards college). Darkstone stays a Wizard option and is the Mage's first Shadow skill.
+    - Both use the Red Mage sprite, and neither is on the entry screen. Starting Mana 10 for both.
+    - The tab row now wraps to a second line: an undecided Mage has 11 tabs, 5 once it has a school and a college.
+
+### Wizards, revised (2026-11-08)
+
+- [x] **Dabblings**: a branch of the Wizard's own tree, its way into other classes' trees: the Bard's magic trees, and really any tree tagged Caster. Your answer (2026-11-09): not a fixed list; Wizards get the other casters' actual trees, penalized for trees outside their own. Built (`docs/done/classes.md`). (?71 ?76)
+  - **Expanded studies** (guest trees at -1 Affinity): **Divinity** gains a religious domain, **Symphony** a Bard genre, **Witchery** a Warlock pact.
+  - No Affinity penalty: **Mastery** gains a Mage school.
+  - Guest skill trees default to -1 Affinity.
+- [x] **Picking trees**: every class picks its trees on its own (universal) tree by unlocking their tier 0 roots there. A box around the choice says "Pick up to x" (the cap), and darkens the tree's backdrop behind it. Built (`docs/done/classes.md`). (?71)
+- [x] **Emergency Exit** (high tier): makes the forming escape portal open rank turns early where it's forming; otherwise warps the party to a bland pocket dimension of stone (still in the scenario, reachable only by a two-way portal). The pocket lasts rank rounds, then returns its units in a clump. Built (`docs/done/classes.md`). (?75)
+- [x] **Rift**, revised: opens an actual portal to an extra-planar domain (`docs/todo/world.md`). Opened in line of sight within rank range: usually adjacent, but higher ranks can open one over walls. Optionally channeled: its duration shows as infinite until the Wizard stops channeling it. Your answer (2026-11-09): it can be cast unchanneled, and its duration only starts when the caster stops channeling; doors both ways is right. Built (`docs/done/classes.md`). (?75 ?76)
+
+76. **Borrowed trees and Rift's count - built on judgement, open for review (2026-11-09).**
+    - Each Dabbling borrows a kind of caster tree (its roots all magical) from whichever class has one, found as the game runs (`TreeChoice.borrows`, `TreeChoice.caster()`): Domain every Divinity tab (the Cleric's Luun, Sol and Eros), Genre every Genre tab, Pact every Patron tab (the Warlock's Elmon and Hogel), School every School tab (the Mage's five). A new class with a tab of one of those kinds is on offer with no change to the Wizard.
+    - "Penalized for trees not representing its own" read as before: -1 Affinity on domains, genres and pacts; none on Mage schools, which are arcane like its own.
+    - Answered (2026-11-09): Clerics get Eros too, and Wizards get caster trees, not just the trees of caster classes - but none of a class's own features on them. Built: Eros is the Cleric's third god (the Paladin's own Divinity: Eros tree), so it's a Wizard domain again. Class features are tagged with their class (`Skill.classes`, shown first in their tags) and locked for anyone else ("Paladin only", `Unit.missing()`).
+    - My call: which skills are class features. On the trees anyone can borrow today, only the Paladin's three on Eros: Smite, Lovely Caster and Impassioned Fighter. Pray and Renew stay open to anyone with Eros, Hex and Sweet Nothings to anyone with a pact, since the trees start after them.
+    - The Bard's Song moved from a root on its own tab to a tab of its own, kind Genre, so it can be borrowed. The Bard now shows two tabs, Genre: Song and Calling: Freedom.
+    - A borrowed tree brings its class's shared row first on its core ring, as that class shows it: the Cleric's Pray and Renew on a domain, the Warlock's Hex, Sweet Nothings and Chant on a pact. The Pact box now shows the Warlock's trees by their own kind, "Patron: Elmon".
+    - Rift: Alt-click on the target casts it unchanneled. Its count is 3 x its difficulty turns (2, 3, 5, 5, 5 by rank), and the doors stay open both ways until it runs out; then the Wizard's side comes back in a clump and the domain goes with whatever else is in it. Using it again, channeling something else (Metea), or falling stops the channel and starts the count.
+
+75. **Rift and Emergency Exit - answered (2026-11-09):** Rift can be cast unchanneled, its duration starting only when the channel stops; two-way doors are right. The rest stands as built:
+    - Rift: no longer a stub or an AI design (your design now). It opens on the Transgression root once one skill is learned; range rank tiles, in a clear line (no earthwork or hole between) below rank III, over walls from III.
+    - Its domain: a diamond 9 tiles across (41 tiles: "8x8" read as the diamond's span), far off on the same map, its door at the west tip, the escape portal at the centre. Its demons: the Undine-and-Sirens formation at 0.5 x rank difficulty (I: 2 of them), at the Wizard's level.
+    - Channeled or not: see ?76.
+    - Emergency Exit: on the Arcane root once three skills are learned, up to rank III. It hastens a forming escape portal by rank turns; otherwise it warps the Wizard and its allies within rank tiles to a 5x5 pocket of stone for rank turns. Its door goes both ways while it lasts, so foes can follow.
+
+71. **Picking trees and Dabblings - answered (2026-11-09):** the Wizard's trees on offer are found, not listed (?76). The rest stands as built:
+    - A tree's tier 0 root is the tree itself, not a skill: picking it is free (no skill point), and it opens the tree's tab. The tabs of trees not picked are hidden.
+    - The choices: Paladin Prowess (1, only those that suit its god shown), Warlock Patron (1), Cleric God (1), Mage School (1) and College (1). Rogue's and Bard's Calling: Freedom, the Berserker's three Prowess tabs and the Wizard's World stay open without a pick.
+    - Wizard: Divinity, Symphony, Witchery and Mastery each go to rank III, and each rank is one more pick.
+    - The stubbed Pact and Favour skills from round 70 are gone; the real trees replace them.
+    - Units authored with a tree's skills and no picks count those trees as picked (NPC Clerics keep their god).
+
+## Warlock
+
+*Now:* `Roles/warlock.tres` (cha 15, the Gaunt sprite; on the entry screen): a tab per patron, **Elmon** and **Hogel**, sharing a static tier 1 row (Hex, Sweet Nothings, Chant), with Hex and Sweet Nothings learned from the start. Elmon's tab: Analysis Dialysis, wauaw, Brainfog and Haluca, from tier 2. One patron per Warlock. Built entries are in `docs/done/classes.md`.
+
+- [x] **Chant** and **Hogel's path** (Humble, Gasp, Breathtaking, Irradiate; resting whole satisfies him): built (`docs/done/classes.md`). (?42 ?45)
+- [x] Level Down (tier 5) and Death (capstone) need a Sweet Nothing (`docs/done/classes.md`).
+- [ ] **A Demon / Warlock / Dark Magic skill**: your message of 2026-11-09 cut off after "Demon / Warlock / Dark Magic skill:", between the XP rules and the level cap. Nothing built; what does it do?
+
+42. Chant, as built: "waiting" is resting the whole turn (no move, no AP spent). It primes the next rank Sweet Nothing gains to bring one more each ("from the next rank gains"), and the next Warlock skill to be used a rank higher. Right reading?
+45. Humble: "lasts longer the less max HP the unit loses (rank * (4 * % of max HP cut) turns)" - as written the formula grows with the cut. Built as rank x 4 x (1 - the share cut), at least 1 turn: rank I on a unit at full HP lasts 4 turns. Right?
+46. Sol, where your text left gaps (each built my way):
+    - Flamewall: "if a unit is standing on a targeted tile, they may attempt a dex check to we..." - cut off. Built: d20 + dex mod against the caster's d20 + wis mod; passing, it isn't burned as the wall goes up (it still stands in fire). The wall lasts rank of the caster's side's turns.
+    - Inner Fire: the 5% x rank a turn is plain HP loss (poison), not fire; Flamecharm doesn't ward it.
+    - Burning Bag: whatever trinket it replaces goes to the stash (for the player's side). Its slots are untyped.
+    - Flamecharm at rank V+: "pick up to rank units" - there's no multi-target picking yet, so it takes the nearest rank allies, itself first. Its effects last rank turns.
+    - Cindering: rolls to hit; burns the target's rightmost rank hotbar slots for rank turns.
+    - Flamedance: lasts until the end of its holders' next turn.
+    - Solar: "d20 + wis total" built as d20 + the wis score itself (not the mod); its length is wis mod tiles, at least 1.
+
+## Cleric
+
+- [x] **Cleric**, with Sol's full path: built (`docs/done/classes.md`). (?46)
+- [ ] More Luun skills, so Death sits as a capstone; Death for Luun Paladins once Paladins have Divinity tabs.
+
+## Rogue and Bard
+
+- [ ] **Rogue**: will get more tricks. Sprite is a placeholder (Elman).
+- [ ] **Bard**: will get songs. Sprite is a placeholder (Doebour).
+- [x] **Bandwagon** and **Molothrus** (2026-11-10) on the Freedom tab's Performance root, after Personify; Blinthe, a level 16 Bard of his own side, has both at III. (?94)
+
+19. Rogue and Bard, as built:
+    - Each Freedom tab is the class's own copy, so the Bard's has no Snare. Should Calling: Freedom instead be one tree both classes share?
+    - Performance (Tonefoolery, Glamour, Manifest) is tagged specialist, so it moved to the Bard's Freedom tab, leaving its own tab with Song. Or is Performance the Bard's own?
+    - Hide and Clever Disguise are still each Freedom tab's centre (tier 1). Keep them there?
+
+## Paladin
+
+Three roots in the class tab, each starting with an active skill: **Divinity** (one so far: Eros), **Idealism** (one so far: Chivalry) and **Prowess**: any prowess somewhat aligned with its god, of the player's choosing.
+
+**Divinity: Eros.** Spells are tagged `divine`, `cha`, `<3`. Divinity is in the caster family. (?12) Clerics of Eros and Wizards with it as a domain learn it too, but Smite, Lovely Caster and Impassioned Fighter are the Paladin's alone (?76).
+- [x] **The Paladin's tree** - Divinity: Eros, Idealism: Chivalry, and a Prowess of its choosing (was Protector alone) - with Renew, Pray and Smite on Divinity and Coordinate on Idealism: built (`docs/done/classes.md`). Favour, Lightvision and Judgement stay on its core ring. (?12)
+- [x] **Rejuvinate**, then **Send Off**, **Lovely Caster** and **Impassioned Fighter**: built (`docs/done/classes.md`). (?12)
+
+**Idealism: Chivalry**
+- [x] **Coordinate**: built (`docs/done/classes.md`). *Now:* opens the Idealism root.
+  - [x] **Final Act**: Built 2026-11-14 (?140): `Behaviours/final_act.gd`; `docs/done/classes.md`.
+  - [x] **Gallantry**: Built 2026-11-14 (?140): `Behaviours/gallantry.gd`; `docs/done/classes.md`.
+
+**Prowess** - any prowess somewhat aligned with its deity (2026-11-07).
+- [x] **Choice of Prowess**: a Prowess tab per tree (`SkillTab.one_of = prowess`), the same roots the Fighter and Berserker use (`Trees/*.tres`). Only those that suit its god (`SkillRoot.gods`) show and open; learning a skill on one takes it up and closes the rest ("Took up Prowess: Protector"). (`paladin_test.test_prowess`)
+69. **Prowess alignment - built on judgement, open for review.** Which gods each prowess suits. *Choices made:* Protector - Eros, Sol, Vetruvis; Vanguard - Ramut, Eros, Sol, Vetruvis; Slayer - Luun, Ramut, Drael; Brawn - Ramut, Vetruvis; Fury - Ramut, Sol, Urlo; Havoc - Ramut, Luun, Drael, Urlo. Each god has at least two; an Eros Paladin (the default) gets Protector or Vanguard. One Prowess per Paladin, the choice is permanent (no respec yet), and unaligned tabs are hidden rather than shown locked, to keep the tab row short.
+
+12. Paladin: is "Rejuvinate" spelled on purpose? Is its distance decay fixed when cast? Send Off: who picks the landing tile, and does it work on enemies? Final Act: does the unit die after its free action? `<3` as a tag ID, or an internal `love` tag shown as <3?
+    *Built on judgement (2026-11-06), open for review:* spelled as you wrote it; the decay is fixed when cast (moving later changes nothing); Send Off works on allies and foes (a foe gets an attack roll first) and lands on the furthest free tile on the straight line away from the caster - nobody picks it, since targeting takes one pick; `<3` is the internal `love` tag (Eros's damage tag). Final Act is still open.
+
+48. Bracing, as built: every Bracing passive caps its bonus at its rank (you wrote "up to rank" only for Agility). "Effectively equipped" is read as worn with its requirements met. Right?
+51. The Specialist opener is **Journeyman** (a skilled hand across trades; "Specialist" would clash with the tree's name). Specialist classes reach the other trees through Martialist and Thaumaturgist two tiers sooner (you said "a tier or two"). Both right?
+52. Perfect, as built: the 36 hits count across one Strike's restrikes; the 300 HP heals up to max HP (it doesn't overheal). Should it overheal?
+50. Strike's upgrades, where I filled gaps:
+    - Tiers: low II, mid IV, high VII (Strike! too); the high-tier passives are mine: Decisive, Brutal and Elemental Mastery. Martial is red (you wrote "green" twice).
+    - Brutal Strike: "add rank to your weapon ranks for this attack" built as + the weapon's rank + rank to damage.
+    - Record Striker: the curse is the foe's wis against the striker's highest mental mod, and the rank lost lasts its next turn.
+    - Elemental Strike's elements: fire, water, earth, air, light, dark.
+
+## Fighter
+
+Three roots, each a flavour of Prowess of the player's choosing. Three exist so far.
+
+*Now:* the three roots are built (`Roles/fighter.tres`; Protector is `Trees/protector.tres`, shared with the Paladin, which picks one Prowess its god suits: ?69). Wary stays on the core ring. Unbuilt skills are stubs on their roots. (?67)
+
+**Protector:** defense of self and others.
+- [x] **Shields Up!**, **Obstruct**, **Interdict** and **Turtle Tactics**: built (`docs/done/classes.md`). (?67)
+- [x] **Interject**: Built 2026-11-14 (?140): `Behaviours/interject.gd`; `docs/done/classes.md`.
+- [x] **Snapping Turtle**: Built 2026-11-14 (?140): `Behaviours/snapping_turtle.gd`; `docs/done/classes.md`.
+
+**Vanguard:** front-line offense and tactics.
+- [x] **Warcry**: built 2026-11-14 (?139): `Behaviours/warcry.gd`, `Effects/charge.tres`, `charge_ap.tres`; `docs/done/classes.md`.
+- [ ] **Inspire** (passive): hitting an adjacent enemy with a skill gives allies within rank tiles +rank damage. Allies whose luck is below 1 also get **+1 Luck ltd.** (?13)
+
+**Slayer:** eliminating chosen targets.
+- [x] **Jugular**: built (`docs/done/classes.md`). (?67)
+- [ ] **Sundering** (passive): an attack rolling higher than the target's dex mod applies stacking **Sundered**: −1 Defense for rank turns. (?13)
+- [ ] **Silent Strike** (active): disables rank of the target's `magical` skills, actives and passives, for rank turns, starting from the bottom of its hotbar. Disabled skills are greyed out. (?13)
+- [x] **Gank** (hybrid): built 2026-11-14 with the Slayer skills (`docs/done/classes.md`). (?126) *Now:* Sundering and Silent Strike are stubs after Jugular.
+
+13. Fighter:
+    - Interject: who can it trigger for (adjacent allies? any ally in sight?), and how often (once a round? every hit)?
+    - Sundering: "an attack rolling higher than the target's dex mod". Its Defense instead, now that attacks roll against Defense?
+    - Silent Strike: do `divine` spells count as `magical`?
+    - Inspire: does "+1 Luck ltd." mean it can only raise luck as far as 1?
+
+67. **Fighter and Protector - built on judgement, open for review (2026-11-06).**
+    - Tree: each root opens on its active (Shields Up!, Warcry, Jugular); the rest come after it, Snapping Turtle after Turtle Tactics. Protector's capstone is a Basic Martial Skill Slot +1 (3 of its skills); Vanguard and Slayer have none yet. One Protector root serves the Fighter and, as one Prowess it may choose, the Paladin.
+    - Shields Up!: range 8 (there's no line of sight yet, so "unobstructed" isn't checked); rank VIII blocks everything; it lasts through its next turn; a DEFEND order faces the nearest foe the unit makes out.
+    - Obstruct: "its size penalty" is what moving through the obstructor would cost the mover (so the mover's dex eases it); "+25% per rank" multiplies that, x1.25 at rank I; two obstructors beside one tile both charge.
+    - Interdict: the str check is a save (d20 + str mod + rank against the foe's d20 + str mod); Attack Down is -20% x rank damage dealt; the AP is the caster's str mod off the foe's next turn's general AP, never below 0. 3 AP, 2 Energy, adjacent.
+    - Turtle Tactics: attack rolls count as offensive checks (-rank to hit); Defense isn't a check, so it stays as it is.
+    - Jugular: 1d6 + str mod (its weapon's blow), 4 AP, 2 Energy, adjacent; recasts stop after 20 in a row, a guard against a runaway loop.
+
+57. **Actualization - built on judgement, open for review; Meditate reworked (2026-11-14, ?120).** The Adventurer's Path tab: Self-reflection (T1, rank levels of self-knowledge for the battle), Hardy (T2), Meditate (T3, paid with movement then AP; rank levels of self-knowledge; then a respec, each stat up to rank from birth). *Choice made for the cut-off "if a unit doesn't know themselves well enough to...":* the respec reaches no further than the unit knew itself before that Meditation, so a first Meditation without Self-reflection only teaches; respecs and self-knowledge last the battle, since class units are made fresh each one. Want them to persist between battles once progression saves?
+    - **Built (2026-11-14, ?120):** Meditate is now a trade between core stats, rank points a use (`docs/plans/small-notes.md`).
+58. **Berserker - built on judgement, open for review.** Reckless Abandon (inherent): Offender +1, Unsupportive and Indefensible -1, and skipping defensive and supportive steps. Affinity picks a skill's cost curve and its points' rank, live. *Choices made:* the even curve stays today's 1 + r^2 steps (1, 3, 8, 18 - about n^2) rather than n^2 exactly, so no existing costs move; +1 is n log2 n rounded up, never below n (1, 2, 5, 8, 12); ranks never drop below I (unlocking always costs 1); a skill's Affinity is the sum over the postures it serves, so a dual skill pulled both ways nets out; a posture tag on a skill decides outright (Frenzy: offensive). The three Prowess tabs - Brawn (Bulwark -> Crushing Blow), Fury (Second Wind -> Frenzy), Havoc (Rally -> Savage Swing) - are my content. *Deferred:* investing in a skill per posture ("a certain rank under those circumstances"); a Berserker sprite (it borrows the Fighter's).
+- [x] **Hardy** (Actualization passive; Alabaster borrows it): con mod counts (1 + rank) times in the HP each level brings.
+64. **Wildfire - built on judgement.** Sol's tab, after Solar. *Choices:* a fixed 60 degree cone; severe = (3 x rank)d6 + wis mod; it spares its caster (Solar doesn't); an earth unit's evasion uses the impossible rung's DC rather than failing outright (at rank I that's DC 10).
+65. **Judgement - built on judgement; gods and patrons answered (2026-11-12), built (2026-11-14, ?122).** A Paladin option, and on the Cleric's Sol tab ("lawful domains": Sol among the Cleric's gods; Ramut's too, when a Cleric can follow him). *Choices:* an attack within rank tiles for 1d4 + wis mod, open from the start; the shackles are its payload.
+    - **Answered (2026-11-12):** one god system for now. A god / patron grants every skill tree within its domain as choices: e.g. a Paladin picks 3 trees beside the universal ones, one prowess, one domain, one flex (a specialist leadership tree, an extra prowess, or a domain caster tree such as fire or light that the other domain god may offer), from whichever the god grants. That is one god, then the pool of trees it offers, then the unit picks 3 (if there is any choice at all).
+    - **Warlock pacts** are simpler: a patron grants only its own tree, and a Warlock otherwise has two flex trees. With investment in the general Warlock tree it may form pacts with other patrons as flex trees, **or** deepen its devotion to one patron and burn a flex slot outright, gaining efficiency on that patron tree for skills up to rank tier. A tree burned this way is darkened with the cursed effect (the one that disables skills) and mirrors the patron tree's name.
+    - **Bargaining** (Warlock general tree, tier 5, stackable): grants an efficiency stack to patron trees. **Acceptance** (tier 10, stackable, identical in kind): grants an additional efficiency stack up to rank tier patron trees.
+
+## Ranger (2026-11-09)
+
+Bounty hunters, scouts, detectives and border-justice types (an Arizona ranger), as well as foresters and protectors of nature: survival and efficiency, on Central's streets or in the circus wilds.
+- [x] **The class** (`Roles/ranger.tres`): general Specialist and Martial trees; its own tab's roots - **Bounty** (Observe -> Snare, Special Eyes), **Scout** (Hide -> Eyes Forward, Wary), **Forester** (First Aid -> Field Experience) - borrow what's built. (?81)
+- [x] **Discipline comes easier** (`Role.knack`: Affinity +1).
+- [x] **Nature trees**: a Nature choice borrowing the Druid's biomes (pick 1), learned inefficiently (Affinity -1) until it has learned 4 magical skills, its "major investment in magical abilities" (`TreeChoice.invest`). (?81)
+- [x] **Natural Talent** (core ring, passive): Nature skills up to tier rank are easier to learn, Affinity +1 (`TreeChoice.talent`).
+
+**Discipline** (specialist general skill, tier 3; on the Paladin's and the Mage's own trees too) - [x] built: a toggle. An attack on a foe burns the AP its user has left (not dex move AP), up to rank; each point burned is +2 to hit, +25% damage and crits a face lower (19+ for one point). The less spent before it, the more to burn. (?80)
+
+80. **Discipline - built on judgement, open for review; reworked (2026-11-14, ?120).** *Choices:* a passive toggle, off-able when you'd rather keep the AP; it burns only up to its rank (not everything left); +2 to hit, +25% damage and a face off the crit range a point - "massive" - on Strike's every hit and any attack skill; area skills and saves aren't attacks, so they don't burn. *Deferred:* the initiative half of "the less AP / init you spend" - nothing spends initiative yet; when delaying a turn exists, initiative given up could burn the same way.
+    - **Built (2026-11-14, ?120):** Discipline burns all the AP left on a curve with rank (`docs/plans/small-notes.md`).
+81. **Ranger - built on judgement, open for review; capstones built (2026-11-14, ?122).** *Choices:* the three roots and their names (Bounty, Scout, Forester), all borrowed skills, no new ones; Specialist and Martial general trees; one Nature tree; "major investment" = 4 magical skills learned, lifting the -1 on every Nature skill; Natural Talent's +1 stacks with it (so a talented, invested Ranger learns low-tier Nature magic at +1). Gambeson, rapier and the Adventurer's sprite for now.
+    - **Ranger capstones built (2026-11-14, ?122):** Quarry, Survivalist and Wildcaller, each opening a guest tree and giving efficiency on it (`docs/plans/gods.md`). The Survival tree has no skills yet.
+
+## Druid (2026-11-09)
+
+Oft-secluded experts in natural and celestial magic - wizards for natural magic, wildshaping.
+- [x] **The class** (`Roles/druid.tres`): general Caster tree; **Beastshape** at tier 0.
+- [x] **Biomes** - pick 1 or 2 on its own tab: **Astral** (stars, cosmic magic, spirit realms), **Sylvan**, **Montane** (mountains, highlands), **Xeric** (desert, drought), **Nival** (snow, ice), **Thalassic** (sea). Each borrows what's built where it fits (`Trees/<biome>.tres`):
+  - Astral: Mana -> Astera, Fortune -> Starkind, Constellation, Starsap, Starfall. Picking it **grants mana** (10, `SkillTab.reserves`).
+  - Sylvan: Regeneration Pulse -> First Aid, Snare -> Barkskin ??, Draw from the Land.
+  - Montane: Stonegift -> Terestera, Quake -> Stoneskin, Rampart -> Bedrock.
+  - Xeric: Igna -> Inner Fire, Searing -> Mirage ??, Sunburst.
+  - Nival: Gale -> Hoarfrost ??, Weathercraft -> Whiteout ??.
+  - Thalassic: Waterstrike -> Oceanic, Hydera -> Undertow, Well Up -> Maelstrom.
+- [x] **Guest mage trees** (a Guest choice borrowing the Mage's schools and colleges, pick 1): Affinity -1, none for an elemental skill or a tree kin to a picked biome (`SkillTab.kin`: Astral - Stars, Thalassic and Nival - Currents, Montane - Stone, Xeric - Radiance, Sylvan - the Wizard's Nature). (?82)
+- [x] **A skill on two trees is one skill**: learned and ranked once. Its tree's progress can't be skipped: a skill learned by one tree's way counts on another only once what comes before it there is learned too (`Unit.reached()`).
+- [x] **Beastshape** (T0, 2 AP, self): body and mind become a beast that thrives on the tile and belongs to a picked biome, for rank + 1 turns; used again, back. Shaped, only Strike, beast skills and Beastshape work.
+  - dirt, grass: **rabbit** - haste (+rank movement). [x]
+  - wood, leaves, brush: **squirrel** - climber (occupies tree tiles). [ ] waits on tree tiles
+  - stone, dirt: **mole** - tunneler (stone and dirt cost rank times less, at least 1) [x]; blindsense (non-solid visual blocks and visual illusions ignored within rank tiles) [ ]
+  - Astral only - star, void: **wisp** - Siphon (steal Power from a nearby unit or occupied power source), floating. [ ]
+  - Astral only - elemental ground: **mote** - <element>strike (its Strikes carry the element, rank uses: Elemental Strike's way) [x]; Coalesce: absorb tile or energy from a nearby unit to evolve into a basic elemental - water Undine, dark Wraith, light Seraph, magic Sandestin, stone/earth Oread, woodland Sprite, fire Ifrit, desert Djinn, ice Hrimling. [ ] (only the Undine exists)
+
+82. **Druid - built on judgement, open for review; Pike built (2026-11-14, ?120).** *Choices:* which skills each biome borrows, and the four new stubs (Barkskin, Mirage, Hoarfrost, Whiteout, marked ??); the kin table above; elemental = fire, water, earth, light, dark, energy, ice, air/wind, nature tags; one guest tree; which biomes each beast belongs to (rabbit: Sylvan, Montane, Xeric, Nival; squirrel: Sylvan, Montane; mole: Sylvan, Montane, Xeric; wisp and mote: Astral); the first beast that fits wins, in that order; a mote of desert ground is air (the Djinn); shaping lasts rank + 1 turns and costs 2 AP. *Open:* Thalassic has no beast of its own yet (an otter? a seal?); no sprite change while shaped; Druid sprite borrowed (Elmit).
+    - **Built (2026-11-14, ?120):** Pike, Thalassic's beast, good at swimming (`docs/plans/small-notes.md`).
+
+
+## Downed, Tenacity and Grudge (2026-11-09)
+
+Down but not out: one condition any skill configures by data. Plan: `docs/plans/downed.md`.
+- [x] **Downed** (`Scripts/Downed.gd`; `Skill.downed`): a unit with such a passive, on its last life, taken to 0 HP doesn't die. Later blows take it below 0, to a limit of share x rank x max HP; past it, it dies. Healed above 0, it is saved and `Battle.rescued()` pays the rescue XP. (`docs/done/rules.md`) (?85)
+- [x] **Tenacity** (Adventurer, Fighter; passive; beside Wary): lingers downed for rank rounds, 20% x rank limit, helpless. (?85)
+- [x] **Grudge** (Berserker, low tier on `Trees/fury.tres`; passive): downed, it keeps acting for rank rounds, 20% x rank limit; more than rank skill uses in all, or a round ending without a melee attack, and it dies. (?85)
+- [x] The card chip, log lines and floats ("Downed", "Saved") say so; the AI takes no turn for a helpless unit, strikes a helpless foe last, and closes in with a Grudge unit's last blows.
+- [x] **Draw a Downed unit differently on the map.** Built 2026-11-14: it lies on its side (?128). Before, nothing did: only the card chip, the log and the float text say so (unit drawing was being reworked elsewhere).
+- [x] **The AI starves a Grudge unit of melee, and a Grudge unit heals itself back up** (2026-11-14, ?138): the last-foe case, for one round.
+- [x] **Starving Grudge with allies in its reach, or over more than one round.** Built 2026-11-15 (?162). (?138)
+- [x] **Bug, noticed and not fixed:** (fixed 2026-11-14, ?127) a side's last unit dying inside `Battle.end_turn()` (a bleed, now also a Downed unit's last round) makes `_on_died` pass the turn, and `end_turn` then passes it again; with three or more sides one is skipped.
+- [x] A helpless leader can still give orders, and a helpless unit still watches, guards (Shields Up!) and dodges as before. Built 2026-11-14 (?127): a stopped leader gives no orders and a helpless unit loses its reactions (`Unit.reacts()`); it still watches.
+
+85. **Downed, Tenacity, Grudge - answered (2026-11-10), built (`v-channel`, ?97); your notes of 2026-11-12 on Stun, Borrowed Time, Resuscitate and Intervention built (2026-11-14, ?119, ?124).** Going Downed and helpless ends a channel; a Grudge unit keeps its channel (both: yes). Jam, below, is new. Built: `downed_test.test_channel` (the wiring was already there). The rest stands as built:
+    - A round is one of the unit's own side's turns ending after it went down; if it went down on its own side's turn, the rest of that turn is free. Its last round ending at 0 HP or below, it dies. The blow that downs it leaves it at 0; at exactly the limit it lives. Overkill isn't carried into the negatives; a multi-hit Strike's later hits do land.
+    - Hearts and a Red Spinel Ring are spent before a Downed skill does anything: Downed is only for the last life.
+    - A Grudge action is each skill use it pays for (Strike counts once however many hits); walking, toggles and items don't. The use that goes over still resolves; then it dies. A melee attack is an attack, hit or miss, on a foe touching it.
+    - Helpless (Tenacity): can't act, move, use items or take orders; still holds its tile, can be hit, targeted and healed; its effects tick, it still sees, its passives stay on, and its side isn't beaten while it lingers.
+    - XP: fall XP is paid when it actually dies, not when it goes down; rescue XP when its HP rises above 0, two shares to whoever healed it last (if another unit), once. Downing gives no kill credit; the death does.
+    - Executes (Death, Luun's Smite): a standing unit goes Downed as with a heart; one already Downed dies. With several Downed skills the highest rank counts, first listed on a tie, fixed as it goes down.
+    - Placement: Tenacity beside Wary (Adventurer's Martial root, open from the start; among the Fighter's options). Grudge open from the start, `classes = [berserker]` (a Paladin borrowing Fury sees it locked).
+    - **Going Downed and helpless ends a channel; a Grudge unit keeps it** (answered yes to both; `Downed.changed()` already did it, now pinned by a test).
+
+- [x] **Jam** (2026-11-10): built (`docs/done/classes.md`, `docs/plans/channels-jam.md`), `Tests/jam_test.gd`. (?97)
+- [x] **Jam's damage hits Focus** (2026-11-11): it takes as much off the target's Focus as the HP it lost. (?97, ?100)
+- [x] **No screenshot check** of Jam, or of the Jammed ?? icon. Taken 2026-11-14: a red "Jm" chip, the name only in its tooltip and the Glossary (?136).
+
+97. **The channel rule, helpless, Jam - answered (2026-11-11), built (`w-focus`, ?100).** "Slayer is a good call": Jam on Slayer, reaching the Fighter and Berserker, is settled. Focus: "yeah focus is a resource that rangers and mages can access. Focus: builds up quickly, only while resting. can be used in place of energy. if fully used to cast ranged attack skill, rank bonus to accuracy" (built, ?100; `docs/plans/focus.md`). Still open: the Jammed ?? reading of stun; the rank-cost curve (1 + r^2, 19 skills capped). My calls: Your rulings on 85 and 89, built on `v-channel` (`docs/plans/channels-jam.md`). My calls:
+    - **Rank-cost curve answered (2026-11-12), built (2026-11-14, ?118):** a Grand Design is an equipment item, not learned and ranked like a skill, but however it is ranked up follows similar logic. A legendary item is about as powerful as 4 skills: ranking it up once costs what ranking up a skill 4 times would. Rarity multipliers: uncommon 1.5, rare 2, epic 3, mythic 5 (legendary 4).
+    - **`enchanted`** equipment: the default effect is rank +1, applying as normal at higher rarities. **`honed`** (new equipment tag): mutually exclusive with `enchanted`, meaning material perfection; applies rank +1 and does not activate the `enchanted` bonus effects. These qualities may be given to skills too, when a skill must have a materially large impact to justify its place as a capstone.
+    - **An idle channeler still gets half-rate Energy** (the light rate): holding a channel is light work, not none. It gives up the rest rate, extra exhaustion recovery, the watch bonus, Chant and Hogel's rest.
+    - **Free recasts, 0-AP actions and reactions on the foe's turn don't break a channel.** Anything that spends AP, a move or a strike does, at turn's end. The turn it was cast in is exempt.
+    - **Flamedance, glass and a posing traitor read "held still", not "rested"**: standing still with a channel is not acting.
+    - **The AI holds still to keep a channel** it began earlier, when it has nothing to strike.
+    - **Settled (2026-11-11):** Jam on Slayer. **Jam sits on the Rogue's Blade root and the Slayer tree** (the most offensive of the Paladin's six Prowesses: all four skills are attacks), so the Fighter and Berserker get it through Slayer. Say if Jam should be on another Prowess.
+    - **"Instant stun" is read as the interrupt plus Jammed ?? through its next turn**: no dodge, no guard, no obstruction. No stun condition existed. **Jammed ?? is an AI-made name for you to review.** The interrupt ends a channel, hiding, Shields Up!'s guard, a primed Chant and the watch bonus; a disguise, a grapple, a beast shape and sleep stay.
+    - **Answered (2026-11-11): built** (?100). Jam's damage counts against Focus.
+    - **Found, not changed: the rank-up cost** is 1 + r^2 skill points (quadratic per rank: II 2, III 5, IV 10, V 17), and only Clever Disguise grows exponentially (`rank_cost` 4, `rank_growth` 2). 19 skills set a rank cap (12 at 1, 5 at 3, one at 5, one at 8). You said costs should grow exponentially with no cap. Shall I make the exponential curve the default and drop the caps?
+- [x] **Focus** (2026-11-11): the Ranger's Bounty root and the Mage's Commitment root; built (`docs/done/classes.md`, `docs/plans/focus.md`), `Tests/focus_test.gd`. The Commitment stub that was called "Focus ??" is now **Fixation ??** (an AI-made name, for review). (?97, ?100)
+- [x] **The AI doesn't rest to build Focus** or save it for a shot. Built 2026-11-14 (?130): it rests, and a shot scores up by the Focus it would spend; it doesn't hold a shot back. (?100)
+
+## Clairvoyance (2026-11-09)
+
+An arcane and Cleric spell, channeled: the caster senses where unseen foes are, and nothing more. Plan and what was built: `docs/plans/clairvoyance.md`. Built (`docs/done/classes.md`), `Tests/clairvoyance_test.gd`.
+- [x] `Skills/clairvoyance.tres`: 3 AP, 3 cost, wisdom + rank range, location only, suspicion added, pings updated and the rank raised at each turn end held. (?89)
+- [x] **The AI never casts it.** Built 2026-11-14: a scryer with nothing to hunt casts it, then acts on the pings (?130).
+- [x] **Screenshot check** of how pings look: black silhouettes, they follow the foes. Done 2026-11-15 (?149). Suspicion stack counts were not drawn; built (?150).
+- [x] **Lift `pings` into a behaviour** (see `docs/todo/systems.md`). Built 2026-11-14 (?133).
+
+89. **Clairvoyance - answered (2026-11-10), built (`v-channel`, ?97).** There is never a rank cap, but the cost of ranking up rises exponentially, so it gets dear. "Moving does not end the channel" is overruled by the universal channel rule (`docs/todo/systems.md`): channeling has the same requirements as resting, so a unit that can't rest while moving ends the channel by moving. The rest stands as built:
+    - A ping sees through walls (it is not sight).
+    - The rank gained each turn has no cap while the channel holds.
+    - AP and cost are paid once for the whole channel (3 AP, 3 cost), like Metea's; exhaustion counts it as one use.
+    - Allies share the pings, as sight is shared across a side.
+    - **Moving ends the channel now** (the universal channel rule, `docs/done/rules.md`); casting it again still stops it, free.
+    - **Rank-up cost still isn't exponential** (?97): the rank-up cost is 1 + r^2, and 19 skills still set a rank cap.
+    - Suspicion is added at the cast and at every update, so it builds each turn. Range is measured from the caster's current tile.
+    - **Placement:** the Wizard's Arcane root; the Mage has no Arcane tree, so its Refinement root; for the Cleric, Luun's tree after Pray.
+    - **Between updates a foe that moved is still drawn at its old pinged tile** ("Something may be here: sensed"), and only there until the next update.
+
+## Siphon, Overcharge, Energy Transfer and the Sorcerer (2026-11-11)
+
+Plan, readings and what was built: `docs/plans/siphon-sorcerer.md`; done in `docs/done/classes.md`. `Tests/siphon_test.gd` and `Tests/sorcerer_test.gd`.
+
+117. **Siphon, Overcharge, Energy Transfer, Powerful, the Sorcerer - built on judgement; Energize and Heal answered (2026-11-12), built (2026-11-14, ?121).** Your design notes on Power, Energy Transfer, Overcharge and Stellar Soul. Suite after both merged: 41663 checks, 565 tests, 0 failed. My calls, each for you to confirm or change:
+    - **Answered (2026-11-12):** **Energize** is a basic AP to Energy skill, general tree, tier 4: no Energy cost but a quite expensive AP cost; grants 1 Energy per 2 AP spent, up to rank Energy purchasable. A unit may overcharge by 20% x rank of its total resource (Mana, Stamina, Sweet Nothings plus Energy and so on). Burnout and Recovery Endurance: ?116 in `docs/todo/systems.md`.
+    - **Heal** and **Megaheal** (2026-11-12, `a-recover`): Cleric tier 8, life / love domain general. Heal applies a medium heal + caster mod + rank. Megaheal applies a very large heal + caster mod + rank, and costs more than Heal.
+    - **Built (2026-11-14):** Resuscitate, Intervention, Borrowed Time and the friendly-fire wisdom check, ?124.
+    - **Siphon order:** a siphon attack's damage comes off the target's Overcharge, then the fund its last skill was paid from, then Energy, then its other reserves, fullest first; never HP. It takes precedence over the energy rule (no carry to HP). Confirm?
+    - **A powered target loses x1.5** (`Unit.POWER_SIPHON`), since Power never comes back; doubling would let two Energy Transfers empty a Starmote. Confirm?
+    - **Overcharge** is an extra buffer spent before any fund on a point-for-point cost; it only covers a cost when nothing else can. Focus and Sweet Nothings never use it. It decays over the granting skill's rank in turns, each turn's end taking (left / turns left) rounded up (10 over 3 turns: 10, 6, 3, 0); granted again, the points add and the timer restarts. The unit card shows "OC +n". Confirm?
+    - **Energy Transfer:** `energy`, `siphon`, `magical`, int, 3 AP, 1 Energy, range 4; 1d4, 1d6 from rank III, no modifier. The caster gets what it drained as Energy up to its max; the rest (bar full, or no bar) as Overcharge at rank x 20%, rounded down, for rank turns. On the general Caster tree at tier 2, so every Mana user reaches it. Confirm?
+    - **All energy grants go through `Unit.grant_energy()`** (Starblade, an Energy Potion, starlight, Starsap, Energy Transfer): on a powered unit they arrive as Power. Regen is not a grant. No "degenerate bonus effects" were invented.
+    - **The Sorcerer:** caster focus, noun Caster, tree **Stellar Soul**: Powerful (root, learned first, not innate) then Energy Missile and Starsap, borrowed as they are; Energy Transfer from the general Caster tree. int 10, cha 15 (Mage's stats with the two swapped, since Energy Missile is a cha spell); no Mana; robe, staff, an Energy Potion; god Urlo (magic, energy); pale starlight blue tab. Confirm?
+    - **Stellar Soul's description** ("Beings with a heart that originated from and yearns for the Astral.") lives only in docs and the test header: trees have no description field. Show it? That needs a field.
+    - **Side effect:** Energy Missile and Powerful now sit on a magical tree, so they are magical by kind everywhere (exhaustion sharing; Mana may pay for Energy Missile). `exhaustion_test` now uses a copy on no tree as its skill of no kind.
+    - **Energize was defined (2026-11-12) and built (?121). Still open, for you to define:** **Power Transfer** is named in your notes but not defined, so not built. Guess: it is the Sorcerer's counterpart to Energy Transfer, giving its Power to an ally (or siphoning Power at a better rate). What should it do?
+
+## Trickster and Illusion (2026-11-11)
+
+109. **The Rogue's Trickster tab - built on judgement, open for review (2026-11-11).** "A new trickster rogue skill tree with focus on trickery, persona, and deception. Left is showmanship, middle is deception, right is a caster hybrid wing that dips into illusion, teleportation, and utility magic." My calls:
+    - **A tab of its own** beside Freedom (not a Calling the Bard shares), shown as TRICKSTER, mauve; no centre or core ring, just the three roots.
+    - **Showmanship** (specialist, cha): **Flourish ??** (on itself, persona +rank for rank turns; 2 AP, 1), then **Stage Presence ??** (passive, cha +rank) and **Showstopper ??** (a foe within 1 + rank saves on wis or is **Dazzled ??**, luck -rank, for rank turns; 3 AP, 2).
+    - **Deception** (specialist, cha): **Vanishing Act ??** (on itself, concealment and trickery +rank till it moves, investigated: it vanishes before its watchers' eyes; 3 AP, 2), **Double Bluff ??** (passive, embellish +rank), **Illusionist** at the top, tier 3 (?110).
+    - **Legerdemain ??** (magical, cha - the Rogue's own stat, so a hybrid): **Phantasm ??** (illusion: a foe within 2 + rank saves on wis or is **Haunted ??**, recon -rank, for rank turns), then **Switcheroo ??** (teleportation: trade places with a unit within 1 + rank, a foe saving on dex; traps spring on whoever lands on one) and **Prestidigitation ??** (utility: an ally gets cha mod + rank AP to move with, at once).
+    - All numbers are first guesses ("don't get hung up on balance").
+110. **Illusionist and the Illusion school - built on judgement, open (2026-11-11).** "Illusionist mid-capstone for tricksters: unit gets access to Illusion spellcasting school. No purchase / rank up penalty for first t spells." My calls:
+    - **"t" read as Illusionist's rank** (up to V): the first rank spells it learns from the school, in the order learned, have none of the guest penalty. Say if t meant something else (a tier, a fixed count).
+    - **The penalty** is a picked guest tree's -1 Affinity (`TreeChoice.affinity`): unlocking costs the same, ranking up costs more. Spells past the grace pay it.
+    - **Picked, not given:** once Illusionist is learned, the Illusion school is picked on the Rogue's own class tab, in the box the Wizard's studies use; it's the only tree in that box.
+    - **A Mage school too**, beside Radiance, Currents, Stone, Shadow and Stars (and so one a Wizard can borrow).
+    - **Its spells** (magical, int, paid in Energy): **Blur ??** (concealment +rank on an ally for rank turns), **Disguise Self ??** (trickery +rank for 2 x rank turns, investigated), **Mirror Image ??** after Blur (a tenth of each hit a rank turned aside, rank turns), **Phantasmal Force ??** after Disguise Self (a foe saves on wis or takes 1d6 + int mod), **Invisibility ??** after Mirror Image (concealment +2 x rank on an ally till it moves, investigated).
+
+## Small notes: Meditate, Telepathy, Word to the Wise, Pike, Discipline (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/small-notes.md`; done in `docs/done/classes.md`. `Tests/telepathy_test.gd`, `word_to_the_wise_test.gd`, `pike_test.gd`, `aquatic_test.gd`; `actualization_test`, `nature_test` and `derived_test` updated.
+
+120. **The small notes (?57, ?60, ?63, ?68, ?80, ?82) - built on judgement, open for review (2026-11-14).** Your inline notes, built on `a-small`. Suite after all merged: 42616 checks, 0 failed (648 tests). My calls, each for you to confirm or change:
+    - **Meditate (57):** "decrease -> increase" read as a trade: the points taken out pay for the points put in (changes sum to 0), up to rank points moved a use (rank II: str +2, cha -2). The limit is per use, not a band around birth stats, so meditating again moves rank more; no stat goes below 1. I kept the self-knowledge gate (a use moves no more than the unit knew itself before), since dropping it leaves Self-reflection nothing to do. Confirm?
+    - **Telepathy (60)**, a passive, not a cast, on the general Caster tree at tier 3, tagged magical and supportive ("arcane" is no tag): while it stands every ally within rank tiles counts rank in place of cha; the first ally given an order while rank beats the leader's cha mod is bound for the turn, so the player picks the one by ordering it first. "Removing cha restrictions" read as the per-ally limits (reach, orders, slots); the linked ally still counts toward allies a turn. Confirm?
+    - **Word to the Wise (60)**, a passive on the general Specialist tree at tier 3 beside Tactician: the stand-in mod is min(leader wis mod, ally wis mod + rank). Grand Design adds on top of either stand-in. Confirm?
+    - **Per-ally commanding:** one hook, `Command.cha_for(u)`, with Behaviour hooks `command_mod` and `ordered`, carries both skills (reach, orders a turn, hotbar slots and the HUD's texts go by it); `ally_cap()`, party size and reach, and `could_order()` stay leader-wide. After merging, the HUD grey-out reads each ally's own order cap. Confirm?
+    - **Severe (63):** `extreme` renamed `severe` (3 x rank) everywhere: no call.
+    - **Bump recon (68):** "concealed" read as "the walker couldn't place it"; each bump on a walk (not a push or teleport) gives the walker 1 more recon level on it, its own and for the battle, even when the walk goes nowhere (`Battle.noticed`, signal `bumped`; log "X bumps into something unseen"). Confirm?
+    - **Discipline (80):** it now burns all the AP left (not up to rank); the toggle stays. Points P = AP ^ (rank / (rank + 1)): 1 AP is 1 point at any rank, returns flatten toward linear as rank grows. A point is +2 to hit, +10% damage x the attack's stat mod (at least 1), a crit face lower per whole point; a unit holding Focus (any aiming reserve) gets ceil(P / 2) back after the attack is paid. The curve is my pick; "small" for Focus is my reading. Confirm?
+    - **Pike (82):** "good at swimming" is one shared rule on the `aquatic` tag (now a Glossary term): a step into water costs 1 movement, nothing drags, and it can't be drowned. Undines and any Aquatic unit swim the same way now. `FORMS.pike` (Thalassic; water or wet ground) sits before the mote, and a Pike unit (level 2, unaligned, aggressive, Fish, Aquatic, Strike I, placeholder sprite) is in no battle yet; its stats and temper are mine, "Pike" is yours. No rank-scaled swim bonus. Confirm?
+    - **Not done:** Discipline's initiative half; no sprite change while shaped as a pike; pushes and teleports don't bump; `HUD.uses_intents()`' low-wisdom half still reads the leader's raw wis mod.
+- [ ] **Discipline's initiative half**: still deferred. (?80, ?120)
+- [ ] **The Pike unit** is in no battle; Beastshape's pike has no sprite change. (?82, ?120)
+
+## Gods, Warlock pacts, efficiency stacks, Ranger capstones (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/gods.md`; done in `docs/done/classes.md`. Tests: `god_slots_test`, `bargaining_test`, `acceptance_test`, `quarry_test`, `survivalist_test`, `wildcaller_test`, `forage_test`, and the tests changed to the new rule (listed in the plan).
+
+122. **One god system, Warlock pacts and burns, efficiency stacks, Ranger capstones - built on judgement, open for review (2026-11-14).** Your answers under 65 and 81, built on `a-gods`. Suite after all merged: 42616 checks, 0 failed (648 tests). My calls, each for you to confirm or change:
+    - **God as data:** `Scripts/God.gd`, one `Gods/<id>.tres` per god and patron (Elmon and Hogel too, "one god system"): its own tree and a pool of tabs it offers, each tab's kind its slot kind. `Unit.GODS` and `GOD_TAGS` stay where they are (moving them is churn). Ramut, Urlo, Drael and Vetruvis have no own tree, so a Cleric can't choose them yet (unchanged). Confirm?
+    - **Slots are TreeChoices:** a god slot offers its picker's god's trees of its kinds; with no more trees than picks, it opens without one ("if there's choice at all"); `grants` opens every tree of its kinds. `SkillRoot.gods` is gone, the prowess alignment (?69) moved into the god files unchanged. Confirm?
+    - **Cleric:** God (pick 1, level 1) then Domain, granted: Sol offers Radiance (light), Luun Shadow (dark), Drael Currents, Vetruvis Stone, Urlo Stars; Eros and Ramut none yet. A Sol Cleric gets Divinity: Sol and School: Radiance (Mage-only skills stay Mage-only). Confirm?
+    - **Paladin:** Prowess, Domain (its god's Divinity: Eros moves there, still open from the start) and Flex (any prowess, divinity or school its god offers). Idealism: Chivalry stays on its own tab: moving it to Flex would cost every Paladin it. Confirm?
+    - **Warlock:** Patron (pick 1) plus Flex, 2 slots, after Bargaining: another patron's tree as a pact, or a burn, a tab mirroring its own patron tree, darkened with the cursed look; a burn is +1 Affinity to that patron tree. Both slots may burn. Confirm?
+    - **Efficiency stack, one mechanic:** `Unit.efficiency(s, t)`, +1 Affinity per stack reaching tree t at s's tier; sources are a learned passive with `Behaviours/efficiency.gd` (its rank the tier cap) and burned slots (read as no tier cap, since a burn has no rank). Bargaining (t5) and Acceptance (t10): max rank 5, stackable, reaching every patron tree the Warlock holds, pacts included; "investment in the general warlock tree" read as skills learned (`min_tier`). Confirm?
+    - **Ranger capstones**, each opening a guest choice at -1 and an efficiency stack on it up to rank: Quarry (Bounty, needs 2) opens Prowess: Slayer; Survivalist (Scout, needs 2) a new Survival ?? tree with one stub skill, Forage; Wildcaller (Forester, needs 1) the Nature choice, no longer open from the start. Confirm?
+    - **Order changed:** gods by file name, so the Cleric's box reads Eros, Luun, Sol (was Luun, Sol, Eros). Confirm?
+    - **New names to review:** Survival ?? (the tree), and Quarry ??, Survivalist ??, Wildcaller ?? and Forage ?? (skills marked `ai = true`, shown with ??).
+    - **Heal and Megaheal** sit on the Cleric's Eros tab for now ("domain general": a Life tree would hold them); see ?121.
+- [ ] **Survival ?? needs real skills** (only Forage, a stub; waits on ?81). (?122)
+- [ ] **No Paladin leadership Flex tree**: none exists, so Flex offers prowess, divinity and school trees only; Idealism stays on its own tab. (?122)
+- [x] **`Unit.GODS` and `GOD_TAGS` not moved into the God files.** Built 2026-11-14 (?127). (?122)
+- [ ] **A burn's tier cap**: read as none; say if a burn should reach only up to a tier. (?122)
+- [ ] **Ramut, Urlo, Drael and Vetruvis have no own Divinity tree**, so a Cleric can't pick them. (?122)
+- [x] **`.claude/skills/new-class` should mention `role.py god`** (house rule: skills aren't edited without you). Built 2026-11-14: one line, as the coordinator authorised (?135). (?122)
+
+## Rescue and interrupt: Resuscitate, Intervention, Borrowed Time, friendly fire (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/rescue.md`; done in `docs/done/classes.md`. Tests: `resuscitate_test`, `intervention_test`, `hale_test`, `borrowed_time_test`, `friendly_fire_test`; no existing test changed.
+
+124. **Resuscitate, Intervention, Borrowed Time, friendly fire - built on judgement, open for review (2026-11-14).** Your notes under 84 and 85, built on `b-rescue`. Suite after all merged: 42616 checks, 0 failed (648 tests). My calls, each for you to confirm or change:
+    - **Resuscitate:** General Specialist tier 4, 3 AP, 2 Energy, reach 1, physical and specialist. The unit comes back *up* with rank x 5% of its max HP: a heal of (what it is below 0) plus that share, so a deep negative is still saved. Downed allies only (it is refused, unpaid, on anything else; this needed a generic `Behaviour.fits()` target filter). The caster gets the rescue XP. Confirm?
+    - **Intervention:** on Divinity: Eros after Renew (the divine tree both Cleric and Paladin have; a-gods moved nothing yet), 3 AP, 2 Energy, an ally or itself within rank tiles, Bless for rank turns (duration is mine). Bless is three effects: `regen` 5% x rank only while Downed; `hale` (new stat, Hale ??): every execute reads HP share as full, in `Battle.executed()`, `last_stand()` and Luun's Smite threshold (so "much less likely" is "can't" where no check exists); and a defensive `check` +rank tagged `taps` and `execute`. Confirm?
+    - **Any later effect is covered:** `skill.py check` fails a skill that puts on a helpless or sleep effect without the `taps` tag, or that `kills` without `execute`; the save contest now passes the skill's tags to the target's check. Confirm?
+    - **Borrowed Time:** no time branch exists, so it sits on the Wizard's Arcane root after Blink, needing 3 of the root's others (as a capstone). A passive, `defer` +rank (new, generic stat). On its last life (hearts first), HP taken to 0 defers death rank rounds, once a battle: HP holds at 0, it acts, is targeted and healed. Every hit and debuff is logged, replayed in order at each of its rounds' end (each harm once per round it stays in the window, up to rank times; `taking_hit` hooks don't, being already counted). At expiry a check against an `execute`, d20 + rank, the execute winning ties; from 0 HP it is certain death unless healed or hale; passing leaves it at 1 HP; failing is the death put off (Downed first, if it has one). A Downed unit dying is not deferred. Confirm?
+    - **Friendly fire:** a foe-only skill cast on a friendly unit the caster doesn't read as an ally (fog, darkness, an allied side hiding, an ally in a front) asks a hidden check: d20 + wis mod, offensive, against the standard DC 12; leaders' experience and cha don't enter. Passing: the attacker spends the skill's AP and cost, is interrupted as if Jammed, and its side reads that ally better (as many recon levels as the ally hides, at least 1), logged "X holds its fire". Failing: it lands as on a foe. Dual-use skills keep going by the truth. Range is checked first. Before this the cast was refused outright, which leaked who the unit was. Confirm?
+    - **New names to review:** Hale ?? (the stat). Resuscitate, Intervention and Borrowed Time are your names.
+- [x] **The AI doesn't use Resuscitate or Intervention** (not `heals()` skills). Built 2026-11-14 (?130). (?124)
+- [x] **The HUD offers Resuscitate on any ally in reach**; the cast is refused. It should offer it only on the Downed. Built 2026-11-14 (?128).
+- [x] **No card chip for Borrowed Time**: only log lines and a float text. Built 2026-11-14 (?128). (?124)
+- [ ] **Intervention and Borrowed Time may need a better home** once a Life tree and a time branch exist. (?124)
+
+## Slayer skills (2026-11-14)
+
+Plan, readings and what was built: `docs/plans/slayer.md`; done in `docs/done/classes.md`. Tests: `slayer_test` (neutralized, targeting memory, ambush, refund, tow) and one per skill (`gank_test`, `poach_test`, `peel_test`, `sutemi_test`, `spike_test`, `hitch_test`, `bludgeon_test`, `slam_jam_test`); no existing test changed. Your request: martial / slayer, in `docs/todo/systems.md` ("Skill terms, cost and modifiers").
+
+126. **Slayer skills - built on judgement, open for review (2026-11-14).** Built on `m-slayer`. Your names as given (Gank, Peel, Poach, Sutemi, Spike, Hitch, Bludgeon, Slam Jam, Off Balance, Winded, neutralized, ambush); hand-set costs, the cost vocabulary left for the calculator. My calls, each for you to confirm or change:
+    - **Gank** (4 AP, 2 Energy, reach 1, 1d10 + str, its weapon's blow): needs an ally, not the caster, within rank tiles of the target; disadvantage unless it ambushes. Confirm?
+    - **Ambush:** the target can't locate the caster, or the caster is concealed from it or unseen, judged as the attack is paid for, before it exposes the caster (and before Sutemi's lunge); the hit's tags gain `ambush`, so any effect or rule asking for the tag reads it. Confirm?
+    - **Peel** (passive): an ally within rank + wis mod and a foe within rank of that ally (only foes the walker can locate): each step toward that foe costs (tiles closer, Euclidean) / 2 less, at most half that step, for rank steps a turn; the HUD's reach and will-consume preview agree. Confirm?
+    - **Poach** (3 AP, 2 Energy, 1d6 + dex, reach 1): "low health" is bloodied (half HP or less, through the execute measure, so Hale counts as whole); "hasn't targeted" is never this battle, ally or foe, hit or miss; the cost reduction is half the AP and Energy refunded after paying; "double regain for focus and stamina" is 10% x rank of each reserve's max against Energy's 5% x rank, only when its own blow neutralizes its target, once a cast, through the recovery rules (burnout applies). Rangers get it through their Slayer tab. A Downed unit then killed is neutralized twice, so a Poach that downs and a later one that kills both regain. Confirm?
+    - **Neutralized** is one call, `Battle.neutralize(u, by, how)` with `downed` (a heart spent), `down` or `killed`; a forced unshape or polymorph break should call it with `unshaped`, none exists yet. Confirm?
+    - **Sutemi** (5 AP, 2 Energy, 1d10 + str): a target within rank + 1, so it lunges up to rank tiles to stand beside it; a forced step-by-step move like Sing's pull, no movement spent, ground underfoot does nothing; Off Balance is Defense -1 per tile lunged, lasting through its next turn; unusable if the lunge can't end beside the target. Confirm?
+    - **Spike** (6 AP, 2 Energy, 1d10 + str): the target adds the AP it had left as its side's last turn ended, rounded down, to its Defense, and a hit deals +rank. Confirm?
+    - **Hitch** (3 AP, 1 Energy, 1d4 + str): a hit starts a contest, d20 + str + rank against the target's str or dex check (its better); won, it is Hitched ?? with `tow` rank, dragged rank tiles in the caster's move direction, stopping at anything in the way, until its turn ends. The tow applies to every move that turn, not only the next. Confirm?
+    - **Bludgeon** (5 AP, 2 Energy, 1d8 + str, blunt): +1d4 when its weapon is blunt or it is bare-handed; a hit applies Winded for rank AP. **Open (the Winded sentence broke off at "enemy loses"):** read as losing rank AP at once, or as its next turn opens if it isn't acting. What did you mean?
+    - **Slam Jam** (after Jam, 6 AP, 3 Energy, 1d10 + str): a hit asks a contest, d20 + str + rank against d20 + con save, to interrupt as Jam does (Jammed, not its Focus drain); a hit refunds 1/(rank + 2) of the cost, "cost x (rank + 1)/(rank + 2)". Confirm?
+    - **Tiers:** Gank, Poach, Hitch and Peel beside Jugular and Jam; Sutemi and Spike after Jugular; Bludgeon after Hitch; Slam Jam after Jam. The Gank stub was removed and rewritten through the tool. Confirm?
+    - **AI:** `AI._strike()` skips a skill whose behaviours' `fits()` refuse the target (Gank with no ally near); the AI uses all seven actives as ordinary attacks and doesn't weigh Gank's ambush, Poach's advantage, Spike's Defense or Sutemi's Off Balance. Peel works for AI walkers free.
+    - **New names to review:** Hitched ?? (the held-and-towed status, `Effects/hitched.tres`). The rest are yours.
+- [ ] **Winded's meaning**: the sentence broke off. (?126)
+- [x] **A forced unshape or polymorph break**: `Battle.unshape()` calls `neutralize(u, &"unshaped")`. Built 2026-11-15 (?153). (?126)
+- [x] **Poach's and Slam Jam's discounts** are in the price beforehand (`Behaviour.rebate()`). Built 2026-11-15 (?151). (?126, ?131)
+- [x] **The AI doesn't weigh** Gank's ambush, Poach's advantage and cost cut, Spike's Defense or Sutemi's Off Balance. Built 2026-11-14 (?138): hit chance, `refunds`, `unguarded`.
+
+## Price rebates and forced unshape (2026-11-15)
+
+Plans: `docs/plans/price-refunds.md` (`y-price`) and `docs/plans/unshape.md` (`y-unshape`). Tests: `poach_test.test_price_beforehand`; `slayer_test.test_unshaped` and `test_unshaped_poach`.
+
+151. **Price rebates - built on judgement, open for review (2026-11-15).** My calls:
+    - **One hook, `Behaviour.rebate(c) -> Vector2`:** x the share off before the roll (sure), y the share back on a hit. `refunds(c, p)` (the AI's read) is derived: x + y * p. Poach and Slam Jam override `rebate` only.
+    - **Where the sure share is taken:** `Battle.rebate()` sums the behaviours; `_cast` passes x to `Unit.pay_for(s, cut)`; `ap_cost` and `cost_from` take an optional `cut`. The HUD's `drain()` asks the same `Battle.rebate()` for the hovered target, so forecast and payment can't drift.
+    - **A roll-dependent share stays a refund** (`Unit.refund()`); the card row shows "on hit: -N" beside the drain segment. Slam Jam's energy share floors as the refund does. `Unit.paid_cut` remembers the cut so a later refund is a share of what was paid.
+    - **`Pricing.gd` untouched:** the calculator prices a skill by its terms; the per-cast discount is a target fact.
+    - **New names to review:** none.
+- [x] **`can_afford` and the AI's affordability use the full price**, so a unit with exactly half of Poach's AP could not start it though the hover showed the discount. Built 2026-11-15 (?164). (?151)
+- [ ] **Only `_cast` (a single target) takes the cut**; auto, spread and tile paths pay full (no target to ask). (?151)
+
+153. **Forced unshape - built on judgement, open for review (2026-11-15).** Tied to ?126's open question. My calls:
+    - **One hook, `Battle.unshape(u, by) -> bool`:** ends the form (emits `shaped(u, "", "")` as the voluntary path does) and switches off any toggle whose effects carry `mist`; if anything ended, `neutralize(u, &"unshaped")`; false and silent when u was in no shape. `by` is reserved for reactions. Shapes today: `Unit.form` (Beastshape) and the mist (Vaporize); no polymorph exists.
+    - **Effect stat `unshape ??`** (AI-made name): any skill, item, mark or tile effect carrying it forces the unshape as it is put on, through `Battle.drive()`'s existing call sites, and is erased at once.
+    - **The voluntary unshape stays quiet** (no neutralize); a mist turning itself off is a plain toggle.
+    - **No new skill.** Poach hears it free: its `felled` fires for the cast's target.
+    - **Open, ?126:** should skills that force an unshape exist (a Dispel, a Hex of the beast), and is it a Slayer or anti-druid tool or a general one? Does a mist forced out count as neutralized for Poach-like regains? Built as yes.
+    - **New names to review:** unshape ??.
+- [ ] **No skill forces an unshape**, pending ?126's answer on who owns it. (?153)
+
+## Skeleton and Mortis Arcalís (2026-11-16)
+
+Plan: `docs/plans/r-skeleton.md`. Built on `r-skeleton`. Tests: `Tests/summon_test.gd` (one seam), `sweep_test` casts it; suite 8632 checks, 0 failed.
+
+181. **Skeleton and Mortis Arcalís - built on judgement, open for review (2026-11-16).** Your words: "new spell Skeleton, it creates 2 undead weak skeletons per rank", "Mortis Arcalís:" (nothing followed). Names are yours (`--human`). My calls:
+    - **Mortis Arcalís is a school (a tree)**, tag magical, on the **Mage's School choice**; the Wizard borrows "School" through Mastery, so one place offers it to both. "Arcalís" read as your word for arcane/magic broadly. Tab colour a placeholder pale green.
+    - **Control:** the skeletons are the caster's faction, ordinary units: a player's are commanded by the leader or act through the AI as any ally does (no `uncontrolled` flag, no owner field).
+    - **Permanence:** they last until killed (`neutralized` fires as for any unit) and do not die with the caster.
+    - **No cap** on how many a side holds; the cost and the turns are the limit.
+    - **Placement:** each on the free tile nearest the tile aimed at (`free_near`), so the first is on it and the rest around it; the tile is within range 3. A full map just brings fewer; the cast and its price stand.
+    - **Cost:** a tile skill, range 3, tags magical, dark, int, priced by the calculator at AP 4, cost 3 (rank impact "summon"); price does not grow with rank, the count does (2 x rank, through `impact_rank()`).
+    - **They arrive with AP spent** (act from their side's next turn). `Behaviours/summon_per_rank.gd` zeroes it; Battle.gd untouched.
+    - **The Skeleton unit** (`Scenes/skeleton.tscn`): tag undead (already a Unit tag; only its colour `#9aa98a` was missing), vibe Hollow, aura -1, temper aggressive, class-less, level 1, HP 6, Energy 4, str 10 dex 10 con 8 int 3 wis 6 cha 2, Strike only. Weaker than the Pike (HP 8, level 2).
+    - **Generic behaviour:** `summon_per_rank` exports `scene` and `per_rank`; any later summon sets another scene and number.
+- [x] **The AI never casts Skeleton** (no tile-summon plan in `AI.gd`; queued). (?181) Built (found 2026-11-20, ?217): `AI._summon()`.
+- [x] **Summoned units spend their AP on arrival** except rank + cast mod, and Wake and Rake adds rank to that. Built 2026-11-19 (?197). (?181)
+- [ ] **No cap or duration on skeletons**; a Wizard tab or a limit if they swarm. (?181)
+- [ ] **Mortis Arcalís has one skill**; the rest of the school and real art. (?181)
+
+186. **Glance, Backstab, Glancing Strike, Heavy Strike - built on judgement, open for review (2026-11-18).** Your words (2026-11-18, in `docs/agents/answers-2026-11-18.md`; verbatim in `docs/plans/w2-glance.md`). Calls, those marked (lead) are the lead's readings of your words:
+    - **Glance** (your word, no ??): a roll in crit range that would miss is a glance, a hit for half the regular damage, **rounded down, at least 1** (mine). Effects, behaviours and riders land in full on a glance; only damage halves.
+    - **A natural 20 now crits only on a hit and glances on a miss** (before it always hit and crit). Your "critical hits on a miss glance instead", read literally (lead). Rules text in `docs/done/rules.md` updated.
+    - **One place decides the outcome:** `Check.outcome()` (MISS / HIT / CRIT / GLANCE), read by `Battle.resolve()` and by the unrolled forecast `Check.outcomes()`; payload `Check.Roll`, announced by the signal `Battle.attack_rolled(caster, target, roll)`.
+    - **Crit range hook:** Effect stat `crit_range` ("Crit range ??"), added to Discipline's points by `Battle.crit_range(u)`, never below 2.
+    - **Backstab** (Rogue and Slayer, passive; the tier is mine, since class trees have no tiers): crit range widens 1 per rank (rank I crits on 19 and up). **It sits after Jugular on the Slayer and after Jam on the Rogue's Blade tree**; both placements of "t4" are calls.
+    - **Glancing Strike** (general martial tier 2 passive; not a Strike form, so it stacks with Brutal and Heavy): stat `glancing` ("Glancing ??"). **"Strikes" means skills with `chain`** (there is no strike tag). The holder's Strikes roll at disadvantage, and **`glancing` applies to any of its attacks rolled at disadvantage** (Gank, Jugular too), whose better die would land becomes a glance instead of a miss. Reading of "if both rolls don't miss" (lead): the worse die misses, the better wouldn't. Advantage from elsewhere cancels the disadvantage and the glance rule with it.
+    - **"Add rank to the first rank attack rolls"** (lead's reading): stat `opening_rolls` ("Opening attacks ??"), + rank to hit on each of the holder's first `rank` attack rolls each battle, counted by a new generic `Unit.rolls_made` (Heavy Strike's last roll included).
+    - **Heavy Strike** (general martial tier 5 passive; a Strike form, exclusive with Brutal, Decisive and Elemental, so the tier is mine): **"consecutive strikes" is one Strike use's hits** (the rank hits, Strike Out's misses that don't end it, Strike!'s restrikes); **"successes" are the hits that landed** (lead's readings). Each hit's damage (row penalty, crit or glance applied) is held; then a last attack: the last hit's bonus without its row penalty + successes + rank against the current Defense and edge. A miss loses everything and the Strike counts as a miss; a hit deals the pool + successes + rank, doubled on a crit, halved on a glance. No hits landed, no last roll. Jugular's "a hit is a critical" leaves a glance a glance.
+    - **Generic hook `Behaviour.striking(b, holder, rank, v: Volley)`** (a Strike's payload per landing hit and once at the end); other passives can join it; `skill.py` lists it.
+    - **Forecast:** `Battle.hit_chance()` reads `attack_odds()` ([hit, crit, glance], exact), so crit range, glancing and opening rolls show; the HUD hover adds "(N% a glance)", the log "(glance)", a "Glance" float; the AI cuts expected damage by half the glance share; crits still add nothing to its estimate. Glossary term `glance` (colour `#e6c98a`).
+    - **No balancing** (you said so): Glancing Strike's disadvantage is its cost.
+    - **Tests:** `check_test` (`test_crit_and_sure`, `test_no_inline_d20` updated; new `test_glance_outcomes`, `test_crit_range_glances`, `test_glancing_and_opening`), new `heavy_strike_test`, `hud_test.test_tabbed_skills_screen` counts Backstab. Eight mutation spot-checks (plan).
+    - **New names to review:** Crit range ??, Glancing ??, Opening attacks ??. (Skill names Backstab, Glancing Strike, Heavy Strike are yours, built `--human`.)
+- [x] **Striking Features and Striking Intellect** (use cha or int for strike attacks if higher): built 2026-11-18 (?189).
+- [ ] **Tier placement of Backstab, Glancing Strike and Heavy Strike** (no tiers on class trees): confirm the places. (?186)
+- [ ] **Does a natural 20 that misses glance, and a hit crit, as built?** (?186)
+- [ ] **The AI doesn't plan around a glance or Heavy Strike's last roll** beyond halving by the glance share. (?186)
+
+189. **Striking Features and Striking Intellect - built on judgement, open for review (2026-11-18).** Your words: "2 skills: Specialist/Caster general Striking Features/Intellect: Unit may use `cha/int` for their strike attack mod, if it's higher." Plan: `docs/plans/w2-striking.md`. Calls, those marked (lead) are the lead's readings of your words:
+    - **One generic hook, no flag per skill:** Effect stat `attack_stat` ("Attack stat ??"); `checks` names the stats offered, `skills` or `tags` say which attacks. `Unit.attack_stat(skill)` takes the best mod among the skill's own stat, a weapon's and every offered one; `Unit.attack_mod()` and the three `check_bonus` sites (cast, `_chain`, `attack_odds`) read it, so Bracing on cha or int follows the stat used, and the forecast, hit chance and AI see it. Another skill can offer another stat or name other skills or tags in data.
+    - **"Strike" means the one chain skill** (`Skills/strike.tres`), as in ?186 (lead). No new tag: Strike's tags are shared by other skills.
+    - **Striking Features already existed** (Specialist general tree, tier 4, the `featured` effect: first hits add cha mod damage). Kept it and added `attack_stat` to it rather than replacing it; its name is yours, so no ??.
+    - **Striking Intellect is new** (`--human`; passive, magical): Caster general tree, tier 4, after Record Striker, beside Striking Features' tier. **Its tier and tree placement are the builder's pick.**
+    - **Not balanced** (you said so); prices are the calculator's.
+    - **Tests:** `general_test.test_attack_stat`, one table row per stat (higher wins, forecast rises, lower or unequipped unchanged, non-Strike untouched). Two mutation spot-checks (comparison flipped, `skills` filter ignored).
+    - **New names to review:** Attack stat ??.
+- [ ] **Placement of Striking Intellect** (tier 4 after Record Striker on the Caster general tree): confirm. (?189)
+- [ ] **Does `attack_stat` apply to other strike-like attacks** (Gank, Jugular, a Hex)? Now only Strike; a skill opts in by `skills` or `tags`. (?189)
+
+## Wave 3 (2026-11-19): strike use, Chaser, summon AP
+
+193. **Per-use strike rules and Chaser - built on judgement, open for review (2026-11-19).** Your words (answers 2 and 3 of 2026-11-18b): Glancing Strike "per skill use: units can make many strike attack rolls at once due to the nature of strike"; Heavy Strike "acts on a single skill *use* (whether or not that skill used was 'strike')", an automatic repeat being consecutive and a manual re-target a separate hit; Rogue t8 "Chaser": "on a critical hit, use an active skill within rank active skills of rightmost active skill ... at a rank no higher than that of Chaser". Plan: `docs/plans/w3-strike.md`. Calls:
+    - **One generic scope, the skill use** (`Battle.use_of(u)`, payload `Behaviour.Volley`): opened by a caster's outermost `cast()` / `cast_at()`, holding all its attack rolls, Strike!'s restrike, Jugular's recast and an auto skill's spread; each use has an `id` carried by every roll (`Check.Roll.use`). A use chosen afresh is a new one; another unit's reaction inside it is not part of it. No per-skill counter.
+    - **Glancing Strike:** `Unit.rolls_made` is zeroed as a use opens (was per battle); "+N to hit on each of its first N attacks each time it uses a skill".
+    - **Heavy Strike on any use:** every landed attack goes through `striking()` at stage `hit`; the `end` stage moved to the use's close (`Battle._end_use`). Pools are per target; a multi-hit skill counts each blow as a success; the pooled blow lands after `used` is emitted through `_blow()`. **Changed:** a missed last roll now loses only the pooled damage (the Strike no longer counts as missed for behaviours; only Perfect at 36 hits notices). Heavy Strike stays a Strike form. Alternative: pool only Strike's own blows (now your 2026-11-19 amendment, queued as Wave 4 card A).
+    - **Chaser** (`--human`): a passive, martial + reaction, on the Rogue's Blade root after Backstab (roots have no tiers, so the "t8" isn't set; the prerequisite is my pick). New reaction trigger `&"crit"` (`Battle.roll_attack()`, fired on a rolled critical, not on Jugular's forced one). The follow-up is the existing interrupt (`grant_interrupt`, as Final Act's), after the critting use is over (a separate use); `grant_interrupt(u, actions, only)` has a new `only` (`Unit.allowed`): HUD and AI read `actives` and follow unchanged. "Within rank of the rightmost" counts the rightmost `rank` usable actives on the hotbar (passives and disabled actives aren't counted); rank cap = Chaser's rank through its holder's modifiers.
+    - **Once per skill use** (a Strike's many crits chase once); a use made inside an interrupt sets off no chase (without it a high crit range chained 80+ chases in a mutation). Your 2026-11-19 amendment (Chaser procs only rank times; `friction`) is built (?202).
+    - **Not balanced;** Chaser's price is the calculator's.
+    - **Tests:** `check_test.test_glancing_and_opening`, `test_crit_range_glances`, `heavy_strike_test` (new `test_any_use`), `chaser_test` (new), `hud_test.test_tabbed_skills_screen`; eight mutations failed and reverted.
+    - **New names to review:** the `crit` reaction trigger ?? (Chaser is yours).
+- [ ] **Chaser's placement** (Blade root after Backstab, not "t8"): confirm. (?193)
+- [ ] **The HUD isn't visually checked during a Chaser interrupt** (it reads `actives`). (?193)
+- [x] **The AI doesn't plan around Heavy Strike's pool across other skills.** Moot: Heavy Strike now pools only Strike skills' blows (?202); queued to check the AI's reach (`docs/queue.md`). (?193)
+
+197. **Summoned AP and Wake and Rake - built on judgement, open for review (2026-11-19).** Your words (answer 9, ?181): summoned units "spend all but up to rank + cast mod ap on spawning"; "Caster general: Wake and Rake: Add rank to AP `summon` units keep on spawning." Plan: `docs/plans/w3-skeleton.md`. Calls:
+    - **Keep rule** in `Behaviours/summon_per_rank.gd` `keeps()`: rank impact + the cast's stat mod (the skill's stat through the caster's modifiers: Skeleton is int) + passives' `summon_ap`, never below 0 or above what the unit had; taken from the pools in order. "Cast mod" read as the casting stat's mod. Alternative: the best of the caster's mods.
+    - **Generic hook** `Behaviour.summon_ap(holder, rank, who) -> int` (default 0), asked of every equipped passive the summoner has; `Battle.summon` untouched; added to `skill.py` `HOOKS`.
+    - **Tag `summon`** (yours; kind target, colour `#8fb0c8`, a placeholder) on Skeleton's unit; declared by `mechanic.py tag`, its `??` on the term removed by hand. Wake and Rake reads the tag, not Skeleton.
+    - **Wake and Rake** (`--human`): passive, magical + int, Caster general tree, tier 4 (a guess, beside Drone), price left to the calculator (2 AP, cost 1); its rank goes through `holder_rank`.
+    - **Skeleton's description** now says the AP kept.
+    - **Tests:** `summon_test` extended (rank + mod kept, Wake and Rake III keeps 3 more, describe); the stub `wake_and_rake_test.gd` deleted; two mutations failed and reverted.
+    - **New names to review:** none.
+- [ ] **Wake and Rake's tier** (Caster general, tier 4, a guess): confirm. (?197)
+- [ ] **"Cast mod"**: read as the casting stat's mod; confirm. (?197)
+
+## Wave 3, second half (2026-11-19): Cram, Student, Power Armor and Scrap Plating
+
+198. **Cram and caster bonus slots - built on judgement, open for review (2026-11-19).** Your words (answer 5 of 2026-11-18b, the Cram paragraphs; 2026-11-19: "slot count doubles under density emblem for Cram? OK. The penalties scale too: a unit's entire hotbar could end up getting disabled"). Plan: `docs/plans/w3-cram.md`. Calls:
+    - **Both slot readings, literally:** Cram grants 1 + rank Caster Skill Slots (the typed `slots` Effect, tag `magical`) *and* converts rank sure slots into caster bonus slots (rank II: takes one sure slot, adds three caster slots, converts two). Alternative: the "+ rank" slots *are* the converted ones (no net gain, a pure cost), or the new slots are themselves the bonus slots (no conversion).
+    - **Generic Effect stat `bonus_slots`** (`mechanic.py stat --human`; yours, shortened from "caster bonus slots"), tagged with the slot type, per rank; `Unit.bonus_slots()`. Nothing names Cram: any skill or item on the bar can convert slots of any type.
+    - **Which slots convert:** the sure slots to the converting skill's *left*, right to left, skipping pillars and already-converted ones (not "the rightmost past the pillars": an always-on passive like Favour can sit at the bottom and push Cram in one). Alternative: the rightmost sure slots overall.
+    - **Placement:** the existing generic pillar rule (last free sure slot), not forced into the very last slot.
+    - **A bonus slot holds anything**; a skill there is off (`Unit.bonus_off()`, asked by `equipped()`) while it lacks the slot's type or while *any* pillar on the bar is disabled. "Caster" = tagged `magical`. Pillar already disabled every pillar when one goes, so nothing new there.
+    - **Burnout penalty times rank** multiplies the whole `Burnout.penalty()` (exhaustion's wear) for any skill in a bonus slot, int or not (`Unit.slot_penalty()`); rank I is x1. Alternative: only `int` skills' Burnout.
+    - **Density** composes through the one rank read (`mods(s).irank`): slots granted, converted and the penalty grow together, so a Density emblem can convert a whole hotbar (capped by the sure slots left of Cram). As your 2026-11-19 OK.
+    - **AI and auto-equip:** one rule, `Unit._suits()`: a skill goes into a bonus slot by itself only if it would work there; the AI reads `actives`, so never casts from an off slot. **No swap** of skills already on the bar when Cram arrives: a non-caster left in a converted slot just stops working.
+    - **`max_rank` 3** (my pick); passive, priced by the calculator (0). **Tree:** built on the Caster general tree tier 7 (no Student yet); **the floater then moved it onto the Student tree (`Trees/student.tres`, tier 7) by hand when merging** (no tool moves a made skill between trees), so it reaches casters through ?199's composition.
+    - **HUD:** a bonus slot has a dashed rim in its type's colour (purple for caster), "caster bonus" when empty, a tooltip, dims while off, and a click says why. (`SkillSlot.set_bonus()`.)
+    - **Tests:** `equip_test.test_cram` (10 checks: granted, converted, non-caster off, caster works, penalty x rank, any disabled pillar, Cram disabled, Density, auto-equip); five mutations failed and reverted. Suite 9931 checks, 0 failed.
+    - **New names to review:** none (`Cram`, `Caster Skill Slot`, `pillar`, `bonus_slots` are yours).
+- [ ] **Cram's tier (7) and `max_rank` 3**: confirm. (?198)
+- [ ] **Swap on arrival:** a non-caster already in a converted slot stops working; say if Cram should move it out. (?198)
+- [ ] **The "slightly darker" untyped slot** (ui.md) is still not built: bonus slots use a dashed rim. (?198, ?194)
+- [x] **Cram's multiplier on the Burnout penalty**: built (see systems.md). (?198, ?195)
+
+199. **The Student tree inside the Caster general tree - built on judgement, open for review (2026-11-19).** Your words (answer 5): "Mage general skills reflecting study practice should be loaned from specialist student skill tree, which is also available to any class selecting specialist flex trees"; "the mage general tree is composed of its unique skills *and* skills in the student skill tree". Plan: `docs/plans/w3-student.md`. Calls:
+    - **"Mage general" = the Caster general tree** (`Trees/general_caster.tres`), so every caster class (Wizard, Cleric...) sees Student, not only the Mage. It is the one place tiers are set (Cram's T7). Alternative: a per-role include (a class-own tab, whose tiers count from prerequisites, so no T7), a bigger change.
+    - **Composition is one field, `SkillRoot.includes`:** `skills()`, `branch()`, `depth()`, `all_branches()` read through it (own branch first, each skill once, loop-safe), so every reader gets included skills unchanged; not copies: a skill added to Student shows everywhere with its branch tier and prerequisites.
+    - **`Trees/student.tres`** (root, specialist; your names, `--human`), included by the Caster tab and the Specialist general tab ("any class selecting specialist flex trees"); no new TreeChoice. **Seeded with Discipline (T3)**, moved off the Specialist root, because the tools refuse an empty tree (`role.py check`). Alternative: an empty stub.
+    - **An included skill keeps its own tree's kind and category** (`Skill.kinds()` reads `own_skills()`, `Role.category` the source tree's tag): Discipline stays specialist on the Caster tab; composition never changes what a skill is.
+    - **Tools:** `Util/tres.py composition_problems()` (run by `skill.py check`, `role.py check`: loops, duplicates, a non-root include, a prerequisite not held or not a lower tier, an untiered branch in a tiered tree); `role.py include <into> <tree> [--root]` (rolls back if it makes new problems). `skill.py new --tree student` places a skill on Student.
+    - **Tests:** `general_test.test_included_trees` (new), one assertion in `hud_test.test_every_tab_draws_its_skills`; three mutations failed.
+    - **New names to review:** none.
+- [x] **Mage-only or every caster?** Confirm the Caster tree reading; a per-role include is the alternative. (?199) Answered 2026-11-19 (?208): Mage-only, on its own general tab.
+- [ ] **Floater:** `.claude/skills/new-skill` and `new-class` should mention `role.py include` and Student. (?199)
+
+200. **Power Armor and Scrap Plating - built on judgement, open for review (2026-11-19).** Your words (answer 8): Power Armor "unit gets an additional armor slot. It stays enabled as long as the unit has 100% - (rank * 10%) power. Attacks blocked by this added armor deal damage to power, divided by rank"; Scrap Plating "Gain an armor slot. Armor equipped to this slot only confers up to rank defense. Armor AP penalty stacks additively". Plan: `docs/plans/w3-armor.md`. Calls:
+    - **Generic hooks on `Behaviour`:** `armor_slot()` and the slot's rules `slot_works`, `slot_defense`, `slot_blocked`; `Unit` reads them for any skill (`plates()`, `plated_defense()`). A future "extra armor slot" skill is one behaviour, no flag.
+    - **Slots named `plate_<skill id>`** (`Unit.plating`, `_get`/`_set` answer them so the sheet, `Game.outfit`, the save and `Battle.equip(u, it, slot)` treat them as any slot); only armor goes in. A unit with both skills has two slots.
+    - **A slot that is off keeps its armor** (unlearned, disabled, off the bar, underpowered): it confers nothing, the item stays worn (and in `Game.outfit`).
+    - **Armor in a slot confers only Defense, AP drag and weight**, not its other effects, enchant, lent skills, `mind_stat` or Bracing (it is not in `Unit.items()`, which keeps it out of the lent-skill cycle).
+    - **Defense adds whole** (armor proper + each slot; a dex mod counts in each). Alternative: the best of them, or the slot replaces armor proper.
+    - **Drag stacks additively, in full** (`_drag_of` per armor, summed): Scrap Plating's cap never caps its drag. Generic for any plate, Power Armor's too (you wrote it under Scrap Plating only).
+    - **Power is the Energy share** (`Unit.power_share()`: Energy / max, or the reserve the unit runs on), for every unit, not only Powerful ones: Power Armor works while it is at least 100% - 10% x rank. `max_rank` 5 (my pick). Alternative: only `powered()` units.
+    - **"Blocked by the added armor"** = a missed attack that would have hit against Defense less that slot's contribution (`Battle._plate_blocks()`, same faces, so advantage, glancing and guard count); Power Armor then takes `ceil(damage / rank)` off Power (`Unit.sap_power()`). Damage is *estimated at the miss* (a tier's figure at the caster's rank; no real roll on a miss; extra RNG only when a plated unit is missed); multi-hit counts per roll.
+    - **Trees:** Power Armor on Protector (after Snapping Turtle), Astral (capstone) and a new **Abjuration** (caster); Scrap Plating on Protector (after Turtle Tactics) and a new **Smith** (specialist, tier 5); `role.py tree --human`. Both new trees hold their one skill and are **on no class tab yet**; second and third placements written by hand (no tool). Tags martial, defensive on both.
+    - **UI:** the sheet has a row per slot and a button per slot for stash armor; the Defense line lists "Gambeson + Plate". Not done: the unit card's equipment trims.
+    - **Tests:** `Tests/plating_test.gd` (4 tests, ~50 checks); five mutations failed and reverted. w4-density then parameterized both (?203).
+    - **New names to review:** none (Abjuration, Smith are yours); the sheet's "Plate" label is my wording.
+- [ ] **Where Abjuration and Smith are offered** (a Mage school, a Specialist flex tree like Student): yours to place. (?200)
+- [x] **The AI never equips or weighs plating**; the unit card's equipment trims show only three slots; Robe's magical Defense, Bracing and item effects ignore the slots; `plates()` doesn't read `lapsed()`. (?200) Built 2026-11-19 (?213): the unit card shows plate slots, `plate_works()`, `AI._dress()`, `AI._blocks()`; no unit carries a pack yet (below).
+- [x] **Power Armor and Scrap Plating** read `armor_skills()` and the `armor()` hook: built (?200, ?196).
+
+## Wave 4 (2026-11-19): strike-only rules and friction
+
+202. **Strike-only rules, Chaser's chain and `friction` - built on judgement, open for review (2026-11-19).** Your words (2026-11-19): Heavy Strike and any skill with "strike" in its name "only apply to `Strike` skills ... they would only apply to the strike component. If a unit attacks with jam, crits following up with Strike ..."; "chaser can only proc rank times, attack rolls past the first rank rolls on skill use have disadvantage and a building -1 penalty ... use utility tag (`friction`), this will probably come up a lot to tamp down infinites." Plan: `docs/plans/w4-friction.md`. Amends ?193 (its "pool only Strike's own blows" alternative and "once per use" are now built the other way). Calls:
+    - **A skill is a Strike by tag:** `strike` (yours, `--human`, Glossary kind target) on Strike, Waterstrike and Silent Strike; it rides on the attack's tags (`hit_tags()`), so an item or modifier adding `strike` makes another skill one. Spellstrike and the strike-named passives don't carry it (they are rules). Alternative: by skill name, or `Skill.chain` only.
+    - **Glancing Strike:** its two effects carry `tags = [strike]` (`Unit.stat()`'s tag filter does the limiting; `attack_check()` lost its `s.chain` test). **Changed:** a non-Strike attack at disadvantage no longer glances and gets no opening bonus.
+    - **Heavy Strike pools only hits carrying `strike`**; other skills' hits land as they would. Your Jam-then-Strike case pools only the Strike's rolls (a chase is a separate use).
+    - **The other strike-named passives** (Brutal, Decisive, Elemental, Strike Out, Strike!, Record Striker) already act only inside `_chain()`: unchanged; extending them to Waterstrike and Silent Strike would need those to be chains: not done.
+    - **Chaser procs rank times per use chain:** `Behaviour.Volley.chain` shared by a use and the uses it sets off (`grant_interrupt(.., chain)`, only Chaser passes one); still once per use. The old rule "an interrupt's use sets off no chase" is gone; a chase's crit may chase again until rank chases. A crit in Final Act's interrupt may chase (a fresh chain).
+    - **`friction` (yours, Glossary kind check) as one generic rule,** `Battle.loops(caster, skill, rank)`, called where a skill loops a use; no effect unless the skill carries `friction`. Then, across the chain, each attack roll past the first `rank` is at disadvantage (one step, summed with other edges and held to one) and -1, -2, -3... Read through `Unit.friction` by `attack_check()`, so the forecast and AI see it. Counting starts where the loop begins (Chaser: just after the critting roll; Jugular: its first recast), not the use's first roll; the first friction skill to loop sets the free rolls; every roll counts, Heavy Strike's last included.
+    - **Loop audit:** tagged `friction`: Chaser, Jugular (guarded before only by `RECAST_LIMIT` 20). Not tagged (bounded): Strike!, Strike, Reckless Abandon, Final Act, Snapping Turtle, Interject, Gallantry, multi-hit and auto skills. Any new looping skill gets the tag and one `loops()` call.
+    - **Tests:** `check_test.test_glancing_and_opening`, `heavy_strike_test.test_strike_skills_only` and `test_last_roll`, `chaser_test` (rank II chases twice; new `test_chain_friction_and_heavy_strike`), `fighter_test.test_jugular_recasts`; six mutations failed and reverted.
+    - **New names to review:** none (`strike`, `friction` are yours).
+- [ ] **Friction's numbers** (disadvantage plus -1 per roll, free rolls = rank) are as you wrote; not balanced. (?202)
+- [x] **Friction is not shown on the HUD** except through the forecast's odds (no line naming it on a roll). (?202) Built 2026-11-19 (?213): the log and a float name it (`Check.Roll.friction`).
+- [ ] **Waterstrike and Silent Strike don't get Brutal, Decisive, Elemental, Strike Out, Strike! or Record Striker** (those need `_chain()`). (?202)
+
+## Wave 5 (2026-11-19): Student for Mages, Journeyman, plating in the AI
+
+208. **Student for Mages, the Journeyman tree, Armor - built on judgement, open for review (2026-11-19).** Your words: "?199 mage only, Mages are part of structured organizations: they are 'Students'. Wizards, Warlocks, Bards etc *may* be students, but aren't necessarily: it is a Caster/Specialist flex tree choice, or may be made available through an adventure." "Martial/Specialist optional tree 'Journeyman'. Physical intelligence: Int mod bonus to str checks. up to rank. Muscle Memory: Wis mod bonus to str checks. up to rank." "?196: ... it is an equipment skill, not a hotbar skill like most passives." Plan: `docs/plans/w5-tree.md`. Calls:
+    - **Student is a general tab of its own** (`Trees/general_student.tres`), not part of the Caster or Specialist tree. `SkillTab.grant` is the key that opens a general tab; a class lists it in `Role.general` (the Mage: `student`); `Unit.grant_tree(key)` is the adventure hook. `SkillRoot.includes` stays as machinery. Student keeps the caster gate.
+    - **No picker for the flex choice today** (`TreeChoice` picks class-tab trees): a Caster/Specialist choice of Student is not a box yet.
+    - **Discipline is back on the Specialist tab (T3) and stays on Student** (two branches of one skill).
+    - **Journeyman** (your name, `--human`): `Trees/journeyman.tres` in `Trees/general_journeyman.tres` (grant `journeyman`); offered natively by Fighter, Berserker, Paladin, Rogue, Ranger, Bard, Adventurer. Physical Intelligence (`physical_intelligence_check`) and Muscle Memory on one hook: a `check` Effect with `per_mod` adds the holder's mod to the checks it names, up to the skill's rank. Tier 2 and max rank 5 are guesses.
+    - **Name clashes:** the old `physical_intelligence` skill (a stand-in pillar) is renamed "Brawn as Brains ??" (id kept); the Journeyman tree shares a name with the Journeyman skill. **Answered 2026-11-20 (?204): "rename to Meathead"; done, no ??.**
+    - **Armor** loses its " ??" (approved). New check `skill.py check_equipment`: an equipment skill is an always-on passive on no tree, role or unit, so it never takes a hotbar slot.
+    - **New names to review:** none now (Meathead is the user's name).
+- [ ] **A picker for the Student flex choice** (a TreeChoice whose pick calls `grant_tree`) and an adventure that grants it. (?208)
+- [ ] **Is Journeyman's tier 2 and max rank 5 right?** Guesses. (?208)
+
+213. **Plating, friction and postponement in the AI and HUD - built on judgement, open for review (2026-11-19).** Plan: `docs/plans/w5-ai2.md`. Calls:
+    - **Plates:** the unit card shows plate slots (`Unit.plate_works()`); new `@export Unit.pack` (armor carried; no unit has one yet) with `AI._dress()` and `Unit.plate_defense()`; hook `Behaviour.slot_toll()` (Power Armor); `AI._blocks()` prices a plated foe's blocks with `POINT`.
+    - **Friction** is named in the log and a float (`Check.Roll.friction`).
+    - **Postponement:** the AI weighs a postponed disable (`DELAY` 0.5, `Unit.postponing_in`).
+    - **Loot:** Coyote Charm and Scepter in `Loot/astral_princess.tres` at weight 1.
+    - **To review:** `Unit.pack`, `POINT`, `DELAY`, the loot table.
+    - **New names to review:** none.
+- [x] **No unit carries a `pack`:** Scrapper ?? and Bulwarker ?? do (?233); a pack dropping as loot is open. (?213)
+- [x] **The AI ignores its own plates' tolls** (`slot_toll`): built in ?231 (`AI._plated()`); lapsing as Power runs down and `_threat()` are not. (?213)
+
+## Moved from todo.md (2026-11-19 consolidation): the user's annotations
+
+- **Rank-up and unlock costs (?58, Berserker / Affinity).** Built: the even curve keeps 1 + r^2 steps (about n^2); +1 is n log2 n floored at n; a skill's Affinity sums the postures it serves; ranks never drop below I. Your annotation, verbatim: "sorry I don't folow exactly, but unlock / rank up costs should follow a uniform system that can be built off of with traits, skills, debuffs etc. It's OK if costs are similar for initial purchase but if ranking up skills can get expensive, efficiency +/- should make a major impact on how many points a unit can invest into skills while still creating effective builds." Requirement recorded in `docs/requirements.md`.
+

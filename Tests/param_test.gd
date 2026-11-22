@@ -1,0 +1,419 @@
+extends Test
+
+# Skills parameterized for modifiers (docs/plans/param.md): each declares its terms (a behaviour's
+# terms(), or SkillTerms' reading of its reserve, opens, downed rule or per-stat effect) and reads its
+# rank and stats through its holder's modifiers, so at least one modifier fits it and acts on it.
+
+# Every skill parameterized here: eligible for at least one modifier.
+const PARAMETERIZED := ["acceptance", "bargaining", "quarry", "survivalist", "wildcaller", "bandwagon", "illusionist",
+		"molothrus", "telepathy", "word_to_the_wise", "energize", "heal", "megaheal", "move", "resuscitate", "clairvoyance",
+		"manifest", "sweet_nothings", "mana", "grudge", "tenacity",
+		"favour", "hazard_expert", "move_plus_one", "magic_slot", "martial_slot", "specialist_slot", "final_act", "gallantry", "stonegift"]
+
+
+func emblem(word: StringName, scope: StringName, rank := 1) -> Item:
+	var it := Item.new()
+	it.name = "Test %s %s" % [word, scope]
+	it.slot = "trinket"
+	it.emblem = word
+	it.scope = scope
+	it.rank = rank
+	return it
+
+
+func test_eligible() -> void:
+	for id in PARAMETERIZED:
+		var s: Skill = load("res://Skills/%s.tres" % id)
+		var fits := Modifiers.words().filter(func(w: StringName): return Modifiers.eligible(w, s))
+		ok(not fits.is_empty() and SkillTerms.of(s).scales(), "%s: eligible for %s" % [id, ", ".join(fits.slice(0, 4))])
+
+
+# An active's behaviour: Move's tiles are rank impact.
+func test_move() -> void:
+	var move: Skill = load("res://Skills/move.tres")
+	duel(move, 2)
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # x1.5: rank II reads as 3
+	var before := v(1).move_left()
+	ok(b.cast(v(1), move, v(1)) and is_equal_approx(v(1).move_left() - before, 3.0), "Density: Move II gains 3 tiles (%s)" % (v(1).move_left() - before))
+	ok(Modifiers.eligible(&"rho_down", move) and not Modifiers.eligible(&"rho_down", load("res://Skills/powerful.tres")), "Diluted fits it (rank impact to tamp, a slot to defend); not Powerful, with no rank impact")
+
+
+# Heal's caster mod is stat impact.
+func test_heal() -> void:
+	var heal: Skill = load("res://Skills/heal.tres")
+	v(1).learned.append(slot(heal, 1))
+	v(1).wisdom = 16  # +3
+	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3)})
+	var plain: int = heal.behaviours[0].restores(b.cast_of(v(1), heal, v(2), 1, false))[&"hp"]
+	v(1).trinket = emblem(&"sigma_down", &"insignia", 1)  # stat impact x1.5
+	var more: int = heal.behaviours[0].restores(b.cast_of(v(1), heal, v(2), 1, false))[&"hp"]
+	ok(more - plain == 2, "Concentrated: its wis mod 3 x1.5 -> 5 (%d -> %d)" % [plain, more])
+
+
+# Clairvoyance's reach: wisdom score and channel rank, both range.
+func test_clairvoyance() -> void:
+	var cv: Skill = load("res://Skills/clairvoyance.tres")
+	v(1).learned.append(slot(cv, 1))
+	v(1).wisdom = 4
+	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 6)})
+	v(1).trinket = emblem(&"sigma_up", &"insignia", 1)  # stat range x1.5
+	ok(b.cast(v(1), cv, v(1)) and cv.behaviours[0].reach(v(1)) == roundi(4 * 1.5 + 1), "Dispersed: wisdom x1.5 + rank (%d)" % cv.behaviours[0].reach(v(1)))
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)
+	ok(Modifiers.eligible(&"rho_up", cv) and cv.behaviours[0].reach(v(1)) == 3, "Density fits it now (rank impact: stacks) and cuts its reach: (wisdom + rank) / 1.75 (%d)" % cv.behaviours[0].reach(v(1)))
+	v(1).trinket = emblem(&"rho_down", &"insignia", 1)
+	ok(Modifiers.eligible(&"rho_down", cv), "so does Diluted")
+
+
+# Clairvoyance, Send Off and Stoneskin gained a rank-impact term (w5-density), so Density and Diluted fit them; one table:
+# what rank adds, at rank I as it was, at rank II more, and a Density insignia reads I as II.
+func test_density_tiers() -> void:
+	var cv := sk("clairvoyance")
+	var off := sk("send_off")
+	var skin := sk("stoneskin")
+	for s in [cv, off, skin]:
+		ok(Modifiers.eligible(&"rho_up", s) and Modifiers.eligible(&"rho_down", s), "%s: Density and Diluted fit it (%s)" % [s.name, SkillTerms.of(s).density_why()])
+	# Clairvoyance: the stacks of suspicion each ping adds, its learned rank's impact (1 at I, 2 under Density).
+	var stacks := func(dense: bool) -> int:
+		stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(3, 2)})
+		v(1).learned.clear()
+		v(1).learned.append(slot(cv, 1))
+		v(1).wisdom = 3
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
+		v(3).afflict(effect("concealment", 9), 99)
+		v(1).suspicion.clear()
+		b.end_channel(v(1))
+		v(1).energy = v(1).max_energy
+		v(1).refresh()
+		b.cast(v(1), cv, v(1))
+		return v(1).suspects(Vector2i(3, 2))
+	var st: Array[int] = [stacks.call(false), stacks.call(true)]
+	ok(st == [1, 2], "Clairvoyance: a stack a ping at I, 2 under Density (%s)" % [st])
+	v(1).trinket = null
+	# Stoneskin: 40% at I as it was, 5% a rank more from II (tiers: min_rank).
+	var mit := func(r: int, dense: bool) -> float:
+		v(1).learned.clear()
+		v(1).learned.append(slot(skin, r))
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
+		v(1).hp = v(1).max_hp
+		v(1).refresh()
+		return v(1).mitigation([])
+	var m: Array[float] = [mit.call(1, false), mit.call(2, false), mit.call(3, false), mit.call(1, true)]
+	ok(is_equal_approx(m[0], 0.4) and is_equal_approx(m[1], 0.5) and is_equal_approx(m[2], 0.55) and is_equal_approx(m[3], m[1]), "Stoneskin: 40%% at I, 50%% at II, 55%% at III, Density I reads as II (%s)" % [m])
+	v(1).trinket = null
+	# Send Off: a ward on whoever it sends, from rank II (a tier), for rank turns (rank impact).
+	var ward := func(r: int, dense: bool) -> Array:
+		stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
+		v(1).learned.clear()
+		v(1).learned.append(slot(off, r))
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
+		v(1).charisma = 16
+		v(1).energy = v(1).max_energy
+		v(1).refresh()
+		v(2).timed.clear()
+		v(2).refresh()
+		var sent := b.cast(v(1), off, v(2))
+		return [sent, v(2).mitigation([]), v(2).timed.values()[0].turns if not v(2).timed.is_empty() else 0, v(2).timed.size()]
+	var w1: Array = ward.call(1, false)
+	var w2: Array = ward.call(2, false)
+	var w3: Array = ward.call(1, true)
+	ok(w1[0] and w1[1] == 0.0 and w1[3] == 0 and w2[0] and is_equal_approx(w2[1], 0.1) and w2[2] >= 2 and w3[0] and is_equal_approx(w3[1], 0.1), "Send Off: no ward put on at I, 10%% for turns at II, Density I reads as II (%s %s %s)" % [w1, w2, w3])
+	v(1).trinket = null
+
+
+# A passive's hook (Word to the Wise: its wis mod is stat impact) and Unit-side reads (a reserve, Mana's tiers).
+func test_passives() -> void:
+	var wise: Skill = load("res://Skills/word_to_the_wise.tres")
+	var sweet: Skill = load("res://Skills/sweet_nothings.tres")
+	var mana: Skill = load("res://Skills/mana.tres")
+	v(1).learned.append(slot(wise, 1))
+	v(1).learned.append(slot(sweet, 1))
+	v(1).wisdom = 16  # +3
+	v(2).wisdom = 16
+	v(1).charisma = 14  # +2
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2)})
+	var bh: Behaviour = wise.behaviours[0]
+	ok(bh.command_mod(null, v(1), 1, v(2)) == 3 and v(1).pools()[sweet.reserve] == 2, "unmodified: commands by wis mod 3; Sweet Nothings cha mod 2 x I")
+	v(1).trinket = emblem(&"sigma_down", &"badge", 1)  # stat impact x(1 + 2/3)
+	ok(bh.command_mod(null, v(1), 1, v(2)) == 4 and v(1).pools()[sweet.reserve] == 3, "Concentrated Badge: wis 3 -> min(5, 3 + 1) = 4; Sweet Nothings 2 -> 3 (%d, %d)" % [bh.command_mod(null, v(1), 1, v(2)), v(1).pools()[sweet.reserve]])
+	v(1).learned.append(slot(mana, 1))
+	v(1).refresh()
+	v(1).trinket = emblem(&"rho_up", &"badge", 1)
+	ok(v(1).opened(mana.opens) == 2, "Density Badge: Mana I opens up to tier 2 (%d)" % v(1).opened(mana.opens))
+
+
+# The concrete skills made to scale (docs/plans/w2-param.md), one table: each reads its number off its
+# holder at rank I as it always did, at rank II more, and a Density insignia (rank impact x1.5: I reads as II)
+# moves rank I the same way.
+func test_concrete_scaled() -> void:
+	var gal: Skill = load("res://Skills/gallantry.tres")
+	var inj: Skill = load("res://Skills/interject.tres")
+	var stone: Skill = load("res://Skills/stonegift.tres")
+	# id -> [what it reads off a holder with the skill in its first slot, what rank I adds to a holder without it]
+	var reads := {
+		&"favour": [func(u: Unit): return u.stat(&"luck"), 1.0],
+		&"hazard_expert": [func(u: Unit): return u.stat(&"trap_word"), 1.0],
+		&"move_plus_one": [func(u: Unit): return u.stat(&"movement"), 1.0],
+		&"magic_slot": [func(u: Unit): return u.granted_slots().size(), 1],
+		&"martial_slot": [func(u: Unit): return u.granted_slots().size(), 1],
+		&"specialist_slot": [func(u: Unit): return u.granted_slots().size(), 1],
+		&"stonegift": [func(u: Unit): return stone.lasts(u.learned[0].rank, u), 3],  # absolute: 3 turns at I, as before
+		&"final_act": [func(u: Unit): return _free_actions(u), 1],
+		&"gallantry": [func(u: Unit): return gal.behaviours[0].check_bonus(u, u.learned[0].rank) - u.mods(gal).check, 0],  # its rank's part (the shift: test_density)
+		&"interject": [func(u: Unit): return inj.behaviours[0].check_bonus(u, u.learned[0].rank) - u.mods(inj).check, 0],  # its dex check, as Gallantry's
+		&"mage_armor": [func(u: Unit): return u.stat(&"defense"), 3],  # int 16: +3 a rank
+		&"manifest": [func(u: Unit): return u.stat(&"luck"), 2],  # cha 20: 2 a rank
+		&"relay": [func(u: Unit): return u.stat(&"relay"), 0.5],  # str 20: 0.1 x 5 a rank
+		&"cram": [func(u: Unit): return u.granted_slots().size(), 2],  # 1 + rank caster slots; its converted slots and wear: equip_test.test_cram
+	}
+	v(1).intelligence = 16
+	v(1).charisma = 20
+	v(1).strength = 20
+	for id in reads:
+		var s: Skill = load("res://Skills/%s.tres" % id)
+		var read: Callable = reads[id][0]
+		var absolute: bool = id in [&"stonegift", &"final_act", &"gallantry", &"interject"]
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).refresh()
+		var none = 0 if absolute else read.call(v(1))
+		var got := []
+		for r in [1, 2]:
+			v(1).learned.clear()
+			v(1).learned.append(slot(s, r))
+			v(1).refresh()
+			got.append(read.call(v(1)))
+		ok(got[0] - none == reads[id][1], "%s at rank I: %s (as it was)" % [id, reads[id][1]])
+		ok(got[1] > got[0], "%s: rank II reads more than rank I (%s -> %s)" % [id, got[0], got[1]])
+		v(1).learned.clear()
+		v(1).learned.append(slot(s, 1))
+		v(1).refresh()
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1)
+		ok(read.call(v(1)) == got[1], "%s: Density makes rank I read as II (%s)" % [id, read.call(v(1))])
+		v(1).trinket = null
+	# Favour's mitigation grows with its luck: 1% a rank.
+	var tags: Array[StringName] = [&"physical"]
+	var mit := []
+	for r in [1, 3]:
+		v(1).learned.clear()
+		v(1).learned.append(slot(favour, r))
+		mit.append(v(1).mitigation(tags))
+	ok(is_equal_approx(mit[1] - mit[0], 0.02), "Favour III: 2%% more mitigation than I (%s)" % (mit[1] - mit[0]))
+	var r := Behaviour.Reaction.new()
+	r.battle = b
+	r.skill = gal
+	ok(r.odds(v(1), &"charisma", v(3), 8) > r.odds(v(1), &"charisma", v(3)), "a reaction's check takes a bonus (Reaction.odds)")
+	ok(not gal.markup(1).contains("at +") and gal.markup(2).contains("at +"), "Gallantry's text names its bonus from rank II")
+
+
+# What a Final Act in u's first slot would give u falling to a blow (Behaviour.react() on a made Reaction).
+func _free_actions(u: Unit) -> int:
+	var fa: Skill = u.learned[0].skill
+	var r := Behaviour.Reaction.new()
+	r.battle = b
+	r.trigger = &"fallen"
+	r.subject = u
+	r.skill = fa
+	b.directed = func(_x: Unit): return true
+	b._interrupts.clear()
+	b.interrupter = null
+	var n := 0
+	if fa.behaviours[0].react(r, u, u.learned[0].rank):
+		n = b._interrupt_left if b.interrupter == u else b._interrupts.back()[1]
+	b.interrupter = null
+	b._interrupts.clear()
+	return n
+
+
+# The hooks and rolls that read rank through its impact channel (docs/plans/w4-tags.md), each at rank I under Density
+# (which reads I as II), against what rank I does bare: Peel's steps, Energy Transfer's Overcharge, the Coyote Charm's
+# rank, Kick's riders, and the dice of Solar and of a grip's drowning (Drown, Coalescing), by sums over many rolls.
+func test_impact_reads() -> void:
+	var dense := func() -> void:
+		v(1).trinket = emblem(&"rho_up", &"insignia", 1)
+		v(1).refresh()
+	# Peel: steps a turn.
+	var peel: Skill = sk("peel")
+	var peeled := func(density: bool) -> float:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(peel, 1))
+		v(1).wisdom = 18
+		v(1).movement = 9
+		stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(5, 3), v(3): Vector2i(6, 3)})
+		v(1).refresh()
+		if density:
+			dense.call()
+		var w := b.walk(v(1), Vector2i(4, 3), true)
+		return 3.0 - w.costs.reduce(func(sum, x): return sum + x, 0.0)
+	var steps := [peeled.call(false), peeled.call(true)]
+	ok(is_equal_approx(steps[0], 0.5) and is_equal_approx(steps[1], 1.0), "Peel I halves 1 step's price, 2 under Density: the steps a turn are rank impact (%s)" % [steps])
+	# Energy Transfer: the Overcharge kept, 20% x rank of what overflows.
+	var transfer: Skill = sk("energy_transfer")
+	var kept := func(density: bool) -> int:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(transfer, 1))
+		stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+		v(1).refresh()
+		v(1).energy = v(1).max_energy
+		v(1).overcharge = 0
+		if density:
+			dense.call()
+		var c := b.cast_of(v(1), transfer, v(3), 1, true)
+		c.siphoned = 20
+		transfer.behaviours[0].dealt(c, 20)
+		return v(1).overcharge
+	ok(kept.call(false) == 4 and kept.call(true) == 8, "Energy Transfer I keeps 20%% of 20 (4), 40%% under Density (8)")
+	# The Coyote Charm: the buff and its curse at the holder's rank.
+	var charm: Skill = sk("coyote_charm")
+	for density in [false, true]:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(charm, 1))
+		v(1).timed.clear()
+		v(1).refresh()
+		if density:
+			dense.call()
+		charm.behaviours[0].disabling(b, v(1), 1, v(1), {})
+		var buff: Effect = load("res://Effects/coyote_charm.tres")
+		ok(v(1).timed[buff].rank == (2 if density else 1), "Coyote Charm I lends rank %d%s" % [2 if density else 1, " under Density" if density else ""])
+	# Kick's Soaked and Blinded turns, as it says them.
+	var kick: Skill = sk("kick")
+	v(1).trinket = null
+	v(1).learned.clear()
+	v(1).learned.append(slot(kick, 1))
+	v(1).refresh()
+	var bare := Glossary.plain(kick.describe(1, v(1)))
+	dense.call()
+	ok("for 1 turn" in bare and "for 2 turns" in Glossary.plain(kick.describe(1, v(1))), "Kick's riders last rank impact turns (%s)" % Glossary.plain(kick.describe(1, v(1))))
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	var soaked: Effect = load("res://Effects/soaked.tres")
+	b.cast_of(v(1), kick, v(3), 1, true).put(soaked, 2)
+	ok(v(3).timed[soaked].rank == 2, "Cast.put gives a per-rank effect the cast's rank impact (Soaked rank %d)" % v(3).timed[soaked].rank)
+	# Dice: Solar's d20s and a grip's drowning dice, as sums over 30 rolls at I and under Density.
+	var solar: Skill = sk("solar")
+	var sums := []
+	for density in [false, true]:
+		v(1).trinket = null
+		v(1).learned.clear()
+		v(1).learned.append(slot(solar, 1))
+		v(1).bar_place(solar, 0)
+		stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(4, 3)})
+		v(1).wisdom = 8
+		v(1).refresh()
+		if density:
+			dense.call()
+		var total := 0
+		for i in 30:
+			soak(v(3), 9999)
+			soak(v(1), 9999)
+			v(1).ap.append(AP.new(20.0, &""))
+			v(1).energy = 99
+			ok(b.cast_at(v(1), solar, v(3).cell), "Solar casts")
+			total += 9999 - v(3).hp
+		sums.append(total)
+	ok(sums[1] - sums[0] > 150, "Solar's d20 a rank: 30 casts deal %d at I, %d under Density (2 dice)" % [sums[0], sums[1]])
+	v(1).trinket = null
+	ok("1d20" in solar.describe(1) and "2d20" in solar.describe(2), "Solar says its dice (%s)" % solar.describe(2))
+	for id in ["drown", "coalescing"]:
+		ok(sk(id).dice_per_rank and SkillTerms.of(sk(id)).has(&"rank_impact"), "%s: its drowning dice are rank impact" % id)
+	ok("2d12" in sk("drown").describe(2) and "1d12" in sk("drown").describe(1), "Drown says its dice (%s)" % sk("drown").describe(2))
+
+
+# Density's bargain (docs/plans/w4-density.md): the one rule - rank impact and something to trade against it (a range,
+# a check, a slot a foe can disable, a cost) - and what each side trades: Density cuts the whole range and makes every
+# check the skill makes harder and its slot easier to disable; Diluted the reverse.
+func test_density() -> void:
+	var missile: Skill = sk("energy_missile")  # range 4, an attack, dice by rank
+	var t := duel(missile, 2)
+	v(1).set_equipped([missile])
+	var weight := func() -> int: return v(1).slot_weight([missile])
+	var plain := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
+	v(1).trinket = emblem(&"rho_up", &"sigil", 1)  # f 0.75: range / 1.75, checks - roundi(5 x 0.75) = 4
+	var dense := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
+	ok(is_equal_approx(dense[0], 4.0 / 1.75) and dense[1] == plain[1] - 4 and dense[2] < plain[2] and dense[3] == plain[3] - 4,
+			"Density: range 4 -> %s, its attack - 4 (%s -> %s), its slot 4 easier to disable" % [dense[0], plain[2], dense[2]])
+	v(1).trinket = emblem(&"rho_down", &"sigil", 1)  # checks + roundi(3 x 0.75) = 2; no rank range, so its range stays
+	var thin := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
+	ok(thin[0] == plain[0] and thin[1] == plain[1] + 2 and thin[2] > plain[2] and thin[3] == plain[3] + 2, "Diluted: its attack + 2 (%s), its slot 2 harder to disable" % thin[2])
+	var stun := sk("stun")  # its save's DC: rank impact, and the shift (easier to overcome dense)
+	v(1).learned.append(slot(stun, 2))
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # f 0.5: rank 2 -> 3, checks - roundi(2.5) = 3
+	var dc: int = stun.behaviours[0].dc(b.cast_of(v(1), stun, t, 2, false))
+	ok(dc == Difficulty.dc(&"difficult", 3) - 3, "Density: Stun's DC at rank 3, less 3 (%d)" % dc)
+	# The rule: a trait has no slot to disable, so with no range or check it has nothing to trade; slotted, it does.
+	var look: Skill = sk("alluring")
+	var slotted: Skill = look.duplicate()
+	slotted.tags = look.tags.filter(func(x): return x != &"trait")
+	ok(not Modifiers.eligible(&"rho_up", look) and not Modifiers.eligible(&"rho_down", look) and Modifiers.eligible(&"rho_up", slotted) and Modifiers.eligible(&"rho_down", slotted),
+			"a trait can't trade (%s); the same skill slotted can" % SkillTerms.of(look).density_why())
+	ok(not Modifiers.eligible(&"rho_down", sk("powerful")), "no rank impact, nothing for Diluted to tamp: ineligible both ways")
+
+
+# Balance knobs (docs/plans/w4-knobs.md), one table: a skill's own coefficient on a channel, the β tags (every channel's
+# scaling x1.25 or / 1.25) and the d tags (rank impact reads 1.5 / rank more or less than the rank, nudging early ranks
+# most) - what each reads rank I to V as. Then the same through a unit on the three skills that carry one, that they leave
+# the price alone and stack with a symbol, who is shown β and d (very high int), and what the check calls a knob that does nothing.
+func test_knobs() -> void:
+	var rows := [  # [skill's scaling, its tags, channel, rank I-V read as (irank)]
+		[{}, [], &"rank_impact", [1, 2, 3, 4, 5]],
+		[{&"range": 0.5}, [], &"rank_range", [1, 1, 2, 2, 3]],  # 1, 1, 1.5, 2, 2.5: never below rank I
+		[{&"range": 0.5}, [], &"rank_impact", [1, 2, 3, 4, 5]],  # a range coefficient leaves impact alone
+		[{&"impact": 2.0}, [], &"rank_impact", [2, 4, 6, 8, 10]],
+		[{}, [&"beta_up"], &"rank_impact", [1, 3, 4, 5, 6]],
+		[{}, [&"beta_down"], &"rank_range", [1, 2, 2, 3, 4]],
+		[{&"impact": 2.0}, [&"beta_up"], &"rank_impact", [3, 5, 8, 10, 13]],  # they multiply: x2.5
+		[{}, [&"cohen_up"], &"rank_impact", [3, 3, 4, 4, 5]],  # r + 1.5 / r: 2.5, 2.75, 3.5, 4.4, 5.3
+		[{}, [&"cohen_down"], &"rank_impact", [1, 1, 3, 4, 5]],  # r - 1.5 / r: not below rank I
+		[{}, [&"cohen_up"], &"rank_range", [1, 2, 3, 4, 5]],  # d is impact alone
+	]
+	for row in rows:
+		var s := Skill.new()
+		s.scaling.assign(row[0])
+		s.tags.assign(row[1])
+		var m := Modifiers.tuned_for(s)
+		m = m if m else Modifiers.NONE
+		var got := []
+		for r in range(1, 6):
+			got.append(m.irank(r, row[2]))
+		ok(got == row[3], "%s %s on %s: rank I-V read %s (%s)" % [row[0], row[1], row[2], row[3], got])
+		if row[0].get(&"range") == 0.5 and row[2] == &"rank_range":
+			ok(m.rank(1.0, row[2]) == 1.0 and m.rank(2.0, row[2]) == 1.0 and m.rank(3.0, row[2]) == 1.5, "a weaker coefficient never reads below rank I: 1, 1, 1.5")
+	var s := Skill.new()
+	s.scaling.assign({&"modified": 0.5})
+	ok(Modifiers.tuned_for(s).stat(3, &"stat_impact") == 2 and Modifiers.tuned_for(s).stat(3, &"stat_range") == 2 and Modifiers.tuned_for(s).stat(3, &"rank_impact") == 3, "modified: both stat channels, a mod of 3 reads 2")
+	# Through a unit, on the three that carry one: Kick's reach (range x0.5), Gank's dice (beta up), Spike's rank (d up).
+	var kick := sk("kick")
+	var gank := sk("gank")
+	var spike := sk("spike")
+	duel(kick, 3)
+	ok(kick.span(v(1)) == 1.5 and SkillTerms.of(kick).knobs != null, "Kick III reaches 1.5 tiles, not 3 (%s)" % kick.span(v(1)))
+	ok(v(1).mods(gank).irank(2, &"rank_impact") == 3 and v(1).mods(spike).irank(1, &"rank_impact") == 3 and v(1).mods(spike).irank(5, &"rank_impact") == 5, "Gank II rolls 3 dice, Spike I reads as III and V as itself")
+	ok(v(1).mods(gank).empty() and v(1).mods(gank).label() == "" and v(1).mods(gank).tuned, "a knob is not a modifier: no label, no symbol shown")
+	var steep := sk("sutemi").duplicate()  # a priced skill (the cost calculator reads its rank): β makes it no dearer at rank III
+	steep.tags = steep.tags.duplicate()
+	steep.tags.append(&"beta_up")
+	ok(steep.priced() and Pricing.ap_at(v(1), steep, 3) == Pricing.ap_at(v(1), sk("sutemi"), 3) and Pricing.cost_at(v(1), steep, 3) == Pricing.cost_at(v(1), sk("sutemi"), 3), "a knob doesn't change the price (%s AP)" % Pricing.ap_at(v(1), steep, 3))
+	ok(v(1).mods(gank).priced().k[&"rank_impact"] == 1.0 and not v(1).mods(gank).priced().tuned, "priced() reads a skill without its knobs")
+	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # f 0.5: x1.5 on top of x1.25
+	var dense := v(1).mods(gank)
+	ok(is_equal_approx(dense.k[&"rank_impact"], 1.5 * 1.25) and dense.label() == "ρ↑" and dense.tuned, "a symbol stacks with it, and alone is what's shown (%s)" % dense.label())
+	v(1).trinket = null
+	# Whom they're shown to: very high int only; the others see the numbers, never the tag.
+	v(1).intelligence = Difficulty.stat_at(Modifiers.KNOB_SIGHT)
+	v(3).intelligence = Difficulty.stat_at(Modifiers.KNOB_SIGHT) - 1
+	v(1).refresh()
+	v(3).refresh()
+	ok(Modifiers.sees_knobs(v(1)) and not Modifiers.sees_knobs(v(3)) and not Modifiers.sees_knobs(null), "int 16 sees them, 15 doesn't, nobody doesn't")
+	ok("β+" in gank.describe(1, v(1)) and "β+" not in gank.describe(1, v(3)) and "β+" not in gank.describe(1), "Gank's tooltip carries its β tag for very high int alone (%s)" % gank.describe(1, v(1)).right(60))
+	ok("d+" in spike.describe(1, v(1)) and "d+" not in spike.describe(1, v(3)), "Spike's carries d+")
+	# What the check calls a knob that does nothing (skill.py check).
+	var bad := sk("powerful").duplicate()  # no rank impact: nothing for d or an impact coefficient to tune
+	bad.scaling = bad.scaling.duplicate()  # a duplicate shares its dictionary and tags
+	bad.tags = bad.tags.duplicate()
+	bad.scaling.assign({&"impact": 2.0, &"range": 1.0, &"made_up": 2.0})
+	bad.tags.append_array([&"cohen_up", &"cohen_down", &"beta_up"])
+	SkillTerms.forget(bad)
+	var said := " | ".join(SkillTerms.of(bad).knob_problems(bad))
+	ok("no impact scaling" in said and "not 1" in said and "no coefficient" in said and "both cohen_up and cohen_down" in said and "no rank impact" in said, "knob_problems(): %s" % said)
+	ok(SkillTerms.of(kick).knob_problems(kick).is_empty() and SkillTerms.of(gank).knob_problems(gank).is_empty() and SkillTerms.of(spike).knob_problems(spike).is_empty(), "the three sound")

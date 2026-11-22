@@ -15,9 +15,18 @@ op = "mul"
 amount = 0.5
 above_hp = 0.85
 
+[sub_resource type="Resource" id="Effect_deeper"]
+script = ExtResource("2_effect")
+stat = "mitigate"
+amount = 0.05
+per_rank = true
+min_rank = 2
+above_hp = 0.85
+
 
 [resource]
 script = ExtResource("1_script")
 name = "Stoneskin"
+tags = Array[StringName]([&"defensive"])
 passive = true
-effects = Array[ExtResource("2_effect")]([SubResource("Effect_skin"), SubResource("Effect_slow")])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_skin"), SubResource("Effect_slow"), SubResource("Effect_deeper")])

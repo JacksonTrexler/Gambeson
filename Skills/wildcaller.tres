@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/efficiency.gd" id="b_efficiency"]
+
+[sub_resource type="Resource" id="Behaviour_efficiency"]
+script = ExtResource("b_efficiency")
+reaches = Array[String](["Biome"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Wildcaller"
+ai = true
+passive = true
+tags = Array[StringName]([&"specialist"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_efficiency")])
+max_rank = 5

@@ -1,0 +1,98 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Battle.gd" id="1_battle"]
+[ext_resource type="Texture2D" path="res://Tiles/placeholder.png" id="2_tiles"]
+[ext_resource type="Script" path="res://Scripts/BattleCamera.gd" id="3_camera"]
+[ext_resource type="Script" path="res://Scripts/Meadows.gd" id="4_meadows"]
+[ext_resource type="Resource" path="res://Factions/lancin.tres" id="5_lancin"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="6_nemes"]
+[ext_resource type="Resource" path="res://Factions/demons.tres" id="7_demons"]
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="8_faction"]
+[ext_resource type="Resource" path="res://Terrain/grass.tres" id="t_grass"]
+[ext_resource type="Resource" path="res://Terrain/tall_grass.tres" id="t_brush"]
+[ext_resource type="Resource" path="res://Terrain/pond.tres" id="t_pond"]
+[ext_resource type="Resource" path="res://Terrain/shallows.tres" id="t_shallows"]
+[ext_resource type="Resource" path="res://Terrain/flowing_water.tres" id="t_stream"]
+[ext_resource type="Script" path="res://Scripts/Formation.gd" id="9_formation"]
+[ext_resource type="Resource" path="res://Formations/siren_by_water.tres" id="f_1"]
+[ext_resource type="Resource" path="res://Formations/sirens_by_water.tres" id="f_2"]
+[ext_resource type="Resource" path="res://Formations/undine_and_sirens.tres" id="f_3"]
+[ext_resource type="PackedScene" path="res://Scenes/alabaster.tscn" id="u_alabaster"]
+[ext_resource type="PackedScene" path="res://Scenes/icor.tscn" id="u_icor"]
+[ext_resource type="PackedScene" path="res://Scenes/villager.tscn" id="u_villager"]
+
+[sub_resource type="TileSetAtlasSource" id="Atlas_meadows"]
+texture = ExtResource("2_tiles")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/modulate = Color(0.85, 1.15, 0.8, 1)
+0:0/0/custom_data_0 = ExtResource("t_grass")
+0:0/3 = 3
+0:0/3/modulate = Color(0.55, 0.85, 0.45, 1)
+0:0/3/custom_data_0 = ExtResource("t_brush")
+3:0/0 = 0
+3:0/0/custom_data_0 = ExtResource("t_pond")
+3:0/2 = 2
+3:0/2/modulate = Color(1.3, 1.45, 1.35, 1)
+3:0/2/custom_data_0 = ExtResource("t_shallows")
+3:0/3 = 3
+3:0/3/modulate = Color(0.9, 1.35, 1.5, 1)
+3:0/3/custom_data_0 = ExtResource("t_stream")
+
+[sub_resource type="TileSet" id="TileSet_meadows"]
+tile_size = Vector2i(32, 32)
+custom_data_layer_0/name = "terrain"
+custom_data_layer_0/type = 24
+sources/0 = SubResource("Atlas_meadows")
+
+[node name="InfernalMeadows" type="Node2D"]
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("3_camera")
+
+[node name="Battle" type="Node2D" parent="."]
+script = ExtResource("1_battle")
+spawns = Dictionary[ExtResource("8_faction"), Vector2i]({ExtResource("5_lancin"): Vector2i(0, 0), ExtResource("6_nemes"): Vector2i(0, 0)})
+lasting = Array[ExtResource("8_faction")]([ExtResource("7_demons")])
+sight = true
+ire_grace = -1.0
+
+[node name="Map" type="TileMapLayer" parent="Battle"]
+tile_set = SubResource("TileSet_meadows")
+
+[node name="Units" type="Node2D" parent="Battle"]
+
+[node name="Alabaster" parent="Battle/Units" instance=ExtResource("u_alabaster")]
+cell = Vector2i(2, 0)
+faction = ExtResource("5_lancin")
+with_player = true
+
+[node name="Icor" parent="Battle/Units" instance=ExtResource("u_icor")]
+cell = Vector2i(-2, 0)
+faction = ExtResource("5_lancin")
+with_player = true
+
+[node name="Villager1" parent="Battle/Units" instance=ExtResource("u_villager")]
+cell = Vector2i(1, 1)
+faction = ExtResource("5_lancin")
+with_player = true
+
+[node name="Villager2" parent="Battle/Units" instance=ExtResource("u_villager")]
+cell = Vector2i(-1, 1)
+faction = ExtResource("5_lancin")
+with_player = true
+
+[node name="Villager3" parent="Battle/Units" instance=ExtResource("u_villager")]
+cell = Vector2i(1, -1)
+faction = ExtResource("5_lancin")
+with_player = true
+
+[node name="Villager4" parent="Battle/Units" instance=ExtResource("u_villager")]
+cell = Vector2i(-1, -1)
+faction = ExtResource("5_lancin")
+with_player = true
+
+[node name="Meadows" type="Node" parent="Battle"]
+script = ExtResource("4_meadows")
+demons = ExtResource("7_demons")
+formations = Array[ExtResource("9_formation")]([ExtResource("f_1"), ExtResource("f_2"), ExtResource("f_3")])

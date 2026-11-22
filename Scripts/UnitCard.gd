@@ -1,10 +1,18 @@
 class_name UnitCard
 extends VBoxContainer
 
-# The selected unit: portrait, name, what it is, chips for how it stands with the player, and a
-# bar per thing that can be made out about it. HUD decides what's known; this only lays it out.
+# The selected unit: portrait, name, what it is, chips for how it stands with the player, an icon
+# per effect on it, and a bar per thing that can be made out about it. HUD decides what's known;
+# this only lays it out.
 
 var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
+var face: Label  # a persona's stand-in sprite (";)"), over the portrait in place of its look
+var effects: HFlowContainer  # what's timed on it, an icon each, under the chips
+const ICON_SIZE := 20  # an item's icon beside its banner (trim_mark), on the character sheet
+const CARD_ICON := 16  # on the card: smaller than the sheet's, the banner beside it
+var trims: HFlowContainer  # an icon per item it wears with its trim banner (Item.trim()), a row of its own under the head, wrapping so none overlaps another or the name block
+var note: Label  # an insightful read of how true its presentation is, under the rows
+var _shown: Variant = null  # the info last shown (set_info())
 
 @onready var portrait: TextureRect = $Head/Portrait
 @onready var title: Label = $Head/Names/Name
@@ -13,15 +21,48 @@ var _fills := {}  # Color -> StyleBoxFlat, one per bar colour
 @onready var rows: VBoxContainer = $Rows
 
 
-# info: {name, sub, look: Texture2D, shape: bool, chips: [[text, Color]], rows: [[label, value,
-# max, Color]]}. shape: only a black outline of it shows. A row whose max is null shows its value
-# as text alone. No info: a prompt to pick someone.
+func _ready() -> void:
+	face = Label.new()
+	face.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	face.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	face.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	face.add_theme_font_size_override(&"font_size", 12)
+	portrait.add_child(face)
+	trims = HFlowContainer.new()
+	trims.add_theme_constant_override(&"h_separation", 3)
+	trims.add_theme_constant_override(&"v_separation", 1)
+	add_child(trims)
+	move_child(trims, $Head.get_index() + 1)
+	effects = HFlowContainer.new()
+	effects.add_theme_constant_override(&"h_separation", 2)
+	effects.add_theme_constant_override(&"v_separation", 2)
+	add_child(effects)
+	move_child(effects, chips.get_index() + 1)
+	note = Label.new()
+	note.theme_type_variation = &"Muted"
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(note)
+
+
+# info: {name, sub, look: Texture2D, face: String, shape: bool, chips: [[text, Color]], effects:
+# [[mark (text, or a Texture2D drawn in the colour), Color, tooltip, roll]], rows: [[label, value, max, Color]], note: String,
+# trims: [[Color, tooltip, icon]] (the items it's seen wearing: an icon each, its trim a banner beside it)}. face: text
+# standing in for the look (a persona's claimed name). shape: its side can't be told (the card's
+# "Unknown" chip says so). silhouette: only a black shape of it shows (Read.silhouette()).
+# roll: the roll an effect was put on with, in its icon's top right ("" when unknown). A row whose
+# max is null shows its value as text alone. note: a line of prose under the rows (an insightful
+# read). No info: nothing selected. The same info again changes nothing, so a tooltip being hovered
+# isn't pulled out from under the pointer and its delay (1 s, project settings) isn't restarted.
 func set_info(info: Dictionary) -> void:
-	portrait.texture = info.get("look")
-	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("shape", false) else Color.WHITE
+	if _shown is Dictionary and info == _shown:
+		return
+	_shown = info.duplicate(true)
+	face.text = info.get("face", "")
+	portrait.texture = null if face.text else info.get("look")
+	portrait.modulate = Color(0.03, 0.03, 0.03) if info.get("silhouette", false) else Color.WHITE
 	title.text = info.get("name", "")
-	sub.text = info.get("sub", "Click a unit to select it")
-	for c in chips.get_children() + rows.get_children():
+	sub.text = info.get("sub", "Nothing selected")
+	for c in chips.get_children() + effects.get_children() + rows.get_children() + trims.get_children():
 		c.get_parent().remove_child(c)
 		c.queue_free()
 	for chip in info.get("chips", []):
@@ -30,11 +71,93 @@ func set_info(info: Dictionary) -> void:
 		l.text = chip[0]
 		l.add_theme_color_override(&"font_color", chip[1])
 		chips.add_child(l)
+	for t in info.get("trims", []):
+		trims.add_child(trim_mark(t[0], t[1], t[2] if t.size() > 2 else null, CARD_ICON))
+	for e in info.get("effects", []):
+		effects.add_child(_effect(e[0], e[1], e[2], e[3]))
+	effects.visible = effects.get_child_count() > 0
 	for r in info.get("rows", []):
-		rows.add_child(_row(r[0], r[1], r[2], r[3]))
+		rows.add_child(_row(r[0], r[1], r[2], r[3], r[4] if r.size() > 4 else null, r[5] if r.size() > 5 else 0))
+	note.text = info.get("note", "")
+	note.visible = note.text != ""
 
 
-func _row(label: String, value: Variant, top: Variant, color: Color) -> Control:
+# An item's trim as a little banner (Item.draw_banner()), its tooltip the item: the unit card, the
+# character sheet. A clear colour: an empty space the same size, so rows line up.
+# With an icon (Item.icon(), a 32x32 from Icons/Items/), the banner sits beside it, so what's worn reads at a glance.
+static func trim_mark(c: Color, tip: String, icon: Texture2D = null, size := ICON_SIZE) -> Control:
+	if icon:
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override(&"separation", 1)
+		h.tooltip_text = tip
+		h.mouse_filter = MOUSE_FILTER_PASS
+		var pic := TextureRect.new()
+		pic.texture = icon
+		pic.custom_minimum_size = Vector2(size, size)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		pic.mouse_filter = MOUSE_FILTER_IGNORE
+		h.add_child(pic)
+		var b := trim_mark(c, "")
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(b)
+		return h
+	var m := Control.new()
+	m.custom_minimum_size = Vector2(7, 10)
+	m.tooltip_text = tip
+	m.mouse_filter = MOUSE_FILTER_PASS
+	if c.a > 0.0:
+		m.draw.connect(func() -> void: Item.draw_banner(m, Vector2(0.5, 0.5), c, Color("#1d1a12")))
+	return m
+
+
+# A wrapping row of items, each an icon with its trim banner (trim_mark()): spoils, any list of loot.
+static func item_row(items: Array, size := CARD_ICON) -> HFlowContainer:
+	var row := HFlowContainer.new()
+	row.alignment = FlowContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override(&"h_separation", 4)
+	for it: Item in items:
+		row.add_child(trim_mark(it.trim(), it.name, it.icon(), size))
+	return row
+
+
+# An effect's icon: its mark in its colour, what it does as a tooltip, and the roll it was put on
+# with (Self-evaluation) small in the top right.
+func _effect(mark: Variant, color: Color, tip: String, roll: String) -> Control:
+	var icon := PanelContainer.new()
+	icon.add_theme_stylebox_override(&"panel", get_theme_stylebox(&"normal", &"Chip"))
+	icon.tooltip_text = tip
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override(&"separation", 1)
+	h.mouse_filter = MOUSE_FILTER_IGNORE
+	icon.add_child(h)
+	if mark is Texture2D:  # a status with art of its own (Suspicion's eye: Icons/Effects/)
+		var pic := TextureRect.new()
+		pic.texture = mark
+		pic.modulate = color
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		pic.mouse_filter = MOUSE_FILTER_IGNORE
+		h.add_child(pic)
+	else:
+		var l := Label.new()
+		l.text = mark
+		l.add_theme_font_size_override(&"font_size", 5)
+		l.add_theme_color_override(&"font_color", color)
+		h.add_child(l)
+	if roll:
+		var n := Label.new()
+		n.text = roll
+		n.add_theme_font_size_override(&"font_size", 4)
+		n.add_theme_color_override(&"font_color", SkillSlot.GOLD)
+		n.size_flags_vertical = SIZE_SHRINK_BEGIN
+		h.add_child(n)
+	return icon
+
+
+# drain: what a planned action would consume of it (HUD.drain()): a pulsing segment at the end of its
+# bar; "?": it can't be foreseen - the row goes muted and a ? flashes after the number.
+func _row(label: String, value: Variant, top: Variant, color: Color, drain: Variant = null, on_hit: Variant = 0) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override(&"separation", 3)
 	var k := Label.new()
@@ -65,7 +188,40 @@ func _row(label: String, value: Variant, top: Variant, color: Color) -> Control:
 	n.custom_minimum_size.x = 22
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	h.add_child(n)
+	if drain is float or drain is int:
+		var seg := ColorRect.new()  # the part about to be spent
+		seg.color = Color(1, 1, 1, 0.9)
+		seg.mouse_filter = MOUSE_FILTER_IGNORE
+		seg.anchor_left = clampf((value - drain) / maxf(top, 0.001), 0.0, 1.0)
+		seg.anchor_right = clampf(value / maxf(top, 0.001), 0.0, 1.0)
+		seg.anchor_bottom = 1.0
+		seg.name = &"Drain"
+		bar.add_child(seg)
+		_pulse(seg, 0.25)
+		if (on_hit is float or on_hit is int) and on_hit > 0:
+			var hit := Label.new()  # a refund the roll decides: "on hit: -N"
+			hit.theme_type_variation = &"Muted"
+			hit.text = "on hit: −%s" % Skill.num(on_hit)
+			hit.name = &"OnHit"
+			h.add_child(hit)
+	elif drain == "?":
+		k.modulate = Color(1, 1, 1, 0.55)
+		bar.modulate = Color(1, 1, 1, 0.55)
+		n.modulate = Color(1, 1, 1, 0.55)
+		var q := Label.new()
+		q.theme_type_variation = &"Muted"
+		q.text = "?"
+		q.name = &"Unsure"
+		h.add_child(q)
+		_pulse(q, 0.1)
 	return h
+
+
+# Flashes a control between full and `low` opacity, for as long as it lives.
+func _pulse(c: CanvasItem, low: float) -> void:
+	var tw := c.create_tween().set_loops()
+	tw.tween_property(c, "modulate:a", low, 0.45)
+	tw.tween_property(c, "modulate:a", 1.0, 0.45)
 
 
 func _fill(c: Color) -> StyleBoxFlat:

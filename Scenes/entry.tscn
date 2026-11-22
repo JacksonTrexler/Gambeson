@@ -9,6 +9,14 @@
 [ext_resource type="Resource" path="res://Roles/adventurer.tres" id="7_adventurer"]
 [ext_resource type="Resource" path="res://Roles/fighter.tres" id="8_fighter"]
 [ext_resource type="Resource" path="res://Roles/paladin.tres" id="9_paladin"]
+[ext_resource type="Resource" path="res://Roles/rogue.tres" id="10_rogue"]
+[ext_resource type="Resource" path="res://Roles/bard.tres" id="11_bard"]
+[ext_resource type="Resource" path="res://Roles/warlock.tres" id="12_warlock"]
+[ext_resource type="Resource" path="res://Roles/cleric.tres" id="13_cleric"]
+[ext_resource type="Resource" path="res://Roles/berserker.tres" id="14_berserker"]
+[ext_resource type="Resource" path="res://Roles/ranger.tres" id="15_ranger"]
+[ext_resource type="Resource" path="res://Roles/druid.tres" id="16_druid"]
+[ext_resource type="Resource" path="res://Roles/sorcerer.tres" id="role_sorcerer"]
 
 [sub_resource type="Theme" id="Theme_small"]
 default_font_size = 10
@@ -23,7 +31,9 @@ grow_vertical = 2
 theme = SubResource("Theme_small")
 script = ExtResource("1_entry")
 sides = Array[ExtResource("3_faction")]([ExtResource("4_lancin"), ExtResource("5_nemes")])
-roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin")])
+roles = Array[ExtResource("6_role")]([ExtResource("7_adventurer"), ExtResource("8_fighter"), ExtResource("9_paladin"), ExtResource("10_rogue"), ExtResource("11_bard"), ExtResource("12_warlock"), ExtResource("13_cleric"), ExtResource("14_berserker"), ExtResource("15_ranger"), ExtResource("16_druid"), ExtResource("role_sorcerer")])
+default_side = ExtResource("4_lancin")
+default_role = ExtResource("7_adventurer")
 
 [node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
@@ -62,15 +72,50 @@ unique_name_in_owner = true
 layout_mode = 2
 prompt = "What is your starter's class?"
 
+[node name="Scenario" parent="Center/Form" instance=ExtResource("2_choice")]
+unique_name_in_owner = true
+layout_mode = 2
+prompt = "Where will you fight?"
+
 [node name="Name" type="LineEdit" parent="Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
-placeholder_text = "Your starter's name"
+placeholder_text = "Shrike"
 alignment = 1
 max_length = 20
+
+[node name="Level" type="SpinBox" parent="Center/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "The level your starter begins at, with a skill point to spend for each level past the first"
+min_value = 1.0
+max_value = 20.0
+value = 1.0
+rounded = true
+alignment = 1
+prefix = "Level"
 
 [node name="Play" type="Button" parent="Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
 disabled = true
 text = "Play"
+
+[node name="Continue" type="Button" parent="Center/Form"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Continue"
+
+[node name="Party" type="Button" parent="Center/Form"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Who goes into battle with your starter"
+text = "Party"
+
+[node name="Delete" type="Button" parent="Center/Form"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "New game"

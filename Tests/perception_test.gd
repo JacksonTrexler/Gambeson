@@ -44,7 +44,7 @@ func test_trap_springs() -> void:
 	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(9, 0)})
 	ok(b.travel(v(1), Vector2i(7, 4)) == cells([TRAP]) and v(1).cell == TRAP, "the move stops on the trap")
 	ok(v(1).hp == 7, "4 pierce: Favour 1% (pierce is physical), luck rounds 3.96 down -> 3")
-	ok(b.exposed.has(TRAP) and b.read(v(2), TRAP).known_bad(), "sprung: revealed, and now everyone knows")
+	ok(b.revealed.has(TRAP) and b.read(v(2), TRAP).known_bad(), "sprung: revealed, and now everyone knows")
 	stage(nemes, {v(3): Vector2i(4, 4), v(1): Vector2i(0, 0)})
 	b.travel(v(3), Vector2i(7, 4))
 	ok(v(3).hp == 7, "Wary I: 25% off trap damage, 4 -> 3")
@@ -71,7 +71,7 @@ func test_darkstone() -> void:
 	ok(b.cast_at(icor(), darkstone, Vector2i(5, 3)), "cast at (5,3)")
 	var z: Battle.Zone = b.zones[0]
 	ok(z.levels[Vector2i(5, 3)] == 2 and z.levels[Vector2i(4, 3)] == 1 and z.levels[Vector2i(6, 2)] == 1 and not z.levels.has(Vector2i(5, 5)), "rank - distance: 2 at the centre, 1 around, none at 2 away")
-	ok(icor().store(load("res://Reserves/mana.tres")) == 9, "3 mana (it's magic)")
+	ok(icor().store(load("res://Reserves/mana.tres")) == 9, "3 mana (it's magical)")
 	var r := b.read(v(3), v(1))
 	ok(r.net == -2 and r.hint == "a shape in the dark?" and r.located() and r.faction == null and not r.seen and r.heard, "a unit in darkness 2: a shape, located, unseen but heard")
 	v(3).learned.append(slot(darkvision, 1))
@@ -91,21 +91,42 @@ func test_siren() -> void:
 	b.move(s, Vector2i(7, 4))
 	ok(s.stat(&"strength") == 8 and s.stat(&"dexterity") == 8 and s.stat(&"constitution") == 8 and s.stat(&"intelligence") == 12, "on grass: physical stats -4")
 	b.move(s, Vector2i(8, 6))
-	ok(roundi(s.stat(&"persona")) == 3 and Perception.trickery(s, Read.new()) == 2.0, "Persona III, Tonefoolery II")
+	ok(roundi(s.stat(&"persona")) == 4 and Perception.trickery(s, Read.new()) == 2.0, "Persona IV (Alluring), Tonefoolery II")
 
 
 func test_siren_fools() -> void:
 	var r := b.read(v(1), siren())
 	ok(r.deceived and r.twist == 1.0, "trickery 2 vs recon 0: fooled, fully")
-	ok(r.faction == lancin and r.vibe == "Harmless, Beautiful, Serene" and r.aura == 2 and r.tags == [&"holy"], "reads as a harmless, holy ally")
+	ok(r.faction == lancin and r.vibe == "Harmless, Beautiful, Serene, Safe" and r.aura == 2 and r.tags == [&"holy"], "reads as a harmless, holy ally")
 	ok(r.healthy == false and r.hp == 1, "unpresented fields are inverted (full health reads as nearly dead)")
-	ok(r.name == "" and r.skills.is_empty(), "posing as something else, it hides its name and skills")
+	var s := siren()
+	ok(r.name == s.alias and r.face == s.alias_face and r.skills.is_empty(), "posing as someone else, it goes by a made-up name (%s) and hides its skills" % r.name)
+	var words := s.alias.split(" ")
+	ok(words.size() == 2 and words[0] in s.shows_adjectives and s.shows_nouns.get(words[1]) == s.alias_face,
+			"an adjective and a noun from its pools, with the noun's stand-in sprite (%s %s)" % [s.alias, s.alias_face])
 	var ally := b.read(v(3), siren())
-	ok(not ally.deceived and ally.faction == nemes and ally.hp == 16, "its own side isn't fooled")
+	ok(ally.deceived and ally.faction == nemes and ally.hp == 16 and ally.name == s.alias, "its own side: its trickery fools them too, but nothing's twisted")
 	v(1).afflict(effect("recon", 3), 9)
 	var sharp := b.read(v(1), siren())
 	ok(not sharp.deceived and sharp.faction == nemes and sharp.vibe == "Briny, hungry" and sharp.aura == -2, "recon 3 sees the truth")
 	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 6, "...what it is, and (net 3) its skills")
+	ok(sharp.name == "Siren" and sharp.face == "", "...and its real name and look")
+
+
+func test_alias_pools() -> void:
+	var s := siren()
+	var seen := {}
+	for i in 60:
+		s._pick_alias()
+		seen[s.alias] = s.alias_face
+	ok(seen.size() > 4 and seen.keys().all(func(n: String): return n.split(" ")[0] in s.shows_adjectives and n.split(" ")[1] in s.shows_nouns),
+			"names mix and match its pools (%s)" % ", ".join(seen.keys()))
+	ok(seen.get("Radiant Lady", ";)") == ";)" and seen.get("Serene Songstress", ":3") == ":3" and seen.get("Beautiful Beauty", ":D") == ":D", "each noun keeps its face")
+	ok(v(1).alias == "" and v(1).alias_face == "", "no pools: no alias")
+	var none: Array[String] = []
+	s.shows_adjectives = none
+	s._pick_alias()
+	ok(s.alias in s.shows_nouns and s.alias_face == s.shows_nouns[s.alias], "an empty pool: the other word alone (%s)" % s.alias)
 
 
 func test_tonefoolery_doubles() -> void:
@@ -152,7 +173,7 @@ func test_ai_avoids_known_traps() -> void:
 	v(3).learned[0].rank = 6  # trap recon 3: knows (5,4) is a trap
 	stage(nemes, {v(3): Vector2i(3, 4), v(1): Vector2i(7, 4)})
 	AI.act(b, v(3))
-	ok(not b.exposed.has(TRAP) and v(3).cell != TRAP, "walks around a trap it knows about")
+	ok(not b.revealed.has(TRAP) and v(3).cell != TRAP, "walks around a trap it knows about")
 
 
 func cells(a: Array) -> Array[Vector2i]:
@@ -165,6 +186,7 @@ func test_ai_wont_hit_unknowns() -> void:
 	icor().learned.append(slot(darkstone, 2))
 	stage(nemes, {icor(): Vector2i(7, 1), v(3): Vector2i(5, 3), v(1): Vector2i(4, 3)})
 	b.cast_at(icor(), darkstone, Vector2i(5, 3))  # v(3) in darkness 2: a shape, side unknown
+	v(1).noticed[v(3).cell] = true  # it's had its look (Battle._first_look())
 	b.end_turn()
 	ok(b.turn == lancin and b.read(v(1), v(3)).faction == null, "Lancin can't tell whose side the shape is on")
 	AI.act(b, v(1))

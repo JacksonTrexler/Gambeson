@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Barkskin"
+ai = true
+passive = true
+tags = Array[StringName]([&"magical", &"nature", &"defensive"])
+stub = "?82"
+plan = "Sylvan: Defense + rank while standing on grass, leaves or brush; its bark burns (fire damage +rank against it)."

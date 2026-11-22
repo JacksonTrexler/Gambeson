@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
+
+[sub_resource type="Resource" id="Effect_attack_down"]
+script = ExtResource("2_effect")
+stat = "damage"
+amount = -0.2
+per_rank = true
+name = "Attack Down"
+
+[sub_resource type="Resource" id="Effect_ap"]
+script = ExtResource("2_effect")
+stat = "base_ap"
+amount = -1.0
+by_mod = &"strength"
+name = "Interdicted"
+bears = Array[StringName]([&"cc"])
+
+[sub_resource type="Resource" id="SkillCheck_1"]
+script = ExtResource("6_skill_check")
+against = &"strength"
+save = true
+ranked = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Interdict"
+tags = Array[StringName]([&"martial", &"str", &"physical", &"cc"])
+radius = 1.0
+turns = 1
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_attack_down"), SubResource("Effect_ap")])
+lore = "A hand on the sword arm, a shoulder in the way: whatever it meant to do next, it does less of it."
+check = SubResource("SkillCheck_1")
+costs = "very high ap, very high cost, flat rank"

@@ -1,0 +1,118 @@
+# Done: UI and styling
+
+`[x]` done · `(?N)` an open question in `docs/todo/` that may still change it · *Now:* what the game does today. Index: `completed.md`.
+
+- [x] Faction look on the map: a faint glow of the side's primary colour replaces the outline. HP, then 2px each of the main reserve and Energy, sit in one block with a darkened faction trim.
+- [x] Tooltips over icons after 1 s.
+- [x] Settings (cog) with the **Guide**: the instructions from the old hint line and key legend. The hint line now only shows status and notes.
+- [x] Typed hotbar slots: dull red / purple / green, tinted and trimmed like the clover slot; an empty one says what it holds ("magic only").
+- [x] Skills screen as trees, radial for the Adventurer: a wheel with Skill Slot +1 at the centre, a core ring (starting skills, Hex, the slot skills), and the three roots in their slot colours. Learned skills are filled and ranked, learnable ones ringed (gold while there's a point), stubs dashed with their question number. Clicking a skill shows it beside the wheel, with Unlock or Rank up. *Now:* other classes still get lists, until their trees exist.
+- [x] Entry screen defaults: name **Shrike** (muted in the empty name box, used until something else is typed), faction **Lancin**, class **Adventurer**. Enter starts the demo at once.
+- [x] Effect icons on the unit card: one per skill or condition timed on it, green if it helps; the tooltip says what it does and how long it has left. A roll it was put on with shows small in the top right, when Self-evaluation saw it. (?20)
+- [x] Personify's panel (`PersonaPanel`): pickers for vibe words and identity tags (type to filter, Enter takes the top match, chips to take one off), stance, claimed level and name; "Changes: n / rank", Done off past it; a held **Clear**.
+- [x] The **character sheet** (the dock's character icon; `CharacterSheet`): the selected unit's weapon, armor and trinket (hover for what each does), its hearts, and the stash, with Equip, Take off and Use while it can change them, each showing its AP in battle ("Equip · 3 AP"). A potion in the trinket slot has Use.
+- [x] The victory screen lists the **spoils** the player's side takes home.
+- [x] Disabled skills on the hotbar: dimmed, the tooltip saying for how many turns; using one says so. Cursed ones (Brainfog), and slots a level curse sealed, quiver gently. Pillar skills can't be dragged.
+- [x] The clover slot disappears from the hotbar while its unit is unlucky, and comes back with its skill.
+- [x] **Power** bars: yellow tinted orange, pulsing white above 75% and blue when full; cards say PW for it.
+- [x] Unit cards: a unit's hearts left ("2 hearts left") and a **Down** chip; downed units show faded on the map. An insightful read adds what a unique unit intends and whom it goes for.
+- [x] The entry screen picks a **scenario**: the Museum or the Astral Envoy.
+- [x] **The skills screen** (`SkillTree`, `SkillGrid`): browser-style tabs along the top in each tree's colour - the class's tabs, its species', what it knows, then the general trees on the far right - over the tree, which grows from the bottom (tier 0, what the unit starts with) toward the top, a row per tier, scrolling where it's tall and opening at the bottom. Its core sits in a column on the left, then a column per root in its colour, its name along the bottom, lines running up from what each skill comes after. A footer shows the picked skill, what it does and what it needs, with its Unlock or Rank button. The Adventurer's own tab is still the wheel (`SkillTab.radial`, `Role.radial`). A class without a tree (Fighter, Paladin, Wizard) shows its options as one, by tier.
+- [x] **Terms, not dice** (`Glossary`): skills and tiles name what happens - Attack, Save, Contest, Check, Last Stand, Held, Burning, Trap... - and each term is defined once, on its Guide page. No skill description says d20 any more; the d20s live in the Guide (Checks). Terms are coloured by kind and underlined: hover one for its definition, click it for its page.
+- [x] **Offense and defense mods**: in descriptions, the user's own mods are orange and the target's blue ("Save (wis mod) vs cha mod + 2"). Numbers that grow with rank are gold, durations teal, damage tags in their element's colour.
+- [x] **Every skill's spec in one place**: target, then range, AP, cost - the first line of every description, and chips under the skills screen's name. Range reads as it scales: the set part, then what grows with rank (gold), then the user's mod (orange): "range rank + cha mod", "range 2 + int mod". Tiers read **T1**, T2...
+- [x] **The purchase button** (`CostButton`): "Unlock" or "Rank III" with the cost in a gold square on its right, lit only when it can be bought (its tooltip says why not). The footer no longer says "can be learned now".
+- [x] **Tutorial text lives in the Guide**, now in pages (Playing, Skills, Hotbar, Character, Persona, The board, Checks, Conditions, Ground). Panels carry a small **i** in a corner (`GuideLink`) that opens Settings at their page: skills, spellbook, character sheet, Personify. The skills and spellbook footers' instructions, the stash's "bosses give items" and the sleep hint's explanation moved there.
+- [x] **Tab colours** (`SkillTab.tone()`): each tab's text in its primary colour, the tab and the tree behind it in a darker shade, so the shown tab joins its tree. General trees by category (Martial a light, slightly muted red #d27a70, Specialist green, Caster light purple, the base tree dark gray); gods by domain (Sol orange, Luun violet, Eros pink...), patrons (Elmon teal, Hogel pale yellow), callings sky blue, species tan, knowledge parchment, and a colour per class for its own tab. (?54)
+- [x] The tile pane names its effects by term too (Trap, Sticky, On entering, At turn end, Disturbed earth, Starpane), and skill tooltips on the hotbar, spellbook and trees are rich text.
+- [x] **Commanding reads from the board, not tips.** The "too far to hear you, bring X within N" hint and nag are gone. Instead a unit the player can command this turn glows brighter and larger (`Unit.command_look`, `PROMINENCE`), and a commanded one's sprite desaturates along ready -> ordered -> tapped (`desaturate.gdshader`, `Unit.set_saturation`; `HUD.command_state` / `_sat_of`). The grayed hotbar already said "not commandable".
+- [x] **Colours by AP** (2026-11-09; `HUD.command_sat()`, `SAT_LOW`; `Unit.ap_share()`): units draw in their own colours. On the player's turn its own side's units drain only slightly, and mostly as their AP runs out (55% colour on the last of it, along a curve: about 89% at half); one that can't take another order this turn (out of AP or reach, asleep, past the command limits) is grey. Allies of other sides, foes, and anyone off the player's turn keep full colour. The shader no longer samples the texture twice, which had squared every colour and drawn dark sprites near-black. Units whose side can't be told are no longer painted black: they keep their colours, with a neutral grey glow and no bars. (?83)
+- [x] **Tile panel declutter**: a Move 1 cost isn't shown; a real cost reads "Mv -N" (a walker pictogram would read better - follow-up, needs art); the "Effects: N" header row is gone; a suspicious tile ends its effect list with "?", and its cost (when known) gets a trailing "?".
+- [x] **Suspicious tiles on the map** (`HUD.suspect`, `Overlay._suspect_mark`): concealed ground the player has a hint about (a disguised trap) gets a translucent "?" overlay, like the "?" already drawn over suspected hidden units.
+- [x] **Accessibility toggles** (Settings): "High contrast" (brighter allied glow through `command_look`, whiter body text; heavier faction borders still to do) and "Mark suspicious tiles" (bold, opaque "?" on every suspicious tile).
+- [x] **Default orders** (`HUD.uses_intents` / `intent_options` / `issue_intent`): a commander that can't give specifics (cha mod <= 0) or read an ally's kit (low wisdom) directs it by **ATTACK / DEFEND / HELP**; the ally then takes its turn restricted to that posture. Only intents it can carry out show, unless the commander is guessing (wis mod + ally cha mod <= -5), when all three show with a "?" and an impossible pick wastes the order and locks the unit for the turn. A small popup presents them.
+- [x] **Layers in the tile pane and on the map**: the pane lists each layer the player can make out, top down, with its traits by term (Lets through, Obscuring, Cover, Brittle, Unstable, Flammable, Windswept) and a mending startile's "Repairing: X/Y"; under obscuring leaves, just the leaves and a "?". Move costs show fractions ("Mv -1.1"). The map draws leaves as scattered leaves (faint while trodden), glass as a pale sheen, a cracked startile as cracked glass with its repair's arc.
+
+## Skill trees, 2026-11-08
+
+- [x] **Icon boxes** (`SkillGrid`): each skill a small square with its glyph or initials (`Skill.mark()`) as a placeholder icon, its rank in the corner; its name in its tooltip and the footer. Stubs are dashed all round.
+- [x] **?? for an AI's designs** (`Skill.ai`, `Skill.title()`): on the skills screen and the hotbar's tooltips.
+- [x] **Choice boxes** on a class's own tab: a darkened box per choice of trees headed "SCHOOL · PICK UP TO 1" (or "LEARN DIVINITY" until its study is learned), holding each tree's tier 0 root; click one, and the footer offers to pick it, free. A gated choice sits just above the skill that opens it, a line running up to it.
+- [x] **Key rebinds** (`KeyBinds`, in Settings under its toggles): a dropdown of the game's actions, the key on the one picked, and Rebind - the next key pressed takes it (Esc keeps the old one). Saved to `user://keybinds.cfg` and loaded as the HUD starts. `keybinds_test.gd`.
+- [x] **Silhouettes and the four strengths of glow** (2026-11-09; `Read.silhouette()`, `Read.concealed`, `Unit.Intensity`, `Unit.set_glow()`, `HUD.glow_of()`, `skill_glow`, `command_glow`, `HUD._sure_walk`): a unit draws black only when the viewer has placed it, can't tell its side, and something stands between (darkness, fog, brush, hiding, too far to make out, or suspicion); one in plain view it can't identify keeps its colours with a neutral grey glow; the viewer's own side never draws black. The glow is barely / somewhat / mostly / fully, for every skill armed (in range now; a sure walk away, and a click walks and uses it; an unsure walk away, no walk on click; not this turn) and for commanding. A unit only out of command reach stays in colour (state `far`). The Strike charge now takes any unit-target skill. `Unit.command_look` is gone: `set_glow` and `set_saturation` replace it. (?84)
+- [x] **Suspicion marks** (2026-11-10; `Read.concealed`, `Read.trick`, `Read.doubted`, `Read.mark()`, `Unit.MARK_TIME`, `HUD._pop`, `HUD.marks`): suspicion alone no longer draws black; only a concealed unit does. A suspected trick in plain view pops a white "?" that fades in about a second, with its own colours, a neutral glow and neutral bar trim while the "?" stands, and the unit card reads "Suspected"; once the suspicion has seen through it, a "!" in its true side's colour pops and it wears that side. A merely suspected non-trick gets no mark. Only suspicion the leader's side holds shows. `hud_test.test_suspicion_marks`. (?84 ?96)
+- [x] **Sight by unit** (2026-11-11; `HUD.eyes()`, `HUD.commanding()`, `HUD.marks` per viewer): the card chip reads "?"; while a unit is commanded the map's reads follow its eyes; the camera and spellbook still follow the leader. `hud_test.test_sight_by_unit`. (?96, ?99)
+
+## Suspicion's eye, the clock, moving together, preparation, the spellbook (2026-11-11)
+
+- [x] **Suspicion as one eye** (`HUD.suspicion_icons()`, `known_name()`, `Icons/Effects/suspicion.png`): a single purple eye on the card for everything a unit suspects, counting them, its tooltip naming each as that unit knows it. `vanish_test.test_eye`. (?101)
+- [x] **The log's ?, ! and !?** (`Battle.discovered`, `unmasked`, `vanished`; `HUD._on_discovered`, `_on_unmasked`, `_on_vanished`): a first suspicion, seeing through, and a unit vanishing before one's eyes; per-stack suspicion lines gone. (?101, ?102)
+- [x] **Turn clock** (`HUD.turn_clock`, `turn_seconds()`, `_tick_clock()`, `clock_on`): wis + int / 2 seconds, top middle, red in its last 5, paused by Settings; ends the turn. `clock_test.gd`. (?103)
+- [x] **Moving together** (`HUD.together`, `Overlay.walking_left()`): units acting on their own move at once and the turn waits out the longest walk. (?104)
+- [x] **Preparation** (`Battle.Phase.PREP`, `prep`, `begin()`, `study()`, `studies_left()`; `HUD.begin_battle()`, `_study()`): a look round before the initiative roll, studying allies by cha mod and foes or tiles by wis mod. `prep_test.gd`. (?105)
+- [x] **Starting level** on the entry screen (`%Level`, `Entry._play()`). (?106)
+- [x] **Spellbook detail** (`SkillDetail`, shared with the skills screen's footer; `SkillEntry.picked`, `Spellbook.pick()`). (?107)
+- [x] **Steadier tooltips** (`UnitCard.set_info()` skips identical info). (?108)
+
+## Battle UI v2 (2026-11-14)
+
+Plan and calls: `docs/plans/ui-v2.md`. `hud_test` (changed, plus hover_rows, allied_glow, will_consume). (?90, ?123)
+
+- [x] **One intent** (`HUD.intent()`, `_run()`): the click, the overlay and the tooltip read the same thing; the selected slot (`slot`, `keep_slot`) never blocks walking; area skills still `aim`.
+- [x] **Clicking yourself** rests, continues or marks done, locking only that unit; a self skill confirms on a second press or a click on yourself.
+- [x] **Hover rows**: foes take the first offensive skill from the slot rightward, wrapping; allies are selected, walked to, or used on with a support skill.
+- [x] **Glow and saturation in one place** (`HUD.look_of()`); allied factions glow pale mint (`HUD.ally_glow`). (?83)
+- [x] **Will-consume bars** (`HUD.drain()`; `Overlay`, `UnitCard`): walk, known trap and skill costs on the map bars and the card; foresight by int mod (`HUD.foresight()`) with a muted flashing ? past it.
+- [x] **Cues in place of words**: tooltip down to name and read, one-word shaking refusals (`_refuse()`), odds as bracket bands with the exact % on Alt, two rings for out of reach, exhaustion pips on the slot (`SkillSlot`), dashed unsure steps.
+
+## HUD markers and Pace (2026-11-14)
+
+Plans: `docs/plans/hud-markers.md` (`hud_markers_test`), `docs/plans/pace.md` (`pace_test`). Pace finishes Battle UI v2. (?128, ?129)
+
+- [x] **Gating by `fits()`** (`HUD.why_not()`, `Behaviour.unfit()`): Resuscitate is offered only on the Downed. (?128)
+- [x] **Borrowed Time chip** (`_heart_chips`); **switch marker** (`SkillSlot.switching`); **Downed on its side** (`Unit._lie()`); **third reserve sliver** (`Unit.more_bars`). (?128)
+- [x] **Allied glow stronger and pickable** (`ALLY_BOOST`; Settings "Allied glow": Mint / White / Sky / Gold). (?128)
+- [x] **Handover** (`HUD.hand_over`, `_hand_over()`, `next_able()`): a spent unit passes the focus to the next that hasn't acted. (?129)
+- [x] **Hurry** (`HUD.HURRY`, `speed()`, `_wait()`, `_hurry()`; the `hurry` action, F; `Overlay.hurry()`): hold for x4 on the turn change, waits between units and walks. (?129)
+- [x] **A collapsed log** (`log_open`, `show_log()`): the last whole entry, a click opens the whole. (?129)
+
+## Forecast (2026-11-14)
+
+Plan and calls: `docs/plans/forecast.md`. `hud_test` (forecast_fire_and_wounds, foresight_stat, help_order_reads_restores), `hud_markers_test.every_reserve`, `foresight_test`. (?132)
+
+- [x] **AP and movement pips on the map** (`Overlay._pips`, `PIP`, `PIPS`): a strip over the selected unit's bars, blue per AP and grey per movement, a muted ? for a cost it can't foresee; none without a plan.
+- [x] **Foresight stat** (`mechanic.py stat foresight`; `HUD.foresight_allowance()`): allowance is int mod + the stat.
+- [x] **Trap estimates** (`HUD.hazard()`): dice, a trap's first bleed, poison and winded tick, and fire on the tile; summed along the path by `drain()`.
+- [x] **The drain on every reserve bar** (`Overlay._bar_for`).
+- [x] **HELP reads restores** (`HUD.intent_skill()`, `AI.restoring()`; `AI.act(supportive)` ends with `_replenish()`).
+
+## Small UI items and hazard paths (2026-11-14)
+
+Plans and calls: `docs/plans/ui-small.md` (`ui_small_test`, 5 tests), `docs/plans/path.md` (`path_test`, 9 tests). (?136, ?137)
+
+- [x] **Saved settings** (`Prefs`, `user://settings.cfg`): allied glow, high contrast, suspicious marks, keep slot and hand over; tests use `Prefs.SAVE` at a throwaway file. (?136)
+- [x] **Hurried floaters** (`Overlay.hurry()`) and **the Guide's hurry key** (`{hurry}` from `KeyBinds.key_of`). (?136)
+- [x] **Near-miss circles** (`Overlay.NEAR`): a faint circle on each unit and a dashed line from the reach ring, one tile past reach. (?136)
+- [x] **High-contrast borders** (`Unit._heavy_trim`): a 2px trim stood out one pixel. (?136)
+- [x] **Worn-emblem mark** (`SkillSlot.modded`): a gold diamond on a slot the worn emblem modifies. (?136)
+- [x] **Screenshots** of tapped saturation and Jam's "Jm" chip taken. (?136)
+- [x] **Routes steer round known hazards** (`Battle.route()`, `stride()`, `dread()`, `HAZARD_TILES`, `STEER_MARGIN`; `walk()`): preview, reach overlay and AI share it; steering reads the walker's own knowledge. (?137)
+- [x] **The fuller hazard estimate** (`Battle.hazard()`, `foresight_allowance()`; `HUD.hazard()` delegates): every tick of a bleed or poison, winded's AP, ground's `afflicts`. (?137)
+
+## Warcry picker and look-over (2026-11-15)
+
+- [x] **Warcry's foe picker** (`Behaviour.picks()`, `Cast.picked`, `Battle.picks_of()`, `HUD.picking()`, intent `pick`): a generic pick-N aim mode; picked foes show red brackets and a number. Plan: `docs/plans/warcry-picker.md`. `warcry_test`. (?157)
+- [x] **Look-over** (`HUD.look_over()`, input action `look_over`, middle-click): the sheet opens read-only with the viewer's Read; the sheet shows only what the Read gives. Plan: `docs/plans/lookover.md`. `bio_test.test_look_over`. (?161)
+
+## HUD glow and Guide (2026-11-15)
+
+- [x] **Area glow, command reach, Guide keys, to-scale near-miss circles, museum tile hover fix** (`Behaviour.footprint()`, `HUD.caught`, `Guide.keys()`, `Luck.MARGIN` ring, `_tile_icon` guard, `Skill.base_note()`): plan `docs/plans/hud-glow-guide.md`. `hud_test`, `ui_small_test`, `exhaustion_test`. (?168)
+
+## Guide rings and path foresight (2026-11-16)
+
+- [x] **Guide line for the near-miss rings; Hitch and Level Down proven by mutation** (`Guide.gd`; `check_test`): plan `docs/plans/tails-11-15.md`. (?172)
+- [x] **Path foresight** (`Battle.hazard()` Meander and `at_end`, `route(.., price)`, `AI._approach` on that price, `SUSPECT_TILES`, `HAZARD_TILES` 0.5 to 2.0): plan `docs/plans/path-foresight.md`. `path_test`. (?174)
+
+## Wave 7 art (2026-11-20)
+
+- [x] **Placeholder art from utumno** (38 skill icons, `Units/Siren.png`; `Scenes/siren.tscn` re-pointed): plan `docs/plans/w7-art.md`. (?223)

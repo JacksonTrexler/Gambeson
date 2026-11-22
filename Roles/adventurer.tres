@@ -3,17 +3,260 @@
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/Journeyer.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/human.tres" id="3_race"]
-[ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
-[ext_resource type="Script" path="res://Scripts/Slot.gd" id="6_slot"]
-[sub_resource type="Resource" id="Slot_strike"]
-script = ExtResource("6_slot")
-skill = ExtResource("4_strike")
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="4_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="8_tab"]
+[ext_resource type="Resource" path="res://Skills/self_reflection.tres" id="a_selfref"]
+[ext_resource type="Resource" path="res://Skills/hardy.tres" id="a_hardy"]
+[ext_resource type="Resource" path="res://Skills/meditate.tres" id="a_meditate"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="s_strike"]
+[ext_resource type="Resource" path="res://Skills/field_experience.tres" id="s_field_experience"]
+[ext_resource type="Resource" path="res://Skills/working_knowledge.tres" id="s_working_knowledge"]
+[ext_resource type="Resource" path="res://Skills/everyman.tres" id="s_everyman"]
+[ext_resource type="Resource" path="res://Skills/skill_slot.tres" id="s_skill_slot"]
+[ext_resource type="Resource" path="res://Skills/hex.tres" id="s_hex"]
+[ext_resource type="Resource" path="res://Skills/rejuvinate.tres" id="s_rejuvinate"]
+[ext_resource type="Resource" path="res://Skills/trade_skills.tres" id="s_trade_skills"]
+[ext_resource type="Resource" path="res://Skills/grind.tres" id="s_grind"]
+[ext_resource type="Resource" path="res://Skills/sola.tres" id="s_sola"]
+[ext_resource type="Resource" path="res://Skills/nadira.tres" id="s_nadira"]
+[ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
+[ext_resource type="Resource" path="res://Skills/igna.tres" id="s_igna"]
+[ext_resource type="Resource" path="res://Skills/aetha.tres" id="s_aetha"]
+[ext_resource type="Resource" path="res://Skills/terestera.tres" id="s_terestera"]
+[ext_resource type="Resource" path="res://Skills/hydera.tres" id="s_hydera"]
+[ext_resource type="Resource" path="res://Skills/magic_slot.tres" id="s_magic_slot"]
+[ext_resource type="Resource" path="res://Skills/wary.tres" id="s_wary"]
+[ext_resource type="Resource" path="res://Skills/tenacity.tres" id="s_tenacity"]
+[ext_resource type="Resource" path="res://Skills/martial_slot.tres" id="s_martial_slot"]
+[ext_resource type="Resource" path="res://Skills/snare.tres" id="s_snare"]
+[ext_resource type="Resource" path="res://Skills/move_plus_one.tres" id="s_move_plus_one"]
+[ext_resource type="Resource" path="res://Skills/meander.tres" id="s_meander"]
+[ext_resource type="Resource" path="res://Skills/hide.tres" id="s_hide"]
+[ext_resource type="Resource" path="res://Skills/clever_disguise.tres" id="s_clever_disguise"]
+[ext_resource type="Resource" path="res://Skills/hazard_expert.tres" id="s_hazard_expert"]
+[ext_resource type="Resource" path="res://Skills/darkvision.tres" id="s_darkvision"]
+[ext_resource type="Resource" path="res://Skills/specialist_slot.tres" id="s_specialist_slot"]
+[ext_resource type="Resource" path="res://Skills/self_evaluation.tres" id="s_self_evaluation"]
 
+[ext_resource type="Resource" path="res://Skills/persona.tres" id="s_personify"]
+[ext_resource type="Resource" path="res://Skills/embellish.tres" id="s_embellish"]
+[ext_resource type="Resource" path="res://Skills/brood.tres" id="s_brood"]
+[ext_resource type="Resource" path="res://Skills/conspire.tres" id="s_conspire"]
+[ext_resource type="Resource" path="res://Skills/first_aid.tres" id="s_first_aid"]
+[ext_resource type="Resource" path="res://Skills/renew.tres" id="s_renew"]
+[ext_resource type="Resource" path="res://Skills/observe.tres" id="s_observe"]
+[ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="s_eyes_forward"]
+[ext_resource type="Resource" path="res://Skills/special_eyes.tres" id="s_special_eyes"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
+[ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
+[ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_strike")
+
+[sub_resource type="Resource" id="Slot_field_experience"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_field_experience")
+
+[sub_resource type="Resource" id="Slot_working_knowledge"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_working_knowledge")
+
+[sub_resource type="Resource" id="Slot_everyman"]
+script = ExtResource("4_slot")
+skill = ExtResource("s_everyman")
+
+[sub_resource type="Resource" id="Branch_sola"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_sola")
+
+[sub_resource type="Resource" id="Branch_nadira"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_nadira")
+
+[sub_resource type="Resource" id="Branch_astera"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_astera")
+
+[sub_resource type="Resource" id="Branch_igna"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_igna")
+
+[sub_resource type="Resource" id="Branch_aetha"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_aetha")
+
+[sub_resource type="Resource" id="Branch_terestera"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_terestera")
+
+[sub_resource type="Resource" id="Branch_hydera"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_hydera")
+
+[sub_resource type="Resource" id="Branch_renew"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_renew")
+
+[sub_resource type="Resource" id="Branch_magic_slot"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_magic_slot")
+needs = 3
+
+[sub_resource type="Resource" id="Root_Magic"]
+script = ExtResource("6_root")
+name = "Magic"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_sola"), SubResource("Branch_nadira"), SubResource("Branch_astera"), SubResource("Branch_igna"), SubResource("Branch_aetha"), SubResource("Branch_terestera"), SubResource("Branch_hydera"), SubResource("Branch_renew"), SubResource("Branch_magic_slot")])
+
+[sub_resource type="Resource" id="Branch_wary"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_wary")
+
+[sub_resource type="Resource" id="Branch_tenacity"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_tenacity")
+
+[sub_resource type="Resource" id="Branch_martial_slot"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_martial_slot")
+needs = 3
+
+[sub_resource type="Resource" id="Root_Martial"]
+script = ExtResource("6_root")
+name = "Martial"
+tag = &"martial"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_tenacity"), SubResource("Branch_martial_slot")])
+
+[sub_resource type="Resource" id="Branch_first_aid"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_first_aid")
+
+[sub_resource type="Resource" id="Branch_snare"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_snare")
+
+[sub_resource type="Resource" id="Branch_hazard_expert"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_hazard_expert")
+after = Array[ExtResource("5_skill")]([ExtResource("s_snare")])
+
+[sub_resource type="Resource" id="Branch_darkvision"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_darkvision")
+
+[sub_resource type="Resource" id="Branch_move_plus_one"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_move_plus_one")
+after = Array[ExtResource("5_skill")]([ExtResource("s_snare")])
+
+[sub_resource type="Resource" id="Branch_meander"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_meander")
+after = Array[ExtResource("5_skill")]([ExtResource("s_darkvision")])
+
+[sub_resource type="Resource" id="Branch_hide"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_hide")
+after = Array[ExtResource("5_skill")]([ExtResource("s_meander")])
+
+[sub_resource type="Resource" id="Branch_clever_disguise"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_clever_disguise")
+after = Array[ExtResource("5_skill")]([ExtResource("s_meander")])
+
+[sub_resource type="Resource" id="Branch_specialist_slot"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_specialist_slot")
+needs = 3
+
+[sub_resource type="Resource" id="Branch_self_evaluation"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_self_evaluation")
+
+[sub_resource type="Resource" id="Branch_personify"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_personify")
+
+[sub_resource type="Resource" id="Branch_embellish"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_embellish")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Branch_brood"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_brood")
+after = Array[ExtResource("5_skill")]([ExtResource("s_personify")])
+
+[sub_resource type="Resource" id="Branch_conspire"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_conspire")
+after = Array[ExtResource("5_skill")]([ExtResource("s_embellish"), ExtResource("s_brood")])
+
+[sub_resource type="Resource" id="Branch_observe"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_observe")
+after = Array[ExtResource("5_skill")]([ExtResource("s_darkvision")])
+
+[sub_resource type="Resource" id="Branch_eyes_forward"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_eyes_forward")
+after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
+
+[sub_resource type="Resource" id="Branch_special_eyes"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_special_eyes")
+after = Array[ExtResource("5_skill")]([ExtResource("s_observe")])
+
+[sub_resource type="Resource" id="Root_Specialist"]
+script = ExtResource("6_root")
+name = "Specialist"
+tag = &"specialist"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_first_aid"), SubResource("Branch_snare"), SubResource("Branch_hazard_expert"), SubResource("Branch_move_plus_one"), SubResource("Branch_darkvision"), SubResource("Branch_observe"), SubResource("Branch_eyes_forward"), SubResource("Branch_special_eyes"), SubResource("Branch_meander"), SubResource("Branch_hide"), SubResource("Branch_clever_disguise"), SubResource("Branch_self_evaluation"), SubResource("Branch_personify"), SubResource("Branch_embellish"), SubResource("Branch_brood"), SubResource("Branch_conspire"), SubResource("Branch_specialist_slot")])
+
+[sub_resource type="Resource" id="Branch_selfref"]
+script = ExtResource("7_branch")
+skill = ExtResource("a_selfref")
+
+[sub_resource type="Resource" id="Branch_hardy"]
+script = ExtResource("7_branch")
+skill = ExtResource("a_hardy")
+after = Array[ExtResource("5_skill")]([ExtResource("a_selfref")])
+
+[sub_resource type="Resource" id="Branch_meditate"]
+script = ExtResource("7_branch")
+skill = ExtResource("a_meditate")
+after = Array[ExtResource("5_skill")]([ExtResource("a_hardy")])
+
+[sub_resource type="Resource" id="Root_Actualization"]
+script = ExtResource("6_root")
+name = "Actualization"
+tag = &"martial"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_selfref"), SubResource("Branch_hardy"), SubResource("Branch_meditate")])
+
+[sub_resource type="Resource" id="Tab_Actualization"]
+script = ExtResource("8_tab")
+name = "Actualization"
+kind = "Path"
+roots = Array[ExtResource("6_root")]([SubResource("Root_Actualization")])
 
 [resource]
 script = ExtResource("1_script")
+tends = &"loyal"
+noun = "Everyman"
 name = "Adventurer"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
-innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
-stats = Dictionary[StringName, int]({&"strength": 11, &"dexterity": 13, &"constitution": 11, &"intelligence": 10, &"wisdom": 12, &"charisma": 11})
+innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_field_experience"), SubResource("Slot_working_knowledge"), SubResource("Slot_everyman")])
+stats = Dictionary[StringName, int]({&"strength": 16, &"dexterity": 16, &"constitution": 16, &"intelligence": 16, &"wisdom": 16, &"charisma": 16})
+center = ExtResource("s_skill_slot")
+core = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_rejuvinate"), ExtResource("s_trade_skills"), ExtResource("s_grind")])
+roots = Array[ExtResource("6_root")]([SubResource("Root_Magic"), SubResource("Root_Martial"), SubResource("Root_Specialist")])
+items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
+general = Array[StringName]([&"martial", &"specialist", &"magical", &"journeyman"])
+radial = true
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Actualization")])

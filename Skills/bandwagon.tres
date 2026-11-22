@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/bandwagon.gd" id="b_bandwagon"]
+
+[sub_resource type="Resource" id="Behaviour_bandwagon"]
+script = ExtResource("b_bandwagon")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Bandwagon"
+passive = true
+tags = Array[StringName]([&"specialist", &"cha", &"defensive"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_bandwagon")])

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://Skills/armor.tres" id="2_armor"]
+[ext_resource type="Resource" path="res://Skills/hollow_bones.tres" id="3_hollow_bones"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="4_skill"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Harpy Hauberk"
+slot = "armor"
+tags = Array[StringName]([&"mail", &"medium"])
+rarity = "rare"
+skills = Array[ExtResource("4_skill")]([ExtResource("2_armor"), ExtResource("3_hollow_bones")])

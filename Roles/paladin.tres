@@ -1,19 +1,85 @@
 [gd_resource type="Resource" script_class="Role" format=3]
 
+[ext_resource type="Resource" path="res://Skills/judgement.tres" id="s_judgement"]
+[ext_resource type="Resource" path="res://Skills/discipline.tres" id="s_discipline"]
 [ext_resource type="Script" path="res://Scripts/Role.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://Units/Pallas.png" id="2_sprite"]
 [ext_resource type="Resource" path="res://Races/halfling.tres" id="3_race"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="6_slot"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="20_skill"]
+[ext_resource type="Resource" path="res://Skills/favour.tres" id="21_opt_favour"]
+[ext_resource type="Resource" path="res://Skills/lightvision.tres" id="22_opt_lightvision"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Skills/rejuvinate.tres" id="s_rejuvinate"]
+[ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
+[ext_resource type="Resource" path="res://Skills/renew.tres" id="s_renew"]
+[ext_resource type="Resource" path="res://Skills/smite.tres" id="s_smite"]
+[ext_resource type="Resource" path="res://Skills/send_off.tres" id="s_send_off"]
+[ext_resource type="Resource" path="res://Skills/lovely_caster.tres" id="s_lovely_caster"]
+[ext_resource type="Resource" path="res://Skills/impassioned_fighter.tres" id="s_impassioned_fighter"]
+[ext_resource type="Resource" path="res://Skills/coordinate.tres" id="s_coordinate"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="i_item"]
+[ext_resource type="Resource" path="res://Items/half_plate.tres" id="i_half_plate"]
+[ext_resource type="Resource" path="res://Items/broadsword.tres" id="i_broadsword"]
+[ext_resource type="Resource" path="res://Items/health_potion.tres" id="i_health_potion"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="c_choice"]
+[ext_resource type="Resource" path="res://Skills/final_act.tres" id="s_final_act"]
+[ext_resource type="Resource" path="res://Skills/gallantry.tres" id="s_gallantry"]
+[ext_resource type="Resource" path="res://Skills/inquisitor.tres" id="opt_inquisitor"]
+
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("6_slot")
 skill = ExtResource("4_strike")
 
+[sub_resource type="Resource" id="Branch_coordinate"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_coordinate")
+
+[sub_resource type="Resource" id="Branch_final_act"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_final_act")
+after = Array[ExtResource("20_skill")]([ExtResource("s_coordinate")])
+
+[sub_resource type="Resource" id="Branch_gallantry"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_gallantry")
+after = Array[ExtResource("20_skill")]([ExtResource("s_coordinate")])
+
+[sub_resource type="Resource" id="Root_Idealism"]
+script = ExtResource("6_root")
+name = "Idealism: Chivalry"
+tag = &"specialist"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_coordinate"), SubResource("Branch_final_act"), SubResource("Branch_gallantry")])
+
+[sub_resource type="Resource" id="Choice_Prowess"]
+script = ExtResource("c_choice")
+name = "Prowess"
+picks = 1
+kinds = Array[String](["Prowess"])
+
+[sub_resource type="Resource" id="Choice_Domain"]
+script = ExtResource("c_choice")
+name = "Domain"
+kinds = Array[String](["Divinity"])
+
+[sub_resource type="Resource" id="Choice_Flex"]
+script = ExtResource("c_choice")
+name = "Flex"
+kinds = Array[String](["Prowess", "Divinity", "School"])
 
 [resource]
 script = ExtResource("1_script")
+noun = "Soldier"
 name = "Paladin"
+god = &"eros"
 look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("6_slot")]([SubResource("Slot_strike")])
 stats = Dictionary[StringName, int]({&"strength": 12, &"dexterity": 10, &"constitution": 13, &"intelligence": 8, &"wisdom": 11, &"charisma": 13})
+options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResource("22_opt_lightvision"), ExtResource("s_judgement"), ExtResource("s_discipline"), ExtResource("opt_inquisitor")])
+roots = Array[ExtResource("6_root")]([SubResource("Root_Idealism")])
+items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
+general = Array[StringName]([&"martial", &"magical", &"journeyman"])
+choices = Array[ExtResource("c_choice")]([SubResource("Choice_Prowess"), SubResource("Choice_Domain"), SubResource("Choice_Flex")])

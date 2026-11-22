@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://Scenes/unit.tscn" id="1_unit"]
+[ext_resource type="Texture2D" path="res://Units/Probe.png" id="2_look"]
+[ext_resource type="Resource" path="res://Skills/regeneration_pulse.tres" id="3_pulse"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
+
+[sub_resource type="Resource" id="Slot_pulse"]
+script = ExtResource("9_slot")
+skill = ExtResource("3_pulse")
+
+[node name="Probe" instance=ExtResource("1_unit")]
+nick = "Regeneration Probe"
+look = ExtResource("2_look")
+tags = Array[StringName]([&"construct", &"astral"])
+vibe = "Humming"
+aura = 1
+behaviour = &"skittish"
+level = 3
+innate = Array[ExtResource("9_slot")]([SubResource("Slot_pulse")])
+max_hp = 6
+max_energy = 4
+strength = 4
+dexterity = 10
+constitution = 8
+intelligence = 6
+wisdom = 10
+charisma = 6
+movement = 3
+size = 1

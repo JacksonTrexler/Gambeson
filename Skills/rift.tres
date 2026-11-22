@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+name = "Rift"
+tags = Array[StringName]([&"magical", &"int"])
+radius_per_rank = 1.0
+rolls = false
+hostile = false
+min_tier = 2
+max_rank = 5
+rifts = true
+costs = "even"

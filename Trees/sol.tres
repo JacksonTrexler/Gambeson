@@ -1,0 +1,81 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="5_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="7_branch"]
+[ext_resource type="Resource" path="res://Skills/level_up.tres" id="s_level_up"]
+[ext_resource type="Resource" path="res://Skills/igna.tres" id="s_igna"]
+[ext_resource type="Resource" path="res://Skills/flamewall.tres" id="s_flamewall"]
+[ext_resource type="Resource" path="res://Skills/inner_fire.tres" id="s_inner_fire"]
+[ext_resource type="Resource" path="res://Skills/burning_bag.tres" id="s_burning_bag"]
+[ext_resource type="Resource" path="res://Skills/flamecharm.tres" id="s_flamecharm"]
+[ext_resource type="Resource" path="res://Skills/cindering.tres" id="s_cindering"]
+[ext_resource type="Resource" path="res://Skills/flamedance.tres" id="s_flamedance"]
+[ext_resource type="Resource" path="res://Skills/solar.tres" id="s_solar"]
+[ext_resource type="Resource" path="res://Skills/wildfire.tres" id="s_wildfire"]
+[ext_resource type="Resource" path="res://Skills/judgement.tres" id="s_judgement"]
+[ext_resource type="Resource" path="res://Skills/flamecharmed.tres" id="s_flamecharmed"]
+
+[sub_resource type="Resource" id="Branch_igna"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_igna")
+
+[sub_resource type="Resource" id="Branch_flamewall"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamewall")
+after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
+
+[sub_resource type="Resource" id="Branch_flamecharmed"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamecharmed")
+after = Array[ExtResource("5_skill")]([ExtResource("s_igna")])
+
+[sub_resource type="Resource" id="Branch_inner_fire"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_inner_fire")
+after = Array[ExtResource("5_skill")]([ExtResource("s_flamewall")])
+
+[sub_resource type="Resource" id="Branch_burning_bag"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_burning_bag")
+after = Array[ExtResource("5_skill")]([ExtResource("s_inner_fire")])
+
+[sub_resource type="Resource" id="Branch_flamecharm"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamecharm")
+after = Array[ExtResource("5_skill")]([ExtResource("s_burning_bag")])
+
+[sub_resource type="Resource" id="Branch_cindering"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_cindering")
+after = Array[ExtResource("5_skill")]([ExtResource("s_flamecharm")])
+
+[sub_resource type="Resource" id="Branch_level_up"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_level_up")
+after = Array[ExtResource("5_skill")]([ExtResource("s_cindering")])
+
+[sub_resource type="Resource" id="Branch_flamedance"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_flamedance")
+after = Array[ExtResource("5_skill")]([ExtResource("s_level_up")])
+
+[sub_resource type="Resource" id="Branch_solar"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_solar")
+after = Array[ExtResource("5_skill")]([ExtResource("s_flamedance")])
+
+[sub_resource type="Resource" id="Branch_wildfire"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_wildfire")
+after = Array[ExtResource("5_skill")]([ExtResource("s_solar")])
+
+[sub_resource type="Resource" id="Branch_judgement"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_judgement")
+
+[resource]
+script = ExtResource("6_root")
+name = "Sol"
+tag = &"magical"
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_igna"), SubResource("Branch_flamewall"), SubResource("Branch_flamecharmed"), SubResource("Branch_inner_fire"), SubResource("Branch_burning_bag"), SubResource("Branch_flamecharm"), SubResource("Branch_cindering"), SubResource("Branch_level_up"), SubResource("Branch_flamedance"), SubResource("Branch_solar"), SubResource("Branch_wildfire"), SubResource("Branch_judgement")])

@@ -109,3 +109,19 @@ func test_move_cost_effects() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1)})
 	v(3).afflict(effect("move_cost", -1, [&"rough"]), 99)  # a Pathfinder-style passive, as data
 	ok(b.travel(v(3), Vector2i(8, 1)).size() == 3 and v(3).moved == 3.0, "rough costs 1 with the effect")
+
+
+func test_moving_through() -> void:
+	var al: Unit = b.get_node("Units/Alabaster")
+	stage(lancin, {v(1): Vector2i(0, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 2), al: Vector2i(5, 6)})
+	ok(is_equal_approx(b.pass_cost(v(1), v(2)), 2.4), "through an ally: size 3, 10% off per dex mod, the mover's (+1) and the ally's (+1)")
+	ok(is_equal_approx(b.pass_cost(v(1), v(3)), 2.7), "an enemy doesn't step aside: only the mover's dex helps")
+	ok(is_equal_approx(b.pass_cost(v(1), al), 3.2), "Alabaster: size 4, clumsy (dex -3 under Stoneskin) but Relay's shove (str +4) helps: 4 x 0.8")
+	ok(b.travel(v(1), Vector2i(2, 3)).back() == Vector2i(2, 3) and is_equal_approx(v(1).moved, 4.4), "walking through the ally costs 1 + 2.4, then 1")
+	v(1).dexterity = 40
+	ok(b.pass_cost(v(1), v(2)) == 0.0, "however nimble, never a boost without Relay")
+	v(1).learned.append(slot(load("res://Skills/relay.tres")))
+	ok(is_equal_approx(b.pass_cost(v(1), v(2)), 3 * (1 - 1.5 - 0.1 - 0.1)), "with Relay it can go below 0")
+	stage(lancin, {v(1): Vector2i(0, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 2)})
+	ok(b.travel(v(1), Vector2i(2, 3)).size() == 2 and v(1).moved < 0.0 and v(1).move_left() > v(1).stat(&"movement"),
+			"a boost: it's further to go than it started with")

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillCheck.gd" id="6_skill_check"]
+
+[sub_resource type="Resource" id="SkillCheck_1"]
+script = ExtResource("6_skill_check")
+against = &"wisdom"
+save = true
+ranked = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Brainfog"
+tags = Array[StringName]([&"curse", &"magical", &"warlock", &"cha", &"cc", &"disabled"])
+radius_mod = &"charisma"
+radius_per_rank = 1.0
+disables = true
+turns = 1
+turns_per_rank = 1
+check = SubResource("SkillCheck_1")
+costs = "flat rank"

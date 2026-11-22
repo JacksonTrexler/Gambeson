@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="root"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="branch"]
+[ext_resource type="Resource" path="res://Skills/undertow.tres" id="s_undertow"]
+[ext_resource type="Resource" path="res://Skills/hydera.tres" id="s_hydera"]
+[ext_resource type="Resource" path="res://Skills/gale.tres" id="s_gale"]
+[ext_resource type="Resource" path="res://Skills/aetha.tres" id="s_aetha"]
+[ext_resource type="Resource" path="res://Skills/maelstrom.tres" id="s_maelstrom"]
+
+[sub_resource type="Resource" id="Branch_undertow"]
+script = ExtResource("branch")
+skill = ExtResource("s_undertow")
+after = Array[ExtResource("skill")]([ExtResource("s_hydera")])
+
+[sub_resource type="Resource" id="Branch_gale"]
+script = ExtResource("branch")
+skill = ExtResource("s_gale")
+after = Array[ExtResource("skill")]([ExtResource("s_aetha")])
+
+[sub_resource type="Resource" id="Branch_maelstrom"]
+script = ExtResource("branch")
+skill = ExtResource("s_maelstrom")
+after = Array[ExtResource("skill")]([ExtResource("s_undertow"), ExtResource("s_gale")])
+
+[resource]
+script = ExtResource("root")
+name = "Currents"
+tag = &"magical"
+branches = Array[ExtResource("branch")]([SubResource("Branch_undertow"), SubResource("Branch_gale"), SubResource("Branch_maelstrom")])

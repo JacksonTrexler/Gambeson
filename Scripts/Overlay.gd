@@ -4,10 +4,13 @@ extends Node2D
 # What the HUD marks on the battlefield, drawn between the map and the units: the hovered tile, the
 # selected unit, the leader and its party, allies taking orders and how far orders reach, where the
 # selected unit can walk and the move being planned, the foe a click would attack, an armed skill's
-# reach and targets, and tiles where something is only suspected.
+# reach and targets, tiles where something is only suspected, debris hiding units left, disturbed
+# earth and the star lattice.
 # Floating numbers and sleepers' "zZ" go on `top`, above the units; walking is animated here too.
 
 const TILE := 32.0
+const CASTER_SIZE := 0.05  # tiles a point of the caster's size adds to a skill's range (Battle.skill_range()), drawn as its circle
+const TARGET_SIZE := 0.02  # and of the target's
 const STEP_TIME := 0.07  # seconds per tile when a unit walks
 const GOLD := Color("#e8c547")
 const MOVE := Color("#7cc4ff")
@@ -15,12 +18,24 @@ const FOE := Color("#ff6b5e")
 const FRIEND := Color("#6fdc8c")
 const ZONE := Color("#5b3f9e")
 const DUBIOUS := Color("#b39ddb")
+const DEBRIS := Color("#c9a66b")
+const EARTH := Color("#8a6a45")
+const STAR := Color("#bfe3ff")  # the star lattice: panes and their links
+const STARPOWER := Color("#ffe48a")
 const SHADE := {&"safe": 0.16, &"unsure": 0.26, &"bad": 0.45}  # reach shading strength by ground
+const LEAF := [Color("#7d9a3c"), Color("#a3842f"), Color("#5f7d33"), Color("#b0662e")]  # leaves' greens and browns
+const GLASS := Color("#cfeaff")
+const PIP := 2.0  # a pip of AP or movement on a unit's bars (_pips()): its size, with one pixel between
+const PIPS := 8  # as many as fit over its bars
 
 var hud: HUD
 var top: Node2D
 var _recent: Dictionary[Unit, Array] = {}  # [time, how many] to stack numbers popping together
 var _walks: Dictionary[Unit, Tween] = {}
+var _walk_len: Dictionary[Unit, float] = {}  # each walk's length, in seconds at speed 1 (walking_left())
+var _floats: Array[Tween] = []  # the floating numbers' tweens, hurried with the walks
+var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
+var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
 
 
 func _process(_delta: float) -> void:
@@ -37,29 +52,44 @@ func _draw() -> void:
 	var sel := hud.selected
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 4.0)
 	var mine := hud.my_turn()
+	var loud := hud.suspicious_marks or hud.high_contrast  # accessibility: a plain, bold ? on every suspicious tile
+	var eye := hud.eyes()
 	for c in hud.dubious:
-		draw_rect(_rect(c, 2), Color(DUBIOUS, 0.12))
-		draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6, 10,
-				Color(DUBIOUS, 0.25 + 0.2 * pulse))
+		_suspect_mark(c, DUBIOUS, pulse, loud, eye.suspects(c) if eye else 0)
+	for c in hud.suspect:  # concealed ground it suspects is more than it looks: a translucent ? placeholder
+		_suspect_mark(c, GOLD, pulse, loud, eye.suspects(c) if eye else 0)
+	_layers(b)
+	_lattice(b, pulse)
+	for c in b.marks:
+		for m: Battle.Mark in b.marks[c]:
+			if m in hud.tile_view(c).marks:  # only what the player's side makes out
+				_mark(c, m)
+	for c in b.debris:
+		if hud.tile_view(c).net >= 0:
+			_debris(c)
 	if hud.hover != HUD.NOWHERE:
 		draw_rect(_rect(hud.hover, 0.5), Color(1, 1, 1, 0.3), false, 1.0)
 	if mine:
 		for u in b.members(cmd.faction()):
 			if u != cmd.leader and cmd.can_order(u) and u not in cmd.ordered:
 				draw_rect(_rect(u.cell, 2), Color(HUD.shade(cmd.faction().primary), 0.22))
-		if sel and sel.faction == cmd.faction() and not hud.armed:
+		if sel and sel.faction == cmd.faction() and not hud.aiming():
 			var at := _center(cmd.leader.cell)
 			_ring(at, (cmd.reach() + 0.5) * TILE, Color(1, 1, 1, 0.3), false)
 			_ring(at, (floorf(cmd.party_reach()) + 0.5) * TILE, Color(GOLD, 0.35), true)
-	if not hud.reach.is_empty():
+	if not hud.reach.is_empty() and not hud.aiming():
 		_draw_reach(sel)
 	if not hud.plan.is_empty():
 		_draw_plan(sel)
 	if hud.charge != HUD.NOWHERE:
-		_brackets(_rect(hud.charge, 1.5), Color(FOE, pulse), 6.0)
-		draw_rect(_rect(hud.charge, 1.5), Color(FOE, 0.15))
-	if sel and hud.armed:
+		_odds_brackets(hud.charge, hud.odds(hud.hovered), FOE if hud.foe(hud.unit_seen(hud.charge)) else FRIEND, pulse)
+	_gap(sel)
+	if sel and hud.aiming():
 		_draw_targeting(sel, hud.armed, pulse)
+	if sel and hud.picking():
+		_draw_picks(pulse)
+	for c in hud.traps:
+		_caltrop(c, GOLD if hud.traps[c] else FOE)
 	for u in cmd.party:
 		_badge(u.cell, false)
 	if cmd.leader.is_alive():
@@ -71,6 +101,17 @@ func _draw() -> void:
 
 # Tiles the selected unit expects to reach, shaded by how the ground is judged (HUD.ground()),
 # with a line around the area.
+# A ? marking a suspicious tile: faint and tinted by default, bold and fuller in high-contrast /
+# "mark suspicious" mode (an overlay stands in for a real grit texture for now).
+func _suspect_mark(c: Vector2i, tint: Color, pulse: float, loud: bool, stacks := 0) -> void:
+	draw_rect(_rect(c, 2), Color(tint, 0.2 if loud else 0.12))
+	var a := (0.85 if loud else 0.25) + 0.2 * pulse
+	draw_string(ThemeDB.fallback_font, _center(c) + Vector2(-3, 4), "?", HORIZONTAL_ALIGNMENT_CENTER, 6,
+			12 if loud else 10, Color(tint if not loud else Color(1, 1, 1), a))
+	if stacks > 1:  # how suspicious it has grown of the tile (a Clairvoyance ping adds one a turn): a small count in the corner
+		draw_string(ThemeDB.fallback_font, _rect(c).position + Vector2(TILE - 6, 8), str(stacks), HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1, 1, 1, 0.5 + 0.3 * pulse))
+
+
 func _draw_reach(sel: Unit) -> void:
 	var inside := func(c: Vector2i) -> bool: return c in hud.reach or c == sel.cell
 	var sides := [[Vector2i.UP, 0, 1], [Vector2i.RIGHT, 1, 2], [Vector2i.DOWN, 2, 3], [Vector2i.LEFT, 3, 0]]
@@ -91,7 +132,10 @@ func _draw_plan(sel: Unit) -> void:
 	for i in ln.size():
 		var p := _center(ln[i])
 		var kept := i < path.size()
-		draw_line(prev, p, Color(MOVE, 0.85) if kept else Color(FOE, 0.3), 1.5 if kept else 1.0)
+		if kept and hud.grounds.get(ln[i], &"safe") == &"unsure":  # a step it can't count on: dashed
+			draw_dashed_line(prev, p, Color(MOVE, 0.85), 1.5, 3.0)
+		else:
+			draw_line(prev, p, Color(MOVE, 0.85) if kept else Color(FOE, 0.3), 1.5 if kept else 1.0)
 		prev = p
 	for i in ln.size():
 		var kept := i < path.size()
@@ -102,20 +146,102 @@ func _draw_plan(sel: Unit) -> void:
 
 func _draw_targeting(sel: Unit, s: Skill, pulse: float) -> void:
 	var b := hud.battle
-	var col := FOE if s.hostile else FRIEND
-	if s.zone:
+	var col := GOLD if s.dual else (FOE if s.hostile else FRIEND)
+	if s.on_tile():
 		_ring(_center(sel.cell), b.area_reach(sel, s) * TILE, Color(GOLD, 0.6), true)
 		var c := hud.hover
 		if c != HUD.NOWHERE and hud.why_not(sel, s, c) == "":
-			var levels := b.zone_levels(sel.rank(s), c)
-			for at in levels:
-				draw_rect(_rect(at, 1), Color(ZONE, 0.18 + 0.12 * levels[at]))
+			if s.lays:
+				_brackets(_rect(c, 1.5), Color(GOLD, pulse), 6.0)
+				_caltrop(c, Color(GOLD, 0.5 + 0.3 * pulse))
+			elif s.behaviour(&"observe"):  # what it would look over: wis mod (at least 1) + rank tiles around c
+				_ring(_center(c), (maxi(sel.mod(&"wisdom"), 1) + sel.rank(s)) * TILE, Color(FRIEND, 0.4 + 0.3 * pulse), false)
+				_brackets(_rect(c, 1.5), Color(FRIEND, pulse), 6.0)
+			elif s.behaviour(&"cone"):  # the cone itself; whoever stands in it glows (HUD.caught)
+				for at in s.footprint(b, sel, c):
+					draw_rect(_rect(at, 1), Color(ZONE, 0.22))
+			else:
+				var levels := b.zone_levels(sel.rank(s), c)
+				for at in levels:
+					draw_rect(_rect(at, 1), Color(ZONE, 0.18 + 0.12 * levels[at]))
 		return
 	_ring(_center(sel.cell), b.skill_range(sel, s) * TILE, Color(col, 0.55), true)
 	for u in hud.marked:
-		_brackets(_rect(u.cell, 1.5), Color(col, pulse), 6.0)
+		var mark := (FOE if hud.foe(u) else FRIEND) if s.dual else col
+		_brackets(_rect(u.cell, 1.5), Color(mark, pulse), 6.0)
 		if u.cell == hud.hover:
-			draw_rect(_rect(u.cell, 1.5), Color(col, 0.18))
+			draw_rect(_rect(u.cell, 1.5), Color(mark, 0.18))
+
+
+# The foes picked by hand (HUD.picked): brackets and their number, of the most the skill takes.
+func _draw_picks(pulse: float) -> void:
+	for t in hud.preview():  # nothing picked yet: the default targets, faint
+		_brackets(_rect(t.cell, 1.5), Color(FOE, 0.25 + 0.15 * pulse), 6.0, 1.0)
+	for i in hud.picked.size():
+		var at: Vector2i = hud.picked[i].cell
+		_brackets(_rect(at, 1.5), Color(FOE, 0.6 + 0.4 * pulse), 6.0)
+		draw_string(ThemeDB.fallback_font, _rect(at).position + Vector2(TILE - 7, TILE - 3), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 0.55, 0.5))
+
+
+# The target's brackets say how likely the hit is (HUD.odds()): solid likely, broken even, faint
+# unlikely; wavering (jittering, pulsing) when its Defense can't be made out. Not an attack: solid.
+func _odds_brackets(c: Vector2i, band: StringName, col: Color, pulse: float) -> void:
+	var r := _rect(c, 1.5)
+	draw_rect(r, Color(col, 0.15))
+	match band:
+		&"even":
+			var arm := 6.0
+			_brackets(r, Color(col, 0.9), arm * 0.45)  # each arm broken in two
+			var corners := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
+			var dirs := [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
+			for i in 4:
+				var o: Vector2 = corners[i]
+				draw_line(o + Vector2(dirs[i].x * arm * 0.7, 0), o + Vector2(dirs[i].x * arm, 0), Color(col, 0.9), 1.5)
+				draw_line(o + Vector2(0, dirs[i].y * arm * 0.7), o + Vector2(0, dirs[i].y * arm), Color(col, 0.9), 1.5)
+		&"unlikely":
+			_brackets(r, Color(col, 0.35), 6.0, 1.0)
+		&"unknown":
+			var t := Time.get_ticks_msec() / 1000.0
+			var j := Vector2(sin(t * 9.0), cos(t * 7.0)) * 1.2
+			_brackets(Rect2(r.position + j, r.size), Color(col, 0.35 + 0.5 * pulse), 6.0)
+		_:
+			_brackets(r, Color(col, pulse), 6.0)
+
+
+# A target just out of reach: the gap shows as two rings, the skill's reach around the unit and a
+# ring around the target.
+func _gap(sel: Unit) -> void:
+	var it := hud.hovered
+	if not sel or it.is_empty() or not it.skill or not (it.target is Unit) or it.target == sel:
+		return
+	var out: bool = (it.kind == &"use" and not it.ready and it.why == "Out of reach") or (it.kind == &"refuse" and it.why == "Out of reach")
+	var reach_tiles := hud.battle.skill_range(sel, it.skill, it.target)
+	if not out:  # in reach, or a walk away from being: a near miss from where the unit stands still shows
+		_near_miss(sel, it.target, reach_tiles)
+		return
+	_ring(_center(sel.cell), reach_tiles * TILE, Color(FOE, 0.55), true)
+	_ring(_center(it.target.cell), TILE * 0.6, Color(FOE, 0.75), false)
+	_near_miss(sel, it.target, reach_tiles)
+
+
+# A miss by less than Luck.MARGIN tiles, where luck decides: each unit's circle at the size it adds to
+# the range (Battle.skill_range(): 0.05 a point of the caster's, 0.02 of the target's), the margin as a
+# dashed ring past the reach ring (bright if the caster is the luckier, so it rounds in), and the gap
+# itself, a short line from the reach ring's edge to the target's circle.
+func _near_miss(sel: Unit, target: Unit, reach_tiles: float) -> void:
+	var a := _center(sel.cell)
+	var b := _center(target.cell)
+	var gap := a.distance_to(b) / TILE - reach_tiles
+	if gap <= 0.0 or gap >= Luck.MARGIN:
+		return
+	var lucky := sel.luck - target.luck > 0
+	var col := Color(FOE, 0.6 if lucky else 0.3)
+	var rt := target.stat(&"size") * TARGET_SIZE * TILE
+	_ring(a, sel.stat(&"size") * CASTER_SIZE * TILE, col, false)
+	_ring(b, rt, col, false)
+	_ring(a, (reach_tiles + Luck.MARGIN) * TILE, col, true)
+	var dir := (b - a).normalized()
+	draw_dashed_line(a + dir * reach_tiles * TILE, b - dir * rt, Color(FOE, 0.5), 1.0, 2.0)
 
 
 # The tile's centre in this node's space (the map sits at the battle's origin, as this does).
@@ -145,17 +271,221 @@ func _ring(at: Vector2, radius: float, col: Color, dashed: bool) -> void:
 		draw_arc(at, radius, TAU * i / n, TAU * (i + 1) / n, 3, col, 1.0)
 
 
-# Drawn on `top`, above the units: a "zZ" by the bars of each unit seen to be asleep.
+# Drawn on `top`, above the units: a "zZ" by the bars of each unit seen to be asleep, and what the
+# hovered plan would consume on the selected unit's own bars (HUD.spend) and take off its target's HP
+# (HUD.hurt).
 func draw_top() -> void:
 	if not hud:
 		return
 	var font := ThemeDB.fallback_font
+	var sel := hud.selected
+	if sel and sel.is_alive() and not hud.spend.is_empty():
+		for key in hud.spend:
+			var bar := _bar_for(sel, key)
+			if bar and bar.visible:
+				_drain_bar(sel, bar, float(hud.spend[key]), Color.WHITE)
+		for key in hud.spend.get("unsure", []):
+			var bar := _bar_for(sel, key)
+			if bar and bar.visible:
+				_unsure_mark(sel, bar)
+		_pips(sel)
+	if not hud.hurt.is_empty():
+		var t: Unit = hud.hurt.unit
+		if t.hp_bar.visible:
+			_drain_bar(t, t.hp_bar, float(hud.hurt.hi), Color(1, 1, 1, 0.45))
+			_drain_bar(t, t.hp_bar, float(hud.hurt.lo), Color.WHITE)
+	if not hud.aspect.is_empty():  # one word over the target: it is hit from its side or behind
+		var t: Unit = hud.aspect.unit
+		var word := String(hud.aspect.side)
+		var w := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+		var at := t.position + Vector2(-w / 2.0, t.trim.position.y - 3.0)
+		top.draw_string_outline(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, 2, Color(0, 0, 0, 0.8))
+		top.draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Glossary.colour(hud.aspect.side).lightened(0.35))
 	var col := Color(HUD.SLEEP, 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 3.0))
 	for u in hud.sleepers:
 		var at := u.position + Vector2(13, -TILE / 2.0 + 4)
 		for z in [["z", Vector2.ZERO, 6], ["Z", Vector2(3, -4), 8]]:
 			top.draw_string_outline(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], 2, Color(0, 0, 0, 0.7))
 			top.draw_string(font, at + z[1], z[0], HORIZONTAL_ALIGNMENT_LEFT, -1, z[2], col)
+
+
+# The bar u shows a pool on: HP, Energy, or a reserve it holds (the first, the second, or one of the
+# slivers after: Unit.more_bars). Null for what has no bar (AP and movement: _pips()).
+func _bar_for(u: Unit, key: Variant) -> ProgressBar:
+	if key is Reserve:
+		var i := u.held_reserves().find(key)
+		if i < 0:
+			return null
+		return u.reserve_bar if i == 0 else (u.second_bar if i == 1 else (u.more_bars[i - 2] if i - 2 < u.more_bars.size() else null))
+	if key == &"hp":
+		return u.hp_bar
+	return u.energy_bar if key == &"energy" else null
+
+
+# AP and movement have no bar on the map, so what a plan will spend of them shows as pips in a strip over
+# u's bars: a blue pip a point of AP, a grey one a point of movement (the card's AP and MV colours), the
+# last one short for a part, pulsing as the drain segments do; a "?" at the end of the strip for a cost
+# of theirs it can't foresee. No text and no bar of its own: nothing shows without a plan.
+func _pips(u: Unit) -> void:
+	var row := 0
+	var unsure: Array = hud.spend.get("unsure", [])
+	var left := u.position.x - Unit.BAR_WIDTH / 2.0
+	var y := u.position.y + u.trim.position.y - 1.0
+	var a := 0.8 + 0.2 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
+	for pair in [[&"ap", HUD.AP_COLOR], [&"move", HUD.MOVE_COLOR]]:
+		var n := float(hud.spend.get(pair[0], 0.0))
+		if n <= 0.0 and pair[0] not in unsure:
+			continue
+		var x := left
+		for i in mini(ceili(n), PIPS):
+			var w := PIP * clampf(n - i, 0.0, 1.0)
+			var r := Rect2(x, y - row * (PIP + 2.0) - PIP, maxf(w, 1.0), PIP)
+			top.draw_rect(r.grow(0.75), Color(0, 0, 0, 0.6))
+			top.draw_rect(r, Color(pair[1], a))
+			x += PIP + 1.0
+		if pair[0] in unsure:
+			var q := Vector2(x + 0.5, y - row * (PIP + 2.0))
+			top.draw_string_outline(ThemeDB.fallback_font, q, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, 2, Color(0, 0, 0, 0.6 * a))
+			top.draw_string(ThemeDB.fallback_font, q, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(HUD.MUTED, a))
+		row += 1
+
+
+# A pulsing segment at the end of one of u's bars: the `amount` about to come off it.
+func _drain_bar(u: Unit, bar: ProgressBar, amount: float, col: Color) -> void:
+	if amount <= 0.0 or bar.max_value <= 0.0:
+		return
+	var a := 0.45 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 6.0)
+	var r := Rect2(u.position + bar.position, bar.size)
+	var hi := r.size.x * clampf(bar.value / bar.max_value, 0.0, 1.0)
+	var lo := r.size.x * clampf((bar.value - amount) / bar.max_value, 0.0, 1.0)
+	top.draw_rect(Rect2(r.position.x + lo, r.position.y, hi - lo, r.size.y), Color(col, col.a * a))
+
+
+# A muted, flashing ? just right of one of u's bars: a cost there it can't foresee.
+func _unsure_mark(u: Unit, bar: ProgressBar) -> void:
+	var a := 0.35 + 0.45 * absf(sin(Time.get_ticks_msec() / 1000.0 * 3.5))
+	var at := u.position + bar.position + Vector2(bar.size.x + 1.5, bar.size.y + 2.0)
+	top.draw_string_outline(ThemeDB.fallback_font, at, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, 2, Color(0, 0, 0, 0.6 * a))
+	top.draw_string(ThemeDB.fallback_font, at, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(HUD.MUTED, a))
+
+
+# A known trap: a little four-spiked caltrop low in the tile (gold for your side's own).
+func _caltrop(c: Vector2i, col: Color) -> void:
+	var at := _center(c) + Vector2(0, 9)
+	for i in 4:
+		var d := Vector2.from_angle(TAU * i / 4.0 + PI / 4.0) * 4.0
+		draw_line(at - d, at + d, Color(0, 0, 0, 0.5), 2.5)
+	for i in 4:
+		var d := Vector2.from_angle(TAU * i / 4.0 + PI / 4.0) * 4.0
+		draw_line(at, at + d, col, 1.5)
+	draw_circle(at, 1.5, col)
+
+
+# A few short strokes scattered low in the tile: debris (Battle.debris).
+func _debris(c: Vector2i) -> void:
+	var at := _center(c)
+	for s in [[Vector2(-8, 6), 0.4], [Vector2(-1, 10), -0.6], [Vector2(6, 5), 1.1]]:
+		var d := Vector2.from_angle(s[1]) * 2.5
+		draw_line(at + s[0] - d, at + s[0] + d, Color(0, 0, 0, 0.45), 2.5)
+		draw_line(at + s[0] - d, at + s[0] + d, DEBRIS, 1.2)
+
+
+# Disturbed earth (Battle.earthworks): a brown wash, furrowed.
+# The star lattice (Battle.panes, Battle.starpower): a faint pane on each tile, a line to each lattice
+# neighbour side-on, and on each source a star that brightens as it fills.
+func _lattice(b: Battle, pulse: float) -> void:
+	for c in b.panes:
+		draw_rect(_rect(c, 5), Color(STAR, 0.08))
+		draw_rect(_rect(c, 5), Color(STAR, 0.3), false, 1.0)
+	for c in b.panes.keys() + b.starpower.keys():
+		for d in [Vector2i.RIGHT, Vector2i.DOWN]:
+			if b.on_lattice(c + d):
+				draw_line(_center(c), _center(c + d), Color(STAR, 0.35), 1.0)
+	for c in b.starpower:
+		var full := b.charge[c] / float(Battle.STAR_CAPACITY)
+		var at := _center(c)
+		var pts := PackedVector2Array()
+		for i in 10:
+			var rad := (7.0 if i % 2 == 0 else 3.0) * (0.8 + 0.2 * pulse)
+			pts.append(at + Vector2.from_angle(-PI / 2 + i * PI / 5) * rad)
+		draw_colored_polygon(pts, Color(STARPOWER, 0.35 + 0.55 * full))
+
+
+# The layers laid over tiles, bottom up (Battle.layers): leaves as scattered leaves (faint while someone
+# stands in them: they're see-through then), glass as a pale sheen, a cracked startile as cracked
+# glass with its repair's progress. Starpanes and startiles are drawn as the lattice (_lattice()).
+func _layers(b: Battle) -> void:
+	for c: Vector2i in b.layers:
+		var st: Array = b.layers[c]
+		for i in range(st.size() - 1, -1, -1):
+			var l: Battle.Layer = st[i]
+			var t := l.terrain
+			if t.pane or t.source:
+				continue
+			if t.unstable:
+				_glass(c, l)
+			elif t.obscures:
+				_leaves(c, b.unit_at(c) != null)
+
+
+func _leaves(c: Vector2i, trodden: bool) -> void:
+	var r := _rect(c, 2)
+	var seed := absi(c.x * 73856093 ^ c.y * 19349663)
+	for i in 9:
+		var k := (seed >> (i * 3)) & 0xFFFF
+		var at := r.position + Vector2(fmod(k * 0.61, r.size.x), fmod(k * 0.37 + i * 7.3, r.size.y))
+		var ang := float(k % 628) / 100.0
+		var col: Color = LEAF[(k + i) % LEAF.size()]
+		var pts := PackedVector2Array()
+		for j in 6:
+			var a := ang + j * TAU / 6.0
+			pts.append(at + Vector2(cos(a) * 3.2, sin(a) * 1.6).rotated(ang))
+		draw_colored_polygon(pts, Color(col, 0.28 if trodden else 0.85))
+
+
+func _glass(c: Vector2i, l: Battle.Layer) -> void:
+	var r := _rect(c, 1.5)
+	draw_rect(r, Color(GLASS, 0.16))
+	draw_rect(r, Color(GLASS, 0.5), false, 1.0)
+	draw_line(r.position + Vector2(4, r.size.y * 0.45), r.position + Vector2(r.size.x * 0.45, 4), Color(1, 1, 1, 0.35), 1.0)
+	if l.terrain.repairs_into != "":  # a cracked startile: cracks, and how far its mending's come
+		var m := r.get_center()
+		for d in [Vector2(-9, -6), Vector2(8, -8), Vector2(7, 9), Vector2(-8, 7)]:
+			draw_polyline(PackedVector2Array([m, m + d * 0.5 + Vector2(d.y, -d.x) * 0.15, m + d]), Color(1, 1, 1, 0.55), 1.0)
+		if l.repair_goal > 0:
+			draw_arc(m, 5.0, -PI / 2, -PI / 2 + TAU * float(l.repairing) / l.repair_goal, 24, Color(STARPOWER, 0.9), 1.5)
+
+
+# A mark on a tile (Battle.marks): disturbed earth is furrowed; the rest are translucent squares in the
+# mark's colour that swell out (Charge!) or fall in (Routed!), over and over, inside a faint outline.
+func _mark(c: Vector2i, m: Battle.Mark) -> void:
+	if m.kind == &"earthwork":
+		_earth(c)
+		return
+	var k := fmod(Time.get_ticks_msec() / 1000.0 * 0.8, 1.0)
+	if m.swell < 0:
+		k = 1.0 - k
+	var r := _rect(c, 1)
+	draw_rect(r, Color(m.tint, 0.16))
+	draw_rect(r, Color(m.tint, 0.7), false, 1.0)
+	var half := (TILE / 2.0 - 1.0) * lerpf(0.2, 1.0, k)
+	var inner := Rect2(_center(c) - Vector2(half, half), Vector2(half, half) * 2.0)
+	draw_rect(inner, Color(m.tint, 0.5 * (1.0 - 0.6 * k) if m.swell >= 0 else 0.5 * (0.4 + 0.6 * k)))
+	var g := _center(c)  # a glyph that reads without the colour: a chevron up for what swells (Charge!), a cross for what drags (Routed!)
+	var ink := Color(1, 1, 1, 0.85)
+	if m.swell > 0:
+		draw_polyline(PackedVector2Array([g + Vector2(-3, 1), g + Vector2(0, -2), g + Vector2(3, 1)]), ink, 1.0)
+	elif m.swell < 0:
+		draw_line(g + Vector2(-3, -3), g + Vector2(3, 3), ink, 1.0)
+		draw_line(g + Vector2(-3, 3), g + Vector2(3, -3), ink, 1.0)
+
+
+func _earth(c: Vector2i) -> void:
+	var r := _rect(c, 1)
+	draw_rect(r, Color(EARTH, 0.22))
+	for i in 3:
+		var y := r.position.y + r.size.y * (i + 1) / 4.0
+		draw_line(Vector2(r.position.x + 4, y), Vector2(r.end.x - 4, y - 3), Color(EARTH, 0.5), 1.0)
 
 
 # A diamond in the tile's top-left corner: filled for the leader, hollow for party members.
@@ -168,8 +498,104 @@ func _badge(c: Vector2i, filled: bool) -> void:
 	draw_polyline(pts, Color(0, 0, 0, 0.6) if filled else GOLD, 1.0)
 
 
-# A number (or word) that rises off a unit and fades. Ones that pop together stack upward.
-func float_text(u: Unit, text: String, col: Color) -> void:
+# A number (or word) that rises off a unit and fades. Ones that pop together stack upward. rounded: how its amount
+# was rounded (Luck.rounded()): down italic, up bold (the user, 2026-11-20).
+func float_text(u: Unit, text: String, col: Color, rounded := 0) -> void:
+	var l := _float(u, text, col)
+	_face(l, rounded)
+	var tw := _paced(l)
+	tw.tween_property(l, "position:y", l.position.y - 10, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.tween_callback(l.queue_free)
+
+
+# A passive's sign over u (HUD._on_passive(), Battle.passive_fired): its icon before "Name amount", in its colour, rising
+# and fading as a number does. sparkle: a small glint beside it (Luck: pulling its weight without undue attention).
+func float_sign(u: Unit, icon: Texture2D, text: String, col: Color, rounded := 0, sparkle := false) -> void:
+	var l := _float(u, text, col)
+	_face(l, rounded)
+	var font := l.get_theme_font(&"font")
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	l.size.x = maxf(64.0, w + 24.0)  # room for the icon and glint, still centred on the unit
+	l.position.x = u.position.x - l.size.x / 2.0
+	var left := (l.size.x - w) / 2.0
+	var mid := l.get_minimum_size().y / 2.0  # the words sit at the top of the label
+	if icon:
+		var t := TextureRect.new()
+		t.texture = icon
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		t.size = Vector2(7, 7)
+		t.position = Vector2(left - 8.5, mid - 3.5)
+		l.add_child(t)
+	if sparkle:  # a four-pointed glint off the end of the words, that turns and fades
+		var g := Polygon2D.new()
+		g.polygon = PackedVector2Array([Vector2(0, -3), Vector2(0.7, -0.7), Vector2(3, 0), Vector2(0.7, 0.7), Vector2(0, 3), Vector2(-0.7, 0.7), Vector2(-3, 0), Vector2(-0.7, -0.7)])
+		g.color = col.lightened(0.5)
+		g.position = Vector2(left + w + 3.5, mid)
+		g.scale = Vector2(0.2, 0.2)
+		l.add_child(g)
+		var gt := _paced(l)
+		gt.tween_property(g, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		gt.parallel().tween_property(g, "rotation", PI / 4.0, 0.6)
+		gt.tween_property(g, "scale", Vector2(0.3, 0.3), 0.35)
+	var tw := _paced(l)
+	tw.tween_property(l, "position:y", l.position.y - 10, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.4).set_delay(0.75)
+	tw.tween_callback(l.queue_free)
+
+
+# The faces a rounded amount is drawn in (float_text(), float_sign()): made once from the floaters' font.
+static var _faces: Dictionary = {}  # [base font, rounded] -> FontVariation
+
+
+func _face(l: Label, rounded: int) -> void:
+	if rounded != 0:
+		l.add_theme_font_override(&"font", face(l.get_theme_font(&"font"), rounded))
+
+
+# base slanted (rounded < 0: rounded down) or emboldened (rounded > 0: up), made once. The log's RichTextLabels take
+# these as their italics and bold faces (HUD._ready()).
+static func face(base: Font, rounded: int) -> FontVariation:
+	var key := [base, signi(rounded)]
+	var f: FontVariation = _faces.get(key)
+	if f == null:
+		f = FontVariation.new()
+		f.base_font = base
+		if rounded < 0:
+			f.variation_transform = Transform2D(Vector2(1, 0), Vector2(0.25, 1), Vector2.ZERO)  # slanted: rounded down
+		else:
+			f.variation_embolden = 0.8  # heavier: rounded up
+		_faces[key] = f
+	return f
+
+
+# A roll an ally's Self-evaluation saw, tallied up above u like the initiative dice: the d20
+# spins, lands, then its mods take it to the total, which holds a moment and fades.
+func float_roll(u: Unit, d20: int, total: int) -> void:
+	var l := _float(u, "?", Color.WHITE)
+	var tw := _paced(l)
+	tw.tween_method(func(_i: int): l.text = str(_dice.randi_range(1, 20)), 0, 8, 0.36)
+	tw.tween_callback(func():
+		l.text = str(d20)
+		l.add_theme_color_override(&"font_color", GOLD if d20 == 20 else (FOE if d20 == 1 else Color.WHITE)))
+	tw.tween_interval(0.3)
+	tw.tween_callback(func(): l.text = "%d %s %d = %d" % [d20, "+" if total >= d20 else "-", absi(total - d20), total])
+	tw.tween_interval(0.9)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(l.queue_free)
+
+
+# A tween on l that runs at the hurry speed (hurry() keeps it so while the key is held).
+func _paced(l: Label) -> Tween:
+	var tw := l.create_tween()
+	tw.set_speed_scale(_speed)
+	_floats = _floats.filter(func(t: Tween) -> bool: return t.is_valid())
+	_floats.append(tw)
+	return tw
+
+
+func _float(u: Unit, text: String, col: Color) -> Label:
 	var now := Time.get_ticks_msec() / 1000.0
 	var n := 0
 	if u in _recent and now - _recent[u][0] < 0.5:
@@ -183,13 +609,10 @@ func float_text(u: Unit, text: String, col: Color) -> void:
 	l.add_theme_color_override(&"font_color", col)
 	l.add_theme_color_override(&"font_outline_color", Color(0, 0, 0, 0.9))
 	l.add_theme_constant_override(&"outline_size", 3)
-	l.size = Vector2(48, 12)
-	l.position = u.position + Vector2(-24, -30 - 8 * n)
+	l.size = Vector2(64, 12)
+	l.position = u.position + Vector2(-32, -30 - 8 * n)
 	top.add_child(l)
-	var tw := l.create_tween()
-	tw.tween_property(l, "position:y", l.position.y - 10, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
-	tw.tween_callback(l.queue_free)
+	return l
 
 
 # Battle.traveled: the unit's already on its new cell; walk its sprite there tile by tile.
@@ -201,7 +624,34 @@ func walk(u: Unit, from: Vector2i, path: Array[Vector2i]) -> void:
 	var tw := u.create_tween()
 	for c in path:
 		tw.tween_property(u, "position", map.map_to_local(c), STEP_TIME)
+	tw.set_speed_scale(_speed)
 	_walks[u] = tw
+	_walk_len[u] = path.size() * STEP_TIME
+
+
+# Seconds till the last walk under way is done, at the speed they're going (HUD: units moving together).
+func walking_left() -> float:
+	var left := 0.0
+	for u in _walks.keys():
+		if not _walks[u].is_valid():
+			_walks.erase(u)
+			_walk_len.erase(u)
+			continue
+		left = maxf(left, _walk_len[u] - _walks[u].get_total_elapsed_time())
+	return maxf(left, 0.0) / _speed
+
+
+# Walks under way, and ones to come, run at speed s (HUD._hurry()).
+func hurry(s: float) -> void:
+	if is_equal_approx(s, _speed):
+		return
+	_speed = s
+	for tw in _walks.values():
+		if tw.is_valid():
+			tw.set_speed_scale(s)
+	_floats = _floats.filter(func(tw: Tween) -> bool: return tw.is_valid())
+	for tw in _floats:
+		tw.set_speed_scale(s)
 
 
 func fade(u: Unit) -> void:

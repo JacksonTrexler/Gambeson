@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://Skills/armor.tres" id="2_armor"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="3_skill"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Gambeson"
+tags = Array[StringName]([&"light", &"cloth", &"padded"])
+skills = Array[ExtResource("3_skill")]([ExtResource("2_armor")])

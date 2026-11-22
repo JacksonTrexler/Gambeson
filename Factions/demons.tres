@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Faction" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="1_faction"]
+
+[resource]
+script = ExtResource("1_faction")
+name = "Demons"
+primary = Color(0.85, 0.25, 0.45, 1)
+secondary = Color(0.18, 0.04, 0.1, 1)

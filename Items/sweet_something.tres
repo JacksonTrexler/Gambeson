@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://Reserves/sweet_nothings.tres" id="2_sn"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Sweet Something"
+slot = "trinket"
+tags = Array[StringName]([&"treat", &"dubious"])
+restores = &"reserve"
+reserve = ExtResource("2_sn")
+restore_flat = 1

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="1_tab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="2_root"]
+[ext_resource type="Resource" path="res://Trees/student.tres" id="r_student"]
+
+[resource]
+script = ExtResource("1_tab")
+name = "Student"
+kind = "General"
+category = &"magical"
+grant = &"student"
+roots = Array[ExtResource("2_root")]([ExtResource("r_student")])

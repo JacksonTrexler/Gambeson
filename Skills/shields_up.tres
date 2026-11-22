@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/guard.gd" id="b_guard"]
+
+[sub_resource type="Resource" id="Effect_base"]
+script = ExtResource("2_effect")
+stat = "guard"
+amount = 0.2
+name = "Shields Up"
+
+[sub_resource type="Resource" id="Effect_rank"]
+script = ExtResource("2_effect")
+stat = "guard"
+amount = 0.1
+per_rank = true
+name = "Shields Up"
+
+[sub_resource type="Resource" id="Behaviour_guard"]
+script = ExtResource("b_guard")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Shields Up!"
+tags = Array[StringName]([&"martial", &"defensive"])
+max_rank = 8
+glyph = "SU"
+radius = 8.0
+turns = 1
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_base"), SubResource("Effect_rank")])
+lore = "Point the shield where the trouble is. It won't stop what comes from behind."
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_guard")])
+costs = "high ap, no cost, flat rank"
