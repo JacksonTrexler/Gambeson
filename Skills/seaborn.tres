@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "strength"
+amount = 2.0
+only_on = Array[StringName]([&"water"])
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "dexterity"
+amount = 2.0
+only_on = Array[StringName]([&"water"])
+
+[sub_resource type="Resource" id="Effect_3"]
+script = ExtResource("2_effect")
+stat = "constitution"
+amount = 2.0
+only_on = Array[StringName]([&"water"])
+
+[sub_resource type="Resource" id="Effect_4"]
+script = ExtResource("2_effect")
+stat = "betrayal"
+amount = 1.0
+tags = Array[StringName]([&"slash"])
+
+[resource]
+script = ExtResource("1_skill")
+name = "Seaborn"
+ai = true
+glyph = "Sb"
+passive = true
+tags = Array[StringName]([&"aquatic", &"trait"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2"), SubResource("Effect_3"), SubResource("Effect_4")])
+shows_boon = "Something extremely beneficial"
+no_density = "a trait: no slot a foe can disable, no range, check or cost, so Density would be all gain"
