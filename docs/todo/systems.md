@@ -1482,14 +1482,41 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **`sure_crit` doubling** priced in `AI.score()`'s glance line (a crit hit doubles, a glance stays half), so every loop follow-up is priced; allies' Deathlust still not in `_relief`.
     - **Tests:** `deathlust_test.test_log_line`, `plating_test.test_ai_plate_lapses`, `chaser_test` (+1); three mutations failed and reverted.
     - **New names to review:** none.
-- [ ] **Siren: Detective, Ambush, Opportunist unbuilt** (a watch hook and a "ran beside it" reaction trigger; Opportunist first). (?237)
-- [ ] **`Skill.shows_boon` is shown nowhere.** (?237)
-- [ ] **A mention of "Restless Dead ??" on a unit** (Bio or HUD); noticing on a walk, not only a cast. (?238)
-- [ ] **The 27 untyped declarations** (Save.gd first); expand typing only for safety. (?239)
+- [x] **Siren Opportunist:** built (?246). Detective (needs a removed Investigation system) and Ambush (a watch hook) stay unbuilt. (?237)
+- [x] **`Skill.shows_boon` is shown nowhere:** shown as a note (?247). (?237)
+- [x] **A mention of "Restless Dead ??" on a unit; noticing on a walk:** built (?247). (?238)
+- [x] **The 27 untyped declarations:** all typed (?248). (?239)
 - [ ] **Locked coloured icons never seen in a shot** (the Mage tree is mostly placeholders); postponed disablings carry no `src`. (?236)
-- [ ] **AI turn cost still over at M3 x 4 (unit turn ~235 ms vs 100):** the per-read floor, a Unit mutation version, `route()` tile reads, `react()`. (?243)
+- [x] **AI turn cost, the per-read floor, `route()` tile reads, `react()` asking `on_passives`:** built in part (?245); still over at M3 x 4 (~168 ms vs 100). (?243)
 - [ ] **A foe's plates and `_threat()` ignore tolls and lapse; allies' Deathlust is not in `_relief`.** (?244)
 - [ ] **A death-cleric tree for Grave Aura.** Needs the user. (?240)
+
+## Wave 10 (2026-11-22): AI turn cost again, Opportunist, shows_boon and Restless Dead, typing
+
+245. **AI turn cost: per-read stretch caches - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w10-aicost.md`. Calls:
+    - **Built:** `kit`, `defense` (no tags), `core_stats` and a unit's strengths/weaknesses held per stretch (`Unit.begin_read` / `end_read`, `held`, `hold`; getters return copies); `on_passives` found once per stretch with the effects (`_held_fx`); micro-stretches in `reacts`, `stopped`, `helpless`, `rank`, `actives`; `Perception.embellish` returns early when nothing is puffed; `Battle._tile_read(u, c)` keeps a planner's tile read while the unit stands still; `bonus_slots()` asks `slot_count()` once. 15v15 on the M3: unit turn 56-58 to 41-43 ms, `end_turn` 69 to 57; at M3 x 4 the unit turn is ~168 ms against the 100 budget (still over; was ~230).
+    - **No cross-stretch cache behind a mutation version:** `timed`, `slots`, `items`, `hotbar`, `learned` are written at about 35 sites with no one hook, and a missed site gives stale stats silently; the stretch was widened and shared instead.
+    - **Not built (each risks changing what units see):** an out-of-range viewer skip in `_sightings` / `suspicious` (sight covers nearly everyone in the sim), a `_sightings` pre-walk gate (cover is not knowable before the move), and `in_range` / `_seem` caching (both depend on every side member's position; ~3% each).
+    - **Digest reference is now 3296533323**, not 47676114: the old digest no longer reproduces at the tip (w9 merges changed AI decisions); this work leaves it unchanged. Confirm it as the reference.
+    - **Remaining:** `_cast` is ~22% of a unit turn (reactions, evaluators, r0 gathers); ~18K unit reads a fight at ~0.1 ms each.
+    - **Tests:** `ai_tactics_test.test_stretch_holds_what_a_read_asks`; two mutations failed and reverted. 10793 checks at the branch, 0 failed.
+    - **New names to review:** none.
+246. **Opportunist - built on judgement, open for review (2026-11-22).** Siren trait from `4fe2c05`; plan `docs/plans/w10-opp.md`. Calls:
+    - **"Ran into" is a walk that ends beside it** (not a bump or a pass-by); the reaction trigger `&"beside"` fires at the end of `Battle.travel()` only, not on a push, pull or lure. `Behaviours/opportunist.gd`, `Skills/opportunist.tres` (human name from `4fe2c05`); `grant_interrupt` takes an optional `aim`.
+    - **Uses its first active** (`actives[0]`) on the walker, only if hostile and in reach; no limit per mover (Energy limits it); hostility is by faction, not by read, so a walker fooled by Alluring is still struck. The AI does not weigh Opportunist when approaching.
+    - **Tests:** `reaction_test.test_beside`, `test_opportunist`; `equip_test.test_traits` and `perception_test.test_siren_fools` updated (Siren skills 7 to 8); the stub `opportunist_test.gd` deleted. No visual check done.
+    - **New names to review:** none (the name is yours).
+247. **`shows_boon` and Restless Dead on the unit - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w10-boon.md`. Calls:
+    - **`Read.boon` shows as a note** "Claims to be doing <boon>." (`HUD._info`), a note and not a chip. A red "Restless Dead ??" chip is a chip, not a rename: on the leader's card, on a read card once the observer has noticed, and on own-side cards; an observer who has not noticed sees none.
+    - **Allies notice on a walk:** one line `UNDEAD.settle(self, u)` after `_first_look(u)` in `Battle.travel`; the check runs once per walk, at the end.
+    - **Not captured visually:** the boon note and the read-card chip.
+248. **Typing: the 27 untyped declarations - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w10-typing.md`. Calls: Save 12, Unit 5, Battle 4, Game 3, Skill 2, PartyPanel 1, all typed. Values from `d.get` or a dictionary index are `: Variant`, checked with `is` after; `load()` results `: Resource`; `Battle.best_luck`, `best_dexterity`, `members` take `side: Variant` (a Unit, Faction or Array); `_flip`'s temp is Variant; no shared dict params typed. Digest unchanged.
+249. **`tooling_test.test_icons` flaps in builder worktrees (2026-11-22).** Four skills show no icon there (Disturbance, Grave Aura, Opportunist, Seaborn) but it passed at the landed tip (10814 checks, 0 failed; 1029 tests). Likely the icon files or their `.import` files are not all committed, so the check leans on a worktree's import cache. Check `Icons/Skills/` and the `.import` files.
+- [ ] **AI turn cost: the unit turn is ~168 ms at M3 x 4 against 100:** `_cast` (~22% of a unit turn), the unit reads of `_reads`, `_look_harder`, `_first_look`, `_sightings`; the skipped speedups only with a test that proves what units see is unchanged. (?245)
+- [ ] **Confirm digest 3296533323 as the `busy_fight` reference.** Needs the user. (?245)
+- [ ] **Opportunist: the AI does not weigh it when approaching; Detective and Ambush stay unbuilt.** (?246)
+- [ ] **Boon note and the read-card chip not seen in a shot.** (?247)
+- [ ] **Commit the skill icons and their `.import` files so `tooling_test.test_icons` does not depend on a worktree's cache.** (?249)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

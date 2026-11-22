@@ -213,6 +213,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | The band's columns (?241) | `hud_test.gd`, `slot_columns_test.gd` |
 | — | Party solo, pack loot (?242) | `save_test.gd`, `plating_test.gd` |
 | — | AI turn cost (?243), plate lapse and Deathlust log (?244) | `ai_tactics_test.gd`, `deathlust_test.gd`, `plating_test.gd`, `chaser_test.gd` |
+| — | AI turn cost, stretch caches (?245) | `ai_tactics_test.gd` |
+| — | Opportunist (?246) | `reaction_test.gd` |
+| — | shows_boon and Restless Dead chip (?247) | `undead_test.gd`, `hud_test.gd` |
+| — | Typing, 27 declarations (?248) | the whole suite |
 
 ## Questions to answer first
 

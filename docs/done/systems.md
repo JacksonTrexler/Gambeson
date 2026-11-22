@@ -309,3 +309,7 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Party button solo, static `Battle.from_role`, pack loot** (`Battle._drops()`): plan `docs/plans/w9-party.md`. `save_test.test_party_size`, `plating_test.test_packs`. (?242)
 - [x] **AI turn cost** (`Battle.skill_reach`, `Unit.held()`, `_held_fx`): plan `docs/plans/w9-aiturn.md`. `ai_tactics_test.test_planning_holds_and_bounds`. (?243)
 - [x] **Deathlust log, the plate slot lapsing, `sure_crit` priced** (`Behaviour.slot_works`, `AI.BLOCKS`): plan `docs/plans/w9-aiplate.md`. `deathlust_test`, `plating_test`, `chaser_test`. (?244)
+- [x] **AI turn cost, per-read stretch caches** (`Unit.begin_read` / `end_read`, `Battle._tile_read`): plan `docs/plans/w10-aicost.md`. `ai_tactics_test.test_stretch_holds_what_a_read_asks`. (?245)
+- [x] **Opportunist** (`Behaviours/opportunist.gd`, reaction `&"beside"`): plan `docs/plans/w10-opp.md`. `reaction_test.test_beside`, `test_opportunist`. (?246)
+- [x] **`shows_boon` note and the Restless Dead chip** (`HUD._info`, `UNDEAD.settle` in `Battle.travel`): plan `docs/plans/w10-boon.md`. `undead_test`, `hud_test`. (?247)
+- [x] **Typing: the 27 untyped declarations** (Save, Unit, Battle, Game, Skill, PartyPanel): plan `docs/plans/w10-typing.md`. Suite and digest unchanged. (?248)
