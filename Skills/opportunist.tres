@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/opportunist.gd" id="b_opportunist"]
+
+[sub_resource type="Resource" id="Behaviour_opportunist"]
+script = ExtResource("b_opportunist")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Opportunist"
+glyph = "Op"
+passive = true
+tags = Array[StringName]([&"reaction", &"trait"])
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_opportunist")])
+no_density = "a trait: no slot a foe can disable, no range, check or cost of its own, so Density would be all gain"

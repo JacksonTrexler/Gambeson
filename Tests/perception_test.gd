@@ -109,7 +109,7 @@ func test_siren_fools() -> void:
 	v(1).afflict(effect("recon", 3), 9)
 	var sharp := b.read(v(1), siren())
 	ok(not sharp.deceived and sharp.faction == nemes and sharp.vibe == "Briny, hungry" and sharp.aura == -2, "recon 3 sees the truth")
-	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 7, "...what it is, and (net 3) its skills")
+	ok(sharp.tags.has(&"monster") and sharp.skills.size() == 8, "...what it is, and (net 3) its skills")
 	ok(sharp.name == "Siren" and sharp.face == "", "...and its real name and look")
 
 

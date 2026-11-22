@@ -89,7 +89,7 @@ var _aimed: Dictionary[Unit, Dictionary] = {}  # caster -> {target: times it use
 var _reacted: Dictionary[Unit, Dictionary] = {}  # holder -> {passive: times it reacted this battle} (times_reacted())
 var interrupter: Unit  # acting out of turn (grant_interrupt()): while set, only it acts (_acting())
 var directed := Callable()  # (unit) -> bool: a person picks that unit's interrupt (the HUD sets it for the player's side); unset, every unit's is the AI's
-var _interrupts: Array = []  # [unit, actions, only, chain] waiting their turn to interrupt, first first
+var _interrupts: Array = []  # [unit, actions, only, chain, aim] waiting their turn to interrupt, first first
 var _interrupt_left := 0  # actions the interrupter has left
 var _interrupt_chain := {}  # the use chain the interrupter's uses join (Behaviour.Volley.chain: a Chaser's chase), or empty
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
@@ -1864,8 +1864,9 @@ func resolving() -> Behaviour.Cast:
 # resumes when it's done (end_interrupt()). `only` (Skill -> highest rank), not empty: its only actives meanwhile,
 # each at no more than that rank (Unit.allowed: Chaser) - the HUD and the AI pick among them as any. `chain`
 # (a Volley's), not empty: its uses join that use chain (Chaser: its chases count, friction carries on).
-func grant_interrupt(u: Unit, actions := 1, only: Dictionary = {}, chain: Dictionary = {}) -> void:
-	_interrupts.append([u, actions, only, chain])
+# `aim`: no one picks; it uses its first allowed skill on that unit at once (Opportunist), the interrupt over after.
+func grant_interrupt(u: Unit, actions := 1, only: Dictionary = {}, chain: Dictionary = {}, aim: Unit = null) -> void:
+	_interrupts.append([u, actions, only, chain, aim])
 	if _casting == 0 and _reacting == 0:
 		_open_interrupt()
 
@@ -1884,8 +1885,16 @@ func _open_interrupt() -> void:
 		_interrupt_ap = AP.new(INTERRUPT_AP, &"skill")
 		u.ap.push_front(_interrupt_ap)  # drawn before any skill-only AP of its own
 		interrupt_began.emit(u)
-		if not (directed.is_valid() and directed.call(u)):
+		if next[4] != null:
+			if not (next[4].is_alive() and cast(u, _first_active(u), next[4])) and interrupter == u:
+				end_interrupt()  # it couldn't (out of reach, can't pay): the moment passes
+		elif not (directed.is_valid() and directed.call(u)):
 			AI.interrupt(self, u)  # no one to ask: the AI picks, as headless simulations and the real game alike
+
+
+# The first of u's allowed actives (Unit.allowed), for an interrupt aimed at someone.
+func _first_active(u: Unit) -> Skill:
+	return u.actives[0] if not u.actives.is_empty() else null
 
 
 # The interrupter is done, or passes (the HUD's End turn, the AI with nothing to do): its free AP goes,
@@ -3384,7 +3393,21 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 			spring(u.cell, u)
 		if u.is_alive():
 			_first_look(u)
+			if _beside(u):
+				react(&"beside", u, u)  # (Opportunist)
+				if _casting == 0 and _reacting == 0:
+					_open_interrupt()
 	return passed
+
+
+# Whether another unit stands next to u: the moment a walk ends beside someone (react(&"beside"), a cheap gate).
+func _beside(u: Unit) -> bool:
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var o := unit_at(u.cell + Vector2i(dx, dy))
+			if o != null and o != u:
+				return true
+	return false
 
 
 # u, having moved from `from` to `to`, drags along whoever it holds by a grip with tow (Hitch): up to
