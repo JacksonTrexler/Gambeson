@@ -84,6 +84,7 @@ func test_log_line() -> void:
 	b.neutralize(v(3), &"down")
 	await tree.process_frame
 	ok(text.call().count("eases its exhaustion") == 1, "an unrelieved moment: none (%s)" % text.call())
+	h.free()
 
 
 # The AI prices a worn skill by the wearing() hooks: a blow that would kill costs no wear with Deathlust.
