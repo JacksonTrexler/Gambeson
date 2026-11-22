@@ -30,6 +30,7 @@ const MIN_ROWS := 4  # the hotbar never wraps into shorter columns than this
 const GOLD := Color("#e8c547")
 const MUTED := Color("#9aa0ae")
 const FOE := Color("#ff6b5e")
+const RESTLESS := "Restless Dead ??"  # undead and Disturbed (Unit.restless())
 const FRIEND := Color("#6fdc8c")
 const AP_COLOR := Color("#7cc4ff")
 const MOVE_COLOR := Color("#b8c0cc")
@@ -2988,6 +2989,8 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["%d skill point%s" % [u.skill_points, "" if u.skill_points == 1 else "s"], GOLD])
 		if u.asleep():
 			chips.append(["Asleep", SLEEP])
+		if u.restless():
+			chips.append([RESTLESS, FOE])
 		if u.bio:  # its own side knows its bio
 			for p in u.bio.properties:
 				chips.append([p.name, MUTED])
@@ -3048,6 +3051,8 @@ func _info(u: Unit) -> Dictionary:
 		_burnt_chips(u, chips)
 	for word in r.traits:
 		chips.append([word, MUTED])
+	if r.restless or (known(u) and u.restless()):  # noticed turning, or its own side knows
+		chips.append([RESTLESS, FOE])
 	if sleeping(u):
 		chips.append(["Asleep", SLEEP])
 	elif known(u) and battle.turn == command.faction() and battle.phase == Battle.Phase.TURNS:
@@ -3090,6 +3095,8 @@ func _info(u: Unit) -> Dictionary:
 		if info.effects.is_empty() and r.affected == true:  # it can tell something's on it, not what
 			info.effects = [["?", MUTED, "Something's affecting %s; your side can't make out what" % _name(u), ""]]
 	info.note = "" if known(u) and r.insight.ends_with("appear otherwise.") else r.insight  # an honest ally goes without saying
+	if r.boon:  # what a deceiver says it's doing for the observer (shows_boon)
+		info.note = (info.note + "\n" if info.note else "") + "Claims to be doing %s." % r.boon.to_lower()
 	if r.temper:
 		info.note = (info.note + "\n" if info.note else "") + "Seems %s." % r.temper
 	if r.intention or not r.strategy.is_empty():
