@@ -115,6 +115,7 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - AI acts through the equipped set only. (?163)
 - AI is not given a special case for any skill; it reads `restores()`, `neutralized`, `wearing`, `foils`, `strides` and the like. (?130, ?182)
 - Units act together in batches; each still decides in turn. (?104)
+- **A unit's behaviour should be inferable from the unit itself** (the user, 2026-11-22, a rule of thumb): prideful, pitiful, pragmatic, capable; reads as plain targeting, going for downs, squaring up, hedging. Player units and those they command have behaviour too (autobattle if ever built; control stripped by cognitive disruption). `docs/agents/answers-2026-11-22.md`.
 
 ## UI
 - No static hints on screen; dynamic info only (tooltips after 1 s, forecasts, status lines). (?83)
