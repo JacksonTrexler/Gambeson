@@ -531,11 +531,18 @@ var on_passives: Array[Slot]:
 			return _held_fx(null).vals[&"on_passives"].duplicate()
 		return _on_passives()
 
-func _on_passives() -> Array[Slot]:
+func _on_passives(tag := &"") -> Array[Slot]:
 	var s: Array[Slot] = []
 	var lost := unranked()
-	s.assign(slots.filter(func(x: Slot): return x.skill.passive and x.on and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
+	s.assign(slots.filter(func(x: Slot): return x.skill.passive and (tag == &"" or tag in x.skill.tags) and x.on and equipped(x.skill) and x.skill not in disabled and lost.get(x.skill, 0) < x.rank and not lapsed(x.skill)))
 	return s
+
+
+# The on_passives that carry `tag` (Battle.react() asks for the reaction tag): outside a stretch the others aren't checked at all.
+func on_passives_tagged(tag: StringName) -> Array[Slot]:
+	if reading > 0:
+		return on_passives.filter(func(x: Slot): return tag in x.skill.tags)
+	return _on_passives(tag)
 
 var passives: Array[Skill]:
 	get:

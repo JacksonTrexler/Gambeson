@@ -830,11 +830,14 @@ static func _driven(b: Battle, u: Unit, s: Skill, t: Unit) -> float:
 static func _line_up(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	Unit.begin_read()  # planning only until it walks (Battle.standing() puts it back): each unit's effects are found once (Unit._effects())
 	var skills := u.foe_actives(true).filter(func(s: Skill): return not s.behaviours.is_empty() or s.effects.any(func(e: Effect): return Battle.DRIVES.has(StringName(e.stat))))
+	if skills.is_empty() or u.move_left() < 1.0:  # (asked before the foes: those are a read apiece)
+		Unit.end_read()
+		return false
 	var foes: Array[Unit] = []
 	for t: Unit in reads:
 		if t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located():
 			foes.append(t)
-	if skills.is_empty() or foes.is_empty() or u.move_left() < 1.0:
+	if foes.is_empty():
 		Unit.end_read()
 		return false
 	var sizes: Array[float] = []
@@ -1058,8 +1061,10 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[
 		if p.is_empty():
 			return false
 		log.append("%s hunts %s" % [u.name, p])
+		Unit.begin_read()  # all reads, nothing changed: each unit's effects are found once
 		for o: Unit in reads:
 			reads[o] = b.read(u, o)
+		Unit.end_read()
 		_remember(b, u, reads)
 		return true
 	return false

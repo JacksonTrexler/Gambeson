@@ -74,6 +74,7 @@ const MEDIUM := 3  # size assumed for a target not yet chosen
 const PASS_SHARE := 0.1  # of the size penalty for moving through a unit, taken off per point of dex mod
 const DISCIPLINE_HIT := 2  # to hit, a point of Discipline (discipline_points())
 const DISCIPLINE_DAMAGE := 0.1  # more damage, a point of Discipline per point of the attack's stat mod (at least 1)
+const REACTION := &"reaction"  # the tag a skill whose behaviour reacts carries (react() asks only those: Util/skill.py check)
 const PERFECT_HITS := 36  # Strike hits in a row (Strike!'s three) for a Perfect...
 const PERFECT_HEAL := 300  # ...healing this much at once, true (_chain())
 const SLAM := 2  # blunt HP for each tile of a push stopped short by a unit or the map's edge (displace())
@@ -1786,7 +1787,7 @@ func react(trigger: StringName, subject: Unit, by: Unit = null, c: Behaviour.Cas
 	r.locked = c != null and c.locked
 	_reacting += 1
 	for o in reactors(subject, by):
-		for x in reactions_of(o):
+		for x in reactions_of(o, REACTION):  # (what reacts carries the reaction tag: skill.py check)
 			react_with(r, o, x)
 	_reacting -= 1
 	if c:
@@ -1797,7 +1798,7 @@ func react(trigger: StringName, subject: Unit, by: Unit = null, c: Behaviour.Cas
 # Asks one passive x of holder's about moment r, if it may: holder reacts() and x hasn't reacted to r.
 # True when it did (told by reacted, counted by times_reacted()).
 func react_with(r: Behaviour.Reaction, holder: Unit, x: Slot) -> bool:
-	if not holder.reacts() or r.done.any(func(d: Array): return d[0] == holder and d[1] == x.skill):
+	if r.done.any(func(d: Array): return d[0] == holder and d[1] == x.skill) or not holder.reacts():
 		return false
 	r.skill = x.skill
 	r.rolled = []
@@ -1832,9 +1833,9 @@ func reactors(subject: Unit, by: Unit = null) -> Array[Unit]:
 
 # u's switched-on passives that have behaviours (any may react), top to bottom of its hotbar, then the
 # rest in their order: the order its reactions resolve in, and Snapping Turtle's.
-static func reactions_of(u: Unit) -> Array[Slot]:
+static func reactions_of(u: Unit, tag := &"") -> Array[Slot]:
 	var out: Array[Slot] = []
-	out.assign(u.on_passives.filter(func(x: Slot): return not x.skill.behaviours.is_empty()))
+	out.assign((u.on_passives_tagged(tag) if tag != &"" else u.on_passives).filter(func(x: Slot): return not x.skill.behaviours.is_empty()))
 	var at := func(x: Slot) -> int:
 		var i := u.hotbar.find(x.skill)
 		return i if i >= 0 else 1000 + out.find(x)
