@@ -147,6 +147,7 @@ class Applied:
 # from rank 3 it can claim the wrong team - Enemy (hostile), Aggressive (to be avoided), Passive
 # (mostly ignored), Traitor (against its real allies, for its real enemies).
 @export var stance := ""  # "", Friendly, Enemy, Aggressive, Passive or Traitor
+@export var shows_boon := ""  # what it claims to be doing for those it fools ("Something extremely beneficial": Read.boon)
 @export var shows_level := 0  # rank 2: the level it claims to those it fools (0: it advertises its own)
 @export var shows_vibe: Array[String] = []  # rank 1
 @export var shows_tags: Array[StringName] = []  # rank 3: identity
@@ -1983,6 +1984,8 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 		if e.above_hp > 0 and hp <= e.above_hp * max_hp:
 			continue
 		if pair[1] < e.min_rank or (e.rested and rested_turns <= 0) or e.unless_on.any(func(x): return x in ground):
+			continue
+		if not e.only_on.is_empty() and not e.only_on.any(func(x): return x in ground):
 			continue
 		var amount: float = e.amount * (floori(stat(e.per_stat) / e.per) if e.per_stat else 1) * (pair[1] if e.per_rank else 1) * pair[2]
 		if e.per_mod:
@@ -4082,6 +4085,8 @@ func _take_looks() -> void:
 			if w not in shows_adjectives:
 				shows_adjectives.append(w)
 		shows_nouns.merge(s.shows_nouns)
+		if shows_boon == "":
+			shows_boon = s.shows_boon
 
 
 # The name its persona goes by: an adjective and a noun from its pools, at random ("Serene

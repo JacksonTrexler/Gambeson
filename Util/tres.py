@@ -11,7 +11,7 @@ import os, re, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REVIEW = " ??"  # after a name an AI made up, until a person reviews it
 FLOATS = {"ap", "radius", "radius_per_rank", "amount", "decays", "carry", "blast", "strike_ap", "restores", "rank_growth", "drag"}
-NAME_LISTS = {"tags", "bears", "unless_on", "checks", "damage_tags", "shows_tags", "strategy", "general"}  # comma lists -> Array[StringName]
+NAME_LISTS = {"tags", "bears", "unless_on", "only_on", "checks", "damage_tags", "shows_tags", "strategy", "general"}  # comma lists -> Array[StringName]
 
 
 def rel(p):

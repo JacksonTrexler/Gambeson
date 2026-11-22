@@ -114,6 +114,7 @@ extends Resource
 @export var shows_tags: Array[StringName] = []
 @export var shows_adjectives: Array[String] = []
 @export var shows_nouns: Dictionary[String, String] = {}
+@export var shows_boon := ""  # what it claims to be doing for whoever it fools ("Something extremely beneficial"; Read.boon)
 @export_multiline var lore := ""  # a story behind it, shown after what it does (the Bracing passives: Jimhe Deyn's gangs)
 @export_group("Terms")  # what it does and how it scales, for the cost calculator and modifiers (SkillTerms, Pricing, Modifiers); empty: derived from its fields
 @export var intensity := &""  # its damage, a Difficulty.MAGNITUDE word (the user's low faint, moderate low mild, moderate, high strong, extreme severe); empty: from its tier
@@ -365,7 +366,7 @@ func heals() -> bool:
 
 # Carries a look its holder puts forward (Alluring).
 func has_look() -> bool:
-	return stance != "" or not (shows_vibe.is_empty() and shows_tags.is_empty() and shows_adjectives.is_empty() and shows_nouns.is_empty())
+	return stance != "" or not (shows_vibe.is_empty() and shows_tags.is_empty() and shows_adjectives.is_empty() and shows_nouns.is_empty() and shows_boon == "")
 
 
 # The highest rank of wound it clears at a rank: its rank, or rank x rank (Renew).
@@ -879,6 +880,8 @@ func markup(rank := 1, with_spec := true, u: Unit = null) -> String:
 			if not shows_nouns.is_empty():
 				names.append(", ".join(PackedStringArray(shows_nouns.keys())))
 			lines.append("It may go by %s" % "; ".join(names))
+		if shows_boon:
+			lines.append("Claims to be doing %s for those it fools" % shows_boon.to_lower())
 	if investigated:
 		lines.append("A %s as it's used (%s + {r:%d}): enemies that can see it %s against that at once, with %s within their %s - {r:%d} tiles. Those who meet it aren't fooled by it"
 				% [Glossary.term(&"check", "check"), me, ri, Glossary.term(&"investigate", "investigate"), Glossary.term(&"advantage", "advantage"), Glossary.mod(&"wis", true), ri])

@@ -56,6 +56,7 @@ var worth: Variant = null  # tile: +1 beneficial, -1 detrimental (Terrain.worth(
 var level: Variant = null
 var role: Role
 
+var boon := ""  # what a deceiver claims to be doing for you (Unit.shows_boon)
 var skills: Array[Skill] = []
 var kit: Array[Skill] = []  # an ally's skills, by name only: allies tell each other what they can do (net 0); the details take net 3 (skills)
 var effects: Array[Effect] = []  # unit: timed effects on it (3); tile: on whoever stands there (0)
