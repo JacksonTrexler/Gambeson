@@ -72,6 +72,21 @@ func test_kill_skips_exhaustion() -> void:
 	ok(signed == [v(1), v(1)], "and signs it twice: the death eases its count as it falls, the cancelled use at the cast's end (%s)" % [signed])
 
 
+# The HUD logs the relief (Battle.passive's &"exhaustion" stat), once per easing, in the holder's tag.
+func test_log_line() -> void:
+	lusty(1)
+	var h := await hud(v(1))
+	var text := func() -> String: return h.log_box.get_parsed_text()
+	b.neutralize(v(3), &"killed")
+	await tree.process_frame
+	ok(text.call().count("Villager1's Deathlust eases its exhaustion") == 1, "a kill beside it: one log line (%s)" % text.call())
+	b.neutralize(v(3), &"downed")
+	b.neutralize(v(3), &"down")
+	await tree.process_frame
+	ok(text.call().count("eases its exhaustion") == 1, "an unrelieved moment: none (%s)" % text.call())
+	h.free()
+
+
 # The AI prices a worn skill by the wearing() hooks: a blow that would kill costs no wear with Deathlust.
 func test_ai_weighs_kill_discount() -> void:
 	lusty(1)

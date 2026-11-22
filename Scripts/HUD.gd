@@ -2171,6 +2171,8 @@ func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int)
 		sense = skill_sense(u, s, r) if s else 2
 	if sense == 0:
 		return
+	if stat == &"exhaustion" and s:  # a passive eased its holder's exhaustion (Battle.neutralize()/_settle_wear()): the log says so, whatever its sign does
+		_log("%s's %s eases its exhaustion" % [_tag(u), u.skill_name(s)])
 	if s and u == selected and bar.visible:
 		for slot: SkillSlot in bar.get_children() + trait_bar.get_children():
 			if slot.skill == s:

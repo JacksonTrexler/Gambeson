@@ -67,6 +67,7 @@ const POINT := 0.5  # what a point of Energy or other cost it gets back is worth
 const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
 const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
 const CC := 0.5  # the share of a foe's next turn a cc takes when what carries it can't say (no foresee() afflicts: Brainfog, Interdict, a grip's drowning): a guess (_afflicting())
+const BLOCKS := 3  # the blows a plate is taken to block before its holder rests (_plated(): a slot that lapses part way is worth that share)
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
 const DELAY := 0.5  # the share of a disable's worth left it when its target postpones disablings (the postpone stat: Coyote Charm): it lands as the postpone ends, and one more held adds less (_held()); a guess
@@ -416,7 +417,8 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	if b and t:
 		p = _chance(u, s, r, b, t)
 		if s.attacks() and not (s.check and not s.check.suspicion) and not s.levels_down and p > 0.0:
-			dmg *= 1.0 - 0.5 * Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # a glance lands half
+			var glance := Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # (the share of its hits that are glances)
+			dmg *= (2.0 if s.sure_crit else 1.0) * (1.0 - glance) + 0.5 * glance  # a glance lands half; a use whose hits all crit (Jugular) lands the rest double, as_rolled() does
 			dmg *= _use_ratio(b, u, s, t, r, d)  # friction on its rolls, a pool its passives make of them
 		blocked = _blocks(b, u, s, r, t, float(d.get("avg", 0.0)))
 		var more := b.foresee(u, s, t)
@@ -475,11 +477,16 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 # What `defense` points in the slot skill s gives are worth u, in Defense, for what its blocks cost it: each blow the plate blocks
 # saves the blow (BLOW) and takes its skill's toll off u's Power (Behaviour.slot_toll() at that blow, POINT a point), so the Defense
 # keeps the share of a block's worth the toll leaves (none, at a toll of BLOW / POINT or more). Scrap Plating's toll is 0: all of it.
+# Each block also runs its holder's Power down, so the slot works for only the first of BLOCKS blows its rules (Behaviour.slot_works()
+# `spent`) still let it, and the Defense is worth that share of itself: a Power Armor with Power just over its gate is worth one block.
 static func _plated(u: Unit, s: Skill, defense: int) -> float:
 	var toll := 0
 	for bh in s.behaviours:
 		toll += bh.slot_toll(u, u.own_rank(s), roundi(BLOW)) if bh else 0
-	return float(defense) * clampf(1.0 - toll * POINT / BLOW, 0.0, 1.0)
+	var blocks := 0
+	while blocks < BLOCKS and u.plate_works(s, blocks * toll):
+		blocks += 1
+	return float(defense) * clampf(1.0 - toll * POINT / BLOW, 0.0, 1.0) * blocks / BLOCKS
 
 
 # What the plates t wears cost it when they block u's s: each armor slot its skills give it (Unit.plated_defense(), seen once

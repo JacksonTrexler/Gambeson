@@ -190,9 +190,23 @@ func test_ai_weighs_tolls() -> void:
 	mid.defense = 6
 	u.pack.assign([mid])
 	stage(lancin, {u: Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	ok(u.plate_defense(power_armor, mid) == 6 and u.plate_defense(scrap_plating, mid) == 4 and AI._plated(u, power_armor, 6) == 3.0 and AI._plated(u, scrap_plating, 4) == 4.0, "6 in Power Armor I is worth 3 for its tolls, 4 in Scrap Plating 4")
+	ok(u.plate_defense(power_armor, mid) == 6 and u.plate_defense(scrap_plating, mid) == 4 and is_equal_approx(AI._plated(u, power_armor, 6), 1.0) and AI._plated(u, scrap_plating, 4) == 4.0, "6 in Power Armor I is worth 3 for its tolls, a third of that for the one block before it lapses (1); 4 in Scrap Plating 4")
 	var log := AI.act(b, u)
 	ok(u.get(Unit.plate_slot(scrap_plating)) == mid and u.get(Unit.plate_slot(power_armor)) == null, "it puts it in the slot with no toll (%s)" % [log])
+
+
+# The AI's reckoning of a plate takes the slot's lapse as blocks run its holder's Power down (Behaviour.slot_works() `spent`, AI.BLOCKS):
+# worth the Defense, less its tolls, for the share of BLOCKS blows the slot still works for.
+func test_ai_plate_lapses() -> void:
+	villagers_only()
+	# [skill, rank, Energy, Defense, worth]: Power Armor V (blow cut 5: toll 1, a 90% share of the Defense, gate 50%) works 3 blocks from 10 Energy, 2 from 6, 1 from 5, none at 4;
+	# Power Armor I (toll 5, half the Defense, gate 90%) one from 10; Scrap Plating has no gate
+	var rows := [[power_armor, 5, 10, 10, 9.0], [power_armor, 5, 6, 10, 6.0], [power_armor, 5, 5, 10, 3.0], [power_armor, 5, 4, 10, 0.0], [power_armor, 1, 10, 10, 5.0 / 3], [scrap_plating, 3, 0, 3, 3.0]]
+	for row in rows:
+		var u := plated(row[0], row[1])
+		u.energy = row[2]
+		var got := AI._plated(u, row[0], row[3])
+		ok(is_equal_approx(got, row[4]), "%s %d at Energy %d: %s, wanted %s" % [row[0].name, row[1], row[2], got, row[4]])
 
 
 # The sheet: a row for the slot, an Equip button into it for armor, kept in the outfit and the save.
