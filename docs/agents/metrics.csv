@@ -65,3 +65,15 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-21,w8-misc,sonnet,medium,134443,77,3918065,ok
 2026-11-21,w8-outfits,sonnet,high,98704,37,431890,ok
 2026-11-21,w8-docs,sonnet,medium,91729,18,118966,ok
+2026-11-22,w9-keeper,sonnet,low,34711,7,65265,ok
+2026-11-22,w9-disturb,sonnet,high,178793,86,874180,ok
+2026-11-22,w9-icons,sonnet,medium,76898,29,373092,ok
+2026-11-22,w9-siren,sonnet,high,137781,70,762220,ok
+2026-11-22,w9-undead,opus,medium,141576,67,1047918,ok
+2026-11-22,w9-typing,sonnet,medium,80900,47,1495283,ok
+2026-11-22,w9-typing2,sonnet,medium,89558,11,330603,ok
+2026-11-22,w9-grave,sonnet,medium,61891,20,387950,ok
+2026-11-22,w9-band,sonnet,high,101834,35,548776,ok
+2026-11-22,w9-party,sonnet,high,60629,26,210104,ok
+2026-11-22,w9-aiturn,sonnet,high,207421,81,1934990,ok
+2026-11-22,w9-aiplate,sonnet,high,96693,43,418867,ok

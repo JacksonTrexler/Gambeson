@@ -206,6 +206,13 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | First Chair forecast, Cadence shown, rounding on heals and the log (?232) | `harmony_test.gd`, `passive_signs_test.gd` |
 | — | Prep tests, packs, hostnear, AI.LOST, item icons (?233) | `prep_test.gd`, `plating_test.gd` |
 | — | Party members' outfits (?234) | `save_test.gd` |
+| — | Disturbance and Disturbed (?235) | `disturbed_test.gd` |
+| — | Icon states (?236) | `brainfog_test.gd`, `skills_test.gd` |
+| — | Siren: Seaborn, only_on, betrayal (?237) | `aquatic_test.gd` |
+| — | Undead, Restless Dead, soft cap (?238), Grave Aura (?240) | `undead_test.gd`, `summon_test.gd` |
+| — | The band's columns (?241) | `hud_test.gd`, `slot_columns_test.gd` |
+| — | Party solo, pack loot (?242) | `save_test.gd`, `plating_test.gd` |
+| — | AI turn cost (?243), plate lapse and Deathlust log (?244) | `ai_tactics_test.gd`, `deathlust_test.gd`, `plating_test.gd`, `chaser_test.gd` |
 
 ## Questions to answer first
 

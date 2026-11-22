@@ -913,7 +913,7 @@ Plans: `docs/plans/ai-findings.md`, `meadows-tails.md`, `r-docs.md`, `r-deathlus
     - **Profile:** `Battle.read()` is about 215 calls a unit turn (0.33 ms each); `_line_up` 137 x 28 ms; `travel`, `_approach`, `suspicious` and `_watch` follow.
     - **Level 1 with four skills leans low** against a real party's turn.
     - **Load order:** a sim script must name `Test` before `Role`, `Branch` or `Effect` or the scripts hang in a cycle; `field.gd` has no `class_name`.
-- [ ] **AI turn cost over budget** (100 ms a unit turn, 1000 ms an `end_turn` on M3 x 4): a per-act read cache, `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up`'s foresee over every tile, a Brood-free fast path in `Unit.stat`, `travel`/`_approach`. Halved by `r-aiperf` (?184); still over at the unit turn. (?183)
+- [ ] **AI turn cost over budget** (100 ms a unit turn, 1000 ms an `end_turn` on M3 x 4): a per-act read cache, `suspicious()` reusing the act's reads and skipping units beyond every viewer's range, `_line_up`'s foresee over every tile, a Brood-free fast path in `Unit.stat`, `travel`/`_approach`. Halved by `r-aiperf` (?184); w9 cut the unit turn 68 to 59 ms and `end_turn` 235 to 100 (?243); still over at the unit turn at M3 x 4. (?183)
 - [ ] **Frame times unmeasured:** `busy_fight.gd`'s windowed path is written, not run. (?183)
 - [x] **A hunt where hiders are in range from round 1**, to measure the search apart from the walk. (?183) Built 2026-11-20 (?217): `hunt_10v10` `near`.
 
@@ -1387,9 +1387,9 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Sim:** every scenario unchanged except `dread` (stuns taken 2.25 to 0.00, still lost 1-v-2). `soak` 10812 checks, 0 failed.
     - **Tests:** `deathlust_test.test_ai_prices_relief`, `plating_test.test_ai_weighs_tolls`, `chaser_test.test_forecast_counts_crit_loops`, `ai_tactics_test.test_dreads_a_cc`; eight mutations failed and reverted (the `_strike` relief line is not covered).
     - **New names to review:** none (`DREAD`, `_relief` and the rest are code names).
-- [ ] **No Deathlust log line** (the sign is a slot light or floater only). (?231)
-- [ ] **The plate slot does not switch off as Power runs down in the AI's reckoning**, and tolls are not weighed in `_threat()`. (?231)
-- [ ] **`sure_crit` damage doubling is not priced** in the crit-loop forecast, and allies' Deathlust is not in `_relief`. (?231)
+- [x] **No Deathlust log line:** built (?244). (?231)
+- [x] **The plate slot does not switch off as Power runs down:** built (?244); `_threat()` not. (?231)
+- [x] **`sure_crit` doubling not priced:** built (?244); allies' Deathlust not in `_relief`. (?231)
 
 ## Wave 8 batch 3 (2026-11-21): First Chair forecast, misc follow-ups, party outfits
 
@@ -1412,14 +1412,84 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Not done:** the Party button hides on a solo roster, so a solo new game has no between-battle stash screen; `PartyPanel.outfit()` copies `Battle.from_role()` rather than sharing it.
     - **Tests:** `save_test.test_member_outfit`; three mutations failed and reverted.
     - **New names to review:** none.
-- [ ] **Locked coloured icons are nearly illegible** (0.4 at 0.55 opacity): try a lighter dim such as 0.55. (?233)
+- [x] **Locked coloured icons are nearly illegible:** reworked as the icon states (?236). (?233)
 - [ ] **Statuses have no art** (an `Effect` icon is code; needs the user's wish). (?233)
-- [ ] **No Deathlust log line:** carried from ?231; the log's `Overlay.face()` work (?232) makes one cheap. (?232)
-- [ ] **No HUD test for the band's row reservation.** (?230)
-- [ ] **A pack does not drop as loot** when its unit falls. (?233)
-- [ ] **`Battle.from_role()` is copied into `PartyPanel.outfit()`**: make it static and share. (?234)
-- [ ] **A solo roster has no Party button, so no stash screen between battles:** show it. (?234)
+- [x] **No Deathlust log line:** built (?244). (?232)
+- [x] **No HUD test for the band's row reservation:** `hud_test.test_band_rows` (?241). (?230)
+- [x] **A pack does not drop as loot:** it does (?242). (?233)
+- [x] **`Battle.from_role()` copied into `PartyPanel.outfit()`:** static and shared (?242). (?234)
+- [x] **A solo roster has no Party button:** shown (?242). (?234)
 - [ ] **The Heal skill's and Lovely Caster's heals have no luck rounding** to show (not a rule: a roll is a roll); heal previews do not exist. (?232)
+
+## Wave 9 (2026-11-22): Disturbed, icon states, Siren, undead, typing pilot, Grave Aura, band columns, Party, AI cost
+
+235. **Disturbance and Disturbed - built on judgement, open for review (2026-11-22).** Your card: Warlock mid skill, a check, Disturbed for rank rounds, no commands given or taken, acts by behaviour. Plan: `docs/plans/w9-disturb.md`. Calls:
+    - **Disturbance** in the Elmon tree after Brainfog (tier 3, "mid"), foes only (a `dual` one would open the AI to using it on allies), range = rank tiles, Sweet Nothings preferred; no attack roll: a wisdom check vs `Difficulty.dc` unfair (non-leader) or easy (leader); duration = rank impact. "Leader" = `Battle.leads(u)` (the player, or a unit someone `follows`).
+    - **Disturbed** (`Effects/disturbed.tres`, stat `disturbed`, tag `cc`, `Unit.disturbed()`) reuses the `uncontrolled` seam: Command refuses to order or join it, `hears()` is false, `idle()` always lists it; a Disturbed player leader makes the side play itself (`HUD.autopilot()`, log "Your mind is Disturbed"). Any status, item or trait can lend the stat.
+    - **Tests:** `disturbed_test` (4 tests); seven mutations failed and reverted; `forced_test` cc tables extended (not weakened); `_pose` sets endurance 9 in the sweep. Suite 10691 checks at merge, 0 failed.
+    - **New names to review:** none (Disturbance and Disturbed are yours).
+236. **Icon states - built on judgement, open for review (2026-11-22).** Your words: disabled 25% saturation 70% brightness, untoggled 15% and 85%, one hook for why a skill is disabled, a non-colour cue. Plan: `docs/plans/w9-icons.md`. Calls:
+    - **`Skill.mute()`** is the colour maths (`LOOK_*`); look zero is the old behaviour. Cue: a slash (disabled, locked), a hollow ring (untoggled). Opacity stays 1 with a look (colour carries the state; text still dims).
+    - **Hook:** `Unit.disable(..., src: Skill)` records `disabled_by[skill]`; the slot shows the source's mark first character as a badge and a "Disabled by X" tooltip; any skill that passes `src` joins. Brainfog is the one example. Postponed disablings carry no `src`.
+    - **Skills screen:** coloured art only (locked = disabled look plus slash, unworn = untoggled look plus ring); placeholders unchanged. No locked coloured icon showed in the shots (the Mage tree is mostly placeholders), so the legibility is unchecked.
+    - **Tests:** `brainfog_test.test_hotbar`, `skills_test` icon test; one mutation (mute ignores value) failed and reverted. 10691 checks, 0 failed.
+    - **New names to review:** none.
+237. **Siren Seaborn ??, `Effect.only_on`, betrayal, `shows_boon` - built on judgement, open for review (2026-11-22).** Your card: one trait passive from `4fe2c05`. Plan: `docs/plans/w9-siren.md`. Calls:
+    - **A new trait "Seaborn ??"**, innate on the Siren scene (`unit.py trait`), not Oceanic (the user's toggle drawback stays: -4 unless on water). On water they stack. `movement = 2` is on the scene, not an Effect.
+    - **Generic `Effect.only_on`** (terrain tags needed; the twin of `unless_on`; `Unit.stat()` reads it, `describe()` says "only on x"): +2 str, dex, con on water.
+    - **Cheaper water movement is the `aquatic` tag** (`Battle._cost()` already makes water cost 1 and forbids drowning), so `4fe2c05`'s `move_cost -2 [water]` is redundant and not added. Side effect: the Siren cannot be drowned.
+    - **Rake doubling is a generic stat `betrayal` ??** (tagged `slash`, +fraction damage to a target that trusts the holder: `Battle._trusts()`, Alluring's Friendly stance feeds it), read in `Battle.cast()`'s main damage line only (not chains, cones, traps), not `4fe2c05`'s `crit_trusting` flag.
+    - **`shows_boon`** is a Skill field (**`FLAG_CEILING` 105 to 106**), a Unit field and `Read.boon`, copied by `_take_looks()` and `Perception._lie()`; nothing displays it yet. **Question for you: is this the right place for the shows_* look family?**
+    - **Detective, Ambush, Opportunist not rebuilt.** Detective needs the removed Investigation system (marks, watchers); Ambush needs a watch hook (a Behaviour on `moved` / `seen`); Opportunist needs a new "ran beside it" reaction trigger from Battle's move path (the smallest; best next).
+    - **Tests:** `aquatic_test` (`test_seaborn`, `test_rake_trusting`); three mutations failed and reverted; `lure_test.test_drown`, `perception_test.test_siren_fools`, `equip_test.test_traits`, `sweep_test._gain` updated to the new rule. 10734 checks, 0 failed.
+    - **New names to review:** Seaborn ??, betrayal ?? (a stat id).
+238. **Undead, Restless Dead ??, laid to rest, the summon soft cap - built on judgement, open for review (2026-11-22).** Your card (undead plus Disturbed acts as "Restless Dead ??"). Plan: `docs/plans/w9-undead.md`. Calls:
+    - **No Undead faction:** a restless unit keeps its side (it acts on its side's turn, after cognizant allies; "allies on ties" needs the side). A faction switch would show its side to every reader at once (no room for the noticing check), add a turn-order entry mid-battle and block victory checks. Attitude is per reader (`Read.dead_eye`, `Read.restless`, `Read.kin` in `Battle._read`).
+    - **The cap only adds Disturbed:** `summon_per_rank` cap = rank + the cast's stat mod; summons over it, furthest from the summoner first, gain Disturbed lasting; Disturbed summons do not count and the cap never lifts it (lifting would slay it). **No zombie unit exists: none added.**
+    - **`SUMMON_CAP` removed** from the AI: `bodies()` prices only the bodies that stay under control. A low-int caster holds none (villager int 8 at rank I: cap 0), so the AI will not raise and a player's cast sends both restless: your formula, kept, flagged.
+    - **Allies notice only on a cast:** `Scripts/Undead.gd settle()` at the end of the outermost cast and at `end_turn`, one wisdom roll (inquire) vs a flat DC 8 ("medium easy") per witnessed action; not on a walk. A restless undead no longer Disturbed is slain (`Unit.slay`). `Command.cognizant_first` orders the Disturbed last.
+    - **Left open:** no Bio or HUD text names "Restless Dead ??" on a unit; a persona claiming undead also spares a living unit (a synergy).
+    - **Tests:** `undead_test` (4 tests); seven mutations failed and reverted; `summon_test.test_ai_raises_host` changed to the soft cap (caster int 14). Sims: `ai_sim host`, `hostnear` (41.6), new `restless`; `busy_fight` 20v20 no errors.
+    - **New names to review:** Restless Dead ??.
+239. **Typing pilot - built on judgement, open for review (2026-11-22).** Your card: untyped-declaration warnings, type the hot paths, measure. Plan: `docs/plans/w9-typing.md`. Calls:
+    - **No speedup:** `busy_fight` 15v15 unit turn 69.0 / 69.7 / 69.1 ms before, 69.2 / 68.6 / 68.3 after; back-to-back A/B 67.1 / 67.1, 67.4 / 67.4 (digest 47676114 unchanged). The cost is `Unit.stat`, Perception and walk logic, already typed.
+    - **Done:** `untyped_declaration` warning on in `project.godot` (headless prints no GDScript warnings here, so counts come from a regex script); typed loop vars (`for s: Skill in`) in AI.gd (76 lines) and Perception (4); `reads` is `Dictionary[Unit, Read]` with `AI.reads_from()` for 13 tests that hand-build reads. No game bug exposed; typed dicts rejected untyped `{}` at runtime in 13 tests (a strictness benefit, with churn).
+    - **27 untyped declarations left** (Save.gd 12, Unit.gd 5, Battle.gd 4, Game.gd 3, Skill.gd 2, PartyPanel.gd 1).
+    - **Recommendation:** do not expand for speed. Expand only for safety, cheaply: loop-var typing and those 27 (Save.gd first); do not type shared dict params without a helper. Your call.
+    - **New names to review:** none.
+240. **Grave Aura - built on judgement, open for review (2026-11-22).** Your card: Warlock necromancy / death-cleric tier 3, persona undead, allied undead make no checks against persona. Plan: `docs/plans/w9-grave.md`. Calls:
+    - **On `mortis_arcalis`** (the necromancy tree, a second root-level branch, not tier 3: the tree has one skill). **No death-cleric tree exists** (Cleric has a Death skill, no tree): not invented, not placed.
+    - **A passive** (not a trait: those are tree-less innates), persona +1 a rank, `shows_tags` [undead]; no new mechanic. The rule is in `Battle.doubt()`: no check, no suspicion when the observer has `undead`, the target's `shows_tags` has `undead` and the factions are friends; generic to any persona claiming undead. Undead's noticing (?238) is a flat DC, untouched.
+    - **Tests:** `undead_test.test_grave_aura`; one mutation failed and reverted.
+    - **New names to review:** none (Grave Aura is yours).
+241. **The band's columns at 16:9 - built on judgement, open for review (2026-11-22).** Cards from ?228, ?230. Plan: `docs/plans/w9-band.md`. Calls:
+    - **`SlotColumns._plan`** takes one more column (down to `FLOOR_WIDTH` 40) before cutting a span; `HUD._fit_bar`'s `MIN_ROWS` floor is the tallest span when the bar has spans. L12 (7 slots, spans 2, 3) at 16:9 is now whole everywhere.
+    - **L20 (9 slots, spans 2, 3, 2) trades names: band whole, bar cut.** The room is 5 rows and the bar needs 6, or 4 wide columns of 62 (254 px, over the 0.45 `BAR_SHARE`). The bar sits in 4 squeezed columns (~51 design px: "Strik", "Aeth", "M"); the old plan left the bar whole and cut the band ("Hollo", "Darkvisi"). **Your call: which names matter more?** One line to flip it: the `most` bound in `SlotColumns._plan`.
+    - **Tests:** `hud_test.test_band_rows` (closes the band-reservation item), `slot_columns_test.test_runs` (+2); three mutations failed and reverted.
+    - **New names to review:** none.
+242. **Party button, `Battle.from_role` static, pack loot - built on judgement, open for review (2026-11-22).** Cards from ?233, ?234. Plan: `docs/plans/w9-party.md`. Calls:
+    - **The Party button shows on a solo roster** (non-empty, was more than one); the text stays "Party: solo". `Battle.from_role` is static and `PartyPanel.outfit()` calls it (no drift).
+    - **A pack drops whole:** `Battle._drops(u)` = one roll of `u.loot` plus every item in `u.pack`, each its own spoil and `dropped` emit; the pack is cleared (never twice). No new field or flag: any unit with a pack joins. Not taken: rolling the pack through a loot table (a unit's whole kit lying where it fell is the point of carrying it).
+    - **Tests:** `plating_test.test_packs` (+ drop), `save_test.test_party_size` (+ solo); no mutation beyond the one-liners. **New names to review:** none.
+243. **AI turn cost - built on judgement, open for review (2026-11-22).** Card from ?183. Plan: `docs/plans/w9-aiturn.md`. Calls:
+    - **Built:** `Battle.skill_reach` and a `_line_up` that takes per-tile distance and per-skill reach once; `_look_harder` reads in one stretch; `suspicious(o, known)` skips candidates it would filter; `Unit._held_fx(viewer)` shares one null view; `Perception._seem` shares an unfronted dict; `Unit.held()/hold()` per-stretch memo (cleared with the effects). `ai_tactics_test.test_planning_holds_and_bounds` (a mutation failed; the unit-bound line is uncovered).
+    - **Result (15v15, n=2, back-to-back A/B):** unit turn 68.4 to 58.8 ms (p95 125 to 96); `end_turn` 235 to 100 (p95 554 to 216); digest 47676114 and `ai_sim` output unchanged. At M3 x 4 the unit turn is ~235 ms against the 100 ms budget: **still over**; `end_turn` ~403 ms is within 1000.
+    - **Tried and dropped:** a `Unit.stat` plain-value memo and a footing-keyed `_line_up` cache (no gain).
+    - **Left:** the per-read floor ~250 us (`Unit.kit` ~45, `defense` ~25, `_dim` ~25); a cross-stretch cache needs a mutation version on Unit; `route()` tile-read memo; `react()` per moment; `_sightings` and `_first_look` re-reading 29 units. **New names to review:** none.
+244. **The AI's plates and Deathlust's log - built on judgement, open for review (2026-11-22).** Cards from ?231, ?232. Plan: `docs/plans/w9-aiplate.md`. Calls:
+    - **Deathlust log:** `Battle.passive()` now carries stat `exhaustion` (amount 0) from `neutralize()` and `_settle_wear()`; `HUD._on_passive` logs "X's Deathlust eases its exhaustion" (generic, no amount, so no `Overlay.face()` styling).
+    - **Plate lapse:** hook `Behaviour.slot_works(holder, rank, spent := 0)` (+ `Unit.plate_works`, `Unit.power_share`); `AI._plated()` counts blocks (up to **`AI.BLOCKS` = 3, a guess**: blows before its holder rests) whose slot still works after the earlier tolls and scales worth by blocks / BLOCKS. Own plates only; a foe's plates in `_blocks` and `_threat()` are unchanged. `plating_test.test_ai_weighs_tolls` 3.0 to 1.0 (Power Armor I at full Energy lapses after one block).
+    - **`sure_crit` doubling** priced in `AI.score()`'s glance line (a crit hit doubles, a glance stays half), so every loop follow-up is priced; allies' Deathlust still not in `_relief`.
+    - **Tests:** `deathlust_test.test_log_line`, `plating_test.test_ai_plate_lapses`, `chaser_test` (+1); three mutations failed and reverted.
+    - **New names to review:** none.
+- [ ] **Siren: Detective, Ambush, Opportunist unbuilt** (a watch hook and a "ran beside it" reaction trigger; Opportunist first). (?237)
+- [ ] **`Skill.shows_boon` is shown nowhere.** (?237)
+- [ ] **A mention of "Restless Dead ??" on a unit** (Bio or HUD); noticing on a walk, not only a cast. (?238)
+- [ ] **The 27 untyped declarations** (Save.gd first); expand typing only for safety. (?239)
+- [ ] **Locked coloured icons never seen in a shot** (the Mage tree is mostly placeholders); postponed disablings carry no `src`. (?236)
+- [ ] **AI turn cost still over at M3 x 4 (unit turn ~235 ms vs 100):** the per-read floor, a Unit mutation version, `route()` tile reads, `react()`. (?243)
+- [ ] **A foe's plates and `_threat()` ignore tolls and lapse; allies' Deathlust is not in `_relief`.** (?244)
+- [ ] **A death-cleric tree for Grave Aura.** Needs the user. (?240)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 
