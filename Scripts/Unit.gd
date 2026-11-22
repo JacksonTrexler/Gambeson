@@ -3896,6 +3896,13 @@ func stopped() -> bool:
 	return helpless() and fury_acts >= roundi(stat(&"mindless"))
 
 
+# Disturbed (Effects/disturbed.tres, Disturbance; a trait may hold it with no end): it can't be commanded or
+# issue commands, and takes its turn on its own, by its behaviour, on whichever side it is. Read from the
+# disturbed stat, so any status, property or item may lend it (Command.could_order(), Command.idle(), HUD.autopilot()).
+func disturbed() -> bool:
+	return stat(&"disturbed") > 0.0
+
+
 # Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())
 # and obstruct (Battle.obstruction()). Lost to Jam (the jammed stat) and to being stopped(): helpless,
 # it does none of these. Watching isn't one of them: a helpless unit still sees (Battle._watch()).

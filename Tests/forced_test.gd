@@ -228,8 +228,8 @@ func test_aura_and_coordinate_drive() -> void:
 # The audit of what impairs a unit's ability to act (cc) and what forces a unit itself (shove): Skills/*.tres and the
 # statuses they put on, by what they do - a new one that stuns, sleeps, grapples or drives a unit joins the table.
 func test_cc_and_shove_are_tagged() -> void:
-	var cc_stats := ["sleep", "helpless", "grappled", "jammed", "no_traits", "winded", "mindless", "fear", "entrance"]
-	var cc_skills := [&"stun", &"jam", &"slam_jam", &"hitch", &"drown", &"coalescing", &"brainfog", &"interdict", &"bludgeon", &"sing", &"mindless_fury"]
+	var cc_stats := ["sleep", "helpless", "grappled", "jammed", "no_traits", "winded", "mindless", "fear", "entrance", "disturbed"]
+	var cc_skills := [&"stun", &"jam", &"slam_jam", &"hitch", &"drown", &"coalescing", &"brainfog", &"interdict", &"bludgeon", &"sing", &"mindless_fury", &"disturbance"]
 	var seen := 0
 	var bad := []
 	for f in DirAccess.get_files_at("res://Skills"):

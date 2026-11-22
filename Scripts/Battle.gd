@@ -2035,6 +2035,12 @@ func auto_targets(caster: Unit, skill: Skill) -> Array[Unit]:
 	return out.slice(0, caster.mods(skill).irank(caster.rank(skill), &"rank_range"))  # how many it reaches: rank range
 
 
+# A leader: the player's unit, or one whose party others are in (Unit.follows). What a Disturbance
+# has an easy time of (Behaviours/disturb.gd).
+func leads(u: Unit) -> bool:
+	return u == player or units.values().any(func(o: Unit): return o.follows == u and o.is_alive())
+
+
 # A traitor in the party of a leader on another side (Unit.follows): it acts on that leader's turn
 # too, on whatever AP its own turn left it, pretending (Command).
 func posing(u: Unit) -> bool:

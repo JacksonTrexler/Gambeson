@@ -140,6 +140,7 @@ const TERMS := {
 	&"evaluate": ["Evaluate", &"check", "Sizing a unit up: how much of it a reader makes out, which recon counts. A use of preparation by the same name spends an Evaluation on a unit for intel alone, with no suspicion."],
 	&"inquire": ["Inquire", &"check", "A check made to overcome trickery: looking harder at a unit that fools you, or at what a skill hid. A use of preparation by the same name spends an Inquisition on a unit for suspicion alone, at advantage."],
 	&"flight": ["Flight", &"condition", "Aloft: every step costs it 1 movement whatever the ground below, and deep water neither slows nor drowns it. Hollow Bones gives it while switched on."],
+	&"disturbed": ["Disturbed", &"condition", "Its mind is scrambled: it can't be commanded and issues no commands, and takes its turn on its own, acting by its behaviour alone, whichever side it is on."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

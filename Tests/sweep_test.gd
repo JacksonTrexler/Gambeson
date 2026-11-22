@@ -139,6 +139,7 @@ func _pose(s: Skill, learn := true) -> Variant:
 		soak(x)
 	u.refresh()
 	u.energy = u.max_energy
+	u.endurance = 9  # a skill that gives Energy back mustn't burn the next one's pool away on a failed con check (RecoveryEndurance: a roll, so a skill added before it shifts who burns)
 	if s.mist_only:
 		u.afflict(effect("mist", 1.0), 9)  # (Coalescing: only a mist)
 	if on is Unit and on != u:
