@@ -11,4 +11,19 @@ Plan: a span-bearing bar may take one more column (down to FLOOR_WIDTH, width al
 relaxes to the tallest span when the bar has spans.
 
 ## Done
-(nothing yet)
+- `SlotColumns._plan`: if a span can't be kept whole in the `layout_for` columns, try one more column at a time (up to what
+  `max_width` holds at FLOOR_WIDTH 40, or n), first that keeps spans whole; else the old plan. New `whole()`, `tallest_run()`.
+- `HUD._fit_bar`: the MIN_ROWS (4) floor is the bar's tallest span when it has spans (never above MIN_ROWS), so the bar can give
+  the band its rows. Shots: before/after_L12|L20_* in S/shot_w9-band/.
+  L12 (7 slots, spans 2,3) 1920x1080: now 3 cols, all bar and band names whole (was band cut). L20 (9 slots, spans 2,3,2): band
+  whole in 2 cols ("Hollow Bones", "Darkvision"), bar in 4 squeezed cols (~51 design px: "Strik", "Aeth", "M" for Mana).
+  Same at 1280x720, 960x540 (one design). 960x720 and L28 unchanged (one column).
+- Tests: `hud_test.test_band_rows` (root size 480x270; band as tall as `standing_rows`, spans whole, bar+band in `_fit_room`),
+  `slot_columns_test.test_runs` (+2 checks: 4th column; none when width lacks). Mutations (each failed, reverted): floor kept at 4 (1),
+  no extra column (1 hud, 1 slot_columns), reservation dropped (2).
+
+## Calls (questions)
+1. L20 at 16:9 trades names: band whole, bar names cut hard (4 columns of ~51). Both can't be whole: room is 5 rows, needs 6 (or
+   4 wide columns ~62 = 254 px > the 0.45 BAR_SHARE). Alternative: only add a column while it stays >= MIN_WIDTH (then L20 is as
+   before, band cut). One-line: `SlotColumns._plan` bound `most`. Which names matter more?
+

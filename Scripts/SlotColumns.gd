@@ -152,7 +152,36 @@ func _plan(kids: Array[Control], row_h: float) -> Array[int]:
 	for c in kids:
 		runs.append(maxi(1, int(c.get_meta(RUN, 1))))
 		_want = maxf(_want, float(c.get_meta(WANT, 0.0)))
-	return starts(runs, layout_for(n, row_h).x, _fit_rows(row_h, n))
+	var fit := _fit_rows(row_h, n)
+	var cols := layout_for(n, row_h).x
+	var out := starts(runs, cols, fit)
+	if whole(runs, out):
+		return out
+	# a run can't be kept whole in that many columns: one more column (squeezed, down to FLOOR_WIDTH) rather than a run cut or
+	# more rows, as many as the width holds
+	var most := mini(n, floori((max_width + GAP) / (FLOOR_WIDTH + GAP))) if is_finite(max_width) else n
+	for more in range(cols + 1, most + 1):
+		var wider := starts(runs, more, fit)
+		if whole(runs, wider):
+			return wider
+	return out
+
+
+# Whether no column starting at `starts_` begins inside a run (runs[i]: the slots slot i spans).
+static func whole(runs: Array, starts_: Array[int]) -> bool:
+	for a in runs.size():
+		for c in range(a + 1, mini(a + runs[a], runs.size())):
+			if c in starts_:
+				return false
+	return true
+
+
+# The most slots one child spans (1: none does).
+func tallest_run() -> int:
+	var t := 1
+	for c in _slots():
+		t = maxi(t, int(c.get_meta(RUN, 1)))
+	return t
 
 
 func _min_width(cols: int) -> float:
