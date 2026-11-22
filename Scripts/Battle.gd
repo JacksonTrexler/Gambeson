@@ -2174,6 +2174,8 @@ func _hidden_from(o: Unit, t: Unit) -> int:
 # allies, its trickery to its enemies, plus its clout with o's side (Unit.clout()). Meeting it, o grows a stack more suspicious of t.
 # o's side of the check carries `inquire` (what adds to checks overcoming trickery: Inquisitor), t's does not.
 func doubt(o: Unit, t: Unit, edge := 0) -> bool:
+	if o.has_tag(&"undead") and &"undead" in t.shows_tags and Faction.friends(o.faction, t.faction):
+		return false  # the dead take their own at their word: no check against its persona (Grave Aura)
 	var lie := roundi(t.stat(&"persona")) if o.faction == t.faction else roundi(Perception.trickery(t, Read.new(), null, self))
 	lie += t.clout(o.faction)  # standing with o's side: its word carries
 	var close := Command.tiles(o.cell, t.cell) <= o.mod(&"wisdom") - lie
