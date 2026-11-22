@@ -648,17 +648,27 @@ func _process(_delta: float) -> void:
 	energy_bar.self_modulate = Color.WHITE.lerp(to, beat) if full > 0.75 else Color.WHITE
 
 
+const NO_RANK := -1000000  # what rank() holds for a skill it hasn't
+
+
 # Its rank in s as it uses it: what it has learned, plus what rank effects add or take (a Broadsword:
 # Strike; Record Striker's curse), a primed Chant (a Warlock skill, once) and +1 if the skill is enchanted
 # or honed (Tags.quality_rank(): a capstone's weight); 0 if it doesn't have s, or it's cursed down to nothing.
 func rank(s: Skill) -> int:
 	begin_read()  # its affinity and rank stats: its effects found once
-	var r: int = base_rank(s) - unranked().get(s, 0)
-	if r <= 0:
-		end_read()
-		return 0
-	r = maxi(r + roundi(skill_stat(&"rank", s)) + int(chant_up and &"warlock" in s.tags) + Tags.quality_rank(s.tags), 0)
+	var kept: Variant = held(&"rank")  # skill -> its rank before a primed Chant, or NO_RANK: a stretch asks for the same few again and again
+	if kept == null:
+		kept = {}
+		hold(&"rank", kept)
+	var r: int = kept.get(s, NO_RANK - 1)
+	if r == NO_RANK - 1:
+		r = base_rank(s) - unranked().get(s, 0)
+		r = NO_RANK if r <= 0 else r + roundi(skill_stat(&"rank", s)) + Tags.quality_rank(s.tags)
+		kept[s] = r
 	end_read()
+	if r == NO_RANK:
+		return 0
+	r = maxi(r + int(chant_up and &"warlock" in s.tags), 0)
 	return mini(r, allowed[s]) if allowed.has(s) else r
 
 
