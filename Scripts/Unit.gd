@@ -1099,9 +1099,10 @@ func bonus_slots() -> Dictionary:
 	_bonus_busy = true
 	var out := {}
 	var bar := hotbar.duplicate()
+	var count := slot_count()  # (asked once: it is a level and its effects)
 	for i in range(bar.size() - 1, -1, -1):
 		var s: Skill = bar[i]
-		var at := mini(i, slot_count()) - 1
+		var at := mini(i, count) - 1
 		for e: Effect in s.effects if s else []:
 			if e.stat != "bonus_slots" or base_rank(s) <= 0:
 				continue
