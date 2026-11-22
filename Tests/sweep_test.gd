@@ -47,7 +47,7 @@ func _id(s: Skill) -> String:
 func _gain(u: Unit, e: Effect, r: int, k := 1.0) -> float:
 	if e.op != "add" or e.armored or not e.skills.is_empty() or e.stat == "regain":
 		return NAN
-	if r < e.min_rank or (e.rested and u.rested_turns <= 0) or e.unless_on.any(func(x: StringName): return x in u.ground) or (e.above_hp > 0.0 and u.hp <= e.above_hp * u.max_hp):
+	if r < e.min_rank or (e.rested and u.rested_turns <= 0) or e.unless_on.any(func(x: StringName): return x in u.ground) or (not e.only_on.is_empty() and not e.only_on.any(func(x: StringName): return x in u.ground)) or (e.above_hp > 0.0 and u.hp <= e.above_hp * u.max_hp):
 		return 0.0
 	var amount := e.amount * (floori(u.stat(e.per_stat) / e.per) if e.per_stat else 1) * (r if e.per_rank else 1) * k
 	return amount * u.mod(e.per_mod) if e.per_mod else amount

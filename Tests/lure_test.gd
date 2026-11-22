@@ -86,12 +86,13 @@ func test_drown() -> void:
 	soak(v(1), 99)
 	b.end_turn()  # v(1)'s side's turn
 	var away := func() -> Vector2i: return v(1).cell + (v(1).cell - siren().cell) * 2
-	ok(b.escape_cost(v(1)) == 16.0 and b.travel(v(1), away.call()).is_empty() and struggles.is_empty(),
-			"breaking free takes 1 + the Siren's str mod (15) tiles of movement: more than it has")
+	var mod := siren().mod(&"strength")  # 40 and Seaborn's +2 in the water: 16
+	ok(b.escape_cost(v(1)) == 1.0 + mod and b.travel(v(1), away.call()).is_empty() and struggles.is_empty(),
+			"breaking free takes 1 + the Siren's str mod (%d) tiles of movement: more than it has" % mod)
 	b.end_turn()
-	ok(grips.size() == 1 and grips[0] >= 1 + 15 and grips[0] <= 12 + 15 and v(1).hp == 99 - grips[0], "held as its turn ends: 1d12 + str mod (%s)" % [grips])
+	ok(grips.size() == 1 and grips[0] >= 1 + mod and grips[0] <= 12 + mod and v(1).hp == 99 - grips[0], "held as its turn ends: 1d12 + str mod (%s)" % [grips])
 	b.end_turn()
-	siren().strength = 12
+	siren().strength = 10  # 12 with Seaborn's +2 in the water: mod +1
 	var left := v(1).move_left()
 	b.travel(v(1), away.call())
 	ok(struggles.size() == 1 and left - v(1).move_left() >= 2.0 - 0.0001, "str mod +1: an attempt takes 2 tiles of movement, and a str contest")

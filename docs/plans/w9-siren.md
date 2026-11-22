@@ -29,3 +29,8 @@ Goal: ONE `trait` passive on the Siren carrying: +2 str/dex/con only on water, c
 - Detective (stat `detective`, marks recon on units/tiles): needs Investigation.gd (investigate/watchers, Unit.marks), removed from main; rebuild means a whole investigation system. Missing: that system.
 - Ambush (`watch` flag: set a watch with another skill of the same hostility, with Coordinate): needs the Battle watch/trigger machinery and Skill.watch flag (creep); `ambush` tag is only a dictionary term now. Missing: a watch hook (a Behaviour on a `moved`/`seen` trigger).
 - Opportunist (`reaction` flag: uses its first active on enemies that run into it): Reaction triggers on main are attacked/hit/crit/fallen only, no "moved beside it"; needs a new trigger fired from Battle's move path plus a Behaviour.react (chaser.gd pattern). Smallest of the three: best next.
+
+## Existing tests updated to the new rule
+- lure_test.test_drown: Siren's str mod read live (Seaborn's +2 on water: 16 not 15); the later struggle sets str 10 (12 on water) to keep mod +1.
+- perception_test.test_siren_fools: net-3 skills 6 -> 7 (Seaborn). equip_test.test_traits: innate traits list gains seaborn. sweep_test._gain: honours only_on like Unit.stat().
+Suite: 10734 checks, 0 failed (1016 tests). Launch: only "8 resources still in use at exit".
