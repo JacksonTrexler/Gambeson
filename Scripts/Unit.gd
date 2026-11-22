@@ -870,7 +870,10 @@ func skill_stat(attr: StringName, s: Skill) -> float:
 
 # Whether it wears anything putting modifiers on its skills (Item.emblem): the fast way past mods().
 func emblems() -> bool:
-	return items().any(func(it: Item): return it.emblem != &"")
+	for it: Item in [weapon, armor, trinket]:
+		if it and it.emblem != &"":
+			return true
+	return false
 
 
 # The modifiers on its use of s (Modifiers.of(): its emblems'): s as it uses it is s plus these.
@@ -2674,9 +2677,16 @@ func _sync_granted() -> void:
 # Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
 # bane: earth; a passive only while equipped, and a toggle only while on: Hollow Bones' flight), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
-	return t in tags or items().any(func(it: Item): return t in it.tags) \
-			or slots.any(func(x: Slot): return x.rank > 0 and (not x.skill.passive or (x.on and equipped(x.skill))) and (t in x.skill.tags or (emblems() and t in mods(x.skill).tags))) \
-			or (form != &"" and t in Battle.FORMS[form][2])
+	if t in tags:
+		return true
+	for it: Item in [weapon, armor, trinket]:
+		if it and t in it.tags:
+			return true
+	var modded := emblems()
+	for x: Slot in slots:
+		if x.rank > 0 and (t in x.skill.tags or (modded and t in mods(x.skill).tags)) and (not x.skill.passive or (x.on and equipped(x.skill))):
+			return true  # (the tag asked before the bar: equipped() costs more than most slots are worth)
+	return form != &"" and t in Battle.FORMS[form][2]
 
 
 # The statuses on it that bear `tag` (Effect.bears: cc for those that impair its ability to act). A rule, a skill
@@ -3966,6 +3976,8 @@ func disturbed() -> bool:
 # Restless Dead ??: undead and Disturbed, from any source of either. It attacks the nearest living unit it sees
 # (AI._restless(), Read.dead_eye), its own side first on ties; losing Disturbed lays it to rest (Scripts/Undead.gd).
 func restless() -> bool:
+	if reading > 0:
+		return disturbed() and has_tag(&"undead")  # (in a stretch the stat is held: a lookup, the tag a search of its bar)
 	return has_tag(&"undead") and disturbed()  # (the tag first: far fewer are undead than the stat's effects cost to find)
 
 
