@@ -101,3 +101,19 @@ func test_soft_cap() -> void:
 	kept[0].hp = 0
 	ok(bh.bodies(b.cast_of(c, skeleton, null, 2, true)) == 1, "one falls: room for one")
 	ok(skeleton.describe(2).contains("in hand"), "it says so: %s" % skeleton.describe(2))
+
+
+# Grave Aura: its holder's persona claims undead; allied undead make no check against it (Battle.doubt()), the living do.
+func test_grave_aura() -> void:
+	var aura: Skill = load("res://Skills/grave_aura.tres")
+	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(5, 3)})
+	var s := raise(lancin, Vector2i(5, 4))
+	var checks := [0]
+	var count := func(_by: Unit, _of: Unit, _a: int, _b: int): checks[0] += 1
+	b.doubted.connect(count)
+	v(1).learned.append(slot(aura, 1))
+	v(1)._take_looks()
+	ok(v(1).stat(&"persona") > 0 and &"undead" in v(1).shows_tags, "persona undead")
+	ok(not b.doubt(s, v(1)) and checks[0] == 0, "an allied undead makes no check")
+	b.doubt(v(2), v(1))
+	ok(checks[0] == 1, "the living still do")
