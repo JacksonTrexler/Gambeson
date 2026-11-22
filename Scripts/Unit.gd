@@ -4034,6 +4034,17 @@ func _held_fx(viewer: Unit) -> Dictionary:
 	return held
 
 
+# Each core stat as it stands (CORE order): what a read shows (Read.stats); a copy, the read may change it. Held in a stretch.
+func core_stats() -> Dictionary:
+	var kept: Variant = held(&"core")
+	if kept == null:
+		kept = {}
+		for s in CORE:
+			kept[s] = stat(s)
+		hold(&"core", kept)
+	return kept.duplicate()
+
+
 # A value a planner works out about this unit once for the stretch (begin_read()), kept with its effects: asked again
 # in the stretch it comes back; null outside one, or where none was kept. It goes where the effects go (the unit standing
 # elsewhere, or a new stretch). The keys: a stat's name (stat()), anything else that is its own.

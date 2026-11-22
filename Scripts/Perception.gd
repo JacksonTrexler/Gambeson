@@ -121,13 +121,17 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		r.healthy = t.hp * 2 > t.max_hp
 	if shown.call(1, 1):
 		r.vibe = t.vibe
-		var vals := {}
-		for s: StringName in Unit.CORE.slice(0, 6):
-			vals[s] = t.stat(s)
-		var order: Array = vals.keys()
-		order.sort_custom(func(x, y): return vals[x] > vals[y])
-		r.strengths = [order[0]]
-		r.weaknesses = [order[-1]]
+		var best: Variant = t.held(&"strengths")  # [best, worst]: the same for every reader of t in a stretch
+		if best == null:
+			var vals := {}
+			for s: StringName in Unit.CORE.slice(0, 6):
+				vals[s] = t.stat(s)
+			var order: Array = vals.keys()
+			order.sort_custom(func(x, y): return vals[x] > vals[y])
+			best = [order[0], order[-1]]
+			t.hold(&"strengths", best)
+		r.strengths = [best[0]]
+		r.weaknesses = [best[1]]
 	if shown.call(1, 3):
 		r.tags = t.tags.duplicate()
 		for x in [t.race, t.role]:
@@ -136,8 +140,7 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		if t.bio:
 			r.properties = t.bio.properties.duplicate()
 	if shown.call(1, 99):
-		for s in Unit.CORE:
-			r.stats[s] = t.stat(s)
+		r.stats = t.core_stats()
 		r.affected = not t.timed.is_empty()
 	if shown.call(2, 2):
 		r.role = t.role
@@ -379,10 +382,13 @@ static func insight(t: Unit, r: Read) -> String:
 # How much Embellish makes each stat seem (x1.2, x1.4...), to those t fools: its rank of
 # stats, highest first, +20% each; past the sixth it loops back to the highest.
 static func embellish(t: Unit) -> Dictionary:
+	var n := roundi(t.stat(&"embellish"))
+	if n <= 0:
+		return {}  # nothing puffed: no need to rank its stats
 	var order := Unit.CORE.slice(0, 6)
 	order.sort_custom(func(x, y): return t.stat(x) > t.stat(y) or (t.stat(x) == t.stat(y) and Unit.CORE.find(x) < Unit.CORE.find(y)))
 	var out := {}
-	for i in roundi(t.stat(&"embellish")):
+	for i in n:
 		var s: StringName = order[i % order.size()]
 		out[s] = out.get(s, 1.0) + 0.2
 	return out
