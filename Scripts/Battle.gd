@@ -197,6 +197,10 @@ var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), o
 var debris: Dictionary[Vector2i, Debris] = {}  # evidence hiding units leave behind (_scatter())
 var flames: Dictionary[Vector2i, Flame] = {}  # tiles on fire (Flamewall)
 var layers: Dictionary[Vector2i, Array] = {}  # cell -> the layers laid over its ground, top first (lay_layer())
+var _tiles := {}  # tile -> a planner's read of it, for the stretch _tiles_epoch (_tile_read())
+var _tiles_epoch := -1
+var _tiles_by: Unit
+var _tiles_at: Vector2i
 var _concealed_tiles: Array = []  # [source, atlas coords, alternative] of the map's concealed tiles, after a first entry marking them looked for (_maybe_hidden())
 var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, until its stack changes
 @export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
@@ -3538,7 +3542,24 @@ func stride(u: Unit, prev: Vector2i, c: Vector2i, from: Terrain, t: Terrain, bag
 
 # The ground u makes out on c: what's there, or plain where it can't make it out.
 func known_ground(u: Unit, c: Vector2i) -> Terrain:
-	return terrain(c) if read(u, c).net >= 0 else PLAIN
+	return terrain(c) if _tile_read(u, c).net >= 0 else PLAIN
+
+
+# u's read of tile c, for a planner (route(), reckon_reach()): in a stretch (Unit.begin_read()) the same read is kept for
+# the stretch, while u stands where it did, so the eight routes of one approach read each tile once. Callers don't change it.
+func _tile_read(u: Unit, c: Vector2i) -> Read:
+	if Unit.reading <= 0:
+		return read(u, c)
+	if _tiles_epoch != Unit._epoch or _tiles_by != u or _tiles_at != u.cell:
+		_tiles.clear()
+		_tiles_epoch = Unit._epoch
+		_tiles_by = u
+		_tiles_at = u.cell
+	var r: Read = _tiles.get(c)
+	if r == null:
+		r = read(u, c)
+		_tiles[c] = r
+	return r
 
 
 # How many hazard estimates u can make a turn: its int mod and its foresight stat (Effect: skills and
@@ -3646,7 +3667,7 @@ func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null)
 	var dread_of := func(c: Vector2i, nth: int) -> float:
 		var key: Variant = c if wards <= 0 else [c, mini(nth, wards + 1)]
 		if key not in dreads:
-			var r := read(u, c)
+			var r := _tile_read(u, c)
 			dreads[key] = dread(hazard(u, c, r, nth if wards > 0 else 0, c == dest, false), r, r.marks.any(func(m: Mark): return m.harms(u)), wards > 0 and u.passes_by(terrain(c), nth), wary)
 		return dreads[key]
 	var danger := 0.0
