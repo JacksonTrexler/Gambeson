@@ -217,6 +217,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Opportunist (?246) | `reaction_test.gd` |
 | — | shows_boon and Restless Dead chip (?247) | `undead_test.gd`, `hud_test.gd` |
 | — | Typing, 27 declarations (?248) | the whole suite |
+| — | AI turn cost, the cast (?250) | `ai_tactics_test.gd` |
+| — | Icon check without the import cache (?251) | `tooling_test.gd` |
+| — | The AI weighs Opportunist (?252) | `ai_tactics_test.gd` |
 
 ## Questions to answer first
 

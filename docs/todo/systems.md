@@ -1512,11 +1512,33 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Not captured visually:** the boon note and the read-card chip.
 248. **Typing: the 27 untyped declarations - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w10-typing.md`. Calls: Save 12, Unit 5, Battle 4, Game 3, Skill 2, PartyPanel 1, all typed. Values from `d.get` or a dictionary index are `: Variant`, checked with `is` after; `load()` results `: Resource`; `Battle.best_luck`, `best_dexterity`, `members` take `side: Variant` (a Unit, Faction or Array); `_flip`'s temp is Variant; no shared dict params typed. Digest unchanged.
 249. **`tooling_test.test_icons` flaps in builder worktrees (2026-11-22).** Four skills show no icon there (Disturbance, Grave Aura, Opportunist, Seaborn) but it passed at the landed tip (10814 checks, 0 failed; 1029 tests). Likely the icon files or their `.import` files are not all committed, so the check leans on a worktree's import cache. Check `Icons/Skills/` and the `.import` files.
-- [ ] **AI turn cost: the unit turn is ~168 ms at M3 x 4 against 100:** `_cast` (~22% of a unit turn), the unit reads of `_reads`, `_look_harder`, `_first_look`, `_sightings`; the skipped speedups only with a test that proves what units see is unchanged. (?245)
+- [x] **AI turn cost: the unit turn is ~168 ms at M3 x 4 against 100:** built in part (?250), now ~150 ms, still over; open item below. Was: `_cast` (~22% of a unit turn), the unit reads of `_reads`, `_look_harder`, `_first_look`, `_sightings`; the skipped speedups only with a test that proves what units see is unchanged. (?245)
 - [ ] **Confirm digest 3296533323 as the `busy_fight` reference.** Needs the user. (?245)
-- [ ] **Opportunist: the AI does not weigh it when approaching; Detective and Ambush stay unbuilt.** (?246)
+- [x] **Opportunist: the AI does not weigh it when approaching:** built (?252). Detective and Ambush stay unbuilt. (?246)
 - [ ] **Boon note and the read-card chip not seen in a shot.** (?247)
-- [ ] **Commit the skill icons and their `.import` files so `tooling_test.test_icons` does not depend on a worktree's cache.** (?249)
+- [x] **Skill icons and `.import` files; `tooling_test.test_icons` no longer depends on a worktree's cache:** built (?251). (?249)
+
+## Wave 11 (2026-11-22): AI turn cost, the cast; icon check; the AI weighs Opportunist
+
+250. **AI turn cost: the cast - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w11-cast.md`. Calls:
+    - **Built:** `react()` asks only reaction-tagged passives; `rank` held per stretch; `_hunt`, `_look_harder` and cover one stretch each; `_line_up` early exit; `restless()` asks the undead tag first; evaluators ask `evaluates()` before `asleep()`; slots in one pass; `link` skips non-lending items. 15v15 on the M3: unit turn 43 to 38 ms, `end_turn` flat ~57; at M3 x 4 the unit turn is ~150 ms against the 100 budget: STILL OVER.
+    - **The react filter goes by the `reaction` tag:** an override of `react()` cannot be detected at run time, so a reacting skill left untagged would never react; `skill.py check` enforces the tag.
+    - **Not taken (no test can prove them):** out-of-range viewer skip, `_sightings` pre-walk gate, ally-read skip in `suspicious`, `in_range` / `_seem` caching. No cross-stretch cache.
+    - **Digest 3296533323 unchanged** (still the unconfirmed working reference; it replaced 47676114, ?245).
+    - **Remaining:** the warm-read floor ~100 us (29K reads a fight); `_approach` / `route` done by ?252; `_chain`, actives held, `can_afford` under noise.
+    - **Tests:** `ai_tactics_test.test_cast_cost_answers_as_before`; 4 mutations caught. Suite 10875 checks, 0 failed (1031 tests).
+    - **New names to review:** none.
+251. **Icon check (2026-11-22).** Plan: `docs/plans/w11-icons.md`. `tooling_test.test_icons` failed in builder worktrees because it `load()`ed each icon (needs the `.godot/imported` cache; the copied template predates four icons). It now checks `Icons/Skills/<id>.png` and `.png.import` exist per skill. No art added; all were tracked. Closes ?249.
+252. **The AI weighs Opportunist when approaching - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w11-oppai.md`. Calls:
+    - **New generic hook `Behaviour.strikes(r, holder, rank) -> Skill`** (null default; Opportunist overrides, its `react` uses it). `AI._strikers` (foes within 2 tiles of the target that react, read as foes, located, reaction passive known) and `AI._struck` (expected blow = damage x hit chance, capped at the AI's HP) feed `_approach` at `STRUCK` = 0.5 tiles per HP, a guess like DREAD.
+    - **Edited `Scripts/Behaviour.gd`**, outside the card's file list, for the hook; `route()` untouched.
+    - **Only tiles the striker's skill reaches count:** Rake does not reach a diagonal, so the AI takes the diagonal beside a Siren.
+    - **Not weighed:** the striker's Energy/AP cost, `_line_up`, `_retreat`.
+    - **Digest and sims:** no Siren in either sim, so digest 3296533323 and `ai_sim` output are unchanged. **Test:** `test_approach_weighs_opportunist`, mutation caught. No visual check.
+    - **New names to review:** none.
+- [ ] **AI turn cost: ~150 ms at M3 x 4 against 100:** the warm-read floor (~100 us, 29K reads a fight), `_chain`, actives held, `can_afford` under noise; the untaken speedups only with a test proving what units see is unchanged. (?250)
+- [ ] **Opportunist in the AI: weigh the striker's Energy/AP cost, `_line_up` and `_retreat`.** (?252)
+- [ ] **`AI.STRUCK` 0.5 tiles per HP is a guess.** Needs the user. (?252)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

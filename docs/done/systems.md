@@ -313,3 +313,6 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Opportunist** (`Behaviours/opportunist.gd`, reaction `&"beside"`): plan `docs/plans/w10-opp.md`. `reaction_test.test_beside`, `test_opportunist`. (?246)
 - [x] **`shows_boon` note and the Restless Dead chip** (`HUD._info`, `UNDEAD.settle` in `Battle.travel`): plan `docs/plans/w10-boon.md`. `undead_test`, `hud_test`. (?247)
 - [x] **Typing: the 27 untyped declarations** (Save, Unit, Battle, Game, Skill, PartyPanel): plan `docs/plans/w10-typing.md`. Suite and digest unchanged. (?248)
+- [x] **AI turn cost, the cast** (`react()` by the `reaction` tag, held rank, one-stretch `_hunt`/`_look_harder`/cover): plan `docs/plans/w11-cast.md`. `ai_tactics_test.test_cast_cost_answers_as_before`. (?250)
+- [x] **Icon check without the import cache** (`tooling_test.test_icons`): plan `docs/plans/w11-icons.md`. (?251, closes ?249)
+- [x] **The AI weighs Opportunist** (`Behaviour.strikes`, `AI._strikers`, `AI._struck`, `STRUCK`): plan `docs/plans/w11-oppai.md`. `ai_tactics_test.test_approach_weighs_opportunist`. (?252)
