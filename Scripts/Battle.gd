@@ -1119,7 +1119,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		return true
 	for g in fog:
 		for s: Skill in g:
-			target.disable(s, skill.lasts(r, caster) + int(req[3]) + (1 if target.faction == turn else 0), true, caster)
+			target.disable(s, skill.lasts(r, caster) + int(req[3]) + (1 if target.faction == turn else 0), true, caster, skill)
 	if foe and skill.chain:  # Strike: a hit at a time (_chain()); its behaviours land with its first hit
 		var landed := _chain(caster, skill, target, ri, tags, 0, 0, acts, req)
 		if acts and acts.target != target:  # a reaction took the blows in its place (Interject)
@@ -4307,6 +4307,7 @@ func lives_left(f: Faction) -> int:
 func _on_downed(u: Unit) -> void:
 	u.timed.clear()
 	u.disabled.clear()
+	u.disabled_by.clear()
 	u.postponed.clear()
 	end_channel(u)
 	if u not in fallen:
