@@ -74,7 +74,7 @@ func test_afford_the_cut() -> void:
 	v(1).energy = 10
 	v(1).pay(v(1).ap_for(&"skill") - 2.0, &"skill")  # 2 AP of the 4 it costs
 	ok(not v(1).can_afford(poach) and not b.can_afford(v(1), poach, v(3)), "a hale foe: the full price is out of reach")
-	var reads := {v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})
 	var log: Array[String] = []
 	ok(not AI._strike(b, v(1), reads, log), "and the AI doesn't strike")
 	var h := await hud(v(1))

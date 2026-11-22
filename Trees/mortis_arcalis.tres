@@ -3,13 +3,18 @@
 [ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
 [ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
 [ext_resource type="Resource" path="res://Skills/skeleton.tres" id="s_skeleton"]
+[ext_resource type="Resource" path="res://Skills/grave_aura.tres" id="s_grave_aura"]
 
 [sub_resource type="Resource" id="Branch_skeleton"]
 script = ExtResource("2_branch")
 skill = ExtResource("s_skeleton")
 
+[sub_resource type="Resource" id="Branch_grave_aura"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_grave_aura")
+
 [resource]
 script = ExtResource("1_skillroot")
 name = "Mortis Arcalís"
 tag = &"magical"
-branches = Array[ExtResource("2_branch")]([SubResource("Branch_skeleton")])
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_skeleton"), SubResource("Branch_grave_aura")])

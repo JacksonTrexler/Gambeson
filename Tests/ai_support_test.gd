@@ -209,7 +209,7 @@ func test_hides_where_unseen() -> void:
 	v(3).wisdom = 40
 	var eyes := b.watchers(v(2))
 	ok(v(3) in eyes and Battle.seen_odds(v(1), invisibility, v(2), eyes, b) >= AI.SEEN, "a sharp foe beside it: seen through (%.2f)" % Battle.seen_odds(v(1), invisibility, v(2), eyes, b))
-	var reads := {v(2): b.read(v(1), v(2)), v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(2): b.read(v(1), v(2)), v(3): b.read(v(1), v(3))})
 	var log: Array[String] = []
 	AI._support(b, v(1), reads, log)
 	ok(log.is_empty() and invisibility.effects[0] not in v(2).timed, "so it doesn't (%s)" % [log])

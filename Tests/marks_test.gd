@@ -230,7 +230,7 @@ func test_helpful_marks_pull() -> void:
 
 func test_helpful_marks_draw_the_approach() -> void:
 	stage(lancin, {v(2): Vector2i(5, 3), v(3): Vector2i(1, 3), v(1): Vector2i(2, 3)})  # the straight way in is taken; the two diagonal tiles cost the same
-	var reads := {v(3): b.read(v(2), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(2), v(3))})
 	var first := AI._approach(b, v(2), v(3), reads)
 	var m := Battle.Mark.new(&"test", v(1))
 	m.who = &"allies"

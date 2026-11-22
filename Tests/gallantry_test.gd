@@ -65,7 +65,7 @@ func test_ai_weighs_it() -> void:
 		v(i).refresh()
 		soak(v(i), 300)
 	v(1).dexterity = 40
-	var reads := {v(3): b.read(v(1), v(3)), v(2): b.read(v(1), v(2)), v(4): b.read(v(1), v(4))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), v(2): b.read(v(1), v(2)), v(4): b.read(v(1), v(4))})
 	ok(AI._foiled(b, v(1), jam, v(3), reads) == 0.0, "its recon reads no skills: nothing to weigh")
 	sharp(v(1))
 	reads = {v(3): b.read(v(1), v(3)), v(2): b.read(v(1), v(2)), v(4): b.read(v(1), v(4))}

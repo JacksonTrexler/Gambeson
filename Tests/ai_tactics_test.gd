@@ -54,7 +54,7 @@ func test_chance_picks_the_foe() -> void:
 	for x in [v(3), v(4)]:
 		soak(x, 300)
 	v(3).unspent = 14.0
-	var reads := {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))})
 	var log: Array[String] = []
 	ok(AI._strike(b, v(1), reads, log) and "Villager4" in log[0], "it takes the foe the Spike is likelier to hit (%s)" % [log])
 
@@ -327,7 +327,7 @@ func test_lines_up_a_shove() -> void:
 	v(1).refresh()
 	soak(v(3), 300)
 	var log: Array[String] = []
-	var reads := {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))})
 	ok(AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(5, 3), "from where it can drive it into the foe behind it (%s, %s)" % [v(1).cell, log])
 	ok(b.foresee(v(1), kick, v(3)).hi == Battle.SLAM, "which slams them (%s)" % [b.foresee(v(1), kick, v(3))])
 	v(4).faction = lancin  # its own side behind the foe now: that tile costs it
@@ -350,7 +350,7 @@ func test_line_up_gain_threshold() -> void:
 	v(1).refresh()
 	soak(v(3), 300)
 	b.paint(Vector2i(5, 4), load("res://Terrain/shallows.tres"))  # kicked from (4, 4): Soaks it, a rider; from beside, a 1-tile push is half of one
-	var reads := {v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})
 	var here: float = b.standing(v(1), v(1).cell, func() -> float: return AI._driven(b, v(1), kick, v(3)))
 	var there: float = b.standing(v(1), Vector2i(4, 4), func() -> float: return AI._driven(b, v(1), kick, v(3)))
 	ok(is_equal_approx(there - here, Battle.PUSH * AI.RIDER), "the water tile tells one tile of shove more (%.2f vs %.2f)" % [there, here])
@@ -374,7 +374,7 @@ func test_retreat_weighs_shoves_and_price() -> void:
 	v(1).refresh()
 	sharp(v(1))
 	var from: Array[Vector2i] = [Vector2i(5, 3)]
-	var reads := {v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})
 	ok(kick in reads[v(3)].skills, "it has read the foe's Kick")
 	var edge := Vector2i(9, 3)
 	ok(AI._shoved(b, v(1), edge, reads) > 0.0 and AI._shoved(b, v(1), Vector2i(8, 3), reads) == 0.0, "the edge is a wall to be slammed into (%.1f), a tile in is not" % AI._shoved(b, v(1), edge, reads))
@@ -399,7 +399,7 @@ func test_grudge_goes_for_what_it_reaches() -> void:
 	v(4).level = 20
 	sharp(g)
 	b.end_turn()  # its side's turn
-	var reads := {v(1): b.read(g, v(1)), v(4): b.read(g, v(4))}
+	var reads := AI.reads_from({v(1): b.read(g, v(1)), v(4): b.read(g, v(4))})
 	ok(AI._best_target(g, reads) == v(4), "of the two it would want the strong one, far off")
 	ok(AI._best_target(g, AI._reachable(b, g, reads)) == v(1), "but it can only walk up to the near one this round")
 	var log: Array[String] = []
@@ -437,7 +437,7 @@ func test_final_act_is_priced() -> void:
 	v(1).refresh()
 	v(3).refresh()
 	v(3).hp = 1
-	var reads := {v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})
 	var cost := AI._reprisal(b, v(1), strike, v(3), reads)
 	ok(cost == 0.0, "its Final Act unread: nothing to weigh (%.2f)" % cost)
 	sharp(v(1))
@@ -464,7 +464,7 @@ func test_wear_varies_the_blow() -> void:
 	v(1).refresh()
 	soak(v(3), 900)
 	Exhaustion.on = true
-	var reads := {v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})
 	var first := ""
 	var picked := func() -> String:
 		var log: Array[String] = []
@@ -508,7 +508,7 @@ func test_wear_weighs_heals_and_supports() -> void:
 		v(2).max_hp = 100
 		v(2).hp = 40
 		var before := {heal: v(1).exhaustion.uses.get(heal, 0.0), mega: v(1).exhaustion.uses.get(mega, 0.0)}
-		AI._heal(b, v(1), {v(2): b.read(v(1), v(2))}, [])
+		AI._heal(b, v(1), AI.reads_from({v(2): b.read(v(1), v(2))}), [])
 		return heal if v(1).exhaustion.uses.get(heal, 0.0) > before[heal] else (mega if v(1).exhaustion.uses.get(mega, 0.0) > before[mega] else null)
 	ok(AI._fresh(v(1), heal) == 1.0, "fresh: the whole of its worth")
 	ok(healed.call() == heal, "of two heals that do alike, the first")
@@ -531,7 +531,7 @@ func test_wear_weighs_heals_and_supports() -> void:
 		for e in v(1).timed.keys():
 			v(1).timed.erase(e)
 		var log: Array[String] = []
-		AI._support(b, u, {v(1): b.read(u, v(1))}, log)
+		AI._support(b, u, AI.reads_from({v(1): b.read(u, v(1))}), log)
 		return log[0].split(" gives ")[1].split(" to ")[0] if not log.is_empty() else ""
 	var first: String = gave.call()
 	var skills := {"Intervention": intervention, "Stonegift": twin}
@@ -566,10 +566,10 @@ func test_forced_moves_are_priced() -> void:
 	buff.effects = [effect("fear", 1.0)] as Array[Effect]
 	v(1).learned.append(slot(buff))
 	var log: Array[String] = []
-	AI._support(b, v(1), {v(2): b.read(v(1), v(2))}, log)
+	AI._support(b, v(1), AI.reads_from({v(2): b.read(v(1), v(2))}), log)
 	ok(log.is_empty(), "and a support skill carrying fear isn't given to an ally (%s)" % [log])
 	buff.effects = [effect("mitigate", 0.2)] as Array[Effect]
-	AI._support(b, v(1), {v(2): b.read(v(1), v(2))}, log)
+	AI._support(b, v(1), AI.reads_from({v(2): b.read(v(1), v(2))}), log)
 	ok(not log.is_empty(), "though one that helps is (%s)" % [log])
 
 
@@ -616,7 +616,7 @@ func test_dreads_a_cc() -> void:
 	soak(v(1), 500)
 	soak(v(3), 500)
 	v(4).refresh()
-	var reads := {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))})
 	ok(AI._stunners(b, v(1), reads).is_empty(), "unread, the foe's Stun is unknown: nothing to dread")
 	sharp(v(1))
 	reads = {v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}
@@ -628,7 +628,7 @@ func test_dreads_a_cc() -> void:
 	v(1).afflict(winded, 3)
 	ok(is_equal_approx(AI._stunners(b, v(1), reads)[0][2], foes[0][2] / 2.0), "a cc it already bears halves it (Unit.afflicted())")
 	v(1).timed.clear()
-	var plain := AI._approach(b, v(1), v(3), {v(3): reads[v(3)]})
+	var plain := AI._approach(b, v(1), v(3), AI.reads_from({v(3): reads[v(3)]}))
 	var wary := AI._approach(b, v(1), v(3), reads)
 	ok(AI._dread(foes, plain) > 0.0 and AI._dread(foes, wary) == 0.0 and Command.tiles(wary, v(3).cell) == 1, "it closes from a side out of the Stunner's reach, not the one that is nearer: %s, not %s" % [wary, plain])
 	var from: Array[Vector2i] = [v(3).cell]

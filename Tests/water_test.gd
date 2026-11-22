@@ -115,6 +115,6 @@ func test_drowning_dice_per_rank() -> void:
 func test_siren_closes_in() -> void:
 	stage(nemes, {siren(): Vector2i(9, 7), v(1): Vector2i(1, 1)})
 	var from := siren().cell
-	ok(AI._luring(b, siren(), {v(1): b.read(siren(), v(1))}) and AI._out_of_song(b, siren(), {v(1): b.read(siren(), v(1))}), "fooled, and too far off to sing to")
+	ok(AI._luring(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1))})) and AI._out_of_song(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1))})), "fooled, and too far off to sing to")
 	AI.act(b, siren())
 	ok(Command.tiles(siren().cell, v(1).cell) < Command.tiles(from, v(1).cell), "it closes in (%s to %s)" % [from, siren().cell])

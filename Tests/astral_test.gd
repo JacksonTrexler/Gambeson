@@ -101,7 +101,7 @@ func test_strategy() -> void:
 	var p := her(Vector2i(5, 3))
 	stage(nemes, {p: Vector2i(5, 3), v(1): Vector2i(3, 3), v(2): Vector2i(8, 3)})
 	v(2).level = 12
-	var reads := {v(1): b.read(p, v(1)), v(2): b.read(p, v(2))}
+	var reads := AI.reads_from({v(1): b.read(p, v(1)), v(2): b.read(p, v(2))})
 	reads[v(2)].level = 12
 	reads[v(1)].level = 1
 	ok(AI._best_target(p, reads) == v(2), "the strongest, a few tiles further, over the closest")

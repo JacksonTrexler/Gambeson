@@ -122,7 +122,7 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 	if shown.call(1, 1):
 		r.vibe = t.vibe
 		var vals := {}
-		for s in Unit.CORE.slice(0, 6):
+		for s: StringName in Unit.CORE.slice(0, 6):
 			vals[s] = t.stat(s)
 		var order: Array = vals.keys()
 		order.sort_custom(func(x, y): return vals[x] > vals[y])
@@ -219,7 +219,7 @@ static func _seem(b: Battle, o: Unit, t: Unit, r: Read) -> Dictionary:
 		if k > 0 and Command.tiles(a.cell, t.cell) <= k and fools(b, o, a):
 			aura = maxf(aura, 0.1 * k)
 	var out := {}
-	for s in Unit.CORE.slice(0, 6):
+	for s: StringName in Unit.CORE.slice(0, 6):
 		out[s] = up.get(s, 1.0) * maxf(1.0 - down - aura, 0.0)
 		if s in r.stats and out[s] != 1.0:
 			r.stats[s] = maxf(roundf(r.stats[s] * out[s]), 1.0)
@@ -271,7 +271,7 @@ static func _dim(o: Unit, t: Unit, r: Read, p: int, f: Dictionary) -> void:
 # or a word for its best stat ("Strong"); then "Charming" or "Nervous" if its charisma stands out.
 static func traits(t: Unit, f: Dictionary) -> Array[String]:
 	var seems := {}
-	for s in Unit.CORE.slice(0, 6):
+	for s: StringName in Unit.CORE.slice(0, 6):
 		seems[s] = t.stat(s) * f.get(s, 1.0)
 	var vals: Array = seems.values()
 	var mean: float = vals.reduce(func(a, x): return a + x, 0.0) / vals.size()

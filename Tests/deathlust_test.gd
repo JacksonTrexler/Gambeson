@@ -77,7 +77,7 @@ func test_ai_weighs_kill_discount() -> void:
 	lusty(1)
 	v(1).exhaustion.uses[strike] = 3.0
 	var dmg := int(Battle.damage_range(v(1), strike, v(3), b).avg)
-	var reads := {v(3): b.read(v(1), v(3))}
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})
 	var worn := AI._wear(v(1), strike, b, v(3), reads[v(3)])
 	ok(worn > 0.0, "a blow that doesn't kill: its wear counts (%.2f)" % worn)
 	soak(v(3), maxi(dmg, 1))
