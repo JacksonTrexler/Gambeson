@@ -1340,8 +1340,8 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **?? on tags is display-only already** (an id is lower_snake; the ?? sits in the Glossary term's shown name). `mechanic.py check` now fails a tag id that isn't lower_snake or a ?? not at a name's end; `mechanic.py tag --human` strips a typed ??; `tag_colors_test.test_marked_names_are_display_only`. The rule is in CLAUDE.md and `new-mechanic`.
     - **Names:** `survey`, `evaluate`, `inquire` lost their ?? (yours); `prep_use` was never marked in code. **Cadence ?? kept** (a status I named, not a tag).
     - **Tests:** the two new ones; four mutations failed and reverted.
-    - **New names to review:** Accord ??, Cadence ??.
-- [ ] **Is "Accord ??" right for the Mage's stub, or should the Mage have Harmony and the Bard another name?** (?227)
+    - **New names to review:** Cadence ?? (Accord confirmed, ?? dropped).
+- [x] **Is "Accord ??" right for the Mage's stub?** (?227) Closed: the user confirmed "Accord is fine" (docs/agents/answers-2026-11-22.md); ?? dropped.
 - [ ] **Should unique names also be checked for items, classes, tiles and units?** (?227)
 
 228. **Free lends and the band - built on judgement, open for review (2026-11-21).** Your words (?214, reworked): "armor passives are similar to innate passives: they both should be grayed out and not take a numbered hotbar slot unless activatable. The skills provided by innates / equipment *may* be considered "equippable" but are free and auto-equipped by default... (e.g. if a robe provides "Igna B" as an optional slot in skill, some units will elect not to slot it, whereas a harpy hauberk might provide a toggle skill Hollow Bones: double dex ap generation and gain flight, halve defense.)" Plan: `docs/plans/w8-bar.md` (15 calls). Main calls:
