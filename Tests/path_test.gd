@@ -196,5 +196,5 @@ func test_the_ai_heads_for_the_cheaper_cell() -> void:
 	v(3).intelligence = 8
 	v(3).refresh()
 	b.revealed[TRAP] = true
-	var reads := {v(1): b.read(v(3), v(1))}
+	var reads := AI.reads_from({v(1): b.read(v(3), v(1))})
 	ok(AI._approach(b, v(3), v(1), reads) != TRAP, "not the trap's own tile, though it's the nearest (%s)" % AI._approach(b, v(3), v(1), reads))

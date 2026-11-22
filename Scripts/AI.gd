@@ -76,10 +76,17 @@ const STRONG := 0.5  # per level it reads, how much a unit going for the stronge
 
 
 # What u makes out of every other unit now.
-static func _reads(b: Battle, u: Unit) -> Dictionary:
-	var reads := {}
+# A typed reads map from a plain dictionary of unit -> Read (the planners take Dictionary[Unit, Read]; tests build theirs by hand).
+static func reads_from(d: Dictionary) -> Dictionary[Unit, Read]:
+	var out: Dictionary[Unit, Read] = {}
+	out.assign(d)
+	return out
+
+
+static func _reads(b: Battle, u: Unit) -> Dictionary[Unit, Read]:
+	var reads: Dictionary[Unit, Read] = {}
 	Unit.begin_read()  # all reads, nothing changed: each unit's effects are found once (Unit._effects())
-	for o in b.units.values():
+	for o: Unit in b.units.values():
 		if o != u:
 			reads[o] = b.read(u, o)
 	Unit.end_read()
@@ -203,7 +210,7 @@ static func interrupt(b: Battle, u: Unit) -> Array[String]:
 
 # Helpful (Bio): with no one to heal in reach, it goes to the ally it most wants to heal (want()) and
 # heals it. Other healers heal only whom they happen to reach.
-static func _tend(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _tend(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	var heals := u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x))
 	if heals.is_empty() or _rooted(b, u):
 		return
@@ -227,13 +234,13 @@ static func _tend(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 # Downed and still acting (Grudge; Scripts/Downed.gd): it closes with the nearest foe and strikes one
 # beside it - the melee attack each of its rounds asks for - with no more skill uses than its rule
 # leaves it, but in its last round, when one too many costs it nothing.
-static func _last_blows(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _last_blows(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	if _save_self(b, u, log):
 		return
 	var target := _best_target(u, _reachable(b, u, reads))
 	if target and not Battle.next_to(u.cell, reads[target].cell) and not _rooted(b, u):
 		log.append("%s closes in %s" % [u.name, b.travel(u, _approach(b, u, target, reads))])
-	var near := {}
+	var near: Dictionary[Unit, Read] = {}
 	for o: Unit in reads:
 		if Battle.next_to(u.cell, o.cell):
 			near[o] = b.read(u, o)
@@ -244,8 +251,8 @@ static func _last_blows(b: Battle, u: Unit, reads: Dictionary, log: Array[String
 # The foes it could walk up to this round, of reads: the ones beside it, and those with a tile beside them its walk (as
 # it expects it) ends on (_approach()). A Grudge unit makes its blow this round or dies of it, so it goes for what it
 # can reach rather than the foe it would otherwise want most (the nearest, the strongest). With none in reach: all of them.
-static func _reachable(b: Battle, u: Unit, reads: Dictionary) -> Dictionary:
-	var out := {}
+static func _reachable(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> Dictionary[Unit, Read]:
+	var out: Dictionary[Unit, Read] = {}
 	for t: Unit in reads:
 		var r: Read = reads[t]
 		if not t.is_alive() or not _foe(u, r) or not r.located():
@@ -266,7 +273,7 @@ static func _reachable(b: Battle, u: Unit, reads: Dictionary) -> Dictionary:
 static func _save_self(b: Battle, u: Unit, log: Array[String]) -> bool:
 	var best: Skill = null
 	var most := 0
-	for s in u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x) and b.in_reach(u, x, u)):
+	for s: Skill in u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x) and b.in_reach(u, x, u)):
 		if not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, u)):
 			continue
 		var n: int = _restores(b, u, s, u).get(&"hp", 0)
@@ -281,7 +288,7 @@ static func _save_self(b: Battle, u: Unit, log: Array[String]) -> bool:
 
 # A foe Downed and fighting on (Grudge) that must make a melee attack this round or die of it
 # (Downed.rule.melee), which u can place.
-static func _starving(u: Unit, reads: Dictionary) -> Array[Unit]:
+static func _starving(u: Unit, reads: Dictionary[Unit, Read]) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for o: Unit in reads:
 		if o.is_alive() and o.dbno and o.dbno.rule.acts and o.dbno.rule.melee and not o.dbno.meleed and _foe(u, reads[o]) and reads[o].located():
@@ -295,12 +302,12 @@ static func _starving(u: Unit, reads: Dictionary) -> Array[Unit]:
 # or shoot from beyond that reach. Whether that is worth the strikes it gives up (starve_worth()): the foes
 # it would turn from, or the allies it would be asking to do the same, weigh against it. True if the turn is
 # spent so.
-static func _starve(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _starve(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	var owing := _starving(u, reads)
 	if owing.is_empty() or _rooted(b, u):
 		return false
 	for g in owing:
-		for s in u.foe_actives():
+		for s: Skill in u.foe_actives():
 			if b.in_reach(u, s, g) and b.can_afford(u, s, g) and Battle.damage_range(u, s, g, b).get("lo", 0) > g.hp + g.dbno.limit:
 				return false  # one blow ends it
 	var worth := 0.0
@@ -341,9 +348,9 @@ static func starve_worth(b: Battle, u: Unit, g: Unit) -> float:
 
 # The best strike u could make now at a standing foe it reads other than `besides`, by score(): what holding
 # back from a Grudge unit gives up. 0 with none.
-static func _best_strike(b: Battle, u: Unit, besides: Array[Unit], reads: Dictionary) -> float:
+static func _best_strike(b: Battle, u: Unit, besides: Array[Unit], reads: Dictionary[Unit, Read]) -> float:
 	var best := 0.0
-	for s in u.foe_actives(true):
+	for s: Skill in u.foe_actives(true):
 		for t: Unit in reads:
 			if t not in besides and t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located() and b.in_reach(u, s, t) \
 					and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
@@ -440,7 +447,7 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 	var best: Array = []
 	var gain := 0
 	var net := 0.0001
-	for s in u.plate_skills():
+	for s: Skill in u.plate_skills():
 		if not u.plate_works(s):
 			continue
 		var slot := Unit.plate_slot(s)
@@ -519,7 +526,7 @@ static func _afflicting(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, more: Di
 # added to BLOW), else BLOW alone. Never more than u has left.
 static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
 	var best := -1.0
-	for s in r.skills:
+	for s: Skill in r.skills:
 		if s.hostile and s.attacks():
 			best = maxf(best, float(Battle.damage_range(t, s, u, b).get("avg", 0.0)) * Battle.hit_chance(t, s, u, b))
 	if best < 0.0:
@@ -600,7 +607,7 @@ static func _foe(u: Unit, r: Read) -> bool:
 # Ready to advance: not timid (craven), or an ally it takes for one is near, of a level it reads as
 # higher (it must make out the level, have it advertised - Persona II - or guess it from how the ally
 # looks: _level()).
-static func _emboldened(u: Unit, reads: Dictionary) -> bool:
+static func _emboldened(u: Unit, reads: Dictionary[Unit, Read]) -> bool:
 	if u.temper() != &"timid":
 		return true
 	for o: Unit in reads:
@@ -614,7 +621,7 @@ static func _emboldened(u: Unit, reads: Dictionary) -> bool:
 # A craven unit backs away from units it takes for aggressive within CRAVEN_REACH tiles: to the
 # tile it can reach (as it expects the walk to go) furthest from the nearest of them. False if
 # there's none near, or nowhere better.
-static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _flee(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	if u.temper() != &"timid":
 		return false
 	var scary: Array[Vector2i] = []
@@ -631,13 +638,13 @@ static func _flee(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 # Casts the best hostile skill it can right now; false if nothing is in reach and affordable. The
 # beloved are spared only while there are other foes to fight. attacks_only: skip dual skills (Sing).
 # least: only a strike worth more than this (a traitor keeping its cover: a kill).
-static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], attacks_only := false, least := 0.0) -> bool:
+static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String], attacks_only := false, least := 0.0) -> bool:
 	var best := []
 	var best_score := least
 	var spared := []
 	Unit.begin_read()  # weighing only, nothing changes until it casts: each unit's effects are found once (Unit._effects())
-	for s in u.foe_actives().filter(func(x: Skill): return not (attacks_only and x.dual)):
-		for t in reads:
+	for s: Skill in u.foe_actives().filter(func(x: Skill): return not (attacks_only and x.dual)):
+		for t: Unit in reads:
 			var r: Read = reads[t]
 			if not _foe(u, r) or not t.is_alive() or not b.in_reach(u, s, t) or not b.can_afford(u, s, t):
 				continue
@@ -674,7 +681,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary, log: Array[String], a
 # Raises a host: a tile skill whose cast adds bodies (Behaviour.bodies(): Skeleton) cast near itself, toward the nearest foe
 # it makes out within SUMMON_SEEN, while its side has room (SUMMON_CAP) and the bodies (BODY each) are worth more than what
 # the cast costs it (AP, POINT, as score() weighs a rebate) and its wear. The best such skill; false if none was cast.
-static func _summon(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _summon(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	var room := SUMMON_CAP - b.members(u.faction).size()
 	if room <= 0:
 		return false
@@ -787,7 +794,7 @@ static func _driven(b: Battle, u: Unit, s: Skill, t: Unit) -> float:
 # (Kick's ground, Displace) and a shove effect are asked alike, and any skill that tells more from one side joins.
 # Only a tile it can walk to at the price route() puts on it (no more than the movement it has: not through
 # ground it dreads) and still pay its blow from. True if it walked.
-static func _line_up(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _line_up(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	Unit.begin_read()  # planning only until it walks (Battle.standing() puts it back): each unit's effects are found once (Unit._effects())
 	var skills := u.foe_actives(true).filter(func(s: Skill): return not s.behaviours.is_empty() or s.effects.any(func(e: Effect): return Battle.DRIVES.has(StringName(e.stat))))
 	var foes: Array[Unit] = []
@@ -839,7 +846,7 @@ static func _line_up(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 # Each reaction moment a blow of s on t would bring that a passive of t's side u can make out (Read.skills,
 # Read.kit: an unread one it can't weigh) would be asked about - attacked, hit, and fallen when the blow's
 # average kills - as [behaviour, the Reaction, its holder, its rank], what foils() and reprisal() are asked of.
-static func _moments(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> Array:
+static func _moments(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary[Unit, Read]) -> Array:
 	var held := []  # [holder, its slot]
 	for o: Unit in reads:
 		var r: Read = reads[o]
@@ -874,7 +881,7 @@ static func _moments(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -
 # passive of a unit beside the fight that u reads t's side as having is asked, through the hook the reaction
 # itself uses (Behaviour.foils()), about each moment the blow would bring (_moments()), and what each leaves
 # standing multiplies. Cheap: nothing is asked unless such a passive is read.
-static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
+static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary[Unit, Read]) -> float:
 	if not s.hostile or t == u:
 		return 0.0
 	var keep := 1.0
@@ -886,7 +893,7 @@ static func _foiled(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) ->
 # What those reactions would cost u in HP, on top (Behaviour.reprisal(): Final Act's free action against the
 # unit that finishes it). _strike() takes it off the blow's worth, but never more than FOILED of it: a lone
 # Final Act unit is still finished, it is just left for last.
-static func _reprisal(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary) -> float:
+static func _reprisal(b: Battle, u: Unit, s: Skill, t: Unit, reads: Dictionary[Unit, Read]) -> float:
 	if not s.hostile or t == u:
 		return 0.0
 	var cost := 0.0
@@ -905,7 +912,7 @@ static func _search(b: Battle, u: Unit, log: Array[String]) -> bool:
 	var clues := clues(b, u)
 	if clues.is_empty():
 		return false
-	for s in looks:
+	for s: Skill in looks:
 		var look := OBSERVE.reach(u, u.mods(s).irank(u.rank(s), &"rank_impact"))  # as it looks when cast
 		var reach := b.area_reach(u, s)
 		var best: Variant = null
@@ -945,7 +952,7 @@ static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
 		_clue(out, c, SUSPICIOUS)
 	for c in b.evidence(u):
 		_clue(out, c, DEBRIS / (1.0 + b.rounds_since(b.debris[c].since)))
-	for c in b.marks:
+	for c: Vector2i in b.marks:
 		for m: Battle.Mark in b.known_marks(u, c):
 			if not Faction.friends(m.faction, u.faction):
 				_clue(out, c, MARKED)
@@ -957,7 +964,7 @@ static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
 		var moves: float = info.moves if info.moves > 0.0 else u.stat(&"movement")  # as far as it walks itself, unless it read it
 		var tiles := b.reckon_reach(u, t, at, moves * mini(b.rounds_since(info.since), REACH_TURNS))
 		_clue(guess, at, LAST_SEEN)
-		for c in tiles:
+		for c: Vector2i in tiles:
 			_clue(guess, c, REACH / tiles.size())
 	for a in b.attacks_on(u.faction) if u.faction else []:
 		for c in a.tiles:
@@ -967,7 +974,7 @@ static func clues(b: Battle, u: Unit) -> Dictionary[Vector2i, float]:
 			if is_instance_valid(t) and t.is_alive() and not Faction.friends(t.faction, u.faction) and not seen.has(t):
 				_clue(guess, u.cell, LOST)
 				break
-	for c in guess:
+	for c: Vector2i in guess:
 		if u.faction and b.swept_lately(u.faction, c):
 			continue
 		var there := b.unit_at(c)
@@ -982,7 +989,7 @@ static func _clue(out: Dictionary, c: Vector2i, w: float) -> void:
 
 
 # Its side remembers where it makes out each foe, or something it can't tell the side of (Battle.sightings).
-static func _remember(b: Battle, u: Unit, reads: Dictionary) -> void:
+static func _remember(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> void:
 	if not u.faction:
 		return
 	for o: Unit in reads:
@@ -993,7 +1000,7 @@ static func _remember(b: Battle, u: Unit, reads: Dictionary) -> void:
 
 # No foe in sight: it heads for where its side last made one out, the nearest first. Reaching the spot
 # and finding no one there, its side forgets it and it tries the next. False with nowhere to go.
-static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _hunt(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	var seen := b.last_seen(u.faction) if u.faction else {}
 	while not seen.is_empty():
 		var best: Unit = null
@@ -1010,7 +1017,7 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 		if p.is_empty():
 			return false
 		log.append("%s hunts %s" % [u.name, p])
-		for o in reads:
+		for o: Unit in reads:
 			reads[o] = b.read(u, o)
 		_remember(b, u, reads)
 		return true
@@ -1021,7 +1028,7 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> 
 # the effect yet: one that grants an effect (Stonegift), or a buff for allies with effects of its own
 # (Intervention, Rally; not self_only or dual ones). Not one whose effects harm (Effect.helps(): fear, shove,
 # entrance drive the ally about): that lands on foes, through score().
-static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _support(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	var gives := u.actives.filter(func(x: Skill): return not x.hostile and (x.grants or (not x.for_foes() and not x.self_only and not x.effects.is_empty())) and not x.effects.any(func(e: Effect): return e.helps() < 0) and u.can_afford(x))
 	var order := range(gives.size())  # the least worn first (its own order on a tie): of two that give alike, the fresher
 	order.sort_custom(func(i: int, j: int): return _fresh(u, gives[i]) > _fresh(u, gives[j]) or (_fresh(u, gives[i]) == _fresh(u, gives[j]) and i < j))
@@ -1037,7 +1044,7 @@ static func _support(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 
 
 # Still luring: no enemy has seen it for what it is.
-static func _luring(b: Battle, u: Unit, reads: Dictionary) -> bool:
+static func _luring(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> bool:
 	if u.behaviour != &"lure":
 		return false
 	for o: Unit in reads:
@@ -1053,8 +1060,8 @@ static func _luring(b: Battle, u: Unit, reads: Dictionary) -> bool:
 # on; bloodied, it turns to mist (Vaporize); a mist closes in on its best target and Coalesces into it;
 # otherwise it floods the tile of a foe in reach that isn't under water yet (Well Up), and strikes and
 # closes in as any unit would (false: the usual turn goes on).
-static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], rooted: bool) -> bool:
-	for s in u.actives.filter(func(x: Skill): return x.behaviour(&"waltz") and u.can_afford(x)):
+static func _undine(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String], rooted: bool) -> bool:
+	for s: Skill in u.actives.filter(func(x: Skill): return x.behaviour(&"waltz") and u.can_afford(x)):
 		if b.cast(u, s, u):
 			log.append("%s waltzes in a fog" % u.name)
 	if b.inside.has(u):
@@ -1068,13 +1075,13 @@ static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], r
 		log.append("%s vaporizes" % u.name)
 	if u.stat(&"mist") > 0.0:
 		var target := _best_target(u, reads)
-		for s in u.actives.filter(func(x: Skill): return x.mist_only and x.engulfs):
+		for s: Skill in u.actives.filter(func(x: Skill): return x.mist_only and x.engulfs):
 			if target and not b.in_reach(u, s, target) and not rooted:
 				log.append("%s drifts %s" % [u.name, b.travel(u, _approach(b, u, target, reads))])
 			if target and b.in_reach(u, s, target) and u.can_afford(s) and b.cast(u, s, target):
 				log.append("%s coalesces into %s" % [u.name, target.name])
 		return true
-	for s in u.actives.filter(func(x: Skill): return x.behaviour(&"well_up") and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return x.behaviour(&"well_up") and u.can_afford(x)):
 		for t: Unit in reads:
 			var r: Read = reads[t]
 			if t.is_alive() and _foe(u, r) and not b.submerged(t) and Vector2(u.cell).distance_to(Vector2(r.cell)) <= b.area_reach(u, s) + 0.0001 \
@@ -1086,8 +1093,8 @@ static func _undine(b: Battle, u: Unit, reads: Dictionary, log: Array[String], r
 
 # No foe within reach of any song it could lure with (Sing: Skill.auto, pulling): a Siren too far away
 # to lure moves in on them instead.
-static func _out_of_song(b: Battle, u: Unit, reads: Dictionary) -> bool:
-	for s in u.actives.filter(func(x: Skill): return x.auto and Displace.draws(x)):
+static func _out_of_song(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> bool:
+	for s: Skill in u.actives.filter(func(x: Skill): return x.auto and Displace.draws(x)):
 		if b.auto_targets(u, s).any(func(t: Unit): return reads.has(t) and _foe(u, reads[t])):
 			return false
 	return true
@@ -1095,9 +1102,9 @@ static func _out_of_song(b: Battle, u: Unit, reads: Dictionary) -> bool:
 
 # A luring unit strikes whatever has come into its reach, without moving: its best skill while it has
 # the AP (Drown, where there's water to drag the foe to), then whatever it can still afford (Rake).
-static func _ambush(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _ambush(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	var struck := false
-	for s in u.actives.filter(func(x: Skill): return x.drags() and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return x.drags() and u.can_afford(x)):
 		for t: Unit in reads:
 			if not struck and t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.drag_spot(u, s, t) != null \
 					and not s.effects.any(func(e: Effect): return e in t.timed) and b.cast(u, s, t):  # not one it already holds
@@ -1114,11 +1121,11 @@ static func _ambush(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -
 # (HP short, or bloodied) or carrying a wound it can see and clear. Among all it can use that restore HP
 # (_mends()), the best (skill, ally) by want(), the first skill on a tie; a skill only works where its
 # behaviours say it fits (Resuscitate: the Downed).
-static func _heal(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _heal(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	var best: Unit = null
 	var how: Skill = null
 	var best_score := 0.0
-	for s in u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return _mends(b, u, x) and u.can_afford(x)):
 		for t: Unit in [u] + reads.keys():
 			var r: Read = b.read(u, u) if t == u else reads[t]
 			if not t.is_alive() or (t != u and r.attitude(u) != &"ally") or not b.in_reach(u, s, t) \
@@ -1209,8 +1216,8 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 
 # Sings where it stands (an automatic skill that pulls: Sing), when the nearest units it would reach
 # include a foe, or an ally that hasn't had it yet.
-static func _sing(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
-	for s in u.actives.filter(func(x: Skill): return x.auto and Displace.draws(x) and u.can_afford(x)):
+static func _sing(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
+	for s: Skill in u.actives.filter(func(x: Skill): return x.auto and Displace.draws(x) and u.can_afford(x)):
 		var to := b.auto_targets(u, s)
 		if to.any(func(t: Unit): return _foe(u, reads[t]) or (reads[t].attitude(u) == &"ally" and s.effects[0] not in t.timed)) and b.cast(u, s, u):
 			log.append("%s sings to %s" % [u.name, ", ".join(to.map(func(t: Unit): return t.name))])
@@ -1237,7 +1244,7 @@ static func _rooted(b: Battle, u: Unit) -> bool:
 
 # A skittish unit keeps away from the foes it can place: to the tile it can reach furthest from the
 # nearest of them.
-static func _keep_away(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _keep_away(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	var foes: Array[Vector2i] = []
 	for o: Unit in reads:
 		if o.is_alive() and _foe(u, reads[o]):
@@ -1248,7 +1255,7 @@ static func _keep_away(b: Battle, u: Unit, reads: Dictionary, log: Array[String]
 
 # Walks to the tile it can reach (as it expects the walk to go) furthest from the nearest of `from` (_retreat()).
 # False if there's nowhere better.
-static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}) -> bool:
+static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads: Dictionary[Unit, Read] = {}) -> bool:
 	var best := _retreat(b, u, from, safe, reads)
 	return best != u.cell and not b.travel(u, best).is_empty()
 
@@ -1259,7 +1266,7 @@ static func _away(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads :=
 # any tile that far counts as far enough, and of those the one with the most room to back off again next round wins (_room(): a
 # corner is a tile `from` need only close on); on a tie, one an ally still to back off wouldn't choose for itself (_claimed();
 # `claim` is off for that ally's own reckoning). Where it stands if nowhere is better.
-static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads := {}, claim := true) -> Vector2i:
+static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads: Dictionary[Unit, Read] = {}, claim := true) -> Vector2i:
 	var gap := func(c: Vector2i) -> int:
 		return from.map(func(x: Vector2i): return Command.tiles(x, c)).min()
 	var claimed: Array[Vector2i] = []
@@ -1274,8 +1281,8 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
 	var seen := {}
 	var reach := ceili(u.move_left())
-	for dx in range(-reach, reach + 1):
-		for dy in range(-reach, reach + 1):
+	for dx: int in range(-reach, reach + 1):
+		for dy: int in range(-reach, reach + 1):
 			var c := u.cell + Vector2i(dx, dy)
 			if c == u.cell or not b.on_map(c):
 				continue
@@ -1298,7 +1305,7 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 
 # The tiles u's allies that are yet to move this turn, and within `safe` of `from` too, would back off to (_retreat(), each
 # on its own: the choice they would make if u weren't there to take one first). What coordinates a retreat: u leaves them theirs when it can.
-static func _claimed(b: Battle, u: Unit, from: Array[Vector2i], safe: int, reads: Dictionary) -> Array[Vector2i]:
+static func _claimed(b: Battle, u: Unit, from: Array[Vector2i], safe: int, reads: Dictionary[Unit, Read]) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	for o: Unit in b.units.values():
 		if o != u and o.is_alive() and not o.helpless() and Faction.friends(o.faction, u.faction) and o.move_left() >= o.stat(&"movement") and from.any(func(x: Vector2i): return Command.tiles(x, o.cell) < safe):
@@ -1321,14 +1328,14 @@ static func _later(a: Array, b: Array) -> bool:
 # Battle.foresee() calls lo, hi and spill), by the worst blow of a foe that could walk up beside c, on the side it
 # comes from (squarely: a diagonal's tile between them is the kick's ground). A forced move is read
 # where it would end (Battle.course()): a tile against a wall or a unit is dearer than one in the open.
-static func _shoved(b: Battle, u: Unit, c: Vector2i, reads: Dictionary) -> float:
+static func _shoved(b: Battle, u: Unit, c: Vector2i, reads: Dictionary[Unit, Read]) -> float:
 	var worst := 0.0
 	for o: Unit in reads:
 		var r: Read = reads[o]
 		if not o.is_alive() or o.helpless() or not _foe(u, r) or not r.located():
 			continue
 		var away := Vector2(o.cell - c)
-		for s in r.skills:
+		for s: Skill in r.skills:
 			if not s.hostile or s.on_tile() or not (not s.behaviours.is_empty() or s.effects.any(func(e: Effect): return Battle.DRIVES.has(StringName(e.stat)))):
 				continue
 			var at := o.cell if away.length() < 1.5 and (away.x == 0.0 or away.y == 0.0) else c + (Vector2i(signi(roundi(away.x)), 0) if absf(away.x) >= absf(away.y) else Vector2i(0, signi(roundi(away.y))))  # square beside it, from the way it comes
@@ -1347,8 +1354,8 @@ static func _room(b: Battle, u: Unit, c: Vector2i, gap: Callable) -> int:
 	var reach := ceili(u.stat(&"movement"))
 	var here: int = gap.call(c)
 	var n := 0
-	for dx in range(-reach, reach + 1):
-		for dy in range(-reach, reach + 1):
+	for dx: int in range(-reach, reach + 1):
+		for dy: int in range(-reach, reach + 1):
 			var o := c + Vector2i(dx, dy)
 			if o != c and b.on_map(o) and (b.unit_at(o) == null or b.unit_at(o) == u) and gap.call(o) > here:
 				n += 1
@@ -1358,7 +1365,7 @@ static func _room(b: Battle, u: Unit, c: Vector2i, gap: Callable) -> int:
 # A recovering unit (a Starmote): off the star lattice, it heads for the nearest free lattice tile;
 # on it, it holds. Only cornered - a foe beside it, and nowhere further from its foes to go - does it
 # fight (its energy missiles).
-static func _recover(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _recover(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	if not b.on_lattice(u.cell):
 		var best: Variant = null
 		for c: Vector2i in b.panes.keys() + b.starpower.keys():
@@ -1379,7 +1386,7 @@ static func _recover(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 # A channeled skill (Metea): holding one, it strikes the tile it can that takes in the most foes it can
 # place (less its allies); not yet, it begins where foes gather within its reach - where a blast
 # would take in the most of them, a tile further out to allow for their moving.
-static func _channel(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _channel(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	for s: Skill in u.actives.filter(func(x: Skill): return x.channel):
 		var radius := s.blast * u.mods(s).rank(u.rank(s), &"rank_range")  # as Battle._detonate() reads it
 
@@ -1401,7 +1408,7 @@ static func _channel(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) 
 				most = v
 		if best != null and b.cast_at(u, s, best):
 			log.append("%s %s %s at %s" % [u.name, "strikes with" if striking else "channels", s.name, best])
-			for o in reads:
+			for o: Unit in reads:
 				reads[o] = b.read(u, o)
 
 
@@ -1416,17 +1423,17 @@ static func _keep_up(b: Battle, u: Unit, log: Array[String]) -> void:
 
 # The foe to go after: the nearest, the hated last - and by its strategy, the strongest (or weakest) it
 # reads, a level against STRONG tiles.
-static func _best_target(u: Unit, reads: Dictionary) -> Unit:
+static func _best_target(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 	Unit.begin_read()  # weighing only (see _steady())
 	var out := _targeting(u, reads)
 	Unit.end_read()
 	return out
 
 
-static func _targeting(u: Unit, reads: Dictionary) -> Unit:
+static func _targeting(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 	var best: Unit = null
 	var best_score := -INF
-	for t in reads:
+	for t: Unit in reads:
 		if not _foe(u, reads[t]) or not t.is_alive():
 			continue
 		var guess: Variant = _level(u, reads[t])
@@ -1452,15 +1459,15 @@ static func _leaning(u: Unit) -> int:
 # units in the way, and the dread of ground it knows or suspects is bad, less what helpful marks draw it) -
 # then the nearest, away from units it takes for aggressive. Never where it already stands. Planning
 # mustn't use up the battle's rng, so it's restored.
-static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2i:
+static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]) -> Vector2i:
 	var r: Read = reads[t]
 	var state := b.rng.state
 	var best: Vector2i = r.cell
 	var best_cost := INF
 	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
 	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
-	for dx in [-1, 0, 1]:
-		for dy in [-1, 0, 1]:
+	for dx: int in [-1, 0, 1]:
+		for dy: int in [-1, 0, 1]:
 			var c: Vector2i = r.cell + Vector2i(dx, dy)
 			if c == r.cell or c == u.cell or not b.on_map(c) or b.unit_at(c):
 				continue
@@ -1468,7 +1475,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 			b.route(u, c, b.line(u.cell, c, u.luck, u), price)
 			var away := Vector2(u.cell).distance_to(Vector2(c))
 			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) + DREAD * _dread(stunners, c)
-			for o in reads:
+			for o: Unit in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:
 					v += WARY
@@ -1485,7 +1492,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary) -> Vector2
 # x the share of u's turn it takes if it does - what the skill's behaviours foresee (Battle.foresee() `afflicts`: Stun's save, a
 # grip), else CC for one that only carries the cc tag] - the best of each foe's skills, and none for a foe that is helpless, or that
 # u can't read the skills of. A unit already bearing a cc (Unit.afflicted()) fears one more less: the odds over 1 + what it bears.
-static func _stunners(b: Battle, u: Unit, reads: Dictionary) -> Array:
+static func _stunners(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> Array:
 	var out := []
 	if u.stopped():
 		return out
@@ -1495,7 +1502,7 @@ static func _stunners(b: Battle, u: Unit, reads: Dictionary) -> Array:
 		if not o.is_alive() or o.stopped() or not _foe(u, r):
 			continue
 		var best := [0.0, 0.0]
-		for s in r.skills:
+		for s: Skill in r.skills:
 			if not s.hostile or s.on_tile():
 				continue
 			var share: float = b.foresee(o, s, u).get("afflicts", 0.0)
@@ -1535,7 +1542,7 @@ static func _opening(t: Unit, c: Vector2i) -> int:
 # Energy only if it runs on Energy, a reserve only if it spends from it. After its strikes, so it never
 # costs it a blow.
 static func _replenish(b: Battle, u: Unit, log: Array[String]) -> void:
-	for s in u.actives.filter(func(x: Skill): return not x.hostile and not x.for_foes() and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return not x.hostile and not x.for_foes() and u.can_afford(x)):
 		var got := _restores(b, u, s, u)
 		for pool in got:
 			if pool != &"hp" and got[pool] > 0 and _low(u, pool) and b.cast(u, s, u):
@@ -1561,7 +1568,7 @@ static func _finish_switch(u: Unit, log: Array[String]) -> void:
 # Running on a reserve (Mana, Stamina) or Energy that can't pay for any skill worth its cost that it has -
 # a blow or a heal - while another it could run on could (_pays()), and nothing it can strike now: it
 # begins the switch (channeled: it holds the turn idle, and finishes next turn). True if it did.
-static func _switch(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _switch(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	if u.channel or _could_strike(b, u, reads):
 		return false
 	var worth := u.actives.filter(func(x: Skill): return u.price(x) > 0 and (x.for_foes() or _mends(b, u, x)))
@@ -1585,15 +1592,15 @@ static func _pays(u: Unit, pool: Variant, s: Skill) -> bool:
 
 
 # Whether it could strike a foe it reads from where it stands, with a skill it can pay for.
-static func _could_strike(b: Battle, u: Unit, reads: Dictionary) -> bool:
+static func _could_strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> bool:
 	Unit.begin_read()  # weighing only (see _steady())
 	var out := _striking(b, u, reads)
 	Unit.end_read()
 	return out
 
 
-static func _striking(b: Battle, u: Unit, reads: Dictionary) -> bool:
-	for s in u.foe_actives():
+static func _striking(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> bool:
+	for s: Skill in u.foe_actives():
 		for t: Unit in reads:
 			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
 				return true
@@ -1606,18 +1613,18 @@ static func _striking(b: Battle, u: Unit, reads: Dictionary) -> bool:
 # it now - only ranged attacks, none likelier than SHOT to hit - and a rest would give Focus enough to pay
 # for one it can't pay for from Focus now (and a Focus stat to add). Bounded: a rest or two fills it.
 # True if it rested.
-static func _steady(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _steady(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	Unit.begin_read()  # weighing only: each unit's effects are found once (Unit._effects())
 	var out := _steadying(b, u, reads, log)
 	Unit.end_read()
 	return out
 
 
-static func _steadying(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> bool:
+static func _steadying(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
 	if not u.idle():
 		return false
 	var weak := false
-	for s in u.foe_actives():
+	for s: Skill in u.foe_actives():
 		for t: Unit in reads:
 			if t.is_alive() and _foe(u, reads[t]) and b.in_reach(u, s, t) and b.can_afford(u, s, t):
 				if not u.ranged(s) or _chance(u, s, reads[t], b, t) >= SHOT:
@@ -1637,7 +1644,7 @@ static func _steadying(b: Battle, u: Unit, reads: Dictionary, log: Array[String]
 # About to advance on a foe, it casts a skill that lays tile marks (Behaviour.marks(): Warcry) that would
 # do something now, so its walk passes over them. True if it did.
 static func _rally(b: Battle, u: Unit, log: Array[String]) -> bool:
-	for s in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.marks(b, u)) and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.marks(b, u)) and u.can_afford(x)):
 		if b.cast(u, s, u):
 			log.append("%s uses %s" % [u.name, s.name])
 			return true
@@ -1661,7 +1668,7 @@ static func _stretch(b: Battle, u: Unit, t: Unit, log: Array[String]) -> bool:
 		return false  # it can walk into one's reach as it is
 	var best: Skill = null
 	var best_ap := INF
-	for s in u.actives.filter(func(x: Skill): return not x.hostile and x.self_only and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return not x.hostile and x.self_only and u.can_afford(x)):
 		var c := b.cast_of(u, s, u, u.rank(s), false)
 		var n := 0
 		for bh in s.behaviours:
@@ -1683,7 +1690,7 @@ static func _stretch(b: Battle, u: Unit, t: Unit, log: Array[String]) -> bool:
 static func _scry(b: Battle, u: Unit, log: Array[String]) -> bool:
 	if u.channel or (u.faction and not b.last_seen(u.faction).is_empty()):
 		return false
-	for s in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.senses()) and u.can_afford(x)):
+	for s: Skill in u.actives.filter(func(x: Skill): return x.behaviours.any(func(bh: Behaviour): return bh.senses()) and u.can_afford(x)):
 		if b.cast(u, s, u):
 			log.append("%s uses %s" % [u.name, s.name])
 			return true

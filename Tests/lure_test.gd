@@ -44,11 +44,11 @@ func test_lure() -> void:
 	stage(nemes, {siren(): Vector2i(8, 6), v(1): Vector2i(3, 6)})
 	var swings := []
 	b.attacked.connect(func(c: Unit, _t: Unit, _d: int, _x: int, _df: int): swings.append(c))
-	ok(AI._luring(b, siren(), {v(1): b.read(siren(), v(1))}), "fooled and far off: still luring")
+	ok(AI._luring(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1))})), "fooled and far off: still luring")
 	AI.act(b, siren())
 	ok(siren().cell == Vector2i(8, 6) and swings.is_empty() and v(1).cell == Vector2i(4, 6), "it stands still and sings, drawing the foe in")
 	b.move(v(1), Vector2i(8, 5))
-	ok(AI._luring(b, siren(), {v(1): b.read(siren(), v(1))}), "close by, still fooled: the calm holds")
+	ok(AI._luring(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1))})), "close by, still fooled: the calm holds")
 	var used := []
 	b.used.connect(func(_c: Unit, s: Skill, _at: Variant, _d: int): used.append(s.name))
 	siren().strength = 40  # sure to win the grapple
@@ -60,7 +60,7 @@ func test_lure() -> void:
 	ok("Rake" in used, "then raked with the AP left")
 	b.move(v(1), Vector2i(3, 6))
 	v(1).afflict(effect("recon", 3), 9)
-	ok(not AI._luring(b, siren(), {v(1): b.read(siren(), v(1))}), "unmasked: the calm breaks, and it fights as any unit would")
+	ok(not AI._luring(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1))})), "unmasked: the calm breaks, and it fights as any unit would")
 
 
 func test_drown() -> void:
@@ -133,7 +133,7 @@ func test_holds_on() -> void:
 		u.afflict(effect("recon", 5), 9)
 	siren().refresh()
 	var at := siren().cell
-	ok(not AI._luring(b, siren(), {v(1): b.read(siren(), v(1)), v(2): b.read(siren(), v(2))}) and AI._rooted(b, siren()), "unmasked, and holding v(1): rooted")
+	ok(not AI._luring(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1)), v(2): b.read(siren(), v(2))})) and AI._rooted(b, siren()), "unmasked, and holding v(1): rooted")
 	siren().learned.assign(siren().learned.filter(func(x: Slot): return x.skill.name != "Rake"))  # nothing to strike v(1) with
 	AI.act(b, siren())
 	ok(siren().cell == at and drown.effects[0] in v(1).timed, "it doesn't go after the foe far off: it keeps its hold")

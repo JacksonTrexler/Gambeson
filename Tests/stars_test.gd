@@ -109,7 +109,7 @@ func test_hunts() -> void:
 	stage(lancin, {v(1): Vector2i(6, 4)})
 	var s := spawn(starman, starmen, Vector2i(5, 4))
 	var p := spawn(load("res://Scenes/astral_princess.tscn"), stellar, Vector2i(5, 7))
-	var reads := {v(1): b.read(s, v(1)), p: b.read(s, p)}
+	var reads := AI.reads_from({v(1): b.read(s, v(1)), p: b.read(s, p)})
 	ok(AI._best_target(s, reads) == p, "the Princess first, though a villager is nearer")
 
 
