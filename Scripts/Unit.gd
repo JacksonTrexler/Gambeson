@@ -445,6 +445,7 @@ var respec: Dictionary[StringName, int] = {}  # how far each base stat has been 
 var over_max := 0  # HP it may hold past its max for now (a Red Spinel Ring past rank 10), gone once it drops to its max
 var slain_from := 0  # the HP it had as Death took it: what revival and die-hard effects go by (Battle._death())
 var disabled: Dictionary[Skill, int] = {}  # skills switched off (Brainfog) -> its turns left: they can't be used, and passives stop working
+var disabled_by: Dictionary[Skill, Skill] = {}  # of those, what switched each off, when it said (disable() `src`): the slot shows its mark and name
 var cursed: Dictionary[Skill, bool] = {}  # of those, the ones a curse switched off (Brainfog): their slots quiver
 var postponed: Dictionary[Skill, Array] = {}  # disablings held while it postpones them (the postpone stat: Coyote Charm) -> [turns, curse]: they land as it stops (release())
 var chant_gains := 0  # Sweet Nothing gains a Chant will add one to (Battle._chant())
@@ -3741,7 +3742,7 @@ func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
 # A curse's (Brainfog) slots quiver; others only dim. `by`: who disables it, if anyone. Its listeners
 # have their say first (disabling: Coyote Scepter lengthens it); while it postpones (the postpone stat:
 # Coyote Charm) the disabling is held, not counting down, and lands as that ends (release()).
-func disable(s: Skill, turns: int, curse := false, by: Unit = null) -> void:
+func disable(s: Skill, turns: int, curse := false, by: Unit = null, src: Skill = null) -> void:
 	if slot_cost(s) == 0:
 		return  # what it is can't be switched off (Starkind); only traits_suppressed() does
 	var d := {skills = pillars() if s.pillar() else [s] as Array[Skill], turns = turns, curse = curse, by = by}
@@ -3752,6 +3753,8 @@ func disable(s: Skill, turns: int, curse := false, by: Unit = null) -> void:
 			postponed[x] = [maxi(was[0], d.turns), was[1] or d.curse]
 			continue
 		disabled[x] = maxi(disabled.get(x, 0), d.turns)
+		if src:
+			disabled_by[x] = src
 		if d.curse:
 			cursed[x] = true
 
@@ -3844,6 +3847,7 @@ func tick() -> void:
 		disabled[s] -= 1
 		if disabled[s] <= 0:
 			disabled.erase(s)
+			disabled_by.erase(s)
 			cursed.erase(s)
 	var oc: Applied = timed.get(OVERCHARGE)
 	if oc and oc.turns <= oc.total:  # Overcharge: what's left / turns left, rounded up - none on a turn that doesn't count
@@ -3897,6 +3901,13 @@ func helpless() -> bool:
 # many skill uses a turn anyway; spent, it's stopped too. It can't act, move or take orders.
 func stopped() -> bool:
 	return helpless() and fury_acts >= roundi(stat(&"mindless"))
+
+
+# Disturbed (Effects/disturbed.tres, Disturbance; a trait may hold it with no end): it can't be commanded or
+# issue commands, and takes its turn on its own, by its behaviour, on whichever side it is. Read from the
+# disturbed stat, so any status, property or item may lend it (Command.could_order(), Command.idle(), HUD.autopilot()).
+func disturbed() -> bool:
+	return stat(&"disturbed") > 0.0
 
 
 # Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())

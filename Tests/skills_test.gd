@@ -143,5 +143,10 @@ func test_icon_ink_tints_placeholders_not_coloured_art() -> void:
 	var ink := Color(0.3, 0.6, 0.9, 0.5)
 	ok(not Skill.is_coloured(white) and Skill.icon_ink(white, ink, 0.4, 0.5) == ink, "a white placeholder takes the state's ink")
 	ok(Skill.is_coloured(art) and Skill.icon_ink(art, ink, 0.4, 0.5) == Color(0.4, 0.4, 0.4, 0.5), "coloured art is dimmed, not tinted")
+	var red := Color(0.8, 0.1, 0.1)
+	var m := Skill.mute(red, Skill.LOOK_DISABLED)
+	ok(is_equal_approx(m.s, red.s * 0.25) and is_equal_approx(m.v, 0.8 * 0.7) and is_equal_approx(m.h, red.h), "mute scales saturation and value, keeps hue")
+	var mt := Skill.muted_tex(art, Skill.LOOK_UNTOGGLED).get_image()
+	ok(absf(mt.get_pixel(2, 2).s - Skill.mute(red, Skill.LOOK_UNTOGGLED).s) < 0.02 and mt.get_pixel(1, 1).s < 0.01, "a muted texture is mute() per pixel")
 	ok(not Skill.is_coloured(load("res://Icons/Skills/sanctum.png")) and Skill.is_coloured(load("res://Icons/Skills/heal.png")), "the shipped icons sort as placeholder and art")
 

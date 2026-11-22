@@ -500,6 +500,59 @@ static func icon_ink(tex: Texture2D, ink: Color, dim: float = 1.0, alpha: float 
 	return Color(dim, dim, dim, alpha) if is_coloured(tex) else ink
 
 
+# Icon looks (the user, 2026-11-22): a colour's saturation and value are multiplied by these. Colour alone isn't the cue
+# (colourblind players): draw_icon() adds a slash for LOOK_DISABLED and a hollow ring for LOOK_UNTOGGLED.
+const LOOK_DISABLED := Vector2(0.25, 0.70)  # disabled, sealed, locked: 25% saturation, 70% brightness
+const LOOK_UNTOGGLED := Vector2(0.15, 0.85)  # a toggle that's off: 15% saturation, 85% brightness
+static var _muted := {}
+
+
+# c with its saturation and value scaled by look (x, y). The one place the colour maths lives.
+static func mute(c: Color, look: Vector2) -> Color:
+	return Color.from_hsv(c.h, c.s * look.x, c.v * look.y, c.a)
+
+
+# tex with every pixel mute()d: cached per texture and look.
+static func muted_tex(tex: Texture2D, look: Vector2) -> Texture2D:
+	var key := "%s|%s" % [tex.resource_path if tex.resource_path else str(tex.get_instance_id()), look]
+	if key not in _muted:
+		var img := tex.get_image()
+		if img == null:
+			return tex
+		img = img.duplicate()
+		img.convert(Image.FORMAT_RGBA8)
+		for y in img.get_height():
+			for x in img.get_width():
+				img.set_pixel(x, y, mute(img.get_pixel(x, y), look))
+		_muted[key] = ImageTexture.create_from_image(img)
+	return _muted[key]
+
+
+# Draws tex in rect: with a look, muted (coloured art by pixel, a placeholder's ink by colour) and marked with its cue;
+# opacity is the look's (full: dim and alpha only serve the plain icon); `badge`, a character, rides the bottom-right corner (a disabling's own mark: Skill.mark() of what disabled it).
+static func draw_icon(ci: CanvasItem, tex: Texture2D, rect: Rect2, ink: Color, dim := 1.0, alpha := 1.0, look := Vector2.ZERO, badge := "") -> void:
+	if look == Vector2.ZERO:
+		ci.draw_texture_rect(tex, rect, false, icon_ink(tex, ink, dim, alpha))
+		return
+	if is_coloured(tex):
+		ci.draw_texture_rect(muted_tex(tex, look), rect, false, Color.WHITE)
+	else:
+		ci.draw_texture_rect(tex, rect, false, Color(mute(ink, look), 1.0))
+	if look == LOOK_UNTOGGLED:
+		ci.draw_arc(rect.get_center(), minf(rect.size.x, rect.size.y) / 2.0 + 0.5, 0.0, TAU, 16, Color(1, 1, 1, 0.8), 1.0)
+	else:
+		var a := rect.position + rect.size * Vector2(0.12, 0.88)
+		var b := rect.position + rect.size * Vector2(0.88, 0.12)
+		ci.draw_line(a, b, Color(0, 0, 0, 0.75), 2.2)
+		ci.draw_line(a, b, Color(1, 1, 1, 0.85), 1.0)
+	if badge != "":
+		var at := rect.end - Vector2(1.5, 1.5)
+		var font := ThemeDB.fallback_font
+		ci.draw_circle(at, 2.8, Color(0.1, 0.05, 0.1, 0.9))
+		ci.draw_arc(at, 2.8, 0.0, TAU, 10, Color("#e8c547"), 0.8)
+		ci.draw_string(font, at + Vector2(-1.2, 1.4), badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 4, Color.WHITE)
+
+
 # Up to 2 characters for it on skill trees, its placeholder icon: its glyph, or its initials (a stub's
 # dashed edge says it isn't built).
 func mark() -> String:
