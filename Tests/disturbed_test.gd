@@ -63,14 +63,14 @@ func test_command_blocked() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 3)})
 	ok(c.can_order(v(2)) and c.can_join(v(2)), "before: v(2) takes orders and may join")
 	foe_disturbs()
-	ok(not c.can_order(v(2)) and not c.can_join(v(2)) and not Command.hears(v(1), v(2), 9), "Disturbed: no orders, no party, out of its leader's hearing")
-	c.order(v(2))
-	ok(v(2) in c.idle(), "even ordered, it acts on its own as the turn ends")
+	ok(not c.could_order(v(2)) and not c.can_join(v(2)) and not Command.hears(v(1), v(2), 9), "Disturbed: no orders, no party, out of its leader's hearing")
+	c.lock(v(2))
+	ok(v(2) in c.idle(), "even held, it acts on its own as the turn ends")
 	v(2).timed.clear()
 	c.new_turn()
-	ok(c.can_order(v(2)), "and orders again when it lifts")
+	ok(c.could_order(v(2)), "and orders again when it lifts")
 	v(1).afflict(effect("disturbed", 1), 9)
-	ok(not c.can_order(v(2)) and not c.can_join(v(2)) and not Command.hears(v(1), v(2), 9) and not c.can_order(v(1)), "a Disturbed leader commands no one, itself included")
+	ok(not c.could_order(v(2)) and not c.can_join(v(2)) and not Command.hears(v(1), v(2), 9) and not c.could_order(v(1)), "a Disturbed leader commands no one, itself included")
 
 
 func test_ai_takes_over() -> void:
@@ -78,7 +78,7 @@ func test_ai_takes_over() -> void:
 	v(2).wisdom = 10
 	b.move(v(2), Vector2i(6, 4))
 	var h := await hud(v(1))
-	ok(h.my_turn() and not h.command.can_order(v(2)), "the player's turn, but v(2) isn't theirs to command")
+	ok(h.my_turn() and not h.command.could_order(v(2)), "the player's turn, but v(2) isn't theirs to command")
 	var was := v(3).hp
 	var ap := v(2).ap_left()
 	h.end_turn()

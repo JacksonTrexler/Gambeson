@@ -2,7 +2,7 @@ extends Behaviour
 
 # Disturbance: the target makes a wisdom check at a difficulty set by what it is - unfair (very difficult)
 # for anyone, easy for a leader (Battle.leads(): the player, or a unit with a party). Failing, it is
-# Disturbed (Effects/disturbed.tres, Unit.disturbed()) for the skill's rank in turns: it can't be
+# Disturbed (Effects/disturbed.tres, Unit.disturbed()) for its rank (impact) in turns: it can't be
 # commanded or give commands, and acts alone by its own behaviour. No attack roll. Its rank is rank impact.
 
 const DISTURBED: Effect = preload("res://Effects/disturbed.tres")
@@ -37,7 +37,7 @@ func apply(c: Cast) -> void:
 	b.contested.emit(c.caster, t, bar, roll.mine.total + 1)  # the caster wins on the target's missing it: a tie is a pass
 	if roll.won:
 		return
-	c.put(DISTURBED, c.skill.lasts(c.rank, c.caster))
+	c.put(DISTURBED, c.impact_rank())
 
 
 func impact() -> StringName:
