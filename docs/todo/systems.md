@@ -1536,9 +1536,28 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Not weighed:** the striker's Energy/AP cost, `_line_up`, `_retreat`.
     - **Digest and sims:** no Siren in either sim, so digest 3296533323 and `ai_sim` output are unchanged. **Test:** `test_approach_weighs_opportunist`, mutation caught. No visual check.
     - **New names to review:** none.
-- [ ] **AI turn cost: ~150 ms at M3 x 4 against 100:** the warm-read floor (~100 us, 29K reads a fight), `_chain`, actives held, `can_afford` under noise; the untaken speedups only with a test proving what units see is unchanged. (?250)
-- [ ] **Opportunist in the AI: weigh the striker's Energy/AP cost, `_line_up` and `_retreat`.** (?252)
+- [x] **AI turn cost: ~150 ms at M3 x 4 against 100:** built in part (?254), now ~132 ms, still over; open item below. Was: the warm-read floor, `_chain`, actives held, `can_afford` under noise. (?250)
+- [x] **Opportunist in the AI: weigh the striker's Energy/AP cost, `_line_up` and `_retreat`:** built (?253). (?252)
 - [ ] **`AI.STRUCK` 0.5 tiles per HP is a guess.** Needs the user. (?252)
+
+## Wave 12 (2026-11-22): the AI prices Opportunist's cost; AI turn cost, the warm read
+
+253. **The AI prices a striker's cost and weighs the blow in `_line_up` and `_retreat` - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w12-oppcost.md`. Calls:
+    - **`_struck` counts a striker only if `holder.funding(skill, price_cut)` is non-null.** AP is not asked: the reaction is a free interrupt (`INTERRUPT_AP` 99).
+    - **`_strikers(b, u, at, within, reads)` takes a centre and a radius,** shared by all three planners: `_approach` (t.cell, 2); `_line_up` and `_retreat` (u.cell, ceil(move_left) + 1). `_struck` is never called when there are no strikers.
+    - **`_line_up` subtracts the struck HP from each tile's worth,** not scaled by `STRUCK` (that is `_approach`'s unit); **`_retreat` adds it to the `_shoved` term** (the first key term).
+    - **Not done:** flee and other walks, `route()` pricing, Energy shared across several strikers.
+    - **Digest 3296533323 unchanged; the unit turn no slower.** **Test:** `test_approach_weighs_opportunist` extended with a Siren (out of Energy by setting Rake's cost to 3 and restoring: Rake is free as shipped); 3 mutations caught.
+    - **New names to review:** none.
+254. **AI turn cost, the warm read - built on judgement, open for review (2026-11-22).** Plan: `docs/plans/w12-warm.md`. Unit turn 37.5 to 33.1 ms (-12%), `end_turn` 57 to 52, warm read 144 to 96 us; **at M3 x 4 the unit turn is ~132 ms against 100: STILL OVER.** Calls:
+    - **Built:** `has_tag` and `emblems` as loops (tag checked before `equipped()`); `restless()` asks the held `disturbed` stat first inside a stretch; new `Unit.lends(s)` per stretch, and `Perception._seem` skips an ally unless it lends `brood`. `lends` is a per-stretch superset scan of what `_gather_effects` draws on, so a false answer is exact (no hp in its key).
+    - **Dropped as under noise or unprovable:** a per-stretch `stat()` memo, the `_on_passives` loop, `lends`-gating trickery / concealment / nullify, a `candid` rewrite, `members(Faction)` in one loop, read dedup (only 87 of 29K reads repeat).
+    - **Left alone (each <= 2%):** `_chain`, actives, `can_afford`, `in_range`, `Read.new()`, `mod()`, `armor_defense`.
+    - **Digest 3296533323 unchanged** (still the unconfirmed working reference), `ai_sim` diff empty. **Test:** `test_warm_read_answers_as_before` (+88 checks); 5 mutations caught.
+    - **New names to review:** none.
+    - **The gap is spread thin:** a further turn-cost card is likely not worth queuing unless you want to push the budget.
+- [ ] **Opportunist in the AI: flee and the other walks, `route()` pricing, Energy shared across several strikers.** (?253)
+- [ ] **AI turn cost: ~132 ms at M3 x 4 against 100.** Needs the user: accept it, raise the 100 ms budget, or a bigger design change such as fewer per-unit reads. (?254)
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 

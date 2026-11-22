@@ -220,6 +220,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | AI turn cost, the cast (?250) | `ai_tactics_test.gd` |
 | — | Icon check without the import cache (?251) | `tooling_test.gd` |
 | — | The AI weighs Opportunist (?252) | `ai_tactics_test.gd` |
+| — | The AI prices Opportunist's cost, `_line_up`, `_retreat` (?253) | `ai_tactics_test.gd` |
+| — | AI turn cost, the warm read (?254) | `ai_tactics_test.gd` |
 
 ## Questions to answer first
 

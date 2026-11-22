@@ -316,3 +316,5 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **AI turn cost, the cast** (`react()` by the `reaction` tag, held rank, one-stretch `_hunt`/`_look_harder`/cover): plan `docs/plans/w11-cast.md`. `ai_tactics_test.test_cast_cost_answers_as_before`. (?250)
 - [x] **Icon check without the import cache** (`tooling_test.test_icons`): plan `docs/plans/w11-icons.md`. (?251, closes ?249)
 - [x] **The AI weighs Opportunist** (`Behaviour.strikes`, `AI._strikers`, `AI._struck`, `STRUCK`): plan `docs/plans/w11-oppai.md`. `ai_tactics_test.test_approach_weighs_opportunist`. (?252)
+- [x] **The AI prices Opportunist's cost and weighs it in `_line_up` and `_retreat`** (`AI._strikers` with a centre and radius, `_struck` funds the skill): plan `docs/plans/w12-oppcost.md`. `ai_tactics_test.test_approach_weighs_opportunist` (a Siren). (?253)
+- [x] **AI turn cost, the warm read** (`has_tag`, `emblems`, `restless()`, `Unit.lends`, `Perception._seem`): plan `docs/plans/w12-warm.md`. `ai_tactics_test.test_warm_read_answers_as_before`. (?254)
