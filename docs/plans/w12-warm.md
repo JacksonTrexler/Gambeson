@@ -23,3 +23,12 @@ Test: `ai_tactics_test.test_warm_read_answers_as_before` (has_tag vs the old lon
 - `may_lend` gates on `trickery`, `concealment` (`_levels`), `nullify` (`_left`): bench 94 -> 90 us a read, sim 32.6 vs 32.3: noise.
 - Read dedup within a stretch: 87 of 29K reads repeat (epoch, o, t, cells); nothing to cache.
 - Not touched (under noise or no exact precondition): `_chain`, `actives` held, `can_afford` (0.19 ms x 1023 = 2%), `Read.new()` (5 us, 54 fields), `mod()` (4.7 us: scaling 2.2 + `reduced()` 2.4), `armor_defense` (17.8K builds a fight, Behaviours/armor.gd), `synergized` loop, `_dim`'s two mods.
+- Also tried, no gain: `Battle.members(Faction)` as one loop (7.0 -> 5.9 us; sim 32.5 vs 32.3). `in_range` (16 us a foe read, 15 members x wisdom) left: any exact shortcut is a float-edge risk.
+
+## Final (15v15 n=2, back-to-back A/B x3, M3; base = 5e61ef1)
+| | before mean / p95 | after mean / p95 |
+|---|---|---|
+| unit turn ms | 37.0, 37.4, 38.0 / ~62 | 32.4, 33.1, 33.9 / ~57 |
+| end_turn ms | 56.5-58.0 | 50.7-53.0 |
+Unit turn -12% (37.5 -> 33.1). At M3 x 4: ~132 ms against 100 (still OVER; was ~150). Warm read in the bench (mixed allies and foes): 144 -> 96 us.
+Digest 3296533323 unchanged (every run); ai_sim 26 SIM lines identical to base. Suite 10881 -> 10969 checks (+88: the new test), 0 failed, 1031 -> 1032 tests. skill.py check ok; launch log clean (only "8 resources still in use").
