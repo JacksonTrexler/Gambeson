@@ -753,3 +753,25 @@ func test_cast_cost_answers_as_before() -> void:
 				if st.contains("res://Behaviours/" + p) and not st.contains("&\"reaction\""):
 					untagged.append(f)
 	ok(untagged.is_empty(), "skills whose behaviour reacts carry the reaction tag, or react() never asks them: %s" % [untagged])
+
+
+# A foe's Opportunist (Behaviour.strikes(): its first active at a walker that ends beside it) is priced into a walk (AI._struck(): the
+# expected blow x STRUCK, tiles of walking), as _approach() plans it: with the Siren read, it closes on its target from a tile her first active doesn't reach.
+func test_approach_weighs_opportunist() -> void:
+	var siren: Unit = b.get_node("Units/Siren")
+	stage(lancin, {siren: Vector2i(6, 5), v(1): Vector2i(6, 7), v(3): Vector2i(6, 3)})
+	siren.faction = nemes
+	siren.strength = 40
+	siren.refresh()
+	soak(v(1), 500)
+	sharp(v(1))
+	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), siren: b.read(v(1), siren)})
+	var strikers := AI._strikers(b, v(1), v(3), reads)
+	ok(strikers.size() == 1 and strikers[0][0] == siren, "the Siren's Opportunist is read (%s)" % [strikers.size()])
+	var near := Vector2i(6, 4)
+	ok(AI._struck(b, v(1), near, strikers) > 0.0 and AI._struck(b, v(1), Vector2i(6, 2), strikers) == 0.0 and v(1).cell == Vector2i(6, 7), "a tile beside her costs the blow; one out of her reach, nothing; the walker is left where it was")
+	var plain := AI._approach(b, v(1), v(3), AI.reads_from({v(3): reads[v(3)]}))
+	var wary := AI._approach(b, v(1), v(3), reads)
+	ok(AI._struck(b, v(1), plain, strikers) > 0.0 and AI._struck(b, v(1), wary, strikers) == 0.0 and Command.tiles(wary, v(3).cell) == 1, "it closes from a side she can't strike: %s, not %s" % [wary, plain])
+	siren.faction = lancin
+	ok(AI._strikers(b, v(1), v(3), AI.reads_from({v(3): reads[v(3)], siren: b.read(v(1), siren)})).is_empty(), "an ally's reaction is none to weigh")

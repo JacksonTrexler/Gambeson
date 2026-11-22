@@ -71,6 +71,7 @@ const BLOCKS := 3  # the blows a plate is taken to block before its holder rests
 const BLOW := 5.0  # what a foe's best blow is taken to do to it when it can't make out the foe's skills (Read.skills): a 3 AP, 1d6 + 2 strike (_afflicting())
 const ATTACK_STATS: Array[StringName] = [&"strength", &"dexterity", &"intelligence", &"wisdom", &"charisma"]  # what a foe's blows scale on, for a guess at them from its stats (_threat())
 const DELAY := 0.5  # the share of a disable's worth left it when its target postpones disablings (the postpone stat: Coyote Charm): it lands as the postpone ends, and one more held adds less (_held()); a guess
+const STRUCK := 0.5  # what an HP of a blow a foe's reaction strikes it with on ending a walk beside it costs, in tiles of walking (_struck())
 const DREAD := 4.0  # what a cc certain to land costs a tile it would end a turn on, in tiles of walking (_approach(), _retreat(): _dread()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
 
@@ -1512,6 +1513,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 	var best_cost := INF
 	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
 	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
+	var strikers := _strikers(b, u, t, reads)
 	for dx: int in [-1, 0, 1]:
 		for dy: int in [-1, 0, 1]:
 			var c: Vector2i = r.cell + Vector2i(dx, dy)
@@ -1520,7 +1522,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 			var price := {&"wary": true}  # it weighs what it only suspects, too
 			b.route(u, c, b.line(u.cell, c, u.luck, u), price)
 			var away := Vector2(u.cell).distance_to(Vector2(c))
-			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) + DREAD * _dread(stunners, c)
+			var v: float = price.cost + (away - maxf(absf(c.x - u.cell.x), absf(c.y - u.cell.y))) + (0.5 if dx and dy else 0.0) - FLANKING * _opening(t, c) + DREAD * _dread(stunners, c) + (STRUCK * _struck(b, u, c, strikers) if not strikers.is_empty() else 0.0)
 			for o: Unit in reads:
 				var ro: Read = reads[o]
 				if ro.attitude(u) == &"avoid" and ro.located() and Command.tiles(ro.cell, c) <= 1 and u.temper() not in BOLD:
@@ -1531,6 +1533,41 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 	Unit.end_read()
 	b.rng.state = state
 	return best
+
+
+# The foes near enough to t that a walk to a tile beside t could end beside them, with a reaction of theirs it makes out (Read.skills,
+# Read.kit) that strikes a walker ending beside them (Behaviour.strikes(): Opportunist): [holder, behaviour, rank, slot skill]. Usually none.
+static func _strikers(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]) -> Array:
+	var out := []
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if o == u or Command.tiles(o.cell, t.cell) > 2 or not o.is_alive() or not o.reacts() or not _foe(u, r) or not r.located():
+			continue
+		for x in Battle.reactions_of(o, Battle.REACTION):
+			if x.skill in r.skills or x.skill in r.kit:
+				for bh in x.skill.behaviours:
+					out.append([o, bh, x.rank, x.skill])
+	return out
+
+
+# The HP the strikers' blows would take off u on ending its walk at c (a tile beside them), as it reads them: the expected blow
+# of each skill Behaviour.strikes() names (damage x hit chance), never more than u has left.
+static func _struck(b: Battle, u: Unit, c: Vector2i, strikers: Array) -> float:
+	var hp := 0.0
+	for f in strikers:
+		if not Battle.next_to(f[0].cell, c):
+			continue
+		var r := Behaviour.Reaction.new()
+		r.battle = b
+		r.trigger = &"beside"
+		r.subject = u
+		r.by = u
+		r.skill = f[3]
+		var worth: Variant = b.standing(u, c, func():
+			var s: Skill = f[1].strikes(r, f[0], f[2])
+			return float(Battle.damage_range(f[0], s, u, b).get("avg", 0.0)) * Battle.hit_chance(f[0], s, u, b) if s != null and s.attacks() else 0.0)
+		hp += worth if worth != null else 0.0
+	return minf(hp, float(u.hp))
 
 
 # The foes whose cc is likely to land on u, as it reads them (Read.skills: the ones it makes out), for _dread(): [foe, the

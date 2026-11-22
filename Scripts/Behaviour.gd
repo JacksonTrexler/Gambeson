@@ -228,6 +228,12 @@ func foresee(_c: Cast) -> Dictionary:
 	return {}
 
 
+# The skill the holder would use at once on r's subject if it ended its walk beside it (r.trigger &"beside": Opportunist),
+# or null. The AI prices the blow into a walk it plans (AI._struck()). Pure.
+func strikes(_r: Reaction, _holder: Unit, _rank: int) -> Skill:
+	return null
+
+
 # What the holder's reaction (r: the moment, as foils() has it) would cost the blow's author in HP, expected
 # and on top of what foils() takes off the blow (Final Act's free action, taken against whoever finished it).
 # The AI takes it off the blow's worth (AI._reprisal()), never below what FOILED leaves. Pure.

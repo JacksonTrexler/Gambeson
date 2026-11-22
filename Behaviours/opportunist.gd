@@ -7,8 +7,8 @@ extends Behaviour
 # doing but the one who did it, so it does not count (only travel() fires it).
 
 
-func react(r: Reaction, holder: Unit, _rank: int) -> bool:
-	var s := target_skill(r, holder)
+func react(r: Reaction, holder: Unit, rank: int) -> bool:
+	var s := strikes(r, holder, rank)
 	if s == null:
 		return false
 	r.battle.grant_interrupt(holder, 1, {s: holder.rank(s)}, {}, r.subject)
@@ -17,7 +17,7 @@ func react(r: Reaction, holder: Unit, _rank: int) -> bool:
 
 # The skill it would use on r's walker, or null: the walker is an enemy beside it, and its first active is
 # hostile and reaches it. (Whom it happens to is a foe for the holder, whatever either reads the other as.)
-static func target_skill(r: Reaction, holder: Unit) -> Skill:
+func strikes(r: Reaction, holder: Unit, _rank: int) -> Skill:
 	if r.trigger != &"beside" or r.subject == holder or not r.subject.is_alive() or holder.actives.is_empty():
 		return null
 	if Faction.friends(holder.faction, r.subject.faction) or not Battle.next_to(holder.cell, r.subject.cell):
