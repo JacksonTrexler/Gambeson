@@ -393,6 +393,7 @@ var alias := ""  # the name its persona goes by (rank 3), picked from its pools 
 var alias_face := ""  # the stand-in sprite of that name's noun: ";)"
 var alias_noun := ""  # that name's noun: "Lady"
 var follows: Unit  # the leader whose party it's in (Command.join())
+var raised_by: Unit  # who summoned it (Behaviours/summon_per_rank.gd: the soft cap counts a summoner's own)
 var suspicion := {}  # stacks against the units (and tiles: Vector2i) it's grown suspicious of: each sees through a rank of their trickery and concealment (Battle.suspect())
 var noticed := {}  # tiles where it has inspected something suspicious (Battle._first_look())
 var assumed := {}  # units that vanished before its eyes -> the side they seemed to be of: it goes on taking them for that (Battle._vanish(), Perception)
@@ -3905,6 +3906,12 @@ func stopped() -> bool:
 # disturbed stat, so any status, property or item may lend it (Command.could_order(), Command.idle(), HUD.autopilot()).
 func disturbed() -> bool:
 	return stat(&"disturbed") > 0.0
+
+
+# Restless Dead ??: undead and Disturbed, from any source of either. It attacks the nearest living unit it sees
+# (AI._restless(), Read.dead_eye), its own side first on ties; losing Disturbed lays it to rest (Scripts/Undead.gd).
+func restless() -> bool:
+	return disturbed() and has_tag(&"undead")
 
 
 # Whether it still has its reactions: it can dodge (Battle.evade()), guard behind a shield (guarding())

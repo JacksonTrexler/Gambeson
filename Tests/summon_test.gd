@@ -38,12 +38,13 @@ func test_summon_per_rank() -> void:
 	ok(raised[1].ap_left() > 0.0, "next turn it has its AP")
 
 
-# The AI raises a host (AI._summon(), priced by Behaviour.bodies()): with a foe in sight and room on its side,
-# near itself toward the foe; not with no foe in sight, nor with its side full.
+# The AI raises a host (AI._summon(), priced by Behaviour.bodies()): with a foe in sight and room under its soft cap,
+# near itself toward the foe; not with no foe in sight, nor with its hand full.
 func test_ai_raises_host() -> void:
 	var caster := v(1)
 	caster.learned.append(slot(skeleton, 1))
 	roomy(caster)
+	caster.intelligence = 14  # soft cap 1 + 2: room for a cast's two
 	caster.ap[0].amount = 99.0
 	stage(lancin, {caster: Vector2i(4, 3), v(3): Vector2i(30, 3)})
 	var log: Array[String] = []
@@ -55,8 +56,10 @@ func test_ai_raises_host() -> void:
 	var raised := b.members(lancin).filter(func(u: Unit): return &"undead" in u.tags)
 	ok(raised.size() == 2 and b.members(lancin).size() == before + 2, "rank I: two bodies")
 	ok(raised.all(func(u: Unit): return Command.tiles(u.cell, Vector2i(10, 3)) < Command.tiles(caster.cell, Vector2i(10, 3))), "on tiles toward the foe")
-	var cap := AI.SUMMON_CAP
-	while b.members(lancin).size() < cap:
-		b.summon(load("res://Scenes/skeleton.tscn"), lancin, Vector2i(5, 5))
+	var cap: int = skeleton.behaviours[0].cap(b.cast_of(caster, skeleton, null, 1, true))
+	while raised.size() < cap:  # its own in hand up to the soft cap (rank + int mod)
+		var more := b.summon(load("res://Scenes/skeleton.tscn"), lancin, Vector2i(5, 5))
+		more.raised_by = caster
+		raised.append(more)
 	caster.ap[0].amount = 99.0
-	ok(not AI._summon(b, caster, reads, log), "its side full: no more")
+	ok(not AI._summon(b, caster, reads, log), "its hand full (the soft cap, %d): no more" % cap)

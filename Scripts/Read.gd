@@ -62,6 +62,9 @@ var effects: Array[Effect] = []  # unit: timed effects on it (3); tile: on whoev
 var suspects := {}  # unit: the units it's grown suspicious of -> stacks (3)
 var afflicts: Array[Effect] = []  # tile: put on whoever steps there (0)
 var at_end: Array[Effect] = []  # tile: put on whoever ends its turn there (0)
+var dead_eye := false  # the observer is Restless Dead (Unit.restless()): every living thing it makes out is its foe (attitude())
+var kin := false  # dead_eye: the dead know their own - it is undead, however little else the observer makes out
+var restless := false  # unit: Restless Dead, and this observer has noticed it turn (Scripts/Undead.gd): its foe, whatever its side
 var marks: Array = []  # tile: the Battle.Marks laid on it that this observer knows of (Battle.lay_mark(): told, plainly visible, or read well enough)
 
 
@@ -70,6 +73,10 @@ var marks: Array = []  # tile: the Battle.Marks laid on it that this observer kn
 func attitude(o: Unit) -> StringName:
 	if faction == null:
 		return &""
+	if dead_eye:  # Restless Dead: the living are prey, the dead (its own kind, or what a persona claims it is) left be
+		return &"ally" if kin or &"undead" in tags else &"foe"
+	if restless:
+		return &"foe"
 	if stance == &"passive":
 		return &"ignore"
 	if Faction.friends(faction, o.faction):
