@@ -8,6 +8,7 @@ extends Test
 
 var skeleton: Skill = load("res://Skills/skeleton.tres")
 var bones: PackedScene = load("res://Scenes/skeleton.tscn")
+const RESTLESS_CHIP := "Restless Dead ??"
 const Undead := preload("res://Scripts/Undead.gd")
 
 
@@ -61,9 +62,23 @@ func test_noticing() -> void:
 	ok(b.cast(s, strike, v(3)), "it acts in view")
 	ok(b.read(v(1), s).attitude(v(1)) == &"foe" and b.read(v(2), s).attitude(v(2)) == &"ally", "the ally who passed takes it for a foe; the one who failed doesn't")
 	ok(not b.teammates(v(1), s), "nor for a teammate")
+	var h := await hud(v(1))
+	ok(RESTLESS_CHIP in h._info(s).chips.map(func(c): return c[0]), "its card names it: Restless Dead ?? (as v(1) has noticed it)")
+	ok(not (RESTLESS_CHIP in h._info(v(2)).chips.map(func(c): return c[0])), "and no one else")
+	h.free()
 	ok(Difficulty.dc(Undead.NOTICE) == Difficulty.dc(&"moderate low"), "medium easy: approachable")
 	var calm_ally := v(1)
 	ok(Command.cognizant_first([s, calm_ally, v(2)] as Array[Unit]) == ([calm_ally, v(2), s] as Array[Unit]), "a side acts with its Disturbed last")
+
+
+# A walk is seen as a cast is (Battle.travel() settles): no skill used.
+func test_noticing_a_walk() -> void:
+	var s := ring()[0]
+	v(1).wisdom = 50
+	b.move(v(3), Vector2i(12, 3))
+	restless(s)
+	s.refresh()
+	ok(b.travel(s, Vector2i(6, 3)).size() > 0 and b.read(v(1), s).attitude(v(1)) == &"foe", "an ally who sees it walk takes it for a foe")
 
 
 func test_laid_to_rest() -> void:

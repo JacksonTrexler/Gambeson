@@ -3380,6 +3380,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 			spring(u.cell, u)
 		if u.is_alive():
 			_first_look(u)
+			UNDEAD.settle(self, u)  # Restless Dead ?? seen walking, as a cast is
 	return passed
 
 

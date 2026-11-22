@@ -5,7 +5,7 @@ extends RefCounted
 # is over and as a side's turn ends (after its statuses tick):
 # - a unit newly restless joins the list; one on it that has lost Disturbed (dispelled, expired) while still
 #   undead is laid to rest: an instant death (Unit.slay());
-# - a restless caster that just acted is seen doing it: each awake ally of its side that makes it out (located,
+# - a restless unit that just acted (a cast, or a walk: Battle.travel()) is seen doing it: each awake ally of its side that makes it out (located,
 #   in sight) and hasn't yet noticed makes a wisdom check (tagged inquire, as Battle.doubt()) against
 #   NOTICE ("medium easy"); passing, it takes the unit for a foe from then on (Read.restless, through Battle._read()).
 # Its AI is AI._restless(); a side acts with its Disturbed last (Command.cognizant_first()).

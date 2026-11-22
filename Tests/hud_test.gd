@@ -169,6 +169,7 @@ func test_what_shows() -> void:
 	var info := h._info(siren)
 	ok(info.chips[0][0] == "Friendly" and info.name != "Siren", "the Siren's persona: it shows as a friend, not by name")
 	ok(not ("Siren" in h._tag(siren)), "nor does the log give it away")
+	ok("something extremely beneficial" in info.note.to_lower(), "and what it claims to be doing for you shows on the card (shows_boon)")
 	ok(info.name == siren.alias and info.face == siren.alias_face and siren.alias in h._tag(siren), "its card and the log use its made-up name (%s)" % siren.alias)
 	h.card.set_info(info)
 	ok(h.card.face.text == siren.alias_face and h.card.portrait.texture == null, "its card shows the stand-in sprite (%s)" % siren.alias_face)
