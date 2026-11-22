@@ -654,3 +654,30 @@ func test_planning_holds_and_bounds() -> void:
 	ok(not all.is_empty(), "the trap and what hides are suspicious")
 	for reach in [3, 4, 5]:  # the trap is 4 tiles off
 		ok(b.suspicious(u, {}, u.cell, reach) == all.filter(func(c: Vector2i): return Command.tiles(u.cell, c) <= reach), "bounded to %d tiles is the list cut there" % reach)
+
+
+# What a read asks of a unit again and again is found once a stretch (Unit.begin_read()): its kit, plain Defense, working passives
+# (mod() asks them every time) and core stats. In a stretch they equal the plain answers, a reader's change to the copy it got
+# doesn't reach the next reader, and a fresh stretch finds a change (a disabled passive, a Defense effect).
+func test_stretch_holds_what_a_read_asks() -> void:
+	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
+	var u := roomy(v(1))
+	var bracing: Skill = load("res://Skills/agility_bracing.tres")
+	u.learned.append(slot(bracing))
+	u._arrange()
+	var kit := u.kit
+	var defense := u.defense()
+	var core := u.core_stats()
+	ok(bracing in u.passives and bracing in kit, "the passive works and is in its kit")
+	Unit.begin_read()
+	ok(u.kit == kit and u.defense() == defense and u.core_stats() == core and u.on_passives == u._on_passives(), "in a stretch the held answers are the plain ones")
+	u.kit.append(null)
+	u.on_passives.clear()
+	u.core_stats()[&"strength"] = 99.0
+	ok(u.kit == kit and not u.on_passives.is_empty() and u.core_stats() == core, "a reader changing its copy leaves the next reader's")
+	Unit.end_read()
+	u.disable(bracing, 3)
+	u.afflict(effect("defense", 3), 3)
+	Unit.begin_read()
+	ok(bracing not in u.passives and bracing in u.kit and u.defense() == defense + 3, "a fresh stretch finds a disabled passive (still in the kit) and a Defense effect (%d vs %d)" % [u.defense(), defense])
+	Unit.end_read()
