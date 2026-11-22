@@ -9,6 +9,7 @@
 [ext_resource type="Resource" path="res://Skills/drown.tres" id="8_drown"]
 [ext_resource type="Resource" path="res://Skills/sing.tres" id="7_sing"]
 [ext_resource type="Resource" path="res://Skills/seaborn.tres" id="10_seaborn"]
+[ext_resource type="Resource" path="res://Skills/opportunist.tres" id="11_opportunist"]
 [ext_resource type="Script" path="res://Scripts/Slot.gd" id="9_slot"]
 
 [sub_resource type="Resource" id="Slot_oceanic"]
@@ -46,6 +47,11 @@ script = ExtResource("9_slot")
 skill = ExtResource("10_seaborn")
 rank = 1
 
+[sub_resource type="Resource" id="Slot_opportunist"]
+script = ExtResource("9_slot")
+skill = ExtResource("11_opportunist")
+rank = 1
+
 [node name="Siren" instance=ExtResource("1_unit")]
 extra_slots = 1
 look = ExtResource("2_look")
@@ -53,7 +59,7 @@ tags = Array[StringName]([&"monster", &"siren"])
 vibe = "Briny, hungry"
 aura = -2
 behaviour = &"lure"
-innate = Array[ExtResource("9_slot")]([SubResource("Slot_alluring"), SubResource("Slot_seaborn")])
+innate = Array[ExtResource("9_slot")]([SubResource("Slot_alluring"), SubResource("Slot_seaborn"), SubResource("Slot_opportunist")])
 learned = Array[ExtResource("9_slot")]([SubResource("Slot_rake"), SubResource("Slot_drown"), SubResource("Slot_sing"), SubResource("Slot_oceanic"), SubResource("Slot_tone")])
 max_hp = 16
 strength = 12

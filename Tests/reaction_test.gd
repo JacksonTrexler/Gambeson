@@ -239,3 +239,56 @@ func test_area_interject() -> void:
 	b.reacted.connect(func(u: Unit, s: Skill, _r): got.append([u, s]))
 	b.cast_at(v(3), solar, Vector2i(3, 3))
 	ok([v(2), interject] in got, "Interject answers an area hit on the ally beside it (%s)" % [got.size()])
+
+
+# The &"beside" moment (Battle.travel(): a walk that ends next to another unit): asked of everyone, by a walk and
+# nothing else (a push or a teleport through move() is no one's walk), not when it ends alone.
+func test_beside() -> void:
+	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(6, 3), v(3): Vector2i(8, 3)})
+	var e := Echo.new()
+	e.answer = false
+	echo(v(2), e)
+	b.travel(v(1), Vector2i(3, 3))
+	ok(e.heard.is_empty(), "a walk ending alone is no moment")
+	b.travel(v(1), Vector2i(5, 3))
+	ok(e.heard == [[&"beside", v(2), v(1), v(1)]], "ending beside v(2): it's asked, the walker its subject and doing (%s)" % [e.heard])
+	e.heard.clear()
+	b.move(v(1), Vector2i(7, 4))
+	ok(e.heard.is_empty(), "moved by other means: not a walk")
+
+
+# Opportunist (the Siren's innate trait): an enemy that ends its walk beside it takes its first active at once, a free
+# action nobody picks (grant_interrupt's `aim`): no AP, no interrupt left open; allies, a walk ending out of reach, and
+# a first active that isn't hostile get nothing.
+func test_opportunist() -> void:
+	var siren: Unit = b.get_node("Units/Siren")
+	var opp := sk("opportunist")
+	var rake := sk("rake")
+	stage(lancin, {siren: Vector2i(6, 3), v(1): Vector2i(1, 3), v(2): Vector2i(1, 5), v(3): Vector2i(9, 9)})
+	siren.faction = nemes
+	siren.strength = 40  # it hits
+	siren.refresh()
+	soak(v(1))
+	soak(v(2))
+	ok(siren.on_passives.any(func(x: Slot): return x.skill == opp) and siren.actives[0] == rake, "the Siren has it, and Rake first")
+	var used := []
+	b.used.connect(func(c: Unit, s: Skill, at, _d): used.append([c, s, at]))
+	var ap := siren.ap_left()
+	var seen := []
+	b.interrupt_began.connect(func(u: Unit): seen.append(u))
+	b.travel(v(1), Vector2i(4, 3))
+	ok(used.is_empty(), "two tiles off: nothing")
+	b.travel(v(1), Vector2i(5, 3))
+	ok(used == [[siren, rake, v(1)]] and seen == [siren] and b.interrupter == null, "it walks up: Rake, out of turn, then over (%s)" % [used])
+	ok(v(1).hp < 999 and is_equal_approx(siren.ap_left(), ap), "it hurt, for free (%d HP, AP %s of %s)" % [v(1).hp, siren.ap_left(), ap])
+	ok(b.turn == lancin and b.travel(v(1), Vector2i(5, 4)).size() == 1, "its own turn goes on")
+	used.clear()
+	siren.faction = lancin
+	b.travel(v(2), Vector2i(5, 4))
+	ok(used.is_empty(), "an ally's walk beside it is nothing to it")
+	siren.faction = nemes
+	siren.learned.insert(0, slot(sk("heal")))
+	roomy(siren)
+	siren.refresh()
+	b.travel(v(2), Vector2i(5, 2))
+	ok(siren.actives[0].name == "Heal" and used.is_empty(), "first active not hostile: nothing (%s, %s)" % [siren.actives.map(func(x: Skill): return x.name), used])
