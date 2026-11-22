@@ -205,6 +205,9 @@ static func fools(b: Battle, o: Unit, a: Unit) -> bool:
 	return (trick > 0 and trick >= o.stat(&"recon", sizing(a))) or fronts_to(o, a) or conspires_with(o, a)
 
 
+const UNFRONTED := {&"strength": 1.0, &"dexterity": 1.0, &"constitution": 1.0, &"intelligence": 1.0, &"wisdom": 1.0, &"charisma": 1.0}  # _seem()'s factors when nothing fronts or broods (Unit.CORE's first six); never changed
+
+
 # How t's stats seem to o (Read.stats): its own fronts if it fools o (Embellish up, Brood 25% down a
 # rank), less the Brood of allies around it that fool o (rank 5+: 10% x (rank - 4), within rank - 4
 # tiles; the strongest counts). Brood can't take a stat below 1. Returns each core stat's factor.
@@ -218,6 +221,8 @@ static func _seem(b: Battle, o: Unit, t: Unit, r: Read) -> Dictionary:
 		var k := a.stat(&"brood") - 4
 		if k > 0 and Command.tiles(a.cell, t.cell) <= k and fools(b, o, a):
 			aura = maxf(aura, 0.1 * k)
+	if up.is_empty() and down == 0.0 and aura == 0.0:
+		return UNFRONTED  # no stat seems other than it is
 	var out := {}
 	for s: StringName in Unit.CORE.slice(0, 6):
 		out[s] = up.get(s, 1.0) * maxf(1.0 - down - aura, 0.0)

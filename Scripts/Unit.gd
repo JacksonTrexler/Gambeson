@@ -3985,7 +3985,16 @@ func _held_fx(viewer: Unit) -> Dictionary:
 		_fx_steady = steadied
 	var held: Variant = _fx.get(viewer)
 	if held == null:
-		held = {all = _gather_effects(viewer), by = {}}
+		var saw := false  # something here that viewer saw through (the list leaves it out)
+		if viewer != null:
+			for e: Effect in timed:
+				if viewer in timed[e].known_to:
+					saw = true
+					break
+		if viewer != null and not saw:
+			held = _held_fx(null)  # nothing it saw through: the list is the same as anyone's
+		else:
+			held = {all = _gather_effects(viewer), by = {}}
 		_fx[viewer] = held
 	return held
 
