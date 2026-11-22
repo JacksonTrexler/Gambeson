@@ -1236,6 +1236,9 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		assert(t.stat == &"" or t.stat in Unit.CORE, "%s scales on unknown stat %s" % [skill.name, t.stat])
 		var hits := ri if skill.hits_per_rank else 1
 		var gross := 0
+		var betrayal := caster.stat(&"betrayal", tags)  # more damage to a target that trusts it: it never saw it coming (Rake)
+		if betrayal > 0.0 and not (foe and _trusts(target, caster)):
+			betrayal = 0.0
 		for i in hits:
 			if not target.is_alive():
 				break
@@ -1244,7 +1247,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 			if acts:
 				for bh in skill.behaviours:
 					bonus += bh.bonus(acts)  # Spike: + rank
-			var power := maxi(roundi((t.power + roll(t.dice) + bonus + int(req[1])) * (1.0 + caster.stat(&"damage", tags) + discipline_damage(caster, skill))), 1)
+			var power := maxi(roundi((t.power + roll(t.dice) + bonus + int(req[1])) * (1.0 + caster.stat(&"damage", tags) + betrayal + discipline_damage(caster, skill))), 1)
 			power = as_rolled(power, rolled)
 			if rolled:  # an attack that landed: the use's passives may change what lands (Heavy Strike holds it back)
 				power = _strike_hit(caster, skill, target, rolled, power, tags, rolled_with[0], rolled_with[1], rolled_with[2])

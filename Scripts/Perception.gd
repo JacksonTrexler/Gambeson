@@ -561,6 +561,8 @@ static func _lie(b: Battle, o: Unit, t: Unit, r: Read, p: int) -> void:
 		r.tags = t.shows_tags.duplicate()
 		r.name = t.alias  # its real name would give it away ("Radiant Lady"; none: "Something")
 		r.face = t.alias_face
+	if reach and t.shows_boon:
+		r.boon = t.shows_boon  # what it says it's doing for them
 	if reach and p >= 2 and r.net < 3:
 		r.skills = []  # so would its real skills
 		r.kit = []

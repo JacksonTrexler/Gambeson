@@ -181,6 +181,9 @@ extends Resource
 # it is gone (Curse of the Coyote; Battle._strip(), Battle.mend())
 # prep_use: preparation uses of the kind its tag names (survey, evaluate, inquire): how many times
 # in preparation it may spend that use on a target (Prep.total(); Battle.prepare())
+# betrayal: that fraction more damage dealt with skills to a target that trusts it
+# (Battle._trusts(): it reads the holder as an ally or can't make out its side). Siren's Rake:
+# 1.0, double; Battle.cast().
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -191,7 +194,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "betrayal") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -208,6 +211,7 @@ extends Resource
 @export var above_hp := 0.0  # only while hp is above this fraction of max (Stoneskin: 0.85)
 @export var rested := false  # only while its holder rested through its last turn (Unit.rested_turns: Conductor's command limits and range)
 @export var unless_on: Array[StringName] = []  # off while the unit stands on ground with these tags (Oceanic: water, wet)
+@export var only_on: Array[StringName] = []  # only while the unit stands on ground with one of these tags (Seaborn: water); empty: anywhere. Unit.stat() reads it
 @export var name := ""  # a condition it's part of ("Haste": ap and dex_ap), shown as one; empty: its stat
 @export var turns := 0  # put on a unit: lasts this many of its turns (0: as the skill or ground says)
 @export var wound := false  # tagged wound: a heal of at least its rank clears it (Battle.mend())
@@ -221,7 +225,7 @@ extends Resource
 const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_power": "Trap power",
 		"regen": "Heal", "poison": "Poison", "ap": "AP", "dex_ap": "Dex AP", "trap_word": "Trap word",
 		"slots": "Skill slots", "prep_use": "Preparation", "evaluates": "Self-evaluation", "ally_mitigate": "Friendly fire taken",
-		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt",
+		"eyes_forward": "Eyes forward", "keen_eyes": "Keen eyes", "scrambled": "Scrambled", "damage": "Damage dealt", "betrayal": "Damage to the trusting",
 		"unmask_gain": "Unmasking", "uncover_gain": "Uncovering", "max_hp": "Max HP", "powered": "Power", "pulse": "Regeneration Pulse",
 		"range": "Skill range", "rank": "Skill rank", "opening_ap": "Opening AP", "brace": "Bracing",
 		"move_ap": "Dex AP", "skill_ap": "Skill AP", "sap": "Starsap",
@@ -345,7 +349,7 @@ func value(rank := 1) -> String:
 		text = "held: must break free to move; drowning while submerged hurts it each turn it ends held"
 	elif stat == "ire":
 		text = "%s rank%s of its concealment and trickery defeated, against everyone" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s"]
-	elif stat in ["ap", "dex_ap", "damage"]:
+	elif stat in ["ap", "dex_ap", "damage", "betrayal"]:
 		text = _signed(x * 100.0) + "%"
 	elif stat == "check":
 		text = "%s to %s%schecks" % [_signed(x), (String(kind) + " ") if kind else "", (" or ".join(checks.map(func(c): return String(c).left(3))) + " ") if not checks.is_empty() else ""]
@@ -474,6 +478,8 @@ func value(rank := 1) -> String:
 		text += ", from rank %s" % Skill.roman(min_rank)
 	if not unless_on.is_empty():
 		text += ", except on %s" % " or ".join(unless_on)
+	if not only_on.is_empty():
+		text += ", only on %s" % " or ".join(only_on)
 	if rested:
 		text += ", if it rested last turn"
 	if wound:

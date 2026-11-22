@@ -46,3 +46,46 @@ func test_pike() -> void:
 	b.move(u, Vector2i(5, 3))
 	ok(u.has_tag(&"aquatic") and b._cost(u, Battle.PLAIN, load("res://Terrain/water.tres")) == 1.0, "a pike: water costs it 1")
 	ok(b.read(sharp(v(1)), u).level == u.level, "read with recon: its level (%d)" % u.level)
+
+
+# Seaborn, the Siren's innate trait: +2 str/dex/con only on ground tagged water (Effect.only_on, read by
+# Unit.stat() - the generic terrain condition beside unless_on), the aquatic tag, 2 movement, a claimed boon.
+func test_seaborn() -> void:
+	var siren: Unit = b.get_node("Units/Siren")
+	stage(nemes, {siren: Vector2i(5, 3), v(1): Vector2i(9, 7)})
+	var seaborn: Skill = load("res://Skills/seaborn.tres")
+	ok(&"trait" in seaborn.tags and siren.has_tag(&"aquatic") and siren.movement == 2, "a trait: aquatic, 2 movement")
+	siren.ground = [] as Array[StringName]
+	var dry := siren.stat(&"strength")
+	siren.ground = [&"water"] as Array[StringName]
+	ok(siren.stat(&"strength") == dry + 6 and siren.stat(&"dexterity") == siren.dexterity + 2 and siren.stat(&"constitution") == siren.constitution + 2,
+			"on water: +2 str, dex and con, and Oceanic's -4 lifts (%d vs %d dry)" % [siren.stat(&"strength"), dry])
+	siren.ground = [&"wet"] as Array[StringName]
+	ok(siren.stat(&"strength") == dry + 4, "wet but not water: only Oceanic's lift")
+	ok(b._cost(siren, Battle.PLAIN, load("res://Terrain/water.tres")) == 1.0, "water costs it 1 to enter")
+	stage(nemes, {siren: Vector2i(5, 3), v(1): Vector2i(5, 4)})
+	var fooled := b.read(v(1), siren)
+	ok(fooled.deceived and fooled.boon == "Something extremely beneficial", "the fooled hear of something extremely beneficial (deceived %s, '%s')" % [fooled.deceived, fooled.boon])
+	v(1).afflict(effect("recon", 3), 9)
+	ok(b.read(v(1), siren).boon == "", "no boasting to one who sees through it")
+
+
+# Rake: more damage (betrayal, tags slash) to a target that trusts its attacker. Same seed, so the same rolls:
+# the fooled target takes double (to a rounding of glances) what one that sees through the Siren does.
+func test_rake_trusting() -> void:
+	var siren: Unit = b.get_node("Units/Siren")
+	var rake: Skill = load("res://Skills/rake.tres")
+	stage(nemes, {siren: Vector2i(5, 3), v(1): Vector2i(5, 4)})
+	siren.strength = 40  # it hits
+	var raked := func() -> int:
+		b.rng.seed = 11
+		soak(v(1))
+		for i in 3:
+			siren.refresh()
+			b.cast(siren, rake, v(1))
+		return 999 - v(1).hp
+	var fooled: int = raked.call()
+	v(1).afflict(effect("recon", 3), 9)
+	ok(not b.read(v(1), siren).deceived, "it sees through the Siren")
+	var wary: int = raked.call()
+	ok(wary > 0 and absi(fooled - 2 * wary) <= 3, "fooled: double what it takes once it knows, give or take a rounding (%d vs %d)" % [fooled, wary])
