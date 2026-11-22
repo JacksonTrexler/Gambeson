@@ -755,6 +755,56 @@ func test_cast_cost_answers_as_before() -> void:
 	ok(untagged.is_empty(), "skills whose behaviour reacts carry the reaction tag, or react() never asks them: %s" % [untagged])
 
 
+# The warm-read floor (docs/plans/w12-warm.md): the shortcuts a read takes answer as their long forms did. has_tag (loops, the tag asked
+# before the bar) and emblems over a unit with an item's tag and emblem, a skill off the bar, a toggle off, a form; restless in a stretch (the
+# held stat first) and out of it; lends(): false only where the stat is its bare 0 (over several stats and every source of effects: a skill
+# off the bar, a status, an item, a property), and a fresh stretch finds an effect put on since. Perception._seem's brood skip rests on
+# lends() and persona_test.test_brood holds what it skips.
+func test_warm_read_answers_as_before() -> void:
+	var badge := Item.new()
+	badge.slot = "trinket"
+	badge.tags = [&"badge"] as Array[StringName]
+	badge.emblem = &"rho_up"
+	badge.effects = [effect("brood", 5)] as Array[Effect]
+	v(1).learned.append(slot(sk("gallantry")))
+	v(2).trinket = badge
+	roomy(v(2), 4)
+	v(2).learned.append(slot(sk("interject")))
+	v(3).tags.append(&"undead")
+	v(3).afflict(load("res://Effects/disturbed.tres"), 5)
+	v(2).afflict(load("res://Effects/disturbed.tres"), 5)  # disturbed but living: not restless
+	v(3).afflict(effect("sleep", 1.0), 5)
+	v(4).form = &"mole"
+	var units: Array[Unit] = [v(1), v(2), v(3), v(4)]
+	for u in units:
+		u._arrange()
+		for t: StringName in [&"undead", &"reaction", &"martial", &"badge", &"nothing", &"tunneler"]:
+			var was: bool = t in u.tags or u.items().any(func(it: Item): return t in it.tags) \
+					or u.slots.any(func(x: Slot): return x.rank > 0 and (not x.skill.passive or (x.on and u.equipped(x.skill))) and (t in x.skill.tags or (u.emblems() and t in u.mods(x.skill).tags))) \
+					or (u.form != &"" and t in Battle.FORMS[u.form][2])
+			ok(u.has_tag(t) == was, "%s: has_tag %s" % [u.name, t])
+		ok(u.emblems() == u.items().any(func(it: Item): return it.emblem != &""), "%s: emblems" % u.name)
+		var long := u.has_tag(&"undead") and u.disturbed()
+		Unit.begin_read()
+		ok(u.restless() == long, "%s: restless in a stretch" % u.name)
+		Unit.end_read()
+		ok(u.restless() == long, "%s: restless out of one" % u.name)
+		for st: StringName in [&"brood", &"embellish", &"sleep", &"recon", &"concealment", &"helpless"]:
+			Unit.begin_read()
+			ok(u.lends(st) or u.stat(st) == 0.0, "%s: no %s lent, none held" % [u.name, st])
+			ok(u.lends(st) == u._lends_any(st), "%s: lends %s held is lends found" % [u.name, st])
+			Unit.end_read()
+	ok(v(2).has_tag(&"badge") and v(2).has_tag(&"martial") and v(3).restless() and not v(2).restless() and v(4).has_tag(&"tunneler"), "the field has an item's tag, a skill on the bar, a restless one, a form")
+	ok(v(2).lends(&"brood") and v(3).lends(&"sleep") and not v(1).lends(&"sleep") and not v(3).lends(&"brood"), "an item's effect and a status are lent, nothing else")
+	Unit.begin_read()
+	ok(not v(1).lends(&"brood"), "none yet")
+	Unit.end_read()
+	v(1).afflict(effect("brood", 5), 5)
+	Unit.begin_read()
+	ok(v(1).lends(&"brood"), "a new stretch finds the status put on")
+	Unit.end_read()
+
+
 # A foe's Opportunist (Behaviour.strikes(): its first active at a walker that ends beside it) is priced into a walk (AI._struck(): the
 # expected blow x STRUCK, tiles of walking), as _approach() plans it: with the Siren read, it closes on its target from a tile her first active doesn't reach.
 func test_approach_weighs_opportunist() -> void:
