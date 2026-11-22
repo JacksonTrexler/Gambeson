@@ -11,8 +11,8 @@ func armor_slot() -> bool:
 
 
 # Its rank (the share it lets go, the cut of each blow) is rank impact, through its holder's modifiers.
-func slot_works(holder: Unit, rank: int) -> bool:
-	return holder.power_share() >= 1.0 - SHARE * holder_rank(holder, rank) - 0.0001
+func slot_works(holder: Unit, rank: int, spent := 0) -> bool:
+	return holder.power_share(spent) >= 1.0 - SHARE * holder_rank(holder, rank) - 0.0001
 
 
 func slot_blocked(_b: Battle, holder: Unit, rank: int, power: int) -> void:

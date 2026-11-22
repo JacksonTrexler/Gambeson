@@ -2522,9 +2522,9 @@ func plates() -> Array:
 
 
 # Whether the slot its skill s gives works now: the skill does (equipped, on, not disabled, not lapsed: `passives`) and its
-# own rules say so (Behaviour.slot_works()).
-func plate_works(s: Skill) -> bool:
-	return s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s)))
+# own rules say so (Behaviour.slot_works(), as if `spent` Power had gone from it: see AI._plated()).
+func plate_works(s: Skill, spent := 0) -> bool:
+	return s in passives and s.behaviours.all(func(b: Behaviour): return not b or b.slot_works(self, own_rank(s), spent))
 
 
 # The Defense `it` would confer in the slot skill s gives, by that slot's rules (Behaviour.slot_defense() applied to what the
@@ -2550,12 +2550,13 @@ func plated_defense() -> Array:
 	return out
 
 
-# How much of its Power it has, 0 to 1: its Energy, or the reserve it runs on in place of it (runs_on()).
-func power_share() -> float:
+# How much of its Power it has, 0 to 1: its Energy, or the reserve it runs on in place of it (runs_on()), as if `spent` more
+# had gone (the AI's reckoning of blocks to come: nothing is taken).
+func power_share(spent := 0) -> float:
 	var on: Variant = runs_on()
 	if on is Reserve:
-		return float(store(on)) / maxi(pools().get(on, 0), 1)
-	return float(energy) / maxi(max_energy, 1)
+		return float(store(on) - spent) / maxi(pools().get(on, 0), 1)
+	return float(energy - spent) / maxi(max_energy, 1)
 
 
 # Takes n off its Power (power_share()): what an attack Power Armor blocks does.

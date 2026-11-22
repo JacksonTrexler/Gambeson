@@ -286,8 +286,9 @@ func armor_slot() -> bool:
 	return false
 
 
-# Whether that slot works now, at `rank` (Unit.plates()): off, the armor in it stays worn and counts for nothing.
-func slot_works(_holder: Unit, _rank: int) -> bool:
+# Whether that slot works now, at `rank` (Unit.plates()): off, the armor in it stays worn and counts for nothing. `spent`: Power
+# that blocks to come would have taken from the holder first, none in play (the AI asks how long a plate works: AI._plated()).
+func slot_works(_holder: Unit, _rank: int, _spent := 0) -> bool:
 	return true
 
 
