@@ -867,6 +867,10 @@ static func _line_up(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arr
 	if worth.is_empty():
 		b.rng.state = state
 		return false
+	var strikers := _strikers(b, u, u.cell, ceili(u.move_left()) + 1, reads)
+	if not strikers.is_empty():
+		for c: Vector2i in worth:  # ending beside a foe's reaction is struck for its blow (in score()'s terms, HP): the drive is net of it
+			worth[c] = [worth[c][0] - _struck(b, u, c, strikers), worth[c][1]]
 	var base: float = worth[u.cell][0] if u.cell in worth else worth.values().map(func(w: Array): return w[0]).min()
 	var tiles := worth.keys()
 	tiles.sort_custom(func(x: Vector2i, y: Vector2i): return worth[x][0] > worth[y][0] or (worth[x][0] == worth[y][0] and Command.tiles(u.cell, x) < Command.tiles(u.cell, y)))
@@ -1320,9 +1324,10 @@ static func _retreat(b: Battle, u: Unit, from: Array[Vector2i], safe := 0, reads
 	if safe > 0 and claim:
 		claimed = _claimed(b, u, from, safe, reads)
 	var stunners := _stunners(b, u, reads)
+	var strikers := _strikers(b, u, u.cell, ceili(u.move_left()) + 1, reads)
 	var key := func(c: Vector2i, extra: float) -> Array:
 		var g: int = gap.call(c)
-		return [-roundi(_shoved(b, u, c, reads)), -roundi(DREAD * _dread(stunners, c)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
+		return [-roundi(_shoved(b, u, c, reads) + (_struck(b, u, c, strikers) if not strikers.is_empty() else 0.0)), -roundi(DREAD * _dread(stunners, c)), (g if safe <= 0 else mini(g, safe)) - snappedf(maxf(extra, 0.0), 0.01), 0 if safe <= 0 else _room(b, u, c, gap), 0 if c in claimed else 1]
 	var best := u.cell
 	var best_key: Array = key.call(best, 0.0)
 	var state := b.rng.state  # pricing a line draws on the rng: planning mustn't use up the battle's
@@ -1513,7 +1518,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 	var best_cost := INF
 	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
 	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
-	var strikers := _strikers(b, u, t, reads)
+	var strikers := _strikers(b, u, t.cell, 2, reads)
 	for dx: int in [-1, 0, 1]:
 		for dy: int in [-1, 0, 1]:
 			var c: Vector2i = r.cell + Vector2i(dx, dy)
@@ -1535,13 +1540,15 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 	return best
 
 
-# The foes near enough to t that a walk to a tile beside t could end beside them, with a reaction of theirs it makes out (Read.skills,
-# Read.kit) that strikes a walker ending beside them (Behaviour.strikes(): Opportunist): [holder, behaviour, rank, slot skill]. Usually none.
-static func _strikers(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]) -> Array:
+# The foes within `within` tiles of `at` (a walk's ground: the tiles beside the target, or all u could reach), with a reaction of theirs it
+# makes out (Read.skills, Read.kit) that strikes a walker ending beside them (Behaviour.strikes(): Opportunist), and can pay for the
+# skill it would strike with (Unit.funding(): the blow is a free action, so Energy is all it needs): [holder, behaviour, rank, slot skill].
+# Usually none. What _approach(), _line_up() and _retreat() price a walk's end with (_struck()).
+static func _strikers(b: Battle, u: Unit, at: Vector2i, within: int, reads: Dictionary[Unit, Read]) -> Array:
 	var out := []
 	for o: Unit in reads:
 		var r: Read = reads[o]
-		if o == u or Command.tiles(o.cell, t.cell) > 2 or not o.is_alive() or not o.reacts() or not _foe(u, r) or not r.located():
+		if o == u or Command.tiles(o.cell, at) > within or not o.is_alive() or not o.reacts() or not _foe(u, r) or not r.located():
 			continue
 		for x in Battle.reactions_of(o, Battle.REACTION):
 			if x.skill in r.skills or x.skill in r.kit:
@@ -1555,7 +1562,7 @@ static func _strikers(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 static func _struck(b: Battle, u: Unit, c: Vector2i, strikers: Array) -> float:
 	var hp := 0.0
 	for f in strikers:
-		if not Battle.next_to(f[0].cell, c):
+		if c == u.cell or not Battle.next_to(f[0].cell, c):
 			continue
 		var r := Behaviour.Reaction.new()
 		r.battle = b
@@ -1565,7 +1572,7 @@ static func _struck(b: Battle, u: Unit, c: Vector2i, strikers: Array) -> float:
 		r.skill = f[3]
 		var worth: Variant = b.standing(u, c, func():
 			var s: Skill = f[1].strikes(r, f[0], f[2])
-			return float(Battle.damage_range(f[0], s, u, b).get("avg", 0.0)) * Battle.hit_chance(f[0], s, u, b) if s != null and s.attacks() else 0.0)
+			return float(Battle.damage_range(f[0], s, u, b).get("avg", 0.0)) * Battle.hit_chance(f[0], s, u, b) if s != null and s.attacks() and f[0].funding(s, b.price_cut(f[0], s, [u] as Array[Unit])) != null else 0.0)
 		hp += worth if worth != null else 0.0
 	return minf(hp, float(u.hp))
 

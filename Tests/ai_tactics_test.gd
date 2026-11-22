@@ -766,12 +766,42 @@ func test_approach_weighs_opportunist() -> void:
 	soak(v(1), 500)
 	sharp(v(1))
 	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), siren: b.read(v(1), siren)})
-	var strikers := AI._strikers(b, v(1), v(3), reads)
+	var strikers := AI._strikers(b, v(1), v(3).cell, 2, reads)
 	ok(strikers.size() == 1 and strikers[0][0] == siren, "the Siren's Opportunist is read (%s)" % [strikers.size()])
 	var near := Vector2i(6, 4)
 	ok(AI._struck(b, v(1), near, strikers) > 0.0 and AI._struck(b, v(1), Vector2i(6, 2), strikers) == 0.0 and v(1).cell == Vector2i(6, 7), "a tile beside her costs the blow; one out of her reach, nothing; the walker is left where it was")
 	var plain := AI._approach(b, v(1), v(3), AI.reads_from({v(3): reads[v(3)]}))
 	var wary := AI._approach(b, v(1), v(3), reads)
 	ok(AI._struck(b, v(1), plain, strikers) > 0.0 and AI._struck(b, v(1), wary, strikers) == 0.0 and Command.tiles(wary, v(3).cell) == 1, "it closes from a side she can't strike: %s, not %s" % [wary, plain])
+	var rake: Skill = siren.actives[0]  # free as it is: priced, she can pay for it only with the Energy to
+	rake.cost = 3
+	var kept := siren.energy
+	siren.energy = 0
+	ok(AI._struck(b, v(1), near, strikers) == 0.0, "a Siren that cannot pay for her first active strikes no one: nothing to price")
+	siren.energy = kept
+	ok(AI._struck(b, v(1), near, strikers) > 0.0, "with the Energy for it, she does")
+	rake.cost = 0
 	siren.faction = lancin
-	ok(AI._strikers(b, v(1), v(3), AI.reads_from({v(3): reads[v(3)], siren: b.read(v(1), siren)})).is_empty(), "an ally's reaction is none to weigh")
+	ok(AI._strikers(b, v(1), v(3).cell, 2, AI.reads_from({v(3): reads[v(3)], siren: b.read(v(1), siren)})).is_empty(), "an ally's reaction is none to weigh")
+	# the other walks: backing off and lining up end beside her reaction too
+	stage(lancin, {siren: Vector2i(6, 5), v(1): Vector2i(6, 7), v(3): Vector2i(6, 9)})
+	v(1).moved = v(1).stat(&"movement") - 2.0  # two tiles of walk left: the furthest it can get from v(3) is a row beside her
+	siren.faction = nemes
+	var from: Array[Vector2i] = [v(3).cell]
+	var wide := AI.reads_from({v(3): b.read(v(1), v(3)), siren: b.read(v(1), siren)})
+	var cells := b.cells_near(v(1).cell, ceili(v(1).move_left()))
+	var beside := cells.filter(func(c: Vector2i): return AI._struck(b, v(1), c, AI._strikers(b, v(1), v(1).cell, 9, wide)) > 0.0)
+	ok(not beside.is_empty(), "(setup) tiles in the walk lie in her reach")
+	var blind := AI._retreat(b, v(1), from)
+	ok(blind in beside and AI._retreat(b, v(1), from, 0, wide) not in beside, "backing off, it does not end where she strikes: %s, not %s" % [AI._retreat(b, v(1), from, 0, wide), blind])
+	v(1).learned.append(slot(kick, 2))  # test_lines_up_a_shove's scene: the slam tile (5, 3) lies beside her at (5, 2)
+	roomy(v(1))
+	v(1).strength = 40
+	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(5, 4), v(4): Vector2i(5, 5), siren: Vector2i(5, 2)})
+	v(4).faction = nemes
+	v(1).refresh()
+	soak(v(3), 300)
+	var log: Array[String] = []
+	ok(not AI._line_up(b, v(1), AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4)), siren: b.read(v(1), siren)}), log) and v(1).cell == Vector2i(4, 4), "lining up, it stays out of her reach rather than take her blow for the slam (%s)" % [v(1).cell])
+	ok(AI._line_up(b, v(1), AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}), log) and v(1).cell == Vector2i(5, 3), "not reading her, it takes the tile (%s)" % [v(1).cell])
+	siren.faction = lancin
