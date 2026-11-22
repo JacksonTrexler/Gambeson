@@ -652,5 +652,5 @@ func test_planning_holds_and_bounds() -> void:
 	ok(u.held(strike) == null and b.skill_reach(u, strike) > before, "a new stretch finds what changed (%.2f > %.2f)" % [b.skill_reach(u, strike), before])
 	var all := b.suspicious(u)
 	ok(not all.is_empty(), "the trap and what hides are suspicious")
-	for reach in [1, 3, 5]:
+	for reach in [3, 4, 5]:  # the trap is 4 tiles off
 		ok(b.suspicious(u, {}, u.cell, reach) == all.filter(func(c: Vector2i): return Command.tiles(u.cell, c) <= reach), "bounded to %d tiles is the list cut there" % reach)
