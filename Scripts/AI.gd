@@ -830,14 +830,22 @@ static func _line_up(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arr
 	if skills.is_empty() or foes.is_empty() or u.move_left() < 1.0:
 		Unit.end_read()
 		return false
+	var sizes: Array[float] = []
+	for t in foes:
+		sizes.append(t.stat(&"size"))
 	var state := b.rng.state  # planning mustn't use up the battle's rng
 	var worth := {}  # tile -> [the most a blow from it adds, that skill]
 	for c in b.cells_near(u.cell, ceili(u.move_left())):
 		var best: Variant = b.standing(u, c, func() -> Variant:
 			var top: Variant = null
+			var away: Array[float] = []  # each foe's distance from here
+			for t in foes:
+				away.append(Vector2(u.cell).distance_to(Vector2(t.cell)))
 			for s: Skill in skills:
-				for t in foes:
-					if Vector2(u.cell).distance_to(Vector2(t.cell)) <= b.skill_range(u, s, t) + 0.0001 and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
+				var reach := b.skill_reach(u, s)  # from here: the same for every foe but for its size
+				for i in foes.size():
+					var t := foes[i]
+					if away[i] <= reach + 0.02 * sizes[i] + 0.0001 and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)):
 						var v := _driven(b, u, s, t)
 						if top == null or v > top[0]:
 							top = [v, s]

@@ -2192,27 +2192,38 @@ func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 func _look_harder(u: Unit) -> void:
 	if u.asleep():
 		return
+	var seen: Dictionary[Unit, Read] = {}  # what it made out of each foe, for _first_look() to reuse until a doubt changes anything
+	Unit.begin_read()  # reads only: each unit's effects are found once, until a doubt (it suspects, and may learn)
 	for t: Unit in units.values():
 		if t.faction != u.faction and t.is_alive():
 			var r := read(u, t)
+			seen[t] = r
 			if r.deceived and r.located():
+				Unit.end_read()
 				doubt(u, t)
-	_first_look(u)
+				seen.clear()
+				Unit.begin_read()
+	Unit.end_read()
+	_first_look(u, seen)
 
 
 # Tiles where o makes out something suspicious but not what: a hint (a vague shape, a vibe) of a
 # hidden trap or a hidden unit there, or one it already suspects and still can't make out; or an ally
 # whose tags it sees scrambled (Haluca). Nearest first.
-func suspicious(o: Unit) -> Array[Vector2i]:
+func suspicious(o: Unit, known: Dictionary[Unit, Read] = {}, centre: Variant = null, reach := 0) -> Array[Vector2i]:
 	Unit.begin_read()  # all reads, nothing changed: each unit's effects are found once (Unit._effects())
 	var out: Array[Vector2i] = []
 	for c in maybe_suspicious(o):
+		if centre != null and Command.tiles(centre, c) > reach:
+			continue  # not asked about (survey())
 		var r := read(o, c)
 		if c != o.cell and (r.hint != "" or (o.suspects(c) > 0 and r.net < 0)):
 			out.append(c)
 	for t: Unit in units.values():
 		if t != o and t.is_alive() and t.cell not in out:
-			var r := read(o, t)
+			if centre != null and Command.tiles(centre, t.cell) > reach:
+				continue
+			var r: Read = known[t] if t in known else read(o, t)
 			if r.located() and (r.hint != "" or (o.suspects(t) + o.suspects(t.cell) > 0 and r.net < 0) or (t.faction == o.faction and o.scrambles(t))):
 				out.append(t.cell)
 	Unit.end_read()
@@ -2282,8 +2293,8 @@ func _maybe_hidden(around: Variant = null, r := -1.0) -> Array[Vector2i]:
 
 
 # The first time o sees something suspicious, it inspects the nearest such thing it hasn't yet.
-func _first_look(o: Unit) -> void:
-	for c in suspicious(o):
+func _first_look(o: Unit, known: Dictionary[Unit, Read] = {}) -> void:
+	for c in suspicious(o, known):
 		if c not in o.noticed:
 			o.noticed[c] = true
 			inspect(o, c)
@@ -2313,7 +2324,7 @@ func _watch(o: Unit) -> void:
 func survey(o: Unit, center: Vector2i, rested: int) -> int:
 	var r := mini(rested, roundi(o.stat(&"wisdom")))
 	var reach := maxi(o.mod(&"wisdom"), 1) + r
-	var near := suspicious(o).filter(func(c: Vector2i): return Command.tiles(center, c) <= reach)
+	var near := suspicious(o, {}, center, reach)
 	near.sort_custom(func(x: Vector2i, y: Vector2i): return Command.tiles(center, x) < Command.tiles(center, y))
 	var n := 0
 	for c in near.slice(0, 1 + r):
@@ -3275,7 +3286,12 @@ func roll(dice: Vector2i) -> int:
 # reach). No target: a Medium one.
 func skill_range(caster: Unit, skill: Skill, target: Unit = null) -> float:
 	var size: float = target.stat(&"size") if target else float(MEDIUM)
-	return skill.span(caster) + caster.stat(&"reach") + 0.05 * caster.stat(&"size") + 0.02 * size
+	return skill_reach(caster, skill) + 0.02 * size
+
+
+# skill_range() less the target's part (0.02 of its size): what a planner asking about many targets from one place works out once.
+func skill_reach(caster: Unit, skill: Skill) -> float:
+	return skill.span(caster) + caster.stat(&"reach") + 0.05 * caster.stat(&"size")
 
 
 # Circle geometry. A near miss (within Luck.MARGIN) is rounding: in only if the caster is luckier.
