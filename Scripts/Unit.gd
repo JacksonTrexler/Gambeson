@@ -4067,6 +4067,54 @@ func _held_fx(viewer: Unit) -> Dictionary:
 	return held
 
 
+# Whether anything it carries lends stat s (an effect of that stat on any skill it has, on or off, equipped or not, a status, its ground,
+# an item, a property): false means stat(s) is only its base (0 for a stat that isn't a core one), whatever else holds. Cheaper than
+# the effects held for the stretch, which a stat asks for whole; kept for the stretch while it stands where it did (_fx_epoch's key).
+var _lend := {}
+var _lend_epoch := -1
+var _lend_at: Variant
+var _lend_ground: Terrain
+var _lend_steady: Variant
+
+
+func lends(s: StringName) -> bool:
+	if reading == 0:
+		return _lends_any(s)
+	if _lend_epoch != _epoch or _lend_at != cell or _lend_ground != footing or _lend_steady != steadied:
+		_lend.clear()
+		_lend_epoch = _epoch
+		_lend_at = cell
+		_lend_ground = footing
+		_lend_steady = steadied
+	if s not in _lend:
+		_lend[s] = _lends_any(s)
+	return _lend[s]
+
+
+func _lends_any(s: StringName) -> bool:
+	for x: Slot in slots:
+		for e: Effect in x.skill.effects:
+			if e.stat == s:
+				return true
+	for e: Effect in timed:
+		if e.stat == s:
+			return true
+	if footing:
+		for e: Effect in footing.effects:
+			if e.stat == s:
+				return true
+	for it: Item in items():
+		for e: Effect in it.effects:
+			if e.stat == s:
+				return true
+	if bio:
+		for p in bio.properties:
+			for e: Effect in p.effects:
+				if e.stat == s:
+					return true
+	return false
+
+
 # Each core stat as it stands (CORE order): what a read shows (Read.stats); a copy, the read may change it. Held in a stretch.
 func core_stats() -> Dictionary:
 	var kept: Variant = held(&"core")
