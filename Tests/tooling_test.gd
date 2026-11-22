@@ -6,7 +6,9 @@ extends Test
 func test_icons() -> void:
 	var missing: Array[String] = []
 	for f in DirAccess.get_files_at("res://Skills"):
-		if f.ends_with(".tres") and (load("res://Skills/" + f) as Skill).icon() == null:
+		# Source file plus its .import, not load(): a worktree's .godot import cache can be stale (new art not imported yet)
+		var id := f.get_basename()
+		if f.ends_with(".tres") and not (FileAccess.file_exists("res://Icons/Skills/%s.png" % id) and FileAccess.file_exists("res://Icons/Skills/%s.png.import" % id)):
 			missing.append(f)
 	ok(missing.is_empty(), "every skill has an icon (python3 Util/icon.py skills): %s" % ", ".join(missing))
 	ok(Skill.new().icon() == null, "a skill with no file has none: its mark is drawn instead")
