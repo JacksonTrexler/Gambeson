@@ -284,11 +284,13 @@ func test_opportunist() -> void:
 	ok(b.turn == lancin and b.travel(v(1), Vector2i(5, 4)).size() == 1, "its own turn goes on")
 	used.clear()
 	siren.faction = lancin
-	b.travel(v(2), Vector2i(5, 4))
-	ok(used.is_empty(), "an ally's walk beside it is nothing to it")
+	b.move(v(2), Vector2i(3, 2))
+	b.travel(v(2), Vector2i(5, 2))
+	ok(Battle.next_to(v(2).cell, siren.cell) and used.is_empty() and seen.size() == 1, "an ally's walk beside it is nothing to it: no interrupt (%s)" % [v(2).cell])
 	siren.faction = nemes
 	siren.learned.insert(0, slot(sk("heal")))
 	roomy(siren)
 	siren.refresh()
-	b.travel(v(2), Vector2i(5, 2))
-	ok(siren.actives[0].name == "Heal" and used.is_empty(), "first active not hostile: nothing (%s, %s)" % [siren.actives.map(func(x: Skill): return x.name), used])
+	b.move(v(2), Vector2i(9, 3))
+	b.travel(v(2), Vector2i(7, 3))
+	ok(Battle.next_to(v(2).cell, siren.cell) and siren.actives[0].name == "Heal" and used.is_empty() and seen.size() == 1, "first active not hostile: nothing, no interrupt (%s, %s)" % [siren.actives.map(func(x: Skill): return x.name), used])

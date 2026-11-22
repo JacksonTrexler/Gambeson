@@ -15,3 +15,7 @@ Goal: Siren's Opportunist (4fe2c05: first active on enemies that run into it) vi
 - Battle.gd: `grant_interrupt(..., aim)`, `_open_interrupt` aimed branch, `_first_active()`, `_beside()`, travel() fires `react(&"beside")` then opens a queued interrupt (as `_on_falling`).
 - Behaviours/opportunist.gd, Skills/opportunist.tres (+icon), Scenes/siren.tscn innate.
 - Tests: reaction_test.test_beside (the seam), test_opportunist (behaviour on the Siren). Stub opportunist_test deleted.
+- Existing tests updated to the new rule: equip_test.test_traits (innate traits gain opportunist), perception_test.test_siren_fools (Siren skills 7 -> 8).
+- Mutations (all failed, reverted): no `react(&"beside")` in travel (3 checks); first active not hostile check dropped (1 check). Dropping the Faction.friends check changes nothing (in_reach already refuses an ally for a hostile skill): kept as explicit intent.
+- Suite: start 10789 checks, 1 failed (tooling_test.test_icons: baseline, seaborn/disturbance/grave_aura icons); end 10806 checks, 0 failed (1027 tests). skill.py/unit.py check ok; launch: no ERROR.
+- Not done: AI doesn't weigh Opportunist when approaching; Detective, Ambush; no Siren visual check.
