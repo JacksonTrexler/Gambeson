@@ -417,7 +417,8 @@ static func score(u: Unit, s: Skill, r: Read, b: Battle = null, t: Unit = null) 
 	if b and t:
 		p = _chance(u, s, r, b, t)
 		if s.attacks() and not (s.check and not s.check.suspicion) and not s.levels_down and p > 0.0:
-			dmg *= 1.0 - 0.5 * Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # a glance lands half
+			var glance := Battle.attack_odds(u, s, t, b, r.believed(GUESS_DEFENSE))[2] / p  # (the share of its hits that are glances)
+			dmg *= (2.0 if s.sure_crit else 1.0) * (1.0 - glance) + 0.5 * glance  # a glance lands half; a use whose hits all crit (Jugular) lands the rest double, as_rolled() does
 			dmg *= _use_ratio(b, u, s, t, r, d)  # friction on its rolls, a pool its passives make of them
 		blocked = _blocks(b, u, s, r, t, float(d.get("avg", 0.0)))
 		var more := b.foresee(u, s, t)

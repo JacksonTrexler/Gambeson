@@ -123,6 +123,13 @@ func test_forecast_counts_crit_loops() -> void:
 	var once: float = ratio.call(k)
 	var read := b.read(v(1), v(3))
 	ok(recasts > once + 0.05 and AI.score(v(1), j, read, b, v(3)) > AI.score(v(1), k, read, b, v(3)), "a skill that recasts on a crit counts its recasts: x%.2f against x%.2f" % [recasts, once])
+	var sure: Skill = k.duplicate()
+	sure.sure_crit = false
+	v(1).learned.append(slot(sure, 1))
+	v(1).refresh()
+	var sure_score := AI.score(v(1), k, read, b, v(3))
+	var plain_score := AI.score(v(1), sure, read, b, v(3))
+	ok(sure_score > plain_score * 1.6 and sure_score < plain_score * 2.05, "a use whose hits all crit is priced at double the damage of its hits (not its glances): %.2f against %.2f" % [sure_score, plain_score])
 	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab"))
 	v(1).refresh()
 	ok(ratio.call(j) < recasts - 0.05, "with only a natural 20 to crit on, it counts far fewer (x%.2f)" % ratio.call(j))
