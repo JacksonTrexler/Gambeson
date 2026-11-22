@@ -682,11 +682,11 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 
 # Restless Dead ?? (Unit.restless()): the nearest living unit it sees (a foe to it: Read.dead_eye), in tiles, its
 # own side's on a tie; it strikes that one with its best blow, else walks up to it first. Nothing else.
-static func _restless(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+static func _restless(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
 	var prey := _prey(u, reads)
 	if prey == null:
 		return
-	var only := {prey: reads[prey]}
+	var only := reads_from({prey: reads[prey]})
 	if not _strike(b, u, only, log) and not _rooted(b, u):
 		log.append("%s lurches %s" % [u.name, b.travel(u, _approach(b, u, prey, reads))])
 		only[prey] = b.read(u, prey)
@@ -694,7 +694,7 @@ static func _restless(b: Battle, u: Unit, reads: Dictionary, log: Array[String])
 		pass
 
 
-static func _prey(u: Unit, reads: Dictionary) -> Unit:
+static func _prey(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 	var prey: Unit = null
 	for t: Unit in reads:
 		var r: Read = reads[t]
