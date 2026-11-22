@@ -1118,9 +1118,10 @@ func _choose(title: String, picks: Array) -> PanelContainer:
 
 
 # The player's own unit is down (or gone): its side plays itself until the battle ends or the
-# player gets back up (a heart, a Red Spinel Ring).
+# player gets back up (a heart, a Red Spinel Ring). Or Disturbed: no one is at the helm, and the same
+# holds while it lasts (Unit.disturbed()).
 func autopilot() -> bool:
-	return battle.player != null and (not is_instance_valid(battle.player) or not battle.player.is_alive())
+	return battle.player != null and (not is_instance_valid(battle.player) or not battle.player.is_alive() or battle.player.disturbed())
 
 
 # Someone on the player's side still standing: the leader if it can be.
@@ -1879,7 +1880,7 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 		clock_on = true
 	elif auto or now == command.faction():  # the player's down: its side fights on (autopilot())
 		if now == command.faction() and autopilot():
-			_log("[color=#6b7180]You're down: your side fights on without you[/color]")
+			_log("[color=#6b7180]%s: your side fights on without you[/color]" % ("Your mind is Disturbed" if battle.player.is_alive() else "You're down"))
 		_act_alone(now, battle.members(now), TRANSITION)
 	_mark()
 

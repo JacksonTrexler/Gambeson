@@ -181,6 +181,9 @@ extends Resource
 # it is gone (Curse of the Coyote; Battle._strip(), Battle.mend())
 # prep_use: preparation uses of the kind its tag names (survey, evaluate, inquire): how many times
 # in preparation it may spend that use on a target (Prep.total(); Battle.prepare())
+# disturbed: above 0, it is Disturbed: it can't be commanded or issue commands, and takes its turn
+# under the AI by its own behaviour (Unit.disturbed(); Command.could_order(), Command.idle();
+# Disturbance)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -191,7 +194,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -237,7 +240,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
-const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove", "no_traits", "overcome"]  # more of these is worse for whoever has them
+const HARMFUL := ["move_cost", "per_tile", "poison", "sleep", "ire", "bleed", "grappled", "scrambled", "sickness", "asphyxia", "humble", "cinders", "shackled", "jammed", "helpless", "fear", "entrance", "shove", "no_traits", "overcome", "disturbed"]  # more of these is worse for whoever has them
 
 
 # "Luck: -3", "Damage taken: -40% (physical), above 85% HP", "Heal: 10% each turn", at a skill rank.
@@ -333,6 +336,8 @@ func value(rank := 1) -> String:
 		text = "can't act till an ally ends the turn beside it"
 	elif stat == "jammed":
 		text = "no reactions: it can't dodge, guard or obstruct"
+	elif stat == "disturbed":
+		text = "%s: it can't be commanded or give commands, and acts on its own by its behaviour" % Glossary.term(&"disturbed", "disturbed")
 	elif stat == "attack_stat":
 		text = "%s attacks may use %s for the attack mod if it is higher" % ["its" if skills.is_empty() else ", ".join(skills.map(func(k): return k.name + "s")), ", ".join(checks.map(func(k): return String(k).left(3) + " mod"))] if not checks.is_empty() else "attacks use a stat of its choice"
 	elif stat == "no_traits":

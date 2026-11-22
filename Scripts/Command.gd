@@ -192,7 +192,7 @@ func in_range(u: Unit) -> bool:
 static func hears(l: Unit, u: Unit, reach := 0) -> bool:
 	if u == l:
 		return true
-	if not l.is_alive() or (u.faction != l.faction and u.follows != l):
+	if not l.is_alive() or l.disturbed() or u.disturbed() or (u.faction != l.faction and u.follows != l):  # a Disturbed leader gives no orders, a Disturbed unit takes none
 		return false
 	var d := tiles(l.cell, u.cell)
 	return d <= (party_reach_of(l) if u.follows == l else float(reach_of(l))) or d <= reach
@@ -204,7 +204,7 @@ func reach_for(u: Unit) -> int:
 	return maxi(cha_for(u) + roundi(leader.stat(&"command")), 1)
 
 
-# Takes an order right now: alive and not tapped (tapped()), from a leader that isn't stopped (helpless: it gives no orders), not one that acts on its own (uncontrolled), on the leader's side on its turn, in range,
+# Takes an order right now: alive and not tapped (tapped()), from a leader that isn't stopped (helpless: it gives no orders) or Disturbed, not one that acts on its own (uncontrolled, Disturbed), on the leader's side on its turn, in range,
 # within the turn's caps (under_caps()), and each taking the other for a teammate (Battle.teammates()).
 func can_order(u: Unit) -> bool:
 	return could_order(u) and in_range(u)
@@ -213,14 +213,14 @@ func can_order(u: Unit) -> bool:
 # Would take an order right now were it in range: all can_order() asks but that. One this holds for
 # out of range stays in colour on the map, its glow weaker (HUD.command_state()).
 func could_order(u: Unit) -> bool:
-	return u != null and u.is_alive() and not tapped(u) and not u.uncontrolled and leader.is_alive() and not leader.stopped() \
+	return u != null and u.is_alive() and not tapped(u) and not u.uncontrolled and not u.disturbed() and leader.is_alive() and not leader.stopped() and not leader.disturbed() \
 			and battle.phase == Battle.Phase.TURNS and battle.turn == leader.faction and battle.teammates(leader, u)
 
 
 # Allies join from within plain order range while there's room, if each takes the other for a
 # teammate - a traitor of another side among them, pretending.
 func can_join(u: Unit) -> bool:
-	return u != leader and u.is_alive() and leader.is_alive() and not leader.stopped() and not u.uncontrolled \
+	return u != leader and u.is_alive() and leader.is_alive() and not leader.stopped() and not leader.disturbed() and not u.uncontrolled and not u.disturbed() \
 			and u not in party and party.size() < party_size() and tiles(leader.cell, u.cell) <= reach() \
 			and battle.teammates(leader, u)
 
@@ -259,7 +259,7 @@ func lock(u: Unit) -> void:
 func idle() -> Array[Unit]:
 	var out: Array[Unit] = []
 	for u in battle.members(leader.faction) + party.filter(func(x: Unit): return x.faction != leader.faction and x.is_alive()):
-		if u != leader and (u not in ordered or (u not in locked and not under_caps(u))):
+		if u != leader and (u not in ordered or (u not in locked and not under_caps(u)) or u.disturbed()):  # Disturbed: on its own, ordered or not
 			out.append(u)
 	return out
 
