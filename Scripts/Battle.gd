@@ -174,6 +174,8 @@ var unit_rolls: Dictionary[Unit, int] = {}  # the same d20s, by who rolled them
 
 # Which unit stands on which cell. TileSet custom data is per tile type, so it can't hold this.
 var units: Dictionary[Vector2i, Unit] = {}
+var restless := {}  # the Restless Dead ?? -> the allies that have noticed it (Scripts/Undead.gd)
+const UNDEAD := preload("res://Scripts/Undead.gd")
 var inside: Dictionary[Unit, Unit] = {}  # a mist sharing another unit's tile -> that unit (Coalescing: engulf()); units[] keeps the other
 
 var rng := RandomNumberGenerator.new()
@@ -964,6 +966,7 @@ func _done_casting(caster: Unit, done: bool) -> void:
 	if _casting > 0:
 		return
 	_settle_wear()
+	UNDEAD.settle(self, caster if done else null)
 	if done:
 		_spent_interrupt(caster)
 	_open_interrupt()
@@ -3196,7 +3199,13 @@ func _read(o: Unit, target: Variant, extra := 0.0) -> Read:
 		extra += studied[o.faction].get(target, 0)  # studied in preparation (prepare())
 	if o in noticed:
 		extra += noticed[o].get(target, 0)  # learned on its own (note(): bumping into it unseen)
-	return Perception.unit(self, o, target, extra) if target is Unit else Perception.tile(self, o, target, extra)
+	if not target is Unit:
+		return Perception.tile(self, o, target, extra)
+	var r := Perception.unit(self, o, target, extra)
+	r.dead_eye = o.restless()
+	r.kin = r.dead_eye and target.has_tag(&"undead")
+	r.restless = target in restless and o in restless[target]
+	return r
 
 
 # o gains n recon levels on k (a unit or a tile), its own, for the battle (_read()): bumping into a unit
@@ -4545,6 +4554,7 @@ func end_turn() -> void:
 			u.wake()
 	for u in side:
 		u.tick()
+	UNDEAD.settle(self)  # a Disturbed that ran out lays its undead to rest
 	for u in members(turn):
 		_sap(u)
 		_synergize(u)

@@ -63,7 +63,6 @@ const FOILED := 0.8  # the most of a blow's worth its foes' reactions can take o
 const GUESS_DEFENSE := 12  # the Defense it takes a foe to have when it can't make it out (Read.defense null): a medium armor's floor
 const BODY := 5.0  # what a body a summon adds is worth, in the HP a blow takes (a Skeleton: 6 HP and a weak Strike; two of them repay its 4 AP, 3 cost)
 const SUMMON_SEEN := 10  # tiles a foe it makes out may stand for it to raise a host (_summon())
-const SUMMON_CAP := 12  # units a side may hold before it raises no more (the bodies' worth falls to nothing)
 const POINT := 0.5  # what a point of Energy or other cost it gets back is worth, in the HP a blow takes (a 3 AP strike costs a few)
 const STARVE := 5.0  # what starving a Grudge unit to death is worth, as a kill (KILL), shared by the allies it must keep from its reach (_starve())
 const WORN := 0.8  # the most of a blow's worth the extra its cost has risen by (exhaustion) can take off it in its reckoning (_wear()): a worn skill is still better than none
@@ -112,6 +111,9 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 			_strike(b, u, reads, log, false, KILL)
 		else:
 			_keep_up(b, u, log)
+		return log
+	if u.restless():  # Restless Dead ??: whatever it was told, whatever its side
+		_restless(b, u, reads, log)
 		return log
 	_unshackle(b, u, log)
 	if posture == &"defensive":
@@ -678,13 +680,37 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 	return true
 
 
+# Restless Dead ?? (Unit.restless()): the nearest living unit it sees (a foe to it: Read.dead_eye), in tiles, its
+# own side's on a tie; it strikes that one with its best blow, else walks up to it first. Nothing else.
+static func _restless(b: Battle, u: Unit, reads: Dictionary, log: Array[String]) -> void:
+	var prey := _prey(u, reads)
+	if prey == null:
+		return
+	var only := {prey: reads[prey]}
+	if not _strike(b, u, only, log) and not _rooted(b, u):
+		log.append("%s lurches %s" % [u.name, b.travel(u, _approach(b, u, prey, reads))])
+		only[prey] = b.read(u, prey)
+	while _strike(b, u, only, log):
+		pass
+
+
+static func _prey(u: Unit, reads: Dictionary) -> Unit:
+	var prey: Unit = null
+	for t: Unit in reads:
+		var r: Read = reads[t]
+		if not t.is_alive() or not _foe(u, r) or not r.seen:
+			continue
+		var d := Command.tiles(u.cell, r.cell)
+		var pd := Command.tiles(u.cell, reads[prey].cell) if prey else 0
+		if prey == null or d < pd or (d == pd and t.faction == u.faction and prey.faction != u.faction):
+			prey = t
+	return prey
+
+
 # Raises a host: a tile skill whose cast adds bodies (Behaviour.bodies(): Skeleton) cast near itself, toward the nearest foe
-# it makes out within SUMMON_SEEN, while its side has room (SUMMON_CAP) and the bodies (BODY each) are worth more than what
+# it makes out within SUMMON_SEEN, while the bodies it would keep (Behaviour.bodies(): under a summon's soft cap) at BODY each are worth more than what
 # the cast costs it (AP, POINT, as score() weighs a rebate) and its wear. The best such skill; false if none was cast.
 static func _summon(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
-	var room := SUMMON_CAP - b.members(u.faction).size()
-	if room <= 0:
-		return false
 	var foe: Variant = null
 	for t: Unit in reads:
 		var r: Read = reads[t]
@@ -705,7 +731,7 @@ static func _summon(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 		if n <= 0:
 			continue
 		var fund: Variant = u.funding(s)
-		var net := minf(n, room) * BODY - (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT) - _wear(u, s)
+		var net := n * BODY - (u.ap_cost(s, fund) * AP + u.cost_from(s, fund) * POINT) - _wear(u, s)
 		if net > best_net:
 			best = s
 			best_net = net

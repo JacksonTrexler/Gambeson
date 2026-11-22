@@ -17,6 +17,8 @@ extends SceneTree
 #   dread    v(1), foes' skills read, against a Stunner v(3) starting `gap` tiles off (AI._shy(), DREAD): stuns it takes, turns it holds or backs off, who strikes first, the winner
 #   worn     Strike and Hex worn by exhaustion, 10 rounds on a soaker (WORN)
 #   host     a Skeleton caster 10 tiles from a soaker, 8 rounds: bodies raised, damage dealt (AI._summon(), BODY)
+#   restless a Skeleton III cast past the soft cap (int 8: 2 in hand of 6), both sides fighting ROUNDS rounds: the Restless Dead
+#            (Scripts/Undead.gd) on their own side and the foe's - HP each side's villagers lost, the restless left
 #   hostnear the same with the soaker 5 tiles off, in the skeletons' walk: damage with and without them (sweep BODY "0 5")
 #   hide     Invisibility offered to an ally with a watcher of rising wisdom (SEEN)
 # Saves and settings go to per-process files, as run.gd (a sim must never touch the player's own).
@@ -101,7 +103,7 @@ func _initialize() -> void:
 	var keys: GDScript = load("res://Scripts/KeyBinds.gd")
 	keys.set("SAVE", "user://keybinds_sim_%d.cfg" % pid)
 	_museum = load(MUSEUM)
-	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host", "hostnear", "dread"]:
+	for sc in ["hunt", "clash", "ambush", "kick", "grudge", "rider", "cc", "armor", "plate", "worn", "hide", "host", "hostnear", "dread", "restless"]:
 		if words.is_empty() or words.any(func(w: String): return w in sc):
 			await call("_" + sc, n)
 	for p in [Prefs.SAVE, keys.get("SAVE"), save.get("PATH"), save.get("PATH") + ".bad", save.get("PATH") + ".tmp"]:
@@ -650,6 +652,7 @@ func _hosts(n: int, foe_x: int, name: String) -> void:
 		var t := await _fresh(seed)
 		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres")))
 		t.roomy(t.v(1))
+		t.v(1).intelligence = 14  # Summon's soft cap: rank I + 2 in hand (a villager's 8 holds none)
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(foe_x, 3)})
 		t.soak(t.v(3), 900)
 		var before: int = t.b.members(t.lancin).size()
@@ -659,6 +662,33 @@ func _hosts(n: int, foe_x: int, name: String) -> void:
 		dmg += 900 - t.v(3).hp
 		_drop(t)
 	_say(name, {bodies = float(bodies) / n, damage = dmg / n})
+	await process_frame
+
+
+func _restless(n: int) -> void:
+	var lost := {lancin = 0.0, nemes = 0.0}
+	var raised := 0
+	var left := 0
+	for seed in n:
+		var t := await _fresh(seed)
+		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres"), 3))
+		t.roomy(t.v(1))
+		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(4, 5), t.v(3): Vector2i(10, 3), t.v(4): Vector2i(10, 5)})
+		t.v(1).refresh()
+		t.v(1).energy = t.v(1).max_energy
+		t.v(1).ap[0].amount = 99.0
+		for i in 4:
+			t.soak(t.v(i + 1), 60)
+		var cast := t.b.cast_at(t.v(1), load("res://Skills/skeleton.tres"), Vector2i(6, 3))
+		assert(cast)
+		raised += t.b.restless.size()
+		for r in ROUNDS:
+			t.turn(Command.cognizant_first(t.b.members(t.b.turn)))
+		lost.lancin += 120 - t.v(1).hp - t.v(2).hp
+		lost.nemes += 120 - t.v(3).hp - t.v(4).hp
+		left += t.b.restless.keys().filter(func(u: Unit): return is_instance_valid(u) and u.is_alive()).size()
+		_drop(t)
+	_say("restless", {restless = float(raised) / n, lancin_lost = lost.lancin / n, nemes_lost = lost.nemes / n, left = float(left) / n})
 	await process_frame
 
 

@@ -1788,6 +1788,7 @@ func _move(u: Unit, c: Vector2i) -> void:
 
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
 func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
+	units = Command.cognizant_first(units)  # the Disturbed last
 	busy = true
 	aim = false
 	plan = {}

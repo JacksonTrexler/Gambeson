@@ -264,6 +264,14 @@ func idle() -> Array[Unit]:
 	return out
 
 
+# Who acts first among units acting alone: the cognizant, then the Disturbed (brainwashed, hostile: the Restless Dead ??),
+# each in the order given.
+static func cognizant_first(units: Array[Unit]) -> Array[Unit]:
+	var out: Array[Unit] = []
+	out.assign(units.filter(func(u: Unit): return not u.disturbed()) + units.filter(func(u: Unit): return u.disturbed()))
+	return out
+
+
 # The leader's side starts a turn: orders are fresh, and the fallen leave the party, as do those it
 # no longer takes for teammates (a traitor seen through).
 func new_turn() -> void:
