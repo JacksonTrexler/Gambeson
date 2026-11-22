@@ -681,3 +681,75 @@ func test_stretch_holds_what_a_read_asks() -> void:
 	Unit.begin_read()
 	ok(bracing not in u.passives and bracing in u.kit and u.defense() == defense + 3, "a fresh stretch finds a disabled passive (still in the kit) and a Defense effect (%d vs %d)" % [u.defense(), defense])
 	Unit.end_read()
+
+
+# The cheaper ways of asking (docs/plans/w11-cast.md) answer as the plain ones did, for a field of mixed units: what is held for a
+# stretch (rank, suspicious) is what a plain ask finds, and the shortcuts (restless's tag first, evaluates first, cover in one stretch,
+# slots in one pass, link past item-less items, the reaction-tagged passives alone) equal their long forms. And the premise of the
+# last: every behaviour that reacts (defines react()) sits on skills that carry the reaction tag, as skill.py check holds.
+func test_cast_cost_answers_as_before() -> void:
+	var gal: Skill = sk("gallantry")
+	var interject: Skill = sk("interject")
+	v(1).learned.append(slot(gal))
+	v(2).learned.append(slot(interject))
+	v(3).learned.append(slot(sk("self_evaluation")))
+	v(4).learned.append(slot(sk("agility_bracing")))
+	v(4).learned.append(slot(sk("self_evaluation")))
+	for u: Unit in [v(1), v(2), v(3), v(4)]:
+		roomy(u, 4)
+	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3), v(3): Vector2i(6, 3), v(4): Vector2i(7, 3)})
+	v(2).afflict(load("res://Effects/disturbed.tres"), 5)
+	v(3).afflict(effect("concealment", 2), 5)
+	v(4).tags.append(&"undead")
+	v(4).afflict(effect("sleep", 1.0), 5)  # an evaluator asleep sees nothing
+	v(4).afflict(load("res://Effects/disturbed.tres"), 5)
+	var units: Array[Unit] = [v(1), v(2), v(3), v(4)]
+	for u in units:
+		var slots_was := {}  # slots() as it was: _own() then granted(), each skill's first entry of its highest rank
+		for x in u._own() + u.granted():
+			if x and x.skill and (x.skill not in slots_was or x.rank > slots_was[x.skill].rank):
+				slots_was[x.skill] = x
+		ok(u.slots == slots_was.values(), "%s: slots in one pass are the two-step list" % u.name)
+		ok(u.restless() == (u.disturbed() and u.has_tag(&"undead")), "%s: restless is its two parts" % u.name)
+		ok(Perception.cover(b, u) == Perception._levels(b, u.cell, u).values().reduce(func(sum, x): return sum + x, 0), "%s: cover" % u.name)
+		var evaluating := units.filter(func(o: Unit): return o.faction == u.faction and o.is_alive() and not o.asleep() and o.evaluates() > 0 and Command.tiles(o.cell, u.cell) <= o.evaluates())
+		ok(b.evaluators(u).map(func(o: Unit): return o.name) == evaluating.map(func(o: Unit): return o.name), "%s: evaluators" % u.name)
+		var reacting: Array[Slot] = []
+		reacting.assign(Battle.reactions_of(u).filter(func(x: Slot): return &"reaction" in x.skill.tags))
+		ok(Battle.reactions_of(u, Battle.REACTION) == reacting and u.on_passives_tagged(Battle.REACTION).size() == u.on_passives.filter(func(x: Slot): return Battle.REACTION in x.skill.tags).size(), "%s: the reaction-tagged passives alone" % u.name)
+		for s: Skill in [gal, interject, strike, hex]:
+			var items_link := &""  # link() as it was: every item asked
+			for it in u.items():
+				match it.link(s):
+					&"free":
+						items_link = &"free"
+					&"optional":
+						if items_link == &"":
+							items_link = &"optional"
+			ok(u.link(s) == (&"" if items_link == &"" or u.own_rank(s) > 0 else items_link), "%s: link %s" % [u.name, s.name])
+		var plain := {}
+		for x in u.slots:
+			plain[x.skill] = u.rank(x.skill)
+		Unit.begin_read()
+		for x in u.slots:  # twice: asked, then held
+			ok(u.rank(x.skill) == plain[x.skill] and u.rank(x.skill) == plain[x.skill], "%s: rank of %s held" % [u.name, x.skill.name])
+		Unit.end_read()
+		var all := b.suspicious(u)
+		Unit.begin_read()
+		var known: Dictionary[Unit, Read] = {}
+		for t in units:
+			if t != u:
+				known[t] = b.read(u, t)
+		ok(b.suspicious(u, known) == all, "%s: suspicious with the reads in hand is the same list" % u.name)
+		Unit.end_read()
+	ok(v(4).restless() and not v(2).restless() and Perception.cover(b, v(3)) > 0 and b.evaluators(v(3)).size() == 1 and v(4).asleep(), "the field has a restless one, a disturbed living one, a hider, an evaluator and a sleeping one")
+	var untagged: Array[String] = []
+	for p in DirAccess.get_files_at("res://Behaviours"):
+		if not p.ends_with(".gd") or not FileAccess.get_file_as_string("res://Behaviours/" + p).contains("func react("):
+			continue
+		for f in DirAccess.get_files_at("res://Skills"):
+			if f.ends_with(".tres"):
+				var st := FileAccess.get_file_as_string("res://Skills/" + f)
+				if st.contains("res://Behaviours/" + p) and not st.contains("&\"reaction\""):
+					untagged.append(f)
+	ok(untagged.is_empty(), "skills whose behaviour reacts carry the reaction tag, or react() never asks them: %s" % [untagged])
