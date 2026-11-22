@@ -3967,7 +3967,7 @@ func _effects(viewer: Unit = null) -> Array:
 # (_stat_fx()): a read changes no one's effects, and asks for the same few units' stats dozens of times. It holds only
 # while the unit stands where it was (a planning step on another tile, Battle.standing(), has other ground's effects),
 # and it is dropped as the outermost stretch begins (_epoch), so nothing carries from one to the next.
-var _fx := {}  # viewer -> {all: [effect, rank, strength]..., by: {stat: the same, of that stat}}
+var _fx := {}  # viewer -> {all: [effect, rank, strength]..., by: {stat: the same, of that stat}, vals: {what held() keeps}}
 var _fx_epoch := -1
 var _fx_at: Variant
 var _fx_ground: Terrain
@@ -3994,9 +3994,21 @@ func _held_fx(viewer: Unit) -> Dictionary:
 		if viewer != null and not saw:
 			held = _held_fx(null)  # nothing it saw through: the list is the same as anyone's
 		else:
-			held = {all = _gather_effects(viewer), by = {}}
+			held = {all = _gather_effects(viewer), by = {}, vals = {}}
 		_fx[viewer] = held
 	return held
+
+
+# A value a planner works out about this unit once for the stretch (begin_read()), kept with its effects: asked again
+# in the stretch it comes back; null outside one, or where none was kept. It goes where the effects go (the unit standing
+# elsewhere, or a new stretch). The keys: a stat's name (stat()), anything else that is its own.
+func held(key: Variant) -> Variant:
+	return _held_fx(null).vals.get(key) if reading > 0 else null
+
+
+func hold(key: Variant, value: Variant) -> void:
+	if reading > 0:
+		_held_fx(null).vals[key] = value
 
 
 # What _effects() holds for s alone, in the order it holds them (the same sum comes out); in a stretch only.

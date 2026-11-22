@@ -1692,8 +1692,13 @@ func aimed(o: Unit, t: Unit) -> int:
 # concealed from the target or unseen (Read). An ambushing hit carries the ambush tag (hit_tags()), so
 # effects and rules tagged ambush count on it; Gank needs one.
 func ambushes(caster: Unit, target: Unit) -> bool:
+	var held: Variant = caster.held(target)  # asked for each skill it weighs on the same target, in a planning stretch: once, while neither has moved
+	if held != null and held[1] == caster.cell and held[2] == target.cell:
+		return held[0]
 	var r := read(target, caster)
-	return not r.located() or r.concealed or not r.seen
+	var out := not r.located() or r.concealed or not r.seen
+	caster.hold(target, [out, caster.cell, target.cell])
+	return out
 
 
 # Taken out of the fight: u was downed (a heart spent), went Downed, or was killed - the one place each
@@ -3291,7 +3296,12 @@ func skill_range(caster: Unit, skill: Skill, target: Unit = null) -> float:
 
 # skill_range() less the target's part (0.02 of its size): what a planner asking about many targets from one place works out once.
 func skill_reach(caster: Unit, skill: Skill) -> float:
-	return skill.span(caster) + caster.stat(&"reach") + 0.05 * caster.stat(&"size")
+	var held: Variant = caster.held(skill)  # asked about each foe in turn, in a planning stretch: once
+	if held != null:
+		return held
+	var out := skill.span(caster) + caster.stat(&"reach") + 0.05 * caster.stat(&"size")
+	caster.hold(skill, out)
+	return out
 
 
 # Circle geometry. A near miss (within Luck.MARGIN) is rounding: in only if the caster is luckier.

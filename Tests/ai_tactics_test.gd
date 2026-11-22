@@ -634,3 +634,23 @@ func test_dreads_a_cc() -> void:
 	var from: Array[Vector2i] = [v(3).cell]
 	var back := AI._retreat(b, v(1), from, 0, reads)
 	ok(AI._dread(foes, back) == 0.0, "backing off from another foe, it keeps out of the Stunner's reach (%s)" % back)
+
+
+# What a planning stretch holds (Unit.begin_read(), held()) and what the planners ask in part: a skill's reach is asked once a stretch and
+# a fresh one finds a change; skill_range() is skill_reach() plus the target's part; survey()'s bounded suspicious() is the full list cut.
+func test_planning_holds_and_bounds() -> void:
+	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
+	var strike: Skill = load("res://Skills/strike.tres")
+	var u := v(1)
+	u.wisdom = 16
+	var before := b.skill_reach(u, strike)
+	ok(b.skill_range(u, strike, v(3)) == before + 0.02 * v(3).stat(&"size"), "skill_range is skill_reach and the target's part")
+	Unit.begin_read()
+	ok(b.skill_reach(u, strike) == before and u.held(strike) == before, "held in the stretch")
+	Unit.end_read()
+	u.afflict(effect("reach", 3), 3)
+	ok(u.held(strike) == null and b.skill_reach(u, strike) > before, "a new stretch finds what changed (%.2f > %.2f)" % [b.skill_reach(u, strike), before])
+	var all := b.suspicious(u)
+	ok(not all.is_empty(), "the trap and what hides are suspicious")
+	for reach in [1, 3, 5]:
+		ok(b.suspicious(u, {}, u.cell, reach) == all.filter(func(c: Vector2i): return Command.tiles(u.cell, c) <= reach), "bounded to %d tiles is the list cut there" % reach)
