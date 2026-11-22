@@ -65,34 +65,34 @@ static func unpack(d: Dictionary) -> void:
 	Game.level = maxi(int(d.get("level", 1)), 1)  # Battle.starter() clamps it to Unit.MAX_LEVEL
 	Game.xp = maxi(int(d.get("xp", 0)), 0)
 	Game.hero = {}
-	var h = d.get("hero")
+	var h: Variant = d.get("hero")
 	if h is Dictionary:
-		var f = load(h.get("faction", "")) if _is_path(h.get("faction")) else null
-		var r = load(h.get("role", "")) if _is_path(h.get("role")) else null
+		var f: Resource = load(h.get("faction", "")) if _is_path(h.get("faction")) else null
+		var r: Resource = load(h.get("role", "")) if _is_path(h.get("role")) else null
 		if f is Faction and r is Role:
 			Game.hero = {faction = f, role = r, name = str(h.get("name", "Shrike"))}
 		else:
 			push_warning("Save: the saved hero's side or class is gone; it is left out")
 	Game.outfit = {}
-	var worn = d.get("outfit")
+	var worn: Variant = d.get("outfit")
 	if worn is Dictionary:
 		for slot in worn:
 			var it := item_in(worn[slot])
 			if it and (it.slot == slot or (it.slot == "armor" and slot.begins_with(Unit.PLATE))):
 				Game.outfit[slot] = it
 	Game.stash = []
-	var stash = d.get("stash")
+	var stash: Variant = d.get("stash")
 	if stash is Array:
 		for e in stash:
 			var it := item_in(e)
 			if it:
 				Game.stash.append(it)
-	var eq = d.get("equipped")
+	var eq: Variant = d.get("equipped")
 	_equipped_in(eq if eq is Array else [])
-	var lp = d.get("lapses")
+	var lp: Variant = d.get("lapses")
 	Game.lapses = lp if lp is Dictionary else {}  # a file from before it: nothing leans
 	Game.roster = []
-	var ro = d.get("roster")
+	var ro: Variant = d.get("roster")
 	for e in (ro if ro is Array else []):
 		if e is Dictionary and _is_path(e.get("role")) and ResourceLoader.exists(e.role) and load(e.role) is Role:
 			Game.roster.append(e)
@@ -133,7 +133,7 @@ static func item_in(d: Variant) -> Item:
 	if not d is Dictionary or not _is_path(d.get("item")) or not ResourceLoader.exists(d.item):
 		push_warning("Save: an item (%s) is gone; it is left out" % str(d))
 		return null
-	var it = load(d.item)
+	var it: Resource = load(d.item)
 	if not it is Item:
 		push_warning("Save: %s is not an item; it is left out" % d.item)
 		return null
@@ -154,7 +154,7 @@ static func id(it: Item) -> String:
 		for f in DirAccess.get_files_at(ITEMS):
 			f = f.trim_suffix(".remap")
 			if f.ends_with(".tres"):
-				var base = load(ITEMS + f)
+				var base: Resource = load(ITEMS + f)
 				if base is Item and not _ids.has(base.name):
 					_ids[base.name] = ITEMS + f
 	return _ids.get(it.name, "")
@@ -182,8 +182,8 @@ static func load_game() -> bool:
 	if not FileAccess.file_exists(PATH):
 		return false
 	var text := FileAccess.get_file_as_string(PATH)
-	var d = JSON.parse_string(text)
-	var v = d.get("version") if d is Dictionary else null
+	var d: Variant = JSON.parse_string(text)
+	var v: Variant = d.get("version") if d is Dictionary else null
 	if not (v is float or v is int) or int(v) not in [1, VERSION]:  # 1: migrate()
 		push_warning("Save: %s is not a version %d save; ignored, kept as .bad" % [PATH, VERSION])
 		DirAccess.rename_absolute(ProjectSettings.globalize_path(PATH), ProjectSettings.globalize_path(PATH + ".bad"))

@@ -3059,12 +3059,12 @@ func lapses_out() -> Dictionary:
 func lapses_in(d: Dictionary) -> void:
 	leaned.clear()
 	waived.clear()
-	var l = d.get("leaned")
+	var l: Variant = d.get("leaned")
 	for id in (l if l is Array else []):
 		var s := _skill_by_id(id)
 		if s and base_rank(s) > 0:
 			leaned.append(s)
-	var w = d.get("waived")
+	var w: Variant = d.get("waived")
 	for id in (w if w is Dictionary else {}):
 		var s := _skill_by_id(id)
 		var via := _skill_by_id(w[id])
@@ -3115,14 +3115,14 @@ func from_dict(d: Dictionary) -> void:
 	for k in d.get("picked", []):
 		picked.append(str(k))
 	skill_points = maxi(level - 1 - purchases.reduce(func(n: int, p: Array): return n + p[1], 0), 0)
-	var worn = d.get("outfit", {})
+	var worn: Variant = d.get("outfit", {})
 	for slot in (worn if worn is Dictionary else {}):
 		var it := Save.item_in(worn[slot])
 		if it and (it.slot == slot or (it.slot == "armor" and slot.begins_with(PLATE))):
 			set(slot, it)
-	var lp = d.get("lapses", {})
+	var lp: Variant = d.get("lapses", {})
 	lapses_in(lp if lp is Dictionary else {})
-	var bar = d.get("bar", [])
+	var bar: Variant = d.get("bar", [])
 	if bar is Array and not bar.is_empty():
 		var skills: Array = bar.map(_skill_by_id)
 		ready.connect(func(): set_equipped(skills), CONNECT_ONE_SHOT)  # once its bar is set up

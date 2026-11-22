@@ -45,7 +45,7 @@ func _ready() -> void:
 	var picked := Game.party_now()
 	for i in Game.roster.size():
 		var d: Dictionary = Game.roster[i]
-		var r = load(d.role) if ResourceLoader.exists(str(d.get("role", ""))) else null
+		var r: Resource = load(d.role) if ResourceLoader.exists(str(d.get("role", ""))) else null
 		var box := CheckBox.new()
 		var who := str(d.get("name", "?"))
 		box.text = "%s, level %d" % [who if r and who == r.name else "%s, %s" % [who, r.name if r else "?"], int(d.get("level", 1))]

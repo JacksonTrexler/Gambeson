@@ -885,14 +885,14 @@ func contest(sides: Array, keys: Array[Callable] = []) -> Array:
 	return out
 
 
-func best_luck(side) -> int:
+func best_luck(side: Variant) -> int:
 	var best := -999
 	for u in members(side):
 		best = maxi(best, u.luck)
 	return best
 
 
-func dexterity(side) -> int:
+func dexterity(side: Variant) -> int:
 	var sum := 0
 	for u in members(side):
 		sum += roundi(u.stat(&"dexterity"))
@@ -900,7 +900,7 @@ func dexterity(side) -> int:
 
 
 # Living units on a side.
-func members(side) -> Array[Unit]:
+func members(side: Variant) -> Array[Unit]:
 	var pool: Array = []
 	if side is Unit:
 		pool = [side]
@@ -918,7 +918,7 @@ func _flip(g: Array) -> Array:
 	g = g.duplicate()
 	for i in range(g.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
-		var t = g[i]
+		var t: Variant = g[i]
 		g[i] = g[j]
 		g[j] = t
 	return g

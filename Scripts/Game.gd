@@ -30,7 +30,7 @@ static func party_size(lvl: int, charisma: int) -> int:
 # The Party's size for the leader: Game.level, and the charisma its class gives (a unit's base score: nothing
 # raises it in play but effects, which don't count here).
 static func leader_party_size() -> int:
-	var r = hero.get("role")
+	var r: Variant = hero.get("role")
 	return party_size(level, r.stats.get(&"charisma", 10) if r else 10)
 
 
@@ -49,11 +49,11 @@ static func party_now() -> Array[int]:
 # end saves).
 # The leader's lapses_out() is its own too (Game.lapses), as its bar is (HUD._keep_bar()).
 static func keep() -> void:
-	var lead = fielded.get(0)
+	var lead: Variant = fielded.get(0)
 	if is_instance_valid(lead):
 		lapses = lead.lapses_out()
 	for i in fielded:
-		var u = fielded[i]
+		var u: Variant = fielded[i]
 		if is_instance_valid(u) and i < roster.size():
 			roster[i] = u.to_dict()
 

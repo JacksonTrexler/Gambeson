@@ -186,7 +186,7 @@ static func _find_kinds() -> void:
 		if k not in _kinds[s]:
 			_kinds[s].append(k)
 	for f in ResourceLoader.list_directory("res://Trees/"):
-		var t = load("res://Trees/" + f) if f.ends_with(".tres") else null
+		var t: Resource = load("res://Trees/" + f) if f.ends_with(".tres") else null
 		if t and t.has_method(&"general") and t.general():  # a general tree (SkillTab)
 			var k: StringName = t.category if t.category else &"general"
 			for s in ([t.center] if t.center else []) + t.core:
@@ -198,7 +198,7 @@ static func _find_kinds() -> void:
 			for s in t.own_skills():
 				note.call(s, t.tag)
 	for f in ResourceLoader.list_directory("res://Roles/"):
-		var role = load("res://Roles/" + f) if f.ends_with(".tres") else null
+		var role: Resource = load("res://Roles/" + f) if f.ends_with(".tres") else null
 		if role and role.has_method(&"all_roots"):
 			for r in role.all_roots():
 				for s in r.own_skills():
