@@ -30,6 +30,7 @@ const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), pre
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
 const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
+const MONSTER := "res://Roles/monster.tres"  # the Monster class: monster() builds one of a path
 const FLEX := "Flex Tree"  # the choice of flex trees levelling offers (flex_choice()): its box's heading, and its picks' key in picked
 const INVERTED := "Inverted"  # the choice of flex trees an inverted page sells for base stats (invert_choice(), buy_flex())
 const FLEX_PAY := {&"martial": MENTAL, &"specialist": [&"strength", &"intelligence"], &"magical": [&"strength", &"dexterity", &"constitution"]}  # what an inverted page takes for a flex tree, by its type (SkillTab.flex_type()): martial a mental stat, specialist str or int, caster a physical stat
@@ -194,7 +195,7 @@ var trees_granted: Array[StringName] = []  # general trees opened to it beyond i
 var flex_extra := 0  # flex trees it may take up beyond what its levels offer (flex_slots()): a page buying them with base stats, an adventure
 var _flex: TreeChoice  # flex_choice(), kept so the skills screen and pick() see the same choice
 var _inv: TreeChoice  # invert_choice(), likewise
-var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
+@export var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick()); set in a scene or by monster(), a pre-selection
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
 @export var max_hp := 10:
@@ -602,6 +603,8 @@ func _ready() -> void:
 	_role_slots.assign((role.innate if role else []).map(func(s: Slot): return s.duplicate()))
 	innate.assign(innate.map(func(s: Slot): return s.duplicate()))
 	learned.assign(learned.map(func(s: Slot): return s.duplicate()))
+	picked = picked.duplicate()  # a scene's pre-selection, its own
+	take_free()  # what a pre-selected free choice brings (a Monster's path), before its bar is filled
 	if role and not race:
 		race = role.race
 	if role and not look:
@@ -1832,10 +1835,58 @@ func pick(c: TreeChoice, t: SkillTab) -> bool:
 	if pick_missing(c, t) != "":
 		return false
 	picked.append(c.key(t))
+	if take_free():
+		sync_bar()
+		_arrange()
 	refit()
 	for r in t.reserves:  # a reserve it brings comes full (a Druid's Astral: mana)
 		set_store(r, 0 if r.empty else pools()[r])
 	return true
+
+
+# Learns, at rank I and for nothing, the opening skills (no branch before them) of every tree it has
+# picked in a free choice (TreeChoice.free: a Monster's Path, its traits) that it hasn't already. True if
+# it learned any. Not a purchase: a level curse doesn't take it back; raise() ranks it as any skill.
+func take_free() -> bool:
+	var took := false
+	for c in role.choices if role else []:
+		if c and c.free:
+			for t in picks(c):
+				for r in t.roots:
+					for b in r.branches if r else []:
+						if b and b.skill and b.after.is_empty() and b.needs == 0 and own_rank(b.skill) == 0:
+							var x := Slot.new()
+							x.skill = b.skill
+							learned.append(x)
+							took = true
+	return took
+
+
+# Free choices it has yet to make (TreeChoice.free: a Monster's Path): picks owed, for the skills badge.
+func free_due() -> int:
+	var n := 0
+	for c in role.choices if role else []:
+		if c and c.free:
+			n += maxi(pick_cap(c) - picks(c).size(), 0)
+	return n
+
+
+# A Monster-class unit (Roles/monster.tres) of a path - its Path choice's tree by name, "Sirens" -
+# at a level, with skill points for the levels past the first, its path pre-selected (its traits come
+# free as it's readied). Not in the tree yet; null for no such path. Thesis of Theseus's hook: level =
+# the skill's rank.
+static func monster(f: Faction, path: String, at := 1, nick := "") -> Unit:
+	var r: Role = load(MONSTER)
+	for c in r.choices:
+		if c and c.free:
+			for t in c.tabs:
+				if t and t.name.to_lower() == path.to_lower():
+					var u := Battle.from_role(f, r, nick if nick else r.name)
+					u.level = clampi(at, 1, MAX_LEVEL)
+					u.skill_points = u.level - 1
+					u.picked.append(c.key(t))
+					return u
+	return null
 
 
 # Spends a skill point on one of options(), learning it at rank I: onto the hotbar's first free slot

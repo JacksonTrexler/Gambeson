@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_role"]
+[ext_resource type="Texture2D" path="res://Units/Monster.png" id="2_monster"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_human"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="5_slot"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="6_gambeson"]
+[ext_resource type="Resource" path="res://Items/dagger.tres" id="7_dagger"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="8_item"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="skilltab"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="skillroot"]
+[ext_resource type="Resource" path="res://Trees/monster_starmen.tres" id="monster_starmen"]
+[ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="treechoice"]
+[ext_resource type="Resource" path="res://Trees/monster_sirens.tres" id="monster_sirens"]
+[ext_resource type="Resource" path="res://Trees/monster_skeletons.tres" id="monster_skeletons"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("5_slot")
+skill = ExtResource("4_strike")
+
+[sub_resource type="Resource" id="Tab_starmen"]
+script = ExtResource("skilltab")
+name = "Starmen"
+kind = "Path"
+roots = Array[ExtResource("skillroot")]([ExtResource("monster_starmen")])
+
+[sub_resource type="Resource" id="Tab_sirens"]
+script = ExtResource("skilltab")
+name = "Sirens"
+kind = "Path"
+roots = Array[ExtResource("skillroot")]([ExtResource("monster_sirens")])
+
+[sub_resource type="Resource" id="Tab_skeletons"]
+script = ExtResource("skilltab")
+name = "Skeletons"
+kind = "Path"
+roots = Array[ExtResource("skillroot")]([ExtResource("monster_skeletons")])
+
+[sub_resource type="Resource" id="Choice_path"]
+script = ExtResource("treechoice")
+name = "Path"
+free = true
+tabs = Array[ExtResource("skilltab")]([SubResource("Tab_starmen"), SubResource("Tab_sirens"), SubResource("Tab_skeletons")])
+
+[resource]
+script = ExtResource("1_role")
+name = "Monster"
+noun = "Monster"
+tends = &"pragmatic"
+look = ExtResource("2_monster")
+race = ExtResource("3_human")
+innate = Array[ExtResource("5_slot")]([SubResource("Slot_strike")])
+stats = Dictionary[StringName, int]({&"strength": 14, &"dexterity": 11, &"constitution": 14, &"intelligence": 8, &"wisdom": 10, &"charisma": 9})
+items = Array[ExtResource("8_item")]([ExtResource("6_gambeson"), ExtResource("7_dagger")])
+general = Array[StringName]([&"martial"])
+choices = Array[ExtResource("treechoice")]([SubResource("Choice_path")])

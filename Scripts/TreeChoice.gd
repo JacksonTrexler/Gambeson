@@ -15,6 +15,7 @@ extends Resource
 @export var talent := &""  # a stat raising its trees' skills' Affinity by 1, up to the tier the stat reads (a Ranger's Nature: Natural Talent)
 @export var spares_kin := false  # its affinity penalty spares elemental skills (ELEMENTS) and trees kin to a tree its picker has picked (SkillTab.kin: a Druid's guest trees)
 @export var borrows: Array[String] = []  # kinds of caster tree it also offers from every class, found when first asked (all()): a Wizard's Domain takes every Divinity
+@export var free := false  # picking a tree learns its opening skills (its roots' skills with nothing before them) at rank I for nothing; past I they cost skill points as any (a Monster's Path: its traits; Unit.take_free())
 @export_group("God")  # a slot its picker's god fills (God: Unit.offered())
 @export var kinds: Array[String] = []  # a god slot: the trees of these kinds its picker's god offers (a Paladin's Prowess: Prowess; its Flex: Prowess, Divinity, School)
 @export var gods := false  # a choice of god: every god's own tree of its kinds, picking one choosing whom it serves (a Cleric's God: Divinity; a Warlock's Patron)
