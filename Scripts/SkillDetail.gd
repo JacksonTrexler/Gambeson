@@ -94,6 +94,8 @@ func show_tree(u: Unit, c: TreeChoice, t: SkillTab, can_spend: bool) -> void:
 	var text := SkillTree.opens(t)
 	if c.affinity:
 		text += "\nA guest tree: its skills rank at %+d Affinity" % c.affinity
+	if c.free:
+		text += "\nIts first skills come free, at rank I; skill points rank them up"
 	text_label.text = Glossary.rich(text)
 	act.visible = why != "Picked"
 	if not can_spend:
