@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/ambush.gd" id="b_ambush"]
+
+[sub_resource type="Resource" id="Behaviour_ambush"]
+script = ExtResource("b_ambush")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Ambush"
+glyph = "Am"
+tags = Array[StringName]([&"dex", &"defensive"])
+ap = 2.0
+cost = 0
+radius = 6.0
+hostile = false
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_ambush")])

@@ -350,6 +350,12 @@ func marks(_b: Battle, _u: Unit) -> bool:
 	return false
 
 
+# A tile mark its skill laid (Battle.Mark.skill) went off on u (Battle._trigger(), after its effects went on):
+# what the skill does then (Ambush: its layer strikes u).
+func tripped(_b: Battle, _m: Battle.Mark, _u: Unit) -> void:
+	pass
+
+
 # A passive's: the AP a summoned unit `who` keeps on arriving, beyond what the summon gives (Behaviours/summon_per_rank.gd
 # asks every passive its summoner has); `rank` is the holder's rank in it. Pure (Wake and Rake: its rank, for a `summon` unit).
 func summon_ap(_holder: Unit, _rank: int, _who: Unit) -> int:

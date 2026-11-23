@@ -129,6 +129,36 @@ func test_inspect() -> void:
 	ok(b.inspect(v(1), v(3).cell) and v(1).suspects(Vector2i(1, 4)) == 1 and v(1).suspects(v(3)) == 1, "a hidden unit: suspicious of it, and of its tile")
 
 
+# Hurt by something it can't make out: a free look at where the blow came from (Battle._hurt_by()).
+func test_unseen_hit() -> void:
+	stage(nemes, {v(3): Vector2i(5, 3), v(1): Vector2i(4, 3)})
+	v(3).afflict(effect("concealment", 3), 9)
+	v(3).strength = 60
+	v(3).dexterity = 60
+	soak(v(1))
+	v(1).wisdom = 60
+	ok(b.read(v(1), v(3)).net < 0, "it can't make out its attacker")
+	var looks := []
+	b.inspected.connect(func(by: Unit, at: Vector2i, _t: int, _a: int): looks.append([by, at]))
+	ok(b.cast(v(3), strike, v(1)) and v(1).hp < 999, "struck from hiding")
+	ok(looks == [[v(1), v(3).cell]] and v(1).suspects(v(3)) == 1, "it inspects where the blow came from, free, and grows suspicious")
+
+
+# Detective (stat detective): what it finds out for itself - not what it's told - it keeps recon on (Battle.suspect(), note()).
+func test_detective() -> void:
+	stage(lancin, {v(1): Vector2i(1, 4), v(2): Vector2i(1, 3), v(3): Vector2i(3, 4)})
+	v(3).afflict(effect("concealment", 3), 9)
+	for u in [v(1), v(2)]:
+		u.afflict(effect("detective", 2), 9)
+	v(1).wisdom = 60
+	v(1).charisma = 20  # passes the word to v(2)
+	var net := b.read(v(1), v(3)).net
+	ok(b.inspect(v(1), v(3).cell) and v(2).suspects(v(3)) == 1, "it sees through it, and tells v(2)")
+	ok(b.noticed[v(1)].get(v(3)) == 2 and b.noticed[v(1)].get(v(3).cell) == 2 and b.read(v(1), v(3)).net >= net + 3,
+			"rank 2 recon on the unit and its tile, on top of the suspicion")
+	ok(b.noticed.get(v(2), {}).is_empty(), "the told, Detectives too, learn nothing for themselves")
+
+
 func test_traitor() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 3), v(3): Vector2i(2, 2), v(4): Vector2i(8, 5)})
 	b.player = v(1)

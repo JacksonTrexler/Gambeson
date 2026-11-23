@@ -187,6 +187,8 @@ extends Resource
 # betrayal: that fraction more damage dealt with skills to a target that trusts it
 # (Battle._trusts(): it reads the holder as an ally or can't make out its side). Siren's Rake:
 # 1.0, double; Battle.cast().
+# detective: recon it keeps on what it sees through by its own look (a stack of suspicion it
+# earns: Battle.suspect(); Detective)
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -197,7 +199,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective") var stat := "luck"
 @export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
@@ -377,6 +379,8 @@ func value(rank := 1) -> String:
 	elif stat in ["unmask_gain", "uncover_gain"]:
 		return "%s Sweet Nothing%s for %s" % [Skill.num(x), "" if is_equal_approx(x, 1.0) else "s",
 				"unmasking a foe it took for friendly or neutral" if stat == "unmask_gain" else "each level of concealment it takes off a hiding foe"]
+	elif stat == "detective":
+		return "+%s recon, for the battle, on whatever it sees through by its own {k:investigate|look}" % Skill.num(x)
 	elif stat == "eyes_forward":
 		return "ending its turn on a move, inspects every tile %s + wis mod tiles ahead and %s to either side" % [Skill.num(x), Skill.num(x)]
 	elif stat == "scrambled":
