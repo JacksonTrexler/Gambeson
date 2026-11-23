@@ -262,7 +262,9 @@ class Debris:
 # Entering costs those it triggers on `cost` more movement and `wade` times as much (stride()), and
 # hazard() counts what a known one would do to a walker. Who knows it's there: its side and those told
 # (`known`), everyone when its `concealment` is 0 (fire, Warcry's squares: plainly visible), else
-# whoever reads the tile well enough (Perception.tile(), like a trap).
+# whoever reads the tile well enough (Perception.tile(), like a trap). One that `halts` stops the walk of
+# whoever it triggers on, there (walk()), as a trap does. `skill`, the skill that laid it, if any: its
+# behaviours hear it go off (Behaviour.tripped(): Ambush strikes whoever walks in).
 class Mark:
 	var kind: StringName  # what it is (&"charge", &"routed", &"earthwork"): its name's key and look
 	var name := ""
@@ -279,6 +281,8 @@ class Mark:
 	var wade := 1.0
 	var concealment := 0
 	var known: Dictionary[Unit, bool] = {}
+	var halts := false
+	var skill: Skill
 	var tint := Color.WHITE  # how it's drawn (Overlay): its colour and whether it swells (1), shrinks (-1) or stays (0)
 	var swell := 0
 
@@ -307,7 +311,7 @@ class Mark:
 
 	# Whether it would hurt u to step onto it: it triggers on u, and costs it movement or puts a harmful effect on it.
 	func harms(u: Unit) -> bool:
-		return on == &"enter" and hits(u) and (cost > 0.0 or wade > 1.0 or effects.any(func(e: Effect): return e.helps() < 0))
+		return on == &"enter" and hits(u) and (cost > 0.0 or wade > 1.0 or halts or effects.any(func(e: Effect): return e.helps() < 0))
 
 
 # A tile on fire (Flamewall): whoever enters it, or ends its turn on it, takes 1d8 + its setter's wis
@@ -3568,6 +3572,8 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		from = t
 		if t.is_trap() and not blocked.call(c) and not u.passes_by(t, path.size()):
 			break  # stepped on a trap
+		if c in marks and not blocked.call(c) and _marks_for(u, c, expected).any(func(m: Mark): return m.halts):
+			break  # walked into an ambush (Mark.halts)
 	while not path.is_empty() and blocked.call(path[-1]):  # units can be passed, not stood on
 		blocker = in_way.call(path[-1])
 		path.pop_back()
@@ -3884,6 +3890,9 @@ func _trigger(u: Unit, c: Vector2i, on: StringName) -> void:
 			if m.uses == 0:
 				_drop_mark(c, m)
 		marked.emit(c, u, m)
+		if m.skill:
+			for bh in m.skill.behaviours:
+				bh.tripped(self, m, u)  # (Ambush)
 
 
 # What walking the tiles `passed` costs u for what hurts it by the tile: each of its per_tile effects
