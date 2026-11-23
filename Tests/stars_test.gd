@@ -187,3 +187,42 @@ func test_neutral() -> void:
 	b.order.assign([lancin, starmen])
 	ok(Array(b.fighting()) == [lancin], "only fighting sides count toward the end")
 	b.order.assign([lancin, nemes])
+
+
+# Flippant (AI._skirt()): unpunished, a Starman skirts off away from a foe rather than striking it; once it has lost
+# Bio.FLIPPANT of its max HP this fight (Unit.harmed), it is aggressive and closes in.
+func test_flippant() -> void:
+	stage(starmen, {v(1): Vector2i(4, 4)})
+	v(1).energy = 0  # nothing to drain (Power Hungry)
+	var s := spawn(starman, starmen, Vector2i(7, 4))
+	s.energy = 2  # a Hop's worth
+	s.refresh()
+	var hp := v(1).hp
+	var was := Command.tiles(s.cell, v(1).cell)
+	AI.act(b, s)
+	ok(s.temper() == &"flippant" and v(1).hp == hp and Command.tiles(s.cell, v(1).cell) > was, "it skirts off, striking nothing (%s, %d tiles)" % [s.cell, Command.tiles(s.cell, v(1).cell)])
+	s.damage(ceili(s.max_hp * Bio.FLIPPANT) - 1)
+	ok(s.temper() == &"flippant", "a scratch doesn't punish it")
+	s.damage(1)
+	s.refresh()
+	var far := Command.tiles(s.cell, v(1).cell)
+	AI.act(b, s)
+	ok(s.temper() == &"aggressive" and (Command.tiles(s.cell, v(1).cell) < far or v(1).hp < hp), "punished: it presses in")
+
+
+# Power Hungry (AI._feed()): it steps beside whoever holds the most of its bar - a neutral as much as a foe - and drains it
+# (Energy Transfer); one with less than AI.FEED of its bar is passed over.
+func test_power_hungry() -> void:
+	var others := Faction.new()
+	others.neutral = true
+	stage(starmen, {v(1): Vector2i(3, 2), v(2): Vector2i(3, 7)})
+	v(1).energy = 1
+	v(2).faction = others
+	v(2).energy = v(2).max_energy
+	var e2 := v(2).energy
+	var s := spawn(starman, starmen, Vector2i(7, 5))
+	s.energy = 10
+	s.refresh()
+	AI.act(b, s)
+	ok(Command.tiles(s.cell, v(2).cell) <= 1 and v(2).energy < e2 and v(1).energy == 1, "beside the neutral with the full bar, draining it (%s, %d -> %d)" % [s.cell, e2, v(2).energy])
+	v(2).faction = lancin

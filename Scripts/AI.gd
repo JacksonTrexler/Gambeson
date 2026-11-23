@@ -944,7 +944,7 @@ static func _leap(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> boo
 	var best_d := walked
 	for c in b.cells_near(u.cell, b.area_reach(u, s)):
 		var d := float(Command.tiles(c, goal))
-		if d < best_d - 0.5 and s.behaviours.all(func(x: Behaviour): return not x or x.fits_at(b, u, c)):
+		if d < best_d and s.behaviours.all(func(x: Behaviour): return not x or x.fits_at(b, u, c)):
 			best = c
 			best_d = d
 	if best == u.cell or not b.cast_at(u, s, best):
