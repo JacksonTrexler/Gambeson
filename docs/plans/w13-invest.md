@@ -25,3 +25,15 @@ Extend Tests/suspicion_test.gd: unseen hit check, Detective, Ambush. Mutation sp
 - Step 3 (Ambush): generic `Battle.Mark.halts` (walk() stops on it; `Mark.harms()` counts it, so a known one is dreaded) + `Mark.skill` -> new hook `Behaviour.tripped(b, m, u)` from `_trigger()`. `Behaviours/ambush.gd`: tile cast; up to rank (impact) empty tiles in its weapon's reach (first hostile non-tile active), nearest the aimed tile; hidden marks (concealment = rank: inspect() finds them like traps), who=foes, uses 1, TURNS 2 (its side's turn ends: lasts through the foes' turn); tripped -> `grant_interrupt(by, 1, {w: rank}, {}, u)` (Opportunist's free aimed use) unless the caster reads the walker as ally/ignore/unknown (orig "spares beloved"). Skills/ambush.tres via skill.py --human: ap 2 hand-priced, cost 0 (orig), radius 6 (aim), hostile false, tags dex + `defensive` (posture tag: AI._defend casts it at the nearest foe with no AI.gd change). Placed on Roles/ranger after Snare (orig unwired; CALL). Coordinate's support-watch half not rebuilt (Coordinate is now a link skill on main). `turns` field dropped: skills_test.test_flags_described wants it in the text; lifetime is a const.
 - Tests: Ambush's rule in its stub `Tests/ambush_test.gd` (2 tests, behaviour's own file per house rule) rather than suspicion_test. Mutations: halts off, tripped off, friend gate off: each fails a check.
 - Suite: 10997 checks, 0 failed (1036 tests), 112 s; origin/main baseline 10969/1032 at 112 s: no time growth.
+- Launch check: only "8 resources still in use at exit". skill.py check, mechanic.py check: ok.
+
+## Questions for the user
+1. Unseen hit: free inspect only when hurt (main's doubt gate); orig gave it on any attack, miss included.
+2. Suspicion per pass: main's 1 stack kept (orig max(1, wis mod - distance)).
+3. Word of suspicion (spread) stays units-only; orig also shared tile suspicion (cha mod allies within cha mod tiles).
+4. Detective: recon on what it sees through only; orig also let it investigate unconcealed things it couldn't fully read. Placed on General Specialist after Inquisitor.
+5. Ambush: marks reuse (not a Watch class); tiles chosen nearest the aimed tile within weapon reach (orig: player picks up to rank tiles); concealment = rank; lasts to its side's next turn end; on Ranger after Snare; tag `defensive` so the AI uses it via _defend. Coordinate's support watch not rebuilt.
+6. New generic fields: `Battle.Mark.halts`, `Battle.Mark.skill`, hook `Behaviour.tripped()` (no Skill.gd field; no ceiling raised).
+
+## Undone
+- Detective "observes the unconcealed"; tile word-of-suspicion; Coordinate support watch; AI weighing of where to Ambush beyond _defend; no visual check (marks draw through Overlay's generic mark path).
