@@ -238,6 +238,7 @@ options = Array[ExtResource("7_skill")]([ExtResource("s_mana"), ExtResource("s_m
 reserves = Dictionary[ExtResource("5_reserve"), int]({ExtResource("6_mana"): 10})
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_mana_potion")])
 general = Array[StringName]([&"magical"])
+flex = Array[StringName]([&"student"])
 roots = Array[ExtResource("8_root")]([SubResource("Root_Arcane"), SubResource("Root_Transgression"), SubResource("Root_Dabblings")])
 tabs = Array[ExtResource("10_tab")]([SubResource("Tab_Nature")])
 choices = Array[ExtResource("11_choice")]([SubResource("Choice_Domain"), SubResource("Choice_Genre"), SubResource("Choice_Pact"), SubResource("Choice_School")])

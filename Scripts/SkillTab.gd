@@ -9,6 +9,7 @@ extends Resource
 @export var radial := false  # drawn as a wheel (the Adventurer's own: SkillWheel) rather than growing from the bottom (SkillGrid)
 @export var category := &""  # a general tree's (kind General): martial, specialist or magical (the Caster tree); empty: the base General tree (Unit.general_trees())
 @export var grant := &""  # a general tree only some units get (kind General): the key a class lists in Role.general, or a unit is granted at run time (Unit.grant_tree(): an adventure's reward) - Student, Journeyman. Empty: by its category. Its category still sets what its tiers need
+@export var needs: Dictionary[StringName, int] = {}  # a flex tree's prereqs: base-stat floors its picker must meet to take it up (Unit.flex_needs(): slackened for a generalist, none for a jack; Scout: dexterity 10, wisdom 11)
 @export var color := Color(0, 0, 0, 0)  # its colour, if set; else by what it is (tone())
 @export var center: Skill
 @export var core: Array[Skill] = []

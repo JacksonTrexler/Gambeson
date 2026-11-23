@@ -13,6 +13,8 @@ with skill.py), its placeholder sprite (Units/<Sprite>.png), and a place on the 
       # a god or patron (Gods/<id>.tres): its own tree (a tab of --tree's root, picked by a choice of god) and
       # the trees it offers its servants' slots (Gods/tabs/<stem>.tres; TreeChoice.kinds); --offers adds to one
   python3 Util/role.py include general_caster student [--root Caster]   # compose a tree into a root: its skills show there as its own
+  python3 Util/role.py flex scout --name Scout --category martial --skills hide=1,eyes_forward=2 --needs dex=10 \
+      --native ranger --offer rogue,paladin [--human]   # a flex tree: Trees/scout.tres + general_scout.tres, wired
   python3 Util/role.py check
 
 Then give the tree its skills: python3 Util/skill.py new <id> ... --tree <tree file> [--root "Open Palm"]
@@ -317,6 +319,80 @@ def god(a):
     return 0
 
 
+STATS = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
+UNIT_GD = "Scripts/Unit.gd"
+
+
+def _keys(text, prop):  # the StringNames of a Role's Array[StringName] property
+    m = re.search(r"^%s = Array\[StringName\]\(\[(.*?)\]\)$" % prop, text, re.M)
+    return re.findall(r'&"([^"]+)"', m.group(1)) if m else []
+
+
+def _set_keys(text, prop, keys, after="general"):  # writes a Role's Array[StringName] property (after `after`'s line if new)
+    line = "%s = Array[StringName]([%s])" % (prop, ", ".join('&"%s"' % k for k in keys))
+    if re.search(r"^%s = " % prop, text, re.M):
+        return re.sub(r"^%s = .*$" % prop, line, text, count=1, flags=re.M)
+    m = re.search(r"^%s = .*$" % after, text, re.M) or re.search(r"^name = .*$", text[text.index("[resource]"):], re.M)
+    if m and m.string is text:
+        return text[:m.end()] + "\n" + line + text[m.end():]
+    i = text.index("[resource]")
+    return text[:i] + re.sub(r"^(name = .*)$", lambda x: x.group(1) + "\n" + line, text[i:], count=1, flags=re.M)
+
+
+def flex(a):
+    """A flex tree (a background, profession, hobby): a general tab with a grant key (SkillTab.grant) over a root of
+    existing skills at set tiers, its base-stat floors (SkillTab.needs), listed in Unit.GENERAL_TREES; a class's own
+    general tree (--native: Role.general) and a flex option levelling others offers (--offer: Role.flex)."""
+    tid = a.id
+    re.fullmatch(r"[a-z][a-z0-9_]*", tid) or die("the id is a file name: lower_snake")
+    root, tab = "Trees/%s.tres" % tid, "Trees/general_%s.tres" % tid
+    if exists(tab) and not a.skills:  # an existing flex tree: only wire --native and --offer
+        return _wire(a, tid)
+    exists(root) and die("%s exists" % root)
+    exists(tab) and die("%s exists (leave out --skills to wire it to classes)" % tab)
+    name = ai_name(a.name or tid.replace("_", " ").title(), a.human)
+    d = Doc('[gd_resource type="Resource" script_class="SkillRoot" format=3]')
+    refs = []
+    for kv in filter(None, (a.skills or "").split(",")):
+        sk, _, t = kv.partition("=")
+        sk = sk.strip()
+        exists("Skills/%s.tres" % sk) or die("--skills: no Skills/%s.tres" % sk)
+        refs.append(d.sub("Branch_" + sk, "res://Scripts/Branch.gd", ["skill = " + d.res("Resource", "res://Skills/%s.tres" % sk), "tier = %d" % int(t or 1)]))
+    refs or die("--skills: a flex tree needs skills (skill=tier,...)")
+    d.props = ["script = " + d.res("Script", ROOT_GD), 'name = "%s"' % name, 'tag = &""', "branches = " + typed("res://Scripts/Branch.gd", d, refs)]
+    needs = []
+    for kv in filter(None, (a.needs or "").split(",")):
+        k, _, v = kv.partition("=")
+        k = {"str": "strength", "dex": "dexterity", "con": "constitution", "int": "intelligence", "wis": "wisdom", "cha": "charisma"}.get(k.strip(), k.strip())
+        k in STATS or die("--needs: %s isn't a core stat" % k)
+        needs.append('&"%s": %d' % (k, int(v)))
+    t = Doc('[gd_resource type="Resource" script_class="SkillTab" format=3]')
+    t.props = ["script = " + t.res("Script", "res://Scripts/SkillTab.gd"), 'name = "%s"' % name, 'kind = "General"',
+               'category = &"%s"' % a.category, 'grant = &"%s"' % tid, "needs = Dictionary[StringName, int]({%s})" % ", ".join(needs),
+               "roots = " + typed(ROOT_GD, t, [t.res("Resource", "res://" + root)])]
+    write(root, d.text(), a.dry_run)
+    write(tab, t.text(), a.dry_run)
+    u = read(UNIT_GD)
+    m = re.search(r"^const GENERAL_TREES: Array\[SkillTab\] = \[.*?\]", u, re.M | re.S) or die("Unit.gd: no GENERAL_TREES")
+    if 'res://%s"' % tab not in m.group(0):
+        u = u[:m.end() - 1] + ',\n\t\tpreload("res://%s")]' % tab + u[m.end():]
+        write(UNIT_GD, u, a.dry_run)
+    return _wire(a, tid)
+
+
+def _wire(a, tid):
+    for prop, roles in (("general", a.native), ("flex", a.offer)):
+        for r in filter(None, (roles or "").split(",")):
+            p = "Roles/%s.tres" % r.strip()
+            exists(p) or die("no %s" % p)
+            text = read(p)
+            keys = _keys(text, prop)
+            if tid not in keys:
+                write(p, _set_keys(text, prop, keys + [tid]), a.dry_run)
+    print("next: godot --headless --path . --import; python3 Util/role.py check; the skills screen's base General tab offers it from %s's flex box" % (a.offer or "a jack"))
+    return 0
+
+
 def check(_a=None):
     problems = []
     entry = read("Scenes/entry.tscn")
@@ -347,6 +423,18 @@ def check(_a=None):
         if "patron = true" not in text and not (re.search(r"^domains = \"[^\"]+\"", text, re.M) and re.search(r"^tag = &\"[^\"]+\"", text, re.M)):
             problems.append("%s: a god of the pantheon with no domains or damage tag (God.domains, God.tag)" % p)
     problems.extend(composition_problems())
+    unit = read(UNIT_GD)
+    grants = set()
+    for p in files("Trees", ".tres"):
+        text = read(p)
+        g = re.search(r'^grant = &"([^"]+)"', text, re.M)
+        if 'kind = "General"' in text and g:
+            grants.add(g.group(1))
+        if 'kind = "General"' in text and 'res://%s"' % p not in unit:
+            problems.append("%s: a general tree not in Unit.GENERAL_TREES (role.py flex adds it)" % p)
+    for p in files("Roles", ".tres"):
+        for k in _keys(read(p), "flex"):
+            k in grants or problems.append("%s: flex %s names no general tree's grant (SkillTab.grant)" % (p, k))
     for p in problems:
         print(p)
     print("role.py check: %s" % ("%d problem(s)" % len(problems) if problems else "ok"))
@@ -407,9 +495,19 @@ def main():
     g.add_argument("--offers", help="Gods/tabs/ stems it offers its servants' slots, comma separated")
     g.add_argument("--human", action="store_true", help="a person named it: no ??")
     g.add_argument("--dry-run", action="store_true")
+    fx = sub.add_parser("flex", help="a flex tree: a general tab with a grant key over existing skills, offered while levelling")
+    fx.add_argument("id", help="its grant key and file stem: Trees/<id>.tres (root), Trees/general_<id>.tres (tab)")
+    fx.add_argument("--name", help="shown name (default: from the id; gets ?? unless --human)")
+    fx.add_argument("--category", default="", help="what its tiers need (Unit._general_need): martial, specialist, magical, or empty (3 skills of the tier)")
+    fx.add_argument("--skills", help="existing skills with their tiers: hide=1,eyes_forward=2 (left out for a flex tree that exists: only wire classes)")
+    fx.add_argument("--needs", help="base-stat floors to take it up (SkillTab.needs): dex=10,wis=11")
+    fx.add_argument("--native", help="classes whose own general tree it is (Role.general): ranger")
+    fx.add_argument("--offer", help="classes levelling offers it to as a flex tree (Role.flex): rogue,paladin")
+    fx.add_argument("--human", action="store_true", help="a person named it: no ??")
+    fx.add_argument("--dry-run", action="store_true")
     sub.add_parser("check", help="every class has a sprite and is offered; no tree left empty; every god offers something")
     a = ap.parse_args()
-    sys.exit({"new": new, "tree": tree, "tab": tab, "include": include, "god": god, "check": check}[a.cmd](a))
+    sys.exit({"new": new, "tree": tree, "tab": tab, "include": include, "god": god, "flex": flex, "check": check}[a.cmd](a))
 
 
 if __name__ == "__main__":

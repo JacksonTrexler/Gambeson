@@ -70,5 +70,6 @@ shared = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_swe
 items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staff"), ExtResource("i_sweet_something")])
 swaps = Dictionary[StringName, StringName]({&"wisdom": &"charisma"})
 general = Array[StringName]([&"magical"])
+flex = Array[StringName]([&"student"])
 choices = Array[ExtResource("c_choice")]([SubResource("Choice_Patron"), SubResource("Choice_Flex")])
 options = Array[ExtResource("5_skill")]([ExtResource("opt_bargaining"), ExtResource("opt_acceptance")])

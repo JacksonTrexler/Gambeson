@@ -119,6 +119,8 @@ const COLOR := {
 	&"disturbed": Color("#b58fd6"),
 	&"void": Color("#2a1a5e"),
 	&"generator": Color("#ff9a2e"),
+	&"generalist": Color("#9fb08a"),
+	&"jack": Color("#c9a66b"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

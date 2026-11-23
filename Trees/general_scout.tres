@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SkillTab" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="1_skilltab"]
+[ext_resource type="Resource" path="res://Trees/scout.tres" id="2_scout"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="3_skillroot"]
+
+[resource]
+script = ExtResource("1_skilltab")
+name = "Scout"
+kind = "General"
+category = &"martial"
+grant = &"scout"
+needs = Dictionary[StringName, int]({&"dexterity": 10, &"wisdom": 11})
+roots = Array[ExtResource("3_skillroot")]([ExtResource("2_scout")])
