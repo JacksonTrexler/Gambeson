@@ -1707,3 +1707,8 @@ The user's words: `docs/agents/answers-2026-11-23b.md`.
 275. **Tests call `sync_bar()` on the line that hands a skill** (545 sites, 118 files, by script): mechanical, no check changed, a noisy diff. A helper was not added.
 276. **The `_filling` cache drop in `_held_fx()`** (`_fx_bar` = hotbar hash) is defensive: no role has a slot-granting passive at setup, and removing it fails nothing. Keep or drop.
 277. **The gain was ~4%, not ~16%:** A/B alternating, main 62, 63 s against branch 60, 60 s. Remaining setup cost is `refit()` / `_take_looks()` in `_ready`; not pursued. Lead: per-test museum setup outside `_fill_bar`.
+
+## Wave 17 reverse (2026-11-23)
+
+278. **`reverse` crash fixed at the helper and a runner sweep (w17-reverse) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w17-reverse.md`. `Test.hud()` parented the HUD to the root, so a test's `scene.free()` left it; a leaked HUD's `selected` pointed at a freed Unit and `BattleCamera` assigned it in `meadows_test` under `reverse`. Fixed in `Tests/test.gd` (parent = the battle's parent) and `Tests/run.gd` (frees new root children after each test, prints a count). The sweep frees rather than fails (failing would break single-word runs of tests that free late). Suite 11088 checks, 0 failed; `reverse` 0 failed; mutations caught.
+279. **Game code left alone (w17-reverse).** `BattleCamera` taking the group's last `hud` and not checking `hud.selected` is only reachable through a leaked HUD, which exists only in tests.

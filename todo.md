@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 278. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 280. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -124,6 +124,8 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 275 Tests call `sync_bar()` on the same line they hand a skill (2026-11-23): 545 sites in 118 files, mechanical (script, not a helper), no check changed; noisy diff. `docs/plans/w17-equip.md`.
 - 276 The bar-keyed stretch invalidation while filling (2026-11-23): `_held_fx()` drops its stretch cache when the hotbar hash changed, only while `_filling`; defensive, nothing exercises it today (removing it fails nothing). **Keep or drop.** `docs/plans/w17-equip.md`.
 - 277 The gain was ~4% (2026-11-23): suite ~62.5 s to ~60 s (~2.5 s saved, not the ~10 s estimated); what remains is `refit()` / `_take_looks()` in `_ready` (they change the bar and HP, so not a read stretch); not pursued. Suite 11088 checks, 0 failed (1047 tests). `docs/plans/w17-equip.md`.
+- 278 The `reverse` run's crash fixed (2026-11-23, builder's report of `meadows_test.test_camera` / `test_tower_difficulty` crashing under `reverse`): `Test.hud()` parented the HUD to the root, so a leaked HUD kept a freed `selected`; now parented to the test's scene, plus a sweep in `Tests/run.gd` that frees nodes a test leaves on the root and prints a count. **The sweep frees rather than fails: a leak is not a rule failure.** Suite 11088 checks, 0 failed; `reverse` 0 failed. `docs/plans/w17-reverse.md`; names to review: none.
+- 279 Game code left alone (2026-11-23): `BattleCamera` takes the `hud` group's last member and does not check `hud.selected` is valid; only a leaked HUD in tests reaches it. `docs/plans/w17-reverse.md`.
 
 ## Files
 
