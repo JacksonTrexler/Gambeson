@@ -1852,14 +1852,23 @@ func take_free() -> bool:
 	for c in role.choices if role else []:
 		if c and c.free:
 			for t in picks(c):
-				for r in t.roots:
-					for b in r.branches if r else []:
-						if b and b.skill and b.after.is_empty() and b.needs == 0 and own_rank(b.skill) == 0:
-							var x := Slot.new()
-							x.skill = b.skill
-							learned.append(x)
-							took = true
+				for sk in openers(t):
+					if own_rank(sk) == 0:
+						var x := Slot.new()
+						x.skill = sk
+						learned.append(x)
+						took = true
 	return took
+
+
+# A tree's opening skills: its roots' branches with nothing before them (a Monster path's traits).
+static func openers(t: SkillTab) -> Array[Skill]:
+	var out: Array[Skill] = []
+	for r in t.roots:
+		for b in r.branches if r else []:
+			if b and b.skill and b.after.is_empty() and b.needs == 0:
+				out.append(b.skill)
+	return out
 
 
 # Free choices it has yet to make (TreeChoice.free: a Monster's Path): picks owed, for the skills badge.
@@ -1885,8 +1894,23 @@ static func monster(f: Faction, path: String, at := 1, nick := "") -> Unit:
 					u.level = clampi(at, 1, MAX_LEVEL)
 					u.skill_points = u.level - 1
 					u.picked.append(c.key(t))
+					for k in r.outfit():  # in its class's kit (gambeson, dagger)
+						u.set(k, r.outfit()[k])
 					return u
 	return null
+
+
+# The Monster's paths (its free Path choice's trees: Starmen, Sirens, Skeletons), each with the skills a unit of
+# it holds: the trees' opening skills, its traits (Floaty, Alluring, Undead). {name: Array[Skill]}, in order.
+static func monster_paths() -> Dictionary:
+	var out := {}
+	var r: Role = load(MONSTER)
+	for c in r.choices:
+		if c and c.free:
+			for t in c.tabs:
+				if t:
+					out[t.name] = openers(t)
+	return out
 
 
 # Spends a skill point on one of options(), learning it at rank I: onto the hotbar's first free slot

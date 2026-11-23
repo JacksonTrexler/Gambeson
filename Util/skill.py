@@ -148,7 +148,9 @@ def check_behaviours(problems):
         text = read(p)
         if "func describe(" not in text:
             problems.append("%s: no describe() - a behaviour does and says, side by side" % p)
-        if not any("func %s(" % f in text for f in ("apply", "dealt") + HOOKS):  # dealt: after an active's damage lands (Energy Transfer)
+        m = re.match(r'extends "res://(Behaviours/\w+\.gd)"', text)
+        whole = text + (read(m.group(1)) if m else "")  # a behaviour extending another (theseus.gd: summon_per_rank.gd) has its hooks
+        if not any("func %s(" % f in whole for f in ("apply", "dealt") + HOOKS):  # dealt: after an active's damage lands (Energy Transfer)
             problems.append("%s: no apply() or hook (%s) - it does nothing" % (p, ", ".join(HOOKS)))
         if "res://" + p not in used and p not in UNUSED_OK:
             problems.append("%s: no skill uses it" % p)

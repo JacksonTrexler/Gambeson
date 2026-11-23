@@ -52,7 +52,7 @@ func overflow(c: Cast) -> void:
 
 func apply_at(c: Cast, cell: Vector2i) -> void:
 	for i in count(c):
-		var u := c.battle.summon(scene, c.caster.faction, cell)
+		var u := make(c, cell)
 		if u == null:
 			break  # no room anywhere: the rest don't come
 		u.raised_by = c.caster
@@ -62,6 +62,12 @@ func apply_at(c: Cast, cell: Vector2i) -> void:
 			keep -= held
 			p.amount = held
 	overflow(c)
+
+
+# One unit it raises, on the caster's side on the free tile nearest cell (null: no room). A later summon that
+# builds its own unit overrides this (Behaviours/theseus.gd: a Monster); the rules around it hold.
+func make(c: Cast, cell: Vector2i) -> Unit:
+	return c.battle.summon(scene, c.caster.faction, cell)
 
 
 # The AP a summoned unit keeps: its cast's rank + stat mod, plus each passive its summoner has that adds

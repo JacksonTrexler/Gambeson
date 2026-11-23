@@ -96,6 +96,7 @@ var _interrupt_left := 0  # actions the interrupter has left
 var _interrupt_chain := {}  # the use chain the interrupter's uses join (Behaviour.Volley.chain: a Chaser's chase), or empty
 var _interrupt_ap: AP  # the free AP its skill uses are paid from, taken back as it ends
 var _picked: Array[Unit] = []  # the units the outermost cast()'s caster picked by hand
+var _chosen := ""  # what the outermost cast_at()'s caster chose of its behaviours' choices() ("": they choose)
 var _wears: Array[Exhaustion.Wear] = []  # uses paid for in the cast under way, settled as the outermost is done (_settle_wear(): Behaviour.wearing())
 var _aims: Array[Unit] = []  # whom each cast() under way is aimed at, innermost last
 var _casting := 0  # cast() / cast_at() calls under way: an interrupt opens once the outermost is done
@@ -1394,6 +1395,7 @@ func cast_of(caster: Unit, skill: Skill, target: Unit, r: int, foe: bool) -> Beh
 	c.mods = caster.mods(skill)  # read scaled values through them (impact_rank(), stat_mod())
 	c.tags = hit_tags(caster, skill, target if foe else null, self)
 	c.picked = _picked  # what the outermost cast's caster picked by hand (Behaviour.picks())
+	c.chose = _chosen  # and what it chose (Behaviour.choices())
 	return c
 
 
@@ -1404,6 +1406,15 @@ func picks_of(caster: Unit, skill: Skill) -> int:
 	for bh in skill.behaviours:
 		n += bh.picks(c)
 	return n
+
+
+# What its caster may choose of as it casts the skill (its behaviours' choices(): Thesis of Theseus's paths), for the HUD.
+func choices_of(caster: Unit, skill: Skill) -> Array[String]:
+	var c := cast_of(caster, skill, null, caster.rank(skill), false)
+	var out: Array[String] = []
+	for bh in skill.behaviours:
+		out.append_array(bh.choices(c))
+	return out
 
 
 # What the skill takes of its own accord with nothing picked (its behaviours' defaults()), for the HUD's preview.
@@ -3046,7 +3057,9 @@ func _lose_cover(u: Unit) -> void:
 # Darkstone's zone, Flamewall, Solar and Wildfire's cones, Observe, Shields Up!, Well Up); trap skills (Snare) lay a trap there (lay());
 # channeled skills (Metea) begin channeling there, and once begun strike where they can (_detonate()).
 # A Rift is channeled unless `held` is false (Alt-click): then its count starts at once.
-func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
+func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true, chose := "") -> bool:
+	if _casting == 0:
+		_chosen = chose
 	_casting += 1
 	var opened := _begin_use(caster, skill)
 	var done := _cast_at(caster, skill, c, held)
@@ -3055,6 +3068,8 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		if done:
 			acted[caster] = turns_begun
 	_casting -= 1
+	if _casting == 0:
+		_chosen = ""
 	_done_casting(caster, done)
 	return done
 
@@ -4681,7 +4696,11 @@ func _revive() -> void:
 # side make it out (read(): perception, concealment, its own hiding, a partner's eyes), or doesn't come
 # (null). Where sight isn't limited every unit is seen, so there it's ignored.
 func summon(scene: PackedScene, f: Faction, c: Vector2i, unseen_by: Faction = null) -> Unit:
-	var u: Unit = scene.instantiate()
+	return bring(scene.instantiate(), f, c, unseen_by)
+
+
+# summon() for a unit already made (Unit.monster(): Thesis of Theseus): onto side f near c, or freed and null.
+func bring(u: Unit, f: Faction, c: Vector2i, unseen_by: Faction = null) -> Unit:
 	u.faction = f
 	$Units.add_child(u, true)
 	var eyes: Array[Unit] = members(unseen_by) if unseen_by and sight else ([] as Array[Unit])

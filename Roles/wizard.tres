@@ -50,6 +50,7 @@
 [ext_resource type="Resource" path="res://Skills/ley_tap.tres" id="s_ley_tap"]
 [ext_resource type="Resource" path="res://Skills/clairvoyance.tres" id="s_clairvoyance"]
 [ext_resource type="Resource" path="res://Skills/borrowed_time.tres" id="s_borrowed_time"]
+[ext_resource type="Resource" path="res://Skills/thesis_of_theseus.tres" id="s_thesis_of_theseus"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -132,11 +133,16 @@ script = ExtResource("9_branch")
 skill = ExtResource("s_unbound")
 needs = 4
 
+[sub_resource type="Resource" id="Branch_thesis_of_theseus"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_thesis_of_theseus")
+needs = 5
+
 [sub_resource type="Resource" id="Root_Transgression"]
 script = ExtResource("8_root")
 name = "Transgression"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_overchannel"), SubResource("Branch_blood_magic"), SubResource("Branch_wild_magic"), SubResource("Branch_forbidden_lore"), SubResource("Branch_rift"), SubResource("Branch_unbound")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_overchannel"), SubResource("Branch_blood_magic"), SubResource("Branch_wild_magic"), SubResource("Branch_forbidden_lore"), SubResource("Branch_rift"), SubResource("Branch_unbound"), SubResource("Branch_thesis_of_theseus")])
 
 [sub_resource type="Resource" id="Branch_divinity"]
 script = ExtResource("9_branch")

@@ -12,6 +12,7 @@
 [ext_resource type="Resource" path="res://Skills/level_down.tres" id="s_level_down"]
 [ext_resource type="Resource" path="res://Skills/death.tres" id="s_death"]
 [ext_resource type="Resource" path="res://Skills/disturbance.tres" id="s_disturbance"]
+[ext_resource type="Resource" path="res://Skills/thesis_of_theseus.tres" id="s_thesis_of_theseus"]
 
 [sub_resource type="Resource" id="Branch_analysis_dialysis"]
 script = ExtResource("7_branch")
@@ -48,8 +49,13 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_death")
 needs = 5
 
+[sub_resource type="Resource" id="Branch_thesis_of_theseus"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_thesis_of_theseus")
+needs = 5
+
 [resource]
 script = ExtResource("6_root")
 name = "Elmon"
 tag = &"magical"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_analysis_dialysis"), SubResource("Branch_wauaw"), SubResource("Branch_brainfog"), SubResource("Branch_disturbance"), SubResource("Branch_haluca"), SubResource("Branch_level_down"), SubResource("Branch_death")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_analysis_dialysis"), SubResource("Branch_wauaw"), SubResource("Branch_brainfog"), SubResource("Branch_disturbance"), SubResource("Branch_haluca"), SubResource("Branch_level_down"), SubResource("Branch_death"), SubResource("Branch_thesis_of_theseus")])

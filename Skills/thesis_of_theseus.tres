@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/theseus.gd" id="b_theseus"]
+
+[sub_resource type="Resource" id="Behaviour_theseus"]
+script = ExtResource("b_theseus")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Thesis of Theseus"
+glyph = "Th"
+tags = Array[StringName]([&"magical", &"dark", &"nature", &"int"])
+impact = &"impactful"
+costs = "even"
+radius = 3.0
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_theseus")])
+hostile = false

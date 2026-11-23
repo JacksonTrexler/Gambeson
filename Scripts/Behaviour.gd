@@ -21,6 +21,7 @@ class Cast:
 	var foe := true
 	var bag := {}
 	var picked: Array[Unit] = []  # the units its caster chose by hand, when a behaviour asks for picks() (empty: it chooses itself)
+	var chose := ""  # the one of its behaviours' choices() its caster chose (Battle.cast_at(); "": the behaviour chooses, as for the AI)
 	var siphoned := 0  # what its siphon damage took off the target's resources (Unit.siphon()), by the time dealt() runs
 	var mods: Modifiers  # its caster's modifiers on it (Unit.mods()): read scaled values through them
 	var tags: Array[StringName] = []  # its hit's tags (Battle.hit_tags()): modifier tags among them (Unit.skill_tags()), ambush when it ambushes (Battle.ambushes())
@@ -78,6 +79,13 @@ func apply(_c: Cast) -> void:
 # picked, chooses for itself (Warcry: the nearest), as the AI always does. Pure.
 func picks(_c: Cast) -> int:
 	return 0
+
+
+# The options its caster chooses one of as it casts (Thesis of Theseus: a path), by label: the HUD asks before it
+# aims (HUD._choose()) and Battle.cast_at() carries the pick into Cast.chose; with none chosen (the AI, a quick
+# cast) the behaviour chooses for itself. Empty: nothing to choose. Pure.
+func choices(_c: Cast) -> Array[String]:
+	return []
 
 
 # The targets it takes when nothing is picked (a skill with picks()): the HUD draws them faintly before the

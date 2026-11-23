@@ -64,6 +64,7 @@ var selected: Unit
 var slot := 0  # the selected hotbar slot of the selected unit: always set (the first, or with keep_slot the last used); past its hotbar, the band's (band())
 var aim := false  # an area or trap skill in the slot is aimed: tile clicks cast it (its key again, or a right click, steps back)
 var picked: Array[Unit] = []  # picking(): the foes chosen so far, by click (empty: the skill chooses; Behaviour.picks())
+var chose := ""  # the armed tile skill's choice (Behaviour.choices(): a path), asked before it aims ("": the skill chooses)
 var keep_slot := false  # Settings: a unit keeps the slot it last used, rather than starting on the first
 var _last_slot: Dictionary[Unit, int] = {}  # keep_slot: each unit's last used slot
 var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing selected)
@@ -616,6 +617,8 @@ func use_slot(i: int) -> void:
 			_refuse(u, _short(u, s))
 		elif self_skill(u, s) and again:
 			_run(intent(u.cell))  # the second press: used
+		elif s.on_tile() and not (again and aim) and not battle.choices_of(u, s).is_empty():
+			_pick_choice(u, s)
 		elif s.on_tile():
 			aim = not (again and aim)
 		elif picks_of(u, s) > 0:
@@ -654,6 +657,7 @@ func _pick_slot(u: Unit, i: int) -> void:
 	if i != slot:
 		aim = false
 		picked.clear()
+		chose = ""
 	slot = i
 	_last_slot[u] = i
 	_note = ""
@@ -1087,6 +1091,18 @@ func _pick_element(u: Unit, s: Skill) -> void:
 				_done(u)
 			else:
 				_say("%s doesn't take" % s.name)
+			_mark()])
+	_choose(s.name, picks)
+
+
+# A tile skill with choices (Behaviour.choices(): Thesis of Theseus's paths): the pick, then it aims.
+func _pick_choice(u: Unit, s: Skill) -> void:
+	var picks := []
+	for o in battle.choices_of(u, s):
+		picks.append([o, func() -> void:
+			chose = o
+			aim = true
+			_replan()
 			_mark()])
 	_choose(s.name, picks)
 
@@ -1563,7 +1579,7 @@ func _run(it: Dictionary) -> void:
 			var why := why_not(u, s, target)
 			var took := false
 			if why == "" or not walked:
-				took = battle.cast_at(u, s, it.cell, not it.alt) if s.on_tile() else (target != null and battle.cast(u, s, target, false, picked))
+				took = battle.cast_at(u, s, it.cell, not it.alt, chose) if s.on_tile() else (target != null and battle.cast(u, s, target, false, picked))
 			if took:
 				_done(u, walked)
 				return
