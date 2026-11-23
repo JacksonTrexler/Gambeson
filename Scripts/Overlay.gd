@@ -82,6 +82,8 @@ func _draw() -> void:
 			_debris(c)
 	if hud.hover != HUD.NOWHERE:
 		draw_rect(_rect(hud.hover, 0.5), Color(1, 1, 1, 0.3), false, 1.0)
+	if hud.focus_cell != HUD.NOWHERE:  # held up for a look (HUD.focus())
+		_brackets(_rect(hud.focus_cell, 0.5), Color(1, 1, 1, 0.5 + 0.4 * pulse), 4.0)
 	if mine:
 		for u in b.members(cmd.faction()):
 			if u != cmd.leader and cmd.can_order(u) and u not in cmd.ordered:
