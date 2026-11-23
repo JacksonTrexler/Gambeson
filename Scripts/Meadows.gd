@@ -35,9 +35,6 @@ var _chunks := {}  # chunk -> true: generated
 var _water := FastNoiseLite.new()
 var _streams := FastNoiseLite.new()
 var _brush := FastNoiseLite.new()
-const TALLY_LEFT := 80.0  # the tally spans these x (design pixels): right of the left panel, left of the turn clock
-const TALLY_RIGHT := 226.0
-var _tally: Label
 
 
 func _ready() -> void:
@@ -66,17 +63,7 @@ func _ready() -> void:
 	battle.traveled.connect(_on_traveled)
 	battle.driven.connect(func(u: Unit, _by: Unit, _tags: Array[StringName], _went: int, _hit: bool): _explore(u))  # pushed, pulled, sent
 	battle.turn_changed.connect(_on_turn)
-	_tally = Label.new()
-	_tally.add_theme_font_size_override(&"font_size", 7)
-	_tally.position = Vector2(TALLY_LEFT, 2)  # right-aligned to end clear of the HUD's turn clock (top middle, centred on 240)
-	_tally.size = Vector2(TALLY_RIGHT - TALLY_LEFT, 11)
-	_tally.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_tally.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var layer := CanvasLayer.new()
-	layer.layer = 5
-	layer.add_child(_tally)
-	add_child(layer)
-	_show_tally()
+	battle.objectives.append(objective)
 
 
 # --- The plane
@@ -223,14 +210,14 @@ func _on_turn(_was: Faction, now: Faction) -> void:
 			_open()
 		else:
 			mark.turns = portal_turns
-	_show_tally()
+	battle.objective_changed.emit()
 
 
 func _on_kill(u: Unit) -> void:
 	kills += 1
 	if kills >= kills_needed and portal == null:
 		form_portal(u.cell)
-	_show_tally()
+	battle.objective_changed.emit()
 
 
 # The escape portal forms at c, opening after 3 x the area's difficulty turns (rounded up).
@@ -252,7 +239,7 @@ func hasten(n: int) -> void:
 		_open()
 	else:
 		mark.turns = portal_turns
-	_show_tally()
+	battle.objective_changed.emit()
 
 
 func _open() -> void:
@@ -277,7 +264,7 @@ func _on_traveled(u: Unit, _from: Vector2i, path: Array[Vector2i]) -> void:
 			battle.escape(u)
 
 
-func _show_tally() -> void:
-	if _tally:
-		_tally.text = "Demons slain: %d / %d%s" % [kills, kills_needed,
-				("" if portal == null else (" · the portal is open" if opened else " · the portal opens in %d" % portal_turns))]
+# The battle's objective as the HUD's panel lists it: the kills the portal wants, then where the portal is.
+func objective(_f: Faction) -> String:
+	return "Demons slain: %d / %d%s" % [kills, kills_needed,
+			("" if portal == null else ("\nThe portal is open" if opened else "\nThe portal opens in %d" % portal_turns))]

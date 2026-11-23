@@ -63,6 +63,7 @@ signal reacted(u: Unit, skill: Skill, r: Behaviour.Reaction)  # u's passive reac
 signal passive_fired(u: Unit, skill: Skill, amount: int, stat: StringName, rounded: int)  # a passive (or what a skill put on: regen) acted on u: amount of stat (&"hp", or &"exhaustion" for a passive that eased its holder's count; null skill: the stat itself acted, &"luck"), rounded -1 down, 1 up, 0 exact (passive()); the HUD signs it
 signal interrupt_began(u: Unit)  # u acts out of turn (grant_interrupt(): Final Act); the turn under way waits
 signal interrupt_ended(u: Unit)  # ...and the interrupted turn resumes
+signal objective_changed  # something a map objective counts moved (the Meadows' kills, its portal's clock): the HUD redraws its objective panel
 
 enum Phase { INITIATIVE, TURNS, OVER, PREP }  # PREP: before the initiative roll, the player looks the field over (prepare()), then begin()s
 
@@ -216,6 +217,7 @@ var _concealed_tiles: Array = []  # [source, atlas coords, alternative] of the m
 var _views: Dictionary[Vector2i, Terrain] = {}  # terrain() of a stacked cell, until its stack changes
 @export var stacked: Array[TileStack] = []  # layers the scene lays at the start, bottom-up (leaves, glass...)
 var marks: Dictionary[Vector2i, Array] = {}  # cell -> the Marks laid on it, oldest first (lay_mark()): one-use tile effects, disturbed earth
+var objectives: Array[Callable] = []  # what a map asks of the player's side besides the last foe standing: each takes the side's Faction and returns its status text ("" for none; lines split on \n). The HUD's objective panel lists them (Meadows adds its kill tally)
 @export var lasting: Array[Faction] = []  # sides that stay in the fight with nobody standing (the Meadows' demons, who keep coming): the battle doesn't end for want of them
 @export var sight := true  # units perceive only within their wisdom total in tiles, and make out appearances within half that, the range shared across their side (in_range(); Perception.unit()). Off: no limit
 var sighted_when: Dictionary[Faction, Dictionary] = {}  # side -> {foe: {since: turns_begun then, moves: its movement as read, 0 unread}}: how stale a sighting is, and how far the foe could have got since (AI.clues())
@@ -5783,6 +5785,15 @@ static func next_to(a: Vector2i, b: Vector2i) -> bool:
 func fighting() -> Array[Faction]:
 	var out: Array[Faction] = []
 	out.assign(order.filter(func(f: Faction): return not f.neutral))
+	return out
+
+
+# The map's objectives as side f is told of them (objectives), one line each; blanks dropped.
+func objective_lines(f: Faction) -> Array[String]:
+	var out: Array[String] = []
+	for o in objectives:
+		for l: String in String(o.call(f)).split("\n", false):
+			out.append(l)
 	return out
 
 

@@ -40,6 +40,10 @@ const SUSPICION_ICON := preload("res://Icons/Effects/suspicion.png")
 # What a Downed unit died of (Downed.succumb()), for the log.
 const DBNO_DEATHS := {&"limit": "its HP past its limit", &"rounds": "its rounds are up", &"actions": "one skill too many", &"melee": "a round without a melee attack", &"slain": "finished off"}
 const GROUND := {&"safe": Color("#7cc4ff"), &"unsure": Color("#f2c94c"), &"bad": Color("#a32424")}
+const PANE_FADED := 0.2  # the tile pane's opacity while the view scrolls
+const PANE_FADE_OUT := 6.0  # opacity a second it loses going faded (a glance, not a wait)
+const PANE_FADE_IN := 2.5  # ...and gains coming back
+const PANE_REST := 0.25  # seconds the view must sit still before the pane comes back
 const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it scrolls
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
 # (slowest in the middle), hold at the bottom, fade out, and round again from the top.
@@ -95,6 +99,11 @@ var suspect: Dictionary[Vector2i, String] = {}  # concealed tiles the player has
 var _icons := {}  # [source id, atlas coords] -> AtlasTexture, for the tile pane
 var _pane_list := ""  # what the pane's effect list last showed (a new one scrolls from the start)
 var _scroll_t := 0.0  # seconds into the effect list's auto-scroll
+var _pane_cell := NOWHERE  # the tile the pane last showed: it stays there while the pointer's off the map (over a panel)
+var _view_at: Variant = null  # where the camera's view was last frame (the pane fades while it moves)
+var _still := 1.0  # seconds since the view last moved
+var _objective_on := false  # the objective panel has something to say
+var _objective_key := ""  # what it last listed
 var _spinning: Array[Label] = []  # initiative dice still rolling
 var _intro: Tween  # the initiative roll on screen
 var _turn_show: Tween  # the turn change on screen
@@ -144,6 +153,7 @@ var _earned: Array = []  # [what it's for, "Brick +6"]: XP its side earned, logg
 @onready var spellbook: Spellbook = %Spellbook
 @onready var over: PanelContainer = %Over
 @onready var pane: PanelContainer = %TilePane
+@onready var objective: PanelContainer = %Objective
 @onready var skills: SkillTree = %Skills
 @onready var settings: PanelContainer = %Settings
 var guide_page := &"play"  # the Guide page shown (Guide.PAGES)
@@ -378,6 +388,7 @@ func _ready() -> void:
 	battle.struggled.connect(_on_struggled)
 	battle.gripped.connect(_on_gripped)
 	battle.discovered.connect(_on_discovered)
+	battle.objective_changed.connect(func(): _dirty = true)
 	battle.unmasked.connect(_on_unmasked)
 	battle.vanished.connect(_on_vanished)
 	battle.bumped.connect(_on_bumped)
@@ -457,8 +468,12 @@ func _process(delta: float) -> void:
 	if tip.visible:
 		var room := tip.get_viewport_rect().size - tip.size
 		tip.position = Vector2(minf(_mouse.x + 10, room.x - 2), minf(_mouse.y + 10, room.y - 2))
+	_fade_pane(delta)
 	if pane.visible:
 		_place_pane()
+	objective.visible = _objective_on and not _panel_open()  # a menu over the top-left would hide it: it waits
+	if objective.visible:
+		_place_objective()
 
 
 func _input(e: InputEvent) -> void:
@@ -2438,14 +2453,26 @@ func _suspicious(c: Vector2i, r: Read) -> bool:
 	return r.hint != "" or c in dubious or c in suspect or r.obscured
 
 
+# The tile the pane shows: the hovered one; with the pointer off the map (over a panel), the last it showed;
+# before any, the selected unit's (else the leader's) - so the pane is always up, top right.
+func pane_cell() -> Vector2i:
+	if hover != NOWHERE:
+		return hover
+	if _pane_cell != NOWHERE and battle.on_map(_pane_cell):
+		return _pane_cell
+	var u := selected if selected and is_instance_valid(selected) else observer()
+	return u.cell if u and u.is_alive() else NOWHERE
+
+
 # The tile pane: what the player's side knows of the hovered tile - its cost, a list of its
 # effects (auto-scrolling when long), and notes on what's uncertain about it.
 func _show_pane() -> void:
-	pane.visible = hover != NOWHERE and battle.on_map(hover) and not _panel_open()  # a tile that has gone (a pocket ended) shows nothing
+	var c := pane_cell()
+	pane.visible = c != NOWHERE and battle.on_map(c) and not _panel_open()  # a tile that has gone (a pocket ended) shows nothing
 	if not pane.visible:
 		_pane_list = ""
 		return
-	var c := hover
+	_pane_cell = c
 	var r := tile_view(c)
 	var kind := ground(c)
 	%TileMark.color = GROUND[kind]
@@ -2626,11 +2653,9 @@ static func slow_middle(u: float) -> float:
 	return u + SCROLL_EASE * sin(TAU * u) / TAU
 
 
-# In a corner of the map, the one diagonally away from the pointer.
-func _place_pane() -> void:
-	var want: float = %TileLines.get_combined_minimum_size().y
-	%TileScroll.custom_minimum_size.y = minf(want, PANE_LIST)
-	pane.reset_size()
+# The map as the HUD's corners see it: [top left, bottom right] of what's on screen of it, between the side
+# panels (a small map doesn't reach them), 3 px in.
+func _corners() -> Array[Vector2]:
 	var view := pane.get_viewport_rect().size
 	var lo := Vector2(($Root/Left as Control).get_global_rect().end.x + 3, 3)
 	var hi := Vector2(($Root/Right as Control).get_global_rect().position.x - 3, view.y - 3)
@@ -2640,9 +2665,67 @@ func _place_pane() -> void:
 	var xf := battle.get_viewport().get_canvas_transform() * map.get_global_transform()
 	lo = lo.max(xf * (map.map_to_local(used.position) - half) + Vector2(3, 3))
 	hi = hi.min(xf * (map.map_to_local(used.end - Vector2i.ONE) + half) - Vector2(3, 3))
-	var mid := (lo + hi) / 2.0
-	pane.position = Vector2(hi.x - pane.size.x if _mouse.x < mid.x else lo.x,
-			hi.y - pane.size.y if _mouse.y < mid.y else lo.y)
+	return [lo, hi]
+
+
+# Always the map's top right corner (it fades while the view scrolls: _fade_pane()).
+func _place_pane() -> void:
+	var want: float = %TileLines.get_combined_minimum_size().y
+	%TileScroll.custom_minimum_size.y = minf(want, PANE_LIST)
+	pane.reset_size()
+	var at := _corners()
+	pane.position = Vector2(at[1].x - pane.size.x, at[0].y)
+
+
+# The view moved (the camera glides, pans, or follows): the pane goes faint; still for a moment, it returns.
+func _fade_pane(delta: float) -> void:
+	var cam := get_viewport().get_camera_2d()
+	var now: Variant = cam.get_screen_center_position() if cam else null
+	var moved: bool = now != null and _view_at != null and not (now as Vector2).is_equal_approx(_view_at)
+	_view_at = now
+	_still = 0.0 if moved else _still + delta
+	pane.modulate.a = fade_step(pane.modulate.a, _still < PANE_REST, delta)
+
+
+# The pane's opacity a frame on: down to PANE_FADED quickly while the view scrolls, back up more slowly.
+static func fade_step(alpha: float, scrolling: bool, delta: float) -> float:
+	return move_toward(alpha, PANE_FADED if scrolling else 1.0, (PANE_FADE_OUT if scrolling else PANE_FADE_IN) * delta)
+
+
+# The objective panel: the map's top left (the pane's top right mirrored).
+func _place_objective() -> void:
+	objective.reset_size()
+	objective.position = _corners()[0]
+
+
+# What the battle asks of the player's side, as the objective panel lists it: the map's own objectives
+# (Battle.objectives), else - where the fight is to the last one standing - the foes left.
+func objective_lines() -> Array[String]:
+	var out := battle.objective_lines(command.faction())
+	var foes := battle.units.values().filter(func(u: Unit): return u.is_alive() and u.faction != null and not u.faction.neutral and not Faction.friends(u.faction, command.faction()))
+	if not battle.lasting.any(func(f: Faction): return not Faction.friends(f, command.faction())):
+		out.push_front(foes_text(foes.filter(func(u: Unit): return unit_seen(u.cell) == u).size(), not battle.sight))
+	return out
+
+
+# "Foes left: 3", or with fog (the count of the unseen is unknown) "Foes left: ? (3 seen)".
+static func foes_text(seen: int, exact: bool) -> String:
+	return "Foes left: %d" % seen if exact else ("Foes left: ?" + (" (%d seen)" % seen if seen > 0 else ""))
+
+
+func _show_objective() -> void:
+	var lines := objective_lines() if battle.phase != Battle.Phase.OVER else ([] as Array[String])
+	_objective_on = not lines.is_empty()
+	var key := "\n".join(lines)
+	if key == _objective_key:
+		return
+	_objective_key = key
+	_clear(%ObjectiveLines)
+	for t in lines:
+		var l := Label.new()
+		l.text = t
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		%ObjectiveLines.add_child(l)
 
 
 func _tile_icon(c: Vector2i) -> Texture2D:
@@ -2925,6 +3008,7 @@ func _hint() -> String:
 
 func _refresh_side() -> void:
 	round_label.text = "Round %d" % maxi(round_no, 1)
+	_show_objective()
 	var mine := battle.turn == command.faction() and command.leader.is_alive()
 	if battle.phase == Battle.Phase.OVER:
 		turn_label.text = "Battle over"
