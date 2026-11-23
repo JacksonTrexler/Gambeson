@@ -3,7 +3,17 @@ extends SceneTree
 # Runs the test_* methods in Tests/*_test.gd, each on a fresh museum with rng seed 1. Exit code 1 on
 # any failure. What it runs, by the arguments after `--`:
 #   (none) or all   every test (about a minute: the museum is held for the whole run, see below)
-#   quick           the 20/80 tier: everything but the slow tests listed in Tests/slow.txt (about 30 s)
+#   quick           the 20/80 tier: everything but the slow tests listed in Tests/slow.txt (about 40 s), except the risk
+#                   tests (Tests/risk.txt), which it keeps even when slow
+#   risk            only the risk tests: the few whose failure means the game itself is broken (a whole AI fight that
+#                   stalls or idles, saving, the core rules and the wiring of every skill). Seconds; run after any AI,
+#                   Battle or Unit change before the longer runs. Mark a test: add its "file.method" (or any word, as
+#                   below) to Tests/risk.txt with a reason. Mark what a bug would hurt most and a loosened pin cannot see
+#   <segment>       one system's tests, by the files listed under it in Tests/segments.txt: ai (what units read and
+#                   decide, sight, suspicion), ui (HUD, slots, keys, glossary), rules (the core: checks, movement,
+#                   effects, saving, turns), content (a skill, class, item or place's own rules: the default for a file
+#                   no line lists), sims (whole fights), tools (the authoring tools and the runner). A segment name
+#                   is not a substring word: segments combine with each other and with words (`ai ui`, `ai quick`)
 #   reverse         files and tests in reverse order: a test that leaks into a later one (resources are
 #                   cached across tests) fails here when it doesn't forward. Run both before merging
 #   soak            the long form of the seeded tests: combat_test fights all 30 seeds, not 8 (about 20 s more)
@@ -18,6 +28,8 @@ const MUSEUM := "res://Scenes/museum.tscn"
 var _save: GDScript  # Save and KeyBinds, as scripts (_initialize)
 var _keys: GDScript
 const SLOW_LIST := "res://Tests/slow.txt"  # one "file.method" a line: what the quick tier leaves out
+const RISK_LIST := "res://Tests/risk.txt"  # one word a line (matched as a targeted word is): what the quick tier keeps and `risk` runs alone
+const SEGMENT_LIST := "res://Tests/segments.txt"  # "name: file file ..." (file without _test.gd), lines of one name join
 
 
 func _initialize() -> void:
@@ -25,8 +37,12 @@ func _initialize() -> void:
 	var quick := "quick" in args
 	var times := "times" in args
 	var reverse := "reverse" in args
-	var words: Array = Array(args).filter(func(a: String): return a not in ["quick", "all", "times", "reverse", "soak"])
-	var slow := _slow() if quick else []
+	var segments := _segments()
+	var picked: Array = Array(args).filter(func(a: String): return a in segments)
+	var words: Array = Array(args).filter(func(a: String): return a not in ["quick", "all", "times", "reverse", "soak", "risk"] and a not in segments)
+	var risk := _list(RISK_LIST)
+	var only_risk := "risk" in args
+	var slow := _list(SLOW_LIST).filter(func(id: String): return not _hit(id, risk)) if quick else []
 	# A test's toggles never reach (or come from) the player's own settings, nor another run's: a file per process.
 	Prefs.SAVE = "user://settings_test_%d.cfg" % OS.get_process_id()
 	var museum: PackedScene = load(MUSEUM)
@@ -55,6 +71,10 @@ func _initialize() -> void:
 		for m in methods:
 			var id := "%s.%s" % [file.get_basename(), m.name]
 			if not m.name.begins_with("test_") or id in slow:
+				continue
+			if only_risk and not _hit(id, risk):
+				continue
+			if not picked.is_empty() and not picked.any(func(s: String): return file.trim_suffix("_test.gd") in segments[s] or (s == "content" and not segments.values().any(func(l: Array): return file.trim_suffix("_test.gd") in l))):
 				continue
 			if not words.is_empty() and not words.any(func(w: String): return w in id):
 				continue
@@ -113,13 +133,27 @@ func _wipe() -> void:
 	_save.set("loaded", false)
 
 
-# The tests the quick tier skips: Tests/slow.txt, a "file.method" a line (# comments).
-func _slow() -> Array:
+# A list file: a word a line (# comments): Tests/slow.txt, Tests/risk.txt.
+func _list(path: String) -> Array:
 	var out := []
-	var f := FileAccess.open(SLOW_LIST, FileAccess.READ)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f:
 		for line in f.get_as_text().split("\n"):
 			line = line.split("#")[0].strip_edges()
 			if line:
 				out.append(line)
+	return out
+
+
+func _hit(id: String, words: Array) -> bool:
+	return words.any(func(w: String): return w in id)
+
+
+# Tests/segments.txt as {name: [files]}; `content` is listed by what it isn't (see the header), so it is always a key.
+func _segments() -> Dictionary:
+	var out := {"content": []}
+	for line: String in _list(SEGMENT_LIST):
+		var at := line.find(":")
+		var name := line.substr(0, at).strip_edges()
+		out[name] = out.get(name, []) + Array(line.substr(at + 1).split(" ", false))
 	return out

@@ -1,0 +1,8 @@
+# One system's tests: `run.gd -- <segment>` (see the head of run.gd). "name: file file ..." with the file's name without _test.gd;
+# lines of one name join. A test file no line lists belongs to `content`, so a new skill's or item's test needs no entry here.
+# List a file here only when it is a system's own (AI, UI, core rules, whole fights, tools).
+ai: ai_support ai_tactics allies bio stance suspicion vanish word watch lure undead evidence stealth perception persona sight route path shackle
+ui: hud hud_markers glossary tag_colors ui_small slots slot_columns item_icons keybinds pace clock command
+rules: check costs defense derived difficulty displace disturbed downed effect_stats equip exhaustion facing forced friendly_fire ground helpless hearts level marks modifiers movement moves param pockets prep reaction recovery_endurance resources rules save skills stack turn
+sims: sims combat astral
+tools: tooling runner sweep
