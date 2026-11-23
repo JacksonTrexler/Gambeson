@@ -113,6 +113,16 @@ Best guess: keep as built; weighing the gain and the recharge are later cards.
 Ref: `Scripts/Battle.gd` `hazard`, `_owe_wound`, `docs/plans/w18-ai-siphon.md`.
 Answer: ____
 
+**F44. The AI and the fog (wave 18 follow-ups; see ?315, ?316, ?319, ?326).**
+Best guess: keep as built. The AI reads `explored` (never-seen ground by the unknown-terrain rule), filled lazily from the disc it plans from, so ground walked past but never planned from stays unmarked (card w18-fog-seen); the fog freezes terrain only, not ground effects, and not timed (card w18-fog-effects).
+Ref: `Battle.known_ground`, `_mark_seen`, `Overlay.memory`, `docs/plans/w18-fog-ai.md`, `docs/plans/w18-fog-frozen.md`.
+Answer: ____
+
+**F45. A cornered Flippant starman holds still (wave 18 follow-ups; see ?325, ?326).**
+Best guess: keep; Floaty never stalls, and a Flippant starman with every tile unsafe holds 3 to 4 turns until struck.
+Ref: `Tests/stars_test.gd` `test_floaty_no_stall`, `docs/plans/w18-flip-test.md`.
+Answer: ____
+
 ---
 
 ## 3. Skills and classes (wave 18 G, H, I, J)
@@ -201,6 +211,16 @@ Best guess: keep as built; trait-level design waits for your word.
 Ref: `docs/plans/w18-theseus.md`, `Behaviours/theseus.gd`.
 Answer: ____
 
+**F46. NPC flex trees (wave 18 follow-ups; see ?317, ?318).**
+Best guess: keep as built. An NPC (has a bio) takes the first offered flex tree when a slot is due, an authored pick stands, and a Jester pays with its lowest stat above floor 6.
+Ref: `Unit.take_flex`, `docs/plans/w18-flex-ai.md`.
+Answer: ____
+
+**F47. Monster AI spends points, reversing ?303 (wave 18 follow-ups; see ?320 to ?322).**
+Best guess: keep as built. An NPC or summoned Monster picks the path fewest on its side and spends its level - 1 points on that path's traits, cheapest first, so a Theseus Monster arrives with them spent (?303 said unspent). A player's Monster is left alone (card w18-monster-ai-player). Undead ?? is +1 pierce Defense a rank, a guess.
+Ref: `Unit.take_path`, `fewest_path`, `path_auto`, `Skills/undead.tres`, `docs/plans/w18-monster-ai.md`, `docs/plans/w18-undead-rank.md`.
+Answer: ____
+
 ---
 
 ## 4. HUD and UX (wave 18 A, B)
@@ -241,6 +261,11 @@ Answer: ____
 **F43. HUD chips for the further tempers (wave 18 follow-ups; see ?313, ?314).** A starman's `Bio.also` tempers (Flippant, Vindictive, Power Hungry) show as chips on the leader's card only; a foe's card shows none, as it shows no behaviour chip today.
 Best guess: keep; a foe's tempers stay unshown until you want them read.
 Ref: `Scripts/HUD.gd` `_info`, `docs/plans/w18-hud-also.md`.
+Answer: ____
+
+**F48. One HUD picker for any skill with choices (wave 18 follow-ups; see ?323, ?324).**
+Best guess: keep. Any non-tile skill whose behaviour has `choices` asks through the one HUD picker and casts at once; Elemental Strike migrated, and `Battle.cast` takes a `chose` argument.
+Ref: `Scripts/HUD.gd` `_pick_choice`, `docs/plans/w18-picker-es.md`.
 Answer: ____
 
 ---

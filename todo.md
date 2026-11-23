@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 315. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 327. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -28,6 +28,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 18. **Wave 18 batch 2 (?288 to ?296):** the astral void rule and the Hop skill as an innate active (?288); Floaty's fractional movement (?289); Flippant, Vindictive, Power Hungry and `Bio.also` (?290); the grudge weight 5 against 10 and the 25% thresholds (?291); the Jester's inverted page costs and its stat lists (?292); the Jester's data-only skills, all `??` (?293); Jovia's page and prereqs (?294); `flex_kind` (?295); the `skill.py` `intensity` line (?296).
 19. **Wave 18 batch 3 (?297 to ?306):** the fog radius, shades and dim-only memory (?297); the AI left unchanged (?298); the `free` path flag (?299); the Monster paths, Undead ?? and Seaborn ?? (?300); the Monster class and playable (?301); where Thesis of Theseus sits, dark mage and dark cleric not placed (?302); its level, path-only design and the shared picker (?303); the AI pick and L + 1 Skeletons value (?304); its price (?305); `skill.py` reading the parent (?306).
 20. **Wave 18 follow-ups (?307 to ?314):** `skill.py` writing the intensity only with a tier, `check_declared`, the stray `description` (?307 to ?309); the AI pricing Power Siphon as turn-end HP, the Power gain and generator recharge skipped, the true circuit (?310 to ?312); the HUD chips for `Bio.also` on the leader only, read directly (?313, ?314).
+21. **Wave 18 follow-ups, second batch (?315 to ?326):** the AI's `known_ground` reading `explored`, filled lazily (?315, ?316); NPCs taking flex trees, the Jester paying with its lowest stat (?317, ?318); the fog freezing terrain only (?319); Monster paths and spent points, reversing ?303 (?320, ?321); Undead ?? as +1 pierce Defense a rank (?322); the one HUD picker and `Battle.cast`'s `chose` (?323, ?324); Floaty not stalling, a cornered Flippant holding (?325, ?326).
 
 ## Built on judgement, open for review (newest last; append here)
 
@@ -153,7 +154,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 300 Monster paths (2026-11-23, your three paths): Starmen Floaty + Hop; Sirens Alluring, Seaborn ??, Opportunist; Skeletons a new invented **Undead ??** (no per-rank effect). `docs/plans/w18-monster.md`; names: Undead ??.
 - 301 Monster class (2026-11-23): martial, stats 14/11/14/8/10/9, playable on the entry screen, path on the skills screen, `Unit.picked` exported, `Unit.monster()` helper. `docs/plans/w18-monster.md`.
 - 302 Thesis of Theseus placement (2026-11-23, your t6 words): Wizard's Transgression and Elmon at needs 5; dark mage (Mortis Arcalis too small) and dark cleric (no tree, ?240) not placed. `docs/plans/w18-theseus.md`.
-- 303 Theseus level, design, picker (2026-11-23): level = cast rank; path only; `Behaviour.choices` and `Cast.chose`, the HUD `_choose` panel; Elemental Strike not migrated. `docs/plans/w18-theseus.md`.
+- 303 Theseus level, design, picker (2026-11-23; superseded in part by ?321 and ?323): level = cast rank; path only; `Behaviour.choices` and `Cast.chose`, the HUD `_choose` panel; Elemental Strike not migrated. `docs/plans/w18-theseus.md`.
 - 304 Theseus AI (2026-11-23): picks the fewest path on its side; values a level L Monster as L + 1 Skeletons. `docs/plans/w18-theseus.md`.
 - 305 Theseus price (2026-11-23): 4 AP, 3 cost at every rank; extends `summon_per_rank`. `docs/plans/w18-theseus.md`.
 - 306 `skill.py check` reads the behaviour's parent (2026-11-23): a tooling change. `docs/plans/w18-theseus.md`.
@@ -165,6 +166,18 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 312 `circuit_ends` reads the true circuit for the AI (2026-11-23): plain on-screen status. `docs/plans/w18-ai-siphon.md`.
 - 313 HUD chips for `Bio.also` (2026-11-23, answers ?290): on the leader's card only; foes show no bio chips; MUTED, one per temper. `docs/plans/w18-hud-also.md`.
 - 314 The chip loop reads `bio.also` directly (2026-11-23): not `Unit.tempered()`. `docs/plans/w18-hud-also.md`.
+- 315 `known_ground` reads `explored` (2026-11-23, answers ?298): PLAIN unless explored; timing flat. `docs/plans/w18-fog-ai.md`; names: `_marked_at`.
+- 316 AI fills `explored` lazily (2026-11-23): own disc once per planning cell; gap for ground walked past. `docs/plans/w18-fog-ai.md`; names: `_mark_seen`.
+- 317 NPCs take flex trees (2026-11-23, answers ?285): `Unit.take_flex`, NPC = has a bio; authored picks stand. `docs/plans/w18-flex-ai.md`; names: `take_flex`.
+- 318 Jester NPC buys flex with its lowest stat above floor 6 (2026-11-23, answers ?292). `docs/plans/w18-flex-ai.md`.
+- 319 Fog freezes terrain only (2026-11-23, answers ?297): `Overlay.memory`; ground effects stay live, not timed. `docs/plans/w18-fog-frozen.md`; names: `memory`, `_freeze`.
+- 320 Monsters pick a path (2026-11-23, answers ?301): `take_path`, `fewest_path` lifted from Theseus; NPC or summoned only. `docs/plans/w18-monster-ai.md`; names: `take_path`, `fewest_path`, `path_auto`.
+- 321 Monsters spend their points (2026-11-23, REVERSES ?303): cheapest opener first; Theseus Monsters now spend theirs. `docs/plans/w18-monster-ai.md`.
+- 322 Undead ?? as +1 pierce Defense a rank (2026-11-23, answers ?300): a guess, the Skeleton had nothing to lift. `docs/plans/w18-undead-rank.md`.
+- 323 One HUD picker for any non-tile skill with choices (2026-11-23, answers ?303): Elemental Strike migrated. `docs/plans/w18-picker-es.md`; names: `_pick_choice`.
+- 324 `Battle.cast` gains a `chose` argument (2026-11-23). `docs/plans/w18-picker-es.md`.
+- 325 Floaty does not stall a starman (2026-11-23, answers ?289): sim test, no `AI.gd` change. `docs/plans/w18-flip-test.md`.
+- 326 A cornered Flippant holds 3 to 4 turns (2026-11-23): judged a hold, exempted in the test. `docs/plans/w18-flip-test.md`.
 
 ## Files
 

@@ -254,6 +254,13 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | `skill.py` intensity and undeclared fields (?307 to ?309) | `Util/skill.py check` |
 | — | The AI prices Power Siphon (?310 to ?312) | `stars_test.gd` |
 | — | HUD chips for `Bio.also` (?313, ?314) | `hud_test.gd` |
+| — | The AI reads the fog (?315, ?316) | `sight_test.gd` |
+| — | NPCs take flex trees (?317, ?318) | `general_test.gd` |
+| — | The fog freezes terrain (?319) | `sight_test.gd` |
+| — | Monsters pick a path and spend points (?320, ?321) | `monster_test.gd` |
+| — | Undead ?? per-rank pierce (?322) | `monster_test.gd` |
+| — | Elemental Strike on the shared picker (?323, ?324) | `general_test.gd` |
+| — | Floaty does not stall (?325, ?326) | `stars_test.gd` |
 
 ## Questions to answer first
 
