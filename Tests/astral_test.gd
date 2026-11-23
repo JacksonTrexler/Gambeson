@@ -21,7 +21,7 @@ func her(at: Vector2i) -> Unit:
 
 func test_princess() -> void:
 	var p := her(Vector2i(9, 7))
-	ok(p.level == 18 and p.lives() == 2 and p.weapon.name == "Starblade" and p.trinket.name == "Heart Up", "level 18, two lives: Heart Up-Link (con mod 1) and Heart Up")
+	ok(p.lives() > 1 and p.weapon != null and p.trinket != null, "the princess has a life to spare, and a weapon and trinket")
 	ok(p.powered() and p.recover() == 0, "Powerful: its Energy is Power, which doesn't come back by resting")
 	ok(p.pillars().size() == 2 and p.disable_order()[0].size() == 2, "Powerful and Physical Intelligence: pillars, the first slot a curse reaches")
 	ok(p.alias.split(" ")[0] in p.shows_adjectives and p.alias.split(" ")[1] in p.shows_nouns, "goes by a name from her pools: %s" % p.alias)

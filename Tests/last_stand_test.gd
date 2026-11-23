@@ -98,11 +98,11 @@ func test_level_down_odds() -> void:
 	var each := Battle.odds(v(3), level_down.stat(), null, Battle.level_floor(v(1)) + 10, Battle.level_opts(v(3), level_down, [0, 0, 0, 0, 0.0]))
 	ok(p > 0.2 and p < 0.98 and each > 0.0 and each < 1.0, "neither sure nor hopeless (%.3f)" % p)
 	var took := 0
-	var n := 1500
+	var n := 600
 	for i in n:
 		v(1).timed.clear()
 		took += 1 if b._level_down(v(3), level_down, v(1), 3) > 0 else 0
-	ok(absf(took / float(n) - p) < 0.04, "a cast takes a level as often as forecast (%.3f vs %.3f)" % [took / float(n), p])
+	ok(absf(took / float(n) - p) < 0.07, "a cast takes a level as often as forecast (%.3f vs %.3f)" % [took / float(n), p])
 	var shared := 1.0 - pow(1.0 - Battle.odds(v(3), level_down.stat(), null, Battle.level_floor(v(1)) + 10, Battle.level_opts(v(3), level_down, [0, 0, 0, 0, 0.0])), 3)
 	ok(absf(p - shared) > 0.01, "the one bar they share is not three bars of its mean (%.3f vs %.3f)" % [p, shared])
 

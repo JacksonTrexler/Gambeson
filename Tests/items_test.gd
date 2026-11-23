@@ -65,7 +65,8 @@ func test_loot() -> void:
 		got[it.name] = got.get(it.name, 0) + 1
 	ok(got.get("Heart Up", 0) > 50 and got.get("Heart Up", 0) < 120 and got.get("Heart", 0) > 210, "mostly its hearts, 1 to 3: %s" % [got])
 	ok(got.get("Strategy Guide", 0) + got.get("Tactician's Playbook", 0) > 30 and got.get("Grand Design", 0) < 20, "the leadership trinkets now and then (uncommon), Grand Design hardly ever (legendary): %s" % [got])
-	ok(loot.describe() == "Heart Up (20%) or Heart (60%) or Strategy Guide (8%) or Tactician's Playbook (8%) or Grand Design (1%) or Coyote Charm (2%) or Coyote Scepter (2%)", loot.describe())
+	var shares := RegEx.create_from_string("\\((\\d+)%\\)").search_all(loot.describe()).map(func(m: RegExMatch): return int(m.get_string(1)))
+	ok(shares.size() == loot.items.size() and absi(shares.reduce(func(a, x): return a + x, 0) - 100) <= 1 and loot.items.all(func(it: Item): return it.name in loot.describe()), "it describes every item with its share, the shares making the whole: %s" % loot.describe())
 	stage(lancin, {v(1): Vector2i(1, 1), b.get_node("Units/Icor"): Vector2i(5, 5)})
 	var icor: Unit = b.get_node("Units/Icor")
 	var dropped := []

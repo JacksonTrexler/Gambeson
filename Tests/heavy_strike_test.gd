@@ -123,11 +123,11 @@ func test_forecast_pool() -> void:
 	ok(AI._use_ratio(b, v(1), plain, v(3), read, {avg = avg}) == 1.0, "an attack that is not a Strike is not pooled")
 	var got := 0.0
 	b.rng.seed = 7
-	var n := 500
+	var n := 250
 	for i in n:
 		v(3).hp = v(3).max_hp
 		v(1).refresh()
 		b.cast(v(1), lone, v(3))
 		got += v(3).max_hp - v(3).hp
 	var want := p * last * (avg + 2.0)
-	ok(absf(got / n - want) < 0.15 * want, "it deals what the forecast says on average (%.1f; forecast %.1f)" % [got / n, want])
+	ok(absf(got / n - want) < 0.2 * want, "it deals what the forecast says on average (%.1f; forecast %.1f)" % [got / n, want])

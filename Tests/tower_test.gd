@@ -50,9 +50,9 @@ func test_portal_menu() -> void:
 	t.place(Vector2i(2, 0))
 	t.step(Vector2i.RIGHT)
 	ok(t.menu != null and t.menu.find_child("Title", true, false).text == "Infernal Meadows · Standard (1)", "stepping onto it: its menu, at the floor's difficulty")
-	ok(t.menu.find_child("Enemies", true, false).text.begins_with("Siren · Briny, hungry · 16 HP: ") and "Undine · Murky · 18 HP" in t.menu.find_child("Enemies", true, false).text,
-			"its enemies: %s" % t.menu.find_child("Enemies", true, false).text)
-	ok(t.menu.find_child("Rewards", true, false).text == "Health Potion, Mana Potion, Heart", "what winning brings on this floor")
+	var d: Dungeon = t.dungeon_at(Vector2i(3, 0))
+	ok(t.menu.find_child("Enemies", true, false).text == "\n".join(d.enemy_lines()) and not d.enemy_lines().is_empty(), "its enemies: %s" % t.menu.find_child("Enemies", true, false).text)
+	ok(t.menu.find_child("Rewards", true, false).text == ", ".join(d.rewards_at(t.difficulty()).map(func(it: Item): return it.name)), "what winning brings on this floor")
 	t.close_menu()
 	ok(t.menu == null and t.cell == Vector2i(2, 0), "step back: off the portal")
 	t.step(Vector2i.RIGHT)

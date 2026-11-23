@@ -30,8 +30,9 @@ func test_battles() -> void:
 
 
 func test_replay() -> void:
-	ok(fight(7, REPLAY_TURNS).log == fight(7, REPLAY_TURNS).log, "same seed, same battle")
-	ok(fight(7, REPLAY_TURNS).log != fight(8, REPLAY_TURNS).log, "different seed, different battle")
+	var seven: Array = fight(7, REPLAY_TURNS).log
+	ok(seven == fight(7, REPLAY_TURNS).log, "same seed, same battle")
+	ok(seven != fight(8, REPLAY_TURNS).log, "different seed, different battle")
 
 
 # Plays a battle (up to `max_turns`); result.broke maps each INVARIANTS entry that failed to the
