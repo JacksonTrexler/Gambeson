@@ -231,6 +231,12 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Detective observes, tile word (?261) | `suspicion_test.gd` |
 | — | The AI waylays with Ambush (?262) | `ambush_test.gd` |
 | — | Opportunist shared Energy (?263) | `ai_tactics_test.gd` |
+| — | The AI prices suspected tiles (?264) | `path_test.gd` |
+| — | A crowd's cheaper turn (?266) | `ai_tactics_test.gd` |
+| — | The Astral Nexus, Power Star (?267) | `tower_test.gd` |
+| — | Test segments, risk tier (?268) | `sims_test.gd` |
+| — | Ambush as the first roll, Sally, Ambush Fusillade (?269) | `ambush_test.gd` |
+| — | Ramut's tree with Ire (?270) | `god_slots_test.gd` |
 
 ## Questions to answer first
 

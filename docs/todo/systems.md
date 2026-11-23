@@ -1581,7 +1581,7 @@ The user's words (docs/agents/answers-2026-11-23.md): "we can raise the budget p
 258. **Tests loosened and consolidated (w13-tests) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w13-tests.md`. About 35 pins loosened: content pins became relations to the data (tower portal menu, `Loot.describe`, the princess, champions' stat blocks, per-class tier numbers as orderings, quality `RANK_COST` monotone); 4 tests removed or folded (timid wait into craven; three describe-text tests, covered by the describe sweep); sampling loops sized to 3 sigma (last_stand 1500 to 600 casts and so on); `test_every_tab_draws_its_skills` 6.8 to 3.5 s. Suite 11017 to 11012 checks, 1037 to 1033 tests, 106 to 101 s. **Left alone on purpose:** rule arithmetic (defense, xp curve, respec, Pricing, slam), the AI relation tests, champions' skill lists (your spec), `hex_iii` at 60 seeds. **Not done:** merging the 137 tiny tests (staged state leaks; "dont take things too far"). **The one big cut left is game code:** about 41 ms a test is the museum `add_child` (Battle and Unit `_ready`), about 43 s of the suite. Names to review: none.
 
 - [x] **Investigation layer lost in the sirens merge** (?255). Built; the player's yes to "recovered or rebuilt" answered it.
-- [ ] **Ambush: the effect is a guess**, and Coordinate's support watch is not rebuilt. Needs the user. (?255)
+- [x] **Ambush: the effect is a guess**, and Coordinate's support watch is not rebuilt. Superseded by the user's answer 2026-11-23 (first attack roll out of concealment, Sally, Ambush Fusillade): built (?269). Coordinate's support watch stays unbuilt. (?255)
 - [ ] **Free inspect on an unseen hit only when it does damage** (the original: any attack). Needs the user. (?255)
 - [ ] **What "skilled leader" means** (`cha_of > 0`) and whether a calm follower should also skip the strike choice. Needs the user. (?256)
 - [ ] **30 a side: the first two rounds still stare ~3 s (p95)** against the 1000 ms side budget; raise it or cut further. Needs the user. (?257) Cut to 754 ms with parties (?260); no parties still 1842 ms (queue).
@@ -1627,4 +1627,51 @@ The user's words (docs/agents/answers-2026-11-23.md): "we can raise the budget p
 - [x] **A cheaper fresh museum** (?258's card). Built (?259).
 - [x] **Detective observes the unconcealed, tile word** (?255). Built (?261).
 - [x] **The AI weighs where to Ambush; a visual check of marks** (?255). Built (?262).
-- [ ] **Ambush pricing numbers, the foe goal "nearest of caster and allies", `HUNT_FAR` 2.0.** Needs the user. (?260, ?262)
+- [ ] **`HUNT_FAR` 2.0.** Needs the user. (?260) The Ambush pricing and the foe goal are gone with `AI._waylay` (?269).
+
+## Waves 15 and 16 (2026-11-23): tile suspicion priced, the stare, the Nexus, the test audit, Ambush rebuilt, Ire
+
+The user's words: `docs/agents/answers-2026-11-23b.md`.
+
+264. **The AI prices suspected tiles (w15-tilesus) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w15-tilesus.md`. Calls:
+    - **`Battle.dread(..., wary, doubt)`:** `doubt` = `u.suspects(c)`; on a wary walk with doubt > 0 and net < 0 the tile costs at least `SUSPECT_TILES` (3) x min(doubt, `SUSPECT_STACKS` 3). Stack 1 equals a hint's price (max, not sum). No AI.gd change: every walk prices through `route()`.
+    - **Only while net < 0** (once the tile is made out, the real hazard price takes over); wary walks only; every tile of the route.
+    - **Test:** `path_test.test_suspected_tile_costs_more` (a mutation caught). busy_fight 15: OUTCOME ok, turn time noise.
+    - **Not done:** a visual check. **New names to review:** `SUSPECT_TILES`, `SUSPECT_STACKS`.
+265. **The rest of the museum (w15-museum) - not built, open for review (2026-11-23).** Plan: `docs/plans/w15-museum.md`. Calls:
+    - **Not worth it as is:** a read stretch around `_fill_bar` fails `command_test.test_default_bar`, `test_bar_place`, `hud_markers` / `hud_test` toggles (in a stretch `stat()` skips the `_touch_bar` path, so the bar auto-equip order changes); any other memo needs invalidation on slots, timed, items, footing, hp, ground. Gain at most ~10 s of the suite. `Battle._enter` 7.5 ms is gameplay.
+    - **Lead:** make auto-equip explicit rather than a side effect of `stat()`; then a stretch around `_fill_bar` is safe (card in `docs/queue.md`).
+    - **New names to review:** none.
+266. **The AI stare at 30 a side, again (w15-stare2) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w15-stare2.md`. Calls:
+    - **`_reads(b, u, near)`:** a plain full turn reads allies only within longest reach + 1. **`_approach`:** a foe beyond move_left + `APPROACH_FAR` (3.0) gets the nearest free tile beside it, unpriced. **`_stretch`** asks for self-only stride skills first; **`_line_up`** drops foes beyond ceil(move_left) + longest drive reach + `LINE_UP_MARGIN` (2).
+    - **Measured (M3 x 4, stare mean / p95 ms):** 30 no-party 338-342 / 2050-2105 to 244-248 / 939-959 (**only ~5% margin**); 15 no-party 89 / 172 to 96 / 194 and 15 lead 123 / 228 to 130-143 / 236-264 (slightly worse, under 1000); 30 lead flat. Fights end a little different (30 a side 51.0 to 51.5 fallen).
+    - **Not done:** a unit whose straight line to a far foe runs through its allies still does not move (`walk()` pops the occupied tail; a path round the column would fix it); `end_turn` stat reads (under 5%).
+    - **Test:** `test_crowd_shortcuts` (4 checks, 2 mutations caught). **New names to review:** `APPROACH_FAR`, `LINE_UP_MARGIN`.
+267. **The Astral Nexus (w16-nexus) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w16-nexus.md`. Calls:
+    - **`astral_void`:** enter 99, tags void and detrimental; a tile on the map, so effectively impassable by budget, flyers cross at 1, no fall damage. **`starpower_generator`:** a full source (x5 Power regen on its lattice), passable, not brittle, inert: no self-recharge.
+    - **Power Star:** `Item.soaks` (share per rank of the wearer's overflow Power kept, rank 1 = 15%, up to the wearer's max base Power) and `Item.held`; used from a slot gives `held` as Power, then 0 (a copy, as `emptied()`); `Item.usable()` replaces `restores and not empty`. **It is the dungeon's win reward on all floors, not a starman drop** (Starman is shared with the Envoy); drops empty; **the charge is lost on save** (items save by id).
+    - **Layout** in `Scripts/AstralNexus.gd` (seeded): 23x13, 3 generators, startile grid on even offsets 25% broken, panes fill the gaps, 15% void, an unreachable lattice voided; 4 to 6 starmen on `unaligned` (`starmen` is neutral).
+    - **Tests:** `tower_test.test_nexus`, `test_power_star` (mutations caught). **New names to review:** `starpower_generator`, `astral_void`, `power_star`, `soaks`, `held`.
+268. **The test audit, segments, a risk tier (w16-testaudit) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w16-testaudit.md`. Calls:
+    - **Audit:** of the 20/80 cuts only the `busy_fight` digest was medium risk (nothing in `quick` played a whole AI fight); new `sims_test.test_fight_outcome` (10 v 10 in parties, ~2 s; a mutation that idles one side caught). Tier numbers, content pins and describe tests: low, left.
+    - **Segments by file** in `Tests/segments.txt` (ai 189, ui 115, rules 270, sims 12, tools 12, content 441 as the default): `t.sh <wt> <segment>`, they combine. **`risk`** runs `Tests/risk.txt` (26 tests, ~680 checks, seconds); `quick` keeps risk tests even if slow-listed (+7 s).
+    - **Left:** `level_down`'s 0.07 band (a DC off by 1 can slip it; check_test forecasts cover the odds); no per-test risk comments.
+    - **Numbers:** full 11033 checks, 1039 tests, ~60 s; quick 10193 checks, 48 s. **New names to review:** `risk`, `segments.txt`.
+269. **Ambush as the first attack roll out of concealment (w16-ambush) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w16-ambush.md`. Your words (answers-2026-11-23b): "ambushes are the first attack rolls out of concealment. It usually only works on the first attack"; Sally "+ rank * 20% damage on 'ambush'"; "Ambush Fussilade: 'Ambush' and triggered effects from 'Ambush' proc on rank subsequent attack rolls". Calls:
+    - **`Unit.ambush_rolls`** counts attack rolls made as ambushes since its side's turn began (zeroed with `exposed`); `Battle.ambushes()` is true for the first roll (concealment test) or while the count is within the `fusillade` stat; `roll_attack()` counts. **A miss uses the ambush up; re-hiding mid-turn does not reset it; checks and area blows with no attack roll do not spend it; auto multi-target: only the first target.**
+    - **`Requirement` test `ambush`** (any skill can pay off on an ambush). **Ambush skill:** now a melee dex blow, 1d10 a rank, contingency `test=ambush edge=1`, flat price (3 AP, 2 cost); lost its `defensive` tag, so `AI._defend` no longer casts it. **Sally:** passive, damage 0.2 a rank tagged ambush, on Slayer after Gank and on Rogue's Blade root after Backstab (Rogue has no Slayer tree). **Ambush Fusillade** (you wrote "Fussilade"): passive, stat `fusillade` +1 a rank, Slayer after Sally.
+    - **`damage_range` now counts the attacker's `damage` stat** on the blow's tags: every damage effect shows in forecasts (HUD and AI), not only Sally.
+    - **Removed:** `Mark.halts` and `skill`, the walk halt, `Behaviour.tripped` / `waylays`, `AI._waylay`, `Behaviours/ambush.gd`: the tile marks of ?262 (you asked what they meant).
+    - **Tests:** `ambush_test` rewritten (first roll only, chain, fusillade, who); 4 mutations caught. busy_fight 15 flat.
+    - **New names to review:** `Unit.ambush_rolls`, `fusillade`, Sally, Ambush Fusillade.
+270. **Ramut's Ire on a tree (w16-ire) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w16-ire.md`. Your words: Ire belongs on Ramut's tree. Calls:
+    - Ramut had a god file (pool only), so a new `Trees/ramut.tres` (root "Ramut", physical, `role.py tree`) is wired as his own Divinity tab in `Gods/ramut.tres`, as Luun's and Eros's. **Ire at tier 2, after Pray** (Pray stays tier 1 through `Role.shared`), as Luun's Level Down; the only skill on it, and a drawback-ish effect, so no higher.
+    - **Oddity:** learned, Ire's effect lands on its holder (own concealment defeated); no cost or ap fields, system-applied. Left as is.
+    - **Tests changed:** `god_slots_test.test_cleric`, `test_paladin`, `hogel_test.test_cleric` (Ramut now offers Divinity). **New names to review:** `Trees/ramut.tres`.
+
+- [x] **The AI weighs tile suspicion** (?261). Built (?264).
+- [x] **No-party 30 a side stare** (?260). Built (?266): ~950 ms p95, ~5% margin.
+- [x] **Ambush: the first attack roll out of concealment, Sally, Ambush Fusillade; Astral Nexus; Ire on Ramut's tree; test audit** (the user, 2026-11-23). Built (?267 to ?270).
+- [ ] **Make auto-equip explicit, then a read stretch around `_fill_bar`** (the museum lead, ~10 s of the suite). Queued. (?265)
+- [ ] **Ambush and Sally numbers as built, the concealment stretch (since its side's turn began, a miss uses it up), the Nexus void / generator / Power Star calls, whether Ire needs a cost, `SUSPECT_TILES` 3.** Needs the user. (?264, ?267, ?269, ?270)
+- [ ] **Optional micro-cuts (each under ~5%):** `end_turn` per-unit stat reads, a path round a unit's own column, Opportunist on `_recover` / `_escape` / `_hunt`, `Battle._enter`. Needs the user. (?263, ?265, ?266)
