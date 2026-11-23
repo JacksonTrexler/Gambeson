@@ -222,6 +222,7 @@ var sighted_when: Dictionary[Faction, Dictionary] = {}  # side -> {foe: {since: 
 var attacks: Dictionary[Faction, Array] = {}  # side -> [{tiles: where an attacker it couldn't place could have struck from, since}] (_note_attack())
 var swept: Dictionary[Faction, Dictionary] = {}  # side -> {tile: turns_begun when one of its units last searched it} (search())
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
+var _marked_at: Dictionary = {}  # unit -> the cell its sight last joined explored from (known_ground())
 var explored: Dictionary[Faction, Dictionary] = {}  # side -> {tile: true}: ground its sight has reached this battle (sight_cells(); the fog of war remembers it, Overlay)
 @export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
@@ -3752,9 +3753,26 @@ func stride(u: Unit, prev: Vector2i, c: Vector2i, from: Terrain, t: Terrain, bag
 	return cost + (pass_cost(u, other) if other else 0.0)
 
 
-# The ground u makes out on c: what's there, or plain where it can't make it out.
+# The ground u makes out on c: what's there, or plain where it can't make it out: hidden, or (sight on) ground its
+# side has never seen (explored[side], filled from u's own sight as it plans; the fog of war's memory).
 func known_ground(u: Unit, c: Vector2i) -> Terrain:
+	if sight:
+		if _marked_at.get(u) != u.cell:
+			_mark_seen(u)
+		if not explored[u.faction].has(c):
+			return PLAIN
 	return terrain(c) if _tile_read(u, c).net >= 0 else PLAIN
+
+
+# u's sight from where it stands joins its side's explored ground (once per cell it plans from; one disc, not the side's).
+func _mark_seen(u: Unit) -> void:
+	_marked_at[u] = u.cell
+	var seen: Dictionary = explored.get_or_add(u.faction, {})
+	var at := Vector2(u.cell)
+	var reach := perception_range(u)
+	for c in cells_near(u.cell, reach):
+		if Vector2(c).distance_to(at) <= reach + 0.0001:
+			seen[c] = true
 
 
 # u's read of tile c, for a planner (route(), reckon_reach()): in a stretch (Unit.begin_read()) the same read is kept for

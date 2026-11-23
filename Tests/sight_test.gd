@@ -83,3 +83,23 @@ func test_fog() -> void:
 	h._refresh()
 	ok(h.overlay.fog_at(Vector2i(8, 2)) == 0.0 and absf(h.overlay.fog_at(Vector2i(1, 2)) - Overlay.FOG_EXPLORED) < 0.01, "in sight now clear; seen once, dimmed")
 	h.free()
+
+
+# known_ground(): ground its side has seen is what it is; never-seen ground reads as plain (the unknown rule); sight off, no fog.
+func test_known_ground_follows_explored() -> void:
+	stage(nemes, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(3, 2)})
+	b.sight = true
+	var brier := Terrain.new()
+	brier.name = "Briers ??"
+	var near := Vector2i(2, 2)
+	var far := Vector2i(9, 2)
+	b.lay_layer(near, brier, false)
+	b.lay_layer(far, brier, false)
+	v(1).wisdom = 2
+	ok(b.known_ground(v(1), near) == b.terrain(near) and b.known_ground(v(1), far) == b.PLAIN, "seen ground as it is, never-seen ground plain")
+	ok(not b.explored[v(1).faction].has(far) and b.explored[v(1).faction].has(near), "explored holds the sight's disc")
+	b.explored[v(1).faction][far] = true
+	ok(b.known_ground(v(1), far) == b.terrain(far), "ground the side saw once is known out of sight")
+	b.sight = false
+	b.explored.clear()
+	ok(b.known_ground(v(1), far) == b.terrain(far), "no fog without sight: all known")
