@@ -322,3 +322,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Calm followers drill, a frame per unit, lazy opening looks, `end_turn` under the walks** (`AI._calm`, `AI._drill`, `Battle.lazy_looks`): plan `docs/plans/w13-aifast.md`. `ai_tactics_test.test_calm_followers_drill`. (?256)
 - [x] **The turn budget 200 ms, `busy_fight` outcome checks in place of the digest** (`TURN_BUDGET_MS`, `SIDE_BUDGET_MS`, `OUTCOME`): plan `docs/plans/w13-aifast.md`. (?257, closes ?245 and ?254)
 - [x] **Tests loosened and consolidated** (about 35 pins to relations, 4 tests removed, 106 to 101 s): plan `docs/plans/w13-tests.md`. (?258)
+- [x] **A cheaper fresh museum** (`Unit.stat` / `_grants` fast return, `_touch_bar`, pools skip picks, bars drawn once): museum `add_child` 43 to 17.8 ms, suite 107 to 67 s. Plan `docs/plans/w14-museum.md`. (?259)
+- [x] **Far reads and the far turn** (`Battle._plain`, `AI._far`, `AI._prowl`, `HUNT_FAR`; 30 a side with parties p95 3380 to 754 ms): plan `docs/plans/w14-stare.md`. `ai_tactics_test.test_far_reads_and_turn`. (?260)
+- [x] **Detective observes the unconcealed, tile suspicion spreads by word** (`Battle._observe`, `spread(o, t: Variant)`): plan `docs/plans/w14-detective.md`. `suspicion_test.test_detective_observes`, `test_tile_word`. (?261)
+- [x] **The AI waylays with Ambush** (`Behaviour.waylays`, `AI._waylay`; a luring Siren hunts the last-seen cell): plan `docs/plans/w14-ambush.md`. `ambush_test.test_ai_waylays`. (?262)
+- [x] **Opportunist: shared Energy in `_struck`**: plan `docs/plans/w14-minor.md`. `ai_tactics_test.test_approach_weighs_opportunist`. (?263)

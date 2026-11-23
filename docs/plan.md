@@ -226,6 +226,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Calm followers drill, a frame per unit (?256) | `ai_tactics_test.gd` |
 | — | Turn budget 200 ms, outcome checks for the digest (?257) | `busy_fight` |
 | — | Tests loosened and consolidated (?258) | the suite |
+| — | A cheaper fresh museum (?259) | the suite |
+| — | Far reads and the far turn (?260) | `ai_tactics_test.gd` |
+| — | Detective observes, tile word (?261) | `suspicion_test.gd` |
+| — | The AI waylays with Ambush (?262) | `ambush_test.gd` |
+| — | Opportunist shared Energy (?263) | `ai_tactics_test.gd` |
 
 ## Questions to answer first
 

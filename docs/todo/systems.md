@@ -1556,7 +1556,7 @@ Your words: `docs/agents/answers-2026-11-20b.md`. Each call below is for you to 
     - **Digest 3296533323 unchanged** (still the unconfirmed working reference), `ai_sim` diff empty. **Test:** `test_warm_read_answers_as_before` (+88 checks); 5 mutations caught.
     - **New names to review:** none.
     - **The gap is spread thin:** a further turn-cost card is likely not worth queuing unless you want to push the budget.
-- [ ] **Opportunist in the AI: flee and the other walks, `route()` pricing, Energy shared across several strikers.** (?253)
+- [x] **Opportunist in the AI: flee and the other walks, `route()` pricing, Energy shared across several strikers.** Shared Energy built (?263); flee already priced; `route()` and `_recover` / `_escape` / `_hunt` / `_keep_up` stay unpriced (queue). (?253)
 - [x] **AI turn cost: ~132 ms at M3 x 4 against 100.** Answered 2026-11-23: the budget is raised (200 ms a unit turn) as long as players do not wait on large factions; built (?256, ?257).
 
 ## Wave 13 (2026-11-23): the lost investigation layer, fast AI turns, looser tests
@@ -1584,10 +1584,47 @@ The user's words (docs/agents/answers-2026-11-23.md): "we can raise the budget p
 - [ ] **Ambush: the effect is a guess**, and Coordinate's support watch is not rebuilt. Needs the user. (?255)
 - [ ] **Free inspect on an unseen hit only when it does damage** (the original: any attack). Needs the user. (?255)
 - [ ] **What "skilled leader" means** (`cha_of > 0`) and whether a calm follower should also skip the strike choice. Needs the user. (?256)
-- [ ] **30 a side: the first two rounds still stare ~3 s (p95)** against the 1000 ms side budget; raise it or cut further. Needs the user. (?257)
+- [ ] **30 a side: the first two rounds still stare ~3 s (p95)** against the 1000 ms side budget; raise it or cut further. Needs the user. (?257) Cut to 754 ms with parties (?260); no parties still 1842 ms (queue).
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
 
 - **Stun, Stunned, Borrowed Time (?83, ?85, ?119).** Your words: "Martial prowess high tier skill: Stun: attempt a very difficult attack. on a hit target attempts a difficult constitution check. On a failure, target is stunned for rank rounds". "Stunned is an easy debuff to cleanse, it's rank for cleanse purposes is halved". "Stunned is a `wound`: it can be healed off with an active skill". "Stunned units are tapped". Downed: "It does not end for the berskerker variant who acts as normal on borrowed time, but does for adventurers etc. who are tapped until they're back up". Built in the section "Tapped, helpless, Stun, Mindless Fury, Drone" above.
 - **Contact with a concealed unit (?68).** Your note: physically contacting a concealed unit (a move blocked by it) grants 1 recon. Recorded in `docs/requirements.md`; built with Fixes (?127).
 
+## Wave 14 (2026-11-23): a cheaper museum, far reads, Detective and Ambush in the AI
+
+259. **A cheaper fresh museum (w14-museum) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w14-museum.md`. Calls:
+    - **`Unit.stat` and `_grants` outside a read stretch return the base at once if `lends(s)` is false** (a superset check, no cache to go stale); `_touch_bar` sets off the auto-equip the old gather did, so the bar order is unchanged (`command_test.test_default_bar` pins it).
+    - **`pools()` skips `picks()` for a choice none of whose trees gives a reserve; `_lends_any` walks the slots without the dedupe; `Unit._ready` draws bars once** (was about 4 times).
+    - **Measured:** museum `add_child` 43 to 17.8 ms; suite 107 to 67 s (interleaved), 11012 checks, 0 failed. `meadows_test.test_camera` and `test_tower_difficulty` crash in reverse order on base too (not touched).
+    - **Left:** `Battle._enter` 7.5 ms (opening looks, Perception reads), `_fill_bar` 10 ms; the bar order depends on when effects are first gathered (a latent quirk, kept; worth a design look).
+    - **New names to review:** none.
+260. **The AI stare at 30 a side (w14-stare) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w14-stare.md`. Calls:
+    - **Cheap reads:** a foe beyond its side's sight reads `Perception.nothing()` (net -4); in sight but past half range with nothing hiding it (`Battle._plain`) reads `vague()` (net -2); both skip `Perception.unit`. `deceived`, `doubt`, `heard` and `twist` bookkeeping is skipped for them (guarded where a persona front at wisdom mod -3 or trickery could matter).
+    - **`travel`** runs `_sightings` only if `_may_hide`; `suspicious` and `_check_stall` read only who `_plain` or `in_range` says matter; **`Unit.tick`** refits only on a change.
+    - **`AI._far` / `_prowl`:** a unit with no nature or temper and every non-friend `_plain` 0 or 1 reads foes and allies within reach plus 1 and skips the full phases; **`HUNT_FAR` 2.0** heads straight for a hunt goal beyond move_left + 2. Drill reads allies within reach + 1 only.
+    - **Measured (M3 x 4, p95 / mean ms):** 30 a side with parties 3380 to 754 / 231; 15 a side 790 to 268; no parties 4343 to 1842 (**still over 1000**). Unit turn mean 197 to 118; fights end a little different (30 lead 47.5 to 48 fallen); `astral_test.test_envoy` loses 29 checks (it loops until the battle ends).
+    - **Not done:** no-party boxed-in full turns (~150 ms each: skip far allies' reads in `_full`, early-out in `_approach` / `_line_up`); `end_turn` per unit ~1.3 ms of stat reads outside a stretch.
+    - **New names to review:** `AI._far`, `AI._prowl`, `Battle._plain`, `HUNT_FAR`. Test: `test_far_reads_and_turn` (7 mutations caught).
+261. **Detective observes the unconcealed; word carries tiles (w14-detective) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w14-detective.md`. Calls:
+    - **`Battle._observe(o, center, reach)`** at the end of `survey()`: with stat `detective` > 0, each foe read at net 0 to 2 and each empty tile in reach at net 0 gets recon (rank per survey per target); it goes through `read()`, so lent reads count. Not at turn start; the original did it as a lead.
+    - **`spread(o, t: Variant)`:** tile suspicion spreads by the unit word rule (WORD + cha mod); a unit standing on the tile can stop it (Bandwagon). Signal `told`'s `of` is a Variant.
+    - **Tests:** `test_detective_observes`, `test_tile_word`; `clairvoyance_test.test_location_only` now expects the ally in earshot to be told. The `hud_test` seed was moved to 1 here (a Siren stall, fixed in ?262).
+    - **Not done:** the AI weighing tile suspicion; a visual check.
+    - **New names to review:** `Battle._observe`.
+262. **The AI waylays with Ambush (w14-ambush) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w14-ambush.md`. Calls:
+    - **`Behaviour.waylays(c, cell) -> {tiles, skill}`** (empty default; Ambush answers from its own footprint); **`AI._waylay`** (self-directed, after `_rally`) walks each foe it makes out toward the nearest of the caster and its allies, prices the first covered tile with `score`, casts the best if the value beats the AP cost, then holds. Skips if its marks are up. No per-skill branch.
+    - **Untuned:** the value against AP cost x AP and `PUSH x RIDER`; **the goal "nearest of caster and allies" stands in for an objective the AI does not have**; no seen-through discount; the ambusher holds, so the mark may be left behind next turn.
+    - **Seed-3 stall fixed:** a luring Siren far from a song with no `_best_target` (a vague read) held forever; with no target it now hunts the last-seen cell. `hud_test.test_play_scene` is back on seed 3.
+    - **Visual check done:** marks draw red-outlined (frames in the scratchpad, `shot_w14-ambush`). Test `ambush_test.test_ai_waylays` (a mutation caught).
+    - **New names to review:** `Behaviour.waylays`, `AI._waylay`.
+263. **Opportunist pricing, the rest of ?253 (w14-minor) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w14-minor.md`. Calls:
+    - **Shared Energy built:** `AI._struck` tallies what counted blows take from each holder's pool (Energy or reserve) in hotbar order; a blow beyond the pool counts 0. Test: `test_approach_weighs_opportunist` +2 checks. Not modelled: a holder's pool spent by its own non-reaction skills later in the turn.
+    - **Flee already priced** through `_retreat` (only a walk's end beside the holder fires Opportunist; passing beside costs nothing).
+    - **Not done:** `route()` pricing (it lives in Battle, which has no reads); `_recover`, `_escape`, `_hunt` / `_keep_up` unpriced (niche).
+    - **New names to review:** none.
+
+- [x] **A cheaper fresh museum** (?258's card). Built (?259).
+- [x] **Detective observes the unconcealed, tile word** (?255). Built (?261).
+- [x] **The AI weighs where to Ambush; a visual check of marks** (?255). Built (?262).
+- [ ] **Ambush pricing numbers, the foe goal "nearest of caster and allies", `HUNT_FAR` 2.0.** Needs the user. (?260, ?262)
