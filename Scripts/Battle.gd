@@ -240,6 +240,7 @@ const FAIR_HIDE := 10  # ...this high, a middling one; below it, a poor one
 const LITTER := [[[1, 2], [2, 4]], [[2, 3], [1, 3]], [[3, 4], [1, 2]]]
 const HAZARD_TILES := 2.0  # steering: movement a point of foreseen HP loss weighs as (a 3.5 damage trap, a 1d6, is a 7 tile detour; tuned by the sims, docs/plans/path-foresight.md); AP loss weighs 1 a point
 const SUSPECT_TILES := 3.0  # movement a tile it suspects hides something (Read.hint: "disturbed earth?") weighs, at least; the AI used to count one as 10
+const SUSPECT_STACKS := 3  # the most stacks of suspicion of a tile (Unit.suspects()) that add to its SUSPECT_TILES (dread()): a guess
 const HELP_PULL := 0.75  # movement a tile with a known helpful mark (Charge!) takes off a step onto it, in route() and the AI's approach: less than a tile, so it only tips a choice
 const STEER_MARGIN := 2  # tiles either side of its straight run that a steered route may wander (route())
 const EARTHWORK_COST := 1.5  # disturbed earth (earthwork()): what entering it costs its side's enemies, times the usual
@@ -3802,8 +3803,9 @@ func _owe(out: Dictionary, key: StringName, n: float) -> void:
 # anything else. A known trap, detrimental ground or `bad` (a known mark that would harm the walker:
 # Mark.harms()) counts at least a tile, whatever the estimate says - but not a trap `passed` by (Meander) - and
 # a tile it suspects something of (Read.hint) at least SUSPECT_TILES, if `wary` (a walk goes only by what it
-# knows; the AI choosing where to head is wary too: route()'s price).
-func dread(owed: Dictionary, r: Read, bad := false, passed := false, wary := false) -> float:
+# knows; the AI choosing where to head is wary too: route()'s price). A tile it has `doubt` stacks of suspicion of
+# and still can't make out (r.net below 0, hint or none: told of it, say) is wary of by SUSPECT_TILES a stack, up to SUSPECT_STACKS.
+func dread(owed: Dictionary, r: Read, bad := false, passed := false, wary := false, doubt := 0) -> float:
 	var n := 0.0
 	for key in owed:
 		n += owed[key] * (HAZARD_TILES if key == &"hp" else 1.0)
@@ -3811,6 +3813,8 @@ func dread(owed: Dictionary, r: Read, bad := false, passed := false, wary := fal
 		n = maxf(n, 1.0)
 	if wary and r.hint != "":
 		n = maxf(n, SUSPECT_TILES)
+	if wary and doubt > 0 and r.net < 0:
+		n = maxf(n, SUSPECT_TILES * mini(doubt, SUSPECT_STACKS))
 	return n
 
 
@@ -3842,7 +3846,7 @@ func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null)
 		var key: Variant = c if wards <= 0 else [c, mini(nth, wards + 1)]
 		if key not in dreads:
 			var r := _tile_read(u, c)
-			dreads[key] = dread(hazard(u, c, r, nth if wards > 0 else 0, c == dest, false), r, r.marks.any(func(m: Mark): return m.harms(u)), wards > 0 and u.passes_by(terrain(c), nth), wary)
+			dreads[key] = dread(hazard(u, c, r, nth if wards > 0 else 0, c == dest, false), r, r.marks.any(func(m: Mark): return m.harms(u)), wards > 0 and u.passes_by(terrain(c), nth), wary, u.suspects(c) if wary else 0)
 		return dreads[key]
 	var danger := 0.0
 	var pulled := false  # a known helpful mark on the line's ground, or near enough to bend it

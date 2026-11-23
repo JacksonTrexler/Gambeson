@@ -190,6 +190,25 @@ func test_the_approach_pays_the_walks_price() -> void:
 	ok(TRAP not in b.route(v(1), dest, line, {&"wary": true}), "...but when it's wary (the AI choosing where to head) it counts")
 
 
+# A tile it has stacks of suspicion of and still can't make out (Battle.dread()'s `doubt`: its own, or told by an ally) costs a
+# wary walk SUSPECT_TILES a stack, up to SUSPECT_STACKS (a hint alone is SUSPECT_TILES); a walk that isn't wary, or a tile it makes out, doesn't.
+func test_suspected_tile_costs_more() -> void:
+	walker()
+	var line := b.line(v(1).cell, TRAP, v(1).luck, v(1))
+	var cost := func(wary: bool) -> float:
+		var price := {&"wary": wary}
+		b.route(v(1), TRAP, line, price)
+		return price.cost
+	v(1).suspicion[TRAP] = 1
+	var r := b.read(v(1), TRAP)
+	ok(r.net < 0 and cost.call(true) >= cost.call(false) + Battle.SUSPECT_TILES - 0.01, "suspected, unseen: a wary walk pays for it (%s v %s)" % [cost.call(true), cost.call(false)])
+	var dread := func(k: int, net: int) -> float:
+		r.net = net
+		return b.dread({}, r, false, false, true, k)
+	ok(dread.call(0, -4) == 0.0 and dread.call(1, -4) < dread.call(2, -4) and dread.call(2, -4) < dread.call(9, -4) and dread.call(9, -4) <= Battle.SUSPECT_TILES * Battle.SUSPECT_STACKS, "more stacks cost more, capped")
+	ok(dread.call(2, 0) == 0.0 and b.dread({}, r, false, false, false, 2) == 0.0, "not once it's made out, nor for a walk that goes by what it knows")
+
+
 func test_the_ai_heads_for_the_cheaper_cell() -> void:
 	walker(8)  # blind: the walk won't bend round, so it picks where to head by the line's price
 	stage(nemes, {v(3): Vector2i(4, 4), v(1): Vector2i(6, 4)})
