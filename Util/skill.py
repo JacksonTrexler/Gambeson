@@ -251,6 +251,18 @@ def check_flags(problems):
                         "which raises FLAG_CEILING with that note, and list the field as a question for the user" % (n, FLAG_CEILING))
 
 
+def check_declared(problems):
+    """A skill .tres sets only fields Scripts/Skill.gd declares (a stray one, like the intensity `new` once wrote on Juggle,
+    is a typo or a removed field: the loader drops it)."""
+    decl = set(re.findall(r"^@export(?:_\w+(?:\([^)]*\))?)? var (\w+)", read("Scripts/Skill.gd"), re.M))
+    for p in sorted(files("Skills", ".tres")):
+        for s in sections(read(p)):
+            if s["kind"] == "resource":
+                for k in s["props"]:
+                    if k not in decl and k not in ("script", "metadata/_custom_type_script"):
+                        problems.append("%s: sets %s, which Scripts/Skill.gd does not declare" % (p, k))
+
+
 def raise_ceiling(note):
     """Raise FLAG_CEILING to the current field count, noting why (the creep alarm: the user confirms it later)."""
     n = len(re.findall(r"^@export var ", read("Scripts/Skill.gd"), re.M))
@@ -451,7 +463,7 @@ def check_density(problems):  # Density's one rule (SkillTerms.density_why()) ag
 
 def check(_args=None):
     problems = []
-    for f in (check_refs, check_names, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_costs, check_stubs, check_icons, check_density, check_knobs, check_difficulty_words):
+    for f in (check_refs, check_names, check_reachable, check_tags, check_uids, check_behaviours, check_check_tags, check_traits, check_equipment, check_flags, check_declared, check_costs, check_stubs, check_icons, check_density, check_knobs, check_difficulty_words):
         f(problems)
     problems.extend(composition_problems())  # SkillRoot.includes: the trees a tree is composed of (role.py check too)
     for p in problems:
@@ -491,8 +503,9 @@ def terms_props(a, ext, subs, props):
     if a.intensity:
         a.intensity in INTENSITY or die("--intensity: one of %s" % ", ".join(INTENSITY))
         word, dice = INTENSITY[a.intensity]
-        props.append('intensity = &"%s"' % word)
-        if not a.tier:  # its rank I tier from the intensity, + its stat mod if --stat
+        if a.tier:  # a hand-set tier may not read as that intensity: name it
+            props.append('intensity = &"%s"' % word)
+        else:  # its rank I tier from the intensity (+ its stat mod if --stat): SkillTerms derives the same word from it, so the field stays unset
             a.tier = ["1:%s%s" % (dice, "+" + a.stat if a.stat else "")]
     if a.impact:
         a.impact in ("tame", "impactful") or die("--impact: tame or impactful")

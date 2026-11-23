@@ -8,5 +8,4 @@ name = "Undead"
 ai = true
 passive = true
 tags = Array[StringName]([&"undead", &"trait"])
-description = "Its holder is undead: the dead know it as kin, and Disturbed it goes restless."
 no_density = "a trait: no slot a foe can disable, no range, check or cost, so Density would be all gain"
