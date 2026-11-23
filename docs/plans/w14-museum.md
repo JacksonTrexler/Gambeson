@@ -1,0 +1,31 @@
+# w14-museum: a cheaper fresh museum (pure perf)
+
+Goal: cut the per-test museum add_child (~43 ms: Battle/Unit _ready) without changing behaviour.
+Tool: `Tests/museum_prof.gd` (not a test: `godot --headless --path . -s Tests/museum_prof.gd`) times instantiate / add_child / frame / free over 60 museums. Deeper: wrap every Unit func with #PERF timers (scratch instr.py), run, restore.
+
+## Readings
+- add_child 43 ms of 43.7 (instantiate 0.4, free 0.2). Inside: Unit._ready x7 ~34 ms (_fill_bar 18, _show_bars 9.5, refit 5, hp 3.6), Battle._enter 9.
+- Root cost: stat() outside a read stretch gathers every effect (_on_passives: equipped/lapsed/unranked per slot) for each call; lv()/slot_count()/_slot_keys() ask stat(level) and _grants() asks on_passives, hundreds of times while a bar fills.
+
+## Calls
+- stat() and _grants() outside a stretch: if lends(s) is false (nothing carried has an effect on s; a superset check) return the base at once.
+- Quirk kept: gathering effects ran equipped(), whose _sync_new() auto-equips; a unit setting up gets its bar order from that (Icor: strike, hex, mana, arcanist). The fast path calls _touch_bar() to set it off exactly when the old path would (a passive on with slot cost, sig changed). Without it Icor's bar comes out strike, mana, hex (command_test.test_default_bar fails).
+- pools() and _lends_any(): same answers by cheaper walks (a superset test first; any() needs no dedupe). granted() still called (it keeps _granted, which _skill_sig reads).
+- Unit._ready: _show_bars connected after HP/Energy/reserves are filled, drawn once (was ~4 times a unit); pools() once.
+
+## Done
+1. stat/_grants fast path + _touch_bar, _show_bars once: museum add 43 -> 28.7 ms; suite 109 -> 84 s, 11012 checks, 0 failed.
+
+2. pools(): a choice none of whose trees gives a reserve skips picks() (TreeChoice.all() is cached on the resource); _lends_any walks the slot lists without the best-of dedupe: museum 28.7 -> 17.8 ms; suite 66 s, 11012 checks, 0 failed.
+
+## As built (numbers)
+- Museum add_child 43 -> 17.8 ms (Unit._ready x7: _fill_bar 10 ms, rest ~1.5; Battle._enter 7.5 ms: the first side's opening looks, Perception reads).
+- Full suite, interleaved, base f217c8b vs branch: 107/67/107/67 s. 11012 checks, 0 failed (1033 tests) both.
+- reverse: meadows_test.test_camera / test_tower_difficulty crash (BattleCamera freed instance) on base too: pre-existing, not touched.
+- Launch log: only "8 resources still in use". skill.py check ok.
+- Guard: no new cache that can go stale (fast paths are superset tests). _touch_bar is pinned by command_test.test_default_bar (mutation: without it Icor's bar order changes, the test fails: seen while building).
+
+## Undone / leads
+- Battle._enter 7.5 ms: _look_harder reads (Perception, a stretch already); gameplay rolls, left alone (Perception/AI are other builders').
+- _fill_bar: lv()/stat(level)/lends() still walked per call outside a stretch; a cache would need invalidation on slots/timed/items/footing.
+- The bar order depending on when effects are first gathered (_sync_new from inside stat()) is a latent quirk, kept exactly; worth a design look.

@@ -616,16 +616,18 @@ func _ready() -> void:
 	_layout_bars()
 	_show_faction()
 	refit()
-	hp_changed.connect(_show_bars.unbind(2))
 	dbno_changed.connect(_lie.unbind(2))
-	energy_changed.connect(_show_bars.unbind(2))
-	reserve_changed.connect(_show_bars.unbind(3))
 	hp = max_hp
 	endurance = endurance_max()
 	_one_replacer()
 	energy = 0 if runs_on() is Reserve else max_energy  # running on Mana or Stamina: no Energy of its own
-	for r in pools():
-		set_store(r, 0 if r.empty else pools()[r])  # Focus starts empty
+	var full := pools()
+	for r in full:
+		set_store(r, 0 if r.empty else full[r])  # Focus starts empty
+	# Its bars follow its HP, Energy and reserves from here: filled above, they're drawn once, below.
+	hp_changed.connect(_show_bars.unbind(2))
+	energy_changed.connect(_show_bars.unbind(2))
+	reserve_changed.connect(_show_bars.unbind(3))
 	_show_bars()
 	set_process(powered())
 
@@ -1027,6 +1029,9 @@ func granted_slots() -> Array[StringName]:
 # unequipped takes its own slots with it, and the skills in them (_arrange()).
 func _grants() -> Array:
 	var out := []
+	if reading == 0 and not lends(&"slots"):
+		_touch_bar()
+		return out  # nothing it carries grants a slot (lends(): cheaper than finding its passives)
 	var modded := emblems()
 	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, mods(x.skill).irank(x.rank, &"rank_impact") if modded else x.rank, x.skill]) + items().map(func(it: Item): return [it.effects, it.ranked(), &"item"])
 	for t in sources:
@@ -1387,6 +1392,18 @@ func _sync_new() -> void:
 			equip_skill(sk)
 	if not gone.is_empty():
 		_settle(was)
+
+
+# What finding its passives (_on_passives()) sets off, for a reader that skips them as they can't matter (stat(), _grants():
+# nothing lends what it asks): their equipped() brings skills it has newly got onto the bar (_sync_new()), and the bar's
+# order follows when that happens (a unit setting up fills its bar there). Cheap: nothing new, nothing to do.
+func _touch_bar() -> void:
+	if hotbar.is_empty() or _skill_sig() == _seen_sig:
+		return
+	for x in slots:
+		if x.skill.passive and x.on and slot_cost(x.skill) > 0:
+			_sync_new()
+			return
 
 
 # What its skill entries hold, as one number: changes as a skill is learned, lent or dropped.
@@ -2004,6 +2021,9 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 		sum = race.size
 	elif s in CORE:
 		sum = get(s)
+	if reading == 0 and not lends(s):
+		_touch_bar()
+		return sum  # nothing it carries touches s (lends(): cheaper than gathering every effect to find none)
 	var factor := 1.0
 	for pair in _stat_fx(s, viewer) if reading > 0 else _effects(viewer):
 		var e: Effect = pair[0]
@@ -2896,6 +2916,8 @@ func heal(h: int, heard := true, rounded := 0) -> void:
 func pools() -> Dictionary[Reserve, int]:
 	var out: Dictionary[Reserve, int] = reserves.duplicate()
 	for c in role.choices if role else []:
+		if not c.all().any(func(t: SkillTab): return t and not t.reserves.is_empty()):
+			continue  # no tree it could pick gives a reserve: its picks needn't be found (picks(): costly)
 		for t in picks(c):
 			for r in t.reserves:
 				out[r] = out.get(r, 0) + t.reserves[r]
@@ -4097,10 +4119,12 @@ func lends(s: StringName) -> bool:
 
 
 func _lends_any(s: StringName) -> bool:
-	for x: Slot in slots:
-		for e: Effect in x.skill.effects:
-			if e.stat == s:
-				return true
+	for list: Array[Slot] in [_role_slots, innate, learned, granted()]:  # (slots, without sorting out the best of each skill)
+		for x in list:
+			if x and x.skill:
+				for e: Effect in x.skill.effects:
+					if e.stat == s:
+						return true
 	for e: Effect in timed:
 		if e.stat == s:
 			return true
