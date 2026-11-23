@@ -53,6 +53,13 @@ func footprint(c: Cast, cell: Vector2i) -> Array[Vector2i]:
 	return out.slice(0, c.impact_rank())
 
 
+func waylays(c: Cast, cell: Vector2i) -> Dictionary:
+	var w := weapon(c.caster)
+	if w == null:
+		return {}
+	return {tiles = footprint(c, cell), skill = w}
+
+
 func tile_target() -> StringName:
 	return &"tile"
 

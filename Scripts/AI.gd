@@ -192,11 +192,12 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 		var target := _best_target(u, reads)
 		if target and _emboldened(u, reads) and not rooted:
 			_rally(b, u, log)  # lay its marks first, then walk onto them
-			_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
-			u.set_meta(&"aim", target)
-			var p := b.travel(u, _approach(b, u, target, reads))
-			log.append("%s moves %s" % [u.name, p])
-			reads[target] = b.read(u, target)
+			if not (posture == &"" and _waylay(b, u, reads, log)):  # (laid where the foes will walk: it waits there)
+				_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
+				u.set_meta(&"aim", target)
+				var p := b.travel(u, _approach(b, u, target, reads))
+				log.append("%s moves %s" % [u.name, p])
+				reads[target] = b.read(u, target)
 		elif not target:
 			var looked := _search(b, u, log)  # it looks where the clues point, then heads for where its side last saw a foe
 			if not looked and _scry(b, u, log):
@@ -1851,6 +1852,68 @@ static func _rally(b: Battle, u: Unit, log: Array[String]) -> bool:
 		if b.cast(u, s, u):
 			log.append("%s uses %s" % [u.name, s.name])
 			return true
+	return false
+
+
+# Lying in wait (Behaviour.waylays(): Ambush) over the tiles foes will walk next turn. Each foe it makes out heads
+# for the nearest of it and its allies (the line it would walk, bent as it knows, as far as its movement goes);
+# the first tile of that walk a skill's marks cover stops it there and is struck (each tile once), worth
+# score() of the blow on it. It aims at the walked tile that tells most - the marks it leaves are the skill's
+# own say (waylays()) - and waits there instead of advancing, if that's worth a rider. True if it cast.
+static func _waylay(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> bool:
+	var skills := u.actives.filter(func(x: Skill): return x.on_tile() and u.can_afford(x) and x.behaviours.any(func(bh: Behaviour): return not bh.waylays(b.cast_of(u, x, u, u.rank(x), false), u.cell).is_empty()))
+	if skills.is_empty() or b.marks.values().any(func(st: Array): return st.any(func(m: Battle.Mark): return m.by == u)):
+		return false
+	var goals: Array[Vector2i] = [u.cell]
+	for o: Unit in reads:
+		if o != u and o.is_alive() and Faction.friends(o.faction, u.faction) and reads[o].located():
+			goals.append(reads[o].cell)
+	var walks: Array = []  # [foe, the tiles it walks next turn]
+	for t: Unit in reads:
+		if not (t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located()):
+			continue
+		var goal := goals[0]
+		for g in goals:
+			if Command.tiles(t.cell, g) < Command.tiles(t.cell, goal):
+				goal = g
+		var path := b.route(t, goal, b.line(t.cell, goal, t.luck, t)).slice(0, ceili(t.stat(&"movement")))
+		path = path.filter(func(c: Vector2i): return c not in goals and b.unit_at(c) == null)
+		if not path.is_empty():
+			walks.append([t, path])
+	if walks.is_empty():
+		return false
+	var state := b.rng.state
+	var best: Variant = null
+	for s: Skill in skills:
+		var c := b.cast_of(u, s, u, u.rank(s), false)
+		var aims := {}
+		for w in walks:
+			for cell: Vector2i in w[1]:
+				aims[cell] = true
+		for cell: Vector2i in aims.keys().slice(0, 12):
+			var way := {}
+			for bh in s.behaviours:
+				way = bh.waylays(c, cell)
+				if not way.is_empty():
+					break
+			if way.is_empty():
+				continue
+			var fired := {}  # tile -> the foe's worth there
+			for w in walks:
+				for step: Vector2i in w[1]:
+					if step in way.tiles:
+						if not fired.has(step):
+							fired[step] = score(u, way.skill, reads[w[0]], b, w[0])
+						break
+			var v := 0.0
+			for f in fired.values():
+				v += f
+			if v - u.ap_cost(s, u.funding(s)) * AP > Battle.PUSH * RIDER and (best == null or v > best[0]):
+				best = [v, s, cell]
+	b.rng.state = state
+	if best != null and b.cast_at(u, best[1], best[2]):
+		log.append("%s %s over %s" % [u.name, best[1].name, best[2]])
+		return true
 	return false
 
 

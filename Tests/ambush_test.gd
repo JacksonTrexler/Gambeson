@@ -44,5 +44,25 @@ func test_ambush_spares_friends() -> void:
 	ok(b.travel(v(1), Vector2i(7, 3)).back() == Vector2i(4, 3) and v(1).hp == hp, "stopped, but the caster holds its blow")
 
 
+# The AI lies in wait where the foes will walk (AI._waylay(), Behaviour.waylays()): marks on tiles a foe's walk
+# toward it crosses, and waits there; a foe that wouldn't come within reach gets none.
+func test_ai_waylays() -> void:
+	v(3).learned.append(slot(ambush, 2))
+	stage(nemes, {v(3): Vector2i(4, 2), v(1): Vector2i(9, 4)})
+	v(3).dexterity = 60
+	v(3).strength = 60  # a blow worth the AP
+	var far := v(1).stat(&"movement")
+	print("DBG ", Behaviours_ambush().weapon(v(3)).name, " ", b.skill_range(v(3), Behaviours_ambush().weapon(v(3))), " ", v(3).actives.map(func(x): return x.name), v(3).move_left(), " ", v(1).faction.name, v(3).faction.name)
+	var log := AI.act(b, v(3))
+	var laid := b.marks.keys().filter(func(c: Vector2i): return b.has_mark(c, &"ambush"))
+	ok(Vector2i(5, 2) in laid and v(3).cell == Vector2i(4, 2),
+			"a foe coming: it lays marks on the tile it walks to and waits (%s) %s" % [laid, log])
+	for c in laid:
+		b.marks.erase(c)
+	stage(nemes, {v(3): Vector2i(0, 0), v(1): Vector2i(9, 7)})
+	AI.act(b, v(3))
+	ok(not b.marks.keys().any(func(c: Vector2i): return b.has_mark(c, &"ambush")), "a foe out of its walk's reach of it: none (%s)" % far)
+
+
 func Behaviours_ambush() -> GDScript:
 	return load("res://Behaviours/ambush.gd")

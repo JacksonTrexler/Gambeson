@@ -350,6 +350,13 @@ func marks(_b: Battle, _u: Unit) -> bool:
 	return false
 
 
+# Lying in wait: what casting its skill on `cell` would catch, for the AI to weigh where foes walk (AI._waylay()):
+# {tiles: the cells it marks, skill: the blow a foe that walks onto one is struck by}, empty if it waits for nothing
+# (Ambush). Asked of every cell a foe may walk: pure.
+func waylays(_c: Cast, _cell: Vector2i) -> Dictionary:
+	return {}
+
+
 # A tile mark its skill laid (Battle.Mark.skill) went off on u (Battle._trigger(), after its effects went on):
 # what the skill does then (Ambush: its layer strikes u).
 func tripped(_b: Battle, _m: Battle.Mark, _u: Unit) -> void:
