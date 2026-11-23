@@ -177,6 +177,8 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 						reads[near] = b.read(u, near)
 						if _ambush(b, u, reads, log):
 							return log
+					else:
+						_hunt(b, u, reads, log)  # no one it makes out to lure: toward where its side last saw a foe (a vague shape far off isn't one)
 				_sing(b, u, reads, log)
 			return log
 	if posture == &"" and (_steady(b, u, reads, log) or _starve(b, u, reads, log)):

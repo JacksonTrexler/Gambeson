@@ -723,7 +723,7 @@ func test_play_scene() -> void:
 	Game.starter = {faction = lancin, role = load("res://Roles/fighter.tres"), name = "Tess"}
 	var scene: Node = load("res://Scenes/play.tscn").instantiate()
 	var pb: Battle = scene.get_node("Museum/Battle")
-	pb.rng.seed = 1
+	pb.rng.seed = 3
 	var h: HUD = scene.get_node("HUD")
 	h.pace = 0.0
 	tree.root.add_child(scene)

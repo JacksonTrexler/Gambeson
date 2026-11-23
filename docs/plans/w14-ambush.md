@@ -11,3 +11,6 @@ Goal: AI casts Ambush by where foes will walk, not only via `_defend`. Base 7ec9
 2. Ambusher holds after laying (blow reach is from its tile); next turn the mark may be left behind.
 3. Pricing: a weak blow (score 2 vs AP 2 x 1.5) is not worth it; a strong one is. Not tuned.
 4. Seen-through discount not applied (foes are only guessed to walk blind).
+
+## Seed-3 stall (hud_test.test_play_scene)
+Plain AI bug: a luring Siren (behaviour `lure`) too far from any song (`_out_of_song`) closed in only on `_best_target`; Tess was read vaguely (net -2, not a `_foe`) so no target -> held at (7,6) forever with its side's last-seen cell (1,3) known. Fix: no target -> `_hunt` (toward last seen). Test back on seed 3 (was moved to 1 by w14-detective). Mutation (drop the else) = the seed-3 stall, fails.
