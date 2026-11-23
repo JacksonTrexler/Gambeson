@@ -183,6 +183,18 @@ func test_what_shows() -> void:
 	h.free()
 
 
+# A unit's card names every temper it has: its behaviour, then Bio.also (a Starman's), none twice.
+func test_tempers_show() -> void:
+	stage(lancin, {v(1): Vector2i(5, 6)})
+	var s: Unit = b.summon(load("res://Scenes/starman.tscn"), v(1).faction, Vector2i(6, 6))
+	var h := await hud(v(1))
+	h.command.leader = s
+	var names: Array = h._info(s).chips.map(func(c): return c[0])
+	ok("Flippant" in names and "Vindictive" in names and "Power Hungry" in names, "its card lists its lead temper and Bio.also (%s)" % [names])
+	ok(names.count("Flippant") == 1, "the lead temper once")
+	h.free()
+
+
 func test_drawn_as_seen() -> void:
 	var icor := unit("Icor")
 	var siren := unit("Siren")
