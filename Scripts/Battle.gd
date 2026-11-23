@@ -221,6 +221,7 @@ var sighted_when: Dictionary[Faction, Dictionary] = {}  # side -> {foe: {since: 
 var attacks: Dictionary[Faction, Array] = {}  # side -> [{tiles: where an attacker it couldn't place could have struck from, since}] (_note_attack())
 var swept: Dictionary[Faction, Dictionary] = {}  # side -> {tile: turns_begun when one of its units last searched it} (search())
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
+var explored: Dictionary[Faction, Dictionary] = {}  # side -> {tile: true}: ground its sight has reached this battle (sight_cells(); the fog of war remembers it, Overlay)
 @export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
 var winner: Faction  # a side that won outright (escape()), whoever's still standing
@@ -5027,6 +5028,26 @@ func _eyes(o: Unit) -> Array:
 			_eyes_epoch = Unit._epoch
 		_eyes_kept[o.faction] = [list, who]
 	return [list, who.has(o)]
+
+
+# The tiles side f's sight reaches (in_range() >= 1 there: within some living member's perception
+# range), as a set; each also joins explored[f]. Beyond them is the fog of war. Empty where sight
+# isn't limited (no fog). The work is the members' areas (cells_near()), not the map's.
+func sight_cells(f: Faction) -> Dictionary[Vector2i, bool]:
+	var out: Dictionary[Vector2i, bool] = {}
+	if not sight or f == null:
+		return out
+	if f not in explored:
+		explored[f] = {}
+	var seen: Dictionary = explored[f]
+	for a in members(f):
+		var reach := perception_range(a)
+		var at := Vector2(a.cell)
+		for c in cells_near(a.cell, reach):
+			if not out.has(c) and Vector2(c).distance_to(at) <= reach + 0.0001:
+				out[c] = true
+				seen[c] = true
+	return out
 
 
 # Side f made out foe t at c: where its units will look for it once it's out of sight (AI._hunt()).

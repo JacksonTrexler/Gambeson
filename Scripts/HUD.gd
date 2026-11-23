@@ -430,6 +430,8 @@ func _exit_tree() -> void:
 	if is_instance_valid(overlay):
 		overlay.hud = null  # it may draw once more before it goes
 		overlay.top.queue_free()
+		if overlay.fog:
+			overlay.fog.queue_free()
 		overlay.queue_free()
 
 
@@ -2331,6 +2333,7 @@ func _mark() -> void:
 func _refresh() -> void:
 	_find_reach()
 	_show_units()
+	overlay.fog_of_war(battle, command.faction() if battle.phase != Battle.Phase.OVER else null)
 	grounds.clear()
 	traps.clear()
 	suspect.clear()

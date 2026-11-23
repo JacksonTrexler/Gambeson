@@ -27,6 +27,8 @@ const LEAF := [Color("#7d9a3c"), Color("#a3842f"), Color("#5f7d33"), Color("#b06
 const GLASS := Color("#cfeaff")
 const PIP := 2.0  # a pip of AP or movement on a unit's bars (_pips()): its size, with one pixel between
 const PIPS := 8  # as many as fit over its bars
+const FOG_UNSEEN := 0.75  # the fog of war's shade over ground the player's side has never seen
+const FOG_EXPLORED := 0.45  # and over ground it saw once (Battle.explored), out of its sight now
 
 var hud: HUD
 var top: Node2D
@@ -36,6 +38,11 @@ var _walk_len: Dictionary[Unit, float] = {}  # each walk's length, in seconds at
 var _floats: Array[Tween] = []  # the floating numbers' tweens, hurried with the walks
 var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
+var fog: Sprite2D  # the fog of war (fog_of_war()): a pixel a tile over the map's used rect, above this, below the units
+var _fog_img: Image
+var _fog_rect := Rect2i()
+var _fog_key := []  # the side's eyes (cells and ranges) the fog was last drawn for
+var _fog_clear: Dictionary[Vector2i, bool] = {}  # the tiles drawn clear (in sight) last time
 
 
 func _process(_delta: float) -> void:
@@ -269,6 +276,68 @@ func _ring(at: Vector2, radius: float, col: Color, dashed: bool) -> void:
 	var n := maxi(int(TAU * radius / 5.0), 8)
 	for i in range(0, n, 2):
 		draw_arc(at, radius, TAU * i / n, TAU * (i + 1) / n, 3, col, 1.0)
+
+
+# The fog of war over what side f's sight doesn't reach (Battle.sight_cells(), the same reach as its
+# reads: in_range()): ground never seen dark, ground seen once (Battle.explored) dimmed, in sight clear.
+# Redrawn only when the side's eyes move or change (a key of their cells and ranges), and then only the
+# tiles that changed; the whole used rect is filled only when it changes (a pocket, the Meadows growing).
+# Hidden where sight isn't limited.
+func fog_of_war(b: Battle, f: Faction) -> void:
+	if not b.sight or f == null:
+		if fog:
+			fog.hide()
+		return
+	var key := []
+	for a in b.members(f):
+		key.append([a.cell, b.perception_range(a)])
+	var rect := b.map.get_used_rect()
+	if fog and fog.visible and key == _fog_key and rect == _fog_rect:
+		return
+	_fog_key = key
+	var now := b.sight_cells(f)
+	if fog == null:
+		fog = Sprite2D.new()
+		fog.name = &"Fog"
+		fog.centered = false
+		fog.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		fog.scale = Vector2(TILE, TILE)
+		get_parent().add_child(fog)
+		get_parent().move_child(fog, get_index() + 1)
+	fog.show()
+	var seen: Dictionary = b.explored.get(f, {})
+	if rect != _fog_rect or _fog_img == null:
+		_fog_rect = rect
+		_fog_img = Image.create(maxi(rect.size.x, 1), maxi(rect.size.y, 1), false, Image.FORMAT_LA8)
+		_fog_img.fill(Color(0, 0, 0, FOG_UNSEEN))
+		for c: Vector2i in seen:
+			_fog_px(c, FOG_EXPLORED)
+		_fog_clear.clear()
+	for c in _fog_clear:
+		if not now.has(c):
+			_fog_px(c, FOG_EXPLORED)
+	for c in now:
+		_fog_px(c, 0.0)
+	_fog_clear = now
+	fog.position = b.map.position + Vector2(rect.position) * TILE
+	if fog.texture is ImageTexture and Vector2i(fog.texture.get_size()) == _fog_img.get_size():
+		fog.texture.update(_fog_img)
+	else:
+		fog.texture = ImageTexture.create_from_image(_fog_img)
+
+
+func _fog_px(c: Vector2i, a: float) -> void:
+	var p := c - _fog_rect.position
+	if p.x >= 0 and p.y >= 0 and p.x < _fog_rect.size.x and p.y < _fog_rect.size.y:
+		_fog_img.set_pixel(p.x, p.y, Color(0, 0, 0, a))
+
+
+# The shade the fog of war lays on c (0: clear), as last drawn: for the tests.
+func fog_at(c: Vector2i) -> float:
+	var p := c - _fog_rect.position
+	if not fog or not fog.visible or _fog_img == null or p.x < 0 or p.y < 0 or p.x >= _fog_rect.size.x or p.y >= _fog_rect.size.y:
+		return 0.0
+	return _fog_img.get_pixel(p.x, p.y).a
 
 
 # Drawn on `top`, above the units: a "zZ" by the bars of each unit seen to be asleep, and what the
