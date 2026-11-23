@@ -341,7 +341,7 @@ static func _plan(b: Battle, members: Array) -> Dictionary:
 		return {}
 	var rep: Unit = members[0]
 	var centre := Vector2.ZERO
-	var walk := rep.move_left() + _reach(b, rep)  # its kind's (they share a class)
+	var walk := rep.stat(&"movement") + _reach(b, rep)  # its kind's (they share a class), whether or not rep has walked yet
 	var key := &"hp" if &"weakest" in rep.strategy else &""
 	var magic := 0
 	for m: Unit in members:
@@ -396,7 +396,7 @@ static func _herded(b: Battle, u: Unit, plan: Dictionary) -> bool:
 	if u.hp < int(u.get_meta(&"calm_hp", u.max_hp)) or (u.last_hit_by != null and u.last_hit_by != u and u.last_hit_by.faction == u.faction):
 		return false
 	var p := _herd_plan(b, u)
-	if p.is_empty() or u not in p.members:
+	if p.is_empty() or u not in p.members or (p.target != null and not p.target.is_alive()):  # its pick fell this turn: a turn of its own
 		return false
 	for t: Unit in p.foes:
 		if t.is_alive() and Command.tiles(u.cell, t.cell) <= p.walk + 1.0:

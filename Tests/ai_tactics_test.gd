@@ -1011,6 +1011,88 @@ func test_crowd_shortcuts() -> void:
 	ok(tile.x == 8 and tile != a.cell and not b.unit_at(tile), "...a taken tile is passed over (%s)" % tile)
 
 
+
+# n fighters of side f, alike (AI._kind()): a herd.
+func herd_of(f: Faction, n: int) -> Array[Unit]:
+	var out: Array[Unit] = []
+	for i in n:
+		var u := Battle.from_role(f, load("res://Roles/fighter.tres"), "Rat%d" % i)
+		b.get_node("Units").add_child(u, true)
+		b._listen(u)
+		u.refresh()
+		out.append(u)
+	return out
+
+
+# Herds (AI._herd_plan(), _herded(), _herd(); docs/plans/w16-swarm.md): like units share one plan a side turn, its pick the foe
+# lowest in what their blows test within their reach (Battle.ranks); each member walks on it, one too far ahead waits, and
+# anything out of the ordinary (hurt, cc, a temper, a strategy, a foe in reach) takes a full turn.
+func test_herds() -> void:
+	var h := herd_of(nemes, 4)
+	stage(nemes, {h[0]: Vector2i(8, 2), h[1]: Vector2i(9, 3), h[2]: Vector2i(8, 4), h[3]: Vector2i(9, 5), v(1): Vector2i(0, 1), v(2): Vector2i(0, 6)})
+	v(2).afflict(effect("defense", -4), 9)  # the softer foe, though no nearer
+	var plan := AI._herd_plan(b, h[0])
+	ok(is_same(plan, AI._herd_plan(b, h[3])) and plan.members.size() == 4, "one plan for the herd, made once a side turn")
+	ok(plan.key == &"physical" and plan.target == v(2), "its pick: the foe lowest in physical Defense in its reach (%s)" % plan.get(&"target"))
+	ok(AI._herd_plan(b, v(3)).is_empty(), "fewer than HERD alike: no herd")
+	for u in h:
+		u.movement = 1  # walk 1 + Strike's reach: the foes 8 tiles off are out of it
+	stage(nemes, {h[0]: Vector2i(8, 2), h[1]: Vector2i(9, 3), h[2]: Vector2i(8, 4), h[3]: Vector2i(4, 3), v(1): Vector2i(0, 3)})
+	var u := h[0]
+	ok(AI._herded(b, u, {}), "an ordinary member, no foe in reach: herded")
+	var cases := {
+		"hurt since its last turn": [func(): u.hp -= 1, func(): u.hp += 1],
+		"cc'd": [func(): u.afflict(cc_effect(), 2), func(): u.timed.clear()],
+		"a temper": [func(): u.bio = Bio.new(); u.bio.behaviour = &"aggressive", func(): u.bio = null],
+		"a strategy other than the weakest": [func(): u.strategy = [&"strongest"] as Array[StringName], func(): u.strategy = [] as Array[StringName]],
+		"a side it hunts": [func(): u.hunts = [lancin] as Array[Faction], func(): u.hunts = [] as Array[Faction]],
+		"a foe in reach": [func(): b.move(v(1), Vector2i(7, 2)), func(): b.move(v(1), Vector2i(0, 3))],
+	}
+	for why: String in cases:
+		cases[why][0].call()
+		ok(not AI._herded(b, u, {}), "a full turn: %s" % why)
+		cases[why][1].call()
+		ok(AI._herded(b, u, {}), "herded again after: %s" % why)
+	var logs := []
+	for m in h:
+		logs.append(AI.act(b, m))
+	ok(logs.slice(0, 3).all(func(l: Array): return l.size() == 1 and " herds " in l[0]), "the herd walks on its plan (%s)" % [logs])
+	ok(logs[3].size() == 1 and " waits " in logs[3][0] and h[3].cell == Vector2i(4, 3), "one more than COHESION ahead of the centre waits for the rest (%s)" % [logs[3]])
+	ok(h.all(func(m: Unit): return m.get_meta(&"aim") == v(1)), "its goal is each member's aim")
+	h[1].hp -= 1
+	ok(" herds " not in " ".join(AI.act(b, h[1])), "hurt: a full turn, not the herd's")
+
+
+# Battle.ranks (Scripts/Ranks.gd): each side's units by HP (kept as it changes), physical and magical Defense (taken each side turn),
+# lowest first - the same order a scan of every unit gives, after hits, heals, a fall and a Defense change.
+func test_ranks_match_a_scan() -> void:
+	var h := herd_of(nemes, 3)
+	stage(nemes, {h[0]: Vector2i(8, 2), h[1]: Vector2i(9, 3), h[2]: Vector2i(8, 4), v(3): Vector2i(7, 2), v(4): Vector2i(7, 4), v(1): Vector2i(0, 1)})
+	var scan := func(key: StringName) -> Array:
+		var vals := []
+		for m: Unit in b.members(nemes):
+			if m.is_alive():
+				vals.append(Ranks.value(m, key))
+		vals.sort()
+		return vals
+	var ranked := func(key: StringName) -> Array:
+		return b.ranks.lowest(b, nemes, key).filter(func(m: Unit): return m.is_alive()).map(func(m: Unit): return Ranks.value(m, key))
+	for k in Ranks.KEYS:
+		ok(ranked.call(k) == scan.call(k), "%s: as a scan has it (%s v %s)" % [k, ranked.call(k), scan.call(k)])
+	h[0].hp -= 3
+	v(4).hp = 1
+	h[2].hp = 0
+	v(3).hp -= 1
+	v(3).hp += 1
+	ok(ranked.call(&"hp") == scan.call(&"hp"), "HP after hits, a heal and a fall, without a new turn (%s v %s)" % [ranked.call(&"hp"), scan.call(&"hp")])
+	ok(h[2] not in b.ranks.lowest(b, nemes, &"hp"), "the fallen leave the HP list")
+	h[1].afflict(effect("defense", -5), 9)
+	b.turn = lancin
+	for k in Ranks.KEYS:
+		ok(ranked.call(k) == scan.call(k), "%s after a Defense change, next side turn (%s v %s)" % [k, ranked.call(k), scan.call(k)])
+	ok(b.ranks.lowest(b, nemes, &"physical")[0] == h[1], "the softened unit leads the physical list")
+
+
 func cc_effect() -> Effect:
 	var cc := effect("nothing", 0.0)
 	cc.bears = [&"cc"] as Array[StringName]
