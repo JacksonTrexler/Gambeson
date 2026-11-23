@@ -188,6 +188,8 @@ static func unit(b: Battle, o: Unit, t: Unit, extra := 0.0) -> Read:
 		r.looks = looks(t, r.deceived)  # its class lost on it, it goes by how it looks
 	if r.net >= 2 and o != t and o.insightful():
 		r.temper = t.temper()
+		if t.bio:
+			r.also.assign(t.bio.also)
 	if o.scrambles(t) and not r.tags.is_empty():
 		r.tags = scramble(o, t, r.tags.size())
 	return r

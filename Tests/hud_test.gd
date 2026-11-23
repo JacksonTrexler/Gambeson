@@ -195,6 +195,21 @@ func test_tempers_show() -> void:
 	h.free()
 
 
+# A foe starman's card shows its tempers only as far as its temper is read (an insightful observer, tier 2).
+func test_foe_tempers() -> void:
+	stage(lancin, {v(1): Vector2i(5, 6)})
+	var s: Unit = b.summon(load("res://Scenes/starman.tscn"), v(2).faction, Vector2i(6, 6))
+	var h := await hud(v(1))
+	var names := func() -> Array: return h._info(s).chips.map(func(c): return c[0])
+	v(1).wisdom = 8
+	ok(not v(1).insightful() and not "Vindictive" in names.call(), "an unreading observer sees no tempers (%s)" % [names.call()])
+	v(1).wisdom = 18
+	v(1).afflict(effect("recon", 2), 9)  # reads it at tier 2
+	ok(v(1).insightful() and "Vindictive" in names.call() and "Power Hungry" in names.call() and not "Flippant" in names.call(),
+			"an insightful one sees its further tempers (lead is in the note) (%s)" % [names.call()])
+	h.free()
+
+
 func test_drawn_as_seen() -> void:
 	var icor := unit("Icor")
 	var siren := unit("Siren")
