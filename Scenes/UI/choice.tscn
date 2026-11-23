@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://Scripts/Choice.gd" id="1_choice"]
+[ext_resource type="Script" path="res://Scripts/HScroll.gd" id="2_hscroll"]
 
 [node name="Choice" type="VBoxContainer"]
 alignment = 1
@@ -9,5 +10,12 @@ script = ExtResource("1_choice")
 [node name="Prompt" type="Label" parent="."]
 horizontal_alignment = 1
 
-[node name="Options" type="HBoxContainer" parent="."]
+[node name="Scroll" type="HBoxContainer" parent="."]
+layout_mode = 2
+alignment = 1
+script = ExtResource("2_hscroll")
+
+[node name="Options" type="HBoxContainer" parent="Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
 alignment = 1
