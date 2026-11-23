@@ -96,6 +96,17 @@ func test_siphon_priced() -> void:
 	b.route(v(1), on, [on], p_on)
 	b.route(v(1), off, [off], p_off)
 	ok(p_on.cost > p_off.cost, "route() prices the circuit end above bare ground (%s vs %s)" % [p_on.cost, p_off.cost])
+	var sm := spawn(starman, starmen, Vector2i(3, 5))  # a Power reserve: the gain offsets some of the HP owed, none with no room
+	var siphon := Effect.new()
+	siphon.stat = "power_siphon"
+	siphon.amount = 0.2
+	var room := {}
+	var full := {}
+	sm.energy = 0
+	b._owe_wound(room, sm, siphon, 1, 1, null)
+	sm.energy = sm.max_energy
+	b._owe_wound(full, sm, siphon, 1, 1, null)
+	ok(sm.powered() and room.get(&"hp", 0.0) < full.get(&"hp", 0.0), "a Power reserve with room weighs the siphon's gain (%s vs %s HP)" % [room, full])
 	b.panes.erase(Vector2i(5, 1))
 	ok(b.hazard(v(1), on, b.read(v(1), on), 1, true).is_empty(), "a cut circuit owes nothing")
 

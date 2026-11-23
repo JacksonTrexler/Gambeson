@@ -3844,6 +3844,9 @@ func hazard(u: Unit, c: Vector2i, r: Read, nth := 0, ends := false, tolls := tru
 	return out
 
 
+const SIPHON_POWER_HP := 0.5  # HP a point of Power is worth to the AI weighing a Power Siphon
+
+
 func _owe_wound(out: Dictionary, u: Unit, e: Effect, ticks: int, level: int, by: Unit) -> void:
 	match e.stat:
 		"bleed":
@@ -3852,8 +3855,9 @@ func _owe_wound(out: Dictionary, u: Unit, e: Effect, ticks: int, level: int, by:
 			_owe(out, &"hp", ticks * e.amount * (level if e.per_rank else 1) * u.max_hp)
 		"winded":
 			_owe(out, &"ap", e.amount * (level if e.per_rank else 1))
-		"power_siphon":  # its HP share (the Power it gives back is a wash: not weighed)
-			_owe(out, &"hp", maxf(roundf(e.amount * u.max_hp), 1.0))
+		"power_siphon":  # its HP share, less what the Power it gives is worth to a unit with a Power reserve (room left, SIPHON_POWER_HP each)
+			var gain := mini(maxi(roundi(e.amount * u.max_energy), 1), u.max_energy - u.energy) if u.powered() else 0
+			_owe(out, &"hp", maxf(roundf(e.amount * u.max_hp), 1.0) - gain * SIPHON_POWER_HP)
 
 
 func _owe(out: Dictionary, key: StringName, n: float) -> void:
