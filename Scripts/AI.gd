@@ -76,6 +76,7 @@ const DELAY := 0.5  # the share of a disable's worth left it when its target pos
 const STRUCK := 0.5  # what an HP of a blow a foe's reaction strikes it with on ending a walk beside it costs, in tiles of walking (_struck())
 const DREAD := 4.0  # what a cc certain to land costs a tile it would end a turn on, in tiles of walking (_approach(), _retreat(): _dread()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
+const HUNT_FAR := 2.0  # tiles past its walk a hunt's goal must lie for it to head straight there (_hunt()), not by the tile beside it (_approach())
 const DRILL_MARGIN := 2.0  # tiles past its walk and its longest reach a drilling follower still reads units within (_drill())
 
 
@@ -107,6 +108,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		return log
 	if posture == &"" and _calm(b, u):
 		_drill(b, u, log)
+	elif posture == &"" and _far(b, u):
+		_prowl(b, u, log)
 	else:
 		_full(b, u, posture, log)
 	u.set_meta(&"calm_hp", u.hp)  # what it ended its turn on: less next turn, it was hurt (_calm())
@@ -258,6 +261,52 @@ static func _drill(b: Battle, u: Unit, log: Array[String]) -> void:
 			_keep_up(b, u, log)
 	while _strike(b, u, reads, log):
 		pass
+
+
+# A plain turn, sure of itself and far from any foe: it has no nature (Unit.behaviour, temper()) and nothing holds or ails
+# it, and it makes out no foe - every one is beyond its side's sight, or only a vague shape in it (Battle._plain():
+# nothing hides it and u's recon would make it out if it were near) - so there is nothing to strike, weigh or flee,
+# and a full turn would only read everyone to find that out.
+static func _far(b: Battle, u: Unit) -> bool:
+	if u.behaviour != &"" or u.temper() != &"" or u.dbno != null or u.channel or not b.sight or u.faction == null or not u.assumed.is_empty() or u.restless() or b.posing(u):
+		return false
+	if not u.afflicted(&"cc").is_empty() or b.held_by(u) or not b.holding(u).is_empty():
+		return false
+	Unit.begin_read()
+	var far := true
+	for t: Unit in b.units.values():
+		if t != u and t.is_alive() and not Faction.friends(u.faction, t.faction) and b._plain(u, t) not in [0, 1]:
+			far = false
+			break
+	Unit.end_read()
+	return far
+
+
+# A far turn (_far()): it reads the foes it can place (a vague shape: cheap) and the allies within its walk, its longest
+# reach and DRILL_MARGIN tiles (as _drill()), heals and supports as it would, and goes where its side last made a foe out
+# or where the clues point (_search(), _scry(), _hunt()); a foe it comes to make out on the way is struck. No weighing
+# of temper, tending, summons, shoves, steadying, switching or starving: nothing there is in sight to weigh them on.
+static func _prowl(b: Battle, u: Unit, log: Array[String]) -> void:
+	var near := u.move_left() + DRILL_MARGIN
+	Unit.begin_read()
+	var reach := 0.0
+	for s: Skill in u.actives:
+		reach = maxf(reach, b.skill_reach(u, s))
+	var reads: Dictionary[Unit, Read] = {}
+	for o: Unit in b.units.values():
+		if o != u and (not Faction.friends(u.faction, o.faction) or Command.tiles(u.cell, o.cell) <= near + reach):
+			reads[o] = b.read(u, o)
+	Unit.end_read()
+	_remember(b, u, reads)
+	_heal(b, u, reads, log)
+	_support(b, u, reads, log)
+	var rooted := _rooted(b, u)
+	if not _search(b, u, log) and not _scry(b, u, log) and not rooted:
+		_hunt(b, u, reads, log)
+	while _strike(b, u, reads, log):
+		pass
+	_replenish(b, u, log)
+	_dress(b, u, log)
 
 
 # u's interrupt (Battle.interrupter: Final Act), one free skill use, no walking: its best blow at a foe
@@ -1127,7 +1176,7 @@ static func _hunt(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[
 			continue
 		var r := Read.new()
 		r.cell = at
-		var p := b.travel(u, _approach(b, u, best, {best: r}))
+		var p := b.travel(u, at if Command.tiles(u.cell, at) > u.move_left() + HUNT_FAR else _approach(b, u, best, {best: r}))  # past its walk, a beeline: the tile beside it can't be reached this turn
 		if p.is_empty():
 			return false
 		log.append("%s hunts %s" % [u.name, p])
