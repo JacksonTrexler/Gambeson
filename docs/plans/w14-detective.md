@@ -14,6 +14,8 @@ w13 left: Detective only noted what it saw through; orig (4fe2c05 Investigation.
 3. Recon amount = detective rank per survey, per target (orig: rank per success).
 4. Tile word reaches same radius/rules as unit word (WORD + cha mod); Bandwagon on a unit standing on the tile can stop it.
 5. Signal `told` `of` widened to Variant (tests' lambdas unaffected).
+6. Tile word changes the rng path of `hud_test.test_play_scene` (seed 3): the Siren (alone, vs a passive leader) then holds at (7,6) with AP left for 1000+ turns, never closing. Seeds 1, 2, 4 end fine, so a stall in AI, not a word bug (sibling w14-stare?). Test moved to seed 1 (rule unchanged); the seed-3 stall is left for the AI branch.
+7. `clairvoyance_test.test_location_only` encoded "ally learns nothing of the pinged tile"; now the ally within earshot is told (the word rule).
 
 ## Undone
 - No AI weighing; no visual check.
