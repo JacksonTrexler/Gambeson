@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="Role" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Role.gd" id="1_role"]
+[ext_resource type="Texture2D" path="res://Units/Jester.png" id="2_jester"]
+[ext_resource type="Resource" path="res://Races/human.tres" id="3_human"]
+[ext_resource type="Resource" path="res://Skills/strike.tres" id="4_strike"]
+[ext_resource type="Script" path="res://Scripts/Slot.gd" id="5_slot"]
+[ext_resource type="Resource" path="res://Trees/jester.tres" id="6_jester"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="7_skillroot"]
+[ext_resource type="Resource" path="res://Items/gambeson.tres" id="8_gambeson"]
+[ext_resource type="Resource" path="res://Items/dagger.tres" id="9_dagger"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="10_item"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="skilltab"]
+[ext_resource type="Resource" path="res://Trees/inverted.tres" id="inverted"]
+
+[sub_resource type="Resource" id="Slot_strike"]
+script = ExtResource("5_slot")
+skill = ExtResource("4_strike")
+
+[sub_resource type="Resource" id="Tab_inverted"]
+script = ExtResource("skilltab")
+name = "Inverted"
+kind = "Inverted"
+roots = Array[ExtResource("7_skillroot")]([ExtResource("inverted")])
+
+[resource]
+script = ExtResource("1_role")
+name = "Jester"
+noun = "Performer"
+tends = &"pragmatic"
+look = ExtResource("2_jester")
+race = ExtResource("3_human")
+innate = Array[ExtResource("5_slot")]([SubResource("Slot_strike")])
+stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 13, &"constitution": 10, &"intelligence": 11, &"wisdom": 11, &"charisma": 14})
+roots = Array[ExtResource("7_skillroot")]([ExtResource("6_jester")])
+items = Array[ExtResource("10_item")]([ExtResource("8_gambeson"), ExtResource("9_dagger")])
+general = Array[StringName]([&"specialist"])
+tags = Array[StringName]([&"jack"])
+tabs = Array[ExtResource("skilltab")]([SubResource("Tab_inverted")])

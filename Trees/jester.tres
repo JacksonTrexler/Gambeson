@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/jape.tres" id="s_jape"]
+[ext_resource type="Resource" path="res://Skills/juggle.tres" id="s_juggle"]
+[ext_resource type="Resource" path="res://Skills/tumble.tres" id="s_tumble"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/heckle.tres" id="s_heckle"]
+[ext_resource type="Resource" path="res://Skills/read_the_room.tres" id="s_read_the_room"]
+
+[sub_resource type="Resource" id="Branch_jape"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_jape")
+
+[sub_resource type="Resource" id="Branch_heckle"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_heckle")
+after = Array[ExtResource("skill")]([ExtResource("s_jape")])
+
+[sub_resource type="Resource" id="Branch_read_the_room"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_read_the_room")
+needs = 3
+
+[sub_resource type="Resource" id="Branch_tumble"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_tumble")
+
+[sub_resource type="Resource" id="Branch_juggle"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_juggle")
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Jester"
+tag = &"specialist"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_jape"), SubResource("Branch_heckle"), SubResource("Branch_read_the_room"), SubResource("Branch_tumble"), SubResource("Branch_juggle")])
