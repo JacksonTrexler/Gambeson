@@ -27,7 +27,7 @@ func test_plane() -> void:
 	var mb: Battle = m.get_node("Battle")
 	var md: Meadows = mb.get_node("Meadows")
 	ok(mb.on_map(Vector2i.ZERO) and mb.on_map(Vector2i(12, 12)) and not mb.on_map(Vector2i(60, 60)), "generated around the party, not beyond")
-	ok(md._tally.get_rect().end.x <= 240.0 - 8.0, "the tally ends left of the HUD's turn clock (top middle, a two-digit number is ~12 wide)")
+	ok(mb.objective_lines(mb.player.faction) == ["Demons slain: 0 / 30"], "the battle lists its objective for the HUD's panel: the kill tally")
 	ok(mb.terrain(Vector2i.ZERO).name == "Grass" and mb.depth(Vector2i(1, 0)) == 0, "the landing kept dry")
 	var kinds := {}
 	for x in range(-150, 150, 3):
@@ -146,6 +146,7 @@ func test_portal() -> void:
 		if i == md.kills_needed - 1:
 			ok(md.portal == at, "the portal forms where the 30th fell")
 	ok(md.kills == 30 and md.portal_turns == 3 and not md.opened and mb.phase != Battle.Phase.OVER, "it opens in 3 x difficulty turns; the fight goes on with no demons standing")
+	ok(mb.objective_lines(mb.player.faction) == ["Demons slain: 30 / 30", "The portal opens in 3"], "the objective follows: kills, then the portal's clock")
 	var exit: Skill = load("res://Skills/emergency_exit.tres")
 	mb.player.learned.append(slot(exit, 2)); mb.player.sync_bar()
 	load("res://Behaviours/emergency_exit.gd").open(mb, mb.player, exit, 2, 2)

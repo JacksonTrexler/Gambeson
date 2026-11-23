@@ -657,6 +657,72 @@ func test_ground() -> void:
 	h.free()
 
 
+# The objective panel (top left, the map's objectives or the foes left, "?" while fog hides the count), the
+# tile pane (always top right, faint while the view scrolls) and menus over them.
+func test_corner_panels() -> void:
+	stage(lancin, {v(1): Vector2i(2, 4), v(3): Vector2i(8, 1)})
+	var h := await hud(v(1))
+	var lines := func() -> Array: return h.get_node("%ObjectiveLines").get_children().map(func(l): return l.text)
+	var left: Control = h.get_node("Root/Left")
+	var right: Control = h.get_node("Root/Right")
+	ok(h.objective.visible and lines.call() == ["Foes left: 1"], "without fog the panel counts the foes left (%s)" % [lines.call()])
+	b.sight = true
+	v(1).wisdom = 1
+	h._refresh()
+	ok(h.objective_lines()[0].begins_with("Foes left: ?"), "with sight limited the unseen can't be counted: ? (%s)" % [h.objective_lines()])
+	ok(HUD.foes_text(3, true) == "Foes left: 3" and HUD.foes_text(0, false) == "Foes left: ?" and HUD.foes_text(2, false) == "Foes left: ? (2 seen)", "the wording")
+	var tally := func(_f: Faction) -> String: return "Slain: 3 / 30\nPortal in 2"
+	b.objectives.append(tally)
+	b.objective_changed.emit()
+	await tree.process_frame
+	ok(lines.call().slice(1) == ["Slain: 3 / 30", "Portal in 2"], "a map's own objectives list under it, a line a line (%s)" % [lines.call()])
+	b.lasting.append(nemes)
+	h._refresh()
+	ok(lines.call() == ["Slain: 3 / 30", "Portal in 2"], "foes that keep coming aren't counted: the map's objective stands alone")
+	b.lasting.clear()
+	b.objectives.clear()
+	await tree.process_frame
+	ok(h.pane.visible and h.objective.get_global_rect().position.x > left.get_global_rect().end.x and h.objective.position.y >= 3.0,
+			"the objective panel sits top left of the map, clear of the side panel")
+	h.hover_cell(Vector2i(2, 2))
+	h._mouse = Vector2(100, 200)
+	h._process(0.0)
+	var corner := h.pane.position
+	h._mouse = Vector2(380, 20)
+	h._process(0.0)
+	ok(h.pane.position == corner and h.pane.get_global_rect().end.x <= right.get_global_rect().position.x and h.pane.position.x > h.objective.position.x + h.objective.size.x
+			and h.pane.position.y == h.objective.position.y, "the tile pane stays in the top right whichever way the pointer lies")
+	h.hover_cell(Vector2i(2, 2))
+	h.hover_cell(HUD.NOWHERE)
+	ok(h.pane.visible and h.get_node("%TileName").text == "Bramble", "the pointer over a panel keeps the last tile on show")
+	var cam := Camera2D.new()
+	b.get_parent().add_child(cam)
+	cam.make_current()
+	await tree.process_frame  # (a new camera is a view that moved: let it settle)
+	h._fade_pane(0.1)
+	h._fade_pane(3.0)
+	h._fade_pane(0.1)
+	h._fade_pane(0.1)
+	ok(h.pane.modulate.a == 1.0, "a still view leaves the pane whole")
+	cam.global_position += Vector2(40, 0)
+	await tree.process_frame
+	h._fade_pane(0.1)
+	var faint: float = h.pane.modulate.a
+	ok(faint < 1.0 and faint > HUD.PANE_FADED, "the view scrolls: the pane fades (%s)" % faint)
+	h._still = 0.0  # (a frame ran between the move and this call, and saw it)
+	h._fade_pane(HUD.PANE_REST - 0.01)
+	ok(h.pane.modulate.a < faint, "it goes on fading while the view is only just still")
+	h._fade_pane(0.1)
+	h._fade_pane(2.0)
+	ok(h.pane.modulate.a == 1.0, "and returns once the view has rested")
+	ok(HUD.fade_step(1.0, true, 10.0) == HUD.PANE_FADED and HUD.fade_step(HUD.PANE_FADED, false, 10.0) == 1.0, "fade_step runs between faint and whole")
+	cam.free()
+	h._unhandled_input(key(KEY_B))
+	h._process(0.0)
+	ok(not h.objective.visible and not h.pane.visible, "a menu open: the objective panel and the tile pane give way")
+	h.free()
+
+
 func test_tile_effects() -> void:
 	var shrine: Terrain = load("res://Terrain/shrine.tres")
 	stage(lancin, {v(1): Vector2i(4, 2), v(3): Vector2i(8, 6)})
