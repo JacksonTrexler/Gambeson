@@ -121,6 +121,8 @@ const COLOR := {
 	&"generator": Color("#ff9a2e"),
 	&"generalist": Color("#9fb08a"),
 	&"jack": Color("#c9a66b"),
+	&"floating": Color("#cfe4fa"),
+	&"jump": Color("#e0c890"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

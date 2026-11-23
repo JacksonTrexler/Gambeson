@@ -1,7 +1,7 @@
 extends Test
 
 # The star lattice (Battle.panes, Battle.starpower: Power back faster on it, by how full its source is;
-# a bludgeoning blow with no target breaks a pane), Starmen (Starsap, hunting the Stellar Order,
+# a bludgeoning blow with no target breaks a pane), Starmen (Starsap, a grudge on astral foes,
 # falling back into Starmotes) and Starmotes (Starkind: wasting away off the lattice, reforming on
 # it at full Power), and neutral sides (Faction.neutral).
 
@@ -110,7 +110,7 @@ func test_sap() -> void:
 	lattice(0.0)
 	stage(lancin, {v(1): Vector2i(5, 5), v(2): Vector2i(7, 6), v(3): Vector2i(7, 5)})
 	var s := spawn(starman, starmen, Vector2i(6, 5))
-	ok(s.powered() and &"dangerous" in s.tags and &"beast" in s.tags and stellar in s.hunts, "a Starman: Power, dangerous, astral, a beast; it hunts the Stellar Order")
+	ok(s.powered() and &"dangerous" in s.tags and &"beast" in s.tags and s.tempered(&"vindictive") and "astral" in s.bio.grudges, "a Starman: Power, dangerous, astral, a beast; a standing grudge on astral foes (the Stellar Order's)")
 	s.energy = s.max_energy
 	v(1).energy = 1
 	var hp := v(1).hp
@@ -132,7 +132,10 @@ func test_hunts() -> void:
 	var s := spawn(starman, starmen, Vector2i(5, 4))
 	var p := spawn(load("res://Scenes/astral_princess.tscn"), stellar, Vector2i(5, 7))
 	var reads := AI.reads_from({v(1): b.read(s, v(1)), p: b.read(s, p)})
-	ok(AI._best_target(s, reads) == p, "the Princess first, though a villager is nearer")
+	ok(AI._best_target(s, reads) == p, "Vindictive: the Princess (astral) first, though a villager is nearer")
+	v(1).wrongs[starmen] = 3  # the villager has struck it thrice: it is otherwise aggressed
+	ok(AI._best_target(s, reads) == v(1), "struck often enough, it turns on its attacker")
+	v(1).wrongs.clear()
 
 
 func test_revert_and_reform() -> void:

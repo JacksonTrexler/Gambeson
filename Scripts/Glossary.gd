@@ -143,6 +143,9 @@ const TERMS := {
 	&"disturbed": ["Disturbed", &"condition", "Its mind is scrambled: it can't be commanded and issues no commands, and takes its turn on its own, acting by its behaviour alone, whichever side it is on."],
 	&"generalist": ["Generalist", &"target", "Turns a hand to most things: a flex tree's base-stat prereqs are 2 lower for it (Rogue, Bard)."],
 	&"jack": ["Jack", &"target", "Of all trades: every flex tree is offered to it, with no prereqs (Adventurer)."],
+	&"floating": ["Floating", &"target", "Hovers just off the ground: astral void and other ground tagged void bears it up, so it crosses as if on firm ground. Floaty gives it."],
+	&"jump": ["Jump", &"target", "A leap through the air to a tile in range, over whatever lies between: it must land where its jumper can stand (not void, unless it floats or flies). Floaty lengthens jumps."],
+	&"void": ["Void", &"target", "Nothing underfoot: walkers can't enter it (it costs more movement than any turn holds), but a jump carries over it, never onto it. Floating and flying units cross it as firm ground."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

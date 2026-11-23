@@ -422,7 +422,7 @@ func on_self(u: Unit) -> bool:
 # Its range for a caster, before reach and size: a magnitude of its rank (reach_scale), or radius (+
 # radius_per_rank x rank: Embellish), plus
 # its mod in radius_mod - at least 1, so it reaches an adjacent unit - plus what its range effects add
-# (a Staff, a Broadsword: Unit.skill_stat()).
+# (a Staff, a Broadsword: Unit.skill_stat()), all times what they multiply (Floaty: a jump x(rank + 1)).
 # Rank and stats go through u's modifiers (Unit.mods(): rank_range, stat_range).
 func span(u: Unit) -> float:
 	var m := u.mods(self)
@@ -433,7 +433,7 @@ func span(u: Unit) -> float:
 		r = maxf(r + m.stat(u.mod(radius_mod, tags), &"stat_range"), 1.0)
 	if m.reach != 1.0 and r > 1.0:  # Density's cut (Modifiers.reach): never below the tiles beside it
 		r = maxf(r * m.reach, 1.5 if r >= 1.5 else 1.0)
-	return r + (u.skill_stat(&"range", self) if not self_only else 0.0)
+	return u.skill_stat(&"range", self, r) if not self_only else r  # range effects add, then multiply the whole (Floaty's jumps)
 
 
 # The tags it's asked about by for its attributes (Unit.skill_stat()): its own, plus damage for a skill

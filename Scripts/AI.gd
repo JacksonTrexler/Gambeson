@@ -50,10 +50,13 @@ const COMMANDER := 0.25  # how much most healers favour a commander
 const PARTY := 1.0  # how much a loyal healer favours its party
 const WOUND := 0.25  # how much a healer wants to clear a wound it can see
 const WARY := 10.0  # cost of ending a walk beside a unit it takes for aggressive
-const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts), or one a vindictive unit's grudges name (Bio.grudges)
+const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts)
 const GRUDGE := 2.0  # per blow a foe has landed on a vindictive unit or its side this fight (Unit.wrongs), up to GRUDGES: how much more it wants that foe (_grudge())
 const GRUDGES := 3
+const GRUDGED := 5.0  # how much more a vindictive unit wants a target its grudges name (Bio.grudges): under GRUDGES blows' worth, so a foe that keeps striking it ("otherwise aggressed") comes first
 const SMITTEN := 2.0  # what a soft skill (no damage, or love) is worth more on a foe a flirty unit fancies; a damaging one is worth half there (_smitten())
+const HUNGER := 4.0  # how much more a power hungry unit wants a target, at a full bar of what it would drain (_hunger()): less than a grudge's HUNT
+const FEED := 0.25  # the share of its bar a target must hold for a power hungry unit to go and drain it (_richest())
 const BOLD: Array[StringName] = [&"brave", &"aggressive"]  # tempers that walk up to the aggressive regardless
 const LAST := 1000.0  # how much less a unit wants to go after a helpless, Downed foe: the standing come first
 const FINISH := 0.5  # the most a blow at a helpless, Downed foe is worth: only when no standing foe is worth one
@@ -180,6 +183,10 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 		if u.behaviour == &"recovering":
 			_recover(b, u, reads, log)
 			return log
+		if temper == &"flippant":  # not yet punished for it (Unit.temper()): it drains whom it can reach this turn, else skirts the field
+			if not (u.tempered(&"power_hungry") and _feed(b, u, reads, log, true)) and not rooted:
+				_skirt(b, u, reads, log)
+			return log
 		_channel(b, u, reads, log)
 		if u.channel and u.channel.turns > 0 and not u.channel.skill.behaviours.any(func(x: Behaviour): return x.senses()):  # still holding one it began before (Clairvoyance isn't held: it acts on what it sensed): moving or acting would end it (Battle.end_turn())
 			log.append("%s holds still, channeling %s" % [u.name, u.channel.skill.name])
@@ -217,7 +224,9 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 			_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
 			u.set_meta(&"aim", target)
 			_notable(b, u, target, reads[target])
-			var p := b.travel(u, _approach(b, u, target, reads))
+			var dest := _approach(b, u, target, reads)
+			_leap(b, u, dest, log)  # a jump first, if it has one that brings it nearer (Hop)
+			var p := b.travel(u, dest)
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
 		elif not target:
@@ -838,25 +847,150 @@ static func _forecast(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Diction
 
 
 static func _hunted(u: Unit, t: Unit, r: Read) -> float:
-	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r)
+	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r) + _hunger(u, t, r)
 
 
 # A vindictive unit's grudge against t (read as r): GRUDGE per blow t has landed this fight on it or its side (Unit.wrongs:
-# word of a blow on its own travels), up to GRUDGES, and HUNT if its grudges name t (Bio.grudges, Bio.names()). 0 for any other temper.
+# word of a blow on its own travels), up to GRUDGES, and GRUDGED if its grudges name t (Bio.grudges, Bio.names(): a Starman's "astral", a
+# standing grudge on every astral foe, which a few blows from anyone else outweigh). 0 for any other temper (Unit.tempered()).
 static func _grudge(u: Unit, t: Unit, r: Read) -> float:
-	if u.temper() != &"vindictive":
+	if not u.tempered(&"vindictive"):
 		return 0.0
 	var n := 0
 	for f: Faction in t.wrongs:
 		if Faction.friends(u.faction, f):
 			n += t.wrongs[f]
-	return GRUDGE * mini(n, GRUDGES) + (HUNT if u.bio and Bio.names(u.bio.grudges, r) else 0.0)
+	return GRUDGE * mini(n, GRUDGES) + (GRUDGED if u.bio and Bio.names(u.bio.grudges, r) else 0.0)
+
+
+# A power hungry unit's appetite for t (read as r): HUNGER times the share of its bar t holds (_fill()). 0 for any other temper.
+static func _hunger(u: Unit, t: Unit, r: Read) -> float:
+	return HUNGER * _fill(t, r)[1] if u.tempered(&"power_hungry") else 0.0
+
+
+# What a power hungry unit sees in t (read as r): [rank, share] - rank 2 for Power (Unit.powered()), 1 for Energy, 0 for
+# reserves only; share, of its max, what it holds as read (Read.energy; reserves: any held, 1). [-1, 0.0]: nothing it makes out.
+static func _fill(t: Unit, r: Read) -> Array:
+	if r.energy != null and int(r.energy) > 0 and t.max_energy > 0:
+		return [2 if t.powered() else 1, float(r.energy) / t.max_energy]
+	if r.stores.values().any(func(n: int): return n > 0):
+		return [0, 1.0]
+	return [-1, 0.0]
+
+
+# The unit a power hungry one would drain: of those it makes out that aren't its own side (foes and neutrals alike), the one with the
+# most Power, else Energy, else reserves (_fill()), holding at least FEED of its bar. null: none.
+static func _richest(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
+	var best: Unit = null
+	var best_fill := [-1, 0.0]
+	for o: Unit in reads:
+		var r: Read = reads[o]
+		if o == u or not o.is_alive() or not r.located() or Faction.friends(u.faction, o.faction) or r.attitude(u) == &"ignore":
+			continue
+		var f := _fill(o, r)
+		if f[0] >= 0 and f[1] >= FEED and (f[0] > best_fill[0] or (f[0] == best_fill[0] and f[1] > best_fill[1])):
+			best = o
+			best_fill = f
+	return best
+
+
+# A skill of u's it can pay for now that drains what a unit holds (tagged siphon: Energy Transfer). null: none.
+static func _siphon(u: Unit) -> Skill:
+	for s: Skill in u.actives:
+		if s.hostile and not s.on_tile() and &"siphon" in u.skill_tags(s) and u.can_afford(s):
+			return s
+	return null
+
+
+# Power Hungry: to the tile beside the richest unit it makes out (_richest()), by a jump if that brings it nearer (_leap()), then it
+# drains it (_siphon()) as often as it can. `near`: only one it can come beside this turn. Whether it did anything.
+static func _feed(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String], near := false) -> bool:
+	var s := _siphon(u)
+	var t: Unit = _richest(u, reads) if s else null
+	if t == null:
+		return false
+	var jump := _jump(u)
+	var far := Command.tiles(u.cell, t.cell)
+	if near and far > ceili(u.move_left() + (b.area_reach(u, jump) if jump else 0.0) + b.skill_range(u, s, t)):
+		return false
+	var acted := false
+	if far > 1 and not _rooted(b, u):
+		var goal := _beside(b, u, t.cell)
+		acted = _leap(b, u, goal, log)
+		if Command.tiles(u.cell, t.cell) > 1:
+			acted = not b.travel(u, goal).is_empty() or acted
+	while s and Vector2(u.cell).distance_to(Vector2(t.cell)) <= b.skill_range(u, s, t) + 0.0001 and b.cast(u, s, t):
+		log.append("%s drains %s" % [u.name, t.name])
+		acted = true
+		s = _siphon(u) if t.is_alive() and _fill(t, b.read(u, t))[1] >= FEED else null
+	return acted
+
+
+# A jump it can make now (a tile skill tagged jump: Hop). null: none.
+static func _jump(u: Unit) -> Skill:
+	for s: Skill in u.actives:
+		if s.on_tile() and &"jump" in u.skill_tags(s) and u.can_afford(s):
+			return s
+	return null
+
+
+# Jumps (_jump()) to the landing nearest `goal` (Behaviour.fits_at(): not onto void), if that is nearer than it could walk. Whether it did.
+static func _leap(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> bool:
+	var s := _jump(u)
+	if s == null:
+		return false
+	var walked := maxf(Command.tiles(u.cell, goal) - u.move_left(), 0.0)  # about how far short a walk leaves it
+	var best := u.cell
+	var best_d := walked
+	for c in b.cells_near(u.cell, b.area_reach(u, s)):
+		var d := float(Command.tiles(c, goal))
+		if d < best_d - 0.5 and s.behaviours.all(func(x: Behaviour): return not x or x.fits_at(b, u, c)):
+			best = c
+			best_d = d
+	if best == u.cell or not b.cast_at(u, s, best):
+		return false
+	log.append("%s jumps to %s" % [u.name, best])
+	return true
+
+
+# Flippant: skirts the field aimlessly, out of its foes' reach (their walk and a tile) - a tile picked at random among the few it
+# tries (a walk, or a jump when no walk will do), never scored, so the turn costs little; none safe, it backs off (_away()).
+static func _skirt(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
+	var foes := []
+	for o: Unit in reads:
+		if o.is_alive() and _foe(u, reads[o]):
+			foes.append([reads[o].cell, ceili(o.stat(&"movement")) + 1])
+	var safe := func(c: Vector2i) -> bool: return foes.all(func(f: Array): return Command.tiles(c, f[0]) > f[1])
+	var picks: Array[Vector2i] = []
+	for c in b.cells_near(u.cell, u.move_left()):
+		if c != u.cell and not b.unit_at(c) and b.footing(u, c) and safe.call(c):
+			picks.append(c)
+	for i in mini(picks.size(), 4):  # a few at random: the first it can walk to whole
+		var c: Vector2i = picks.pop_at(b.rng.randi_range(0, picks.size() - 1))
+		var path: Array = b.walk(u, c, true).path
+		if not path.is_empty() and path[-1] == c:
+			log.append("%s skirts %s" % [u.name, b.travel(u, c)])
+			return
+	var s := _jump(u)
+	if s:
+		var lands: Array[Vector2i] = []
+		for c in b.cells_near(u.cell, b.area_reach(u, s)):
+			if safe.call(c) and s.behaviours.all(func(x: Behaviour): return not x or x.fits_at(b, u, c)):
+				lands.append(c)
+		if not lands.is_empty() and b.cast_at(u, s, lands[b.rng.randi_range(0, lands.size() - 1)]):
+			log.append("%s hops off to %s" % [u.name, u.cell])
+			return
+	var from: Array[Vector2i] = []
+	for f in foes:
+		from.append(f[0])
+	if not from.is_empty() and _away(b, u, from, 0, reads):
+		log.append("%s skirts away" % u.name)
 
 
 # Whether a flirty unit feels for the unit it reads as r: its fancies name it (Bio.fancies), or, naming none, its charisma as read
 # is high on the ladder (Difficulty.stat_at("high")), or, with no stats read, it looks it (a benevolent look: Beautiful, Radiant).
 static func _fancies(u: Unit, r: Read) -> bool:
-	if u.temper() != &"flirty" or r == null:
+	if not u.tempered(&"flirty") or r == null:
 		return false
 	if u.bio and not u.bio.fancies.is_empty():
 		return Bio.names(u.bio.fancies, r)
@@ -1378,7 +1512,7 @@ static func _support(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arr
 		var s: Skill = gives[i]
 		var e: Effect = s.grants.effects[0] if s.grants else s.effects[0]
 		var whom: Array = reads.keys() + [u]
-		if u.temper() == &"flirty":  # whom it fancies first
+		if u.tempered(&"flirty"):  # whom it fancies first
 			whom = whom.filter(func(o: Unit): return o != u and _fancies(u, reads[o])) + whom.filter(func(o: Unit): return o == u or not _fancies(u, reads[o]))
 		for t: Unit in whom:
 			var r: Read = b.read(u, u) if t == u else reads[t]

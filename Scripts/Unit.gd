@@ -170,6 +170,7 @@ class Applied:
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
 var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets two shares of its XP (Battle._award())
+var harmed := 0  # HP it has lost this fight, from anything (damage(): cleared by Battle._listen()): what punishes a flippant unit (temper())
 var wrongs: Dictionary[Faction, int] = {}  # blows it has landed on each side this fight (hit(): cleared by Battle._listen()): who a vindictive unit holds a grudge against (AI._grudge())
 var paid_fall := false  # it has paid out its XP for falling (Battle._award()): a unit pays once...
 var paid_rise := false  # ...and once more for being brought back (Battle.rescued())
@@ -873,8 +874,8 @@ static func rank_for(points: int, a: int, cap := 0) -> int:
 
 # An attribute of s for it (range, rank): what its effects add, asked with s's tags (Skill.query()),
 # and only effects that list s when they list skills.
-func skill_stat(attr: StringName, s: Skill) -> float:
-	return stat(attr, s.query() + (mods(s).tags if emblems() else ([] as Array[StringName])), null, s)
+func skill_stat(attr: StringName, s: Skill, base := 0.0) -> float:
+	return stat(attr, s.query() + (mods(s).tags if emblems() else ([] as Array[StringName])), null, s, base)
 
 
 # Whether it wears anything putting modifiers on its skills (Item.emblem): the fast way past mods().
@@ -2061,6 +2062,10 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 			amount *= mod(e.per_mod)
 		if e.op == "mul":
 			factor *= amount
+		elif e.op == "scale":
+			factor *= 1.0 + amount
+		elif e.op == "divide":
+			factor /= maxf(1.0 + amount, 0.01)
 		else:
 			sum += amount
 	return sum * factor
@@ -2173,11 +2178,18 @@ func conspiring() -> int:
 	return roundi(stat(&"conspire"))
 
 
-# How its AI behaves (Bio.BEHAVIOURS): its bio's behaviour; a craven unit's timid.
+# How its AI behaves (Bio.BEHAVIOURS): its bio's behaviour (a flippant one hurt enough this fight: aggressive); a craven unit's timid.
 func temper() -> StringName:
+	if bio and bio.behaviour == &"flippant" and harmed >= Bio.FLIPPANT * max_hp:
+		return &"aggressive"  # punished for it: it presses now, for the rest of the fight
 	if bio and bio.behaviour:
 		return bio.behaviour
 	return &"timid" if behaviour == &"craven" else &""
+
+
+# Whether it has temper t: its lead one (temper()) or one its bio adds (Bio.also: a Starman's vindictive, power hungry).
+func tempered(t: StringName) -> bool:
+	return temper() == t or (bio != null and t in bio.also)
 
 
 # Its standing with side f (Bio.clout): to f's units its persona goes this much further, or its
@@ -2232,6 +2244,7 @@ func scaling(s: StringName, tags: Array[StringName]) -> float:
 func damage(d: int) -> void:
 	if d > 0:
 		_log_harm({hp = d})
+		harmed += d
 	hp -= maxi(d, 0)
 
 

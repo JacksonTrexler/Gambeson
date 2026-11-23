@@ -536,6 +536,7 @@ func _listen(u: Unit) -> void:
 	u.slaying.connect(_on_slaying)
 	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (RecoveryEndurance)
 	u.wrongs.clear()  # grudges are this fight's (AI._grudge())
+	u.harmed = 0  # and so is a flippant unit's patience (Unit.temper())
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
@@ -3074,6 +3075,8 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		return false
 	if skill.rifts and not can_rift(caster, skill, c):
 		return false
+	if not skill.behaviours.all(func(x: Behaviour): return not x or x.fits_at(self, caster, c)):
+		return false  # not a tile it can be aimed at (a Jump onto void)
 	var at := unit_at(c)
 	if not caster.pay_for(skill, price_cut(caster, skill, [at] as Array[Unit])):
 		return false
@@ -4134,6 +4137,8 @@ func _marks_for(u: Unit, c: Vector2i, expected: bool) -> Array[Mark]:
 func _cost(u: Unit, from: Terrain, to: Terrain) -> float:
 	if u and u.has_tag(&"flight"):  # aloft (Hollow Bones): the ground below costs nothing to leave, 1 to enter, nothing drags
 		return maxf(1.0 + u.stat(&"move_cost", to.tags), 0.0)
+	if u and &"void" in to.tags and u.has_tag(&"floating"):  # void bears a floater up (Floaty): 1 to enter, as firm ground; a walker pays its 99
+		return maxf(from.exit + 1.0 + u.stat(&"move_cost", to.tags), 0.0)
 	var swims := u != null and to.depth > 0 and u.has_tag(&"aquatic")  # water is plain going to the aquatic: 1 to enter, nothing dragging (a Pike)
 	var cost := maxf(from.exit + (1.0 if swims else to.enter + to.drag) + (u.stat(&"move_cost", to.tags) if u else 0.0), 0.0)
 	if u and u.form and &"tunneler" in FORMS[u.form][2] and to.tags.any(func(t: StringName): return t in TUNNELS):
@@ -4172,6 +4177,12 @@ func line(a: Vector2i, b: Vector2i, luck: int, u: Unit = null) -> Array[Vector2i
 
 func on_map(c: Vector2i) -> bool:
 	return map.get_cell_source_id(c) != -1
+
+
+# Whether u could stand on c, put down there (a jump's landing: Behaviours/jump.gd): on the map and not void, unless it
+# floats or flies (_cost()). Who stands there already is the caller's to ask.
+func footing(u: Unit, c: Vector2i) -> bool:
+	return on_map(c) and (&"void" not in terrain(c).tags or u.has_tag(&"floating") or u.has_tag(&"flight"))
 
 
 # The tiles on the map within r + 0.5 of c: every tile within r by either measure (as the crow flies,

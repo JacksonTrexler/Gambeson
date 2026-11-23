@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/jump.gd" id="b_jump"]
+
+[sub_resource type="Resource" id="Behaviour_jump"]
+script = ExtResource("b_jump")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Hop"
+glyph = "Hp"
+tags = Array[StringName]([&"jump", &"dex"])
+impact = &"tame"
+radius = 2.0
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_jump")])
+hostile = false
+ap = 1.0
+cost = 1
+no_density = "a trait leap: its range grows through jump range effects (Floaty), not its own rank"

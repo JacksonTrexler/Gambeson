@@ -12,7 +12,8 @@ placed in a battle.
   python3 Util/unit.py faction blinthe --name "Blinthe's Own" --color "#b07acc" [--allies lancin] [--human]
   python3 Util/unit.py check
 
-Bio (Scripts/Bio.gd): behaviour (timid, brave, aggressive, helpful, stoic, vindictive, flirty) drives its AI; appearance and
+Bio (Scripts/Bio.gd): behaviour (timid, brave, aggressive, helpful, stoic, vindictive, flirty, flippant, power_hungry) drives its AI,
+with more beside it (--also); grudges name whom a vindictive one hunts on sight (--grudges astral); appearance and
 adjectives are how it looks to whoever can't make out its class; properties (Properties/*.tres:
 mechanic.py property) are always on it; clout is its standing with sides. An AI-made name gets " ??"
 (CLAUDE.md): shown through its nick, as node names can't carry it. .claude/skills/new-unit has the process.
@@ -23,7 +24,7 @@ from tres import Doc, ai_name, die, exists, files, import_project, literal, name
 import icon
 
 UNIT, BIO, SLOT, FACTION = "res://Scenes/unit.tscn", "res://Scripts/Bio.gd", "res://Scripts/Slot.gd", "res://Scripts/Faction.gd"
-BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic", "vindictive", "flirty")
+BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic", "vindictive", "flirty", "flippant", "power_hungry")
 SHORT = {"str": "strength", "dex": "dexterity", "con": "constitution", "int": "intelligence", "wis": "wisdom", "cha": "charisma"}
 
 
@@ -46,6 +47,12 @@ def bio(d, a):
     if a.behaviour:
         a.behaviour in BEHAVIOURS or die("--behaviour: one of %s (a new one goes in Bio.BEHAVIOURS and AI.act())" % ", ".join(BEHAVIOURS))
         props.append('behaviour = &"%s"' % a.behaviour)
+    if a.also:
+        also = a.also.split(",")
+        all(x in BEHAVIOURS for x in also) or die("--also: each one of %s" % ", ".join(BEHAVIOURS))
+        props.append('also = Array[StringName]([%s])' % ", ".join('&"%s"' % x for x in also))
+    if a.grudges:
+        props.append('grudges = Array[String]([%s])' % ", ".join('"%s"' % x for x in a.grudges.split(",")))
     if a.appearance:
         props.append('appearance = "%s"' % a.appearance)
     if a.adjectives:
@@ -340,6 +347,9 @@ def check(_a=None):
             for m in re.finditer(r'ExtResource\("(\w+)"\): -?\d+', text):  # clout: each key a Factions/ file
                 if not paths.get(m.group(1), "").startswith("res://Factions/"):
                     problems.append("%s: clout %s isn't a Factions/ file" % (p, m.group(1)))
+        for m in re.finditer(r'^also = Array\[StringName\]\(\[(.*)\]\)', text, re.M):
+            for x in re.findall(r'&"(\w+)"', m.group(1)):
+                x in BEHAVIOURS or problems.append('%s: also "%s" isn\'t a behaviour the AI knows' % (p, x))
         b = re.search(r'^behaviour = &"(\w+)"', text, re.M)
         if b and "Bio_" in text and b.group(1) not in BEHAVIOURS:
             problems.append('%s: behaviour "%s" isn\'t one the AI knows (%s)' % (p, b.group(1), ", ".join(BEHAVIOURS)))
@@ -366,6 +376,8 @@ def main():
     n.add_argument("--title", help='after its name: "of Red"')
     n.add_argument("--level", type=int)
     n.add_argument("--behaviour", help="its temper: %s" % ", ".join(BEHAVIOURS))
+    n.add_argument("--also", help="more behaviours beside --behaviour, comma separated (Bio.also)")
+    n.add_argument("--grudges", help="whom a vindictive one goes after on sight, comma separated: a name, class, race or tag")
     n.add_argument("--appearance", help="how it looks at a glance: Soldier, Knight, Caster")
     n.add_argument("--adjectives", help="comma separated: Beautiful,Injured")
     n.add_argument("--properties", help="Properties/ stems, comma separated: aquatic,rotting")

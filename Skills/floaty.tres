@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Effect_1"]
+script = ExtResource("2_effect")
+stat = "range"
+op = "scale"
+amount = 1.0
+per_rank = true
+tags = Array[StringName]([&"jump"])
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "movement"
+op = "divide"
+amount = 1.0
+per_rank = true
+
+[resource]
+script = ExtResource("1_skill")
+name = "Floaty"
+glyph = "Fl"
+passive = true
+tags = Array[StringName]([&"floating", &"trait"])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2")])
+no_density = "a trait: its rank scales its two effects directly (jumps x(rank + 1), movement /(rank + 1))"

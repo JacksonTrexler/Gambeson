@@ -205,7 +205,9 @@ extends Resource
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
 		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon") var stat := "luck"
-@export_enum("add", "mul") var op := "add"  # mul: multiplies the stat after everything is added
+# mul: multiplies the stat after everything is added; scale: multiplies it by 1 + amount (x rank with per_rank:
+# Floaty's jumps, x(rank + 1)); divide: divides it by 1 + amount (x rank: Floaty's movement, /(rank + 1))
+@export_enum("add", "mul", "scale", "divide") var op := "add"
 @export var amount := 1.0
 @export var tags: Array[StringName] = []  # only counts for queries carrying one of these (or a child of one); empty: always
 @export var bears: Array[StringName] = []  # tags the status itself bears, as a skill's tags (cc: it impairs the unit's ability to act): what rules and gear that deal with a kind of status read (Unit.afflicted()). Not `tags`, which filters what its stat counts on
@@ -324,7 +326,7 @@ static func conditions(effects: Array[Effect]) -> Array[Array]:
 
 # +1 if it helps whoever has it, -1 if it hurts them.
 func helps() -> int:
-	var up := amount > 1.0 if op == "mul" else amount > 0.0
+	var up := amount > 1.0 if op == "mul" else (amount < 0.0 if op == "divide" else amount > 0.0)
 	return (1 if up else -1) * (-1 if stat in HARMFUL else 1)
 
 
@@ -333,6 +335,10 @@ func value(rank := 1) -> String:
 	var text: String
 	if op == "mul":
 		text = "x" + Skill.num(x)
+	elif op == "scale":
+		text = "x" + Skill.num(1.0 + x)
+	elif op == "divide":
+		text = "/" + Skill.num(1.0 + x)
 	elif stat == "mitigate":
 		text = _signed(-x * 100.0) + "%"
 	elif stat in ["regen", "poison"]:
