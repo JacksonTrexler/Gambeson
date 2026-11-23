@@ -13,6 +13,8 @@ extends SceneTree
 # one frame (all of a side's acts in one frame, then the walks: the old HUD) vs a frame per unit (HUD._act_alone now: each
 # unit's walk or blow shows while the next plans; an act inside a walk or a number still showing counts as shown, a stutter
 # not a stare). A walk shows tiles x Overlay.STEP_TIME, a used skill its number SHOWN s; the end_turn is a stare in both.
+# A side's opening looks (Battle.lazy_looks) go one a frame over the TRANSITION, the rest as each acts; the end_turn runs under
+# the side's last walks and blows (HUD._act_alone): stare only past them. One frame: all of it in the frame (the old HUD).
 # Outcome: no digest (decisions may change); it checks every fight sheds blood, no unit sits out a whole fight with a foe
 # standing, and a side is left standing. "OUTCOME ok" or "OUTCOME FAIL: ...".
 # Frames: headless has none. Run it in a window (drop --headless; a display is needed) and it also awaits a frame after each
@@ -25,6 +27,8 @@ const PARTY := 5
 const LEADER_CHA := 14  # mod +2: Command.cha_of > 0, a skilled leader (AI._calm())
 const SHOWN := 0.9  # s a used skill's number shows (Overlay.float_text)
 const STEP := 0.07  # s a tile of walking shows (Overlay.STEP_TIME)
+const TRANSITION := 1.0  # s a turn change shows (HUD.TRANSITION)
+const FRAME := 1.0 / 60.0  # s a frame takes besides the work in it
 const FIELD := Vector2i(32, 26)
 const GAP := 12
 const FIELD_SCRIPT := "res://Tests/sims/field.gd"  # loaded at run time: naming it (or Role) as a type here makes the scripts load in a cycle
@@ -81,6 +85,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 	var left_l := 0
 	var left_n := 0
 	var waits: Array = []  # per side turn: [one frame, frame per unit], ms here
+	var parts := [0.0, 0.0, 0.0]  # of the frame-per-unit stares, s on the target: -, acts (an opening look past the turn change among them), end_turns
 	var fallen := 0
 	for seed in n:
 		var f: Variant = load(FIELD_SCRIPT).new()
@@ -91,7 +96,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		for s in sides:
 			for i in size:
 				var role: Resource = load("res://Roles/%s.tres" % ROLES[(i + (3 if s[0] == f.nemes else 0)) % ROLES.size()])
-				var c := Vector2i(s[1] + i / 5, 2 + (i % 5) * 4)
+				var c := Vector2i(s[1] + i / 5, 2 + (i % 5) * 4) if not _lead else Vector2i(s[1] + i % PARTY % 3, 2 + i / PARTY * 4 + i % PARTY / 3)  # lead: each party in a 3 x 2 block
 				var u: Unit = f.add(s[0], role, c, "%s%d" % [s[0].name.left(1), i], skills)
 				if _lead and i % PARTY == 0:
 					u.charisma = LEADER_CHA
@@ -107,6 +112,8 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		var shows := {at = 0.0}  # what the current act puts on screen: s of feedback
 		var on_walk := func(_u: Unit, _from: Vector2i, path: Array[Vector2i]): shows.at = maxf(shows.at, path.size() * STEP)
 		var on_use := func(_c: Unit, _s: Skill, _at: Variant, _d: int): shows.at = maxf(shows.at, SHOWN)
+		if &"lazy_looks" in f.b:
+			f.b.lazy_looks = true  # as the HUD has it when watched
 		f.b.traveled.connect(on_walk)
 		f.b.used.connect(on_use)
 		var did: Dictionary[Unit, bool] = {}
@@ -119,6 +126,15 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 				var clock := 0.0  # s on the target since the side's turn began, a frame per unit
 				var shown_to := 0.0  # till when something is on screen
 				var stare := 0.0
+				if f.b.has_method(&"look_ahead"):  # its opening looks, a frame each while the turn change shows (HUD._act_alone); the rest as each acts
+					var shown := 0.0
+					var more := true
+					while more and shown < TRANSITION:
+						var t2 := Time.get_ticks_usec()
+						more = f.b.look_ahead()
+						var lus := Time.get_ticks_usec() - t2
+						side_us += lus
+						shown += lus / 1e6 * SLOWDOWN + FRAME
 				for u: Unit in f.b.members(side):
 					shows.at = 0.0
 					var t0 := Time.get_ticks_usec()
@@ -128,6 +144,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 						did[u] = true
 					var a := us / 1e6 * SLOWDOWN
 					stare += a - clampf(shown_to - clock, 0.0, a)
+					parts[1] += a - clampf(shown_to - clock, 0.0, a)
 					clock += a
 					shown_to = maxf(shown_to, clock + shows.at)
 					side_us += us
@@ -142,9 +159,14 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 				var t1 := Time.get_ticks_usec()
 				f.b.end_turn()
 				var eus := Time.get_ticks_usec() - t1
+				var e := eus / 1e6 * SLOWDOWN  # it runs under the last walks and blows (HUD._act_alone)
+				var e_stare := e - clampf(shown_to - clock, 0.0, e)
 				ends.append(eus / 1000.0)
+				parts[2] += e_stare
 				turns.append((side_us + eus) / 1000.0)
-				waits.append([(side_us + eus) / 1000.0, stare * 1000.0 / SLOWDOWN + eus / 1000.0])  # ms here (x SLOWDOWN on the target)
+				waits.append([(side_us + eus) / 1000.0, (stare + e_stare) * 1000.0 / SLOWDOWN])  # ms here (x SLOWDOWN on the target)
+				if _debug:
+					print("  size %d seed %d round %d %s: %d acted, stare on the target %.0f ms (end_turn %.0f), one frame %.0f" % [size, seed, r + 1, side.name, f.b.members(side).size(), (stare + e_stare) * 1000.0, e_stare * 1000.0, (side_us + eus) / 1000.0 * SLOWDOWN])
 				round_us += side_us + eus
 				if f.b.phase != Battle.Phase.TURNS:
 					break
@@ -175,6 +197,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		per.append(w[1])
 	_report("busy-%dv%d side wait, one frame" % [size, size], one, -1.0)
 	_report("busy-%dv%d side wait, frame per unit" % [size, size], per, -1.0)
+	print("SIM busy-%dv%d frame-per-unit wait on the target, mean a side turn: acts %.0f, end_turn %.0f ms" % [size, size, parts[1] * 1000.0 / waits.size(), parts[2] * 1000.0 / waits.size()])
 	_report("busy-%dv%d unit turn" % [size, size], acts, TURN_BUDGET_MS)
 	_report("busy-%dv%d unit turn using a skill" % [size, size], busy, TURN_BUDGET_MS)
 	_report("busy-%dv%d side end_turn" % [size, size], ends, SIDE_BUDGET_MS)

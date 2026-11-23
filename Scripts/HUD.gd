@@ -72,6 +72,7 @@ var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing 
 		return _skill_in(u, slot) if u and hand(u) else null
 var hover := NOWHERE
 var busy := false  # units are acting on their own; the player waits
+var _closing := false  # a side's turn has ended under its last walks, still showing (_act_alone())
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
 var caught: Array[Unit] = []  # the units an aimed area skill would catch at the hovered tile (_caught()): they glow fully
 var reach: Dictionary[Vector2i, float] = {}  # tiles the selected unit expects to reach, and the cost
@@ -202,6 +203,7 @@ func _ready() -> void:
 	overlay.top.z_index = 10
 	overlay.top.draw.connect(overlay.draw_top)
 	battle.add_child(overlay.top)
+	battle.lazy_looks = pace > 0.0  # watched: a side's opening looks go over the turn change's frames (_act_alone())
 	battle.turn_changed.connect(_on_turn, CONNECT_DEFERRED)
 	battle.phase_changed.connect(_on_phase, CONNECT_DEFERRED)
 	battle.traveled.connect(overlay.walk)
@@ -1790,12 +1792,13 @@ func _move(u: Unit, c: Vector2i) -> void:
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
 func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 	units = Command.cognizant_first(units)  # the Disturbed last
+	var ended := false
 	busy = true
 	aim = false
 	plan = {}
 	_mark()
 	if pace > 0.0 and wait > 0.0:
-		await _wait(wait)
+		await _wait(wait, battle.look_ahead)  # its opening looks, one a frame while the turn change shows
 		if not is_inside_tree():
 			return
 	for u in units:
@@ -1811,6 +1814,10 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 			select(u if unit_seen(u.cell) == u else null)
 		AI.act(battle, u)
 		_mark()
+		if pace > 0.0 and together:  # a frame per unit: its walk or blow shows while the next one plans
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return
 		if battle.interrupter:  # its turn was interrupted (Final Act): wait it out, then it carries on
 			await _interrupted()
 			if not is_inside_tree():
@@ -1819,14 +1826,19 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 				AI.act(battle, u)
 				_mark()
 	if pace > 0.0 and battle.phase == Battle.Phase.TURNS:
+		_closing = true  # the turn ends under the last walks and blows (no stare): the next turn's change waits them out (_on_turn())
+		if battle.turn == f:
+			battle.end_turn()
+			ended = true
 		await _wait(pace)
 		while is_inside_tree() and overlay.walking_left() > 0.0:  # together: till the last walk is done
 			await get_tree().process_frame
+		_closing = false
 		if not is_inside_tree():
 			return
 	busy = false
 	_mark()
-	if battle.phase == Battle.Phase.TURNS and battle.turn == f:
+	if not ended and battle.phase == Battle.Phase.TURNS and battle.turn == f:
 		battle.end_turn()
 
 
@@ -1845,10 +1857,13 @@ func speed() -> float:
 	return HURRY if Input.is_action_pressed(&"hurry") else 1.0
 
 
-# Waits `seconds` of paced time: hurried (speed()) for as long as the key is held, frame by frame.
-func _wait(seconds: float) -> void:
+# Waits `seconds` of paced time: hurried (speed()) for as long as the key is held, frame by frame. work: a
+# step to take each frame meanwhile, till it returns false (Battle.look_ahead()).
+func _wait(seconds: float, work := Callable()) -> void:
 	var t := 0.0
 	while t < seconds and is_inside_tree():
+		if work.is_valid() and not work.call():
+			work = Callable()
 		await get_tree().process_frame
 		t += get_process_delta_time() * speed()
 
@@ -1865,6 +1880,8 @@ func _hurry() -> void:
 # --- Battle events
 
 func _on_turn(_was: Faction, now: Faction) -> void:
+	while _closing and is_inside_tree():  # the side before still showing its last walks (_act_alone())
+		await get_tree().process_frame
 	if battle.phase != Battle.Phase.TURNS or now != battle.turn or _opening:
 		return  # stale: the turn moved on before this ran (or the opening's still showing: _begin() starts it)
 	var i := battle.order.find(now)

@@ -27,6 +27,8 @@ class_name AI
 # One holding Focus rests to build it when there's nothing to shoot (_steady()), and a ranged attack that
 # would empty it is worth a little more (FOCUS). With no foe in sight, no clue and nowhere to hunt, it
 # casts Clairvoyance (_scry()); an ally in reach lacking a buff skill's effects (Intervention) gets it (_support()).
+# A calm follower of a skilled leader (_calm()) skips all of that and drills (_drill()): it reads only
+# what is near, heals or strikes, else goes after what its leader went after, else keeps up with it.
 # Kept small on purpose: score() and the move choice are the places to grow it.
 
 const KILL := 5.0  # bonus for a hit that should finish the target
@@ -74,6 +76,7 @@ const DELAY := 0.5  # the share of a disable's worth left it when its target pos
 const STRUCK := 0.5  # what an HP of a blow a foe's reaction strikes it with on ending a walk beside it costs, in tiles of walking (_struck())
 const DREAD := 4.0  # what a cc certain to land costs a tile it would end a turn on, in tiles of walking (_approach(), _retreat(): _dread()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
+const DRILL_MARGIN := 2.0  # tiles past its walk and its longest reach a drilling follower still reads units within (_drill())
 
 
 # What u makes out of every other unit now.
@@ -99,8 +102,19 @@ static func _reads(b: Battle, u: Unit) -> Dictionary[Unit, Read]:
 # only, &"defensive" a self-protective skill only. The default (&"") is a full, self-directed turn.
 static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	var log: Array[String] = []
+	b.looks_done(u)  # its opening look, if it still owes it (Battle.lazy_looks)
 	if not u.is_alive() or u.stopped():
 		return log
+	if posture == &"" and _calm(b, u):
+		_drill(b, u, log)
+	else:
+		_full(b, u, posture, log)
+	u.set_meta(&"calm_hp", u.hp)  # what it ended its turn on: less next turn, it was hurt (_calm())
+	return log
+
+
+# The full, self-directed (or posture-restricted) turn: every phase, every preference.
+static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -> Array[String]:
 	var reads := _reads(b, u)
 	_remember(b, u, reads)
 	if b.held_by(u):
@@ -176,6 +190,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		if target and _emboldened(u, reads) and not rooted:
 			_rally(b, u, log)  # lay its marks first, then walk onto them
 			_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
+			u.set_meta(&"aim", target)
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
@@ -194,6 +209,55 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 		_replenish(b, u, log)
 		_dress(b, u, log)
 	return log
+
+
+# A follower calm enough to drill (_drill()) rather than weigh its every preference: in the party (Unit.follows)
+# of a skilled leader on its own side (Command.cha_of() above 0: at +0 a leader can only tell it to move), one that
+# is up, not Disturbed, and whose orders carry to it (Command.hears()), and that it makes out. Not calm, and so a
+# full turn: hurt since its last turn (calm_hp, act()), cc'd or held, Downed, Restless, struck last by its own side
+# or party (betrayed), channeling, or a creature of a special behaviour (Unit.behaviour: skittish, a Siren...).
+static func _calm(b: Battle, u: Unit) -> bool:
+	var l := u.follows
+	if l == null or l.faction != u.faction or not l.is_alive() or l.stopped() or Command.cha_of(l) <= 0 or not Command.hears(l, u):
+		return false
+	if u.hp < int(u.get_meta(&"calm_hp", u.max_hp)) or u.dbno != null or u.channel or u.behaviour != &"" or u.restless():
+		return false
+	var by := u.last_hit_by
+	if by != null and by != u and (by.faction == u.faction or by.follows == l or by == l):
+		return false
+	if not u.afflicted(&"cc").is_empty() or b.held_by(u) or not b.holding(u).is_empty():
+		return false
+	return b.read(u, l).located()
+
+
+# A calm follower's turn (_calm()): it reads only the units within its walk, its longest reach and DRILL_MARGIN
+# tiles, heals what it would, strikes what it can, else walks on what its leader last went after (the aim meta:
+# act(), _strike()) or, with that gone or out of its sight, the foe it would pick, and strikes again; with no foe
+# near, it keeps up with its leader. No temper, tending, support, summons, shoves, searching or switching.
+static func _drill(b: Battle, u: Unit, log: Array[String]) -> void:
+	var l := u.follows
+	var near := u.move_left() + DRILL_MARGIN
+	Unit.begin_read()
+	var reach := 0.0
+	for s: Skill in u.actives:
+		reach = maxf(reach, b.skill_reach(u, s))
+	var reads: Dictionary[Unit, Read] = {}
+	for o: Unit in b.units.values():
+		if o != u and (o == l or Command.tiles(u.cell, o.cell) <= near + reach):
+			reads[o] = b.read(u, o)
+	Unit.end_read()
+	_remember(b, u, reads)
+	_heal(b, u, reads, log)
+	if not _strike(b, u, reads, log) and not _rooted(b, u):
+		var aim: Variant = l.get_meta(&"aim") if l.has_meta(&"aim") else null
+		var target: Unit = aim if is_instance_valid(aim) and aim in reads and aim.is_alive() and _foe(u, reads[aim]) else _best_target(u, reads)
+		if target:
+			log.append("%s moves %s" % [u.name, b.travel(u, _approach(b, u, target, reads))])
+			reads[target] = b.read(u, target)
+		else:
+			_keep_up(b, u, log)
+	while _strike(b, u, reads, log):
+		pass
 
 
 # u's interrupt (Battle.interrupter: Final Act), one free skill use, no walking: its best blow at a foe
@@ -684,6 +748,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 	if not b.cast(u, best[0], best[1]):
 		return false
 	log.append("%s uses %s on %s -> %d" % [u.name, best[0].name, best[1].name, best[1].hp])
+	u.set_meta(&"aim", best[1])  # what it went after: its followers' aim (_drill())
 	reads[best[1]] = b.read(u, best[1])
 	return true
 

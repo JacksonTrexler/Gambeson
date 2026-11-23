@@ -162,12 +162,19 @@ var turn: Faction:
 			u.refresh()
 			if u.channel:
 				u.channel.turns += 1
+		_to_look.clear()
 		for u in members(v):
-			_look_harder(u)
+			if lazy_looks and not (player and player.faction == v):
+				_to_look.append(u)  # it looks over the turn change's frames (look_ahead()), else as it acts (looks_done())
+			else:
+				_look_harder(u)
 			_starkind(u, false)
 		turn_changed.emit(was, v)
 		for u in members(v):  # after the signal: poison can end a side, and with it this turn
 			_mend(u)
+
+var lazy_looks := false  # a watched battle (HUD): a side not the player's takes its opening looks (_look_harder) as the turn change shows
+var _to_look: Array[Unit] = []  # of the side whose turn began, those yet to take them (look_ahead())
 
 var order: Array[Faction] = []  # turn order, highest initiative first
 var rolls: Dictionary[Faction, Array] = {}  # this battle's initiative d20s, per faction
@@ -2203,6 +2210,28 @@ func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 		suspect(o, t)
 	doubted.emit(o, t, vs.mine.total, vs.theirs.total)
 	return vs.won
+
+
+# One opening look still owed (lazy_looks): the next unit takes it. False once none are left.
+func look_ahead() -> bool:
+	while not _to_look.is_empty():
+		var u: Unit = _to_look.pop_front()
+		if is_instance_valid(u) and u.is_alive() and u.faction == turn:
+			_look_harder(u)
+			break
+	return not _to_look.is_empty()
+
+
+# Every opening look still owed, now: as the turn ends. u: only u's, as it acts (AI.act()): its look comes
+# as its own turn does, after those who acted before it.
+func looks_done(u: Unit = null) -> void:
+	if u:
+		if u in _to_look:
+			_to_look.erase(u)
+			_look_harder(u)
+		return
+	while look_ahead():
+		pass
 
 
 # As its side's turn starts, u looks harder (doubt()) at each enemy it can place that fools it: the
@@ -4581,6 +4610,7 @@ func end_turn() -> void:
 		return
 	if interrupter:
 		end_interrupt()  # an interrupt still open passes as the turn ends
+	looks_done()
 	var ending := turn
 	var was_order := order.duplicate()  # a side can fall out of it below: its successor is still the next one standing
 	ending_turn = true  # so _on_died() doesn't pass the turn too: it's passed once, at the end
