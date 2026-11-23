@@ -26,7 +26,7 @@ func test_paint_look() -> void:
 
 
 func test_checks() -> void:
-	for tool in ["tile", "role", "unit", "mechanic", "item"]:
+	for tool in ["tile", "role", "unit", "mechanic", "item", "sprites"]:
 		tool_check(tool)
 
 
