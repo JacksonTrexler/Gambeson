@@ -194,6 +194,8 @@ extends Resource
 # power_siphon: as its side's turn ends, it loses this share of its max HP and gains this share of its
 # max Power (Energy if not powered), each at least 1 (Power Siphon: a starpower generator's
 # circuit; Battle._siphon())
+# healed: share more HP a heal tagged like its tags gives it, x rank (Undead: dark and undead
+# heals +5% a rank; Unit.heal())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -204,7 +206,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon", "healed") var stat := "luck"
 # mul: multiplies the stat after everything is added; scale: multiplies it by 1 + amount (x rank with per_rank:
 # Floaty's jumps, x(rank + 1)); divide: divides it by 1 + amount (x rank: Floaty's movement, /(rank + 1))
 @export_enum("add", "mul", "scale", "divide") var op := "add"
