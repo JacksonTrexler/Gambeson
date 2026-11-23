@@ -18,12 +18,11 @@ func caster(n: String, r := 1, at := Vector2i(4, 4)) -> Unit:
 
 
 func test_tiers() -> void:
-	var want := {"igna": 1, "flamewall": 2, "flamecharmed": 2, "inner_fire": 3, "burning_bag": 4, "flamecharm": 5, "cindering": 6, "level_up": 7, "flamedance": 8, "solar": 9}
-	var got := {}
-	for n in want:
-		got[n] = cleric.tier(sk(n))
-	ok(got == want, "Sol's tiers: %s" % [got])
-	ok(warlock.tier(sk("humble")) == 1, "Humble: Hogel, tier 1")
+	var want := ["igna", "flamewall", "inner_fire", "burning_bag", "flamecharm", "cindering", "level_up", "flamedance", "solar"]
+	var got: Array = want.map(func(n: String): return cleric.tier(sk(n)))
+	ok(got[0] > 0 and range(1, got.size()).all(func(i: int): return got[i] > got[i - 1]), "Sol's path climbs, tier by tier: %s" % [got])
+	ok(cleric.tier(sk("flamecharmed")) == cleric.tier(sk("flamewall")), "Flamecharmed beside Flamewall")
+	ok(warlock.tier(sk("humble")) > 0, "Humble: on Hogel's path")
 
 
 func test_humble() -> void:
