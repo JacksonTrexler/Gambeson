@@ -66,3 +66,17 @@ func test_pick() -> void:
 	m.learned.append(x)
 	b.get_node("Units").add_child(m)
 	ok(path(m).key(path(m).tabs[0]) not in m.picked and held(m) == PATHS["Starmen"], "made with Floaty: Starmen pre-selected, Hop free (holds %s)" % [held(m)])
+
+
+# Undead ?? (the Skeletons path): bones turn piercing, +1 Defense against it per rank; blunt and slash unmoved.
+func test_undead_rank() -> void:
+	var u := Unit.monster(lancin, "Skeletons", 4)
+	b.get_node("Units").add_child(u)
+	u.skill_points = 9
+	var undead := sk("undead")
+	var base := u.defense([&"pierce"])
+	var plain := u.defense([&"blunt"])
+	for r in [1, 2, 3]:
+		ok(u.rank(undead) == r and u.defense([&"pierce"]) == base + (r - 1) and u.defense([&"blunt"]) == plain, "Undead rank %d: pierce Defense +%d over rank I, blunt unmoved" % [r, r - 1])
+		u.raise(undead)
+	ok(u.has_tag(&"undead"), "still undead")
