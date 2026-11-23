@@ -413,13 +413,16 @@ func _lattice(b: Battle, pulse: float) -> void:
 
 # The layers laid over tiles, bottom up (Battle.layers): leaves as scattered leaves (faint while someone
 # stands in them: they're see-through then), glass as a pale sheen, a cracked startile as cracked
-# glass with its repair's progress. Starpanes and startiles are drawn as the lattice (_lattice()).
+# glass with its repair's progress; one with art (Terrain.look) as that. Starpanes and startiles are drawn
+# as the lattice (_lattice()).
 func _layers(b: Battle) -> void:
 	for c: Vector2i in b.layers:
 		var st: Array = b.layers[c]
 		for i in range(st.size() - 1, -1, -1):
 			var l: Battle.Layer = st[i]
 			var t := l.terrain
+			if t.look:  # a layer with art of its own shows it (a starpower generator)
+				draw_texture_rect(t.look, _rect(c, 0), false)
 			if t.pane or t.source:
 				continue
 			if t.unstable:

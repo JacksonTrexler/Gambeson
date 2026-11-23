@@ -12,7 +12,7 @@ Goal: rework Astral Nexus: a little larger; starpower generators (darker orange 
 3. Rest of nexus: stone floor within 2 of the circuit, 15% of it void; void beyond; unreachable floor voided. Old startile grid/pane fill dropped.
 4. Size 23x13 -> 29x17; generators 4-6 (was 3).
 5. Live circuit = lattice cells joined side-on to a source whose terrain has at_end, charge > 0. Generic hook: a lattice source's at_end reaches whoever ends a turn anywhere on its circuit (Battle). Generators the only such source now.
-6. Power Siphon = new Effect stat `siphon` (amount 0.05) on the generator's at_end, name "Power Siphon" (--human). Read at turn end after tick (Battle._siphon): lose amount x max HP, gain amount x max_energy via grant_energy (Power if powered, else Energy), each at least 1. A status for one turn: shows on the unit; skills can apply it later.
+6. Power Siphon = new Effect stat `power_siphon` (not `siphon`: that tag exists) (amount 0.05) on the generator's at_end, name "Power Siphon" (--human). Read at turn end after tick (Battle._siphon): lose amount x max HP, gain amount x max_energy via grant_energy (Power if powered, else Energy), each at least 1. A status for one turn: shows on the unit; skills can apply it later.
 7. Generator art: darker orange (#c25a12) with a yellow star (PIL), Tiles/starpower_generator.png.
 
 ## Done

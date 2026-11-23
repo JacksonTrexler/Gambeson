@@ -59,7 +59,7 @@ func test_starlight() -> void:
 
 
 # Power Siphon: a live source with at_end (a starpower generator) puts it on whoever ends a turn anywhere
-# on its circuit (Battle.circuit_ends()); siphon takes its share of max HP and gives that share of max Power.
+# on its circuit (Battle.circuit_ends()); power_siphon takes its share of max HP and gives that share of max Power.
 func test_siphon() -> void:
 	lattice(0.0)
 	var gen: Terrain = load("res://Terrain/starpower_generator.tres")
@@ -68,11 +68,11 @@ func test_siphon() -> void:
 	stage(lancin, {v(1): Vector2i(3, 1), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})
 	var hp := v(1).hp
 	b.end_turn()
-	ok(v(1).stat(&"siphon") == 0.05 and v(1).hp == hp - 1 and v(2).stat(&"siphon") == 0.0 and v(2).hp == v(2).max_hp, "on the generator's wires: siphoned; off them: not")
+	ok(v(1).stat(&"power_siphon") == 0.05 and v(1).hp == hp - 1 and v(2).stat(&"power_siphon") == 0.0 and v(2).hp == v(2).max_hp, "on the generator's wires: siphoned; off them: not")
 	b.panes.erase(Vector2i(5, 1))
 	b.end_turn()
 	b.end_turn()
-	ok(v(1).stat(&"siphon") == 0.0 and v(1).hp == hp - 1, "a broken pane cuts it off: no more")
+	ok(v(1).stat(&"power_siphon") == 0.0 and v(1).hp == hp - 1, "a broken pane cuts it off: no more")
 	v(2).max_energy = 40
 	v(2).energy = 0
 	v(2).afflict(gen.at_end[0], 2)

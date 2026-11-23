@@ -5795,10 +5795,10 @@ func circuit_ends(c: Vector2i) -> Array[Effect]:
 	return out
 
 
-# Power Siphon, as its side's turn ends: it loses its siphon share of max HP and gains that share of its
+# Power Siphon, as its side's turn ends: it loses its power_siphon share of max HP and gains that share of its
 # max Power (Energy, unless powered), each at least 1.
 func _siphon(u: Unit) -> void:
-	var k := u.stat(&"siphon")
+	var k := u.stat(&"power_siphon")
 	if k <= 0.0 or not u.is_alive():
 		return
 	u.damage(maxi(roundi(k * u.max_hp), 1))

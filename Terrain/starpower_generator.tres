@@ -6,7 +6,7 @@
 
 [sub_resource type="Resource" id="Effect_at_end_1"]
 script = ExtResource("3_effect")
-stat = "siphon"
+stat = "power_siphon"
 amount = 0.05
 name = "Power Siphon"
 
