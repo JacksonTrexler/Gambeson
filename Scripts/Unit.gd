@@ -2916,6 +2916,8 @@ func heal(h: int, heard := true, rounded := 0) -> void:
 func pools() -> Dictionary[Reserve, int]:
 	var out: Dictionary[Reserve, int] = reserves.duplicate()
 	for c in role.choices if role else []:
+		if not c.all().any(func(t: SkillTab): return t and not t.reserves.is_empty()):
+			continue  # no tree it could pick gives a reserve: its picks needn't be found (picks(): costly)
 		for t in picks(c):
 			for r in t.reserves:
 				out[r] = out.get(r, 0) + t.reserves[r]
@@ -4112,10 +4114,12 @@ func lends(s: StringName) -> bool:
 
 
 func _lends_any(s: StringName) -> bool:
-	for x: Slot in slots:
-		for e: Effect in x.skill.effects:
-			if e.stat == s:
-				return true
+	for list: Array[Slot] in [_role_slots, innate, learned, granted()]:  # (slots, without sorting out the best of each skill)
+		for x in list:
+			if x and x.skill:
+				for e: Effect in x.skill.effects:
+					if e.stat == s:
+						return true
 	for e: Effect in timed:
 		if e.stat == s:
 			return true

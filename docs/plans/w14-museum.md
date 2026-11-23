@@ -10,10 +10,13 @@ Tool: `Tests/museum_prof.gd` (not a test: `godot --headless --path . -s Tests/mu
 ## Calls
 - stat() and _grants() outside a stretch: if lends(s) is false (nothing carried has an effect on s; a superset check) return the base at once.
 - Quirk kept: gathering effects ran equipped(), whose _sync_new() auto-equips; a unit setting up gets its bar order from that (Icor: strike, hex, mana, arcanist). The fast path calls _touch_bar() to set it off exactly when the old path would (a passive on with slot cost, sig changed). Without it Icor's bar comes out strike, mana, hex (command_test.test_default_bar fails).
+- pools() and _lends_any(): same answers by cheaper walks (a superset test first; any() needs no dedupe). granted() still called (it keeps _granted, which _skill_sig reads).
 - Unit._ready: _show_bars connected after HP/Energy/reserves are filled, drawn once (was ~4 times a unit); pools() once.
 
 ## Done
 1. stat/_grants fast path + _touch_bar, _show_bars once: museum add 43 -> 28.7 ms; suite 109 -> 84 s, 11012 checks, 0 failed.
+
+2. pools(): a choice none of whose trees gives a reserve skips picks() (TreeChoice.all() is cached on the resource); _lends_any walks the slot lists without the best-of dedupe: museum 28.7 -> 17.8 ms; suite 66 s, 11012 checks, 0 failed.
 
 ## Next
 - Battle._enter (9 ms), pools()/picks() in _show_bars, refit.
