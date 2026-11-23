@@ -74,7 +74,7 @@ func test_traits() -> void:
 			names.append(f.get_basename())
 			ok(s.passive and not s.toggle and not s.fits_bar(), "%s: a trait is an always-on passive off the bar" % f)
 	names.sort()
-	ok(names == ["alluring", "opportunist", "reckless_abandon", "seaborn", "skill_slot", "starkind"], "the innate skills that are traits: %s" % [names])
+	ok(names == ["alluring", "floaty", "opportunist", "reckless_abandon", "seaborn", "skill_slot", "starkind"], "the innate skills that are traits: %s" % [names])
 	var h := await hud(u)
 	var traits: SlotColumns = h.get_node("%Traits")
 	ok(traits.get_child_count() == 1 and (traits.get_child(0) as SkillSlot).skill == kin, "the HUD shows it after the hotbar")
