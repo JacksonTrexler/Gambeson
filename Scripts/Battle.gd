@@ -2167,6 +2167,24 @@ static func _sees_through(was: Read, now: Read) -> bool:
 	return (was.deceived and not now.deceived) or (was.net < 0 and now.net >= 0)
 
 
+# Whether u, walking `path`, could end it hiding (Perception.cover(), travel()): hiding now, or by what lies at the end
+# of the walk (a zone, the ground's effects) or on it (what it puts on whoever steps there, fire, marks). Not so, and
+# nobody can see it vanish: _sightings() isn't worth its reads.
+func _may_hide(u: Unit, path: Array[Vector2i]) -> bool:
+	Unit.begin_read()
+	var may := Perception.cover(self, u) > 0 or Perception._levels(self, path[-1], u).values().any(func(x): return x > 0)
+	Unit.end_read()
+	if may:
+		return true
+	var ground := terrain(path[-1])
+	if not ground.effects.is_empty() or not ground.at_end.is_empty():
+		return true
+	for c in path:
+		if not terrain(c).afflicts.is_empty() or c in flames or c in marks:
+			return true
+	return false
+
+
 # Who makes out t's side and place right now (awake, it in their sight): unit -> its read, for
 # _vanish() to compare after something that may hide it.
 func _sightings(t: Unit) -> Dictionary:
@@ -2289,16 +2307,43 @@ func suspicious(o: Unit, known: Dictionary[Unit, Read] = {}, centre: Variant = n
 		var r := read(o, c)
 		if c != o.cell and (r.hint != "" or (o.suspects(c) > 0 and r.net < 0)):
 			out.append(c)
+	var recon_ok := o.faction != null and o.scrambled() == null and o.stat(&"recon") >= 0.0  # what _plain() reasons from
 	for t: Unit in units.values():
 		if t != o and t.is_alive() and t.cell not in out:
 			if centre != null and Command.tiles(centre, t.cell) > reach:
 				continue
+			if t not in known and recon_ok:
+				match _plain(o, t):
+					0, 2:
+						continue  # beyond its sight, or in plain view: nothing odd about it
+					1:
+						out.append(t.cell)  # too far to tell what it is: a vague shape
+						continue
 			var r: Read = known[t] if t in known else read(o, t)
 			if r.located() and (r.hint != "" or (o.suspects(t) + o.suspects(t.cell) > 0 and r.net < 0) or (t.faction == o.faction and o.scrambles(t))):
 				out.append(t.cell)
 	Unit.end_read()
 	out.sort_custom(func(x: Vector2i, y: Vector2i): return Vector2(x).distance_to(Vector2(o.cell)) < Vector2(y).distance_to(Vector2(o.cell)))
 	return out
+
+
+# What o makes of t without a read, where nothing hides t from it (no zone over its tile, no concealment effect on it)
+# and o's recon is not below 0: in_range() 0 nothing at all, 1 a vague shape (a hint, Perception._range()), 2 plain; -1
+# where it can't tell without reading. For the many reads a walk's end asks (suspicious()): each costs far more than this.
+const _KINDS: Array[StringName] = [&"", &"dark", &"light", &"sound", &"fog"]  # Perception.KINDS' keys
+
+
+func _plain(o: Unit, t: Unit) -> int:
+	if not sight:
+		return 2
+	if zones.any(func(z: Zone): return t.cell in z.levels) or t.stat(&"concealment", _KINDS, o) > 0:
+		return -1
+	if Faction.friends(o.faction, t.faction):
+		return 2
+	var seen := in_range(o, t)
+	if seen == 0 and not _seers.is_empty() and pinged(o.faction).get(t) == t.cell:
+		return -1
+	return seen
 
 
 # The tiles that could look suspicious to o, for suspicious() to read: only concealment levels give a
@@ -3271,6 +3316,9 @@ func _linked_read(o: Unit, target: Variant) -> Read:
 # What o makes out, with what its synergized partners make out filling the gaps: the clearest of them.
 func read(o: Unit, target: Variant) -> Read:
 	Unit.begin_read()  # its effects held still for the read's length (Unit._effects())
+	if target is Unit and unseen(o, target):  # beyond its side's sight: nothing to make out, so none of the work (Perception.unit())
+		Unit.end_read()
+		return Perception.nothing()
 	var r := _linked_read(o, target)
 	if not (target is Unit and target == o):
 		for p in synergized(o):
@@ -3416,7 +3464,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		bumped.emit(u, w.blocker)
 	if not passed.is_empty():
 		var from := u.cell
-		var sights := _sightings(u)  # those watching it step into cover (_vanish())
+		var sights := _sightings(u) if _may_hide(u, passed) else {}  # those watching it step into cover (_vanish())
 		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
 		var began := u.steps  # the tiles it had walked before this (_toll())
 		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
@@ -4740,7 +4788,15 @@ func _check_stall() -> void:
 	var foes: Array = units.values().filter(func(t: Unit): return not Faction.friends(t.faction, turn) and t.is_alive())
 	stalling.clear()
 	Unit.begin_read()  # only reads until the count below: each unit's effects are found once (Unit._effects())
-	var seen := not side.is_empty() and not foes.is_empty() and foes.any(func(t: Unit): return side.any(_sees_foe.bind(t)))
+	var seen := false
+	for t: Unit in foes:  # only one a side's sight makes out well (in_range() 2, shared across it) can be told for a foe: the rest aren't read
+		var near := not side.is_empty() and in_range(side[0], t) >= 2
+		for o: Unit in side:
+			if (near or o.assumed.has(t)) and _sees_foe(o, t):
+				seen = true
+				break
+		if seen:
+			break
 	Unit.end_read()
 	if side.is_empty() or foes.is_empty() or seen:
 		stalled_turns[turn] = 0
@@ -4856,17 +4912,54 @@ func in_range(o: Unit, t: Unit) -> int:
 	if not sight:
 		return 2
 	var best := 0
-	var side: Array[Unit] = members(o.faction) if o.faction else ([] as Array[Unit])
-	if o not in side:
-		side.append(o)
-	for a in side:
-		var reach := perception_range(a)
-		var d := Vector2(a.cell).distance_to(Vector2(t.cell))
+	var at := Vector2(t.cell)
+	var eyes := _eyes(o)
+	for e: Array in eyes[0]:
+		var d: float = e[0].distance_to(at)
+		if d <= e[1] / 2.0 + 0.0001:
+			return 2
+		if d <= e[1] + 0.0001:
+			best = 1
+	if not eyes[1]:  # o stands outside its side's list (an unplaced one, or a faction of none)
+		var d := Vector2(o.cell).distance_to(at)
+		var reach := perception_range(o)
 		if d <= reach / 2.0 + 0.0001:
 			return 2
 		if d <= reach + 0.0001:
 			best = 1
 	return best
+
+
+# t is somewhere o's side can't perceive at all (in_range() 0, Perception._range()): o makes out nothing of it, and
+# it stays that way whatever o's recon: read() hands back Perception.nothing() without the rest of the work.
+# Not a foe's (an ally is always known), and not one a Clairvoyance ping places where it still stands (pinged()).
+func unseen(o: Unit, t: Unit) -> bool:
+	if not sight or o == t or Faction.friends(o.faction, t.faction) or in_range(o, t) > 0:
+		return false
+	return not (not _seers.is_empty() and pinged(o.faction).get(t) == t.cell)
+
+
+# o's side's eyes for in_range(): [[cell as Vector2, perception range] of each member, whether o is among them].
+# Kept for the stretch (Unit.begin_read()): a stretch moves no one and changes no stat, so a loop of reads asks it once.
+var _eyes_kept := {}
+var _eyes_epoch := -1
+
+
+func _eyes(o: Unit) -> Array:
+	if Unit.reading > 0 and _eyes_epoch == Unit._epoch and _eyes_kept.has(o.faction):
+		var kept: Array = _eyes_kept[o.faction]
+		return [kept[0], kept[1].has(o)]
+	var list := []
+	var who := {}
+	for a: Unit in (members(o.faction) if o.faction else ([] as Array[Unit])):
+		list.append([Vector2(a.cell), perception_range(a)])
+		who[a] = true
+	if Unit.reading > 0:
+		if _eyes_epoch != Unit._epoch:
+			_eyes_kept.clear()
+			_eyes_epoch = Unit._epoch
+		_eyes_kept[o.faction] = [list, who]
+	return [list, who.has(o)]
 
 
 # Side f made out foe t at c: where its units will look for it once it's out of sight (AI._hunt()).

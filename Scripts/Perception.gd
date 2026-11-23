@@ -70,6 +70,14 @@ static func sizing(t: Unit) -> Array[StringName]:
 	return q
 
 
+# What o makes out of a unit beyond its side's sight (Battle.unseen()): nothing at all, as unit() ends it (_range()).
+static func nothing() -> Read:
+	var r := Read.new()
+	r.net = -4
+	r.seen = false
+	return r
+
+
 # What `o` knows about unit `t`. Persona advertises; with enough trickery it lies, and to other
 # factions whatever it doesn't cover gets twisted (more of it, more consistently, the higher the
 # trickery). Without trickery it still fools allies that aren't insightful (fronts_to()), and allies
