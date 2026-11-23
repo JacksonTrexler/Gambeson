@@ -44,7 +44,7 @@ func test_pike() -> void:
 	var u: Unit = b.summon(load("res://Scenes/pike.tscn"), side, Vector2i(5, 3))
 	stage(side, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 3)})
 	b.move(u, Vector2i(5, 3))
-	ok(u.has_tag(&"aquatic") and b._cost(u, Battle.PLAIN, load("res://Terrain/water.tres")) == 1.0, "a pike: water costs it 1")
+	ok(u.has_tag(&"aquatic"), "a pike: aquatic (test_aquatic: what that costs in water)")
 	ok(b.read(sharp(v(1)), u).level == u.level, "read with recon: its level (%d)" % u.level)
 
 
@@ -62,7 +62,6 @@ func test_seaborn() -> void:
 			"on water: +2 str, dex and con, and Oceanic's -4 lifts (%d vs %d dry)" % [siren.stat(&"strength"), dry])
 	siren.ground = [&"wet"] as Array[StringName]
 	ok(siren.stat(&"strength") == dry + 4, "wet but not water: only Oceanic's lift")
-	ok(b._cost(siren, Battle.PLAIN, load("res://Terrain/water.tres")) == 1.0, "water costs it 1 to enter")
 	stage(nemes, {siren: Vector2i(5, 3), v(1): Vector2i(5, 4)})
 	var fooled := b.read(v(1), siren)
 	ok(fooled.deceived and fooled.boon == "Something extremely beneficial", "the fooled hear of something extremely beneficial (deceived %s, '%s')" % [fooled.deceived, fooled.boon])

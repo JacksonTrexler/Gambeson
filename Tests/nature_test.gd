@@ -155,7 +155,7 @@ func test_beastshape() -> void:
 	ok(b.form_for(sea).is_empty(), "nothing of the sea thrives on grass")
 	ok(not sea.has_tag(&"aquatic"), "itself, not aquatic")
 	sea.shape(&"pike", &"", 2, 3)
-	ok(sea.has_tag(&"aquatic") and b._cost(sea, Battle.PLAIN, load("res://Terrain/water.tres")) == 1.0, "a pike: aquatic, water costs it 1")
+	ok(sea.has_tag(&"aquatic"), "a pike: aquatic")
 	sea.unshape()
 	ok(not sea.has_tag(&"aquatic"), "and back")
 	star.shape(&"mote", &"water", 2, 3)
