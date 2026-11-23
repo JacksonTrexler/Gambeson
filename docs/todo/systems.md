@@ -1672,7 +1672,7 @@ The user's words: `docs/agents/answers-2026-11-23b.md`.
 - [x] **The AI weighs tile suspicion** (?261). Built (?264).
 - [x] **No-party 30 a side stare** (?260). Built (?266): ~950 ms p95, ~5% margin.
 - [x] **Ambush: the first attack roll out of concealment, Sally, Ambush Fusillade; Astral Nexus; Ire on Ramut's tree; test audit** (the user, 2026-11-23). Built (?267 to ?270).
-- [ ] **Make auto-equip explicit, then a read stretch around `_fill_bar`** (the museum lead, ~10 s of the suite). Queued. (?265)
+- [x] **Make auto-equip explicit, then a read stretch around `_fill_bar`** (the museum lead). Built (?273); the gain was ~4%, ~2.5 s (?277).
 - [ ] **Ambush and Sally numbers as built, the concealment stretch (since its side's turn began, a miss uses it up), the Nexus void / generator / Power Star calls, whether Ire needs a cost, `SUSPECT_TILES` 3.** Needs the user. (?264, ?267, ?269, ?270)
 - [ ] **Optional micro-cuts (each under ~5%):** `end_turn` per-unit stat reads, a path round a unit's own column, Opportunist on `_recover` / `_escape` / `_hunt`, `Battle._enter`. Needs the user. (?263, ?265, ?266)
 - [x] **Vindictive and flirty tempers, first-time pop-ups, longer holds, "skilled leader"** (the user, 2026-11-23). Built (?271).
@@ -1696,3 +1696,14 @@ The user's words: `docs/agents/answers-2026-11-23b.md`.
     - **Measured (M3 x 4, stare mean / p95 ms):** 30 no party 199-215 / 741-803 to 147-154 / 293-298; 30 parties 162-168 / 528-555 to 135-136 / 292-305; 15 no party unchanged (87 / 185); 60 rats v 15 (`busy_fight swarm=M`) 159 / 311 to 111 / 293. Winners flipped in 30 with parties (0 v 9 to 7.5 v 1, even sides).
     - **Tests:** `test_herds` (20 checks), `test_ranks_match_a_scan` (9); 7 mutations caught. Suite 11086 checks, 0 failed.
     - **Not done:** non-herd units facing a swarm still read every rat (Ranks or a spatial cut could serve `_targeting`); herd members in a fight take full turns; no visual check. **New names to review:** `HERD`, `COHESION`, `Ranks`, `Battle.ranks`.
+
+## Wave 17 equip (2026-11-23)
+
+273. **Auto-equip explicit (w17-equip) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w17-equip.md`. Calls:
+    - **Cause:** `_fill_bar`'s first `_slot_keys()` reached `stat()` -> `_touch_bar()` -> `_sync_new()`, which filled the bar in auto-equip order whenever a passive was on; in a stretch `stat()` skipped it, so the passes ran in another order.
+    - **One hook:** public `Unit.sync_bar()` (was `_sync_new`), called by `unlock()`, `_sync_granted()`, `_fill()` and the HUD's `_refresh_bar()` (was `get_equipped()` called for its sync). Removed from `equipped()` and `get_equipped()`; `_touch_bar()` deleted. `_fill_bar()` = begin_read, `_fill()`, end_read. No `learn()` API.
+    - **Checks:** `equip_test.test_auto_equip` +2 (a read auto-equips nothing; `sync_bar` does); mutations: hook back in `equipped()` fails it, no explicit sync in `_fill()` fails 8. Suite 11088 checks, 0 failed, 1047 tests. `reverse`: `meadows_test` camera crash is the same on main.
+274. **The fill-order quirk kept (w17-equip).** A unit with a passive on that takes a slot fills in auto-equip order, others by the passes (pillars, actives and toggles, passives from the right, optional lends); 13 roles x levels 1/5/9/13/20 and the museum's units (89 bars) are identical on main. Unifying would move Icor's bar (Mana before Hex): for the user (also ?259).
+275. **Tests call `sync_bar()` on the line that hands a skill** (545 sites, 118 files, by script): mechanical, no check changed, a noisy diff. A helper was not added.
+276. **The `_filling` cache drop in `_held_fx()`** (`_fx_bar` = hotbar hash) is defensive: no role has a slot-granting passive at setup, and removing it fails nothing. Keep or drop.
+277. **The gain was ~4%, not ~16%:** A/B alternating, main 62, 63 s against branch 60, 60 s. Remaining setup cost is `refit()` / `_take_looks()` in `_ready`; not pursued. Lead: per-test museum setup outside `_fill_bar`.
