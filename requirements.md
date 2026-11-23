@@ -136,6 +136,11 @@ Recorded from the user's words (2026-11-23, `docs/agents/answers-2026-11-23c.md`
 - `spade` domain: offensive, martial. `club` domain: defensive, specialist. `black` is the physical colour. [user 2026-11-23]
 - Invokers are clerics, druids, warlocks, and sometimes wizards, paladins, rangers; colour blue. Evokers are mages, sorcerers, sometimes wizards, monsters; colour purple. [user 2026-11-23]
 
+## Animation
+Recorded from the user's words (2026-11-23); tool `Util/anim.py`, plan `docs/plans/w21-anim.md`.
+- "gambeson animation convention: image names without a suffix or with -neutral are base standing pose, OK for icons and portraits, default idle. -left: the sprite is leaning to the left, as if reeling from an attack, dodging, or rearing up to strike. -right: sprite is leaning to the right, as if attacked from behind, getting a better look, or preparing to reach out. numbered sprites are usually part of an animation cycle, generally idle." [user 2026-11-23]
+- "Set up a .py script to set up unit sprites for classes / units / monsters and prefabs with basic default animations that are played when a unit is in a given animation state: attacking, hit, investigating, waiting. Wounded or slowed units play animations at lower speeds. Hasted and frightened units play animations at higher speeds." [user 2026-11-23]
+
 ## Tooling and tests
 - New content goes through its tool and process in `.claude/skills/` (skill.py, tile.py, role.py, unit.py, item.py, mechanic.py); run each `check` you touched and `skill.py check` before committing. [user, CLAUDE.md]
 - Tests: `godot --headless --path . -s Tests/run.gd -- [words]`; a compile error hangs it; sims live outside the suite. (?144, ?183)

@@ -33,6 +33,8 @@ description: Add a unit (an NPC, monster or champion) to Gambeson - writes Scene
    `--help` has the rest (tags, vibe, aura, tends, strategy, intention, hp, energy). A class unit takes
    its class's sprite unless given `--color` (a 20x25 placeholder, `Units/<Name>.png`, replaceable) or
    `--look`. `--into` places it in a battle scene - think twice about `museum`: every test starts from it.
+   Posed art (`<Name>-left.png`, `-right`, `-neutral`, numbered idle frames; requirements.md "Animation")
+   becomes its state animations with `python3 Util/anim.py setup <unit|class|formation>`; `anim.py check`.
 
 4. **Test it only if it needs one.** A unit is data (its bio, stats and skills are tested as rules, and
    `unit.py check` and the sweeps cover its wiring), so the tool writes no test file; `--test` stubs

@@ -33,6 +33,11 @@ const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # t
 const MONSTER := "res://Roles/monster.tres"  # the Monster class: monster() builds one of a path
 const FLEX := "Flex Tree"  # the choice of flex trees levelling offers (flex_choice()): its box's heading, and its picks' key in picked
 const INVERTED := "Inverted"  # the choice of flex trees an inverted page sells for base stats (invert_choice(), buy_flex())
+# The states a unit plays (animate()) -> the animation of its frames (Units/<Name>.tres, Util/anim.py) that
+# shows it; one its frames lack falls back to waiting, then default (a lone base image: as it always was).
+const ANIMS := {&"attacking": &"attacking", &"hit": &"hit", &"investigating": &"investigating", &"waiting": &"waiting"}
+const ANIM_PACE := {&"wounded": 0.6, &"slowed": 0.6, &"hasted": 1.5, &"frightened": 1.5}  # how it fares (moods()) -> its animations' speed, multiplied
+const PACED := ["movement", "initiative"]  # the Effect stats whose statuses slow or haste it (moods())
 const FLEX_PAY := {&"martial": MENTAL, &"specialist": [&"strength", &"intelligence"], &"magical": [&"strength", &"dexterity", &"constitution"]}  # what an inverted page takes for a flex tree, by its type (SkillTab.flex_type()): martial a mental stat, specialist str or int, caster a physical stat
 const FLEX_PRICE := 1  # base-stat points an inverted page takes for a flex tree, for good (buy_flex())
 const FLEX_FLOOR := 6  # no inverted page takes a base stat below this (buy_missing())
@@ -2410,6 +2415,8 @@ func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 	taking_hit.emit(self, blow)  # its battle lets its passives have their say (Molothrus passes some on)
 	taken = blow.damage
 	damage(taken)
+	if taken > 0:
+		animate(&"hit")
 	if by and by != self and taken > 0:
 		by.wrongs[faction] = by.wrongs.get(faction, 0) + 1
 	return taken
@@ -4622,11 +4629,66 @@ func set_alias(adjective: String, noun: String) -> void:
 
 
 func _show_look() -> void:
-	if look:
-		var frames := SpriteFrames.new()
+	if not sprite.animation_finished.is_connected(animate):
+		sprite.animation_finished.connect(animate)  # a one-shot (a blow, a strike) over: back to waiting
+	if not look:
+		return
+	var made := look.resource_path.get_basename() + ".tres"  # its poses, made into frames by Util/anim.py
+	var frames: SpriteFrames = load(made) if look.resource_path and ResourceLoader.exists(made) else null
+	if not frames:
+		frames = SpriteFrames.new()
 		frames.add_frame(&"default", look)
-		sprite.sprite_frames = frames
-		sprite.play(&"default")
+	sprite.sprite_frames = frames
+	if frames.resource_path and not sprite.animation_looped.is_connected(_pace):
+		sprite.animation_looped.connect(_pace)  # its pace kept up as it fares (a lone base image: no need)
+	animate()
+
+
+# Plays the animation for `state` (ANIMS) at the pace its moods set: a one-shot (attacking, hit,
+# investigating) runs once, then it waits again. Returns the animation it chose.
+func animate(state := &"waiting") -> StringName:
+	if not sprite:
+		return &""  # not in a scene yet (a unit built in code)
+	var frames := sprite.sprite_frames
+	var anim: StringName = ANIMS.get(state, &"waiting")
+	for x: StringName in [anim, &"waiting", &"default"]:
+		if frames and frames.has_animation(x):
+			anim = x
+			break
+	_pace()
+	if anim != sprite.animation or not sprite.is_playing() or not frames.get_animation_loop(anim):
+		sprite.play(anim)
+	return anim
+
+
+func _pace() -> void:
+	sprite.speed_scale = anim_pace()
+
+
+# Its animations' speed: ANIM_PACE of each of its moods, multiplied.
+func anim_pace() -> float:
+	var x := 1.0
+	for m in moods():
+		x *= ANIM_PACE.get(m, 1.0)
+	return x
+
+
+# How it fares, as its animations show it: wounded (under half its HP, or a status bearing wound),
+# slowed or hasted (a status lowering or raising a PACED stat), frightened (a fear status). A rule may ask too.
+func moods() -> Array[StringName]:
+	var out: Array[StringName] = []
+	if hp * 2 < max_hp or afflicted(&"wound"):
+		out.append(&"wounded")
+	for e: Effect in timed:
+		var m := &""
+		if e.stat == "fear":
+			m = &"frightened"
+		elif e.stat in PACED and e.op != "scale":
+			var up := e.amount > 0.0 if e.op == "add" else e.amount > 1.0 if e.op == "mul" else e.amount < 1.0
+			m = &"hasted" if up else &"slowed"
+		if m and m not in out:
+			out.append(m)
+	return out
 
 
 # Bars sit just above the sprite's head as one block: HP on top and, peeking out 2px under it, each
