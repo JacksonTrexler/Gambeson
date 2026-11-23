@@ -45,6 +45,7 @@ var vibe := ""
 var traits: Array[String] = []  # words for it in place of details, from a low-wisdom ally ("Strong")
 var looks := ""  # what it looks like, where its class can't be made out ("Injured Soldier"; Perception.looks()) - all an ally of wis mod -4 or less makes out
 var properties: Array[Property] = []  # what it's made of (Bio.properties: Aquatic), with its identity (1)
+var also: Array[StringName] = []  # the further tempers its bio adds (Bio.also), read with temper
 var temper := &""  # how it behaves (Unit.temper()), read by an insightful observer at 2
 var stance := &""  # the side it presents as to this observer (Unit.stance, lowercase): friendly, enemy, aggressive, passive, traitor
 var insight := ""  # how true its presentation is, read by an insightful observer (Perception.insight())

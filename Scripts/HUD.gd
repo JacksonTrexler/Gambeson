@@ -3107,6 +3107,9 @@ func _info(u: Unit) -> Dictionary:
 			chips.append(["Out of range", MUTED])
 	if r.vibe:
 		chips.append([r.vibe, MUTED])
+	for t in r.also:  # the tempers beside its lead, read as far as its temper is
+		if t != r.temper:
+			chips.append([String(t).capitalize(), MUTED])
 	for p in r.properties:
 		chips.append([p.name, MUTED])
 	if r.hp != null:
