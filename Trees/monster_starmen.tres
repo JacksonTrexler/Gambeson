@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/floaty.tres" id="s_floaty"]
+[ext_resource type="Resource" path="res://Skills/hop.tres" id="s_hop"]
+
+[sub_resource type="Resource" id="Branch_floaty"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_floaty")
+
+[sub_resource type="Resource" id="Branch_hop"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_hop")
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Starmen"
+tag = &"martial"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_floaty"), SubResource("Branch_hop")])

@@ -201,7 +201,7 @@ func entry_state(t: SkillTab) -> StringName:
 
 
 func _draw() -> void:
-	if not unit or _boxes.is_empty():
+	if not unit or (_boxes.is_empty() and _entries.is_empty()):  # a tab of choices alone (a Monster's: its Path) still draws its boxes
 		return
 	var font := get_theme_font(&"font")
 	for t in _top + 1:  # faint tier rows, numbered up the left

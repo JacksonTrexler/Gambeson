@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/alluring.tres" id="s_alluring"]
+[ext_resource type="Resource" path="res://Skills/seaborn.tres" id="s_seaborn"]
+[ext_resource type="Resource" path="res://Skills/opportunist.tres" id="s_opportunist"]
+
+[sub_resource type="Resource" id="Branch_alluring"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_alluring")
+
+[sub_resource type="Resource" id="Branch_seaborn"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_seaborn")
+
+[sub_resource type="Resource" id="Branch_opportunist"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_opportunist")
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Sirens"
+tag = &"martial"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_alluring"), SubResource("Branch_seaborn"), SubResource("Branch_opportunist")])

@@ -32,7 +32,8 @@ const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "
 		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
 		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f"), "Ranger": Color("#8fae6a"), "Druid": Color("#6fae8c"),
 		"Sorcerer": Color("#9fc4f0"),
-		"Jester": Color("#d8a03c")}
+		"Jester": Color("#d8a03c"),
+		"Monster": Color("#7a9a6a")}
 
 
 # Its tier 0 root's placeholder icon in a choice's box.
