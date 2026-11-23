@@ -131,6 +131,8 @@ func test_hunts() -> void:
 	stage(lancin, {v(1): Vector2i(6, 4)})
 	var s := spawn(starman, starmen, Vector2i(5, 4))
 	var p := spawn(load("res://Scenes/astral_princess.tscn"), stellar, Vector2i(5, 7))
+	v(1).energy = 0
+	p.energy = 0  # neither worth draining (Power Hungry): the grudges alone
 	var reads := AI.reads_from({v(1): b.read(s, v(1)), p: b.read(s, p)})
 	ok(AI._best_target(s, reads) == p, "Vindictive: the Princess (astral) first, though a villager is nearer")
 	v(1).wrongs[starmen] = 3  # the villager has struck it thrice: it is otherwise aggressed
