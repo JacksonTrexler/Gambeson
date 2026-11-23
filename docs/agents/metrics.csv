@@ -109,3 +109,5 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w21-focus,sonnet,high,102498,30,434048,landed
 2026-11-23,w21-foresight,opus,medium,128704,44,624514,landed
 2026-11-23,w21-docs1,sonnet,medium,101508,18,133204,landed
+2026-11-23,w21-autospec,opus,medium,164509,83,741322,landed
+2026-11-23,w21-minsize,sonnet,low,37899,8,112664,landed
