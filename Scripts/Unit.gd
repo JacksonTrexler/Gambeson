@@ -3900,12 +3900,14 @@ func slot_weight(group: Array) -> int:
 # postponing over, what it held lands (release()).
 func tick() -> void:
 	var holding := postponing()
+	var changed := false  # something ended or fell a rank: the bar and the stats are refitted (below), else they stand as they were
 	for s in disabled.keys():
 		disabled[s] -= 1
 		if disabled[s] <= 0:
 			disabled.erase(s)
 			disabled_by.erase(s)
 			cursed.erase(s)
+			changed = true
 	var oc: Applied = timed.get(OVERCHARGE)
 	if oc and oc.turns <= oc.total:  # Overcharge: what's left / turns left, rounded up - none on a turn that doesn't count
 		overcharge -= ceili(overcharge / float(maxi(oc.turns, 1)))
@@ -3916,6 +3918,7 @@ func tick() -> void:
 		a.turns -= 1
 		if a.turns > 0:
 			continue
+		changed = true
 		if a.fades and a.rank > 1:
 			a.rank -= 1
 			a.turns = 1
@@ -3923,9 +3926,11 @@ func tick() -> void:
 			timed.erase(e)
 	if OVERCHARGE not in timed:
 		overcharge = 0
+	changed = changed or not postponed.is_empty()
 	release()
-	_arrange()  # a level effect may have ended
-	refit()  # or Asphyxia fallen a stack
+	if changed:
+		_arrange()  # a level effect may have ended
+		refit()  # or Asphyxia fallen a stack
 
 
 # On the field: standing, or Downed (down but not out, at 0 HP or below).

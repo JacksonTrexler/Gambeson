@@ -2307,12 +2307,12 @@ func suspicious(o: Unit, known: Dictionary[Unit, Read] = {}, centre: Variant = n
 		var r := read(o, c)
 		if c != o.cell and (r.hint != "" or (o.suspects(c) > 0 and r.net < 0)):
 			out.append(c)
-	var recon_ok := o.faction != null and o.scrambled() == null and o.stat(&"recon") >= 0.0  # what _plain() reasons from
+	var plain := o.faction != null and o.scrambled() == null  # else every unit is read: an ally's tags may be scrambled (Haluca)
 	for t: Unit in units.values():
 		if t != o and t.is_alive() and t.cell not in out:
 			if centre != null and Command.tiles(centre, t.cell) > reach:
 				continue
-			if t not in known and recon_ok:
+			if plain and t not in known:
 				match _plain(o, t):
 					0, 2:
 						continue  # beyond its sight, or in plain view: nothing odd about it
@@ -2327,10 +2327,12 @@ func suspicious(o: Unit, known: Dictionary[Unit, Read] = {}, centre: Variant = n
 	return out
 
 
-# What o makes of t without a read, where nothing hides t from it (no zone over its tile, no concealment effect on it)
-# and o's recon is not below 0: in_range() 0 nothing at all, 1 a vague shape (a hint, Perception._range()), 2 plain; -1
-# where it can't tell without reading. For the many reads a walk's end asks (suspicious()): each costs far more than this.
+# What o makes of t without reading it, where nothing hides t from it (no zone over its tile, no concealment effect
+# on it) and o's recon is enough to make it out where it can: in_range() 0 nothing at all, 1 a vague shape (a hint,
+# Perception._range()), 2 plain sight; -1 where it can't tell without a read. A walk's end asks for a read of every
+# unit (suspicious(), _sightings()), the AI for one of everyone: those far off and plain cost a fraction of the work.
 const _KINDS: Array[StringName] = [&"", &"dark", &"light", &"sound", &"fog"]  # Perception.KINDS' keys
+const _SHADE: Array[StringName] = [&"sound", &"sight"]  # what Perception.trickery() adds to its plain one
 
 
 func _plain(o: Unit, t: Unit) -> int:
@@ -2338,12 +2340,28 @@ func _plain(o: Unit, t: Unit) -> int:
 		return 2
 	if zones.any(func(z: Zone): return t.cell in z.levels) or t.stat(&"concealment", _KINDS, o) > 0:
 		return -1
-	if Faction.friends(o.faction, t.faction):
+	var friends := Faction.friends(o.faction, t.faction)
+	if friends:
 		return 2
 	var seen := in_range(o, t)
-	if seen == 0 and not _seers.is_empty() and pinged(o.faction).get(t) == t.cell:
+	if seen == 0:
+		return -1 if not _seers.is_empty() and pinged(o.faction).get(t) == t.cell else 0
+	var recon: float = o.stat(&"recon", Perception.sizing(t)) + (studied[o.faction].get(t, 0) if o.faction in studied else 0) + (noticed[o].get(t, 0) if o in noticed else 0)  # as _read() takes it
+	if recon < (0.0 if seen == 2 else -2.0):
 		return -1
+	if seen == 1 and (o.assumed.has(t) or o.mod(&"wisdom") <= -3 or t.stat(&"trickery", _SHADE, o) > 0 or t.stat(&"trickery", [] as Array[StringName], o) > 0 or t.clout(o.faction) > 0):
+		return -1  # a lie or a guess the real read would take into account (Perception.unit())
 	return seen
+
+
+# o's read of t where _plain() says it is far off (0 or 1), else null.
+func _afar(o: Unit, t: Unit) -> Read:
+	match _plain(o, t):
+		0:
+			return Perception.nothing()
+		1:
+			return Perception.vague(o, t)
+	return null
 
 
 # The tiles that could look suspicious to o, for suspicious() to read: only concealment levels give a
@@ -3316,9 +3334,11 @@ func _linked_read(o: Unit, target: Variant) -> Read:
 # What o makes out, with what its synergized partners make out filling the gaps: the clearest of them.
 func read(o: Unit, target: Variant) -> Read:
 	Unit.begin_read()  # its effects held still for the read's length (Unit._effects())
-	if target is Unit and unseen(o, target):  # beyond its side's sight: nothing to make out, so none of the work (Perception.unit())
-		Unit.end_read()
-		return Perception.nothing()
+	if target is Unit and target != o and sight and not Faction.friends(o.faction, target.faction):
+		var far := _afar(o, target)  # too far to make out, with nothing hiding it: what that reads as, without the work of Perception.unit()
+		if far:
+			Unit.end_read()
+			return far
 	var r := _linked_read(o, target)
 	if not (target is Unit and target == o):
 		for p in synergized(o):
@@ -4928,15 +4948,6 @@ func in_range(o: Unit, t: Unit) -> int:
 		if d <= reach + 0.0001:
 			best = 1
 	return best
-
-
-# t is somewhere o's side can't perceive at all (in_range() 0, Perception._range()): o makes out nothing of it, and
-# it stays that way whatever o's recon: read() hands back Perception.nothing() without the rest of the work.
-# Not a foe's (an ally is always known), and not one a Clairvoyance ping places where it still stands (pinged()).
-func unseen(o: Unit, t: Unit) -> bool:
-	if not sight or o == t or Faction.friends(o.faction, t.faction) or in_range(o, t) > 0:
-		return false
-	return not (not _seers.is_empty() and pinged(o.faction).get(t) == t.cell)
 
 
 # o's side's eyes for in_range(): [[cell as Vector2, perception range] of each member, whether o is among them].

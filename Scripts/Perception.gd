@@ -78,6 +78,19 @@ static func nothing() -> Read:
 	return r
 
 
+# What o makes of a unit it can only just place, in sight but past half its side's range, nothing hiding it
+# (Battle._plain()): unit() as it ends for net -2, without the concealment, trickery and persona work.
+static func vague(o: Unit, t: Unit) -> Read:
+	var r := Read.new()
+	r.net = -2
+	r.concealed = true  # sight too far to tell how it looks
+	r.doubted = o.suspects(t) + o.suspects(t.cell) > 0
+	r.cell = t.cell
+	r.hint = _kind(&"").hints[0]
+	r.aura = t.aura
+	return r
+
+
 # What `o` knows about unit `t`. Persona advertises; with enough trickery it lies, and to other
 # factions whatever it doesn't cover gets twisted (more of it, more consistently, the higher the
 # trickery). Without trickery it still fools allies that aren't insightful (fronts_to()), and allies
