@@ -85,3 +85,10 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w14-detective,sonnet,high,84929,40,678738,landed
 2026-11-23,w14-ambush,sonnet,medium,94995,37,499641,landed
 2026-11-23,w14-minor,sonnet,medium,58284,21,170868,landed
+2026-11-23,w15-tilesus,sonnet,high,81041,27,271306,landed
+2026-11-23,w15-museum,sonnet,medium,39071,8,50925,landed
+2026-11-23,w15-stare2,sonnet,high,128278,58,1362203,landed
+2026-11-23,w16-nexus,sonnet,high,161922,28,1042358,landed
+2026-11-23,w16-testaudit,sonnet,high,106770,16,1029760,landed
+2026-11-23,w16-ambush,opus,medium,135123,64,2298438,landed
+2026-11-23,w16-ire,sonnet,medium,60458,19,554839,landed
