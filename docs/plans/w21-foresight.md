@@ -16,3 +16,16 @@ Files: Scripts/AI.gd (own section at the end: "Foresight"), Tests/ai_tactics_tes
 - Answering: want() + PLEA 2.0 for a pleading ally; + ORDER 2.0 more when the pleader is its skilled leader (Command.skilled) whose orders reach it (Command.hears) - the "command healers". A plea also lets a healer that reads the ally unhurt (no HP read) heal it. Non-HP pleas answered by `_answer()` (any non-hostile, non-self_only skill restoring that pool) after _heal in _full and _drill: dormant today.
 - Foresight runs on a self-directed full turn only (posture ""), after the switch check, before the heal phase. Drill/herd/prowl turns skip it (calm/far: not in danger by definition).
 - No HUD sign (sibling branch owns HUD; a "Plea" sign needs a ?? name): log lines only ("X foresees ... and heals itself", "X asks for HP").
+
+## As built (0172fc3)
+- AI.gd "Foresight" section (end of file): horizon(), margin(), _foresee(), _onslaught(), _error(), survives(), _uses(), _cheapest(), _own_restore(), _aid(), _asked(), _answer(). Hooks: _full calls _foresee after _switch (posture "" only) and _answer after _heal; _drill calls _answer after _heal; want() adds _asked() (and an asked ally counts even read unhurt). _threat split: _blow() unclamped, _threat = min(_blow, hp) (same values).
+- Test: ai_tactics_test.test_foresight (14 checks): next blow fells it; asks with no heal of its own; healer +PLEA; skilled leader +PLEA+ORDER, unskilled +PLEA; plea lapses after rounds+2; heals itself with its own Heal; wis 10 nothing; no foe in reach -> plea cleared; no energizer -> no energy ask; Energizes ahead at 0 Energy with Energy Missile; margin falls with int (6/10/14/18), guessed widens it, error within margin and deterministic.
+- Mutations (all caught): horizon 0; ORDER 0; margin int sign; want ignores plea; no self heal; no self energize; plea never lapses.
+- Timing, busy_fight 15 30 lead, 2 runs each, target ms (M3 x 4) unit turn mean/p95/max: before 15v15 73/196/302, 74/192/296; 30v30 98/260/398, 100/261/386. After 15v15 73/194/288, 74/196/292; 30v30 98/259/416, 99/258/411. No measurable cost; 30v30 p95 OVER 200 is pre-existing. OUTCOME ok. 15v15 turns 313 -> 318 (wise class units now act on foresight).
+- ai_sim default (all scenarios): identical before/after (villagers wis < 12: no foresight).
+- Suite 11528 checks, 0 failed (1077 tests); start 11514 / 1076. skill.py check ok; launch log clean (8 resources only).
+
+## Undone / flags
+- No skill restores an ally's Energy (Energize self_only, Energy Transfer hostile): _answer() is dormant; an energy plea is only ever raised if one appears.
+- Energy for a skill AP-short too still counts as "enabled" by a restore (AP not modelled). Foes' cc/stopped state and allies' interposing not modelled. Regen ignored (busy units recover none).
+- No HUD sign for a plea (sibling owns HUD); log lines only. No sim scenario of its own (busy_fight exercises it with class units).
