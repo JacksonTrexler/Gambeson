@@ -9,6 +9,7 @@ extends Resource
 @export var radial := false  # drawn as a wheel (the Adventurer's own: SkillWheel) rather than growing from the bottom (SkillGrid)
 @export var category := &""  # a general tree's (kind General): martial, specialist or magical (the Caster tree); empty: the base General tree (Unit.general_trees())
 @export var grant := &""  # a general tree only some units get (kind General): the key a class lists in Role.general, or a unit is granted at run time (Unit.grant_tree(): an adventure's reward) - Student, Journeyman. Empty: by its category. Its category still sets what its tiers need
+@export var flex_kind := &""  # a flex tree's type, if not its category: martial, specialist or magical (caster) - what an inverted page takes for it (Unit.FLEX_PAY; Journeyman: specialist)
 @export var needs: Dictionary[StringName, int] = {}  # a flex tree's prereqs: base-stat floors its picker must meet to take it up (Unit.flex_needs(): slackened for a generalist, none for a jack; Scout: dexterity 10, wisdom 11)
 @export var color := Color(0, 0, 0, 0)  # its colour, if set; else by what it is (tone())
 @export var center: Skill
@@ -25,12 +26,13 @@ extends Resource
 const GENERAL := {&"": Color("#7a7d85"), &"martial": Color("#d27a70"), &"specialist": Color("#82b86e"), &"magical": Color("#a98bdb")}
 const GODS := {&"ramut": Color("#c08a5a"), &"eros": Color("#ee95c0"), &"sol": Color("#f08a55"), &"urlo": Color("#6fd8e4"),
 		&"luun": Color("#8f86d6"), &"drael": Color("#68aee8"), &"vetruvis": Color("#b8935e")}
-const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a")}
-const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": Color("#a6c46a"), "Biome": Color("#7fb87a"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a")}
+const PATRONS := {"Elmon": Color("#5fc4b0"), "Hogel": Color("#d6d27a"), "Jovia": Color("#e08fc4")}
+const KINDS := {"Prowess": Color("#d9935e"), "Path": Color("#9fc7a3"), "World": Color("#a6c46a"), "Biome": Color("#7fb87a"), "Calling": Color("#7cc4d8"), "Species": Color("#b59a78"), "Knowledge": Color("#c9b98a"), "Inverted": Color("#b0803a")}
 const CLASSES := {"Adventurer": Color("#c9a66b"), "Fighter": Color("#a7b1bd"), "Paladin": Color("#e3c873"), "Rogue": Color("#7fa6a0"),
 		"Bard": Color("#d98bb0"), "Wizard": Color("#6f9be0"), "Warlock": Color("#9a7bd1"), "Cleric": Color("#e8dcb0"),
 		"Berserker": Color("#c25a3c"), "Mage": Color("#d8655f"), "Ranger": Color("#8fae6a"), "Druid": Color("#6fae8c"),
-		"Sorcerer": Color("#9fc4f0")}
+		"Sorcerer": Color("#9fc4f0"),
+		"Jester": Color("#d8a03c")}
 
 
 # Its tier 0 root's placeholder icon in a choice's box.
@@ -51,6 +53,11 @@ func offers(s: Skill) -> bool:
 # class opens it (Role.general), or who has learned what opens it (Martialist, Thaumaturgist).
 func general() -> bool:
 	return kind == "General"
+
+
+# A flex tree's type (flex_kind, else its category): what an inverted page takes for it (Unit.buy_flex()).
+func flex_type() -> StringName:
+	return flex_kind if flex_kind else category
 
 
 # What opens it: its grant key, else its category (&"": the base General tree, everyone's).

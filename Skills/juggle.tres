@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+dice = Vector2i(1, 4)
+stat = &"dexterity"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Juggle"
+ai = true
+tags = Array[StringName]([&"physical", &"pierce", &"dex", &"specialist"])
+radius = 4.0
+roll_per_rank = 1
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+costs = "low ap"

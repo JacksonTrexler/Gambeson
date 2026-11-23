@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/fools_luck.tres" id="s_fools_luck"]
+[ext_resource type="Resource" path="res://Skills/pratfall.tres" id="s_pratfall"]
+
+[sub_resource type="Resource" id="Branch_fools_luck"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_fools_luck")
+
+[sub_resource type="Resource" id="Branch_pratfall"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_pratfall")
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Inverted"
+tag = &"specialist"
+inverted = true
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_fools_luck"), SubResource("Branch_pratfall")])

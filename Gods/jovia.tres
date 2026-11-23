@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="God" format=3]
+
+[ext_resource type="Script" path="res://Scripts/God.gd" id="1_god"]
+[ext_resource type="Resource" path="res://Trees/inverted.tres" id="2_inverted"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="3_skillroot"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="4_skilltab"]
+
+[sub_resource type="Resource" id="Tab_own"]
+script = ExtResource("4_skilltab")
+name = "Jovia"
+kind = "Patron"
+devotes = true
+roots = Array[ExtResource("3_skillroot")]([ExtResource("2_inverted")])
+
+[resource]
+script = ExtResource("1_god")
+id = &"jovia"
+patron = true
+own = SubResource("Tab_own")
+pool = Array[ExtResource("4_skilltab")]([])

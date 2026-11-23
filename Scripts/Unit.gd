@@ -31,6 +31,10 @@ const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"] 
 const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
 const FLEX := "Flex Tree"  # the choice of flex trees levelling offers (flex_choice()): its box's heading, and its picks' key in picked
+const INVERTED := "Inverted"  # the choice of flex trees an inverted page sells for base stats (invert_choice(), buy_flex())
+const FLEX_PAY := {&"martial": MENTAL, &"specialist": [&"strength", &"intelligence"], &"magical": [&"strength", &"dexterity", &"constitution"]}  # what an inverted page takes for a flex tree, by its type (SkillTab.flex_type()): martial a mental stat, specialist str or int, caster a physical stat
+const FLEX_PRICE := 1  # base-stat points an inverted page takes for a flex tree, for good (buy_flex())
+const FLEX_FLOOR := 6  # no inverted page takes a base stat below this (buy_missing())
 const FLEX_SLACK := 2  # a generalist takes up a flex tree with each base stat this much below its floor (flex_needs())
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const PLATE := "plate_"  # a slot a skill gives it beyond armor's own is named for the skill: plate_power_armor (u.get(slot) and u.set(slot, item) reach it, so the sheet and the outfit treat it as any slot)
@@ -189,6 +193,7 @@ var purchases: Array = []  # [skill, points] for each unlock and raise, in order
 var trees_granted: Array[StringName] = []  # general trees opened to it beyond its class's (grant_tree(): an adventure's reward)
 var flex_extra := 0  # flex trees it may take up beyond what its levels offer (flex_slots()): a page buying them with base stats, an adventure
 var _flex: TreeChoice  # flex_choice(), kept so the skills screen and pick() see the same choice
+var _inv: TreeChoice  # invert_choice(), likewise
 var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
@@ -1805,6 +1810,8 @@ func pick_missing(c: TreeChoice, t: SkillTab) -> String:
 		return "Picked"
 	if c.by and rank(c.by) == 0:
 		return "Learn %s first" % c.by.name
+	if c == _inv:
+		return buy_missing(t)
 	if c == _flex:
 		var why := flex_missing(t)
 		if why == "" and maxi(used, mine.size()) >= pick_cap(c) and flex_next() > 0:
@@ -3125,6 +3132,78 @@ func flex_missing(t: SkillTab) -> String:
 		if roundi(get(k)) < need[k]:
 			return "Needs %s %d" % [String(k).capitalize(), need[k]]
 	return ""
+
+
+# --- Inverted pages (a Jester's, Jovia's: SkillRoot.inverted)
+# A tab holding an inverted root sells flex trees for base stats instead of waiting on levels: any flex
+# tree it hasn't (not only its class's), its prereqs still asked unless it's a jack; FLEX_PRICE points of a
+# stat its type takes (FLEX_PAY), for good, never below FLEX_FLOOR. Bought, it opens as a levelled one does.
+
+# Whether a tab it has open holds an inverted page.
+func inverted() -> bool:
+	return class_trees().any(func(t: SkillTab): return t.roots.any(func(r: SkillRoot): return r and r.inverted))
+
+
+# The flex trees an inverted page sells it: every general tree with a grant key its class hasn't natively.
+func invert_options() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	for g in GENERAL_TREES:
+		if g.grant and not (role and g.grant in role.general) and g.grant not in trees_granted:
+			out.append(g)
+	return out
+
+
+# The choice an inverted page's box draws (SkillGrid): its trees, each bought on its own (buy_flex()).
+func invert_choice() -> TreeChoice:
+	if not _inv:
+		_inv = TreeChoice.new()
+		_inv.name = INVERTED
+	_inv.tabs = invert_options()
+	_inv.picks = _inv.tabs.size()
+	return _inv
+
+
+# The base stats that could pay for flex tree t (FLEX_PAY by its type), whether or not they can now.
+func flex_payers(t: SkillTab) -> Array[StringName]:
+	var out: Array[StringName] = []
+	out.assign(FLEX_PAY.get(t.flex_type(), []))
+	return out
+
+
+# What stands between it and buying flex tree t with `stat` ("" for any that pays): "" if nothing.
+func buy_missing(t: SkillTab, stat := &"") -> String:
+	if _flex_key(t) in picked or (role and t.grant in role.general) or t.grant in trees_granted:
+		return "Picked"
+	if not inverted():
+		return "Needs an inverted page"
+	if t not in invert_options():
+		return "Not on offer"
+	var why := flex_missing(t)
+	if why != "":
+		return why
+	var payers := flex_payers(t)
+	if payers.is_empty():
+		return "Nothing pays for it"
+	if stat != &"" and stat not in payers:
+		return "%s doesn't pay for a %s tree" % [String(stat).capitalize(), "caster" if t.flex_type() == &"magical" else String(t.flex_type())]
+	for k in ([stat] if stat != &"" else payers):
+		if roundi(get(k)) - FLEX_PRICE >= FLEX_FLOOR:
+			return ""
+	return "%s can't go below %d" % [String(stat).capitalize() if stat != &"" else "/".join(payers.map(func(k: StringName): return String(k).left(3).capitalize())), FLEX_FLOOR]
+
+
+# Buys flex tree t with FLEX_PRICE points of base stat `stat`, for good: its tab opens as a levelled
+# flex tree's does (picked "Flex Tree/<t>", flex_extra one more, both saved). False if it can't (buy_missing()).
+func buy_flex(t: SkillTab, stat: StringName) -> bool:
+	if stat == &"" or buy_missing(t, stat) != "":
+		return false
+	set(stat, roundi(get(stat)) - FLEX_PRICE)
+	flex_extra += 1
+	picked.append(_flex_key(t))
+	refit()
+	for r in t.reserves:
+		set_store(r, 0 if r.empty else pools()[r])
+	return true
 
 
 func _flex_key(g: SkillTab) -> String:

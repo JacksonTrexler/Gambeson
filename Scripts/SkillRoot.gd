@@ -6,6 +6,7 @@ extends Resource
 @export var name := ""
 @export var tag := &""  # its category: magical, martial or specialist - its colour, and the typed slots its skills fit
 @export var branches: Array[Branch] = []
+@export var inverted := false  # an inverted page: a tab holding it sells flex trees for base stats (Unit.buy_flex(): a Jester's Inverted, Jovia's)
 @export var includes: Array[SkillRoot] = []  # trees composed into this one, by reference (the Caster tree: Student): their branches, tiers and prerequisites show here as if its own, so a skill put on them shows here with no more wiring (Student is on the Specialist tree too)
 
 

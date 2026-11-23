@@ -119,6 +119,8 @@ func _layout() -> void:
 	var choices: Array = unit.role.choices.filter(func(c: TreeChoice): return c != null) if unit.role and tab.kind == "" and not tab.radial else []
 	if tab.general() and tab.key() == &"" and not unit.flex_options().is_empty():
 		choices = [unit.flex_choice()]  # the base General tab holds the flex trees levelling offers
+	if tab.roots.any(func(r: SkillRoot): return r and r.inverted) and not unit.invert_options().is_empty():
+		choices = choices + [unit.invert_choice()]  # an inverted page sells them for base stats (Unit.buy_flex())
 	_top = 0
 	for g in groups:
 		for s: Skill in g[1]:
@@ -153,6 +155,8 @@ func _layout() -> void:
 		var row := _choice_row(c)
 		var cap := unit.pick_cap(c)
 		var heading := "%s · %s" % [c.name.to_upper(), "LEARN " + c.by.name.to_upper() if c.by and unit.rank(c.by) == 0 else ("AT LEVEL %d" % unit.flex_next() if cap == 0 and c.name == Unit.FLEX and unit.flex_next() > 0 else "PICK UP TO %d" % cap)]
+		if c.name == Unit.INVERTED:
+			heading = "%s · PAY %d BASE STAT" % [c.name.to_upper(), Unit.FLEX_PRICE]
 		var start := x + 3.0
 		var offered: Array = unit.offered(c)  # a god slot: what its god offers (a Paladin sees only the Prowess its god suits)
 		var burn := unit.burnable(c)

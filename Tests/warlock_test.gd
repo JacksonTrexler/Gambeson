@@ -164,6 +164,6 @@ func test_one_patron() -> void:
 	ok(u.devotion() == null and tabs.all(func(t: SkillTab): return u.pick_missing(patron, t) == ""), "undevoted: either patron can be picked")
 	ok(u.pick(patron, tabs[0]) and u.devotion() == tabs[0] and u.unlock(learnt[0]), "Elmon picked: devoted to Elmon, his gift open")
 	ok(u.pick_missing(patron, tabs[1]) == "Took up Elmon" and u.missing(learnt[1]) == "Pick Hogel first" and not u.unlock(learnt[1]), "Hogel stays shut")
-	ok(warlock.choices[0].all().map(func(t: SkillTab): return t.name) == ["Elmon", "Hogel"] and warlock.choices[0].all().all(func(t: SkillTab): return t.devotes)
+	ok(warlock.choices[0].all().map(func(t: SkillTab): return t.name) == ["Elmon", "Hogel", "Jovia"] and warlock.choices[0].all().all(func(t: SkillTab): return t.devotes)
 			and warlock.choices[0].picks == 1 and warlock.choices[0].gods, "the Warlock picks one patron, who devotes it: each patron's own tree")
 	u.free()

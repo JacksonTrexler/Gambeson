@@ -8,6 +8,7 @@ extends VBoxContainer
 # a square, lit when it can be bought. A term clicked opens the Guide on it.
 
 signal acted  # its button pressed (SkillTree._act())
+signal paid(stat: StringName)  # a stat's button pressed on an inverted page's tree: pay it for the tree (SkillTree._pay())
 
 var unit: Unit
 var title_label: Label
@@ -100,6 +101,18 @@ func show_tree(u: Unit, c: TreeChoice, t: SkillTab, can_spend: bool) -> void:
 	act.set_offer("Pick", 0)
 	act.disabled = why != ""
 	act.tooltip_text = why if why else "Pick %s: its tab opens" % t.title()
+	if c.name == Unit.INVERTED:  # an inverted page: a button per stat that could pay, the choice of which the player's
+		act.visible = false
+		state_label.text = "T0 · " + (u.buy_missing(t) if u.buy_missing(t) else "Pay %d base stat for good" % Unit.FLEX_PRICE)
+		for k in (u.flex_payers(t) if u.buy_missing(t) != "Picked" else []):
+			var b := Button.new()
+			var v := roundi(u.get(k))
+			b.text = "%s %d>%d" % [String(k).left(3).capitalize(), v, v - Unit.FLEX_PRICE]
+			var no := "Only your party's skills can be chosen" if not can_spend else u.buy_missing(t, k)
+			b.disabled = no != ""
+			b.tooltip_text = no if no else "Pay %d %s, for good: the %s tab opens" % [Unit.FLEX_PRICE, String(k).capitalize(), t.title()]
+			b.pressed.connect(paid.emit.bind(k))
+			spec.add_child(b)
 
 
 # Where s stands for u, in a line: its tier, then learned (or at its highest rank), or what it needs.
