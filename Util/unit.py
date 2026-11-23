@@ -5,7 +5,7 @@ placed in a battle.
   python3 Util/unit.py new blinthe --name Blinthe --human --role bard --level 16 --faction blinthe \\
       --behaviour timid --appearance Bard --adjectives Charming,Rotten --properties rotting \\
       --clout lancin=2,nemes=1 --skill bandwagon:3 --skill molothrus:2 --stats "cha=18,wis=12" \\
-      [--trait alluring:4] [--bio "A line or two."] [--tags monster] [--vibe "Smouldering"] [--aura -1] [--tends loyal] \\
+      [--trait alluring:4] [--bio "A line or two."] [--prefers fire,passive] [--spec training] [--tags monster] [--vibe "Smouldering"] [--aura -1] [--tends loyal] \\
       [--strategy weakest] [--intention "Purge evil"] [--hp 30] [--energy 12] [--look Doebour | --color "#b07acc"] \\
       [--into museum --at 5,3 [--side nemes]] [--dry-run]
   python3 Util/unit.py trait siren alluring[:4] [--off]   # a unit's innate trait: always on, no slot (declared, never inferred)
@@ -24,6 +24,7 @@ from tres import Doc, ai_name, die, exists, files, import_project, literal, name
 import icon
 
 UNIT, BIO, SLOT, FACTION = "res://Scenes/unit.tscn", "res://Scripts/Bio.gd", "res://Scripts/Slot.gd", "res://Scripts/Faction.gd"
+SPECS = ("exploratory", "training", "remedial")  # Bio.SPECS: how it spends skill points (Unit.auto_spec())
 BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic", "vindictive", "flirty", "flippant", "power_hungry")
 SHORT = {"str": "strength", "dex": "dexterity", "con": "constitution", "int": "intelligence", "wis": "wisdom", "cha": "charisma"}
 
@@ -66,6 +67,11 @@ def bio(d, a):
     clout = pairs(a.clout, "--clout")
     if clout:
         props.append("clout = Dictionary[%s, int]({%s})" % (d.res("Script", FACTION), ", ".join("%s: %d" % (faction_ref(d, f), n) for f, n in clout)))
+    if a.prefers:
+        props.append('prefers = Array[StringName]([%s])' % ", ".join('&"%s"' % x.strip() for x in a.prefers.split(",")))
+    if a.spec:
+        a.spec in SPECS or die("--spec: one of %s" % ", ".join(SPECS))
+        props.append('spec = &"%s"' % a.spec)
     if a.bio:
         props.append('text = "%s"' % a.bio.replace('"', '\\"'))
     return d.sub("Bio_%s" % a.id, BIO, props) if props else None
@@ -350,11 +356,15 @@ def check(_a=None):
         for m in re.finditer(r'^also = Array\[StringName\]\(\[(.*)\]\)', text, re.M):
             for x in re.findall(r'&"(\w+)"', m.group(1)):
                 x in BEHAVIOURS or problems.append('%s: also "%s" isn\'t a behaviour the AI knows' % (p, x))
+        for m in re.finditer(r'^spec = &"(\w*)"', text, re.M):
+            m.group(1) in SPECS + ("",) or problems.append('%s: spec "%s" isn\'t one of %s' % (p, m.group(1), ", ".join(SPECS)))
         b = re.search(r'^behaviour = &"(\w+)"', text, re.M)
         if b and "Bio_" in text and b.group(1) not in BEHAVIOURS:
             problems.append('%s: behaviour "%s" isn\'t one the AI knows (%s)' % (p, b.group(1), ", ".join(BEHAVIOURS)))
         problems.extend(_slot_room(p, text))
     known = set(re.findall(r'&"(\w+)"', read("Scripts/Bio.gd")))
+    for x in SPECS:
+        x in known or problems.append("Util/unit.py: spec %s is gone from Bio.SPECS - keep the two together" % x)
     for x in BEHAVIOURS:
         x in known or problems.append("Util/unit.py: behaviour %s is gone from Bio.BEHAVIOURS - keep the two together" % x)
     for p in problems:
@@ -383,6 +393,8 @@ def main():
     n.add_argument("--properties", help="Properties/ stems, comma separated: aquatic,rotting")
     n.add_argument("--clout", help="standing with sides: lancin=2,nemes=1")
     n.add_argument("--bio", help="a line or two about it")
+    n.add_argument("--prefers", help="what it spends skill points toward, comma separated: skill tags, postures, kinds (fire,supportive,passive)")
+    n.add_argument("--spec", help="how it spends them: %s (default: its class tree, cheapest first)" % ", ".join(SPECS))
     n.add_argument("--skill", action="append", default=[], help="a skill it has learned: id[:rank]")
     n.add_argument("--trait", action="append", default=[], help="an innate trait (a skill declared one: skill.py trait): always on, takes no slot; id[:rank]")
     n.add_argument("--stats", help='"str=12,cha=18"')

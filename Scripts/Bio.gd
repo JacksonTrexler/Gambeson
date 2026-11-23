@@ -17,10 +17,15 @@ extends Resource
 #   adjectives  goes by this, with the adjectives before it ("Injured Soldier"), and guesses from them
 #               (Perception.looks(), AI._level()).
 #   properties  what it's made of or full of (Aquatic, Rotting): their effects are always on it.
+#   prefers     what it leans toward as it spends skill points (Unit.auto_spec()): skill tags (fire, healing), postures
+#               (offensive, supportive, defensive) or kinds (active, passive, toggle). Plain words an item may add to.
+#   spec        how it spends them: exploratory (new skills), training (ranks in those it has), remedial (what its
+#               make-up holds least of); empty: its class tree, cheapest first. Outside its class tree only for a preference.
 #   clout       standing with a side: to that side's units its persona goes this much further (allies)
 #               or its trickery does (foes), and doubting it is that much harder (Battle.doubt()).
 
 const BEHAVIOURS: Array[StringName] = [&"timid", &"brave", &"aggressive", &"helpful", &"stoic", &"vindictive", &"flirty", &"flippant", &"power_hungry"]
+const SPECS: Array[StringName] = [&"exploratory", &"training", &"remedial"]  # how it spends skill points (spec; Unit.auto_spec())
 const FLIPPANT := 0.25  # the share of its max HP a flippant unit loses in a fight before it turns aggressive (Unit.temper())
 # A temper in a few words (the Guide's character page). Keyed by BEHAVIOURS; bio_test checks they match.
 const TEMPERS := {&"timid": "waits for a stronger ally, backs off", &"brave": "charges the strongest", &"aggressive": "presses the weakest",
@@ -46,6 +51,8 @@ const ADJECTIVES := {
 @export var clout: Dictionary[Faction, int] = {}  # side -> standing with it
 @export var grudges: Array[String] = []  # whom a vindictive one goes after on sight: a name, class, race, identity tag or look ("Starman", "undead"; names())
 @export var fancies: Array[String] = []  # whom a flirty one feels for (names()); none: anyone of high charisma (AI._fancies())
+@export var prefers: Array[StringName] = []  # tags, postures or kinds of skill it spends its points toward (Unit.auto_spec())
+@export var spec := &""  # one of SPECS; empty: its class tree, cheapest first
 @export_multiline var text := ""  # a line or two about it, shown on its own sheet
 
 

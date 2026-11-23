@@ -584,6 +584,13 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 
+[node name="AutoSpec" type="Button" parent="Root/Skills/Scroll/Column/Foot"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Hold: spend its skill points by its bio's leanings, else on its class tree"
+text = "Spec Automatically"
+
 [node name="LevelUp" type="Button" parent="Root/Skills/Scroll/Column/Foot"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -670,6 +677,13 @@ layout_mode = 2
 focus_mode = 0
 tooltip_text = "Pushing the mouse to the edge of the screen pans the camera (the arrow keys always do)"
 text = "Edge-pan the camera"
+
+[node name="Hard" type="CheckButton" parent="Root/Settings/Column/Options"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Every unit, yours too, spends its skill points itself as it levels, by its bio (else its class tree)"
+text = "Hard"
 
 [node name="GuidePages" type="HBoxContainer" parent="Root/Settings/Column"]
 unique_name_in_owner = true

@@ -15,6 +15,7 @@ extends PanelContainer
 signal unlocked(skill: Skill)
 signal raised(skill: Skill)
 signal leveled  # the debug level-up
+signal auto_specced  # Spec Automatically, held HOLD_MS (Unit.auto_spec())
 
 var unit: Unit
 var picked: Skill  # the tree's pick, shown in the footer
@@ -29,6 +30,10 @@ const DARK := 0.72  # how much darker than its tab's colour the shown tab and it
 @onready var heading: Label = %SkillsTitle
 @onready var points: Label = %SkillPoints
 @onready var level_button: Button = %LevelUp
+@onready var auto_button: Button = %AutoSpec
+
+const HOLD_MS := PersonaPanel.HOLD_MS  # how long Spec Automatically is held: a long press, so a stray click spends nothing
+var _held_at := -1
 @onready var wheel: SkillWheel = %Wheel
 @onready var grid: SkillGrid = %Grid
 @onready var scroll: ScrollContainer = %TreeScroll
@@ -39,6 +44,12 @@ const DARK := 0.72  # how much darker than its tab's colour the shown tab and it
 func _ready() -> void:
 	%SkillsClose.pressed.connect(hide)
 	level_button.pressed.connect(leveled.emit)
+	auto_button.button_down.connect(func() -> void: _held_at = Time.get_ticks_msec())
+	auto_button.button_up.connect(func() -> void:
+		if _held_at >= 0 and Time.get_ticks_msec() - _held_at >= HOLD_MS:
+			auto_specced.emit()
+			fill(_title, can_spend)
+		_held_at = -1)
 	wheel.picked.connect(pick)
 	grid.picked.connect(pick)
 	grid.chose.connect(choose)
@@ -119,6 +130,8 @@ func fill(title: String, spend: bool) -> void:
 		wheel.selected = picked
 		grid.selected = picked
 	_show_pick()
+	auto_button.visible = can_spend
+	auto_button.disabled = n <= 0
 	level_button.visible = can_spend and OS.is_debug_build()
 	level_button.disabled = unit.level >= Unit.MAX_LEVEL
 

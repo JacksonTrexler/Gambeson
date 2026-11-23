@@ -308,6 +308,7 @@ func _ready() -> void:
 	skills.unlocked.connect(_on_unlocked)
 	skills.raised.connect(_on_raised)
 	skills.leveled.connect(_on_leveled)
+	skills.auto_specced.connect(_on_auto_spec)
 	%SkillsIcon.pressed.connect(toggle_skills)
 	%BookIcon.pressed.connect(toggle_spellbook)
 	%CogIcon.pressed.connect(toggle_settings)
@@ -355,6 +356,11 @@ func _ready() -> void:
 	%AutoEquip.toggled.connect(func(on: bool) -> void:
 		Unit.auto_equip = on
 		Prefs.put("auto_equip", on))
+	Unit.hard = Prefs.get_pref("hard", false)
+	%Hard.set_pressed_no_signal(Unit.hard)
+	%Hard.toggled.connect(func(on: bool) -> void:
+		Unit.hard = on
+		Prefs.put("hard", on))
 	BattleCamera.edge_pan = Prefs.get_pref("edge_pan", true)  # on by default
 	%EdgePan.set_pressed_no_signal(BattleCamera.edge_pan)
 	%EdgePan.toggled.connect(func(on: bool) -> void:
@@ -2843,6 +2849,19 @@ func _on_raised(s: Skill) -> void:
 	if _can_spend(u) and u.raise(s):
 		_log("%s raises %s to rank %s" % [_tag(u), s.name, Skill.roman(u.rank(s))])
 		_rebuild_bar()
+	_mark()
+
+
+# Spec Automatically (held, on the skills screen): its points spent as an NPC's are (Unit.auto_spec()).
+func _on_auto_spec() -> void:
+	var u := skills.unit
+	if _can_spend(u):
+		var had := u.purchases.size()
+		var n := u.auto_spec()
+		if n > 0:
+			_log("%s specs automatically: %s" % [_tag(u), ", ".join(u.purchases.slice(had).map(func(p: Array): return "%s %s" % [p[0].name, Skill.roman(u.own_rank(p[0]))]))])
+			_keep_bar(u)
+			_rebuild_bar()
 	_mark()
 
 

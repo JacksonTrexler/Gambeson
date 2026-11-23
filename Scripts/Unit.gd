@@ -179,6 +179,9 @@ class Applied:
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 var path_auto := false  # a summoned Monster (monster()): take_path() spends its points as an NPC's
+var player_unit := false  # the player's own (a roster member, the starter: from_dict(), Battle.starter()): not an NPC, bio or not (npc())
+var auto_spent := 0  # purchases auto_spec() made for a player's unit out of the player's hands (spec_due()), undone as it's back (refund_auto())
+static var hard := false  # Settings "Hard": every unit spends its own points as it levels (spec_due(); HUD sets it from Prefs)
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
 var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets two shares of its XP (Battle._award())
 var harmed := 0  # HP it has lost this fight, from anything (damage(): cleared by Battle._listen()): what punishes a flippant unit (temper())
@@ -612,7 +615,9 @@ func _ready() -> void:
 	picked = picked.duplicate()  # a scene's pre-selection, its own
 	take_free()  # what a pre-selected free choice brings (a Monster's path), before its bar is filled
 	take_flex()  # an NPC's flex tree, as it is readied
-	take_path()  # an NPC's or summoned Monster's path and spent points
+	take_path()  # an NPC's or summoned Monster's path, and the points it's owed
+	if npc():
+		auto_spec()  # and spends them
 	if role and not race:
 		race = role.race
 	if role and not look:
@@ -1535,6 +1540,7 @@ func level_up() -> void:
 	var was := max_hp
 	take_flex()
 	take_path()
+	_spec_on_level()
 	refit()
 	if is_alive():
 		hp += maxi(max_hp - was, 0)  # what the level brings, it gets at once
@@ -1902,11 +1908,11 @@ static func fewest_path(side: Array[Unit], rng: RandomNumberGenerator = null) ->
 	return low[rng.randi_range(0, low.size() - 1)] if rng and low.size() > 1 else low[0]
 
 
-# An NPC's (bio) or summoned (path_auto) Monster: takes the path its side holds fewest of if it has none
-# (its siblings in the tree; fewest_path()), then spends its level - 1 skill points raising that path's
-# traits, cheapest first, until none is affordable or all capped. A player's Monster picks and spends for itself.
+# An NPC's (npc()) Monster: takes the path its side holds fewest of if it has none (its siblings in the tree;
+# fewest_path()), and is owed its level - 1 skill points, less what it spent (auto_spec() spends them: its path's traits,
+# cheapest first). A player's Monster picks and spends for itself. True if it picked one.
 func take_path() -> bool:
-	if not (bio or path_auto) or not role:
+	if not npc() or not role:
 		return false
 	var did := false
 	for c in role.choices:
@@ -1922,18 +1928,151 @@ func take_path() -> bool:
 				if t and t.name == name and pick(c, t):
 					did = true
 		skill_points = maxi(skill_points, level - 1 - purchases.reduce(func(n: int, p: Array): return n + p[1], 0))
-		var traits: Array[Skill] = []
-		for t in picks(c):
-			traits.append_array(openers(t))
-		while true:
-			var best: Skill = null
-			for s in traits:
-				if can_raise(s) and raise_cost(s) <= skill_points and (not best or raise_cost(s) < raise_cost(best)):
-					best = s
-			if not best or not raise(best):
-				break
-			did = true
 	return did
+
+
+# An NPC: one with a bio, or a summoned Monster (path_auto), and not the player's own. It takes its trees and spends
+# its skill points itself (take_flex(), take_path(), auto_spec()).
+func npc() -> bool:
+	return (bio != null or path_auto) and not player_unit
+
+
+# Out of the player's hands: Disturbed, or acting on its own (uncontrolled).
+func enforced() -> bool:
+	return uncontrolled or disturbed()
+
+
+# Whether it spends its own skill points as it levels: an NPC; any unit on Hard; a player's unit out of the player's
+# hands (enforced()), refunded as that ends (refund_auto()).
+func spec_due() -> bool:
+	return hard or npc() or (player_unit and enforced())
+
+
+func _spec_on_level() -> void:
+	if not spec_due():
+		return
+	var n := purchases.size()
+	auto_spec()
+	if player_unit and not hard and not npc():
+		auto_spent += purchases.size() - n
+
+
+const PREFER_WEIGHT := 10  # each bio preference a skill meets (auto_spec())
+const SPEC_WEIGHT := 5  # its spec's leaning: a new skill (exploratory), a rank (training), its thinnest make-up (remedial)
+
+
+# The one routine a unit spends skill points by - an NPC as it levels or is readied, the skills screen's "Spec
+# Automatically", Hard, a player's unit out of its hands - a purchase at a time on the best it can afford now
+# (spec_options()): the highest score, ties the cheapest, then the first (its trees' order, raises before unlocks).
+# Leftover points stay. Returns the points spent.
+func auto_spec() -> int:
+	var spent := 0
+	while skill_points > 0:
+		var best: Array = []
+		for c in spec_options():
+			if c[1] <= skill_points and (best.is_empty() or c[2] > best[2] or (c[2] == best[2] and c[1] < best[1])):
+				best = c
+		if best.is_empty() or not (raise(best[0]) if own_rank(best[0]) > 0 else unlock(best[0])):
+			break
+		spent += best[1]
+	return spent
+
+
+# What auto_spec() weighs: [skill, cost, score] for each skill it could raise (can_raise()) or unlock (options()).
+# Score: PREFER_WEIGHT for each of its bio's preferences the skill meets (Skill.fits(): Bio.prefers), SPEC_WEIGHT for
+# its spec's leaning (Bio.spec). Its class's skills (Role.offered()) are always on offer; others (general trees,
+# species, knowledge) only where they meet a preference.
+func spec_options() -> Array:
+	var pre: Array[StringName] = bio.prefers if bio else ([] as Array[StringName])
+	var mode: StringName = bio.spec if bio else &""
+	var home := role.offered() if role else ([] as Array[Skill])
+	var thin := _thinnest() if mode == &"remedial" else ([] as Array[StringName])
+	var all := []
+	for x in _own():
+		if can_raise(x.skill):
+			all.append([x.skill, raise_cost(x.skill)])
+	var opts := options()
+	for k in opts:
+		for s: Skill in opts[k]:
+			if not all.any(func(c: Array): return c[0] == s):
+				all.append([s, 1])
+	var out := []
+	for c in all:
+		var s: Skill = c[0]
+		var score := 0
+		for p in pre:
+			if s.fits(p, self):
+				score += PREFER_WEIGHT
+		if score == 0 and s not in home:
+			continue
+		var fresh := own_rank(s) == 0
+		if (mode == &"exploratory" and fresh) or (mode == &"training" and not fresh) \
+				or (mode == &"remedial" and _make_up(s).any(func(b: StringName): return b in thin)):
+			score += SPEC_WEIGHT
+		out.append([s, c[1], score])
+	return out
+
+
+# Where s counts in its make-up: the postures it serves (POSTURES), or passive.
+func _make_up(s: Skill) -> Array[StringName]:
+	var out: Array[StringName] = []
+	if s.passive:
+		out.append(&"passive")
+	for p in POSTURES:
+		if s.serves(p, self):
+			out.append(p)
+	return out
+
+
+# The parts of its make-up its own skills hold fewest ranks in (postures and passive): what a remedial spec fills.
+func _thinnest() -> Array[StringName]:
+	var n := {&"offensive": 0, &"supportive": 0, &"defensive": 0, &"passive": 0}
+	for x in _own():
+		for b in _make_up(x.skill):
+			n[b] += x.rank
+	var low: int = n.values().min()
+	var out: Array[StringName] = []
+	for b in n:
+		if n[b] == low:
+			out.append(b)
+	return out
+
+
+# Undoes its newest purchase (purchases), as a level curse takes them back (unranked()) but for good: a raise takes its
+# rank (and points) off, an unlock forgets the skill; the points come back. The points, 0 if it has made none.
+func unspend() -> int:
+	if purchases.is_empty():
+		return 0
+	var p: Array = purchases.pop_back()
+	var s: Skill = p[0]
+	var cost: int = p[1]
+	skill_points += cost
+	for x in _own():
+		if x.skill != s:
+			continue
+		if x.rank <= 1 and x in learned:
+			learned.erase(x)
+			waived.erase(s)
+			leaned.erase(s)
+		else:
+			var curved := affinity(s) != 0 and s.rank_cost == 0
+			x.points = maxi(points_in(s) - cost, 0)
+			x.rank = maxi(Unit.rank_for(x.points, 0, s.max_rank), 1) if curved else maxi(x.rank - 1, 1)
+		break
+	sync_bar()
+	_arrange()
+	refit()
+	return cost
+
+
+# The points auto_spec() spent for it while out of the player's hands (auto_spent), given back as the player has it
+# again (Battle: its side's turn, the battle's end). Returns the points.
+func refund_auto() -> int:
+	var n := 0
+	while auto_spent > 0:
+		auto_spent -= 1
+		n += unspend()
+	return n
 
 
 # Free choices it has yet to make (TreeChoice.free: a Monster's Path): picks owed, for the skills badge.
@@ -3356,7 +3495,7 @@ func buy_flex(t: SkillTab, stat: StringName) -> bool:
 # paid with the cheapest stat above FLEX_FLOOR (the lowest that can pay). An authored pick stands in for it.
 # True if it took one.
 func take_flex() -> bool:
-	if not bio or not role or picked.any(func(k: String): return k.begins_with(FLEX + "/")):
+	if not npc() or not role or picked.any(func(k: String): return k.begins_with(FLEX + "/")):
 		return false
 	var due := flex_options()
 	if flex_due() > 0 and not due.is_empty():
@@ -3492,6 +3631,7 @@ func to_dict() -> Dictionary:
 # Back from to_dict() onto a unit made from its class (Battle.from_role()), before it's in the tree. A missing key keeps
 # the fresh unit's own (an old save's hero has no learned skills); a skill or item that's gone is left out.
 func from_dict(d: Dictionary) -> void:
+	player_unit = true  # a roster member: the player's own
 	level = clampi(int(d.get("level", level)), 1, MAX_LEVEL)
 	xp = maxi(int(d.get("xp", xp)), 0)
 	hearts = maxi(int(d.get("hearts", hearts)), 0)

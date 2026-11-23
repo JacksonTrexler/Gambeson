@@ -162,6 +162,8 @@ var turn: Faction:
 		turn = v
 		turns_begun += 1
 		for u in members(v):
+			if u.auto_spent > 0 and not u.enforced():
+				u.refund_auto()  # back in the player's hands: what was spent for it comes back (Unit.auto_spent)
 			u.refresh()
 			if u.channel:
 				u.channel.turns += 1
@@ -614,6 +616,7 @@ func move(u: Unit, c: Vector2i) -> bool:
 # (Game.outfit), with the hearts it's been given (Game.hearts).
 func starter(s: Dictionary) -> Unit:
 	var u := from_role(s.faction, s.role, s.name)
+	u.player_unit = true  # the player's own, roster entry or not (Unit.npc())
 	if not Game.roster.is_empty():
 		var h := u.hearts
 		u.from_dict(Game.roster[0])  # the leader's roster entry: what it learned, its ranks, trees and picks
@@ -6563,4 +6566,5 @@ func _enter(p: Phase) -> void:
 			turn = order[0]
 		Phase.OVER:
 			for u: Unit in $Units.get_children():
+				u.refund_auto()  # the player has its units back
 				refill(u)

@@ -171,6 +171,19 @@ func tagged(t: StringName) -> bool:
 	return t in tags or t in kinds()
 
 
+# Whether a word one might lean toward names it (a bio's preferences: Unit.spec_options()): a tag or kind it carries
+# (tagged()), a posture it serves for u (serves()), or what it is - active, passive (not a toggle), toggle.
+func fits(word: StringName, u: Unit = null) -> bool:
+	match word:
+		&"active":
+			return not passive
+		&"passive":
+			return passive and not toggle
+		&"toggle":
+			return toggle
+	return tagged(word) or (word in Unit.POSTURES and serves(word, u))
+
+
 # A general skill: on the base General tree (Strike). Its uses wear a little on every skill.
 func general() -> bool:
 	return &"general" in kinds()
