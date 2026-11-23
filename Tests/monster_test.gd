@@ -69,7 +69,6 @@ func test_pick() -> void:
 	ok(path(m).key(path(m).tabs[0]) not in m.picked and held(m) == PATHS["Starmen"], "made with Floaty: Starmen pre-selected, Hop free (holds %s)" % [held(m)])
 
 
-<<<<<<< HEAD
 # An NPC's (bio) or summoned Monster takes the path its side holds fewest of and spends level - 1 points on its traits,
 # cheapest first (Unit.take_path()); a player's Monster does neither. Rows: path pre-picked or "" , level.
 func test_ai() -> void:
@@ -114,7 +113,7 @@ func test_ai() -> void:
 	var sm := Unit.monster(lancin, "Starmen", 5)
 	b.get_node("Units").add_child(sm)
 	ok(sm.skill_points == 0 and sm.own_rank(sk("floaty")) == 2 and sm.own_rank(sk("hop")) == 2, "a summoned level 5 Monster spent its points (floaty %d, hop %d, %d left)" % [sm.own_rank(sk("floaty")), sm.own_rank(sk("hop")), sm.skill_points])
-=======
+
 # Undead ?? (the Skeletons path): bones turn piercing, +1 Defense against it per rank; blunt and slash unmoved.
 func test_undead_rank() -> void:
 	var u := Unit.monster(lancin, "Skeletons", 4)
@@ -127,4 +126,3 @@ func test_undead_rank() -> void:
 		ok(u.rank(undead) == r and u.defense([&"pierce"]) == base + (r - 1) and u.defense([&"blunt"]) == plain, "Undead rank %d: pierce Defense +%d over rank I, blunt unmoved" % [r, r - 1])
 		u.raise(undead)
 	ok(u.has_tag(&"undead"), "still undead")
->>>>>>> w18-undead-rank
