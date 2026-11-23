@@ -258,5 +258,7 @@ core = Array[ExtResource("5_skill")]([ExtResource("s_hex"), ExtResource("s_rejuv
 roots = Array[ExtResource("6_root")]([SubResource("Root_Magic"), SubResource("Root_Martial"), SubResource("Root_Specialist")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"martial", &"specialist", &"magical", &"journeyman"])
+tags = Array[StringName]([&"jack"])
+flex_every = 3
 radial = true
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Actualization")])

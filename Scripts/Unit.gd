@@ -25,10 +25,13 @@ const BASE_AP := 10.0
 const REAR_EDGE := 1  # Defense an attack from behind takes off its target: +1 to hit (defense(), side_of())
 const GENERAL_TREES: Array[SkillTab] = [preload("res://Trees/general.tres"), preload("res://Trees/general_martial.tres"),
 		preload("res://Trees/general_specialist.tres"), preload("res://Trees/general_caster.tres"),
-		preload("res://Trees/general_student.tres"), preload("res://Trees/general_journeyman.tres")]  # the general trees, on the far right of the skills screen (general_trees())
+		preload("res://Trees/general_student.tres"), preload("res://Trees/general_journeyman.tres"),
+		preload("res://Trees/general_scout.tres")]  # the general trees, on the far right of the skills screen (general_trees())
 const POSTURES: Array[StringName] = [&"offensive", &"supportive", &"defensive"]  # how a skill can be used (Skill.serves())
 const FURY_MOD := -5  # the mod of a stat of 1: a mental stat under Mindless Fury (mod())
 const MENTAL: Array[StringName] = [&"intelligence", &"wisdom", &"charisma"]  # the stats of mental checks (bracing)
+const FLEX := "Flex Tree"  # the choice of flex trees levelling offers (flex_choice()): its box's heading, and its picks' key in picked
+const FLEX_SLACK := 2  # a generalist takes up a flex tree with each base stat this much below its floor (flex_needs())
 const SPECIALIST_EDGE := 2  # tiers sooner a class with the Specialist tree reaches the other trees through Martialist and Thaumaturgist (_general_need())
 const PLATE := "plate_"  # a slot a skill gives it beyond armor's own is named for the skill: plate_power_armor (u.get(slot) and u.set(slot, item) reach it, so the sheet and the outfit treat it as any slot)
 const SUFFICIENT := 2  # the con or str mod that lets armor that eases heavy armor's drag lift it (armor_drag())
@@ -183,6 +186,8 @@ var _judging := false  # lapsed() is working out whether a leaned skill's prereq
 var _bare := false  # counts() is reading prerequisites as if nothing were lent (unlock(): was a lent skill needed?)
 var purchases: Array = []  # [skill, points] for each unlock and raise, in order: a level curse takes the last back first (unranked())
 var trees_granted: Array[StringName] = []  # general trees opened to it beyond its class's (grant_tree(): an adventure's reward)
+var flex_extra := 0  # flex trees it may take up beyond what its levels offer (flex_slots()): a page buying them with base stats, an adventure
+var _flex: TreeChoice  # flex_choice(), kept so the skills screen and pick() see the same choice
 var picked: Array[String] = []  # the trees it has picked on its class's own tab, as "TreeChoice/Tab" (Role.choices: pick())
 @export var extra_slots := 0  # sure slots past 4 + level / 4, for NPCs and monsters that need them
 
@@ -1799,6 +1804,12 @@ func pick_missing(c: TreeChoice, t: SkillTab) -> String:
 		return "Picked"
 	if c.by and rank(c.by) == 0:
 		return "Learn %s first" % c.by.name
+	if c == _flex:
+		var why := flex_missing(t)
+		if why == "" and maxi(used, mine.size()) >= pick_cap(c) and flex_next() > 0:
+			why = "Next at level %d" % flex_next()
+		if why != "":
+			return why
 	if not offered(c).any(func(x: SkillTab): return x.name == t.name and x.kind == t.kind) and not burning:
 		return "Not %s's way" % deity().capitalize() if deity() else "Needs a god"
 	var cap := pick_cap(c)
@@ -2699,7 +2710,7 @@ func _sync_granted() -> void:
 # Whether it carries tag t, from what it is (its tags), what it wears, what it knows (Wildfire's
 # bane: earth; a passive only while equipped, and a toggle only while on: Hollow Bones' flight), or the beast it's shaped into (Battle.FORMS' traits: a pike is aquatic).
 func has_tag(t: StringName) -> bool:
-	if t in tags:
+	if t in tags or (role and t in role.tags):
 		return true
 	for it: Item in [weapon, armor, trinket]:
 		if it and t in it.tags:
@@ -3021,7 +3032,7 @@ func general_trees() -> Array[SkillTab]:
 	var out: Array[SkillTab] = []
 	for g in GENERAL_TREES:
 		var k := g.key()
-		if k == &"" or (role and k in role.general) or k in trees_granted or _opener(k) != null:
+		if k == &"" or (role and k in role.general) or k in trees_granted or _opener(k) != null or (g.grant and _flex_key(g) in picked):
 			out.append(g)
 	return out
 
@@ -3033,6 +3044,71 @@ func grant_tree(key: StringName) -> bool:
 		return false
 	trees_granted.append(key)
 	return true
+
+
+# --- Flex trees
+# General trees with a grant key (SkillTab.grant: Student, Journeyman, Scout) that aren't its class's own:
+# backgrounds, professions, hobbies. Levelling its class offers one every Role.flex_every levels (most 10,
+# a Rogue or Bard 5, an Adventurer 3), picked from a "Flex Tree" box on its class's own tab (flex_choice(),
+# Unit.pick()), each meeting its base-stat floors (SkillTab.needs): FLEX_SLACK lower for a generalist,
+# none for a jack (tags, has_tag(): its class's, or anything it carries). A jack is offered every flex tree.
+
+# How many flex trees it may take up: one per Role.flex_every levels, plus flex_extra.
+func flex_slots() -> int:
+	var every := role.flex_every if role else 0
+	return (level / every if every > 0 else 0) + flex_extra
+
+
+# The flex trees on offer to it: its class's (Role.flex), or every one for a jack; never one it has natively.
+func flex_options() -> Array[SkillTab]:
+	var out: Array[SkillTab] = []
+	var jack := has_tag(&"jack")
+	for g in GENERAL_TREES:
+		if g.grant and not (role and g.grant in role.general) and g.grant not in trees_granted and (jack or (role and g.grant in role.flex)):
+			out.append(g)
+	return out
+
+
+# The choice of flex trees (one per unit, rebuilt on each ask): picks up to flex_slots().
+func flex_choice() -> TreeChoice:
+	if not _flex:
+		_flex = TreeChoice.new()
+		_flex.name = FLEX
+	_flex.tabs = flex_options()
+	_flex.picks = flex_slots()
+	return _flex
+
+
+# The level its next flex tree comes at (-1: none ever, or past MAX_LEVEL).
+func flex_next() -> int:
+	var every := role.flex_every if role else 0
+	var at := (level / every + 1) * every if every > 0 else -1
+	return at if at <= MAX_LEVEL else -1
+
+
+# Flex tree t's prereqs for it, base stat -> floor: t's needs, FLEX_SLACK lower for a generalist, none for a
+# jack. What a page that sells flex trees for base stats would price.
+func flex_needs(t: SkillTab) -> Dictionary:
+	if has_tag(&"jack"):
+		return {}
+	var slack := FLEX_SLACK if has_tag(&"generalist") else 0
+	var out := {}
+	for k in t.needs:
+		out[k] = t.needs[k] - slack
+	return out
+
+
+# What of flex_needs() it falls short of ("Needs Dexterity 10"), "" if nothing. Its base stats, not effects.
+func flex_missing(t: SkillTab) -> String:
+	var need := flex_needs(t)
+	for k in need:
+		if roundi(get(k)) < need[k]:
+			return "Needs %s %d" % [String(k).capitalize(), need[k]]
+	return ""
+
+
+func _flex_key(g: SkillTab) -> String:
+	return "%s/%s" % [FLEX, g.name]
 
 
 func general_skills() -> Array[Skill]:
@@ -3146,7 +3222,7 @@ func to_dict() -> Dictionary:
 		purchases = purchases.map(func(p: Array): return [_skill_id(p[0]), p[1]]),
 		trees = trees_granted.map(func(k: StringName): return str(k)), picked = picked.duplicate(),
 		bar = get_equipped().map(func(s: Skill): return _skill_id(s) if s and s.resource_path.begins_with("res://Skills/") else ""),
-		outfit = worn, lapses = lapses_out()}
+		outfit = worn, lapses = lapses_out(), flex_extra = flex_extra}
 
 
 # Back from to_dict() onto a unit made from its class (Battle.from_role()), before it's in the tree. A missing key keeps
@@ -3171,6 +3247,7 @@ func from_dict(d: Dictionary) -> void:
 		trees_granted.append(StringName(str(k)))
 	for k in d.get("picked", []):
 		picked.append(str(k))
+	flex_extra = maxi(int(d.get("flex_extra", 0)), 0)
 	skill_points = maxi(level - 1 - purchases.reduce(func(n: int, p: Array): return n + p[1], 0), 0)
 	var worn: Variant = d.get("outfit", {})
 	for slot in (worn if worn is Dictionary else {}):

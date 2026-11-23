@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Resource" path="res://Skills/hide.tres" id="1_hide"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/stamina.tres" id="3_stamina"]
+[ext_resource type="Resource" path="res://Skills/eyes_forward.tres" id="4_eyes_forward"]
+[ext_resource type="Resource" path="res://Skills/wary.tres" id="5_wary"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="6_skillroot"]
+
+[sub_resource type="Resource" id="Branch_hide"]
+script = ExtResource("2_branch")
+skill = ExtResource("1_hide")
+tier = 1
+
+[sub_resource type="Resource" id="Branch_stamina"]
+script = ExtResource("2_branch")
+skill = ExtResource("3_stamina")
+tier = 1
+
+[sub_resource type="Resource" id="Branch_eyes_forward"]
+script = ExtResource("2_branch")
+skill = ExtResource("4_eyes_forward")
+tier = 2
+
+[sub_resource type="Resource" id="Branch_wary"]
+script = ExtResource("2_branch")
+skill = ExtResource("5_wary")
+tier = 2
+
+[resource]
+script = ExtResource("6_skillroot")
+name = "Scout"
+tag = &""
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_hide"), SubResource("Branch_stamina"), SubResource("Branch_eyes_forward"), SubResource("Branch_wary")])

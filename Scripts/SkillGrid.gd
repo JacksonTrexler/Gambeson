@@ -117,6 +117,8 @@ func _layout() -> void:
 	for r: SkillRoot in tab.roots.filter(func(x: SkillRoot): return x != null):
 		groups.append([SkillSlot.TYPES.get(r.tag, tab.tone() if tab.general() else CORE), r.skills(), r, r.name.to_upper()])
 	var choices: Array = unit.role.choices.filter(func(c: TreeChoice): return c != null) if unit.role and tab.kind == "" and not tab.radial else []
+	if tab.general() and tab.key() == &"" and not unit.flex_options().is_empty():
+		choices = [unit.flex_choice()]  # the base General tab holds the flex trees levelling offers
 	_top = 0
 	for g in groups:
 		for s: Skill in g[1]:
@@ -150,7 +152,7 @@ func _layout() -> void:
 	for c: TreeChoice in choices:  # a box per choice, its trees' roots in a row
 		var row := _choice_row(c)
 		var cap := unit.pick_cap(c)
-		var heading := "%s · %s" % [c.name.to_upper(), "LEARN " + c.by.name.to_upper() if c.by and unit.rank(c.by) == 0 else "PICK UP TO %d" % cap]
+		var heading := "%s · %s" % [c.name.to_upper(), "LEARN " + c.by.name.to_upper() if c.by and unit.rank(c.by) == 0 else ("AT LEVEL %d" % unit.flex_next() if cap == 0 and c.name == Unit.FLEX and unit.flex_next() > 0 else "PICK UP TO %d" % cap)]
 		var start := x + 3.0
 		var offered: Array = unit.offered(c)  # a god slot: what its god offers (a Paladin sees only the Prowess its god suits)
 		var burn := unit.burnable(c)

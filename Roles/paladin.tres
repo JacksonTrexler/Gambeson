@@ -82,4 +82,5 @@ options = Array[ExtResource("20_skill")]([ExtResource("21_opt_favour"), ExtResou
 roots = Array[ExtResource("6_root")]([SubResource("Root_Idealism")])
 items = Array[ExtResource("i_item")]([ExtResource("i_half_plate"), ExtResource("i_broadsword"), ExtResource("i_health_potion")])
 general = Array[StringName]([&"martial", &"magical", &"journeyman"])
+flex = Array[StringName]([&"scout"])
 choices = Array[ExtResource("c_choice")]([SubResource("Choice_Prowess"), SubResource("Choice_Domain"), SubResource("Choice_Flex")])

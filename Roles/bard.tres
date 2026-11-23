@@ -134,3 +134,6 @@ stats = Dictionary[StringName, int]({&"strength": 9, &"dexterity": 12, &"constit
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Song"), SubResource("Tab_Freedom")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])
 general = Array[StringName]([&"specialist", &"magical", &"journeyman"])
+tags = Array[StringName]([&"generalist"])
+flex_every = 5
+flex = Array[StringName]([&"student"])

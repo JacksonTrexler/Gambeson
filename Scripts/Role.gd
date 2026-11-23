@@ -16,6 +16,9 @@ extends Resource
 @export var general: Array[StringName] = []  # the general trees its units get besides the base one: martial, specialist, magical (the Adventurer: all three)
 @export var items: Array[Item] = []  # what a starter of this class first wears (Entry: Game.outfit): its armor, weapon and trinket
 @export var vigor := 0  # max HP a level beyond the con mod: 1 casters, 2 specialists and generalists, 3 martialists; 0 reads it off its general trees (vigor_per_level())
+@export var tags: Array[StringName] = []  # what its units are, by class (Unit.has_tag()): generalist (Rogue, Bard: flex trees' needs slackened), jack (Adventurer: none, every flex tree offered)
+@export var flex: Array[StringName] = []  # flex trees (general trees' grant keys: SkillTab.grant) offered while levelling it, besides its own general (Unit.flex_choice(): Rogue, Paladin: scout)
+@export var flex_every := 10  # levels per flex tree offered (Unit.flex_slots(): Rogue, Bard 5; Adventurer 3); 0: none
 
 @export_group("Tree")  # a class with a skill tree (the Adventurer's, drawn as a wheel on the skills screen)
 @export var center: Skill  # the one skill at the very centre (Adventurer: Skill Slot +1)
