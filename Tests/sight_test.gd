@@ -88,9 +88,31 @@ func test_fog() -> void:
 	b.map.set_cell(far, src, Vector2i(old.x + 1, old.y))  # changed out of sight
 	h._refresh()
 	ok(h.overlay.memory.get_cell_atlas_coords(far) == old and h.overlay.memory.get_cell_source_id(far) == src, "ground changed out of sight keeps the look last seen")
+	var o: Overlay = h.overlay
+	var leaf := Terrain.new()
+	leaf.name = "Leaves ??"
+	leaf.obscures = true
+	b.lay_layer(far, leaf, false)  # laid out of sight: not drawn, not ghosted
+	b.lay_layer(Vector2i(6, 2), leaf, false)  # laid in sight, then left
+	h._refresh()
+	ok(not o._sighted(far) and not o._ghost.has(far) and o._sighted(Vector2i(6, 2)), "a layer laid out of sight leaves no ghost")
 	b.move(v(1), Vector2i(1, 2))
 	h._refresh()
-	ok(h.overlay.memory.get_cell_source_id(far) == -1, "seen again: the frozen look is dropped")
+	var ghost: Dictionary = o._ghost.get(Vector2i(6, 2), {})
+	ok(ghost.get("layers", []).size() == 1 and not o._ghost.has(far), "a layer left behind is frozen to its look last seen; the new one in sight is live")
+	b.layers.erase(Vector2i(6, 2))
+	h._refresh()
+	ok(o._ghost.has(Vector2i(6, 2)) and o.memory.get_cell_source_id(far) == -1, "gone out of sight: its ghost stays; seen again: the frozen look is dropped")
+	b.move(v(1), Vector2i(6, 2))
+	h._refresh()
+	ok(not o._ghost.has(Vector2i(6, 2)), "seen again: the ghost is dropped")
+	var us := 0
+	for i in 20:  # the fog's own refresh over a step, ghosts and all (the HUD's other work left out)
+		b.move(v(1), Vector2i(1 + (i % 2) * 5, 2))
+		var t0 := Time.get_ticks_usec()
+		o.fog_of_war(b, lancin)
+		us += Time.get_ticks_usec() - t0
+	ok(us / 20 < 1000, "fog refresh with ghosts under 1 ms a move (took %d us)" % (us / 20))
 	h.free()
 
 
