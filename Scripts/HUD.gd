@@ -3041,6 +3041,9 @@ func _info(u: Unit) -> Dictionary:
 				chips.append([p.name, MUTED])
 			if u.bio.behaviour:
 				chips.append([String(u.bio.behaviour).capitalize(), MUTED])
+			for t in u.bio.also:  # the further tempers beside it (a Starman's)
+				if t != u.bio.behaviour:
+					chips.append([String(t).capitalize(), MUTED])
 		_heart_chips(u, chips)
 		_burnt_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
