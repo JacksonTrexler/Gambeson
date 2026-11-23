@@ -1677,6 +1677,7 @@ static func _strikers(b: Battle, u: Unit, at: Vector2i, within: int, reads: Dict
 # of each skill Behaviour.strikes() names (damage x hit chance), never more than u has left.
 static func _struck(b: Battle, u: Unit, c: Vector2i, strikers: Array) -> float:
 	var hp := 0.0
+	var spent := {}  # [holder, pool] -> what the blows counted so far take from it: a pool is shared by a holder's skills
 	for f in strikers:
 		if c == u.cell or not Battle.next_to(f[0].cell, c):
 			continue
@@ -1688,7 +1689,18 @@ static func _struck(b: Battle, u: Unit, c: Vector2i, strikers: Array) -> float:
 		r.skill = f[3]
 		var worth: Variant = b.standing(u, c, func():
 			var s: Skill = f[1].strikes(r, f[0], f[2])
-			return float(Battle.damage_range(f[0], s, u, b).get("avg", 0.0)) * Battle.hit_chance(f[0], s, u, b) if s != null and s.attacks() and f[0].funding(s, b.price_cut(f[0], s, [u] as Array[Unit])) != null else 0.0)
+			if s == null or not s.attacks():
+				return 0.0
+			var cut := b.price_cut(f[0], s, [u] as Array[Unit])
+			var fund: Variant = f[0].funding(s, cut)
+			if fund == null:
+				return 0.0
+			var key := [f[0], fund]  # the Energy (or reserve) its earlier blows beside this tile took is gone
+			var cost: int = f[0].cost_from(s, fund, cut)
+			if (f[0].store(fund) if fund is Reserve else f[0].energy) - spent.get(key, 0) < cost:
+				return 0.0
+			spent[key] = spent.get(key, 0) + cost
+			return float(Battle.damage_range(f[0], s, u, b).get("avg", 0.0)) * Battle.hit_chance(f[0], s, u, b))
 		hp += worth if worth != null else 0.0
 	return minf(hp, float(u.hp))
 

@@ -830,6 +830,13 @@ func test_approach_weighs_opportunist() -> void:
 	ok(AI._struck(b, v(1), near, strikers) == 0.0, "a Siren that cannot pay for her first active strikes no one: nothing to price")
 	siren.energy = kept
 	ok(AI._struck(b, v(1), near, strikers) > 0.0, "with the Energy for it, she does")
+	var one := AI._struck(b, v(1), near, strikers)
+	var twice: Array = strikers + strikers  # two blows from one pool (a second reaction of hers): paid for once, or twice
+	siren.energy = 3
+	ok(is_equal_approx(AI._struck(b, v(1), near, twice), one), "Energy for one blow prices one, not two")
+	siren.energy = 6
+	ok(is_equal_approx(AI._struck(b, v(1), near, twice), 2.0 * one) or AI._struck(b, v(1), near, twice) >= float(v(1).hp), "Energy for both prices both (or all the HP it has)")
+	siren.energy = kept
 	rake.cost = 0
 	siren.faction = lancin
 	ok(AI._strikers(b, v(1), v(3).cell, 2, AI.reads_from({v(3): reads[v(3)], siren: b.read(v(1), siren)})).is_empty(), "an ally's reaction is none to weigh")
