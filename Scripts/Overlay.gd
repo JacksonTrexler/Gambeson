@@ -40,6 +40,7 @@ var _speed := 1.0  # how fast walks run (HUD.speed(): the hurry key)
 var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global RNG
 var fog: Sprite2D  # the fog of war (fog_of_war()): a pixel a tile over the map's used rect, above this, below the units
 var _fog_img: Image
+var memory: TileMapLayer  # the explored ground out of sight, frozen to the look last seen (fog_of_war()): a copy of the map's cells, over it
 var _fog_rect := Rect2i()
 var _fog_key := []  # the side's eyes (cells and ranges) the fog was last drawn for
 var _fog_clear: Dictionary[Vector2i, bool] = {}  # the tiles drawn clear (in sight) last time
@@ -305,6 +306,14 @@ func fog_of_war(b: Battle, f: Faction) -> void:
 		get_parent().add_child(fog)
 		get_parent().move_child(fog, get_index() + 1)
 	fog.show()
+	if memory == null:
+		memory = TileMapLayer.new()
+		memory.name = &"Memory"
+		memory.tile_set = b.map.tile_set
+		memory.texture_filter = b.map.texture_filter
+		get_parent().add_child(memory)
+		get_parent().move_child(memory, get_index())
+	memory.position = b.map.position
 	var seen: Dictionary = b.explored.get(f, {})
 	if rect != _fog_rect or _fog_img == null:
 		_fog_rect = rect
@@ -313,17 +322,33 @@ func fog_of_war(b: Battle, f: Faction) -> void:
 		for c: Vector2i in seen:
 			_fog_px(c, FOG_EXPLORED)
 		_fog_clear.clear()
+		memory.clear()
+		for c: Vector2i in seen:
+			if not now.has(c):
+				_freeze(b, c)
 	for c in _fog_clear:
 		if not now.has(c):
 			_fog_px(c, FOG_EXPLORED)
+			_freeze(b, c)
 	for c in now:
 		_fog_px(c, 0.0)
+		if not _fog_clear.has(c):
+			memory.erase_cell(c)
 	_fog_clear = now
 	fog.position = b.map.position + Vector2(rect.position) * TILE
 	if fog.texture is ImageTexture and Vector2i(fog.texture.get_size()) == _fog_img.get_size():
 		fog.texture.update(_fog_img)
 	else:
 		fog.texture = ImageTexture.create_from_image(_fog_img)
+
+
+# Freeze c to the look it has as it leaves sight: the map's cell copied onto memory (only the moves, not the map).
+func _freeze(b: Battle, c: Vector2i) -> void:
+	var src := b.map.get_cell_source_id(c)
+	if src < 0:
+		memory.erase_cell(c)
+	else:
+		memory.set_cell(c, src, b.map.get_cell_atlas_coords(c), b.map.get_cell_alternative_tile(c))
 
 
 func _fog_px(c: Vector2i, a: float) -> void:
