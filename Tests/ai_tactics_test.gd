@@ -855,3 +855,47 @@ func test_approach_weighs_opportunist() -> void:
 	ok(not AI._line_up(b, v(1), AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4)), siren: b.read(v(1), siren)}), log) and v(1).cell == Vector2i(4, 4), "lining up, it stays out of her reach rather than take her blow for the slam (%s)" % [v(1).cell])
 	ok(AI._line_up(b, v(1), AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))}), log) and v(1).cell == Vector2i(5, 3), "not reading her, it takes the tile (%s)" % [v(1).cell])
 	siren.faction = lancin
+
+
+# A calm follower of a skilled leader drills (AI._calm(), _drill()): no preferences weighed, so a stoic one
+# still closes in; anything out of the way and it takes a full turn by its temper again.
+func test_calm_followers_drill() -> void:
+	stage(nemes, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2), v(4): Vector2i(9, 2)})
+	var lead := v(3)
+	var u := v(4)
+	lead.charisma = 14
+	u.follows = lead
+	u.bio = Bio.new()
+	u.bio.behaviour = &"stoic"
+	ok(AI._calm(b, u), "a follower in reach of a skilled leader it sees: calm")
+	ok(not AI._calm(b, lead), "the leader itself follows no one")
+	var cc := effect("nothing", 0.0)
+	cc.bears = [&"cc"] as Array[StringName]
+	var cases := {
+		"an unskilled leader (cha +0)": [func(): lead.charisma = 10, func(): lead.charisma = 14],
+		"hurt since its last turn": [func(): u.hp -= 1, func(): u.hp += 1],
+		"cc'd": [func(): u.afflict(cc, 2), func(): u.timed.erase(cc)],
+		"its leader down": [func(): lead.hp = 0, func(): lead.hp = lead.max_hp],
+		"its leader out of reach": [func(): b.move(lead, Vector2i(1, 9)), func(): b.move(lead, Vector2i(8, 2))],
+		"struck by its leader": [func(): u.last_hit_by = lead, func(): u.last_hit_by = null],
+		"Restless": [func(): u.tags.append(&"undead"); u.afflict(load("res://Effects/disturbed.tres"), 2), func(): u.tags.erase(&"undead"); u.timed.clear()],
+	}
+	for why: String in cases:
+		cases[why][0].call()
+		ok(not AI._calm(b, u), "not calm: %s" % why)
+		cases[why][1].call()
+		ok(AI._calm(b, u), "calm again after: %s" % why)
+	AI.act(b, u)
+	ok(u.cell != Vector2i(9, 2), "calm, the stoic follower drills: it closes in")
+	b.move(u, Vector2i(9, 2))
+	u.refresh()
+	u.hp -= 1
+	AI.act(b, u)
+	ok(u.cell == Vector2i(9, 2), "hurt, it takes a full turn by its temper: it holds")
+	b.lazy_looks = true  # watched (HUD): a side's opening looks wait for the turn change's frames, or for each to act
+	b.turn = lancin
+	b.turn = nemes
+	ok(lead in b._to_look and u in b._to_look, "watched: the side's opening looks are owed")
+	AI.act(b, u)
+	ok(u not in b._to_look and lead in b._to_look, "a unit takes its own as it acts")
+	b.lazy_looks = false

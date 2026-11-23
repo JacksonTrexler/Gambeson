@@ -9,6 +9,28 @@ Base = origin/main daf5c1d.
 - Leaders: `Unit.follows` (Command.join: player's party; Battle 637). AI factions have none today; busy_fight has none.
 - Skill to command: `Command.cha_of(l)` (cha mod + command_mod); at +0 or below "it can only be told to move".
 
+- end_turn at 30v30 (here): next side's `_look_harder` in the turn setter ~220 ms; body ~60-110 (`_watch` loop 30-48, `tick` 28, `_check_stall` 28).
+- Walk feedback is short (Overlay.STEP_TIME 0.07 s/tile); a used skill's number shows 0.9 s.
+
 ## Calls
+- Skilled leader = `Command.cha_of(l) > 0` (cha mod + command_mod; Command's own line: at +0 a leader "can only tell it to move").
+- Calm follower (`AI._calm`): `follows` set, same faction (a poser keeps its own path), leader alive, not stopped, skilled, `Command.hears(l, u)` (covers Disturbed either end and party reach) and `read(u, l).located()`.
+  Not calm: hurt since its last act (meta `calm_hp`, written by `AI.act`: AI-private, no Unit var, keeps Unit.gd clear of the w13-invest merge), Downed, channeling, `Unit.behaviour` set (skittish/recovering/undine/craven: natures, not preferences), restless, cc (`afflicted(&"cc")`), held or holding, betrayed = `last_hit_by` is its own side, its party or its leader.
+- Drill (`AI._drill`): reads only units within move_left + longest reach + DRILL_MARGIN 2 (and the leader); `_remember`, `_heal`, strike, else walk on the leader's aim (meta `aim`: set by `_strike` casts and the full turn's approach target; generic "what it went after"), else its own `_best_target`, else `_keep_up`; strike loop. Skips temper, tends' tending, support, summon, line_up, steady, starve, dress, search/scry/hunt, switch, replenish. Healers keep `_heal` (a role, not a preference).
+- Frame per unit (HUD `_act_alone`, together, pace > 0): `await process_frame` after each act: walks/numbers show while the next plans. Same decisions (sync in tests: pace 0).
+- Opening looks lazy (`Battle.lazy_looks`, set by HUD when pace > 0; never the player's side): the setter queues them; `_act_alone` takes one a frame over the 1 s turn change (`_wait(work)`); a unit still owing one takes it as it acts (`AI.act` -> `looks_done(u)`); `end_turn` flushes. Decision change: a late unit's look comes after earlier ones acted.
+- end_turn under the last walks (HUD, pace > 0): `_act_alone` calls `battle.end_turn()` before waiting out pace and walks; `_on_turn` waits `_closing` so the turn change shows after them; `busy` stays on (no input). `ended` guards a second end_turn (one-side order).
+- Far-from-foe routine: not built. The drill already covers followers with no foe near (keep up); for leaders/loners the 15/30 sims start 12 tiles apart and close in by round 2, so no measurable share (w9: ~3% of reads out of range).
+- Digest pin dropped: busy_fight prints "OUTCOME ok|FAIL" (each fight: >= size/3 fall, someone left standing, no unit alive at the end that never moved or acted). Other docs naming 3296533323 (todo.md, queue.md, todo/systems.md) are not mine to edit: the docs keeper should retire ?245.
+- Suite: no test pinned AI output the fast path changed (10969 checks before and after the AI change; followers are rare in tests).
+
+## Measure (busy_fight `lead`: parties of 5 in 3x2 blocks, leader cha 14; n=2, rounds 10; M3, x4 = target)
+Wait model (`busy_fight` "side wait"): stare = time on the target with no walk or number showing while the side computes.
+One frame (old HUD): a side's acts + end_turn (+ the next side's looks, in its setter) in one frame = all stare.
+Frame per unit (new): acts in order; an act starting while an earlier walk (tiles x 0.07 s) or number (0.9 s) still shows is covered up to that end (a stutter, not a stare); looks one a frame over the 1 s turn change, the rest inside each act; end_turn covered by the last feedback.
+
 ## Done
+1. busy_fight: `lead`, wait model + breakdown, OUTCOME checks, `debug` per-turn stare. (commit 2)
+2. AI `_calm`/`_drill`, act wrapper (`_full`), HUD frame per unit, lazy looks, end_turn under walks. Suite 10969 / 0 / 1032. (6484404)
+3. Test `ai_tactics_test.test_calm_followers_drill` (calm table: unskilled, hurt, cc, leader down, out of reach, struck by leader, Restless; stoic follower drills when calm, holds when hurt; owed looks taken at own act). Mutations, all caught: hurt check off, cc off, betrayed off, `<= 0` -> `< 0`, drill never taken, hears off, act skipping `looks_done(u)`.
 ## Next
