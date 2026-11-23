@@ -1583,7 +1583,7 @@ The user's words (docs/agents/answers-2026-11-23.md): "we can raise the budget p
 - [x] **Investigation layer lost in the sirens merge** (?255). Built; the player's yes to "recovered or rebuilt" answered it.
 - [x] **Ambush: the effect is a guess**, and Coordinate's support watch is not rebuilt. Superseded by the user's answer 2026-11-23 (first attack roll out of concealment, Sally, Ambush Fusillade): built (?269). Coordinate's support watch stays unbuilt. (?255)
 - [ ] **Free inspect on an unseen hit only when it does damage** (the original: any attack). Needs the user. (?255)
-- [ ] **What "skilled leader" means** (`cha_of > 0`) and whether a calm follower should also skip the strike choice. Needs the user. (?256)
+- [x] **What "skilled leader" means.** The user: tag `leader` or high charisma; built as `Command.skilled` (?271). Whether a calm follower also skips the strike choice stays as built. (?256)
 - [ ] **30 a side: the first two rounds still stare ~3 s (p95)** against the 1000 ms side budget; raise it or cut further. Needs the user. (?257) Cut to 754 ms with parties (?260); no parties still 1842 ms (queue).
 
 ## Moved from todo.md (2026-11-19 consolidation): the user's annotations
@@ -1675,3 +1675,24 @@ The user's words: `docs/agents/answers-2026-11-23b.md`.
 - [ ] **Make auto-equip explicit, then a read stretch around `_fill_bar`** (the museum lead, ~10 s of the suite). Queued. (?265)
 - [ ] **Ambush and Sally numbers as built, the concealment stretch (since its side's turn began, a miss uses it up), the Nexus void / generator / Power Star calls, whether Ire needs a cost, `SUSPECT_TILES` 3.** Needs the user. (?264, ?267, ?269, ?270)
 - [ ] **Optional micro-cuts (each under ~5%):** `end_turn` per-unit stat reads, a path round a unit's own column, Opportunist on `_recover` / `_escape` / `_hunt`, `Battle._enter`. Needs the user. (?263, ?265, ?266)
+- [x] **Vindictive and flirty tempers, first-time pop-ups, longer holds, "skilled leader"** (the user, 2026-11-23). Built (?271).
+- [x] **Cheap macro decisions for packs, armies, swarms** (the user, 2026-11-23). Built (?272).
+- [ ] **The "Grudge" pop-up shares the Grudge skill's word; weights, cha 14, hold lengths; units facing a swarm read every rat; herd members in a fight take full turns.** Needs the user. (?271, ?272)
+
+## Wave 16 tempers and swarm (2026-11-23)
+
+The user's words: `docs/agents/answers-2026-11-23b.md`.
+
+271. **Tempers: vindictive, flirty, pop-ups, holds, skilled leader (w16-tempers) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w16-tempers.md`. Calls:
+    - **Vindictive:** `Unit.wrongs[Faction]` = blows that unit landed on each side this fight (kept on the striker; cleared in `Battle._listen`). Ally hit = the victim's side is a friend; word travels, no sight check. `AI._grudge` joins `_hunted`: 2.0 a blow, at most 3 blows (6.0), in tiles in `_targeting` and HP-worth in `_strike`. `Bio.grudges` words naming the target (name, tag, class, race, looks, as read) = HUNT. Your "Persona" is read as the unit's Bio (the code's Persona group is the deception system).
+    - **Flirty:** affinity = `Bio.fancies` words, else charisma as read >= 14 (`Difficulty.stat_at("high")`), else a benevolent look (Beautiful, Radiant) with no stats read. Support skills go to fancied allies first; on a fancied foe a soft skill (no damage tiers, or love-tagged) +2.0, a damaging one half.
+    - **Pop-ups:** `Battle.first_time(u, what)` once per unit per fight: "Grudge" on a strike or main approach at a grudged target, "Smitten" on a support or soft strike at a fancied unit. **"Grudge" is also the Grudge skill's name.** HUD holds `SIGN_HOLD` 0.3 s per visible sign during a unit's AI act, at most 0.9 s; every passive sign counts, not only temper ones.
+    - **`Command.skilled(l)`** = tag `leader` or cha >= 14; `AI._calm` uses it (was cha > 0). `ai_tactics_test.test_calm_followers_drill` changed: a +1 leader is no longer skilled.
+    - **Tests:** `bio_test.test_vindictive_grudge`, `test_flirty_supports_fancied`; 5 mutations caught. Suite 11065 checks, 0 failed. busy_fight 30: stare p95 743 ms (main 764).
+    - **Not done:** a soft-strike test, screenshots, a `leader` Glossary tag (nothing carries it), `unit.py new` flags for grudges and fancies. **New names to review:** `Unit.wrongs`, `Bio.grudges`, `Bio.fancies`, `first_time`, `SIGN_HOLD`, `Command.skilled`.
+272. **Herds, ranks (w16-swarm) - built on judgement, open for review (2026-11-23).** Plan: `docs/plans/w16-swarm.md`. Calls:
+    - **Herd:** like = same side, Role, Race; a herd needs 3 alive. Turn order calm, herd, far, full. One plan per kind a side turn (`_herd_plan`, cached in Battle meta): the lowest-key plainly seen foe within walk + `COHESION` 3 of the centre (key = HP for `weakest`, else magical or physical Defense), else the nearest seen, shape or last sighting. A member walks beside the goal without reads or pricing; one 3 tiles ahead of the centre waits. A member that is hurt, cc'd, tempered, hunting, on a non-`weakest` strategy or with a foe in reach takes a full turn.
+    - **`Scripts/Ranks.gd` (`Battle.ranks`):** sorted arrays per side (HP kept on `hp_changed`, Defenses rebuilt once a side turn). Only consulted for foes plainly seen.
+    - **Measured (M3 x 4, stare mean / p95 ms):** 30 no party 199-215 / 741-803 to 147-154 / 293-298; 30 parties 162-168 / 528-555 to 135-136 / 292-305; 15 no party unchanged (87 / 185); 60 rats v 15 (`busy_fight swarm=M`) 159 / 311 to 111 / 293. Winners flipped in 30 with parties (0 v 9 to 7.5 v 1, even sides).
+    - **Tests:** `test_herds` (20 checks), `test_ranks_match_a_scan` (9); 7 mutations caught. Suite 11086 checks, 0 failed.
+    - **Not done:** non-herd units facing a swarm still read every rat (Ranks or a spatial cut could serve `_targeting`); herd members in a fight take full turns; no visual check. **New names to review:** `HERD`, `COHESION`, `Ranks`, `Battle.ranks`.

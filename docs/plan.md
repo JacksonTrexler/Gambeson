@@ -237,6 +237,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Test segments, risk tier (?268) | `sims_test.gd` |
 | — | Ambush as the first roll, Sally, Ambush Fusillade (?269) | `ambush_test.gd` |
 | — | Ramut's tree with Ire (?270) | `god_slots_test.gd` |
+| — | Vindictive, flirty, pop-ups, `Command.skilled` (?271) | `bio_test.gd`, `ai_tactics_test.gd` |
+| — | Herds, `Ranks` (?272) | `ai_tactics_test.gd` |
 
 ## Questions to answer first
 

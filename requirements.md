@@ -136,7 +136,7 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Large `.gd` files: grep and read ranges, never whole. [CLAUDE.md]
 - Delegation: a host splits work into builder tasks on cheaper models in worktrees, wakes about twice a prompt for under 2 minutes, a floater runs merges/verify/docs; calls recorded as numbered questions. [user 2026-11-16]
 - Saves: progress only (JSON, `user://save.json`); settings stay in Prefs. (?145)
-- AI 20/80: shortcuts that cut processing time are welcome; a calm follower of a skilled leader (`Command.cha_of > 0`) drills without its preferences unless hurt, cc'd, betrayed or its leader is lost. (?256) [user 2026-11-23]
+- AI 20/80: shortcuts that cut processing time are welcome; a calm follower of a skilled leader (`Command.skilled`: tag `leader` or cha 14) drills without its preferences unless hurt, cc'd, betrayed or its leader is lost. (?256, ?271) [user 2026-11-23]
 - Tests are not overly concrete: relations to the data over pinned content, 20/80, consolidated but not too far; `busy_fight` checks outcomes, not a digest. (?257, ?258) [user 2026-11-23]
 - The investigation system (trickery, persona, concealment, suspicion) must exist: lost parts are recovered or rebuilt. (?255) [user 2026-11-23]
 - Wait length scales with interest: the more worth watching an enemy's turn, the longer it may take; surprising decisions and first-time consequences pop up like skill activations. (?257) [user 2026-11-23]
@@ -144,4 +144,5 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Tests: audit what 20/80 lost, mark what carries regression risk, run by segment (`t.sh <wt> <segment>`, `risk`). (?268) [user 2026-11-23]
 - Astral Nexus (tower): generators, a broken startile grid, starpanes, astral void, 4 to 6 hostile starmen; the Power Star (Power-only energy potion, overflow Power at rank x 15%) drops. (?267) [user 2026-11-23]
 - Ire sits on Ramut's tree. (?270) [user 2026-11-23]
-- Planned: vindictive units (grudges, Persona targets) and flirty units (support or soft offence toward affinity); cheap macro decisions for packs, armies and swarms (group plan, tracked targeting superlatives, leader-contingent or O(log n) turns). [user 2026-11-23]
+- Vindictive units focus those who landed blows on them or an ally (2 a blow, cap 3) or whom their Bio names; flirty units give support first to, and soft skills toward, those they fancy (Bio words, else cha 14); first-time "Grudge" and "Smitten" pop up like skill activations; the HUD holds 0.3 s a sign, 0.9 s at most. (?271) [user 2026-11-23]
+- Cheap macro decisions: 3 or more like units (side, class, race) share one plan a side turn and stay within 3 tiles; target superlatives (HP, physical, magical Defense) kept sorted per side. (?272) [user 2026-11-23]
