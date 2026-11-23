@@ -60,6 +60,7 @@ func _initialize() -> void:
 	var ran := 0
 	var spent := {}
 	var leaked := 0
+	var leaks := []  # "test<TAB>Class<TAB>path" per leaked node, merged into Tests/leaks.txt
 	var files := Array(DirAccess.get_files_at("res://Tests")).filter(func(f: String): return f.ends_with("_test.gd"))
 	files.sort()
 	if reverse:
@@ -119,6 +120,7 @@ func _initialize() -> void:
 			for n in root.get_children():  # a test's leftovers (Test.hud puts a HUD on the root) must not reach the next: a leaked HUD in the "hud" group gave the battle camera a stale selection
 				if n not in before:
 					leaked += 1
+					leaks.append("%s\t%s\t%s" % [id, n.get_class() if not n.get_script() else n.get_script().get_global_name(), String(n.get_path()).replace("@", "")])
 					n.free()
 			spent[id] = Time.get_ticks_msec() - start
 	if times:
@@ -129,8 +131,43 @@ func _initialize() -> void:
 	_wipe()
 	if leaked:
 		print("freed %d nodes tests left on the root" % leaked)
+		_record_leaks(leaks)
 	print("%d checks, %d failed (%d tests%s%s%s)" % [checks, failed, ran, ", quick" if quick else "", ", reverse" if reverse else "", ", soak" if "soak" in args else ""])
 	quit(1 if failed else 0)
+
+
+# The running list of leaks (Tests/leaks.txt, committed, for batch fixing): `test<TAB>Class<TAB>path` lines, deduped across runs,
+# kept sorted so reverse/forward order doesn't matter. Never fails the run. Written to a per-process temp then renamed (atomic), so a
+# parallel run can at worst lose a line, which its next run re-adds; a missing file is just an empty list.
+func _record_leaks(leaks: Array) -> void:
+	var path := "res://Tests/leaks.txt"
+	var lines := _list_raw(path)
+	var added := false
+	for l in leaks:
+		if l not in lines:
+			lines.append(l)
+			added = true
+	if not added:
+		return
+	lines.sort()
+	var tmp := "%s.%d.tmp" % [path, OS.get_process_id()]
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		print("leaks.txt: cannot write (%d)" % FileAccess.get_open_error())
+		return
+	f.store_string("\n".join(lines) + "\n")
+	f.close()
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+
+
+func _list_raw(path: String) -> Array:
+	var out := []
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f:
+		for line in f.get_as_text().split("\n"):
+			if line.strip_edges():
+				out.append(line)
+	return out
 
 
 # The per-process files a test may have written: settings, key binds, the save (and a bad one set aside).
