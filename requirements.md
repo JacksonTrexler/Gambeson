@@ -130,6 +130,12 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Gamut's Tower: three floors, six portals; the Astral Envoy and lattice; items from bosses, commanders and scenarios; the Center and Lancin lore lives in g-glossary.md. (?77, ?180)
 - Properties tag their unit and carry resist/weak numbers (Aquatic, Energized, Radiant, Rotting). (?92)
 
+## Suit system
+Recorded from the user's words (2026-11-23, `docs/agents/answers-2026-11-23c.md`); no code yet.
+- `diamond` domain: non-divine and non-natural magic, magical, evoker. `heart` domain: divine / natural magic, spiritual, invoker. `red` is the caster colour. [user 2026-11-23]
+- `spade` domain: offensive, martial. `club` domain: defensive, specialist. `black` is the physical colour. [user 2026-11-23]
+- Invokers are clerics, druids, warlocks, and sometimes wizards, paladins, rangers; colour blue. Evokers are mages, sorcerers, sometimes wizards, monsters; colour purple. [user 2026-11-23]
+
 ## Tooling and tests
 - New content goes through its tool and process in `.claude/skills/` (skill.py, tile.py, role.py, unit.py, item.py, mechanic.py); run each `check` you touched and `skill.py check` before committing. [user, CLAUDE.md]
 - Tests: `godot --headless --path . -s Tests/run.gd -- [words]`; a compile error hangs it; sims live outside the suite. (?144, ?183)

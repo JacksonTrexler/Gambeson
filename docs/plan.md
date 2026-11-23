@@ -241,6 +241,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Herds, `Ranks` (?272) | `ai_tactics_test.gd` |
 | — | Auto-equip explicit, `sync_bar` (?273 to ?277) | `equip_test.gd` |
 | — | `reverse` crash: `Test.hud()` leak, runner sweep (?278, ?279) | `meadows_test.gd` |
+| — | HScroll, the class picker (?280) | `hscroll_test.gd` |
+| — | Combat camera gestures, elliptical edge-pan (?281) | `meadows_test.gd` |
+| — | Leak list `Tests/leaks.txt` (?282) | the runner |
+| — | Nexus circuit, Power Siphon (?283, ?284) | `tower_test.gd`, `stars_test.gd` |
+| — | Flex trees, Scout (?285, ?286) | `general_test.gd` |
 
 ## Questions to answer first
 

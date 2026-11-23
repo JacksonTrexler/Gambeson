@@ -337,3 +337,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Herds and ranks** (`AI._herd_plan`, `_herd`, `HERD` 3, `COHESION` 3, `Scripts/Ranks.gd`, `busy_fight swarm=M`; 30 a side no party p95 ~780 to ~295 ms): plan `docs/plans/w16-swarm.md`. `ai_tactics_test.test_herds`, `test_ranks_match_a_scan`. (?272)
 - [x] **Auto-equip explicit** (`Unit.sync_bar()` the one hook, `_touch_bar` gone, `_fill_bar` in a read stretch; suite ~62.5 to ~60 s): plan `docs/plans/w17-equip.md`. `equip_test.test_auto_equip`. (?273 to ?277)
 - [x] **`reverse` run crash fixed** (`Test.hud()` parents the HUD to the test's scene; `Tests/run.gd` sweeps nodes left on the root): plan `docs/plans/w17-reverse.md`. (?278, ?279)
+- [x] **Horizontal scroll** (`Scripts/HScroll.gd`, under `Choice`'s options; `HScroll.amount`): plan `docs/plans/w18-hscroll.md`. `Tests/hscroll_test.gd`. (?280)
+- [x] **Combat camera: elliptical edge-pan, trackpad and two-finger pan, map gain, window-rim pause** (`BattleCamera.edge_vec`, `map_gain`, `gesture_by`): plan `docs/plans/w18-camera.md`. `meadows_test.test_camera`. (?281)
+- [x] **Leak list** (`Tests/run.gd` writes `Tests/leaks.txt`): plan `docs/plans/w18-leaks.md`. (?282)
+- [x] **Astral Nexus reworked, Power Siphon** (`Scripts/AstralNexus.gd`, `Battle.circuit_ends`, `Battle._siphon`, Effect stat `power_siphon`, `Terrain/starpower_generator.tres`): plan `docs/plans/w18-nexus.md`. `stars_test.test_siphon`, `tower_test.test_nexus`. (?283, ?284)
+- [x] **Flex trees offered while levelling, Scout** (`Role.flex`, `flex_every`, `tags`, `SkillTab.needs`, `Unit.flex_*`, `Trees/general_scout.tres`, `role.py flex`): plan `docs/plans/w18-flex.md`. `general_test.test_flex_cadence`, `test_flex_prereqs`. (?285, ?286)
