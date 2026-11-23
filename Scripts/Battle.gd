@@ -2336,8 +2336,6 @@ const _SHADE: Array[StringName] = [&"sound", &"sight"]  # what Perception.tricke
 
 
 func _plain(o: Unit, t: Unit) -> int:
-	if not sight:
-		return 2
 	if zones.any(func(z: Zone): return t.cell in z.levels) or t.stat(&"concealment", _KINDS, o) > 0:
 		return -1
 	var friends := Faction.friends(o.faction, t.faction)
