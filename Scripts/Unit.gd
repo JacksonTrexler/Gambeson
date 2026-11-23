@@ -3067,9 +3067,11 @@ func add_overcharge(n: int, turns: int, spare := 0) -> void:
 
 # Dead units stay dead. heard: told first (being_healed), so others' passives may take a cut (Molothrus). rounded: how luck
 # rounded the amount (Luck.rounded(): -1 down, 1 up), for the HUD's number to wear (the heal dict it hears carries it).
-func heal(h: int, heard := true, rounded := 0) -> void:
+func heal(h: int, heard := true, rounded := 0, tags: Array[StringName] = []) -> void:
 	if not is_alive():
 		return
+	if heard and not tags.is_empty():
+		h = roundi(h * (1.0 + maxf(stat(&"healed", tags), -1.0)))  # the heal's own tags (a Dark or Undead heal: Undead's boost)
 	if heard:
 		var got := {hp = h, rounded = rounded}
 		being_healed.emit(self, got)

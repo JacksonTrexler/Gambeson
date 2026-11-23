@@ -5,10 +5,18 @@
 
 [sub_resource type="Resource" id="Effect_1"]
 script = ExtResource("2_effect")
-stat = "defense"
+stat = "check"
 amount = 1.0
 per_rank = true
-tags = Array[StringName]([&"pierce"])
+tags = Array[StringName]([&"execute"])
+kind = &"defensive"
+
+[sub_resource type="Resource" id="Effect_2"]
+script = ExtResource("2_effect")
+stat = "healed"
+amount = 0.05
+per_rank = true
+tags = Array[StringName]([&"dark", &"undead"])
 
 [resource]
 script = ExtResource("1_skill")
@@ -16,5 +24,5 @@ name = "Undead"
 ai = true
 passive = true
 tags = Array[StringName]([&"undead", &"trait"])
-effects = Array[ExtResource("2_effect")]([SubResource("Effect_1")])
+effects = Array[ExtResource("2_effect")]([SubResource("Effect_1"), SubResource("Effect_2")])
 no_density = "a trait: no slot a foe can disable, no range, check or cost, so Density would be all gain"

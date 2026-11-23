@@ -1252,7 +1252,7 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	if not foe and skill.heals():
 		target.healed_by = caster
 		var raw := skill.heal_raw(caster) if skill.heal_mods else 0.0  # luck's rounding of it, for the number's face (the rest is whole)
-		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) + impact_of(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri, Luck.rounded(raw, caster.rounded(raw)) if raw != 0.0 else 0)
+		mend(target, skill.healing(caster) + (zeal if skill.stat() in skill.heal_mods else 0) + int(req[1]) + impact_of(caster) if skill.heal_mods or skill.heal_bonus else 0, skill.clears(ri), skill.per_wound * ri, Luck.rounded(raw, caster.rounded(raw)) if raw != 0.0 else 0, caster.skill_tags(skill))
 		target.regain(skill.restores * ri)
 	if not foe:
 		_lovely(caster, skill, target)
@@ -5649,8 +5649,8 @@ func place(u: Unit, c: Vector2i) -> bool:
 # A heal: its wounds of rank `power` or less cleared (an effect's wound flag), then hp back, plus
 # per_wound for each wound cleared (First Aid: rank). Returns the wounds cleared. A debuff to be overcome
 # on t (the overcome stat: Curse of the Coyote) takes it instead: it wears max(power, 1) of its ranks away,
-# and the heal does nothing else. rounded: how luck rounded the hp (Luck.rounded(): Unit.heal()).
-func mend(t: Unit, hp: int, power: int, per_wound := 0, rounded := 0) -> int:
+# and the heal does nothing else. rounded: how luck rounded the hp (Luck.rounded(): Unit.heal()). tags: the heal's own (its skill's: Unit.heal(), the healed stat).
+func mend(t: Unit, hp: int, power: int, per_wound := 0, rounded := 0, tags: Array[StringName] = []) -> int:
 	for e: Effect in t.timed.keys():
 		if e.stat == "overcome" and e.helps() < 0:
 			t.timed[e].rank -= maxi(power, 1)
@@ -5662,7 +5662,7 @@ func mend(t: Unit, hp: int, power: int, per_wound := 0, rounded := 0) -> int:
 		if e.wound and t.timed[e].rank <= power:
 			t.timed.erase(e)
 			n += 1
-	t.heal(hp + per_wound * n, true, rounded)
+	t.heal(hp + per_wound * n, true, rounded, tags)
 	return n
 
 

@@ -114,16 +114,26 @@ func test_ai() -> void:
 	b.get_node("Units").add_child(sm)
 	ok(sm.skill_points == 0 and sm.own_rank(sk("floaty")) == 2 and sm.own_rank(sk("hop")) == 2, "a summoned level 5 Monster spent its points (floaty %d, hop %d, %d left)" % [sm.own_rank(sk("floaty")), sm.own_rank(sk("hop")), sm.skill_points])
 
-# Undead ?? (the Skeletons path): bones turn piercing, +1 Defense against it per rank; blunt and slash unmoved.
+# Undead ?? (the Skeletons path): + rank on any check against instant death (Battle.stand_bonus(), execute only); a heal
+# tagged dark or undead gives + rank x 5% more (the healed stat, Unit.heal()); other heals and checks unmoved.
 func test_undead_rank() -> void:
 	var u := Unit.monster(lancin, "Skeletons", 4)
 	u.path_auto = false  # take_path() would spend the points on the traits at ready (w18-monster-ai); this test ranks by hand
 	b.get_node("Units").add_child(u)
 	u.skill_points = 9
 	var undead := sk("undead")
-	var base := u.defense([&"pierce"])
-	var plain := u.defense([&"blunt"])
+	var base := Battle.stand_bonus(u, 1)
+	var plain := Battle.stand_bonus(u)
 	for r in [1, 2, 3]:
-		ok(u.rank(undead) == r and u.defense([&"pierce"]) == base + (r - 1) and u.defense([&"blunt"]) == plain, "Undead rank %d: pierce Defense +%d over rank I, blunt unmoved" % [r, r - 1])
+		ok(u.rank(undead) == r and Battle.stand_bonus(u, 1) == base + (r - 1) and Battle.stand_bonus(u) == plain, "Undead rank %d: last stand against an execute +%d over rank I, a plain one unmoved" % [r, r - 1])
+		for tag in [&"dark", &"undead", &"fire"]:
+			u.max_hp = 1000
+			u.hp = 1
+			u.heal(100, true, 0, [tag] as Array[StringName])
+			var want: int = 100 + (5 * r if tag != &"fire" else 0)
+			ok(u.hp == 1 + want, "Undead rank %d: a %s heal of 100 gives %d (got %d)" % [r, tag, want, u.hp - 1])
 		u.raise(undead)
+	u.hp = 1
+	b.mend(u, 100, 0, 0, 0, [&"dark"] as Array[StringName])
+	ok(u.hp == 1 + 100 + 5 * 3, "Battle.mend() carries the heal's tags to Unit.heal()")
 	ok(u.has_tag(&"undead"), "still undead")
