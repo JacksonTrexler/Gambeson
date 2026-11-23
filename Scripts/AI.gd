@@ -165,10 +165,12 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 		_finish_switch(u, log)
 		if _switch(b, u, reads, log):  # begun: the turn goes to it, idle
 			return log
+		_foresee(b, u, reads, log)  # a wise unit's look ahead: heals or restores itself, or asks (wis mod 0: nothing)
 	var temper := u.temper() if posture == &"" else &""  # a self-directed turn goes by its temper (Bio)
 	if posture != &"offensive" and temper != &"aggressive":  # a full turn, or HELP: heal and support (the aggressive strike first)
 		var healed := log.size()
 		_heal(b, u, reads, log)
+		_answer(b, u, reads, log)  # an ally asking for Energy or a reserve (_foresee())
 		if temper == &"helpful" and log.size() == healed:
 			_tend(b, u, reads, log)
 		_support(b, u, reads, log)
@@ -283,6 +285,7 @@ static func _drill(b: Battle, u: Unit, log: Array[String]) -> void:
 	Unit.end_read()
 	_remember(b, u, reads)
 	_heal(b, u, reads, log)
+	_answer(b, u, reads, log)
 	if not _strike(b, u, reads, log) and not _rooted(b, u):
 		var aim: Variant = l.get_meta(&"aim") if l.has_meta(&"aim") else null
 		var target: Unit = aim if is_instance_valid(aim) and aim in reads and aim.is_alive() and _foe(u, reads[aim]) else _best_target(u, reads)
@@ -787,6 +790,11 @@ static func _afflicting(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, more: Di
 # at its hit chance on u, as it would be cast); else, from its stats if they show (the best attack stat's modifier
 # added to BLOW), else BLOW alone. Never more than u has left.
 static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
+	return minf(_blow(b, u, r, t), float(u.hp))
+
+
+# _threat() with no cap at what u has left (_onslaught()).
+static func _blow(b: Battle, u: Unit, r: Read, t: Unit) -> float:
 	var best := -1.0
 	for s: Skill in r.skills:
 		if s.hostile and s.attacks():
@@ -796,7 +804,7 @@ static func _threat(b: Battle, u: Unit, r: Read, t: Unit) -> float:
 		for k in ATTACK_STATS:
 			if r.stats.has(k):
 				best = maxf(best, BLOW + floorf((float(r.stats[k]) - 10.0) / 2.0))
-	return minf(best, float(u.hp))
+	return best
 
 
 # How much more or less a use of s is expected to deal than score() reckons by its first roll's odds (hit chance x
@@ -1671,7 +1679,7 @@ static func _revives(b: Battle, u: Unit, s: Skill, t: Unit) -> bool:
 #     go to waste on HP it isn't missing. Advertising a high level draws its heals.
 #   loyal: that share, + PARTY for its party (its leader, and others following it).
 # Seen wounds it can clear add WOUND each; a commander (the player's leader, or one with a party)
-# adds COMMANDER.
+# adds COMMANDER. An ally asking for a heal (_asked(): its foresight) adds PLEA, its skilled leader commanding ORDER more.
 static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 	var share := 0.0
 	var lost: Variant = null
@@ -1684,10 +1692,11 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 	for e in r.effects:
 		if e.wound and e in t.timed and t.timed[e].rank <= s.clears(u.mods(s).irank(u.rank(s), &"rank_impact")):
 			wounds += 1
-	if share <= 0.0 and wounds == 0:
+	var asked := _asked(u, t, &"hp")  # it asked for a heal (_foresee()): wanted more, even unhurt as it reads
+	if share <= 0.0 and wounds == 0 and asked == 0.0:
 		return 0.0
 	var heal: int = _restores(b, u, s, t).get(&"hp", 0)
-	var v := share
+	var v := share + asked
 	match u.tends if u.tends else (u.role.tends if u.role and u.role.tends else &"benevolent"):
 		&"pragmatic":
 			if wounds == 0 and lost != null and lost * 2 < heal:
@@ -2254,3 +2263,204 @@ static func _scry(b: Battle, u: Unit, log: Array[String]) -> bool:
 			log.append("%s uses %s" % [u.name, s.name])
 			return true
 	return false
+
+
+# ---- Foresight (docs/plans/w21-foresight.md) ----
+# A wise unit (wis mod > 0) looks wis mod turns ahead (horizon(), at most FORESIGHT_CAP) at how its fight goes on if
+# nothing changes: the blows of the foes it knows of that reach it each turn (_onslaught(), off by an error its int and
+# what it can't make out set: margin()), and the turns it can still pay for its skills (_uses()). A heal that would
+# have it last more turns, or a restore that would keep it paying longer, it uses on itself; failing that, an ally
+# that could give it one is asked (the plea meta, answered through want() and _answer()), and one following it as a
+# skilled leader (Command.skilled(), hears()) is commanded: it weighs the plea more. A horizon of 1 is the plain
+# case: would the next blows kill it, can it pay for nothing it means to use. Wis mod 0 or less: none of it.
+const FORESIGHT_CAP := 4  # the most turns ahead it looks
+const MARGIN := 0.3  # the share its projected damage may be off by, at int mod 0
+const MARGIN_INT := 0.1  # less a point of int mod
+const MARGIN_MIN := 0.05
+const MARGIN_MAX := 0.6
+const UNKNOWN := 0.3  # more, at the share of foes whose blows it can only guess (no hostile skill read)
+const MELEE := 1.5  # the reach it takes a foe to have when it reads none of its skills
+const PLEA := 2.0  # how much more a healer wants to give what an ally asked for (want(), _answer())
+const ORDER := 2.0  # more again when the one asking is its skilled leader and its orders reach it
+
+
+# How many turns ahead u looks: its wisdom mod, 0 to FORESIGHT_CAP.
+static func horizon(u: Unit) -> int:
+	return clampi(u.mod(&"wisdom"), 0, FORESIGHT_CAP)
+
+
+# The share its projections may be off by: less the higher its int, more the more of its foes' blows it guesses.
+static func margin(u: Unit, guessed := 0.0) -> float:
+	return clampf(MARGIN - MARGIN_INT * u.mod(&"intelligence"), MARGIN_MIN, MARGIN_MAX) + UNKNOWN * guessed
+
+
+# Its foresight's turn: heals or restores itself, or asks, when that would carry it further (see above).
+static func _foresee(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
+	var h := horizon(u)
+	if h <= 0:
+		return
+	var asks := {}
+	if u.hp < u.max_hp:
+		var per := _onslaught(b, u, reads, h)
+		var now := survives(u.hp, per)
+		if now <= h:
+			var mine := _own_restore(b, u, &"hp")
+			if mine and survives(mini(u.hp + int(mine[1]), u.max_hp), per) > now and b.cast(u, mine[0], u):
+				log.append("%s foresees falling in %d and heals itself" % [u.name, now])
+			elif survives(mini(u.hp + _aid(b, u, &"hp", h), u.max_hp), per) > now:
+				asks[&"hp"] = u.rounds
+	var pool: Variant = u.runs_on()
+	var cost := _cheapest(b, u, pool)
+	if cost > 0:
+		var held := u.store(pool) if pool is Reserve else u.energy
+		var can := _uses(held, cost, h)
+		if can < h:
+			var mine := _own_restore(b, u, pool)
+			if mine and _uses(held + int(mine[1]), cost, h) > can and b.cast(u, mine[0], u):
+				log.append("%s foresees running dry and uses %s" % [u.name, mine[0].name])
+			elif _uses(held + _aid(b, u, pool, h), cost, h) > can:
+				asks[pool] = u.rounds
+	if asks.is_empty():
+		u.remove_meta(&"plea")
+	else:
+		u.set_meta(&"plea", asks)
+		log.append("%s asks for %s" % [u.name, ", ".join(asks.keys().map(func(k): return k.name if k is Reserve else String(k)))])
+
+
+# The damage it reckons on taking each turn of the next h (index 0: its foes' next turn): every foe it has located
+# and reads as one deals its best blow (_blow()) each turn from the one its walk brings u into its reach. All of it
+# off by one error drawn within margin() (_error()).
+static func _onslaught(b: Battle, u: Unit, reads: Dictionary[Unit, Read], h: int) -> Array[float]:
+	var per: Array[float] = []
+	per.resize(h)
+	per.fill(0.0)
+	var foes := 0
+	var guessed := 0
+	for t: Unit in reads:
+		var r: Read = reads[t]
+		if not t.is_alive() or not r.located() or not _foe(u, r):
+			continue
+		foes += 1
+		var reach := MELEE
+		var known := false
+		for s: Skill in r.skills:
+			if s.hostile and s.attacks():
+				known = true
+				reach = maxf(reach, b.skill_reach(t, s))
+		if not known:
+			guessed += 1
+		var first := ceili(maxf(Command.tiles(u.cell, r.cell) - reach, 0.0) / maxf(t.stat(&"movement"), 1.0) - 0.0001)
+		if first >= h:
+			continue
+		var blow := _blow(b, u, r, t)
+		for k in range(first, h):
+			per[k] += blow
+	var e := _error(b, u, margin(u, float(guessed) / foes if foes else 0.0))
+	for k in h:
+		per[k] *= 1.0 + e
+	return per
+
+
+# One draw within +-m, the same for u all through a turn of its (seeded by the battle's seed, its name and rounds):
+# the battle's own rng is never drawn on.
+static func _error(b: Battle, u: Unit, m: float) -> float:
+	var g := RandomNumberGenerator.new()
+	g.seed = hash("%d %s %d" % [b.rng.seed, u.name, u.rounds])
+	return g.randf_range(-m, m)
+
+
+# The turns (1..per.size()) it lasts at hp against per (_onslaught()); past them all, per.size() + 1.
+static func survives(hp: float, per: Array[float]) -> int:
+	var taken := 0.0
+	for k in per.size():
+		taken += per[k]
+		if taken >= hp:
+			return k + 1
+	return per.size() + 1
+
+
+# The turns of h it can pay for a use costing `cost` from `held`, nothing coming back (a busy unit recovers none).
+static func _uses(held: int, cost: int, h: int) -> int:
+	return mini(h, floori(float(held) / cost)) if cost > 0 else h
+
+
+# The least the skills it means to use (a blow, a heal: as _switch() weighs them) cost from pool, of those with a cost;
+# 0: none.
+static func _cheapest(b: Battle, u: Unit, pool: Variant) -> int:
+	var least := 0
+	for s: Skill in u.actives:
+		if u.price(s) <= 0 or not (s.for_foes() or _mends(b, u, s)):
+			continue
+		if pool is Reserve and (not (pool.only.is_empty() or pool.only.any(func(t): return s.tagged(t))) or pool.bars.any(func(t): return s.tagged(t))):
+			continue
+		var c := u.cost_from(s, pool)
+		if c > 0 and (least == 0 or c < least):
+			least = c
+	return least
+
+
+# Its best skill it can use on itself now to restore pool (&"hp", &"energy", a Reserve), with how much: [skill, n]; [] none.
+static func _own_restore(b: Battle, u: Unit, pool: Variant) -> Array:
+	var best := []
+	for s: Skill in u.actives:
+		if s.hostile or s.for_foes() or not u.can_afford(s) or not b.in_reach(u, s, u) or not s.behaviours.all(func(x: Behaviour): return x.fits(b, u, u)):
+			continue
+		var n: int = _restores(b, u, s, u).get(pool, 0)
+		if n > 0 and (best.is_empty() or n > best[1]):
+			best = [s, n]
+	return best
+
+
+# The most an ally could give it of pool with a skill it knows of (allies tell each other their kits) and could bring to
+# bear within h turns (its movement x h + the skill's reach).
+static func _aid(b: Battle, u: Unit, pool: Variant, h: int) -> int:
+	var most := 0
+	for o: Unit in b.units.values():
+		if o == u or not o.is_alive() or not Faction.friends(u.faction, o.faction):
+			continue
+		var d := Command.tiles(u.cell, o.cell)
+		for s: Skill in o.actives:
+			if s.hostile or s.self_only or s.for_foes() or d > o.stat(&"movement") * h + b.skill_reach(o, s):
+				continue
+			most = maxi(most, _restores(b, o, s, u).get(pool, 0))
+	return most
+
+
+# How much more u wants to give t pool (&"hp"...) for t's asking (the plea meta, lasting through its side's next turn):
+# PLEA, + ORDER when t is the skilled leader u follows and its orders reach u. 0: not asked, or t is u.
+static func _asked(u: Unit, t: Unit, pool: Variant) -> float:
+	if t == u or not t.has_meta(&"plea"):
+		return 0.0
+	var p: Dictionary = t.get_meta(&"plea")
+	if not p.has(pool) or t.rounds > p[pool] + 1:
+		return 0.0
+	return PLEA + (ORDER if u.follows == t and Command.skilled(t) and Command.hears(t, u) else 0.0)
+
+
+# Answers an ally asking for a pool other than HP (Energy, a reserve: HP goes through want() and _heal()): the skill
+# of its, not for itself alone, that restores the most of it, on the ally that asked hardest. Nothing asks for HP here.
+static func _answer(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Array[String]) -> void:
+	var asking: Array[Unit] = []
+	for t: Unit in reads:
+		if t.has_meta(&"plea") and t.is_alive() and Faction.friends(u.faction, t.faction):
+			asking.append(t)
+	if asking.is_empty():
+		return
+	var best: Unit = null
+	var how: Skill = null
+	var top := 0.0
+	for s: Skill in u.actives:
+		if s.hostile or s.self_only or s.for_foes() or not u.can_afford(s):
+			continue
+		for t in asking:
+			if not b.in_reach(u, s, t):
+				continue
+			var got := _restores(b, u, s, t)
+			for pool in got:
+				var v: float = _asked(u, t, pool) * got[pool] if pool != &"hp" and got[pool] > 0 else 0.0
+				if v > top:
+					best = t
+					how = s
+					top = v
+	if best and b.cast(u, how, best):
+		log.append("%s gives %s what it asked for (%s)" % [u.name, best.name, how.name])

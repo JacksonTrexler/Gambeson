@@ -1097,3 +1097,77 @@ func cc_effect() -> Effect:
 	var cc := effect("nothing", 0.0)
 	cc.bears = [&"cc"] as Array[StringName]
 	return cc
+
+
+# docs/plans/w21-foresight.md. A wise unit (wis mod > 0) looks that many turns ahead: a heal or a restore that would carry
+# it further it uses on itself, else asks an ally for; a healer weighs the asking (PLEA), more for its skilled leader
+# (ORDER). Its reckoning is off by a margin that shrinks with int. Wis mod 0: none of it.
+func test_foresight() -> void:
+	var energize: Skill = load("res://Skills/energize.tres")
+	var u := v(1)
+	var healer := v(2)
+	stage(lancin, {u: Vector2i(4, 3), healer: Vector2i(1, 3), v(3): Vector2i(5, 3)})
+	roomy(u)
+	roomy(healer)
+	healer.learned.append(slot(heal, 2)); healer.sync_bar()
+	u.wisdom = 14
+	var look := func() -> Array[String]:
+		var log: Array[String] = []
+		AI._foresee(b, u, AI._reads(b, u), log)
+		return log
+	var asked := func(pool: Variant) -> bool: return u.has_meta(&"plea") and u.get_meta(&"plea").has(pool)
+	# HP: the blows it reckons on (v(3) beside it) would fell it; an ally's Heal would carry it a turn further.
+	u.hp = 2
+	var log: Array[String] = look.call()
+	ok(AI.survives(u.hp, AI._onslaught(b, u, AI._reads(b, u), 2)) == 1, "the next blow would fell it")
+	ok(asked.call(&"hp") and log.any(func(l: String): return "asks for hp" in l), "no heal of its own: it asks (%s)" % [log])
+	var r := b.read(healer, u)
+	var want := func(asking: bool) -> float:  # the healer's want of healing u, asked or not
+		if asking:
+			look.call()
+		else:
+			u.remove_meta(&"plea")
+		return AI.want(b, healer, heal, u, r)
+	ok(is_equal_approx(want.call(true) - want.call(false), AI.PLEA), "a healer wants it PLEA more for the asking")
+	look.call()
+	u.rounds += 2
+	ok(AI._asked(healer, u, &"hp") == 0.0, "a plea lapses after its side's next turn")
+	u.rounds -= 2
+	healer.follows = u
+	u.charisma = 14
+	ok(is_equal_approx(want.call(true) - want.call(false), AI.PLEA + AI.ORDER), "its skilled leader asking: a command, ORDER more")
+	u.charisma = 10
+	ok(is_equal_approx(want.call(true) - want.call(false), AI.PLEA), "an unskilled leader only asks")
+	healer.follows = null
+	u.learned.append(slot(heal, 2)); u.sync_bar()
+	u.refresh()
+	log = look.call()
+	ok(u.hp > 2 and log.any(func(l: String): return "heals itself" in l) and not asked.call(&"hp"), "a heal of its own: it heals itself (%s)" % [log])
+	u.hp = 2
+	u.wisdom = 10
+	u.refresh()
+	ok(look.call().is_empty() and u.hp == 2, "wis mod 0: no foresight")
+	u.wisdom = 14
+	b.move(v(3), Vector2i(14, 3))
+	ok(look.call().is_empty() and not u.has_meta(&"plea"), "no foe reaches it within its horizon: nothing to ask, the plea lapses")
+	# Energy: nothing left for the Energy Missile it means to use; Energize carries it a use further.
+	u.hp = u.max_hp
+	b.move(v(3), Vector2i(5, 3))
+	u.learned.append(slot(missile, 1)); u.sync_bar()
+	u.energy = 0
+	look.call()
+	ok(not asked.call(&"energy"), "no one to give it Energy: no asking")
+	u.learned.append(slot(energize, 1)); u.sync_bar()
+	u.refresh()
+	u.energy = 0
+	log = look.call()
+	ok(u.energy > 0 and log.any(func(l: String): return "uses Energize" in l), "it Energizes ahead (%s)" % [log])
+	# Margin: smaller the higher its int, to a floor; larger the more foes' blows it guesses; the same draw through a turn.
+	var m: Array[float] = []
+	for i in [6, 10, 14, 18]:
+		u.intelligence = i
+		m.append(AI.margin(u))
+	ok(m[0] > m[1] and m[1] > m[2] and m[2] > m[3] and m[3] >= AI.MARGIN_MIN, "the margin shrinks with int (%s)" % [m])
+	ok(AI.margin(u, 1.0) > AI.margin(u), "guessed blows widen it")
+	var e := AI._error(b, u, 0.5)
+	ok(absf(e) <= 0.5 and e == AI._error(b, u, 0.5), "its error: within the margin, the same draw twice")
