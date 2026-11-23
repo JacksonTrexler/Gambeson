@@ -181,6 +181,12 @@ func test_auto_equip() -> void:
 	u.extra_slots += 1
 	u._arrange()
 	ok(hex in u.hotbar, "on: new slots fill with what's left off")
+	var snare: Skill = load("res://Skills/snare.tres")
+	u.learned.append(slot(snare))
+	u.stat(&"strength"); u.equipped(snare); u.get_equipped(); u.actives
+	ok(snare not in u.hotbar, "a read auto-equips nothing (stat(), equipped(), the bar, its actives)")
+	u.sync_bar()
+	ok(snare in u.hotbar, "whatever hands it a skill calls sync_bar(), the one auto-equip hook")
 	var h := await hud(u)
 	var box: CheckButton = h.get_node("%AutoEquip")
 	ok(box.button_pressed, "the Setting is on by default")
@@ -256,7 +262,6 @@ func test_multi_slot() -> void:
 	var small := fat("Small")
 	for s in [rare, epic, small, two]:
 		u.learned.append(slot(s)); u.sync_bar()
-	u.get_equipped()  # they go on by themselves (auto-equip): the test arranges its own bar
 	for i in u.bar_size():
 		u.bar_clear(i)
 	var lost: Array = []
