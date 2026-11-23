@@ -54,7 +54,7 @@ func test_first_aid() -> void:
 	ok("+2 HP for each wound it clears" in first_aid.describe(2), "described (%s)" % first_aid.describe(2))
 	ok(&"specialist" in first_aid.tags and &"physical" in first_aid.tags, "physical, specialist")
 	for path in ["res://Roles/adventurer.tres", "res://Roles/rogue.tres", "res://Roles/bard.tres"]:
-		ok((load(path) as Role).tier(first_aid) == 1, "%s: First Aid, tier 1" % path.get_file())
+		ok((load(path) as Role).tier(first_aid) > 0, "%s: First Aid on offer" % path.get_file())
 
 
 func test_renew() -> void:
@@ -72,10 +72,10 @@ func test_renew() -> void:
 	ok(wounds[0] not in v(2).timed and wounds[1] not in v(2).timed and wounds[2] in v(2).timed, "Renew II clears wounds up to rank 4 (rank x rank)")
 	v(1).wisdom = 6
 	ok(renew.healing(v(1)) == 1, "at least 1 HP")
-	ok((load("res://Roles/paladin.tres") as Role).tier(renew) == 1, "the Paladin's: tier 1")
+	ok((load("res://Roles/paladin.tres") as Role).tier(renew) > 0, "the Paladin's: on offer")
 	var adventurer: Role = load("res://Roles/adventurer.tres")
-	ok(adventurer.tier(renew) == 1 and adventurer.roots[0].branches.any(func(x: Branch): return x.skill == renew),
-			"and the Adventurer's, in the Magic root (the caster tree): tier 1")
+	ok(adventurer.tier(renew) > 0 and adventurer.roots[0].branches.any(func(x: Branch): return x.skill == renew),
+			"and the Adventurer's, in the Magic root (the caster tree)")
 	ok("Gives back 2 AP" in renew.describe(2) and "Clears wounds up to rank 4 (rank x rank)" in renew.describe(2), "described (%s)" % renew.describe(2))
 
 

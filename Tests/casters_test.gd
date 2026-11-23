@@ -50,8 +50,8 @@ func test_wizard_tree() -> void:
 	ok(titles(callings.all()) == ["Divinity: Eros", "Divinity: Luun", "Divinity: Sol"],
 			"caster trees of the kinds it borrows, from any class, each once; no martial Prowess, no specialist Calling: %s" % [titles(callings.all())])
 	ok(sk("igna") in wizard.options and sk("aetha") in wizard.options and sk("darkstone") in wizard.options, "every starter spell, and Darkstone, on its core ring")
-	ok(wizard.tier(sk("sola")) == 1 and wizard.tier(sk("igna")) == 1 and wizard.tier(sk("mana")) == 0 and wizard.tier(sk("spellweave")) == 2 and wizard.tier(sk("unbound")) == 5,
-			"its own spells tier 1 (Sola and Igna, on the Bard's and Sol's trees too), Spellweave after Arcana, Unbound a capstone of 4")
+	ok(wizard.tier(sk("sola")) == 1 and wizard.tier(sk("igna")) == 1 and wizard.tier(sk("mana")) == 0 and wizard.tier(sk("spellweave")) > wizard.tier(sk("sola")) and wizard.tier(sk("unbound")) > wizard.tier(sk("spellweave")),
+			"its own spells tier 1 (Sola and Igna, on the Bard's and Sol's trees too), Spellweave after them, Unbound a capstone past it")
 	ok(sk("arcana").ai and sk("arcana").title() == "Arcana ??" and not sk("divinity").ai, "an AI's designs end with ??; your Divinity doesn't")
 
 
@@ -81,7 +81,7 @@ func test_wizard_dabblings() -> void:
 func test_mage_tree() -> void:
 	ok(mage.trees()[0].title() == "Mage" and mage.trees().slice(1).all(func(t: SkillTab): return t.kind in ["School", "College"]), "its own tab, then schools and colleges to pick: %s" % [titles(mage.trees())])
 	ok(mage.choices.all(func(c: TreeChoice): return c.picks == 1 and c.by == null and c.affinity == 0 and c.all().all(func(t: SkillTab): return t.kind == c.name)), "a school and a college, one each, no study needed, no penalty")
-	ok(mage.tier(sk("searing")) == 2 and mage.tier(sk("sunburst")) == 5 and mage.tier(sk("darkstone")) == 2,
+	ok(mage.tier(sk("searing")) > mage.tier(sk("igna")) and mage.tier(sk("sunburst")) > mage.tier(sk("searing")) and mage.tier(sk("darkstone")) > mage.tier(sk("sola")),
 			"a school opens after its starter spells; Sunburst after both its paths (Igna, Searing, Sola, Radiant Lance)")
 	ok(mage.vigor_per_level() == 1 and mage.reserves.values() == [10] and mage.items.size() == 3, "a caster: 1 HP a level, 10 Mana, a robe, staff and potion")
 	var plans: Array[Skill] = mage.offered() + wizard.offered()

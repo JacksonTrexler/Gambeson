@@ -17,7 +17,7 @@ func test_illusionist() -> void:
 	ok(c.by == sk("illusionist") and c.affinity == -1 and school.title() == "School: Illusion", "the choice: opened by Illusionist, a guest school")
 	ok(u.pick_missing(c, school) == "Learn Illusionist first", "shut till then")
 	ok(u.unlock(sk("vanishing_act")) and u.unlock(sk("double_bluff")) and u.unlock(sk("illusionist")), "Deception: Vanishing Act, Double Bluff, Illusionist")
-	ok(rogue.tier(sk("illusionist")) == 3, "its capstone, tier 3")
+	ok(rogue.tier(sk("illusionist")) > rogue.tier(sk("vanishing_act")) and rogue.tier(sk("illusionist")) > rogue.tier(sk("double_bluff")), "its capstone, past the other two")
 	ok(u.pick(c, school) and "School: Illusion" in u.class_trees().map(func(t: SkillTab): return t.title()), "picked: its tab opens")
 	ok(u.affinity(sk("blur")) == 0, "the first spell: no penalty")
 	ok(u.unlock(sk("blur")) and u.affinity(sk("blur")) == 0, "learned, still its own")

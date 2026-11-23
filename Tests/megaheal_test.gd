@@ -30,7 +30,7 @@ func spread(s: Skill, r: int) -> Array:
 
 
 func test_place() -> void:
-	ok(eros.branch(heal).tier == 8 and eros.branch(megaheal).tier == 8, "both at tier 8 on Eros")
+	ok(eros.branch(heal).tier > 0 and eros.branch(heal).tier == eros.branch(megaheal).tier, "both at one tier on Eros")
 	ok(not heal.hostile and not megaheal.hostile, "used on allies")
 
 

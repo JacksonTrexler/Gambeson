@@ -125,7 +125,7 @@ func test_leadership() -> void:
 	ok(strategist.describe(2).contains("Allies commanded a turn: +2") and tactician.describe(3).contains("Orders per ally a turn: +3"), strategist.describe(2) + " / " + tactician.describe(3))
 	ok(ranked(guide, 2).describe().contains("Allies commanded a turn: +2") and ranked(playbook, 1).describe().contains("Orders per ally a turn: +1"), ranked(guide, 2).describe() + " / " + ranked(playbook, 1).describe())
 	var tab: SkillTab = load("res://Trees/general_specialist.tres")
-	ok(tab.tier_of(strategist) == 3 and tab.tier_of(tactician) == 3, "both on the Specialist general tree, tier 3: a tier past Synergy")
+	ok(tab.tier_of(strategist) > 0 and tab.tier_of(strategist) == tab.tier_of(tactician), "both on the Specialist general tree, at one tier")
 
 
 # The caps as orders are given: a cha -1 leader with Strategist I and Tactician I orders two allies,

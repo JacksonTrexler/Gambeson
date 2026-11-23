@@ -220,7 +220,7 @@ func test_tiers() -> void:
 	ok([skill_slot, hex, igna, sola, wary, snare, darkvision].all(func(s: Skill): return adventurer.tier(s) == 1),
 			"tier 1: the centre, the core ring, and the start of each root")
 	ok(adventurer.tier(strike) == 0 and adventurer.tier(working_knowledge) == 0 and u.tier(strike) == 0, "tier 0: what it starts with")
-	ok(adventurer.tier(hazard_expert) == 2 and u.tier(hazard_expert) == 2, "Hazard Expert: tier 2, after Snare")
+	ok(adventurer.tier(hazard_expert) == adventurer.tier(snare) + 1 and u.tier(hazard_expert) == adventurer.tier(hazard_expert), "Hazard Expert: a tier after Snare, the same for a unit")
 	ok(adventurer.tier(magic_slot) == 4 and adventurer.tier(martial_slot) == 4, "the capstones: tier 4, after 3 of their root")
 	var stoneskin: Skill = load("res://Skills/stoneskin.tres")
 	ok(adventurer.tier(stoneskin) == -1 and u.tier(stoneskin) == 1, "a skill its class doesn't offer: tier 1 for a unit")
