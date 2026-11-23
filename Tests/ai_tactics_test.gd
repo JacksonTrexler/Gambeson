@@ -988,6 +988,24 @@ func test_far_reads_and_turn() -> void:
 	ok(o._bonus[0] != 7, "...one that ends an effect does")
 
 
+# The shortcuts a crowded full turn takes (w15-stare2): a plain unit reads no ally past its reach, and a foe beyond its walk is
+# approached by the nearest free tile beside it, unpriced. (_line_up()'s and _stretch()'s early-outs only skip work: the busy_fight sim.)
+func test_crowd_shortcuts() -> void:
+	var o := v(1)
+	var f := v(3)
+	var a := v(2)
+	stage(lancin, {o: Vector2i(0, 4), f: Vector2i(9, 4), a: Vector2i(9, 7)})  # the test map is 10 x 8: 9 tiles is past its 5 and APPROACH_FAR
+	var reads := AI._reads(b, o, AI._reach(b, o) + 1.0)
+	ok(f in reads and a not in reads, "a foe is always read, an ally past its reach is not")
+	ok(a in AI._reads(b, o) and a in AI._reads(b, o, 99.0), "a full read (or a long reach) takes every unit")
+	reads = AI._reads(b, o)
+	var tile := AI._approach(b, o, f, reads)
+	ok(tile == Vector2i(8, 4), "a far foe: the free tile beside it nearest u (%s)" % tile)
+	b.move(a, Vector2i(8, 4))
+	tile = AI._approach(b, o, f, reads)
+	ok(tile.x == 8 and tile != a.cell and not b.unit_at(tile), "...a taken tile is passed over (%s)" % tile)
+
+
 func cc_effect() -> Effect:
 	var cc := effect("nothing", 0.0)
 	cc.bears = [&"cc"] as Array[StringName]
