@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/pray.tres" id="s_pray"]
+[ext_resource type="Resource" path="res://Skills/ramuts_ire.tres" id="s_ire"]
+
+[sub_resource type="Resource" id="Branch_ire"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_ire")
+after = Array[ExtResource("1_skill")]([ExtResource("s_pray")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Ramut"
+tag = &"physical"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_ire")])

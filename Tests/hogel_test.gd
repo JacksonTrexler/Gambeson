@@ -88,7 +88,7 @@ func test_cleric() -> void:
 	b.get_node("Units").add_child(u)
 	ok(u.rank(load("res://Skills/pray.tres")) == 1 and u.rank(load("res://Skills/renew.tres")) == 1, "Pray and Renew from the start")
 	var god: TreeChoice = cleric.choices[0]
-	ok(cleric.trees().map(func(t: SkillTab): return t.title()).slice(0, 4) == ["Cleric", "Divinity: Eros", "Divinity: Luun", "Divinity: Sol"] and god.name == "God" and god.gods,
+	ok(cleric.trees().map(func(t: SkillTab): return t.title()).slice(0, 4) == ["Cleric", "Divinity: Eros", "Divinity: Luun", "Divinity: Ramut"] and god.name == "God" and god.gods,
 			"its own tab, then a tab per god to pick (God: each god's own tree)")
 	ok(u.deity() == &"" and u.class_trees().size() == 1, "no god yet: only its own tab")
 	u.skill_points = 2

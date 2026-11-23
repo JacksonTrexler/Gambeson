@@ -31,7 +31,7 @@ func test_cleric() -> void:
 	var u := make("cleric")
 	var god: TreeChoice = u.role.choices[0]
 	var domain: TreeChoice = u.role.choices[1]
-	ok(titles(u.offered(god)) == ["Divinity: Eros", "Divinity: Luun", "Divinity: Sol"] and u.offered(domain).is_empty(), "a god to pick; no domain without one")
+	ok(titles(u.offered(god)) == ["Divinity: Eros", "Divinity: Luun", "Divinity: Ramut", "Divinity: Sol"] and u.offered(domain).is_empty(), "a god to pick; no domain without one")
 	ok(u.pick(god, God.of(&"sol").own) and titles(u.class_trees()) == ["Cleric", "Divinity: Sol", "School: Radiance"], "Sol picked: its Divinity and its domain tree, Radiance, granted")
 	ok(u.pick_missing(domain, God.of(&"sol").pool[3]) == "Picked", "granted: nothing to pick")
 	var e := make("cleric")
@@ -48,4 +48,4 @@ func test_paladin() -> void:
 	ok(u.pick_missing(c[2], God.of(&"sol").own) == "Picked" and u.pick(c[2], God.of(&"sol").pool[3]), "Radiance as its Flex")
 	ok(titles(u.class_trees()) == ["Paladin", "Prowess: Protector", "Divinity: Sol", "School: Radiance"], "%s" % [titles(u.class_trees())])
 	var war := make("paladin", &"ramut")
-	ok(war.offered(c[1]).is_empty() and war.pick_missing(c[1], God.of(&"sol").own) == "Not Ramut's way", "Ramut offers no Divinity yet")
+	ok(titles(war.offered(c[1])) == ["Divinity: Ramut"] and war.pick_missing(c[1], God.of(&"sol").own) == "Not Ramut's way", "Ramut offers its own Divinity only")

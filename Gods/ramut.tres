@@ -9,9 +9,20 @@
 [ext_resource type="Resource" path="res://Gods/tabs/havoc.tres" id="t_havoc"]
 [ext_resource type="Resource" path="res://Gods/tabs/slayer.tres" id="t_slayer"]
 
+[ext_resource type="Resource" path="res://Trees/ramut.tres" id="r_own"]
+
+[sub_resource type="Resource" id="Tab_own"]
+script = ExtResource("tab")
+name = "Ramut"
+kind = "Divinity"
+god = &"ramut"
+devotes = true
+roots = Array[ExtResource("rs")]([ExtResource("r_own")])
+
 [resource]
 script = ExtResource("god")
 id = &"ramut"
 domains = "war, power"
 tag = &"physical"
+own = SubResource("Tab_own")
 pool = Array[ExtResource("tab")]([ExtResource("t_vanguard"), ExtResource("t_brawn"), ExtResource("t_fury"), ExtResource("t_havoc"), ExtResource("t_slayer")])
