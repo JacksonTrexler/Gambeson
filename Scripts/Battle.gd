@@ -3812,6 +3812,9 @@ func hazard(u: Unit, c: Vector2i, r: Read, nth := 0, ends := false, tolls := tru
 		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)  # (travel() puts them on at rank 1)
 	for e in r.at_end if ends else ([] as Array[Effect]):  # and to whoever ends its turn there (end_turn(): the tick takes that turn)
 		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)
+	if ends and on_lattice(c):  # and what the live circuit it would end on puts on it (Power Siphon)
+		for e in circuit_ends(c):
+			_owe_wound(out, u, e, 1, 1, null)
 	for m: Mark in r.marks:  # what the marks it knows of would put on it
 		if m.on == &"enter" and m.hits(u):
 			for e in m.effects:
@@ -3829,6 +3832,8 @@ func _owe_wound(out: Dictionary, u: Unit, e: Effect, ticks: int, level: int, by:
 			_owe(out, &"hp", ticks * e.amount * (level if e.per_rank else 1) * u.max_hp)
 		"winded":
 			_owe(out, &"ap", e.amount * (level if e.per_rank else 1))
+		"power_siphon":  # its HP share (the Power it gives back is a wash: not weighed)
+			_owe(out, &"hp", maxf(roundf(e.amount * u.max_hp), 1.0))
 
 
 func _owe(out: Dictionary, key: StringName, n: float) -> void:

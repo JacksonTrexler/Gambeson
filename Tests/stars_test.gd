@@ -80,6 +80,26 @@ func test_siphon() -> void:
 	ok(v(2).energy == 2 and v(2).hp == v(2).max_hp - 1, "5%% of max HP gone, 5%% of max Power gained (%d)" % v(2).energy)
 
 
+# The AI prices the siphon as it does other turn-end ground: where a walk ends on the live circuit it owes the HP share;
+# route()'s price for ending there is higher than for ending off it, and a broken circuit owes nothing.
+func test_siphon_priced() -> void:
+	lattice(0.0)
+	b.lay_layer(Vector2i(6, 1), load("res://Terrain/starpower_generator.tres"))
+	b.charge[Vector2i(6, 1)] = Battle.STAR_CAPACITY
+	stage(lancin, {v(1): Vector2i(3, 2), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})
+	var on := Vector2i(4, 1)
+	var off := Vector2i(4, 2)
+	var hp: float = b.hazard(v(1), on, b.read(v(1), on), 1, true).get(&"hp", 0.0)
+	ok(hp >= 1.0 and b.hazard(v(1), on, b.read(v(1), on), 1, false).is_empty() and b.hazard(v(1), off, b.read(v(1), off), 1, true).is_empty(), "ending on the circuit owes HP; passing over or ending off it owes none (%s)" % hp)
+	var p_on := {&"wary": true}
+	var p_off := {&"wary": true}
+	b.route(v(1), on, [on], p_on)
+	b.route(v(1), off, [off], p_off)
+	ok(p_on.cost > p_off.cost, "route() prices the circuit end above bare ground (%s vs %s)" % [p_on.cost, p_off.cost])
+	b.panes.erase(Vector2i(5, 1))
+	ok(b.hazard(v(1), on, b.read(v(1), on), 1, true).is_empty(), "a cut circuit owes nothing")
+
+
 func test_shatter() -> void:
 	lattice(0.5)
 	stage(lancin, {v(1): Vector2i(3, 2)})
