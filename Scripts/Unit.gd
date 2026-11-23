@@ -3079,6 +3079,13 @@ func flex_choice() -> TreeChoice:
 	return _flex
 
 
+# Flex trees it may take up now and hasn't (0 with none on offer): the skills screen's badge.
+func flex_due() -> int:
+	if flex_options().is_empty():
+		return 0
+	return maxi(flex_slots() - picked.filter(func(k: String): return k.begins_with(FLEX + "/")).size(), 0)
+
+
 # The level its next flex tree comes at (-1: none ever, or past MAX_LEVEL).
 func flex_next() -> int:
 	var every := role.flex_every if role else 0

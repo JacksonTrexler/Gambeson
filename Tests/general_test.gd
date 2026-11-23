@@ -114,6 +114,48 @@ func test_granted_trees() -> void:
 	ok(discipline.kinds() == [&"specialist"] and cram.kinds() == [&"specialist"], "Student's skills keep its root's kind on its tab")
 
 
+# Flex trees (Unit.flex_choice()): one per Role.flex_every levels, its class's Role.flex (every one for a jack,
+# none it has natively), picked through Unit.pick() into its general trees. A row: class, level, slots, offered.
+func test_flex_cadence() -> void:
+	for row in [["fighter", 10, 1, []], ["paladin", 9, 0, ["Scout"]], ["paladin", 20, 2, ["Scout"]], ["rogue", 5, 1, ["Scout"]],
+			["rogue", 20, 4, ["Scout"]], ["bard", 4, 0, ["Student"]], ["bard", 15, 3, ["Student"]], ["adventurer", 3, 1, ["Student", "Scout"]],
+			["adventurer", 18, 6, ["Student", "Scout"]], ["ranger", 20, 2, []], ["mage", 10, 1, []]]:
+		var u := unit_of(row[0])
+		u.level = row[1]
+		ok(u.flex_slots() == row[2] and u.flex_options().map(func(t: SkillTab): return t.name) == row[3],
+				"%s at level %d: %d flex trees of %s (%d of %s)" % [row[0], row[1], row[2], row[3], u.flex_slots(), u.flex_options().map(func(t: SkillTab): return t.name)])
+	var p := unit_of("paladin")
+	var scout: SkillTab = p.flex_options()[0]
+	p.level = 9
+	var c := p.flex_choice()
+	ok(not p.pick(c, scout) and p.pick_missing(c, scout) == "Next at level 10" and not "Scout" in names(p), "a level 9 Paladin can't take up Scout yet")
+	p.level_up()
+	ok(p.flex_due() == 1, "one to take up")
+	ok(p.pick(p.flex_choice(), scout) and p.flex_due() == 0 and "Scout" in names(p) and sk("hide") in p.general_skills() and p.pick_missing(p.flex_choice(), scout) == "Picked", "levelling to 10 offers it: picked, Scout is one of its general trees")
+	var back := unit_of("paladin")
+	back.from_dict(p.to_dict())
+	ok("Scout" in names(back), "a flex tree taken up is saved")
+
+
+# A flex tree's prereqs (SkillTab.needs, base-stat floors; Unit.flex_needs()): FLEX_SLACK lower for a generalist,
+# none for a jack, the tag from its class or anything it carries. A row: class, dex, wis, extra tags, what's missing.
+func test_flex_prereqs() -> void:
+	var scout: SkillTab = load("res://Trees/general_scout.tres")
+	ok(scout.needs == {&"dexterity": 10, &"wisdom": 11}, "Scout asks dexterity 10, wisdom 11")
+	for row in [["paladin", 10, 11, [], ""], ["paladin", 9, 11, [], "Needs Dexterity 10"], ["paladin", 10, 10, [], "Needs Wisdom 11"],
+			["rogue", 8, 9, [], ""], ["rogue", 7, 9, [], "Needs Dexterity 8"], ["bard", 8, 8, [], "Needs Wisdom 9"],
+			["adventurer", 1, 1, [], ""], ["paladin", 8, 9, [&"generalist"], ""], ["paladin", 1, 1, [&"jack"], ""]]:
+		var u := unit_of(row[0])
+		u.dexterity = row[1]
+		u.wisdom = row[2]
+		u.tags.append_array(row[3])
+		ok(u.flex_missing(scout) == row[4], "%s dex %d wis %d %s: \"%s\" (got \"%s\")" % [row[0], row[1], row[2], row[3], row[4], u.flex_missing(scout)])
+	var p := unit_of("paladin")
+	p.level = 10
+	p.dexterity = 9
+	ok(not p.pick(p.flex_choice(), scout) and p.pick_missing(p.flex_choice(), scout) == "Needs Dexterity 10", "short of a floor, it can't take it up")
+
+
 # One hook, two skills: a check effect with per_mod adds that stat's mod to the checks it names, from 0 up to the rank
 # (Unit.check_bonus(): Journeyman's Physical Intelligence, int to str, and Muscle Memory, wis to str).
 func test_stat_adds_to_checks() -> void:

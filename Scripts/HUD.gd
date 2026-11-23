@@ -2359,7 +2359,7 @@ func _refresh() -> void:
 		else:
 			skills.hide()
 	var lead := command.leader
-	%SkillsIcon.badge = lead.is_alive() and lead.skill_points > 0 or command.party.any(func(u: Unit): return u.skill_points > 0)
+	%SkillsIcon.badge = lead.is_alive() and (lead.skill_points > 0 or lead.flex_due() > 0) or command.party.any(func(u: Unit): return u.skill_points > 0 or u.flex_due() > 0)  # a flex tree to take up too
 	_update_tip()
 
 
