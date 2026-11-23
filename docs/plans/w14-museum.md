@@ -18,5 +18,14 @@ Tool: `Tests/museum_prof.gd` (not a test: `godot --headless --path . -s Tests/mu
 
 2. pools(): a choice none of whose trees gives a reserve skips picks() (TreeChoice.all() is cached on the resource); _lends_any walks the slot lists without the best-of dedupe: museum 28.7 -> 17.8 ms; suite 66 s, 11012 checks, 0 failed.
 
-## Next
-- Battle._enter (9 ms), pools()/picks() in _show_bars, refit.
+## As built (numbers)
+- Museum add_child 43 -> 17.8 ms (Unit._ready x7: _fill_bar 10 ms, rest ~1.5; Battle._enter 7.5 ms: the first side's opening looks, Perception reads).
+- Full suite, interleaved, base f217c8b vs branch: 107/67/107/67 s. 11012 checks, 0 failed (1033 tests) both.
+- reverse: meadows_test.test_camera / test_tower_difficulty crash (BattleCamera freed instance) on base too: pre-existing, not touched.
+- Launch log: only "8 resources still in use". skill.py check ok.
+- Guard: no new cache that can go stale (fast paths are superset tests). _touch_bar is pinned by command_test.test_default_bar (mutation: without it Icor's bar order changes, the test fails: seen while building).
+
+## Undone / leads
+- Battle._enter 7.5 ms: _look_harder reads (Perception, a stretch already); gameplay rolls, left alone (Perception/AI are other builders').
+- _fill_bar: lv()/stat(level)/lends() still walked per call outside a stretch; a cache would need invalidation on slots/timed/items/footing.
+- The bar order depending on when effects are first gathered (_sync_new from inside stat()) is a latent quirk, kept exactly; worth a design look.
