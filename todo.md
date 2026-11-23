@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 288. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 297. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -25,6 +25,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 15. **Wave 16 tempers and swarm (?271, ?272):** the "Grudge" pop-up shares the Grudge skill's word; weights (2 a blow, cap 3), the affinity cut cha 14, `SIGN_HOLD` 0.3 s; "skilled leader" now tag `leader` or cha 14 (no unit carries the tag); herd size 3, cohesion 3 tiles, herd members in a fight take full turns, units facing a swarm still read every rat.
 16. **Wave 17 equip (?273 to ?277):** the bar fill-order quirk is kept, unifying would move Icor's bar (Mana before Hex) (?274, ?259); the bar-keyed cache drop while filling is defensive, keep or drop (?276); the suite gain is ~4%, not ~16%, and the refit / `_take_looks` setup cost is not pursued (?277); the 545-line mechanical test diff (?275).
 17. **Wave 18 batch 1 (?280 to ?287):** the trackpad sign and scale in the camera (?281); the Nexus reading of "pane * base power" and the live circuit (?283, ?284); flex: the prereq floors, the Scout numbers, Ranger's duplicate tab, the god-slot "Flex" name (?285, ?286); the rolling window for the bar cache (?287).
+18. **Wave 18 batch 2 (?288 to ?296):** the astral void rule and the Hop skill as an innate active (?288); Floaty's fractional movement (?289); Flippant, Vindictive, Power Hungry and `Bio.also` (?290); the grudge weight 5 against 10 and the 25% thresholds (?291); the Jester's inverted page costs and its stat lists (?292); the Jester's data-only skills, all `??` (?293); Jovia's page and prereqs (?294); `flex_kind` (?295); the `skill.py` `intensity` line (?296).
 
 ## Built on judgement, open for review (newest last; append here)
 
@@ -135,6 +136,15 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 285 Flex trees offered while levelling (2026-11-23, your flex words): one "Flex Tree" choice a unit on the General tab; every 10 levels (Rogue, Bard 5; Adventurer 3); base-stat floors, `generalist` -2, `jack` none; tags on `Role.tags`. `docs/plans/w18-flex.md`; names: Flex Tree, generalist, jack.
 - 286 Scout tree (2026-11-23, your "Scout Martial"): Ranger's skills minus the capstone, dex 10 wis 11 (made up); Rogue and Paladin flex, Ranger general (duplicates its own Scout root); Student flex to Wizard, Warlock, Bard; the god-slot "Flex" word clashes. `docs/plans/w18-flex.md`; names: Scout.
 - 287 Rolling window for the bar cache (2026-11-23, your ?276 answer "probably keep a rolling window?"): best guess a small LRU keyed by the hotbar hash instead of dropping on change; not built (one-entry `_held_fx`, reading unclear). `docs/plans/w17-equip.md`.
+- 288 Astral void, jumps and Hop (2026-11-23, your void and Hop words): walkers keep enter 99, `floating` / `flight` ignore it; a jump lands only where its jumper can stand (`footing`, `fits_at`); Hop an innate active, 1 AP, 1 Power, radius 2; units with a jump skill leap on their approach. `docs/plans/w18-starmen.md`; names: floating, jump, void.
+- 289 Floaty's numbers (2026-11-23, your rank + 1 words): Floaty's own rank; Jump x2, movement /2 (fractional) at rank 1; Effect ops `scale` and `divide`; range effects scale a skill's whole range. `docs/plans/w18-starmen.md`.
+- 290 Starmen tempers (2026-11-23, your Flippant, Vindictive, Power Hungry): `Bio.also` allows several tempers; one vindictive rule with `grudges = ["astral"]`; Flippant feeds or skirts, aggressive at 25% HP lost; Power Hungry takes from any non-friend, Power then Energy then reserves, via Energy Transfer. `docs/plans/w18-starmen.md`; names: also, tempered, harmed.
+- 291 Grudge weight and thresholds (2026-11-23): a named grudge is `GRUDGED` 5, not HUNT 10, so 3 blows outweigh it; all three thresholds are 25%, guesses. `docs/plans/w18-starmen.md`.
+- 292 Inverted page (2026-11-23, your inverted-page words): `SkillRoot.inverted`, 1 base stat a tree, permanent, floor 6; martial pays int, wis or cha; specialist str or int; caster str, dex or con; prereqs still asked unless `jack`. `docs/plans/w18-jester.md`; names: Inverted.
+- 293 Jester class (2026-11-23): specialist, `jack`, stats 9/13/10/11/11/14, gambeson and dagger; seven data-only skills, all `??`. `docs/plans/w18-jester.md`; names: the seven.
+- 294 Jovia (2026-11-23, your patron words): her tree is the Jester's Inverted root itself; same costs; warlock must meet prereqs; no `jest` tag, no suit. `docs/plans/w18-jester.md`; names: Jovia.
+- 295 `flex_kind` (2026-11-23): Scout martial, Journeyman specialist, Student caster; empty falls back to the tab's category. `docs/plans/w18-jester.md`.
+- 296 `skill.py` wrote `intensity = &"faint"` on Juggle (2026-11-23): removed by hand; cause untraced. **Yours or a tooling card (w18-skillpy).** `docs/plans/w18-jester.md`.
 
 ## Files
 

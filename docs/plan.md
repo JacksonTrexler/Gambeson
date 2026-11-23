@@ -246,6 +246,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Leak list `Tests/leaks.txt` (?282) | the runner |
 | — | Nexus circuit, Power Siphon (?283, ?284) | `tower_test.gd`, `stars_test.gd` |
 | — | Flex trees, Scout (?285, ?286) | `general_test.gd` |
+| — | Astral void, Hop, Floaty, starmen tempers (?288 to ?291) | `hop_test.gd`, `stars_test.gd` |
+| — | Jester, inverted page, Jovia (?292 to ?296) | `general_test.gd` |
 
 ## Questions to answer first
 

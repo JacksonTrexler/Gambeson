@@ -93,6 +93,16 @@ Answer: ____
 **Standing calls (AI):** ?130 a unit with one toggle and no pool holding enough stays put; ?233 `AI.LOST` 0.35 (`Scripts/AI.gd:43`); ?244 `AI.BLOCKS` 3 (`:75`); ?252 `AI.STRUCK` 0.5 (`:79`); ?253 a striker counts only if it can fund its skill, AP not asked; ?246 Opportunist's "ran into" = a walk ending beside it, first active, faction not read; ?250 the react filter by the `reaction` tag; ?206 cc priced `BLOW` 5, `CC` 0.5 (`:74,76`); ?260 `HUNT_FAR` 2.0 (`:84`); ?264 `SUSPECT_TILES` 3 and stacks 3 (`Scripts/Battle.gd:244-245`); ?261 Detective observes inside `survey()`; ?217 Skeleton's AI numbers; ?238 the Disturbed soft cap leaves a low-int caster no summons; ?262 and ?255 closed by ?269. Best guess: keep all as built.
 Answer: ____
 
+**F31. Void, jumps and Hop as built (wave 18 E; see ?288).** A jump lands only where its jumper can stand (never on void unless it floats or flies); walkers keep void as enter 99; units with a jump skill leap on their approach when it brings them nearer. Hop is an innate active (1 AP, 1 Power, radius 2) rather than a trait, because a trait is always-on.
+Best guess: keep as built.
+Ref: `docs/plans/w18-starmen.md`, `Scripts/Battle.gd` `footing`, `Behaviours/jump.gd`, `Skills/hop.tres`.
+Answer: ____
+
+**F32. Starmen tempers: weights and thresholds as built (wave 18 E; see ?290, ?291).** Several tempers a unit (`Bio.also`); the astral grudge is weight 5 (a standing grudge) against 2 a blow cap 3 = 6, so a foe that strikes it three times outweighs the astral grudge; Flippant turns aggressive at 25% HP lost, Power Hungry skips targets under 25% of their reserve, and takes from neutrals without making them hostile.
+Best guess: keep as built (no balancing now).
+Ref: `Scripts/Bio.gd`, `Scripts/AI.gd` `_feed`, `_richest`, `_skirt`.
+Answer: ____
+
 ---
 
 ## 3. Skills and classes (wave 18 G, H, I, J)
@@ -149,6 +159,21 @@ Answer: ____
 Answer: ____
 
 **Smaller calls (batch):** Winded (?126), Burnout's burnt max (?121), `Unit.guard` on helpless (?127), 0-AP actions while tapped (?119), snapped forms (?140), a flank / rear rider skill (?142), unshaping skills (?126, ?153), Discipline's initiative half and the Pike (?80, ?82, ?120), clout and tempers (?91, ?93), Jam's Focus hit (?97, ?100). Best guess: leave as built.
+Answer: ____
+
+**F33. Floaty: movement stays fractional (wave 18 E; see ?289).** Movement /(rank + 1) at rank 1 on 5 is 2.5, left unrounded, and Jump x2 makes Hop 4 tiles.
+Best guess: keep fractional; round only if a unit stalls.
+Ref: `docs/plans/w18-starmen.md`, `Scripts/Effect.gd` ops `scale`, `divide`.
+Answer: ____
+
+**F34. Jester's inverted page: the stat lists and the skills (wave 18 H; see ?292, ?293).** Mental stats read as int, wis, cha; physical as str, dex, con. 1 point per tree, permanent, floor 6. The Jester's seven skills are data only (Jape, Heckle, Tumble, Juggle, Read the Room, Fool's Luck, Pratfall), all `??`.
+Best guess: keep; behaviours for the skills are a later card once you pick the names.
+Ref: `docs/plans/w18-jester.md`, `Scripts/Unit.gd` `FLEX_PAY`, `buy_flex`.
+Answer: ____
+
+**F35. Jovia and `flex_kind` (wave 18 H; see ?294, ?295).** Jovia's tree is the Jester's Inverted root itself; the warlock pays the same stat costs and must meet each tree's prereq floors (checked before paying). Types: Scout martial, Journeyman specialist, Student caster. No `jest` tag, no suit yet.
+Best guess: keep as built.
+Ref: `Gods/jovia.tres`, `Trees/inverted.tres`, `Scripts/SkillTab.gd`.
 Answer: ____
 
 ---
@@ -249,4 +274,9 @@ Answer: ____
 Best guess: keep. Answer: ____
 
 **Names to review (batch).** `Traits Suppressed ??`, `Crit range ??`, `Glancing ??`, `Opening attacks ??`, `Attack stat ??`, `Reserve.burns ??`, `Disablings postponed ??`, `To be overcome ??`, `no_density ??`; and unmarked: `ambush_rolls`, `fusillade`, `Sally`, `starpower_generator`, `astral_void`, `power_star`, `soaks`, `held`, `wrongs`, `grudges`, `fancies`, `first_time`, `skilled`, `Trees/ramut.tres`. Best guess: all stay; the `??` ones keep their mark until you strike it.
+Answer: ____
+
+**F36. The `skill.py` `intensity` line (wave 18 H; see ?296).** `skill.py` wrote `intensity = &"faint"` on Juggle, a field no other skill has; the builder removed it. Fix the tool?
+Best guess: yes, a tooling card (w18-skillpy) stops it writing the field unless set.
+Ref: `Util/skill.py`, `docs/plans/w18-jester.md`.
 Answer: ____
