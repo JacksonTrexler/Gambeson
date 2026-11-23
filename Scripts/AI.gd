@@ -215,6 +215,7 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 	if posture == &"" and (_steady(b, u, reads, log) or _starve(b, u, reads, log)):
 		return log
 	if posture == &"" and not u.pack.is_empty() and not _could_strike(b, u, reads):  # nothing to strike from here: armor first, then the walk
+		_study(b, u, log)
 		_dress(b, u, log)
 	if posture != &"defensive" and temper != &"stoic":
 		while _summon(b, u, reads, log):
@@ -442,6 +443,7 @@ static func _herd(b: Battle, u: Unit, plan: Dictionary, log: Array[String]) -> v
 static func _prowl(b: Battle, u: Unit, log: Array[String]) -> void:
 	var reads := _reads(b, u, _reach(b, u) + 1.0)
 	_remember(b, u, reads)
+	_study(b, u, log)
 	_heal(b, u, reads, log)
 	_support(b, u, reads, log)
 	var rooted := _rooted(b, u)
@@ -730,6 +732,22 @@ static func _dress(b: Battle, u: Unit, log: Array[String]) -> void:
 			if worn:
 				u.pack.append(worn)
 			log.append("%s puts on %s, +%d Defense" % [u.name, best[1].name, gain])
+
+
+# A calm turn's reading (the full turn with no blow to strike, and a prowl: _far()): the first readable book in its pack (Item.readable()) goes through
+# Battle.study(), used up pass or fail; a pass takes the tweak it fancies (Unit.fancy()). One a turn; no AP, no reading.
+static func _study(b: Battle, u: Unit, log: Array[String]) -> void:
+	for it in u.pack:
+		if it and it.readable():
+			var r := b.study(u, it)
+			if r.is_empty():
+				return
+			u.pack.erase(it)
+			var t: Dictionary = u.fancy(r.tweaks) if r.passed else {}
+			if not t.is_empty():
+				u.tweak(t)
+			log.append("%s reads %s%s" % [u.name, it.name, ", takes %s" % t.label if not t.is_empty() else (", learns nothing" if r.passed else " and fails")])
+			return
 
 
 # What `defense` points in the slot skill s gives are worth u, in Defense, for what its blocks cost it: each blow the plate blocks

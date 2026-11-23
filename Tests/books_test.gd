@@ -115,3 +115,21 @@ func test_hungry() -> void:
 	v(3).energy = 0
 	ok(worth.call(v(3), transfer) == 0.0, "nothing left to siphon: nothing added")
 	ok(v(1).tempered(&"hungry") and AI._hunted(v(1), v(3), b.read(v(1), v(3))) == 0.0, "no orders, no hunger of the Power kind")
+
+
+# The AI reads on a calm turn (AI._study(), full turn with no blow to strike, or a prowl): a book in its pack is used up, pass (it takes
+# Unit.fancy()'s pick) or fail (nothing changes); with a foe in reach it strikes and the book stays.
+func test_ai_reads() -> void:
+	var book: Item = load("res://Items/applied_charizzmatics.tres")
+	for row in [[40, 40, true], [-40, 40, false]]:
+		var u := reader(row[0], row[1])
+		u.bio = null
+		u.pack.assign([book])
+		var log := AI.act(b, u)
+		ok(u.pack.is_empty() and log.any(func(l: String) -> bool: return "reads" in l), "calm: the book is used up (%s: %s)" % [row, log])
+		ok((u.bio != null and Bio.holds(u.bio, book.tweaks()[0])) == row[2], "calm: its first change lands only on a pass (%s)" % [row])
+	var u := reader(40, 40)
+	u.pack.assign([book])
+	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	AI.act(b, u)
+	ok(u.pack == [book], "a foe beside it: it fights, the book unread")
