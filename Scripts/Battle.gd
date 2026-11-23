@@ -2347,7 +2347,7 @@ func _plain(o: Unit, t: Unit) -> int:
 	var recon: float = o.stat(&"recon", Perception.sizing(t)) + (studied[o.faction].get(t, 0) if o.faction in studied else 0) + (noticed[o].get(t, 0) if o in noticed else 0)  # as _read() takes it
 	if recon < (0.0 if seen == 2 else -2.0):
 		return -1
-	if seen == 1 and (o.assumed.has(t) or o.mod(&"wisdom") <= -3 or t.stat(&"trickery", _SHADE, o) > 0 or t.stat(&"trickery", [] as Array[StringName], o) > 0 or t.clout(o.faction) > 0):
+	if seen == 1 and (o.assumed.has(t) or (o.mod(&"wisdom") <= -3 and Perception.fronts(t)) or t.stat(&"trickery", _SHADE, o) > 0 or t.stat(&"trickery", [] as Array[StringName], o) > 0 or t.clout(o.faction) > 0):
 		return -1  # a lie or a guess the real read would take into account (Perception.unit())
 	return seen
 

@@ -899,3 +899,89 @@ func test_calm_followers_drill() -> void:
 	AI.act(b, u)
 	ok(u not in b._to_look and lead in b._to_look, "a unit takes its own as it acts")
 	b.lazy_looks = false
+
+
+# Far reads and the far turn (Battle._plain(), Perception.vague(), AI._far(), _prowl(); docs/plans/w14-stare.md): a foe past its
+# side's sight, or in it but past half the range, with nothing hiding it, reads as the real read would (without Perception.unit()'s
+# work); anything that could change that (concealment, recon too low, a lie, a ping) is read in full. A unit that makes out no foe
+# plays a far turn (it ends where a full turn would), and a foe in plain sight, or any nature, hold or cc, plays a full one.
+func test_far_reads_and_turn() -> void:
+	var o := v(1)
+	var t := v(3)
+	var same := func(why: String) -> void:  # b.read() (the shortcut) against what Perception.unit() gives
+		var a := b.read(o, t)
+		var real := b._read(o, t)
+		ok(a.net == real.net and a.cell == real.cell and a.hint == real.hint and a.faction == real.faction and a.seen == real.seen and a.concealed == real.concealed and a.doubted == real.doubted and a.aura == real.aura and a.name == real.name and a.attitude(o) == real.attitude(o) and a.located() == real.located(), "the shortcut reads as the real one: %s (net %d / %d)" % [why, a.net, real.net])
+	stage(lancin, {o: Vector2i(1, 4), t: Vector2i(2, 4)})
+	b.sight = true  # stage() calms, turning it off
+	o.wisdom = 4
+	t.wisdom = 4
+	var table := {Vector2i(2, 4): 2, Vector2i(4, 4): 1, Vector2i(8, 4): 0}  # tile of the foe -> in_range()
+	for c: Vector2i in table:
+		b.move(t, c)
+		ok(b._plain(o, t) == (2 if table[c] == 2 else table[c]) and b.in_range(o, t) == table[c], "%s: far as it should be (%d)" % [c, b._plain(o, t)])
+		same.call("%s, in_range %d" % [c, table[c]])
+		ok(AI._far(b, o) == (table[c] < 2), "%s: a far turn only where no foe is in plain sight" % c)
+		ok((c in b.suspicious(o)) == (table[c] == 1), "%s: only a vague shape is suspicious, read or not" % c)
+	var e := effect("concealment", 1)
+	b.move(t, Vector2i(4, 4))
+	t.afflict(e, 9)
+	ok(b._plain(o, t) == -1, "something hides it: read in full")
+	same.call("concealed")
+	t.timed.erase(e)
+	var low := effect("recon", -5)
+	o.afflict(low, 9)
+	ok(b._plain(o, t) == -1, "its recon too low to be sure of the net: read in full")
+	same.call("low recon")
+	o.timed.erase(low)
+	o.assumed[t] = nemes
+	ok(b._plain(o, t) == -1, "it took it for a side after it vanished: read in full")
+	o.assumed.erase(t)
+	same.call("back to far")
+	# the turn: it ends where a full turn takes it
+	b.move(t, Vector2i(8, 4))
+	b.sighted(lancin, t, t.cell)
+	b.turn = lancin
+	ok(AI._far(b, o) and not AI._calm(b, o), "no foe in sight: a far turn")
+	o.refresh()
+	AI.act(b, o)
+	var far_cell := o.cell
+	ok(far_cell.x > 1, "it heads for where its side last made the foe out: %s" % far_cell)
+	b.move(o, Vector2i(1, 4))
+	o.refresh()
+	AI._full(b, o, &"", [] as Array[String])
+	ok(o.cell == far_cell, "a full turn goes the same way: %s / %s" % [far_cell, o.cell])
+	b.move(o, Vector2i(1, 4))
+	o.refresh()
+	var was_bio := o.bio
+	var holds := {
+		"a nature": [func(): o.behaviour = &"skittish", func(): o.behaviour = &""],
+		"a temper": [func(): o.bio = Bio.new(); o.bio.behaviour = &"stoic", func(): o.bio = was_bio],
+		"cc'd": [func(): o.afflict(cc_effect(), 2), func(): o.timed.clear()],
+		"a foe in plain sight": [func(): b.move(t, Vector2i(3, 4)), func(): b.move(t, Vector2i(8, 4))],
+	}
+	for why: String in holds:
+		holds[why][0].call()
+		ok(not AI._far(b, o), "a full turn with %s" % why)
+		holds[why][1].call()
+		ok(AI._far(b, o), "a far turn again after %s" % why)
+	b.sight = false
+	ok(not AI._far(b, o), "sight not limited: every foe is in sight")
+	# a tick that ends nothing leaves the stats as they were; one that ends an effect refits them
+	var raise := effect("max_hp", 5.0)
+	o.afflict(raise, 2)
+	o.refit()
+	o._bonus = [7, {}]  # what _arrange() clears: a mark of a refit
+	o.tick()
+	ok(o._bonus[0] == 7, "a tick that ends nothing refits nothing")
+	ok(raise in o.timed, "(it has turns left)")
+	while raise in o.timed:
+		ok(o._bonus[0] == 7, "...nor while it has turns left")
+		o.tick()
+	ok(o._bonus[0] != 7, "...one that ends an effect does")
+
+
+func cc_effect() -> Effect:
+	var cc := effect("nothing", 0.0)
+	cc.bears = [&"cc"] as Array[StringName]
+	return cc
