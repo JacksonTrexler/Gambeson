@@ -117,6 +117,7 @@ func test_ai() -> void:
 # Undead ?? (the Skeletons path): bones turn piercing, +1 Defense against it per rank; blunt and slash unmoved.
 func test_undead_rank() -> void:
 	var u := Unit.monster(lancin, "Skeletons", 4)
+	u.path_auto = false  # take_path() would spend the points on the traits at ready (w18-monster-ai); this test ranks by hand
 	b.get_node("Units").add_child(u)
 	u.skill_points = 9
 	var undead := sk("undead")
