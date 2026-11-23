@@ -21,3 +21,4 @@ Extend Tests/suspicion_test.gd: unseen hit check, Detective, Ambush. Mutation sp
 
 ## Done
 - Step 1 (unseen hit): `Battle._hurt_by()` replaces 3 doubt sites (cast x2, _grip). Test `suspicion_test.test_unseen_hit`; mutation (elif false) fails it. Updated `stealth_test.test_attacker_exposed`: clears v(1)'s suspicion after the hit (its free look may now pass; rule under test is exposure). Full suite before: 10972 checks, 1 failed (that one) -> fixed.
+- Step 2 (Detective): stat `detective` (mechanic.py, describe line); `Battle.suspect()`: own pass (n > 0, not told_of) -> `note(o, t, detective)`. Skills/detective.tres via skill.py (--human, passive, wis, per_rank) on Trees/general_specialist after Inquisitor (orig was unwired; placement CALL). Data-only: no test file. Test `suspicion_test.test_detective`; mutations: rule off (`if false`) fails; told_of ignored fails.

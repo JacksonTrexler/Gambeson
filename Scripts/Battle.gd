@@ -2096,6 +2096,7 @@ func lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 
 # o grows n stacks more suspicious of t, a unit or a tile (fewer, for a negative n; none left, it
 # trusts it again). Of an enemy unit, it passes the word on (spread()) - unless it was told.
+# Found out for itself (not told), its detective stat is recon it keeps on t (note()).
 func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 	var who: Unit = t if t is Unit else unit_at(t)  # suspicion of a tile works on whoever hides there
 	var pleased := n > 0 and who != null and who.faction != o.faction and (o.stat(&"unmask_gain") > 0 or o.stat(&"uncover_gain") > 0)
@@ -2110,6 +2111,9 @@ func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 		o.suspicion.erase(t)
 	if pleased:
 		_dialysis(o, who, was, hid)
+	var sleuth := roundi(o.stat(&"detective")) if n > 0 and not told_of else 0
+	if sleuth > 0:
+		note(o, t, sleuth)  # Detective: what it found out for itself, it reads better from now on
 	if n > 0:
 		if first:
 			discovered.emit(o, t)
