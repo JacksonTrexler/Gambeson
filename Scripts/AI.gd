@@ -83,6 +83,8 @@ const LINE_UP_MARGIN := 2.0  # tiles past its walk and a skill's reach a foe may
 const APPROACH_FAR := 3.0  # tiles past its walk a foe must stand for _approach() to take the nearest free tile beside it, unpriced: where it ends this turn is short of it either way
 const HUNT_FAR := 2.0  # tiles past its walk a hunt's goal must lie for it to head straight there (_hunt()), not by the tile beside it (_approach())
 const DRILL_MARGIN := 2.0  # tiles past its walk and its longest reach a drilling follower still reads units within (_drill())
+const HERD := 3  # like units (_kind()) a side must field, alive, to move as a herd on one plan a side turn (_herd_plan())
+const COHESION := 3.0  # tiles a herd member may get ahead of its herd's centre toward the goal before it waits for the rest (_herd())
 
 
 # What u makes out of every other unit now.
@@ -120,8 +122,11 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	b.looks_done(u)  # its opening look, if it still owes it (Battle.lazy_looks)
 	if not u.is_alive() or u.stopped():
 		return log
+	var herd := {}
 	if posture == &"" and _calm(b, u):
 		_drill(b, u, log)
+	elif posture == &"" and _herded(b, u, herd):
+		_herd(b, u, herd, log)
 	elif posture == &"" and _far(b, u):
 		_prowl(b, u, log)
 	else:
@@ -286,9 +291,7 @@ static func _drill(b: Battle, u: Unit, log: Array[String]) -> void:
 # nothing hides it and u's recon would make it out if it were near) - so there is nothing to strike, weigh or flee,
 # and a full turn would only read everyone to find that out.
 static func _far(b: Battle, u: Unit) -> bool:
-	if u.behaviour != &"" or u.temper() != &"" or u.dbno != null or u.channel or not b.sight or u.faction == null or not u.assumed.is_empty() or u.restless() or b.posing(u):
-		return false
-	if not u.afflicted(&"cc").is_empty() or b.held_by(u) or not b.holding(u).is_empty():
+	if not b.sight or not _ordinary(b, u):
 		return false
 	Unit.begin_read()
 	var far := true
@@ -298,6 +301,124 @@ static func _far(b: Battle, u: Unit) -> bool:
 			break
 	Unit.end_read()
 	return far
+
+
+# Nothing in it or on it that a shortcut turn would miss: no nature or temper (Unit.behaviour, temper()), a side and
+# no assumed one, not Downed, channeling, Restless or posing, not cc'd, held or holding (_far(), _herded()).
+static func _ordinary(b: Battle, u: Unit) -> bool:
+	if u.behaviour != &"" or u.temper() != &"" or u.dbno != null or u.channel or u.faction == null or not u.assumed.is_empty() or u.restless() or b.posing(u):
+		return false
+	return u.afflicted(&"cc").is_empty() and not b.held_by(u) and b.holding(u).is_empty()
+
+
+# What a herd is: units of a side alike in class and race (rats, goblins, a line of soldiers): _herd_plan().
+static func _kind(u: Unit) -> Array:
+	return [u.faction, u.role, u.race]
+
+
+# u's herd's plan this side turn, made once for all of its kind (_kind()) by the first of them to ask: its members (HERD or
+# more, alive), their centre, the foes its side can place (Battle.in_range() >= 1), the longest walk and reach of a member,
+# and its goal: the foe its side plainly sees within that walk and reach (plus COHESION) of the centre that is lowest in
+# what the herd's blows test (Battle.ranks: HP for the weakest-minded, else its physical or magical Defense, by most of its
+# skills) - a walk from the front of a sorted list, no reads - else the plainly seen foe nearest the centre. {} for no herd.
+static func _herd_plan(b: Battle, u: Unit) -> Dictionary:
+	var cache: Dictionary = b.get_meta(&"herds") if b.has_meta(&"herds") else {}
+	if cache.get(&"turn", -1) != b.turns_begun or cache.get(&"side") != u.faction:
+		var kinds := {}
+		for m: Unit in b.members(u.faction):
+			if m.is_alive():
+				kinds.get_or_add(_kind(m), []).append(m)
+		cache = {&"turn": b.turns_begun, &"side": u.faction, &"kinds": kinds, &"plans": {}}
+		b.set_meta(&"herds", cache)
+	var k := _kind(u)
+	if not cache.plans.has(k):
+		cache.plans[k] = _plan(b, cache.kinds.get(k, []))
+	return cache.plans[k]
+
+
+static func _plan(b: Battle, members: Array) -> Dictionary:
+	if members.size() < HERD:
+		return {}
+	var rep: Unit = members[0]
+	var centre := Vector2.ZERO
+	var walk := rep.move_left() + _reach(b, rep)  # its kind's (they share a class)
+	var key := &"hp" if &"weakest" in rep.strategy else &""
+	var magic := 0
+	for m: Unit in members:
+		centre += Vector2(m.cell)
+	centre /= members.size()
+	if key == &"":
+		for s: Skill in rep.foe_actives():
+			magic += 1 if &"magical" in Tags.expand(s.tags) else (-1 if &"physical" in Tags.expand(s.tags) else 0)
+		key = &"magical" if magic > 0 else &"physical"
+	var foes: Array[Unit] = []
+	var sides := {}
+	var target: Unit = null
+	Unit.begin_read()  # the side's eyes once (Battle._eyes())
+	for t: Unit in b.units.values():
+		if t.is_alive() and not Faction.friends(rep.faction, t.faction) and b.in_range(rep, t) >= 1:
+			foes.append(t)
+			if t.faction:
+				sides[t.faction] = true
+	var best := INF
+	for f: Faction in sides:
+		for t: Unit in b.ranks.lowest(b, f, key):  # lowest first: the first in the herd's reach is its pick from that side
+			if t.is_alive() and t in foes and centre.distance_to(Vector2(t.cell)) <= walk + COHESION and b.in_range(rep, t) == 2:
+				if Ranks.value(t, key) < best:
+					best = Ranks.value(t, key)
+					target = t
+				break
+	var near := INF
+	for t: Unit in foes if target == null else []:  # none near: the nearest plainly seen, else the nearest shape
+		var d := centre.distance_to(Vector2(t.cell)) + (0.0 if b.in_range(rep, t) == 2 else 1000.0)
+		if d < near:
+			near = d
+			target = t
+	Unit.end_read()
+	var goal: Variant = target.cell if target else null
+	if goal == null:  # no foe it can place: where its side last made one out, nearest the centre (_hunt())
+		var seen := b.last_seen(rep.faction)
+		for t: Unit in seen:
+			if goal == null or centre.distance_to(Vector2(seen[t])) < centre.distance_to(Vector2(goal)):
+				goal = seen[t]
+	if goal == null:
+		return {}
+	return {&"members": members, &"centre": centre, &"foes": foes, &"walk": walk, &"target": target, &"goal": goal, &"key": key}
+
+
+# A herd member that can take its herd's plan (_herd_plan()) in place of a turn of its own: ordinary (_ordinary()), not hurt
+# since its last turn (calm_hp, as _calm()) nor struck last by its own side, no side it hunts (Unit.hunts) and no strategy
+# but the weakest (the plan's pick), and no foe its side can place within the herd's walk and reach (plus a tile) of it:
+# that is a fight, and a full turn. Fills `plan`.
+static func _herded(b: Battle, u: Unit, plan: Dictionary) -> bool:
+	if not _ordinary(b, u) or not u.hunts.is_empty() or u.strategy.any(func(x: StringName): return x != &"weakest"):
+		return false
+	if u.hp < int(u.get_meta(&"calm_hp", u.max_hp)) or (u.last_hit_by != null and u.last_hit_by != u and u.last_hit_by.faction == u.faction):
+		return false
+	var p := _herd_plan(b, u)
+	if p.is_empty() or u not in p.members:
+		return false
+	for t: Unit in p.foes:
+		if t.is_alive() and Command.tiles(u.cell, t.cell) <= p.walk + 1.0:
+			return false
+	plan.merge(p)
+	return true
+
+
+# A herd member's turn (_herded()): it heads for the tile beside its herd's goal nearest it (_beside()), no reads and no
+# route pricing; one that has got more than COHESION tiles ahead of the herd's centre waits for the rest. The herd keeps
+# together by sharing one goal from one centre. Its goal becomes its aim (_drill(): what a follower of it would go after).
+static func _herd(b: Battle, u: Unit, plan: Dictionary, log: Array[String]) -> void:
+	var goal: Vector2i = plan.goal
+	var centre: Vector2 = plan.centre
+	var ahead := centre.distance_to(Vector2(goal)) - Vector2(u.cell).distance_to(Vector2(goal))
+	if plan.target:
+		u.set_meta(&"aim", plan.target)
+	if ahead > COHESION:
+		log.append("%s waits for its herd" % u.name)
+		return
+	if not _rooted(b, u) and Command.tiles(u.cell, goal) > 1:
+		log.append("%s herds %s" % [u.name, b.travel(u, _beside(b, u, goal))])
 
 
 # A far turn (_far()): it reads the foes it can place (a vague shape: cheap) and the allies within its longest
@@ -1699,14 +1820,7 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 	var r: Read = reads[t]
 	var best: Vector2i = r.cell
 	if Command.tiles(u.cell, r.cell) > u.move_left() + APPROACH_FAR:  # out of its walk's reach: only the heading counts (the flanking, dread and blows of a tile it won't end on aren't weighed)
-		var nearest := INF
-		for dx: int in [-1, 0, 1]:
-			for dy: int in [-1, 0, 1]:
-				var c: Vector2i = r.cell + Vector2i(dx, dy)
-				if c != r.cell and c != u.cell and b.on_map(c) and not b.unit_at(c) and Vector2(u.cell).distance_squared_to(Vector2(c)) < nearest:
-					best = c
-					nearest = Vector2(u.cell).distance_squared_to(Vector2(c))
-		return best
+		return _beside(b, u, r.cell)
 	var state := b.rng.state
 	var best_cost := INF
 	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
@@ -1730,6 +1844,19 @@ static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]
 				best_cost = v
 	Unit.end_read()
 	b.rng.state = state
+	return best
+
+
+# The free tile beside `at` nearest u (`at` itself with none): a heading, unpriced (_approach() far off, _herd()).
+static func _beside(b: Battle, u: Unit, at: Vector2i) -> Vector2i:
+	var best := at
+	var nearest := INF
+	for dx: int in [-1, 0, 1]:
+		for dy: int in [-1, 0, 1]:
+			var c: Vector2i = at + Vector2i(dx, dy)
+			if c != at and c != u.cell and b.on_map(c) and not b.unit_at(c) and Vector2(u.cell).distance_squared_to(Vector2(c)) < nearest:
+				best = c
+				nearest = Vector2(u.cell).distance_squared_to(Vector2(c))
 	return best
 
 

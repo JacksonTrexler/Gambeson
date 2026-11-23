@@ -8,7 +8,7 @@ extends SceneTree
 # (ms: mean / p95 / max, all turns and the turns in which a skill was used), of each side's end_turn, and a round, then judges
 # them against the budget at TARGET speed, which is this machine's time x SLOWDOWN (the user's call: tests may assume a device
 # 4x stronger than a consumer target, so the target takes 4x as long as the M3 does here).
-# swarm=M: Lancin fields M rats (one class, RAT_HP, one skill) in a dense block against N mixed Nemes (docs/plans/w16-swarm.md).
+# swarm=M: Lancin fields M rats (one class, RAT_HP, Strike only) in a dense block against N mixed Nemes (docs/plans/w16-swarm.md).
 # lead: each side in parties of PARTY, the first a skilled leader (charisma LEADER_CHA) the rest follow (Unit.follows).
 # Wait: what the player stares at with nothing moving, per side turn on the target (compute only, not the HUD's pacing):
 # one frame (all of a side's acts in one frame, then the walks: the old HUD) vs a frame per unit (HUD._act_alone now: each
@@ -102,7 +102,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		for s in sides:
 			if _swarm > 0 and s[0] == f.lancin:
 				for i in _swarm:  # a dense block, 6 wide
-					var rat: Unit = f.add(s[0], load("res://Roles/%s.tres" % RAT_ROLE), Vector2i(3 + i % 6, 1 + i / 6 * 24 / maxi(1, ceili(_swarm / 6.0)) % 24), "rat%d" % i, 1)
+					var rat: Unit = f.add(s[0], load("res://Roles/%s.tres" % RAT_ROLE), Vector2i(3 + i % 6, 1 + i / 6 * 24 / maxi(1, ceili(_swarm / 6.0)) % 24), "rat%d" % i, 0)  # Strike only
 					rat.max_hp = RAT_HP
 					rat.hp = RAT_HP
 				continue

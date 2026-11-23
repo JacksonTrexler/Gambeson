@@ -201,6 +201,7 @@ var stalled_turns: Dictionary[Faction, int] = {}  # each side's turns in a row e
 var hastened: Dictionary[Faction, int] = {}  # turns taken off each side's wait for the Ire (Pray, to Ramut)
 var acted: Dictionary[Unit, int] = {}  # unit -> the turns_begun of the last turn it used a skill in (first_to_act())
 var turns_begun := 0  # sides' turns started so far this battle: when an effect was put on (Unit.Applied.since)
+var ranks := Ranks.new()  # each side's units by HP, physical and magical Defense, lowest first (Scripts/Ranks.gd: AI._herd_plan())
 var stalling: Array[Unit] = []  # units stalling the fight as the last turn ended: Ramut's Ire builds on them (_check_stall())
 var snares: Dictionary[Vector2i, Snare] = {}  # traps units have laid (lay()), over the ground
 var debris: Dictionary[Vector2i, Debris] = {}  # evidence hiding units leave behind (_scatter())
