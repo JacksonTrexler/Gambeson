@@ -168,3 +168,7 @@ Every skill follows these, so skill descriptions don't repeat them.
 - [x] **Multi-slot skills:** a skill takes 1 slot unless a slots property says otherwise (restricted as usual); a skill with a rarity takes Rare 2, Epic / Very Rare 3, Legendary 4, Mythic 5. (the user, 2026-11-20, ?215)
 - [x] **Party size** is level / 4 plus the base cha mod if positive; size is max(cha mod, 0) + max(level / 4, 1), so 1 is solo (no "at least 2"); the player's persistent units keep their learned skills. (the user, 2026-11-20, ?216, ?226)
 - [x] **"Meathead"** is the name of the old Physical Intelligence stand-in skill. (the user, 2026-11-20, ?204)
+- [x] **AI turn budget** is 200 ms a unit turn at M3 x 4 provided players do not wait on large factions; a side's player stare is held to 1000 ms. (the user, 2026-11-23, ?254, ?257)
+- [x] **Calm followers drill:** a bot unit commanded by a skilled leader skips its preferences outside extenuating circumstances (hurt, cc, betrayed, leader lost). (the user, 2026-11-23, ?256)
+- [x] **Tests** are relations, not pins on content; 20/80; consolidated but not too far; the `busy_fight` digest is replaced by outcome checks. (the user, 2026-11-23, ?245, ?258)
+- [x] **The investigation layer** (trickery, persona, concealment, free check when hit by an unseen attacker, Detective, Ambush) is recovered or rebuilt. (the user, 2026-11-23, ?255)

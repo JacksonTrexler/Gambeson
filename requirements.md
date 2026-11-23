@@ -12,7 +12,7 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - No balancing for now; if a skill is underpowered, tweak its check difficulty. Effects that stop a unit taking useful actions on its turn are precious and priced high. (?152) [user]
 - 20/80 everything: ship the useful 20%, build the framework that keeps work correct and quick. (?144, 2026-11-16) [user]
 - Lean tests: consolidate 20/80; data-driven table tests over a file per skill; functionally identical skills with different flavour are covered by tests of the core skill or mechanic (Option A: only a skill with a `Behaviours/*.gd` gets its own test file). (?144) [user]
-- Test hardware assumption: M3 Mac is about 4x the target device; prefer big sims (10 rangers vs 10 hiders) to many small tests; busy fights wanted. Budgets: 100 ms a unit turn, 1000 ms an `end_turn` at M3 x 4. (?183) [user + call]
+- Test hardware assumption: M3 Mac is about 4x the target device; prefer big sims (10 rangers vs 10 hiders) to many small tests; busy fights wanted. Budgets: 200 ms a unit turn (raised 2026-11-23: players must not wait on large factions, so a unit plans in its own frame under the walks), 1000 ms an `end_turn` and a side's player stare at M3 x 4. (?183, ?257) [user + call]
 - Every name an AI makes up gets " ??" (skills `ai = true`) until a person reviews it; a name the user gave goes in as given. [user, CLAUDE.md]
 - Terms: "Arcalís" for arcane/magic broadly; preferred terms in docs/g-dictionary.md, lore in docs/g-glossary.md. (?180) [user]
 - Art is a placeholder PNG at a fixed path until real art replaces it. (?95) [user]
@@ -136,3 +136,6 @@ Format: `(?N)` the question it came from; `[user]` the user's own wording or ans
 - Large `.gd` files: grep and read ranges, never whole. [CLAUDE.md]
 - Delegation: a host splits work into builder tasks on cheaper models in worktrees, wakes about twice a prompt for under 2 minutes, a floater runs merges/verify/docs; calls recorded as numbered questions. [user 2026-11-16]
 - Saves: progress only (JSON, `user://save.json`); settings stay in Prefs. (?145)
+- AI 20/80: shortcuts that cut processing time are welcome; a calm follower of a skilled leader (`Command.cha_of > 0`) drills without its preferences unless hurt, cc'd, betrayed or its leader is lost. (?256) [user 2026-11-23]
+- Tests are not overly concrete: relations to the data over pinned content, 20/80, consolidated but not too far; `busy_fight` checks outcomes, not a digest. (?257, ?258) [user 2026-11-23]
+- The investigation system (trickery, persona, concealment, suspicion) must exist: lost parts are recovered or rebuilt. (?255) [user 2026-11-23]

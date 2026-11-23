@@ -318,3 +318,7 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **The AI weighs Opportunist** (`Behaviour.strikes`, `AI._strikers`, `AI._struck`, `STRUCK`): plan `docs/plans/w11-oppai.md`. `ai_tactics_test.test_approach_weighs_opportunist`. (?252)
 - [x] **The AI prices Opportunist's cost and weighs it in `_line_up` and `_retreat`** (`AI._strikers` with a centre and radius, `_struck` funds the skill): plan `docs/plans/w12-oppcost.md`. `ai_tactics_test.test_approach_weighs_opportunist` (a Siren). (?253)
 - [x] **AI turn cost, the warm read** (`has_tag`, `emblems`, `restless()`, `Unit.lends`, `Perception._seem`): plan `docs/plans/w12-warm.md`. `ai_tactics_test.test_warm_read_answers_as_before`. (?254)
+- [x] **The investigation layer rebuilt** (`Battle._hurt_by` free inspect on an unseen hit, stat `detective`, Ambush with `Mark.halts`, `Mark.skill`, `Behaviour.tripped`): plan `docs/plans/w13-invest.md`. `suspicion_test`, `ambush_test`. (?255)
+- [x] **Calm followers drill, a frame per unit, lazy opening looks, `end_turn` under the walks** (`AI._calm`, `AI._drill`, `Battle.lazy_looks`): plan `docs/plans/w13-aifast.md`. `ai_tactics_test.test_calm_followers_drill`. (?256)
+- [x] **The turn budget 200 ms, `busy_fight` outcome checks in place of the digest** (`TURN_BUDGET_MS`, `SIDE_BUDGET_MS`, `OUTCOME`): plan `docs/plans/w13-aifast.md`. (?257, closes ?245 and ?254)
+- [x] **Tests loosened and consolidated** (about 35 pins to relations, 4 tests removed, 106 to 101 s): plan `docs/plans/w13-tests.md`. (?258)

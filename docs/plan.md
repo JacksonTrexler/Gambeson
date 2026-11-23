@@ -222,6 +222,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | The AI weighs Opportunist (?252) | `ai_tactics_test.gd` |
 | — | The AI prices Opportunist's cost, `_line_up`, `_retreat` (?253) | `ai_tactics_test.gd` |
 | — | AI turn cost, the warm read (?254) | `ai_tactics_test.gd` |
+| — | The investigation layer rebuilt: unseen hit, Detective, Ambush (?255) | `suspicion_test.gd`, `ambush_test.gd` |
+| — | Calm followers drill, a frame per unit (?256) | `ai_tactics_test.gd` |
+| — | Turn budget 200 ms, outcome checks for the digest (?257) | `busy_fight` |
+| — | Tests loosened and consolidated (?258) | the suite |
 
 ## Questions to answer first
 
