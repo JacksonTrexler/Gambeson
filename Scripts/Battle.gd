@@ -990,6 +990,7 @@ func _done_casting(caster: Unit, done: bool) -> void:
 	_settle_wear()
 	UNDEAD.settle(self, caster if done else null)
 	if done:
+		caster.animate(&"attacking")  # any skill it used: it rears up and strikes (Unit.ANIMS)
 		_spent_interrupt(caster)
 	_open_interrupt()
 
@@ -2603,6 +2604,7 @@ func inspect(o: Unit, c: Vector2i, center: Variant = null, bonus := 0, edge := 0
 	var mixed := t != null and t.faction == o.faction and o.scrambles(t)
 	if hiding <= 0 and trap <= 0 and not mixed:
 		return false
+	o.animate(&"investigating")  # a check to make: it takes a better look
 	var look := {bonus = bonus - distance_penalty(o, center if center != null else o.cell, c), edge = edge, tags = [&"survey"]}
 	if mixed and hiding <= 0 and trap <= 0:
 		var a := o.scrambled()
@@ -2816,6 +2818,7 @@ func _feel(o: Unit, h: Unit) -> void:
 # Meeting it, it sees through the skill's effects on u for as long as they last.
 func investigate(u: Unit, skill: Skill, eyes: Array[Unit], against: int) -> void:
 	for o in eyes:
+		o.animate(&"investigating")
 		var close := is_close(o, u, skill)
 		var look := check(o, &"wisdom", null, against, {edge = 1 if close else 0, tags = [&"inquire"]})  # against the hider's roll, spent
 		var total := look.mine.total
