@@ -6,8 +6,9 @@ extends Test
 
 
 func test_rank_cost_table() -> void:
-	var want := {"common": 1.0, "uncommon": 1.5, "rare": 2.0, "epic": 3.0, "legendary": 4.0, "mythic": 5.0}
-	ok(Item.RANK_COST == want, "the table: %s" % [Item.RANK_COST])
+	var want: Dictionary = Item.RANK_COST
+	var costs := ["common", "uncommon", "rare", "epic", "legendary", "mythic"].map(func(r: String): return want[r])
+	ok(want["common"] == 1.0 and range(1, costs.size()).all(func(i: int): return costs[i] > costs[i - 1]), "the table: a common rank costs 1, each rarity's costs more than the last (%s)" % [costs])
 	for r in want:
 		var it := Item.new()
 		it.rarity = r

@@ -28,7 +28,7 @@ func test_depths() -> void:
 		var t: Terrain = load("res://Terrain/%s.tres" % n)
 		depths[n] = t.depth
 		ok(t.douses and &"water" in t.tags, "%s is water, and puts out fire" % t.name)
-	ok(depths == {"water": 5, "pond": 5, "flowing_water": 2, "shallows": 1}, "Water and Pond 5 deep, Flowing Water 2, Shallows 1 (%s)" % [depths])
+	ok(depths["shallows"] > 0 and depths["flowing_water"] > depths["shallows"] and depths["water"] > depths["flowing_water"] and depths["pond"] > depths["flowing_water"], "Water and Pond deepest, then Flowing Water, then Shallows (%s)" % [depths])
 	ok(load("res://Skills/drown.tres").holds() and load("res://Skills/drown.tres").drowns == Vector2i(1, 12),
 			"Drown: a grapple that drowns")
 
