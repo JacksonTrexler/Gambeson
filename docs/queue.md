@@ -8,10 +8,8 @@ Before launching a wave, drop any card whose source line is now `[x]`. Built and
 
 ## In flight (not here to launch)
 Wave 21 follow-ups (need nothing from the user; cards for builders, AI.gd and Unit.gd areas):
-- w21-books-ai (AI units read books on their turn: a self-directed turn with a readable book in the stash calls `Battle.study`, then `Unit.fancy(offered)` picks the tweak; the AI's item-use turn does not exist yet, so keep it to books; ?363).
-- w21-autospec-save (a save written mid-fight while a unit is Disturbed keeps its auto-spent skills: save `auto_spent`, or refund before writing; ?356).
 Class authoring: no card, `Util/role.py` already does it (new, tree, tab, include, god).
-Built 2026-11-23 (?349 to ?366): w21-focus, w21-foresight, w21-autospec, w21-minsize, w21-books.
+Built 2026-11-23 (?349 to ?366): w21-focus, w21-foresight, w21-autospec, w21-minsize, w21-books, w21-autospec-save, w21-books-ai.
 Built 2026-11-23 (?334 to ?348): w21-vscroll, w21-sprites, w21-anim, w21-hudpanels, w21-undead.
 Built 2026-11-23 (?327 to ?333): w20-siphon-gain, w20-hud-foe-also, w20-fog-seen, w20-fog-effects.
 Built 2026-11-23 (?315 to ?326): w18-fog-ai, w18-flex-ai, w18-fog-frozen, w18-monster-ai, w18-undead-rank, w18-picker-es, w18-flip-test.

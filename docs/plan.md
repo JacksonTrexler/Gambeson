@@ -275,6 +275,8 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Autospec by bio, Spec Automatically, Hard (?354 to ?357) | `autospec_test.gd` |
 | — | Sprite extractor `--min-size` 4 (?358) | `tooling_test.gd` |
 | — | Self-help books, Read, tweaks, new tempers (?359 to ?366) | `books_test.gd` |
+| — | Mid-fight autospec save (?367) | `autospec_test.gd` |
+| — | AI units read books (?368) | `books_test.gd` |
 
 ## Questions to answer first
 

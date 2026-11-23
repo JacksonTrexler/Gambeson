@@ -473,3 +473,18 @@ Answer: ____
 Best guess: build the card: an AI unit with a readable book reads it on a calm turn.
 Ref: `Unit.fancy`, `Battle.study`, `docs/plans/w21-books.md`.
 Answer: ____
+
+**F73. Mid-fight save writes the refunded state (wave 21; see ?367, F65).** A save written while a unit is Disturbed shows it as if its auto-spent points were refunded; the live unit is untouched. Saved learned rows now use `points_in()`.
+Best guess: keep as built.
+Ref: `Unit.to_dict`, `_lowered`, `docs/plans/w21-autospec-save.md`.
+Answer: ____
+
+**F74. AI units read books on calm turns (wave 21; see ?368, F72).** The first readable book in `Unit.pack` is read at the nothing-to-strike branch or the start of a prowl; consumed pass or fail. Not read in the `_dress` tail or `_drill`. No scene gives any NPC a book, so it never fires in play yet.
+Best guess: a later scene gives one named NPC (a scholar or a champion) a book to show it.
+Ref: `AI._study`, `docs/plans/w21-books-ai.md`.
+Answer: ____
+
+**F75. AI pack is not saved (wave 21; see ?368).** A book an NPC carries is lost on a save and load, since `pack` is not written for AI units.
+Best guess: save `pack` for NPCs once a scene gives them books.
+Ref: `Unit.to_dict`, `docs/plans/w21-books-ai.md`.
+Answer: ____

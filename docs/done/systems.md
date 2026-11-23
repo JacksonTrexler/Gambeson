@@ -371,3 +371,5 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Units spend skill points by bio** (`Bio.prefers`, `Bio.spec`, `Unit.auto_spec`, `unspend`, Hard, Spec Automatically): plan `docs/plans/w21-autospec.md`. `autospec_test`. (?354 to ?357)
 - [x] **Sprite extractor skips islands under 4 px** (`Util/sprites.py --min-size`): plan `docs/plans/w21-minsize.md`. `tooling_test.test_checks`. (?358)
 - [x] **Self-help books and three tempers** (`Item.blurb`, `temper`, `leans`, `favours`, `Battle.study`, `Bio.tweaked`, `Bio.favours`, `AI._orders`, `_hungry`): plan `docs/plans/w21-books.md`. `books_test`. (?359 to ?366)
+- [x] **Mid-fight save keeps Disturbed auto-spent skills** (`Unit.to_dict`, `_lowered`): plan `docs/plans/w21-autospec-save.md`. `autospec_test.test_refund`. (?367)
+- [x] **AI units read books on calm turns** (`AI._study`): plan `docs/plans/w21-books-ai.md`. `books_test.test_ai_reads`. (?368)
