@@ -1,13 +1,14 @@
 extends SceneTree
 
 # Busy AI-vs-AI fights, timed (docs/plans/r-sims.md). Not in the suite. Run:
-#   godot --headless --path . -s Tests/sims/busy_fight.gd -- [15|20 ...] [n=2] [rounds=10] [skills=4] [lead] [debug]
+#   godot --headless --path . -s Tests/sims/busy_fight.gd -- [15|20 ...] [n=2] [rounds=10] [skills=4] [lead] [swarm=60] [debug]
 # Each side fields N class units (a mix of the 12 classes, `skills` open skills each on their bar, level 1) on a 32 x 26 field,
 # 12 tiles apart with sight on; both sides see the others drawn up in the open, as a battle's start does. The sides play by the
 # AI (AI.act per unit, then end_turn) until one falls or `rounds`. Per fight size it prints the time of every unit's AI turn
 # (ms: mean / p95 / max, all turns and the turns in which a skill was used), of each side's end_turn, and a round, then judges
 # them against the budget at TARGET speed, which is this machine's time x SLOWDOWN (the user's call: tests may assume a device
 # 4x stronger than a consumer target, so the target takes 4x as long as the M3 does here).
+# swarm=M: Lancin fields M rats (one class, RAT_HP, one skill) in a dense block against N mixed Nemes (docs/plans/w16-swarm.md).
 # lead: each side in parties of PARTY, the first a skilled leader (charisma LEADER_CHA) the rest follow (Unit.follows).
 # Wait: what the player stares at with nothing moving, per side turn on the target (compute only, not the HUD's pacing):
 # one frame (all of a side's acts in one frame, then the walks: the old HUD) vs a frame per unit (HUD._act_alone now: each
@@ -30,6 +31,8 @@ const STEP := 0.07  # s a tile of walking shows (Overlay.STEP_TIME)
 const TRANSITION := 1.0  # s a turn change shows (HUD.TRANSITION)
 const FRAME := 1.0 / 60.0  # s a frame takes besides the work in it
 const FIELD := Vector2i(32, 26)
+const RAT_HP := 4  # a swarm unit's HP (swarm=M)
+const RAT_ROLE := "fighter"
 const GAP := 12
 const FIELD_SCRIPT := "res://Tests/sims/field.gd"  # loaded at run time: naming it (or Role) as a type here makes the scripts load in a cycle
 const ROLES := ["fighter", "ranger", "mage", "cleric", "rogue", "bard", "berserker", "paladin", "druid", "warlock", "wizard", "sorcerer"]
@@ -37,6 +40,7 @@ const ROLES := ["fighter", "ranger", "mage", "cleric", "rogue", "bard", "berserk
 var _first: Test = null  # named first: scripts load in the order ai_sim's `extends Test` gives them (any other type first loads them in a cycle)
 var _debug := false
 var _lead := false
+var _swarm := 0  # swarm=M: Lancin's rats
 var _fails: Array[String] = []
 var _windowed := DisplayServer.get_name() != "headless"
 
@@ -54,6 +58,8 @@ func _initialize() -> void:
 			n = int(a.substr(2))
 		elif a.begins_with("rounds="):
 			rounds = int(a.substr(7))
+		elif a.begins_with("swarm="):
+			_swarm = int(a.substr(6))
 		elif a.begins_with("skills="):
 			skills = int(a.substr(7))
 		elif a.is_valid_int():
@@ -90,10 +96,16 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 	for seed in n:
 		var f: Variant = load(FIELD_SCRIPT).new()
 		await f.open(self, seed, FIELD.x, FIELD.y)
-		var cols := ceili(size / 5.0)
+		var cols := ceili(size / 5.0) if _swarm == 0 else 6
 		var sides := [[f.lancin, 3], [f.nemes, 3 + GAP + cols]]
 		var head: Unit = null
 		for s in sides:
+			if _swarm > 0 and s[0] == f.lancin:
+				for i in _swarm:  # a dense block, 6 wide
+					var rat: Unit = f.add(s[0], load("res://Roles/%s.tres" % RAT_ROLE), Vector2i(3 + i % 6, 1 + i / 6 * 24 / maxi(1, ceili(_swarm / 6.0)) % 24), "rat%d" % i, 1)
+					rat.max_hp = RAT_HP
+					rat.hp = RAT_HP
+				continue
 			for i in size:
 				var role: Resource = load("res://Roles/%s.tres" % ROLES[(i + (3 if s[0] == f.nemes else 0)) % ROLES.size()])
 				var c := Vector2i(s[1] + i / 5, 2 + (i % 5) * 4) if not _lead else Vector2i(s[1] + i % PARTY % 3, 2 + i / PARTY * 4 + i % PARTY / 3)  # lead: each party in a 3 x 2 block
@@ -179,31 +191,32 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		var an: int = f.b.members(f.nemes).filter(func(u: Unit): return u.is_alive()).size()
 		left_l += al
 		left_n += an
-		fallen += 2 * size - al - an
+		var total := size + (_swarm if _swarm > 0 else size)
+		fallen += total - al - an
 		var idle := all.filter(func(u: Unit): return u not in did and u.is_alive())
-		if 2 * size - al - an < size / 3:
-			_fails.append("size %d seed %d: only %d fell" % [size, seed, 2 * size - al - an])
+		if total - al - an < size / 3:
+			_fails.append("size %d seed %d: only %d fell" % [size, seed, total - al - an])
 		if al + an == 0:
 			_fails.append("size %d seed %d: no one left standing" % [size, seed])
 		if not idle.is_empty():
 			_fails.append("size %d seed %d: %d sat it out (%s)" % [size, seed, idle.size(), idle[0].name])
 		f.close()
 		await process_frame
-	print("SIM busy-%dv%d%s fights=%d rounds_played=%.1f alive_at_end=%.1f v %.1f (of %d a side) fallen %.1f a fight" % [size, size, " lead" if _lead else "", n, float(played) / n, float(left_l) / n, float(left_n) / n, size, float(fallen) / n])
+	print("SIM busy-%dv%d%s fights=%d rounds_played=%.1f alive_at_end=%.1f v %.1f (of %d v %d) fallen %.1f a fight" % [_swarm if _swarm else size, size, (" swarm %d" % _swarm) if _swarm else (" lead" if _lead else ""), n, float(played) / n, float(left_l) / n, float(left_n) / n, _swarm if _swarm else size, size, float(fallen) / n])
 	var one: Array[float] = []
 	var per: Array[float] = []
 	for w in waits:
 		one.append(w[0])
 		per.append(w[1])
-	_report("busy-%dv%d side wait, one frame" % [size, size], one, -1.0)
-	_report("busy-%dv%d side wait, frame per unit" % [size, size], per, SIDE_BUDGET_MS)
+	_report("busy-%dv%d side wait, one frame" % [_swarm if _swarm else size, size], one, -1.0)
+	_report("busy-%dv%d side wait, frame per unit" % [_swarm if _swarm else size, size], per, SIDE_BUDGET_MS)
 	print("SIM busy-%dv%d frame-per-unit wait on the target, mean a side turn: acts %.0f, end_turn %.0f ms" % [size, size, parts[1] * 1000.0 / waits.size(), parts[2] * 1000.0 / waits.size()])
-	_report("busy-%dv%d unit turn" % [size, size], acts, TURN_BUDGET_MS)
-	_report("busy-%dv%d unit turn using a skill" % [size, size], busy, TURN_BUDGET_MS)
-	_report("busy-%dv%d side end_turn" % [size, size], ends, SIDE_BUDGET_MS)
-	_report("busy-%dv%d side turn (acts + end_turn)" % [size, size], turns, -1.0)  # no budget: its units are paced 450 ms apart anyway
+	_report("busy-%dv%d unit turn" % [_swarm if _swarm else size, size], acts, TURN_BUDGET_MS)
+	_report("busy-%dv%d unit turn using a skill" % [_swarm if _swarm else size, size], busy, TURN_BUDGET_MS)
+	_report("busy-%dv%d side end_turn" % [_swarm if _swarm else size, size], ends, SIDE_BUDGET_MS)
+	_report("busy-%dv%d side turn (acts + end_turn)" % [_swarm if _swarm else size, size], turns, -1.0)  # no budget: its units are paced 450 ms apart anyway
 	if not frames.is_empty():
-		_report("busy-%dv%d frame (one unit's turn, rendered)" % [size, size], frames, TURN_BUDGET_MS)
+		_report("busy-%dv%d frame (one unit's turn, rendered)" % [_swarm if _swarm else size, size], frames, TURN_BUDGET_MS)
 
 
 # mean / p95 / max in ms here and on the target (x SLOWDOWN), against the budget there.
