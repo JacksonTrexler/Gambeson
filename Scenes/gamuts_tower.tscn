@@ -3,7 +3,8 @@
 [ext_resource type="Script" path="res://Scripts/GamutsTower.gd" id="1_tower"]
 [ext_resource type="Script" path="res://Scripts/Dungeon.gd" id="2_dungeon"]
 [ext_resource type="Resource" path="res://Dungeons/infernal_meadows.tres" id="3_meadows"]
+[ext_resource type="Resource" path="res://Dungeons/astral_nexus.tres" id="4_nexus"]
 
 [node name="GamutsTower" type="Node2D"]
 script = ExtResource("1_tower")
-dungeons = Array[ExtResource("2_dungeon")]([ExtResource("3_meadows")])
+dungeons = Array[ExtResource("2_dungeon")]([ExtResource("3_meadows"), ExtResource("4_nexus")])

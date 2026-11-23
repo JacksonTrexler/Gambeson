@@ -71,7 +71,7 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		l.mouse_filter = MOUSE_FILTER_PASS
 		l.size_flags_horizontal = SIZE_EXPAND_FILL
 		row.add_child(l)
-		if it and editable and it.restores and not it.empty and not between:
+		if it and editable and it.usable() and not between:
 			row.add_child(_button("Use" + _ap(it), func() -> void: used_up.emit(unit, it)))
 		if it and editable and it.binding:  # shackles: locked, pick or pry them; unlocked, off for their rank in AP
 			var ap := " · %d AP" % it.rank

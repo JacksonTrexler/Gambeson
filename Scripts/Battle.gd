@@ -3264,14 +3264,15 @@ func unshackle(u: Unit, how: StringName) -> bool:
 # or the one in u's trinket slot that restores something (a potion: Item.restores; restore()), which
 # empties it until the battle ends (Item.empty; refill()). False if it can't.
 func use_item(u: Unit, it: Item) -> bool:
-	if it == null or not outfitting(u) or not (it.slot == "consumable" or (it == u.trinket and it.restores and not it.empty)):
+	if it == null or not outfitting(u) or not (it.slot == "consumable" or (it == u.trinket and it.usable())):
 		return false
 	if not u.pay(item_ap(it, u), &"equip"):
 		return false
 	u.hearts += it.hearts if it.slot == "consumable" else 0
+	var worn := it == u.trinket  # before restoring: Energy overflowing it soaks into a copy (Item.soaks)
 	if it.restores:
 		restore(u, it)
-	if it == u.trinket:
+	if worn:
 		u.trinket = it.emptied()
 	return true
 
@@ -3289,7 +3290,7 @@ static func refill(u: Unit) -> void:
 func restore(u: Unit, it: Item) -> int:
 	var r: Reserve = it.reserve if it.restores == &"reserve" else null
 	var most: int = u.max_hp if it.restores == &"hp" else (u.max_energy if it.restores == &"energy" else u.pools().get(r, 0))
-	var n := maxi(u.rounded(most * it.restore_share * it.ranked()) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0)
+	var n := maxi(u.rounded(most * it.restore_share * it.ranked()) + (u.mod(it.restore_mod) if it.restore_mod else 0) + it.restore_flat, 0) + it.held
 	match it.restores:
 		&"hp":
 			var was := u.hp

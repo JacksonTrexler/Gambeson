@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Dungeon" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Dungeon.gd" id="1_dungeon"]
+[ext_resource type="PackedScene" path="res://Scenes/starman.tscn" id="2_starman"]
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="3_item"]
+[ext_resource type="Resource" path="res://Items/power_star.tres" id="4_star"]
+
+[resource]
+script = ExtResource("1_dungeon")
+name = "Astral Nexus"
+scene = "res://Scenes/astral_nexus_play.tscn"
+blurb = "A few orange starpower generators, startiles in a broken grid around them, starpanes in most of the gaps and the astral void beyond."
+goal = "Defeat every starman."
+enemies = Array[PackedScene]([ExtResource("2_starman")])
+rewards = Array[ExtResource("3_item")]([ExtResource("4_star")])
+reward_floors = Array[float]([0.5])
+color = Color(0.4, 0.75, 1, 1)

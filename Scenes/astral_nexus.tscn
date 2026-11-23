@@ -1,0 +1,49 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Battle.gd" id="1_battle"]
+[ext_resource type="Texture2D" path="res://Tiles/placeholder.png" id="2_tiles"]
+[ext_resource type="Texture2D" path="res://Tiles/astral_void.png" id="3_void"]
+[ext_resource type="Script" path="res://Scripts/BattleCamera.gd" id="4_camera"]
+[ext_resource type="Script" path="res://Scripts/AstralNexus.gd" id="5_nexus"]
+[ext_resource type="Resource" path="res://Factions/lancin.tres" id="6_lancin"]
+[ext_resource type="Resource" path="res://Factions/nemes.tres" id="7_nemes"]
+[ext_resource type="Script" path="res://Scripts/Faction.gd" id="8_faction"]
+[ext_resource type="Resource" path="res://Terrain/stone.tres" id="t_stone"]
+[ext_resource type="Resource" path="res://Terrain/astral_void.tres" id="t_void"]
+
+[sub_resource type="TileSetAtlasSource" id="Atlas_stone"]
+texture = ExtResource("2_tiles")
+texture_region_size = Vector2i(32, 32)
+4:0/0 = 0
+4:0/0/modulate = Color(0.62, 0.66, 0.95, 1)
+4:0/0/custom_data_0 = ExtResource("t_stone")
+
+[sub_resource type="TileSetAtlasSource" id="Atlas_void"]
+texture = ExtResource("3_void")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/custom_data_0 = ExtResource("t_void")
+
+[sub_resource type="TileSet" id="TileSet_nexus"]
+tile_size = Vector2i(32, 32)
+custom_data_layer_0/name = "terrain"
+custom_data_layer_0/type = 24
+sources/0 = SubResource("Atlas_stone")
+sources/1 = SubResource("Atlas_void")
+
+[node name="AstralNexus" type="Node2D"]
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("4_camera")
+
+[node name="Battle" type="Node2D" parent="."]
+script = ExtResource("1_battle")
+spawns = Dictionary[ExtResource("8_faction"), Vector2i]({ExtResource("6_lancin"): Vector2i(1, 6), ExtResource("7_nemes"): Vector2i(1, 6)})
+
+[node name="Map" type="TileMapLayer" parent="Battle"]
+tile_set = SubResource("TileSet_nexus")
+
+[node name="Units" type="Node2D" parent="Battle"]
+
+[node name="Nexus" type="Node" parent="Battle"]
+script = ExtResource("5_nexus")

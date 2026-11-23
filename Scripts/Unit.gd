@@ -2848,6 +2848,9 @@ func grant_energy(n: int, heard := true) -> int:
 	energy += maxi(n, 0)
 	if heard:
 		note_recovery(&"energy", energy - was)
+	var over := maxi(n, 0) - (energy - was)  # what didn't fit: a powered wearer's soaking trinket keeps its share (Power Star)
+	if over > 0 and trinket and trinket.soaks > 0.0 and powered():
+		trinket = trinket.soaked(rounded(over * trinket.soaks * trinket.ranked()), max_energy)
 	return energy - was
 
 
