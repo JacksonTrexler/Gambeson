@@ -155,3 +155,72 @@ func test_look_over() -> void:
 	h.look_over(Vector2i(6, 6))
 	ok(not h.sheet.visible, "an empty tile opens nothing")
 	h.free()
+
+
+# Vindictive (AI._grudge()): of two foes alike, it goes after the one that landed a blow on its side this fight (Unit.wrongs),
+# or the one its grudges name (Bio.grudges); it signs "Grudge" the first time only (Battle.first_time()).
+func test_vindictive_grudge() -> void:
+	stage(nemes, {v(1): Vector2i(5, 2), v(2): Vector2i(5, 6), v(3): Vector2i(3, 4), v(4): Vector2i(8, 8)})
+	for u in [v(1), v(2), v(3), v(4)]:
+		u.wrongs.clear()
+	b._firsts.clear()
+	v(3).bio = bio(&"vindictive")
+	var plain := AI._best_target(v(3), AI._reads(b, v(3)))
+	var other := v(2) if plain == v(1) else v(1)
+	soak(v(4))
+	v(4).hit(3, [] as Array[StringName], other)
+	ok(AI._best_target(v(3), AI._reads(b, v(3))) == other, "it goes after %s, who struck its ally" % other.name)
+	v(3).bio.behaviour = &""
+	ok(AI._best_target(v(3), AI._reads(b, v(3))) == plain, "no temper, no grudge")
+	other.wrongs.clear()
+	v(3).bio = bio(&"vindictive")
+	v(3).bio.grudges = [other.name] as Array[String]
+	ok(AI._best_target(v(3), AI._reads(b, v(3))) == other, "its grudges name %s" % other.name)
+	var signs := []
+	var count := func(u: Unit, _s: Skill, _n: int, stat: StringName, _r: int): if stat == &"grudge": signs.append(u)
+	b.passive_fired.connect(count)
+	AI.act(b, v(3))
+	v(3).refresh()
+	AI.act(b, v(3))
+	b.passive_fired.disconnect(count)
+	ok(signs == [v(3)], "Grudge signed once over two turns (%s)" % [signs])
+	v(3).bio = null
+	soak(v(4), 10)
+
+
+# Flirty (AI._fancies()): its support goes to the ally it fancies (Bio.fancies, else high charisma) first, signed "Smitten".
+func test_flirty_supports_fancied() -> void:
+	var buff: Skill = load("res://Skills/intervention.tres").duplicate()
+	buff.effects = [effect("mitigate", 0.2)] as Array[Effect]
+	v(3).learned.append(slot(buff))
+	v(3).refresh()
+	v(2).faction = nemes
+	stage(nemes, {v(1): Vector2i(1, 8), v(2): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(6, 3)})
+	b._firsts.clear()
+	var given := func() -> Unit:
+		for o in [v(2), v(4)]:
+			o.timed.erase(buff.effects[0])
+		var log: Array[String] = []
+		AI._support(b, v(3), AI.reads_from({v(2): b.read(v(3), v(2)), v(4): b.read(v(3), v(4))}), log)
+		return v(2) if buff.effects[0] in v(2).timed else (v(4) if buff.effects[0] in v(4).timed else null)
+	var plain: Unit = given.call()
+	var other := v(4) if plain == v(2) else v(2)
+	v(3).bio = bio(&"flirty")
+	v(3).bio.fancies = [other.name] as Array[String]
+	var signs := []
+	var count := func(u: Unit, _s: Skill, _n: int, stat: StringName, _r: int): if stat == &"smitten": signs.append(u)
+	b.passive_fired.connect(count)
+	ok(plain != null and given.call() == other, "flirty: it gives to %s, whom it fancies, first" % other.name)
+	b.passive_fired.disconnect(count)
+	ok(signs == [v(3)], "signed Smitten (%s)" % [signs])
+	v(3).bio.fancies = [] as Array[String]
+	other.charisma = 16
+	var recon := effect("recon", 3)
+	v(3).afflict(recon, 9)  # to read its stats
+	ok(given.call() == other, "fancying no one by name: high charisma (%s)" % b.read(v(3), other).stats.get(&"charisma"))
+	other.charisma = 10
+	v(3).timed.erase(recon)
+	v(3).bio = null
+	v(2).faction = lancin
+	v(3).learned.pop_back()
+	v(3).refresh()

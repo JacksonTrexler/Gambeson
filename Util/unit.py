@@ -12,7 +12,7 @@ placed in a battle.
   python3 Util/unit.py faction blinthe --name "Blinthe's Own" --color "#b07acc" [--allies lancin] [--human]
   python3 Util/unit.py check
 
-Bio (Scripts/Bio.gd): behaviour (timid, brave, aggressive, helpful, stoic) drives its AI; appearance and
+Bio (Scripts/Bio.gd): behaviour (timid, brave, aggressive, helpful, stoic, vindictive, flirty) drives its AI; appearance and
 adjectives are how it looks to whoever can't make out its class; properties (Properties/*.tres:
 mechanic.py property) are always on it; clout is its standing with sides. An AI-made name gets " ??"
 (CLAUDE.md): shown through its nick, as node names can't carry it. .claude/skills/new-unit has the process.
@@ -23,7 +23,7 @@ from tres import Doc, ai_name, die, exists, files, import_project, literal, name
 import icon
 
 UNIT, BIO, SLOT, FACTION = "res://Scenes/unit.tscn", "res://Scripts/Bio.gd", "res://Scripts/Slot.gd", "res://Scripts/Faction.gd"
-BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic")
+BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic", "vindictive", "flirty")
 SHORT = {"str": "strength", "dex": "dexterity", "con": "constitution", "int": "intelligence", "wis": "wisdom", "cha": "charisma"}
 
 

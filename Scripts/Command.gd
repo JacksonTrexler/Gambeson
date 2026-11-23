@@ -58,6 +58,12 @@ static func cha_of(l: Unit) -> int:
 	return l.mod(&"charisma") + roundi(l.stat(&"command_mod"))
 
 
+# A skilled leader: one tagged leader, or whose command charisma (cha_of()) reads high on the ladder (Difficulty.stat_at("high"):
+# 14, +2). What a follower's calm (AI._calm()) asks of its leader; the ranks above (slots, caps, reach) still go by cha_of().
+static func skilled(l: Unit) -> bool:
+	return l.has_tag(&"leader") or cha_of(l) >= floori((Difficulty.stat_at(&"high") - 10) / 2.0)
+
+
 func cha() -> int:
 	return cha_of(leader)
 

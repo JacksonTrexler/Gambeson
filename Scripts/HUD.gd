@@ -116,6 +116,7 @@ var _reach_of: Unit  # whose reach `reach` holds, until something changes
 var _ways: Dictionary[Vector2i, Array] = {}  # the tiles its walk to each tile in `reach` crosses
 var _unsure: Dictionary[Vector2i, bool] = {}  # tiles a walk can't be counted on to cross (_sure_walk()), as looked up since `reach` was found
 var _note := ""  # a passing message for the hint line ("Out of reach")
+var _signs := 0  # signs shown so far (_on_passive()): how interesting a unit's turn was (_act_alone())
 var _mouse := Vector2.ZERO  # last pointer position, in screen (HUD) space
 var _roll := {}  # the attack roll the next used signal is for (_on_attacked())
 var _looks: Array = []  # [by, total, against, whether the player knows `against`]: investigations of the skill being used, logged after it
@@ -1812,8 +1813,13 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 				return
 		if not together:
 			select(u if unit_seen(u.cell) == u else null)
+		var signs := _signs
 		AI.act(battle, u)
 		_mark()
+		if pace > 0.0 and _signs > signs:  # an interesting turn: what it showed gets a moment
+			await _wait(SIGN_HOLD * mini(_signs - signs, SIGN_HOLDS))
+			if not is_inside_tree():
+				return
 		if pace > 0.0 and together:  # a frame per unit: its walk or blow shows while the next one plans
 			await get_tree().process_frame
 			if not is_inside_tree():
@@ -2171,7 +2177,9 @@ func _on_hp(was: int, now: int, u: Unit) -> void:
 
 
 # Signs for what isn't the stat itself (null skill: Luck, Regen): their colours. Anything else takes the tag colour of its name.
-const SIGN_TINT := {&"luck": SkillSlot.CLOVER, &"regen": FRIEND}
+const SIGN_TINT := {&"luck": SkillSlot.CLOVER, &"regen": FRIEND, &"grudge": Color("#e0705a"), &"smitten": Color("#ee95c0")}  # grudge, smitten: a temper's first turn (Battle.first_time())
+const SIGN_HOLD := 0.3  # s a unit acting on its own holds on after each sign its turn shows (passives, tempers), up to SIGN_HOLDS: an interesting turn runs longer, a plain one doesn't (_act_alone())
+const SIGN_HOLDS := 3
 
 
 # A passive acted on u (Battle.passive_fired, docs/plans/w7-passives.md). On the unit the player views, its slot (hotbar
@@ -2191,6 +2199,7 @@ func _on_passive(u: Unit, s: Skill, amount: int, stat: StringName, rounded: int)
 		return
 	if stat == &"exhaustion" and s:  # a passive eased its holder's exhaustion (Battle.neutralize()/_settle_wear()): the log says so, whatever its sign does
 		_log("%s's %s eases its exhaustion" % [_tag(u), u.skill_name(s)])
+	_signs += 1
 	if s and u == selected and bar.visible:
 		for slot: SkillSlot in bar.get_children() + trait_bar.get_children():
 			if slot.skill == s:

@@ -167,6 +167,7 @@ class Applied:
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
 var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets two shares of its XP (Battle._award())
+var wrongs: Dictionary[Faction, int] = {}  # blows it has landed on each side this fight (hit(): cleared by Battle._listen()): who a vindictive unit holds a grudge against (AI._grudge())
 var paid_fall := false  # it has paid out its XP for falling (Battle._award()): a unit pays once...
 var paid_rise := false  # ...and once more for being brought back (Battle.rescued())
 var waived: Dictionary[Skill, Skill] = {}  # general-tree skills learned through a waiver -> the skill that waived their needs (Generalist): they stop working without it (lapsed())
@@ -2244,6 +2245,8 @@ func hit(raw: float, tags: Array[StringName], by: Unit = null) -> int:
 	taking_hit.emit(self, blow)  # its battle lets its passives have their say (Molothrus passes some on)
 	taken = blow.damage
 	damage(taken)
+	if by and by != self and taken > 0:
+		by.wrongs[faction] = by.wrongs.get(faction, 0) + 1
 	return taken
 
 

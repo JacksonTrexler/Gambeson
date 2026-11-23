@@ -87,6 +87,7 @@ const RECAST_LIMIT := 20  # recasts on a natural 20 in a row (Jugular: "without 
 var _recasts := 0
 var _resolving: Array[Behaviour.Cast] = []  # casts under way, innermost last: told when their target is neutralized (felled())
 var _aimed: Dictionary[Unit, Dictionary] = {}  # caster -> {target: times it used a skill on it} this battle (aimed())
+var _firsts: Dictionary[Unit, Dictionary] = {}  # unit -> {what: true} it has shown this battle (first_time())
 var _reacted: Dictionary[Unit, Dictionary] = {}  # holder -> {passive: times it reacted this battle} (times_reacted())
 var interrupter: Unit  # acting out of turn (grant_interrupt()): while set, only it acts (_acting())
 var directed := Callable()  # (unit) -> bool: a person picks that unit's interrupt (the HUD sets it for the player's side); unset, every unit's is the AI's
@@ -533,6 +534,7 @@ func _listen(u: Unit) -> void:
 	u.disabling.connect(_on_disabling)
 	u.slaying.connect(_on_slaying)
 	u.endurance = u.endurance_max()  # Recovery Endurance, fresh each battle (RecoveryEndurance)
+	u.wrongs.clear()  # grudges are this fight's (AI._grudge())
 
 
 func _on_taking_hit(u: Unit, blow: Dictionary) -> void:
@@ -1862,6 +1864,18 @@ static func reactions_of(u: Unit, tag := &"") -> Array[Slot]:
 # Only when it really acts: never from a preview, a plan or the AI's weighing.
 func passive(u: Unit, skill: Skill, amount: int, stat: StringName, rounded := 0) -> void:
 	passive_fired.emit(u, skill, amount, stat, rounded)
+
+
+# A first in this fight for u, signed over it as a passive's is (passive_fired, null skill: "Grudge", "Smitten"): an interesting
+# turn of its behaviour (AI's tempers) or a consequence worth the player's eye, shown the first time only so plain turns stay
+# quiet. Anything may call it; false when u has shown `what` before. Only when it really happens (never from a plan).
+func first_time(u: Unit, what: StringName) -> bool:
+	var seen: Dictionary = _firsts.get_or_add(u, {})
+	if what in seen:
+		return false
+	seen[what] = true
+	passive(u, null, 0, what)
+	return true
 
 
 # How many times u's passive s has reacted this battle (Final Act: once).

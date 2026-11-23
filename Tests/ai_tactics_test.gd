@@ -879,7 +879,7 @@ func test_calm_followers_drill() -> void:
 	var cc := effect("nothing", 0.0)
 	cc.bears = [&"cc"] as Array[StringName]
 	var cases := {
-		"an unskilled leader (cha +0)": [func(): lead.charisma = 10, func(): lead.charisma = 14],
+		"an unskilled leader (cha +1: not high, Command.skilled())": [func(): lead.charisma = 12, func(): lead.charisma = 14],
 		"hurt since its last turn": [func(): u.hp -= 1, func(): u.hp += 1],
 		"cc'd": [func(): u.afflict(cc, 2), func(): u.timed.erase(cc)],
 		"its leader down": [func(): lead.hp = 0, func(): lead.hp = lead.max_hp],
@@ -892,6 +892,11 @@ func test_calm_followers_drill() -> void:
 		ok(not AI._calm(b, u), "not calm: %s" % why)
 		cases[why][1].call()
 		ok(AI._calm(b, u), "calm again after: %s" % why)
+	lead.charisma = 10
+	lead.tags.append(&"leader")
+	ok(AI._calm(b, u), "a leader by tag is skilled whatever its charisma")
+	lead.tags.erase(&"leader")
+	lead.charisma = 14
 	AI.act(b, u)
 	ok(u.cell != Vector2i(9, 2), "calm, the stoic follower drills: it closes in")
 	b.move(u, Vector2i(9, 2))
