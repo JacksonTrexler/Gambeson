@@ -41,6 +41,7 @@ var _dice := RandomNumberGenerator.new()  # spinning dice, kept off the global R
 var fog: Sprite2D  # the fog of war (fog_of_war()): a pixel a tile over the map's used rect, above this, below the units
 var _fog_img: Image
 var memory: TileMapLayer  # the explored ground out of sight, frozen to the look last seen (fog_of_war()): a copy of the map's cells, over it
+var _ghost: Dictionary[Vector2i, Dictionary] = {}  # cell -> {layers, trodden, marks}: its ground effects as last seen, drawn while it's out of sight (_freeze())
 var _fog_rect := Rect2i()
 var _fog_key := []  # the side's eyes (cells and ranges) the fog was last drawn for
 var _fog_clear: Dictionary[Vector2i, bool] = {}  # the tiles drawn clear (in sight) last time
@@ -69,9 +70,13 @@ func _draw() -> void:
 	_layers(b)
 	_lattice(b, pulse)
 	for c in b.marks:
-		for m: Battle.Mark in b.marks[c]:
-			if m in hud.tile_view(c).marks:  # only what the player's side makes out
-				_mark(c, m)
+		if _sighted(c):
+			for m: Battle.Mark in b.marks[c]:
+				if m in hud.tile_view(c).marks:  # only what the player's side makes out
+					_mark(c, m)
+	for c in _ghost:
+		for m: Battle.Mark in _ghost[c].marks:
+			_mark(c, m)
 	for c in b.debris:
 		if hud.tile_view(c).net >= 0:
 			_debris(c)
@@ -323,6 +328,7 @@ func fog_of_war(b: Battle, f: Faction) -> void:
 			_fog_px(c, FOG_EXPLORED)
 		_fog_clear.clear()
 		memory.clear()
+		_ghost.clear()
 		for c: Vector2i in seen:
 			if not now.has(c):
 				_freeze(b, c)
@@ -334,6 +340,7 @@ func fog_of_war(b: Battle, f: Faction) -> void:
 		_fog_px(c, 0.0)
 		if not _fog_clear.has(c):
 			memory.erase_cell(c)
+			_ghost.erase(c)
 	_fog_clear = now
 	fog.position = b.map.position + Vector2(rect.position) * TILE
 	if fog.texture is ImageTexture and Vector2i(fog.texture.get_size()) == _fog_img.get_size():
@@ -344,11 +351,26 @@ func fog_of_war(b: Battle, f: Faction) -> void:
 
 # Freeze c to the look it has as it leaves sight: the map's cell copied onto memory (only the moves, not the map).
 func _freeze(b: Battle, c: Vector2i) -> void:
+	_ghost.erase(c)
+	var ls: Array = []
+	for l: Battle.Layer in b.layers.get(c, []):
+		var k := Battle.Layer.new(l.terrain, l.passes)
+		k.repairing = l.repairing
+		k.repair_goal = l.repair_goal
+		ls.append(k)
+	var ms: Array = hud.tile_view(c).marks.duplicate() if hud and b.marks.has(c) else []
+	if not ls.is_empty() or not ms.is_empty():
+		_ghost[c] = {"layers": ls, "trodden": b.unit_at(c) != null, "marks": ms}
 	var src := b.map.get_cell_source_id(c)
 	if src < 0:
 		memory.erase_cell(c)
 	else:
 		memory.set_cell(c, src, b.map.get_cell_atlas_coords(c), b.map.get_cell_alternative_tile(c))
+
+
+# Whether c is drawn live: in sight, or no fog. Out of it, only its _ghost shows.
+func _sighted(c: Vector2i) -> bool:
+	return fog == null or not fog.visible or _fog_clear.has(c)
 
 
 func _fog_px(c: Vector2i, a: float) -> void:
@@ -511,18 +533,24 @@ func _lattice(b: Battle, pulse: float) -> void:
 # as the lattice (_lattice()).
 func _layers(b: Battle) -> void:
 	for c: Vector2i in b.layers:
-		var st: Array = b.layers[c]
-		for i in range(st.size() - 1, -1, -1):
-			var l: Battle.Layer = st[i]
-			var t := l.terrain
-			if t.look:  # a layer with art of its own shows it (a starpower generator)
-				draw_texture_rect(t.look, _rect(c, 0), false)
-			if t.pane or t.source:
-				continue
-			if t.unstable:
-				_glass(c, l)
-			elif t.obscures:
-				_leaves(c, b.unit_at(c) != null)
+		if _sighted(c):
+			_stack(c, b.layers[c], b.unit_at(c) != null)
+	for c in _ghost:
+		_stack(c, _ghost[c].layers, _ghost[c].trodden)
+
+
+func _stack(c: Vector2i, st: Array, trodden: bool) -> void:
+	for i in range(st.size() - 1, -1, -1):
+		var l: Battle.Layer = st[i]
+		var t := l.terrain
+		if t.look:  # a layer with art of its own shows it (a starpower generator)
+			draw_texture_rect(t.look, _rect(c, 0), false)
+		if t.pane or t.source:
+			continue
+		if t.unstable:
+			_glass(c, l)
+		elif t.obscures:
+			_leaves(c, trodden)
 
 
 func _leaves(c: Vector2i, trodden: bool) -> void:
