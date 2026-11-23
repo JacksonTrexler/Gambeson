@@ -31,7 +31,7 @@ signal prayed(u: Unit, god: StringName, rank: int)  # pray(): u prays to its god
 signal untangled(by: Unit, of: Unit, total: int, against: int)  # inspect(): by, under Haluca, sees of's tags straight when total >= against
 signal refused(u: Unit, leader: Unit)  # a traitor in leader's party won't do as it's told, or acted on its own side's turn (_refuse())
 signal doubted(by: Unit, of: Unit, total: int, against: int)  # doubt(): by grows suspicious of `of` when total >= against
-signal told(by: Unit, to: Unit, of: Unit, heard: bool)  # spread(): by told an ally it suspects `of`; heard: the word got through
+signal told(by: Unit, to: Unit, of: Variant, heard: bool)  # spread(): by told an ally it suspects `of` (a unit or a tile); heard: the word got through
 signal discovered(by: Unit, of: Variant)  # suspect(): by's first stack of suspicion of a unit or tile: something odd about it ("?")
 signal unmasked(by: Unit, of: Variant, was: Read)  # suspect(): by now sees through what fooled or hid it; was: by's read before ("!")
 signal vanished(by: Unit, of: Unit, was: Read)  # of slipped from by's sight before its very eyes (_vanish()); was: by's read before ("!?")
@@ -2106,7 +2106,7 @@ func lured(caster: Unit, skill: Skill, t: Unit) -> bool:
 
 
 # o grows n stacks more suspicious of t, a unit or a tile (fewer, for a negative n; none left, it
-# trusts it again). Of an enemy unit, it passes the word on (spread()) - unless it was told.
+# trusts it again). Of an enemy unit or a tile, it passes the word on (spread()) - unless it was told.
 # Found out for itself (not told), its detective stat is recon it keeps on t (note()).
 func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 	var who: Unit = t if t is Unit else unit_at(t)  # suspicion of a tile works on whoever hides there
@@ -2130,20 +2130,21 @@ func suspect(o: Unit, t: Variant, n := 1, told_of := false) -> void:
 			discovered.emit(o, t)
 		if _sees_through(before, read(o, t)):
 			unmasked.emit(o, t, before)
-	if n > 0 and not told_of and t is Unit and o.faction and not Faction.friends(o.faction, t.faction):
+	if n > 0 and not told_of and o.faction and not (t is Unit and Faction.friends(o.faction, t.faction)):
 		spread(o, t)
 
 
-# o has grown suspicious of t, an enemy: it tells each ally within WORD + its cha mod tiles (at least 1)
+# o has grown suspicious of t, an enemy or a tile: it tells each ally within WORD + its cha mod tiles (at least 1)
 # that's awake and doesn't suspect t yet, which grows a stack suspicious of it in turn - and doesn't
-# pass it on. t's passives can stop the word (Behaviour.lets_word(): Bandwagon).
-func spread(o: Unit, t: Unit) -> void:
+# pass it on. The passives of t, or of whoever stands on that tile, can stop the word (Behaviour.lets_word(): Bandwagon).
+func spread(o: Unit, t: Variant) -> void:
+	var who: Unit = t if t is Unit else unit_at(t)
 	var reach := maxi(WORD + o.mod(&"charisma"), 1)
 	for a: Unit in units.values():
 		if a == o or not a.is_alive() or a.asleep() or not Faction.friends(a.faction, o.faction) or a.suspects(t) > 0 \
 				or Command.tiles(a.cell, o.cell) > reach:
 			continue
-		var heard := t.hooks().all(func(h: Array): return h[0].lets_word(self, t, h[1], o, a))
+		var heard := who == null or who.hooks().all(func(h: Array): return h[0].lets_word(self, who, h[1], o, a))
 		if heard:
 			suspect(a, t, 1, true)
 		told.emit(o, a, t, heard)
@@ -2406,7 +2407,31 @@ func survey(o: Unit, center: Vector2i, rested: int) -> int:
 		o.noticed[c] = true
 		inspect(o, c, center, r)
 		n += 1
+	_observe(o, center, reach)
 	return n
+
+
+# A Detective (stat detective) also observes the unconcealed within `reach` of `center`: what it makes
+# out but not fully (a foe short of its skills and effects, net 0..2; a tile short of its worth, net 0) it gains
+# its rank in recon on (note()), until it reads it fully. Everything it reads, concealed or not, goes by
+# its own read(), so what others lend it (Coordinate, Study) counts.
+func _observe(o: Unit, center: Vector2i, reach: int) -> void:
+	var rank := roundi(o.stat(&"detective"))
+	if rank <= 0:
+		return
+	Unit.begin_read()
+	var seen: Array = []
+	for t: Unit in units.values():
+		if t.is_alive() and not Faction.friends(o.faction, t.faction) and Command.tiles(center, t.cell) <= reach:
+			var r := read(o, t)
+			if r.located() and r.net >= 0 and r.net < 3:
+				seen.append(t)
+	for c in _box(center, reach):
+		if c != o.cell and Command.tiles(center, c) <= reach and unit_at(c) == null and read(o, c).net == 0:
+			seen.append(c)
+	Unit.end_read()
+	for k in seen:
+		note(o, k, rank)
 
 
 
