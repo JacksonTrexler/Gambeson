@@ -59,6 +59,7 @@ func _initialize() -> void:
 	var failed := 0
 	var ran := 0
 	var spent := {}
+	var leaked := 0
 	var files := Array(DirAccess.get_files_at("res://Tests")).filter(func(f: String): return f.ends_with("_test.gd"))
 	files.sort()
 	if reverse:
@@ -97,6 +98,7 @@ func _initialize() -> void:
 			Game.roster = []
 			Game.party = []
 			Game.fielded = {}
+			var before := root.get_children()  # what a test adds to the root itself (a HUD, a scene) goes with it, below
 			var scene: Node = museum.instantiate()
 			scene.get_node("Battle").rng.seed = 1
 			root.add_child(scene)
@@ -114,6 +116,10 @@ func _initialize() -> void:
 				failed += 1
 				print("FAIL %s: crashed, its remaining checks did not run: %s" % [id, e])
 			scene.free()
+			for n in root.get_children():  # a test's leftovers (Test.hud puts a HUD on the root) must not reach the next: a leaked HUD in the "hud" group gave the battle camera a stale selection
+				if n not in before:
+					leaked += 1
+					n.free()
 			spent[id] = Time.get_ticks_msec() - start
 	if times:
 		var ids := spent.keys()
@@ -121,6 +127,8 @@ func _initialize() -> void:
 		for id in ids:
 			print("TIME %6d ms  %s" % [spent[id], id])
 	_wipe()
+	if leaked:
+		print("freed %d nodes tests left on the root" % leaked)
 	print("%d checks, %d failed (%d tests%s%s%s)" % [checks, failed, ran, ", quick" if quick else "", ", reverse" if reverse else "", ", soak" if "soak" in args else ""])
 	quit(1 if failed else 0)
 

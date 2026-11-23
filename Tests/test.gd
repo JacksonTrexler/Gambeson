@@ -149,7 +149,7 @@ func hud(leader: Unit = null, pace := 0.0) -> HUD:
 	h.battle = b
 	h.auto = false
 	h.pace = pace
-	tree.root.add_child(h)
+	(b.get_parent() if b.get_parent() else tree.root).add_child(h)  # with the battle's scene, so the run's scene.free() takes it too (on the root it outlived its test)
 	await tree.process_frame
 	return h
 
