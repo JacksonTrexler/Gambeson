@@ -248,3 +248,57 @@ func test_power_hungry() -> void:
 	AI.act(b, s)
 	ok(Command.tiles(s.cell, v(2).cell) <= 1 and v(2).energy < e2 and v(1).energy == 1, "beside the neutral with the full bar, draining it (%s, %d -> %d)" % [s.cell, e2, v(2).energy])
 	v(2).faction = lancin
+
+
+# Floaty at ranks 1-3 (movement /2, /3, /4: fractional; Jump x2..x4) against villagers: no starman stalls - ends 3 turns running
+# without moving, striking, draining or hopping while a foe stands in reach or a free tile lies beside it (AI._leap(), move_left()).
+func test_floaty_no_stall() -> void:
+	var floaty: Skill = load("res://Skills/floaty.tres")
+	var men: Array[Unit] = []
+	stage(starmen, {v(1): Vector2i(1, 1), v(2): Vector2i(1, 8), v(3): Vector2i(2, 4), v(4): Vector2i(2, 5)})
+	for i in 6:
+		var s := spawn(starman, starmen, Vector2i(8, 1 + i + (i / 3)))
+		for sl in s.learned:
+			if sl.skill == floaty:
+				sl.rank = 1 + i % 3
+		s.sync_bar()
+		s.refresh()
+		men.append(s)
+	var idle: Dictionary = {}
+	var gap := func(c: Vector2i) -> int:
+		var d := 99
+		for u: Unit in [v(1), v(2), v(3), v(4)]:
+			if u.is_alive():
+				d = mini(d, Command.tiles(c, u.cell))
+		return d
+	var worst := 0
+	for round in 14:
+		for s in men:
+			if not s.is_alive():
+				continue
+			b.phase = Battle.Phase.TURNS  # a villager's fall ends the battle (one side left): the sim goes on
+			b.turn = starmen
+			s.refresh()
+			var at := s.cell
+			var hp := 0
+			var en := s.energy
+			for u: Unit in b.units.values():
+				hp += u.hp
+			var log := AI.act(b, s)
+			var after := 0
+			for u: Unit in b.units.values():
+				after += u.hp
+			var free := false  # a free tile beside it that takes it further from every villager (a cornered one holding still isn't a stall)
+			for c in b.cells_near(s.cell, 1):
+				free = free or (c != s.cell and b.unit_at(c) == null and b.footing(s, c) and gap.call(c) > gap.call(s.cell))
+			var did := s.cell != at or after != hp or not log.is_empty() or s.energy != en
+			idle[s] = 0 if did or not free else idle.get(s, 0) + 1
+			worst = maxi(worst, idle[s])
+			ok(idle[s] < 3, "round %d: %s (Floaty) stalled at %s for %d turns" % [round, s.name, s.cell, idle[s]])
+		b.phase = Battle.Phase.TURNS
+		b.turn = lancin
+		for u: Unit in [v(1), v(2), v(3), v(4)]:
+			if u.is_alive():
+				u.refresh()
+				AI.act(b, u)
+	ok(worst < 3, "no starman idles (worst %d)" % worst)
