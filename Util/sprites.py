@@ -156,7 +156,7 @@ def names(sprites):
     return out
 
 
-def cut_sheet(path, out_root, min_size=1, dry=False, plain=False, quiet=False):
+def cut_sheet(path, out_root, min_size=4, dry=False, plain=False, quiet=False):
     w, h, rgba = load(path, plain)
     sprites = [s for s in find(w, h, rgba) if s["count"] >= min_size]
     stem = os.path.splitext(os.path.basename(path))[0]
@@ -209,6 +209,12 @@ def check(_a=None):
         # reading order of each sprite's first pixel; the speck (1 px) is cut by min-size 2
         want = ["c80000-red.png", "00a000-green.png", "a0a0a0-gray.png", "c80000-red-2.png"]
         got = {plain: cut_sheet(src, os.path.join(tmp, "o%d" % plain), 2, plain=plain, quiet=True) for plain in (True, False)}
+        dflt = cut_sheet(src, os.path.join(tmp, "o3"), quiet=True)  # default 4: only the two 4-px blocks
+        if dflt != ["c80000-red.png", "c80000-red-2.png"]:
+            problems.append("default min-size cut %s, wanted the two blocks only" % dflt)
+        kept = cut_sheet(src, os.path.join(tmp, "o2"), 1, quiet=True)  # --min-size 1 keeps the speck
+        if len(kept) != len(want) + 1 or "0000ff-blue.png" not in kept:
+            problems.append("--min-size 1 should keep the 1-px speck, got %s" % kept)
         if got[True] != want:
             problems.append("synthetic sheet cut to %s, wanted %s" % (got[True], want))
         if got[True] != got[False]:
@@ -243,7 +249,7 @@ def main():
     c = sub.add_parser("cut", help="cut sheets into one PNG per sprite, named by average colour")
     c.add_argument("sheets", nargs="+", help="sheet PNGs (read only)")
     c.add_argument("--out", default=os.path.join(ROOT, OUT), help="output root (default Assets/sorted; a folder per sheet)")
-    c.add_argument("--min-size", type=int, default=1, help="skip islands under this many pixels (default 1: keep all)")
+    c.add_argument("--min-size", type=int, default=4, help="skip islands under this many pixels, so area < 4 is skipped by default (1 keeps every speck)")
     c.add_argument("--dry-run", action="store_true", help="list, write nothing")
     sub.add_parser("check", help="synthetic sheet through both decoders; Assets/sorted names and imports")
     a = ap.parse_args()
