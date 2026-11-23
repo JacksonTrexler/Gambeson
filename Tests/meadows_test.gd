@@ -195,9 +195,36 @@ func test_camera() -> void:
 	ok(InputMap.has_action(&"camera_left") and &"camera_down" in KeyBinds.actions() and KeyBinds.key_of(&"camera_up") == "Up", "the arrow keys, rebindable")
 	var view := Vector2(480, 270)
 	var side: Array[Rect2] = [Rect2(0, 0, 77, 270)]
-	ok(BattleCamera.edge_dir(Vector2(240, 1), view, side) == Vector2(0, -1) and BattleCamera.edge_dir(Vector2(300, 269), view, side) == Vector2(0, 1), "the mouse at the top or bottom edge pans that way")
-	ok(BattleCamera.edge_dir(Vector2(479, 100), view, side).x == 1.0 and BattleCamera.edge_dir(Vector2(240, 135), view, side) == Vector2.ZERO, "the right edge pans; the middle doesn't")
-	ok(BattleCamera.edge_dir(Vector2(1, 100), view, side) == Vector2.ZERO and BattleCamera.edge_dir(Vector2(1, 1), view, side) == Vector2.ZERO, "over a HUD panel at the edge: no pan")
+	var ev := func(p: Vector2) -> Vector2: return BattleCamera.edge_vec(p, view, side)
+	var near := func(a: float, b: float) -> bool: return absf(a - b) < 0.03
+	ok(ev.call(Vector2(240, 0)) == Vector2(0, -1) and ev.call(Vector2(300, 270)).y > 0.9 and ev.call(Vector2(240, 135)) == Vector2.ZERO, "an edge pan pushes out from the middle: top up, bottom down, the middle nowhere")
+	ok(near.call(ev.call(Vector2(240, 1)).length(), 1.0) and near.call(ev.call(Vector2(479, 1)).length(), 1.0) and near.call(ev.call(Vector2(479, 135)).length(), 1.0) and ev.call(Vector2(479, 1)).x > 0.5 and ev.call(Vector2(479, 1)).y < -0.5, "top-middle, the corner and the side move the view equally fast, the corner on the diagonal")
+	ok(ev.call(Vector2(240, 20)) == Vector2.ZERO and ev.call(Vector2(240, 10)).length() > 0.0 and ev.call(Vector2(240, 10)).length() < ev.call(Vector2(240, 3)).length(), "a dead zone round the middle, then a ramp: deeper into the edge, faster")
+	ok(ev.call(Vector2(1, 100)) == Vector2.ZERO and ev.call(Vector2(1, 1)) == Vector2.ZERO, "over a HUD panel at the edge: no pan")
+	ok(BattleCamera.map_gain(Vector2(240, 135), view) == 0.75 and BattleCamera.map_gain(Vector2(480, 270), view) == 1.0 and BattleCamera.map_gain(Vector2(1920, 270), view) == 2.0 and BattleCamera.map_gain(Vector2(960, 540), view) > 1.2 and BattleCamera.map_gain(Vector2.ZERO, view) == 0.75, "a bigger map pans faster, kept between 0.75 and 2")
+	var swipe := InputEventPanGesture.new()
+	swipe.delta = Vector2(0, 10)
+	swipe.position = Vector2(300, 100)
+	at = cam.global_position
+	cam._input(swipe)
+	ok(cam.global_position == at + BattleCamera.gesture_by(swipe.delta, cam.zoom.x, BattleCamera.map_gain(cam.map_size(), cam.get_viewport_rect().size)) and cam.global_position.y > at.y, "a two-finger trackpad scroll pans the view")
+	var touch := func(i: int, down: bool) -> void:
+		var t := InputEventScreenTouch.new()
+		t.index = i
+		t.pressed = down
+		cam._input(t)
+	var finger := InputEventScreenDrag.new()
+	finger.relative = Vector2(20, 0)
+	at = cam.global_position
+	cam._input(finger)
+	touch.call(0, true)
+	cam._input(finger)
+	ok(cam.global_position == at, "one finger: no pan (it's a mouse click or drag)")
+	touch.call(1, true)
+	cam._input(finger)
+	ok(cam.global_position == at + BattleCamera.drag_by(finger.relative / 2.0, cam.zoom.x), "two fingers drag the view the ground following them")
+	touch.call(0, false)
+	touch.call(1, false)
 	var drag := InputEventMouseMotion.new()
 	drag.relative = Vector2(20, 0)
 	drag.button_mask = MOUSE_BUTTON_MASK_MIDDLE
