@@ -1,0 +1,9 @@
+# High-regression-risk tests (docs/plans/w16-testaudit.md): `run.gd -- quick` keeps them even if slow.txt lists them, and
+# `run.gd -- risk` runs only these. A word a line, matched like a targeted word (file.method). Say why; keep the list short.
+sims_test.test_fight_outcome   # a whole 10 v 10 AI fight: nobody idles, blood is shed, it is decided (the busy_fight OUTCOME checks)
+combat_test.test_battles       # whole museum fights on 8 seeds: they end, invariants hold every turn
+astral_test.test_envoy         # a whole fight in a generated scene, invariants every turn
+skills_test.test_wiring        # every skill wired as the tools promise (a new skill that is not breaks the game)
+save_test.                     # saving and loading: a lost save is the worst bug
+rules_test.                    # luck rounding, tags, contests, initiative
+check_test.test_dc_and_rider_forecasts   # forecast odds equal the rolls (the exact odds the sampling loops only bound)
