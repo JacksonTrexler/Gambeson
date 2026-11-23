@@ -29,8 +29,23 @@ Wait model (`busy_fight` "side wait"): stare = time on the target with no walk o
 One frame (old HUD): a side's acts + end_turn (+ the next side's looks, in its setter) in one frame = all stare.
 Frame per unit (new): acts in order; an act starting while an earlier walk (tiles x 0.07 s) or number (0.9 s) still shows is covered up to that end (a stutter, not a stare); looks one a frame over the 1 s turn change, the rest inside each act; end_turn covered by the last feedback.
 
+### Results (A/B x2 interleaved, `S/ab-w13.sh`, base = daf5c1d + this busy_fight; target ms = M3 x 4)
+Before = base AI, old HUD (one frame). After = this branch, new HUD (frame per unit).
+| side turn, player stare (target) | before mean / p95 | after mean / p95 |
+|---|---|---|
+| 15 a side (lead) | 1190 / 2800 | 218 / 737 |
+| 30 a side (lead) | 4300 / 9800 | 776 / 3210 |
+| 15 a side (no parties) | 1162 / 2755 | 136 / 665 |
+After, 30 a side, mean stare split: acts 580, end_turn 188 (rounds 1-2 are the p95: acts ~0.3 s each, walks 0.07 s/tile cover little).
+CPU: unit turn (lead) 15: 132 -> 113 ms target; 30: 213 -> 194 (drill on ~43% of acts). end_turn 15: 219 -> 152; 30: 870 -> 396 (looks moved out). No parties: unit turn 132 -> 130, same outcome (fallen 28.0 both).
+Fights with parties end a little bigger (more acts a side turn: 9.4 vs 7.3 at 15), so one-frame totals per side are not lower; per act they are.
+- Budget call: `busy_fight.TURN_BUDGET_MS` 100 -> 200 (a unit plans in its own frame while earlier walks/numbers show; a 3-tile walk is 0.21 s). 15v15 mean 113-130 within, p95 ~220 still over. New side stare budget = SIDE_BUDGET_MS 1000: 15 within, 30 OVER at p95 (3.2 s; mean 0.78 s within).
+
 ## Done
 1. busy_fight: `lead`, wait model + breakdown, OUTCOME checks, `debug` per-turn stare. (commit 2)
 2. AI `_calm`/`_drill`, act wrapper (`_full`), HUD frame per unit, lazy looks, end_turn under walks. Suite 10969 / 0 / 1032. (6484404)
 3. Test `ai_tactics_test.test_calm_followers_drill` (calm table: unskilled, hurt, cc, leader down, out of reach, struck by leader, Restless; stoic follower drills when calm, holds when hurt; owed looks taken at own act). Mutations, all caught: hurt check off, cc off, betrayed off, `<= 0` -> `< 0`, drill never taken, hears off, act skipping `looks_done(u)`.
-## Next
+4. Budget 200 ms, side stare reported against 1000 ms. Suite 10989 checks, 0 failed (1033 tests). skill.py check ok; launch log clean (8 resources only).
+## Next (not done)
+- 30-a-side p95: round 1-2 acts (~300 ms target each) outlast the walks before them. Levers: `_check_stall` nearest-pair first (exact, ~28 ms here a turn), tick loop (28), `_watch` (30); drill for leaderless units far from foes.
+- Visual check not taken (timing only, no layout change).

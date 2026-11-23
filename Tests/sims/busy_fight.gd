@@ -21,8 +21,8 @@ extends SceneTree
 # unit and prints the frame times (ms) between them: an AI turn is one frame's work, so its hitch is that frame's length.
 
 const SLOWDOWN := 4.0  # target device = this machine's time x 4
-const TURN_BUDGET_MS := 100.0  # a unit's AI turn on the target before it reads as a hitch (the HUD paces units 450 ms apart)
-const SIDE_BUDGET_MS := 1000.0  # a side's end_turn, or a whole round of AI turns on the target, before it reads as a freeze
+const TURN_BUDGET_MS := 200.0  # a unit's AI turn on the target before it shows: it plans in its own frame while the units before it walk and their numbers show (HUD._act_alone), and a 3-tile walk is 0.21 s (was 100 before a frame per unit; docs/plans/w13-aifast.md)
+const SIDE_BUDGET_MS := 1000.0  # a side's end_turn, a whole round of AI turns, or a side's stare (nothing showing) on the target, before it reads as a freeze
 const PARTY := 5
 const LEADER_CHA := 14  # mod +2: Command.cha_of > 0, a skilled leader (AI._calm())
 const SHOWN := 0.9  # s a used skill's number shows (Overlay.float_text)
@@ -196,7 +196,7 @@ func _fight(size: int, n: int, rounds: int, skills: int) -> void:
 		one.append(w[0])
 		per.append(w[1])
 	_report("busy-%dv%d side wait, one frame" % [size, size], one, -1.0)
-	_report("busy-%dv%d side wait, frame per unit" % [size, size], per, -1.0)
+	_report("busy-%dv%d side wait, frame per unit" % [size, size], per, SIDE_BUDGET_MS)
 	print("SIM busy-%dv%d frame-per-unit wait on the target, mean a side turn: acts %.0f, end_turn %.0f ms" % [size, size, parts[1] * 1000.0 / waits.size(), parts[2] * 1000.0 / waits.size()])
 	_report("busy-%dv%d unit turn" % [size, size], acts, TURN_BUDGET_MS)
 	_report("busy-%dv%d unit turn using a skill" % [size, size], busy, TURN_BUDGET_MS)
