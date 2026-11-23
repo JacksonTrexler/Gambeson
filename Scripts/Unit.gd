@@ -605,6 +605,7 @@ func _ready() -> void:
 	learned.assign(learned.map(func(s: Slot): return s.duplicate()))
 	picked = picked.duplicate()  # a scene's pre-selection, its own
 	take_free()  # what a pre-selected free choice brings (a Monster's path), before its bar is filled
+	take_flex()  # an NPC's flex tree, as it is readied
 	if role and not race:
 		race = role.race
 	if role and not look:
@@ -1525,6 +1526,7 @@ func level_up() -> void:
 	level += 1
 	skill_points += 1
 	var was := max_hp
+	take_flex()
 	refit()
 	if is_alive():
 		hp += maxi(max_hp - was, 0)  # what the level brings, it gets at once
@@ -3279,6 +3281,26 @@ func buy_flex(t: SkillTab, stat: StringName) -> bool:
 	for r in t.reserves:
 		set_store(r, 0 if r.empty else pools()[r])
 	return true
+
+
+# An NPC's (one with a bio) flex tree, as it is readied or levels, if it has none: the first on offer when a
+# slot is due, else, on an inverted page (a Jester, a Jovia Warlock), the first tree some stat pays for,
+# paid with the cheapest stat above FLEX_FLOOR (the lowest that can pay). An authored pick stands in for it.
+# True if it took one.
+func take_flex() -> bool:
+	if not bio or not role or picked.any(func(k: String): return k.begins_with(FLEX + "/")):
+		return false
+	var due := flex_options()
+	if flex_due() > 0 and not due.is_empty():
+		return pick(flex_choice(), due[0])
+	for t in invert_options():
+		var best := &""
+		for k in flex_payers(t):
+			if buy_missing(t, k) == "" and (best == &"" or get(k) < get(best)):
+				best = k
+		if best != &"":
+			return buy_flex(t, best)
+	return false
 
 
 func _flex_key(g: SkillTab) -> String:

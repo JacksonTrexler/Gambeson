@@ -204,6 +204,41 @@ func test_jovia() -> void:
 	ok(w.buy_flex(journeyman, &"intelligence") and w.intelligence == int0 - 1 and journeyman in w.general_trees(), "she sells it Journeyman, not on its class's flex list, for intelligence")
 
 
+# An NPC's (bio) flex tree (Unit.take_flex()), on being readied or at level: the first on offer when a slot is due, an
+# authored "Flex Tree/<t>" pick standing in for it (and giving its skills), else an inverted page's first stat-paid tree
+# with the cheapest stat above the floor. A row: class, level, picked, bio, what it ends with, stat spent (or "").
+func test_flex_npcs() -> void:
+	for row in [["rogue", 5, [], true, ["Scout"], ""], ["rogue", 4, [], true, [], ""], ["rogue", 5, [], false, [], ""],
+			["paladin", 10, ["Flex Tree/Student"], true, ["Student"], ""], ["adventurer", 3, [], true, ["Student"], ""],
+			["jester", 1, [], true, ["Student"], "dexterity"], ["jester", 1, ["Flex Tree/Student"], true, ["Student"], ""]]:
+		var u: Unit = b.from_role(lancin, load("res://Roles/%s.tres" % row[0]), "npc")
+		u.level = row[1]
+		u.picked.assign(row[2])
+		if row[3]:
+			u.bio = Bio.new()
+		if row[0] == "jester":
+			u.dexterity = 7; u.strength = 9; u.constitution = 9  # dex the cheapest above the floor
+			u.intelligence = 6; u.wisdom = 6; u.charisma = 6
+		var was := {&"dexterity": u.dexterity, &"strength": u.strength}
+		b.get_node("Units").add_child(u)
+		var got := u.picked.filter(func(k: String): return k.begins_with("Flex Tree/")).map(func(k: String): return k.trim_prefix("Flex Tree/"))
+		ok(got == row[4], "%s L%d %s: flex %s (got %s)" % [row[0], row[1], row[2], row[4], got])
+		ok(row[4].is_empty() or names(u).has(row[4][0]), "%s: its flex tree is open" % row[0])
+		if row[5] != "":
+			ok(u.get(row[5]) == was[row[5]] - 1 and u.flex_extra == 1, "%s paid one %s" % [row[0], row[5]])
+	var j: Unit = b.from_role(lancin, load("res://Roles/jester.tres"), "j")
+	j.bio = Bio.new()
+	j.dexterity = 6; j.strength = 6; j.constitution = 6; j.intelligence = 6; j.wisdom = 6; j.charisma = 6
+	b.get_node("Units").add_child(j)
+	ok(j.picked.filter(func(k: String): return k.begins_with("Flex Tree/")).is_empty(), "a jester with every payer at the floor buys nothing")
+	var s: Unit = b.from_role(lancin, load("res://Roles/rogue.tres"), "s")
+	s.bio = Bio.new()
+	s.level = 4
+	b.get_node("Units").add_child(s)
+	s.level_up()
+	ok("Flex Tree/Scout" in s.picked, "reaching the level takes it")
+
+
 # One hook, two skills: a check effect with per_mod adds that stat's mod to the checks it names, from 0 up to the rank
 # (Unit.check_bonus(): Journeyman's Physical Intelligence, int to str, and Muscle Memory, wis to str).
 func test_stat_adds_to_checks() -> void:
