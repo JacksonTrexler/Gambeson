@@ -2,11 +2,20 @@
 
 [ext_resource type="Script" path="res://Scripts/Terrain.gd" id="1_terrain"]
 [ext_resource type="Texture2D" path="res://Tiles/starpower_generator.png" id="2_starpower_generator"]
+[ext_resource type="Script" path="res://Scripts/Effect.gd" id="3_effect"]
+
+[sub_resource type="Resource" id="Effect_at_end_1"]
+script = ExtResource("3_effect")
+stat = "power_siphon"
+amount = 0.05
+name = "Power Siphon"
 
 [resource]
 script = ExtResource("1_terrain")
 name = "Starpower Generator"
 look = ExtResource("2_starpower_generator")
 tags = Array[StringName]([&"star", &"generator"])
+at_end = Array[ExtResource("3_effect")]([SubResource("Effect_at_end_1")])
+turns = 1
 source = true
 passes = true

@@ -63,9 +63,10 @@ func test_portal_menu() -> void:
 	t.free()
 
 
-# The Astral Nexus (AstralNexus.gd) on the second portal: 3 full generators, startiles, starpanes and void
-# laid out round them; 4 to 6 hostile starmen, every one on lattice the party's landing reaches; the void
-# costs a step 99; and its reward, the Power Star.
+# The Astral Nexus (AstralNexus.gd) on the second portal: 4 to 6 full generators wired into one circuit
+# of startiles and starpanes (all in bounds, every lattice cell joined side-on to a generator), the same
+# for a seed; stone floor and void round it; 4 to 6 hostile starmen, every one on lattice the party's
+# landing reaches; the void costs a step 99; and its reward, the Power Star.
 func test_nexus() -> void:
 	var t := tower()
 	var d: Dungeon = t.dungeon_at(t.PORTALS[1])
@@ -84,8 +85,11 @@ func test_nexus() -> void:
 	var nb: Battle = n.get_node("Battle")
 	var nx: AstralNexus = nb.get_node("Nexus")
 	ok(nx.starmen.size() >= 4 and nx.starmen.size() <= 6 and nx.starmen.all(func(u: Unit): return not Faction.friends(u.faction, lancin)), "4 to 6 hostile starmen (%d)" % nx.starmen.size())
-	ok(nx.generators.size() == 3 and nx.generators.all(func(c: Vector2i): return nb.charge[c] == Battle.STAR_CAPACITY and nb.top_layer(c).terrain.name == "Starpower Generator"), "three full generators on the lattice")
-	ok(nx.startiles.size() > 20 and nx.panes.size() > 20 and nx.voids.size() > 20 and nx.startiles.all(func(c: Vector2i): return c in nb.starpower and c not in nx.generators), "startiles, starpanes and void")
+	ok(nx.generators.size() >= 4 and nx.generators.size() <= 6 and nx.generators.all(func(c: Vector2i): return nb.charge[c] == Battle.STAR_CAPACITY and nb.top_layer(c).terrain.name == "Starpower Generator"), "4 to 6 full generators (%d)" % nx.generators.size())
+	var lattice: Array[Vector2i] = nx.generators + nx.startiles + nx.panes
+	ok(lattice.all(func(c: Vector2i): return c.x >= 0 and c.y >= 0 and c.x < AstralNexus.WIDTH and c.y < AstralNexus.HEIGHT and nb.on_lattice(c)), "the circuit in bounds, all lattice")
+	ok(lattice.all(func(c: Vector2i): return nb.star_source(c) != null and not nb.circuit_ends(c).is_empty() or c in nx.generators), "one live circuit: every tile joined to a generator")
+	ok(nx.floor_cells.size() > 20 and nx.voids.size() > 20 and nx.floor_cells.all(func(c: Vector2i): return not nb.on_lattice(c)), "stone floor and void off it")
 	var reach := {AstralNexus.START: true}
 	var queue: Array[Vector2i] = [AstralNexus.START]
 	while not queue.is_empty():
@@ -96,6 +100,16 @@ func test_nexus() -> void:
 				queue.append(at + dir)
 	ok(nx.starmen.all(func(u: Unit): return u.cell in reach) and nx.generators.all(func(c: Vector2i): return c in reach), "the party's landing reaches every starman and generator over the lattice")
 	ok(nb.step(nb.player, AstralNexus.START, nx.voids[0]) >= 99.0 and nb.star_source(nx.generators[0]) != null, "a step into the void costs 99; the lattice reaches its source")
+	var again := AstralNexus.new()
+	again.seed = 3
+	again.map = TileMapLayer.new()
+	again.battle = Battle.new()
+	again.rng.seed = 3
+	again._lay()
+	ok(again.generators == nx.generators and again.panes == nx.panes, "the same seed, the same circuit")
+	again.map.free()
+	again.battle.free()
+	again.free()
 	n.free()
 
 
