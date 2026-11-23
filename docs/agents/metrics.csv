@@ -101,3 +101,8 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w20-fog-seen,sonnet,medium,49202,17,276635,ok
 2026-11-23,w20-fog-effects,sonnet,low,49540,14,192876,ok
 2026-11-23,w20-docs,sonnet,medium,75922,18,95914,ok
+2026-11-23,w21-vscroll,sonnet,high,139062,70,829461,landed
+2026-11-23,w21-sprites,sonnet,high,62053,20,283160,landed
+2026-11-23,w21-anim,opus,medium,106248,52,609601,landed
+2026-11-23,w21-hudpanels,sonnet,high,126570,58,518953,landed
+2026-11-23,w21-undead,sonnet,medium,65785,25,235621,landed
