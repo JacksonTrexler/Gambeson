@@ -123,6 +123,21 @@ Best guess: keep; Floaty never stalls, and a Flippant starman with every tile un
 Ref: `Tests/stars_test.gd` `test_floaty_no_stall`, `docs/plans/w18-flip-test.md`.
 Answer: ____
 
+**F49. Generators recharging from siphoned Power (wave 18 follow-ups; see ?311).** The card w18-siphon-recharge (a starpower generator recharging from the Power siphoned on its circuit) was not built; you never asked for it, and it adds a mechanic.
+Best guess: do not build.
+Ref: `Scripts/Battle.gd` `_owe_wound`, `docs/plans/w18-ai-siphon.md`.
+Answer: ____
+
+**F50. The AI weighs a siphon's Power gain at 0.5 HP a Power (wave 20; see ?327, ?328).** A powered unit's siphon price drops by `SIPHON_POWER_HP` (0.5) HP for each Power it gains, never below 0 (a gain over the loss is a free tile, not a lure); Energy units unchanged. The 0.5 is a guess.
+Best guess: keep as built.
+Ref: `Scripts/Battle.gd` `_owe_wound`, `docs/plans/w20-siphon-gain.md`.
+Answer: ____
+
+**F51. The fog hides what is laid out of sight (wave 20; see ?331 to ?333).** Layers and marks laid on a tile out of sight, or never seen, are now hidden (they used to show live through the fog); a fire lit in the dark is not seen until the tile is seen again. Layers, trodden ground and marks freeze to their last-seen look; the lattice, debris and traps do not. No screenshot has been taken.
+Best guess: keep as built.
+Ref: `Scripts/Overlay.gd` `_ghost`, `_sighted`, `docs/plans/w20-fog-effects.md`.
+Answer: ____
+
 ---
 
 ## 3. Skills and classes (wave 18 G, H, I, J)
@@ -219,6 +234,11 @@ Answer: ____
 **F47. Monster AI spends points, reversing ?303 (wave 18 follow-ups; see ?320 to ?322).**
 Best guess: keep as built. An NPC or summoned Monster picks the path fewest on its side and spends its level - 1 points on that path's traits, cheapest first, so a Theseus Monster arrives with them spent (?303 said unspent). A player's Monster is left alone (card w18-monster-ai-player). Undead ?? is +1 pierce Defense a rank, a guess.
 Ref: `Unit.take_path`, `fewest_path`, `path_auto`, `Skills/undead.tres`, `docs/plans/w18-monster-ai.md`, `docs/plans/w18-undead-rank.md`.
+Answer: ____
+
+**F52. Auto-playing a player's Monster (wave 18 follow-ups; see ?320).** The card w18-monster-ai-player (a player-side Monster left on auto picking its path and spending its points) was not built: it takes the choice away from the player.
+Best guess: do not build.
+Ref: `Unit.take_path`, `path_auto`, `docs/plans/w18-monster-ai.md`.
 Answer: ____
 
 ---

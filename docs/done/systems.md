@@ -357,3 +357,7 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Undead ?? per-rank pierce Defense** (`Skills/undead.tres`): plan `docs/plans/w18-undead-rank.md`. `monster_test.test_undead_rank`. (?322)
 - [x] **Elemental Strike on the shared picker** (`HUD._pick_choice`, `imbue.choices`, `Battle.cast` `chose`): plan `docs/plans/w18-picker-es.md`. `general_test.test_elemental`. (?323, ?324)
 - [x] **Floaty does not stall** (a sim, no code change): plan `docs/plans/w18-flip-test.md`. `stars_test.test_floaty_no_stall`. (?325, ?326)
+- [x] **The AI weighs Power Siphon's gain** (`Battle._owe_wound`, `SIPHON_POWER_HP`): plan `docs/plans/w20-siphon-gain.md`. `stars_test.test_siphon_priced`. (?327, ?328)
+- [x] **A foe's further tempers as chips** (`Read.also`, `HUD._info`): plan `docs/plans/w20-hud-foe-also.md`. `hud_test.test_foe_tempers`. (?329)
+- [x] **The AI marks ground it walked past** (`Battle.travel`, `_mark_seen`): plan `docs/plans/w20-fog-seen.md`. `sight_test.test_walk_marks_ground_passed`. (?330)
+- [x] **The fog freezes ground effects** (`Overlay._ghost`, `_sighted`, `_stack`): plan `docs/plans/w20-fog-effects.md`. `sight_test.test_fog`. (?331 to ?333)

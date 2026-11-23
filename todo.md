@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 327. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 334. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -29,6 +29,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 19. **Wave 18 batch 3 (?297 to ?306):** the fog radius, shades and dim-only memory (?297); the AI left unchanged (?298); the `free` path flag (?299); the Monster paths, Undead ?? and Seaborn ?? (?300); the Monster class and playable (?301); where Thesis of Theseus sits, dark mage and dark cleric not placed (?302); its level, path-only design and the shared picker (?303); the AI pick and L + 1 Skeletons value (?304); its price (?305); `skill.py` reading the parent (?306).
 20. **Wave 18 follow-ups (?307 to ?314):** `skill.py` writing the intensity only with a tier, `check_declared`, the stray `description` (?307 to ?309); the AI pricing Power Siphon as turn-end HP, the Power gain and generator recharge skipped, the true circuit (?310 to ?312); the HUD chips for `Bio.also` on the leader only, read directly (?313, ?314).
 21. **Wave 18 follow-ups, second batch (?315 to ?326):** the AI's `known_ground` reading `explored`, filled lazily (?315, ?316); NPCs taking flex trees, the Jester paying with its lowest stat (?317, ?318); the fog freezing terrain only (?319); Monster paths and spent points, reversing ?303 (?320, ?321); Undead ?? as +1 pierce Defense a rank (?322); the one HUD picker and `Battle.cast`'s `chose` (?323, ?324); Floaty not stalling, a cornered Flippant holding (?325, ?326).
+22. **Wave 20 follow-ups (?327 to ?333):** the AI weighing the Power a siphon gives, 0.5 HP a Power, no negative bonus (?327, ?328); a foe starman's further tempers as chips (?329); ground walked past marked explored (?330); the fog freezing ground effects and hiding what is laid out of sight (?331 to ?333).
 
 ## Built on judgement, open for review (newest last; append here)
 
@@ -178,6 +179,13 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 324 `Battle.cast` gains a `chose` argument (2026-11-23). `docs/plans/w18-picker-es.md`.
 - 325 Floaty does not stall a starman (2026-11-23, answers ?289): sim test, no `AI.gd` change. `docs/plans/w18-flip-test.md`.
 - 326 A cornered Flippant holds 3 to 4 turns (2026-11-23): judged a hold, exempted in the test. `docs/plans/w18-flip-test.md`.
+- 327 The AI weighs a siphon's Power: `SIPHON_POWER_HP` 0.5 (2026-11-23, answers ?311): per Power gained, powered units only; 0.5 a guess. `docs/plans/w20-siphon-gain.md`; names: `SIPHON_POWER_HP`.
+- 328 No negative bonus, Energy units unchanged (2026-11-23): hazard floored at 0; a gain over the loss is a free tile, not a lure. `docs/plans/w20-siphon-gain.md`.
+- 329 A foe's further tempers as MUTED chips (2026-11-23, answers ?313): `Read.also` under the temper gate; lead stays in "Seems X". `docs/plans/w20-hud-foe-also.md`; names: `Read.also`.
+- 330 Ground walked past is marked explored (2026-11-23, answers ?316): `travel` marks each passed cell but the last; timing flat. `docs/plans/w20-fog-seen.md`.
+- 331 The fog freezes ground effects (2026-11-23, answers ?319): `Overlay._ghost` holds layers, trodden, marks; 83 us a move; no visual shot. `docs/plans/w20-fog-effects.md`; names: `_ghost`, `_sighted`.
+- 332 Layers and marks laid out of sight are hidden (2026-11-23): was a live leak; a fire lit in the dark stays unseen. `docs/plans/w20-fog-effects.md`.
+- 333 Lattice, debris and traps not frozen (2026-11-23). `docs/plans/w20-fog-effects.md`.
 
 ## Files
 

@@ -261,6 +261,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Undead ?? per-rank pierce (?322) | `monster_test.gd` |
 | — | Elemental Strike on the shared picker (?323, ?324) | `general_test.gd` |
 | — | Floaty does not stall (?325, ?326) | `stars_test.gd` |
+| — | The AI weighs Power Siphon's gain (?327, ?328) | `stars_test.gd` |
+| — | A foe's further tempers as chips (?329) | `hud_test.gd` |
+| — | The AI marks ground walked past (?330) | `sight_test.gd` |
+| — | The fog freezes ground effects (?331 to ?333) | `sight_test.gd` |
 
 ## Questions to answer first
 
