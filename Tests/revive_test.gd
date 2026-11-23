@@ -60,7 +60,7 @@ func test_synergy() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(8, 2)})
 	v(2).follows = v(1)
 	ok(b.synergized(v(1)).is_empty(), "no Synergy: nothing shared")
-	v(2).learned.append(slot(synergy))
+	v(2).learned.append(slot(synergy)); v(2).sync_bar()
 	ok(Array(b.synergized(v(1))) == [v(2)] and Array(b.synergized(v(2))) == [v(1)], "a member with it: it and its leader share")
 	v(1).wisdom = 1
 	v(2).wisdom = 40
@@ -69,7 +69,7 @@ func test_synergy() -> void:
 
 func test_synergy_investigates() -> void:
 	stage(nemes, {v(3): Vector2i(5, 2), v(1): Vector2i(1, 2), v(2): Vector2i(2, 2)})
-	v(3).learned.append(slot(hide))
+	v(3).learned.append(slot(hide)); v(3).sync_bar()
 	v(3).refresh()
 	b.rng.seed = 2
 	b.cast(v(3), hide, v(3))
@@ -82,7 +82,7 @@ func test_synergy_investigates() -> void:
 	if v(2) not in a.known_to:
 		a.known_to.append(v(2))
 	v(2).follows = v(1)
-	v(2).learned.append(slot(synergy))
+	v(2).learned.append(slot(synergy)); v(2).sync_bar()
 	var looks := []
 	b.investigated.connect(func(by: Unit, _of: Unit, _s: Skill, _t: int, _a: int, _c: bool): looks.append(by))
 	b._synergize(v(1))

@@ -65,7 +65,7 @@ func test_wary_v() -> void:
 
 
 func test_darkstone() -> void:
-	icor().learned.append(slot(darkstone, 2))
+	icor().learned.append(slot(darkstone, 2)); icor().sync_bar()
 	stage(nemes, {icor(): Vector2i(7, 3), v(1): Vector2i(5, 3), v(3): Vector2i(9, 3)})
 	ok(not b.cast_at(icor(), darkstone, Vector2i(3, 3)), "rank 2: centre within 1 + 2 = 3")
 	ok(b.cast_at(icor(), darkstone, Vector2i(5, 3)), "cast at (5,3)")
@@ -74,7 +74,7 @@ func test_darkstone() -> void:
 	ok(icor().store(load("res://Reserves/mana.tres")) == 9, "3 mana (it's magical)")
 	var r := b.read(v(3), v(1))
 	ok(r.net == -2 and r.hint == "a shape in the dark?" and r.located() and r.faction == null and not r.seen and r.heard, "a unit in darkness 2: a shape, located, unseen but heard")
-	v(3).learned.append(slot(darkvision, 1))
+	v(3).learned.append(slot(darkvision, 1)); v(3).sync_bar()
 	ok(b.read(v(3), v(1)).net == -1, "Darkvision I nullifies one level")
 	v(3).learned[-1].rank = 2
 	ok(b.read(v(3), v(1)).net == 0 and b.read(v(3), v(1)).faction == lancin, "Darkvision II sees through it")
@@ -130,7 +130,7 @@ func test_alias_pools() -> void:
 
 
 func test_tonefoolery_doubles() -> void:
-	icor().learned.append(slot(darkstone, 2))
+	icor().learned.append(slot(darkstone, 2)); icor().sync_bar()
 	stage(nemes, {icor(): Vector2i(7, 4), siren(): Vector2i(8, 6), v(1): Vector2i(0, 0)})
 	b.cast_at(icor(), darkstone, Vector2i(8, 5))
 	v(1).afflict(effect("recon", 3), 9)
@@ -140,7 +140,7 @@ func test_tonefoolery_doubles() -> void:
 
 
 func test_glamour_doubles() -> void:
-	v(3).learned.append(slot(glamour, 1))
+	v(3).learned.append(slot(glamour, 1)); v(3).sync_bar()
 	ok(Perception.trickery(v(3), b.read(v(1), v(3))) == 1.0, "Glamour I, heard: 1")
 	v(3).afflict(effect("concealment", 1, [&"sound"]), 9)
 	var r := b.read(v(1), v(3))
@@ -183,7 +183,7 @@ func cells(a: Array) -> Array[Vector2i]:
 
 
 func test_ai_wont_hit_unknowns() -> void:
-	icor().learned.append(slot(darkstone, 2))
+	icor().learned.append(slot(darkstone, 2)); icor().sync_bar()
 	stage(nemes, {icor(): Vector2i(7, 1), v(3): Vector2i(5, 3), v(1): Vector2i(4, 3)})
 	b.cast_at(icor(), darkstone, Vector2i(5, 3))  # v(3) in darkness 2: a shape, side unknown
 	v(1).noticed[v(3).cell] = true  # it's had its look (Battle._first_look())
@@ -194,7 +194,7 @@ func test_ai_wont_hit_unknowns() -> void:
 
 
 func test_trap_under_darkness() -> void:
-	icor().learned.append(slot(darkstone, 2))
+	icor().learned.append(slot(darkstone, 2)); icor().sync_bar()
 	stage(nemes, {icor(): Vector2i(7, 4), v(1): Vector2i(0, 0)})
 	b.cast_at(icor(), darkstone, TRAP)
 	var r := b.read(v(1), TRAP)

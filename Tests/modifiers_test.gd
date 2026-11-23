@@ -109,8 +109,8 @@ func test_priced() -> void:
 	s.roll_per_rank = 1
 	var hand := scaler()
 	hand.roll_per_rank = 1
-	v(1).learned.append(slot(s, 2))
-	v(1).learned.append(slot(hand, 2))
+	v(1).learned.append(slot(s, 2)); v(1).sync_bar()
+	v(1).learned.append(slot(hand, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	ok(v(1).price(s) == Pricing.energy(s, 2) and is_equal_approx(v(1).ap_cost(s, null), Pricing.ap(s, 2)), "a priced skill costs the calculator's price")
 	ok(v(1).price(hand) == 4 and v(1).ap_cost(hand, null) == 4.0, "a hand-priced one keeps its own")
@@ -134,7 +134,7 @@ func test_eligibility() -> void:
 func test_symbols() -> void:
 	var s := scaler()
 	roomy(v(1))
-	v(1).learned.append(slot(s, 2))
+	v(1).learned.append(slot(s, 2)); v(1).sync_bar()
 	v(1).intelligence = 16  # +3
 	v(1).charisma = 14  # +2
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
@@ -150,7 +150,7 @@ func test_symbols() -> void:
 	v(1).trinket = emblem(&"sigma_up", &"sigil", 1)
 	ok(s.span(v(1)) == 1 + 2 + roundi(3 * 1.75) and s.lasts(r, v(1)) == 2, "Dispersed: stat impact nullified, stat range x1.75")
 	v(1).trinket = null
-	v(1).learned.append(slot(stoneskin, 1))
+	v(1).learned.append(slot(stoneskin, 1)); v(1).sync_bar()
 	v(1).max_hp = 100
 	v(1).hp = 80
 	ok(is_zero_approx(v(1).stat(&"mitigate")), "Stoneskin is off at 80% HP (above 85% only)")
@@ -169,7 +169,7 @@ func test_requirement() -> void:
 	s.requires.test = &"energy_above"
 	s.requires.share = 0.2  # at least 80% Energy
 	s.requires.hit = 2
-	v(1).learned.append(slot(s, 1))
+	v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(1).set_equipped([s])
 	v(1).max_energy = 100
@@ -187,9 +187,9 @@ func test_requirement() -> void:
 func test_emblem_scopes() -> void:
 	var a := scaler()
 	var c := scaler()
-	v(1).learned.append(slot(a, 1))
-	v(1).learned.append(slot(c, 1))
-	v(1).learned.append(slot(stoneskin, 1))
+	v(1).learned.append(slot(a, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(c, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(stoneskin, 1)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	var plain := Skill.new()
 	plain.name = "Plain"
@@ -214,8 +214,8 @@ func test_emblem_scopes() -> void:
 
 func test_tags_everywhere() -> void:
 	var haluca: Skill = load("res://Skills/haluca.tres")
-	v(1).learned.append(slot(strike, 1))
-	v(1).learned.append(slot(haluca, 2))
+	v(1).learned.append(slot(strike, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(haluca, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
 	v(1).trinket = load("res://Items/fire_insignia.tres")
 	ok(&"fire" in Battle.hit_tags(v(1), strike) and v(1).has_tag(&"fire"), "Fire Insignia: Strike's blows are fire, and its holder carries fire to whatever asks")
@@ -236,7 +236,7 @@ func test_tags_everywhere() -> void:
 func test_throwaway_tag() -> void:
 	Glossary.added[&"zz_acid"] = ["Acid ??", &"damage", "A test's throwaway."]
 	var s := scaler()
-	v(1).learned.append(slot(s, 1))
+	v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
 	v(1).trinket = emblem(&"zz_acid", &"insignia")
 	ok(Modifiers.eligible(&"zz_acid", s) and not Modifiers.eligible(&"zz_acid", hide), "its kind decides: damage")

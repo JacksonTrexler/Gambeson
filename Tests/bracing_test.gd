@@ -30,7 +30,7 @@ func test_tree() -> void:
 
 
 func test_agility() -> void:
-	v(1).learned.append(slot(brace("agility"), 2))
+	v(1).learned.append(slot(brace("agility"), 2)); v(1).sync_bar()
 	v(1).armor = at(gambeson, 3)
 	ok(v(1).check_bonus(&"dexterity", &"offensive") == 2 and v(1).check_bonus(&"dexterity", &"defensive") == 2, "light rank 3: +3 to dex rolls, up to rank II")
 	ok(v(1).check_bonus(&"strength", &"offensive") == 0, "not str")
@@ -39,10 +39,10 @@ func test_agility() -> void:
 
 
 func test_balanced_and_vanguard() -> void:
-	v(1).learned.append(slot(brace("balanced"), 5))
+	v(1).learned.append(slot(brace("balanced"), 5)); v(1).sync_bar()
 	v(1).armor = at(habergeon, 2)
 	ok(v(1).check_bonus(&"strength", &"defensive") == 2 and v(1).check_bonus(&"dexterity", &"offensive") == 0, "Balanced: defensive str and dex")
-	v(1).learned.append(slot(brace("vanguard"), 5))
+	v(1).learned.append(slot(brace("vanguard"), 5)); v(1).sync_bar()
 	ok(v(1).check_bonus(&"dexterity", &"offensive") == 2, "Vanguard: offensive")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).armor = bulwark()
@@ -52,7 +52,7 @@ func test_balanced_and_vanguard() -> void:
 
 
 func test_combat() -> void:
-	v(1).learned.append(slot(brace("combat"), 5))
+	v(1).learned.append(slot(brace("combat"), 5)); v(1).sync_bar()
 	v(1).armor = at(brigandine, 3)
 	ok(v(1).check_bonus(&"strength", &"offensive") == 3 and v(1).check_bonus(&"strength", &"defensive") == 3 and v(1).check_bonus(&"dexterity", &"defensive") == 0, "heavy: str rolls")
 	var heavy: Item = at(brigandine, 3)
@@ -63,8 +63,8 @@ func test_combat() -> void:
 
 
 func test_mental() -> void:
-	v(1).learned.append(slot(brace("meditative"), 5))
-	v(1).learned.append(slot(brace("invigorating"), 2))
+	v(1).learned.append(slot(brace("meditative"), 5)); v(1).sync_bar()
+	v(1).learned.append(slot(brace("invigorating"), 2)); v(1).sync_bar()
 	v(1).armor = at(gambeson, 4)
 	ok(v(1).check_bonus(&"wisdom", &"defensive") == 4 and v(1).check_bonus(&"charisma", &"defensive") == 4, "Meditative: defensive mental checks, any armor")
 	ok(v(1).check_bonus(&"intelligence", &"offensive") == 2, "Invigorating: half the armor's rank to offensive mental checks")
@@ -96,7 +96,7 @@ func test_investigate_close() -> void:
 # lone watcher's chance is that contest's odds, and several watchers' is not the independent chain of them.
 func test_seen_odds() -> void:
 	var hide: Skill = load("res://Skills/hide.tres")
-	v(1).learned.append(slot(hide, 2))
+	v(1).learned.append(slot(hide, 2)); v(1).sync_bar()
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(8, 3), v(4): Vector2i(9, 3)})
 	for i in [3, 4]:
@@ -119,7 +119,7 @@ func test_seen_odds() -> void:
 # Bracing and other check effects reach investigations (offensive), hiding (defensive) and last stands
 # (the best defensive bonus over its stats).
 func test_more_checks() -> void:
-	v(1).learned.append(slot(load("res://Skills/turtle_tactics.tres"), 2))
+	v(1).learned.append(slot(load("res://Skills/turtle_tactics.tres"), 2)); v(1).sync_bar()
 	ok(v(1).best_defensive_bonus() == 4, "Turtle Tactics II: +4 to defensive checks")
 	var lowest := 99
 	for n in 200:

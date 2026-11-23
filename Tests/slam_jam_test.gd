@@ -9,7 +9,7 @@ var metea: Skill = load("res://Skills/metea.tres")
 
 
 func test_slam() -> void:
-	v(1).learned.append(slot(slam, 1))
+	v(1).learned.append(slot(slam, 1)); v(1).sync_bar()
 	v(1).strength = 60
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

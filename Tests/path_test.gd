@@ -134,7 +134,7 @@ func test_afflicts_of_known_ground() -> void:
 func test_meander_passes_a_trap_by() -> void:
 	walker()
 	b.revealed[TRAP] = true
-	v(1).learned.append(slot(load("res://Skills/meander.tres"), 1))
+	v(1).learned.append(slot(load("res://Skills/meander.tres"), 1)); v(1).sync_bar()
 	var r := b.read(v(1), TRAP)
 	ok(b.hazard(v(1), TRAP, r, 1).is_empty() and not b.hazard(v(1), TRAP, r, 2).is_empty() and not b.hazard(v(1), TRAP, r).is_empty(), "the 1st tile is passed by, the 2nd isn't, off a walk it's counted")
 	var w := b.walk(v(1), Vector2i(7, 4), true)
@@ -147,7 +147,7 @@ func test_meander_passes_a_trap_by() -> void:
 	v(1).cell = Vector2i(3, 4)
 	b.units.erase(Vector2i(4, 4))
 	b.units[Vector2i(3, 4)] = v(1)
-	v(1).learned.append(slot(load("res://Skills/meander.tres"), 1))
+	v(1).learned.append(slot(load("res://Skills/meander.tres"), 1)); v(1).sync_bar()
 	ok(TRAP not in b.walk(v(1), Vector2i(7, 4), true).path, "from a tile further back the trap is its 2nd: round it")
 
 

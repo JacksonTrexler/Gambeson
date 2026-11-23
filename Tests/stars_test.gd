@@ -79,7 +79,7 @@ func test_waterstrike_shatters() -> void:
 	lattice(0.5)
 	stage(lancin, {v(1): Vector2i(3, 2)})
 	var water: Skill = load("res://Skills/waterstrike.tres")
-	v(1).learned.append(slot(water))
+	v(1).learned.append(slot(water)); v(1).sync_bar()
 	ok(&"blunt" in Battle.hit_tags(v(1), water) and &"bludgeon" not in water.tags, "a blunt blow")
 	ok(b.attempt(v(1), water, Vector2i(3, 1)) == &"shattered" and Vector2i(3, 1) not in b.panes, "on a pane with no one there: it breaks")
 

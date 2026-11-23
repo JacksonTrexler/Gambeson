@@ -47,7 +47,7 @@ func test_pillar_pinned() -> void:
 	p.name = "Bedrock"
 	p.tags = [&"pillar"]
 	p.ap = 1.0
-	v(1).learned.append(slot(p))
+	v(1).learned.append(slot(p)); v(1).sync_bar()
 	v(1).hotbar.clear()
 	v(1)._fill_bar()
 	var last := v(1).slot_count() - 1
@@ -63,7 +63,7 @@ func test_pillar_pinned() -> void:
 func test_brainfog_curses() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 20
-	v(3).learned.append(slot(brainfog))
+	v(3).learned.append(slot(brainfog)); v(3).sync_bar()
 	v(1).wisdom = 1
 	for i in 30:
 		v(3).refresh()

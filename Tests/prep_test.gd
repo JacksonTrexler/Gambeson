@@ -17,7 +17,7 @@ func siren() -> Unit:
 
 
 func give(u: Unit, s: Skill, r := 1) -> void:
-	u.learned.append(slot(s, r))
+	u.learned.append(slot(s, r)); u.sync_bar()
 
 
 func test_studies() -> void:
@@ -111,7 +111,7 @@ func test_check_channels() -> void:
 	# the checks themselves carry the tags: a bonus of 30 beats any d20 (wis mod 0, a tile or two off)
 	u.wisdom = 10
 	u.timed.clear()
-	u.learned.clear()
+	u.learned.clear(); u.sync_bar()
 	u.afflict(effect("check", 30, [&"survey"]), 9)
 	var totals := []
 	b.inspected.connect(func(_by, _at, total: int, _against): totals.append(total))

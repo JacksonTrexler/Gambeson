@@ -39,7 +39,7 @@ func test_level_hp() -> void:
 
 func test_hardy() -> void:
 	var f := starter("fighter")
-	f.learned.append(slot(hardy, 2))
+	f.learned.append(slot(hardy, 2)); f.sync_bar()
 	f.refit()
 	ok(f.level_hp() == 2 * 3 + 3, "Hardy II: con mod counts three times (2 x 3) beside vigor 3")
 	ok("con mod counts 3 times over" in hardy.describe(2), hardy.describe(2))

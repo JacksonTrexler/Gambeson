@@ -19,7 +19,7 @@ func test_whole_is_all_it_does() -> void:
 	var w := Whole.new()
 	var s: Skill = hex.duplicate()  # an attack with damage and an effect
 	s.behaviours = [w] as Array[Behaviour]
-	v(1).learned.append(slot(s, 3))
+	v(1).learned.append(slot(s, 3)); v(1).sync_bar()
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(3).max_hp = 300

@@ -24,7 +24,7 @@ func test_chant() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 16
 	roomy(v(3))
-	v(3).learned.append_array([slot(sweet), slot(chant, 2), slot(gasp)])
+	v(3).learned.append_array([slot(sweet), slot(chant, 2), slot(gasp)]); v(3).sync_bar()
 	v(3).set_store(sn, 0)
 	v(3).refresh()
 	b.end_turn()  # it waited the turn out
@@ -42,7 +42,7 @@ func test_chant() -> void:
 func test_gasp() -> void:
 	stage(nemes, {v(3): Vector2i(8, 2), v(1): Vector2i(1, 2)})
 	v(3).charisma = 12
-	v(3).learned.append(slot(gasp, 2))
+	v(3).learned.append(slot(gasp, 2)); v(3).sync_bar()
 	ok(is_equal_approx(gasp.span(v(3)), 12.0 + 2.0), "range: cha itself (12) + rank")
 	v(1).armor = bulwark()  # Defense 20: room to tell them apart
 	var g := Battle.hit_chance(v(3), gasp, v(1))
@@ -56,7 +56,7 @@ func test_asphyxia() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 40
 	roomy(v(3))
-	v(3).learned.append_array([slot(gasp), slot(breathtaking, 3)])
+	v(3).learned.append_array([slot(gasp), slot(breathtaking, 3)]); v(3).sync_bar()
 	soak(v(1), 100)
 	v(1).refit()
 	var max0 := v(1).max_hp
@@ -76,7 +76,7 @@ func test_irradiate() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	v(3).charisma = 40  # mod 15
 	roomy(v(3))
-	v(3).learned.append_array([slot(gasp), slot(irradiate, 2)])
+	v(3).learned.append_array([slot(gasp), slot(irradiate, 2)]); v(3).sync_bar()
 	soak(v(1), 100)
 	v(3).refresh()
 	b.cast(v(3), gasp, v(1))
@@ -120,7 +120,7 @@ func test_cleric_of_eros() -> void:
 func test_synergy_range() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(8, 8), v(3): Vector2i(8, 2)})
 	v(2).follows = v(1)
-	v(2).learned.append(slot(synergy))
+	v(2).learned.append(slot(synergy)); v(2).sync_bar()
 	v(1).charisma = 10  # reach 1, party reach 2
 	ok(b.synergized(v(1)).is_empty(), "out of the leader's command range: nothing shared")
 	v(1).equip(load("res://Items/quartz_ring.tres"))

@@ -129,7 +129,7 @@ func test_potions() -> void:
 	v(1).equip(mana_potion)
 	b.use_item(v(1), mana_potion)
 	ok(v(1).store(mana) == maxi(v(1).rounded(3.0) + v(1).mod(&"constitution"), 0), "a mana potion: 15% of 20 Mana + con mod")
-	v(1).learned.append(slot(load("res://Skills/sweet_nothings.tres")))
+	v(1).learned.append(slot(load("res://Skills/sweet_nothings.tres"))); v(1).sync_bar()
 	v(1).charisma = 16
 	v(1).equip(sweet_something)
 	b.use_item(v(1), sweet_something)

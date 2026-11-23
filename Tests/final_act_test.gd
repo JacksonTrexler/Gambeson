@@ -12,8 +12,8 @@ var heal: Skill = load("res://Skills/heal.tres")
 # v(3) (Nemes, its turn) Strikes v(1) (not Jam: Jam takes its reactions before its damage lands), at 1 HP
 # with Final Act and Jam of its own, both sure to hit.
 func scene() -> void:
-	v(1).learned.append(slot(final_act))
-	v(1).learned.append(slot(jam))
+	v(1).learned.append(slot(final_act)); v(1).sync_bar()
+	v(1).learned.append(slot(jam)); v(1).sync_bar()
 	v(1).dexterity = 40
 	v(3).strength = 40
 	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
@@ -48,7 +48,7 @@ func test_once() -> void:
 
 func test_gets_back_up() -> void:
 	scene()
-	v(1).learned.append(slot(heal, 3))
+	v(1).learned.append(slot(heal, 3)); v(1).sync_bar()
 	v(1).wisdom = 30
 	b.cast(v(3), strike, v(1))
 	ok(b.cast(v(1), heal, v(1)), "it heals itself with its free action")
@@ -57,7 +57,7 @@ func test_gets_back_up() -> void:
 
 func test_jammed() -> void:
 	scene()
-	v(3).learned.append(slot(jam))
+	v(3).learned.append(slot(jam)); v(3).sync_bar()
 	v(3).dexterity = 40
 	b.cast(v(3), jam, v(1))
 	ok(b.interrupter == null and not v(1).staying, "Jammed (Jam takes its reactions as it lands, before its damage): no Final Act")

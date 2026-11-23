@@ -13,7 +13,7 @@ var fusillade: Skill = load("res://Skills/ambush_fusillade.tres")
 
 func setup(skills: Array) -> void:
 	for pair in skills:
-		v(1).learned.append(slot(pair[0], pair[1]))
+		v(1).learned.append(slot(pair[0], pair[1])); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).dexterity = 14
 	v(1).refresh()
@@ -58,8 +58,8 @@ func test_fusillade() -> void:
 	b.cast(v(1), strike, v(3))
 	ok(v(1).ambush_rolls == 2, "Fusillade I: the first roll and one more ambush, the third doesn't (%d)" % v(1).ambush_rolls)
 	ok(not b.ambushes(v(1), v(3)), "spent")
-	v(1).learned.clear()
-	v(1).learned.append(slot(fusillade, 3))
+	v(1).learned.clear(); v(1).sync_bar()
+	v(1).learned.append(slot(fusillade, 3)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.ambushes(v(1), v(3)), "Fusillade III: two rolls in, the next still ambushes, seen or not")
 

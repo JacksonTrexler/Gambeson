@@ -11,7 +11,7 @@ var tenacity: Skill = load("res://Skills/tenacity.tres")
 
 
 func berserk(r := 2) -> void:
-	v(3).learned.append(slot(fury, r))
+	v(3).learned.append(slot(fury, r)); v(3).sync_bar()
 	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	v(3).refresh()
 	soak(v(1), 300)
@@ -43,7 +43,7 @@ func test_through_sleep_and_downed() -> void:
 	ok(v(3).asleep() and v(3).helpless() and not v(3).stopped(), "asleep is helpless too: it acts through it")
 	v(3).timed.clear()
 	roomy(v(3))
-	v(3).learned.append(slot(tenacity, 2))
+	v(3).learned.append(slot(tenacity, 2)); v(3).sync_bar()
 	v(3).damage(999)
 	ok(v(3).dbno != null and v(3).helpless() and not v(3).stopped() and b.cast(v(3), strike, v(1)), "Downed under Tenacity: it still fights on")
 

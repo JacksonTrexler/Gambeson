@@ -24,8 +24,8 @@ var clairvoyance: Skill = load("res://Skills/clairvoyance.tres")
 
 
 func test_declared() -> void:
-	v(1).learned.append(slot(heal, 2))
-	v(1).learned.append(slot(megaheal, 2))
+	v(1).learned.append(slot(heal, 2)); v(1).sync_bar()
+	v(1).learned.append(slot(megaheal, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3)})
 	ok(not heal.heals(), "Skill.heals() doesn't know Heal: the behaviours say what it restores")
 	var got := AI._restores(b, v(1), heal, v(2))
@@ -36,7 +36,7 @@ func test_declared() -> void:
 
 func test_heals() -> void:
 	for s in [heal, megaheal]:
-		v(1).learned.append(slot(s, 2))
+		v(1).learned.append(slot(s, 2)); v(1).sync_bar()
 		v(1).refresh()
 		v(1).energy = v(1).max_energy
 		stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
@@ -44,11 +44,11 @@ func test_heals() -> void:
 		v(2).hp = 40
 		var log := AI.act(b, v(1))
 		ok(v(2).hp > 40, "%s: the wounded ally is healed (%d, %s)" % [s.name, v(2).hp, ", ".join(log)])
-		v(1).learned.clear()
+		v(1).learned.clear(); v(1).sync_bar()
 
 
 func test_energizes() -> void:
-	v(1).learned.append(slot(energize, 2))
+	v(1).learned.append(slot(energize, 2)); v(1).sync_bar()
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 6)})
 	v(1).max_energy = 10
@@ -62,8 +62,8 @@ func test_energizes() -> void:
 
 
 func test_resuscitates() -> void:
-	v(1).learned.append(slot(resuscitate, 1))
-	v(2).learned.append(slot(tenacity, 3))
+	v(1).learned.append(slot(resuscitate, 1)); v(1).sync_bar()
+	v(2).learned.append(slot(tenacity, 3)); v(2).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	soak(v(2), 100)
@@ -78,7 +78,7 @@ func test_resuscitates() -> void:
 
 
 func test_intervenes() -> void:
-	v(1).learned.append(slot(intervention, 3))
+	v(1).learned.append(slot(intervention, 3)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(6, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	var log := AI.act(b, v(1))
@@ -95,8 +95,8 @@ func test_intervenes() -> void:
 # A Wizard with Mana and Stamina, Mana empty, Stamina full, a martial skill only Stamina pays for.
 func two_reserves() -> Unit:
 	var u: Unit = roomy(b.get_node("Units/Icor"))
-	u.learned.append(slot(stamina))
-	u.learned.append(slot(crushing))
+	u.learned.append(slot(stamina)); u.sync_bar()
+	u.learned.append(slot(crushing)); u.sync_bar()
 	u.constitution = 14
 	u._one_replacer()
 	u.refresh()
@@ -124,7 +124,7 @@ func test_doesnt_switch() -> void:
 	u.refresh()
 	AI.act(b, u)
 	ok(u.switching() == null and u.runs_on() == mana, "a foe beside it, it strikes instead")
-	u.learned.erase(u.learned.filter(func(x: Slot): return x.skill == stamina)[0])
+	u.learned.erase(u.learned.filter(func(x: Slot): return x.skill == stamina)[0]); u.sync_bar()
 	u.refresh()
 	stage(nemes, {u: Vector2i(1, 2), v(2): Vector2i(8, 6)})
 	AI.act(b, u)
@@ -132,8 +132,8 @@ func test_doesnt_switch() -> void:
 
 
 func focused(store: int) -> Unit:
-	v(1).learned.append(slot(focus, 1))
-	v(1).learned.append(slot(missile))
+	v(1).learned.append(slot(focus, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(missile)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	v(1).set_store(focus_pool, store)
@@ -168,7 +168,7 @@ func test_shot_with_the_last_of_focus() -> void:
 
 
 func test_scries() -> void:
-	v(1).learned.append(slot(clairvoyance, 1))
+	v(1).learned.append(slot(clairvoyance, 1)); v(1).sync_bar()
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(7, 2)})
 	b.sightings.clear()
@@ -192,7 +192,7 @@ func test_restorers_serve_help() -> void:
 		ok(not s.serves(&"supportive"), "%s: with no unit to ask, it can't tell" % s.name)
 	ok(energize.serves(&"defensive", u), "a self-only restorer still guards too")
 	ok(not strike.serves(&"supportive", u) and not crushing.serves(&"supportive", u), "a blow isn't help")
-	u.learned.append(slot(heal))
+	u.learned.append(slot(heal)); u.sync_bar()
 	u.hotbar[0] = null
 	u.hotbar[1] = heal
 	ok(u.intent_skill(&"supportive") == heal, "its default HELP skill is the heal")
@@ -201,7 +201,7 @@ func test_restorers_serve_help() -> void:
 # not cast where they nearly always would, cast where none can see it.
 func test_hides_where_unseen() -> void:
 	var invisibility: Skill = load("res://Skills/invisibility.tres")
-	v(1).learned.append(slot(invisibility, 1))
+	v(1).learned.append(slot(invisibility, 1)); v(1).sync_bar()
 	v(1).intelligence = 20
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(6, 3)})

@@ -77,7 +77,7 @@ func test_execute() -> void:
 	var grip: Skill = load("res://Skills/interdict.tres").duplicate()
 	grip.tags.append(&"execute")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(grip))
+	v(1).learned.append(slot(grip)); v(1).sync_bar()
 	v(3).strength = 40  # str mod 15: unhurt, it would nearly always win
 	v(3).hp = 1
 	var theirs := []
@@ -154,7 +154,7 @@ func test_dc_and_rider_forecasts() -> void:
 	ok(dex > 0.2 and dex < 0.9 and absf(got / 1500.0 - dex) < 0.04, "a dodge passes as often as its odds say (%.3f vs %.3f)" % [got / 1500.0, dex])
 	for pair in [["stun", "Stuns it"], ["hitch", "Holds it"], ["slam_jam", "Interrupts it, Jammed"]]:
 		var s: Skill = load("res://Skills/%s.tres" % pair[0])
-		v(1).learned.append(slot(s, 2))
+		v(1).learned.append(slot(s, 2)); v(1).sync_bar()
 		v(1).refresh()
 		var more := b.foresee(v(1), s, v(3))
 		var note: String = more.get("notes", [""])[0]
@@ -197,7 +197,7 @@ func test_dc_and_rider_forecasts() -> void:
 
 	# Level Down's branch of hit_chance() alone: a foe gets level_odds() at its rank impact, an ally the plain 1.0.
 	var ld: Skill = load("res://Skills/level_down.tres")
-	v(1).learned.append(slot(ld, 3))
+	v(1).learned.append(slot(ld, 3)); v(1).sync_bar()
 	v(1).refresh()
 	var lp := Battle.hit_chance(v(1), ld, v(3), b)
 	var want := Battle.level_odds(v(1), ld, v(3), v(1).mods(ld).irank(v(1).rank(ld), &"rank_impact"), b)
@@ -212,7 +212,7 @@ func test_declared_check() -> void:
 	s.check.range_penalty = 2
 	s.check.edge = -1
 	s.check.tags = [&"taps"] as Array[StringName]
-	v(1).learned.append(slot(s, 1))
+	v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 	v(1).refresh()
 	stage(nemes, {v(1): Vector2i(1, 1), v(3): Vector2i(5, 1)})
 	var o := Battle.skill_opts(v(1), s, v(3))
@@ -248,13 +248,13 @@ func test_crit_range_glances() -> void:
 	s.chain = false
 	s.hits_per_rank = false
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(s, 1))
+	v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 	v(1).strength = 28  # mod 9: a hit deals 1 + 9
 	v(1).weapon = null
 	v(3).afflict(effect("defense", 200), 99)  # nothing reaches it
 	soak(v(3), 100000)
 	ok(is_equal_approx(Battle.hit_chance(v(1), s, v(3), b), 0.05), "only a natural 20 lands (%s)" % Battle.hit_chance(v(1), s, v(3), b))
-	v(1).learned.append(slot(sk("backstab"), 4))
+	v(1).learned.append(slot(sk("backstab"), 4)); v(1).sync_bar()
 	ok(Battle.crit_range(v(1)) == 4, "Backstab IV: crit range 4 faces wider (%d)" % Battle.crit_range(v(1)))
 	var odds := Battle.attack_odds(v(1), s, v(3), b)
 	ok(is_equal_approx(odds[0], 0.25) and is_equal_approx(odds[2], 0.25), "16 and up land, all as glances (%s)" % [odds])
@@ -287,7 +287,7 @@ func test_glancing_and_opening() -> void:
 	var lone: Skill = strike.duplicate()  # a Strike skill that isn't a chain (Silent Strike, Waterstrike)
 	lone.chain = false
 	var hit := Battle.hit_tags(v(1), strike)
-	v(1).learned.append(slot(sk("glancing_strike"), 2))
+	v(1).learned.append(slot(sk("glancing_strike"), 2)); v(1).sync_bar()
 	ok(&"strike" in hit and &"strike" in Battle.hit_tags(v(1), sk("waterstrike")) and &"strike" in Battle.hit_tags(v(1), sk("silent_strike")), "Strike, Waterstrike and Silent Strike attack as Strike skills (%s)" % [hit])
 	var c := Battle.attack_check(v(1), strike, 3, 15, 0, hit)
 	ok(c.advantage == -1 and c.glancing, "a Strike: at disadvantage, glancing")
@@ -304,7 +304,7 @@ func test_glancing_and_opening() -> void:
 	var f := Battle.attack_check(v(1), plain, 3, 15, 1, Battle.hit_tags(v(1), plain))
 	ok(f.advantage == 0 and f.bonus == 1, "friction 2: a step of disadvantage (cancelling advantage) and -2 (%d, %d)" % [f.advantage, f.bonus])
 	v(1).friction = 0
-	v(1).learned.append(slot(strike, 3))
+	v(1).learned.append(slot(strike, 3)); v(1).sync_bar()
 	v(1).strength = 30  # (str mod 10 at Defense 2: every hit lands)
 	v(1).weapon = null
 	soak(v(3), 5000)

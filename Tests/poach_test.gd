@@ -12,7 +12,7 @@ var stamina_r: Reserve = load("res://Reserves/stamina.tres")
 
 
 func poacher(r := 1) -> void:
-	v(1).learned.append(slot(poach, r))
+	v(1).learned.append(slot(poach, r)); v(1).sync_bar()
 	v(1).dexterity = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
@@ -42,7 +42,7 @@ func test_easy() -> void:
 # and Battle's payment; Poach's x comes off before the roll, Slam Jam's y stays a refund, shown "on hit".
 func test_price_beforehand() -> void:
 	poacher()
-	v(1).learned.append(slot(slam_jam, 2))
+	v(1).learned.append(slot(slam_jam, 2)); v(1).sync_bar()
 	v(1).energy = 10
 	ok(b.rebate(v(1), poach, v(3), true) == Vector2.ZERO, "a hale foe: no discount")
 	var h := await hud(v(1))
@@ -96,20 +96,20 @@ func test_afford_the_cut() -> void:
 		var s: Skill = load("res://Skills/poach.tres").duplicate()
 		s.auto = how == &"auto"
 		s.channel = how == &"tile"
-		v(1).learned.append(slot(s, 1))
+		v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 		v(1).refresh()
 		v(1).energy = 10
 		v(1).pay(v(1).ap_for(&"skill") - 2.0, &"skill")
 		v(3).hp = 150
 		b._aimed.clear()
 		ok((b.cast_at(v(1), s, v(3).cell) if s.channel else b.cast(v(1), s, v(1))) and is_equal_approx(v(1).ap_for(&"skill"), 0.0), "%s: 2 AP paid of 4" % how)
-		v(1).learned.erase(v(1).learned.back())
+		v(1).learned.erase(v(1).learned.back()); v(1).sync_bar()
 		v(1).refresh()
 
 
 func test_regain() -> void:
 	poacher(2)
-	v(1).learned.append(slot(stamina, 1))
+	v(1).learned.append(slot(stamina, 1)); v(1).sync_bar()
 	v(1).max_energy = 40
 	v(1).energy = 10
 	v(1).endurance = 5

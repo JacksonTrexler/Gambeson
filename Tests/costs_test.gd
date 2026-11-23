@@ -82,8 +82,8 @@ func test_prefers() -> void:
 	var s := grower()
 	s.radius = 1.0
 	s.costs = "even"
-	v(1).learned.append(slot(focus_skill, 1))
-	v(1).learned.append(slot(s, 1))
+	v(1).learned.append(slot(focus_skill, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
 	v(1).set_store(focus, 3)
 	v(1).energy = 10

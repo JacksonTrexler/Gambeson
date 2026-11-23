@@ -41,7 +41,7 @@ func test_move() -> void:
 # Heal's caster mod is stat impact.
 func test_heal() -> void:
 	var heal: Skill = load("res://Skills/heal.tres")
-	v(1).learned.append(slot(heal, 1))
+	v(1).learned.append(slot(heal, 1)); v(1).sync_bar()
 	v(1).wisdom = 16  # +3
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3)})
 	var plain: int = heal.behaviours[0].restores(b.cast_of(v(1), heal, v(2), 1, false))[&"hp"]
@@ -53,7 +53,7 @@ func test_heal() -> void:
 # Clairvoyance's reach: wisdom score and channel rank, both range.
 func test_clairvoyance() -> void:
 	var cv: Skill = load("res://Skills/clairvoyance.tres")
-	v(1).learned.append(slot(cv, 1))
+	v(1).learned.append(slot(cv, 1)); v(1).sync_bar()
 	v(1).wisdom = 4
 	stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 6)})
 	v(1).trinket = emblem(&"sigma_up", &"insignia", 1)  # stat range x1.5
@@ -75,8 +75,8 @@ func test_density_tiers() -> void:
 	# Clairvoyance: the stacks of suspicion each ping adds, its learned rank's impact (1 at I, 2 under Density).
 	var stacks := func(dense: bool) -> int:
 		stage(lancin, {v(1): Vector2i(1, 2), v(3): Vector2i(3, 2)})
-		v(1).learned.clear()
-		v(1).learned.append(slot(cv, 1))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(cv, 1)); v(1).sync_bar()
 		v(1).wisdom = 3
 		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
 		v(3).afflict(effect("concealment", 9), 99)
@@ -91,8 +91,8 @@ func test_density_tiers() -> void:
 	v(1).trinket = null
 	# Stoneskin: 40% at I as it was, 5% a rank more from II (tiers: min_rank).
 	var mit := func(r: int, dense: bool) -> float:
-		v(1).learned.clear()
-		v(1).learned.append(slot(skin, r))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(skin, r)); v(1).sync_bar()
 		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
 		v(1).hp = v(1).max_hp
 		v(1).refresh()
@@ -103,8 +103,8 @@ func test_density_tiers() -> void:
 	# Send Off: a ward on whoever it sends, from rank II (a tier), for rank turns (rank impact).
 	var ward := func(r: int, dense: bool) -> Array:
 		stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
-		v(1).learned.clear()
-		v(1).learned.append(slot(off, r))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(off, r)); v(1).sync_bar()
 		v(1).trinket = emblem(&"rho_up", &"insignia", 1) if dense else null
 		v(1).charisma = 16
 		v(1).energy = v(1).max_energy
@@ -125,8 +125,8 @@ func test_passives() -> void:
 	var wise: Skill = load("res://Skills/word_to_the_wise.tres")
 	var sweet: Skill = load("res://Skills/sweet_nothings.tres")
 	var mana: Skill = load("res://Skills/mana.tres")
-	v(1).learned.append(slot(wise, 1))
-	v(1).learned.append(slot(sweet, 1))
+	v(1).learned.append(slot(wise, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(sweet, 1)); v(1).sync_bar()
 	v(1).wisdom = 16  # +3
 	v(2).wisdom = 16
 	v(1).charisma = 14  # +2
@@ -135,7 +135,7 @@ func test_passives() -> void:
 	ok(bh.command_mod(null, v(1), 1, v(2)) == 3 and v(1).pools()[sweet.reserve] == 2, "unmodified: commands by wis mod 3; Sweet Nothings cha mod 2 x I")
 	v(1).trinket = emblem(&"sigma_down", &"badge", 1)  # stat impact x(1 + 2/3)
 	ok(bh.command_mod(null, v(1), 1, v(2)) == 4 and v(1).pools()[sweet.reserve] == 3, "Concentrated Badge: wis 3 -> min(5, 3 + 1) = 4; Sweet Nothings 2 -> 3 (%d, %d)" % [bh.command_mod(null, v(1), 1, v(2)), v(1).pools()[sweet.reserve]])
-	v(1).learned.append(slot(mana, 1))
+	v(1).learned.append(slot(mana, 1)); v(1).sync_bar()
 	v(1).refresh()
 	v(1).trinket = emblem(&"rho_up", &"badge", 1)
 	ok(v(1).opened(mana.opens) == 2, "Density Badge: Mana I opens up to tier 2 (%d)" % v(1).opened(mana.opens))
@@ -173,19 +173,19 @@ func test_concrete_scaled() -> void:
 		var read: Callable = reads[id][0]
 		var absolute: bool = id in [&"stonegift", &"final_act", &"gallantry", &"interject"]
 		v(1).trinket = null
-		v(1).learned.clear()
+		v(1).learned.clear(); v(1).sync_bar()
 		v(1).refresh()
 		var none = 0 if absolute else read.call(v(1))
 		var got := []
 		for r in [1, 2]:
-			v(1).learned.clear()
-			v(1).learned.append(slot(s, r))
+			v(1).learned.clear(); v(1).sync_bar()
+			v(1).learned.append(slot(s, r)); v(1).sync_bar()
 			v(1).refresh()
 			got.append(read.call(v(1)))
 		ok(got[0] - none == reads[id][1], "%s at rank I: %s (as it was)" % [id, reads[id][1]])
 		ok(got[1] > got[0], "%s: rank II reads more than rank I (%s -> %s)" % [id, got[0], got[1]])
-		v(1).learned.clear()
-		v(1).learned.append(slot(s, 1))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 		v(1).refresh()
 		v(1).trinket = emblem(&"rho_up", &"insignia", 1)
 		ok(read.call(v(1)) == got[1], "%s: Density makes rank I read as II (%s)" % [id, read.call(v(1))])
@@ -194,8 +194,8 @@ func test_concrete_scaled() -> void:
 	var tags: Array[StringName] = [&"physical"]
 	var mit := []
 	for r in [1, 3]:
-		v(1).learned.clear()
-		v(1).learned.append(slot(favour, r))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(favour, r)); v(1).sync_bar()
 		mit.append(v(1).mitigation(tags))
 	ok(is_equal_approx(mit[1] - mit[0], 0.02), "Favour III: 2%% more mitigation than I (%s)" % (mit[1] - mit[0]))
 	var r := Behaviour.Reaction.new()
@@ -235,8 +235,8 @@ func test_impact_reads() -> void:
 	var peel: Skill = sk("peel")
 	var peeled := func(density: bool) -> float:
 		v(1).trinket = null
-		v(1).learned.clear()
-		v(1).learned.append(slot(peel, 1))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(peel, 1)); v(1).sync_bar()
 		v(1).wisdom = 18
 		v(1).movement = 9
 		stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(5, 3), v(3): Vector2i(6, 3)})
@@ -251,8 +251,8 @@ func test_impact_reads() -> void:
 	var transfer: Skill = sk("energy_transfer")
 	var kept := func(density: bool) -> int:
 		v(1).trinket = null
-		v(1).learned.clear()
-		v(1).learned.append(slot(transfer, 1))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(transfer, 1)); v(1).sync_bar()
 		stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 		v(1).refresh()
 		v(1).energy = v(1).max_energy
@@ -268,8 +268,8 @@ func test_impact_reads() -> void:
 	var charm: Skill = sk("coyote_charm")
 	for density in [false, true]:
 		v(1).trinket = null
-		v(1).learned.clear()
-		v(1).learned.append(slot(charm, 1))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(charm, 1)); v(1).sync_bar()
 		v(1).timed.clear()
 		v(1).refresh()
 		if density:
@@ -280,8 +280,8 @@ func test_impact_reads() -> void:
 	# Kick's Soaked and Blinded turns, as it says them.
 	var kick: Skill = sk("kick")
 	v(1).trinket = null
-	v(1).learned.clear()
-	v(1).learned.append(slot(kick, 1))
+	v(1).learned.clear(); v(1).sync_bar()
+	v(1).learned.append(slot(kick, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var bare := Glossary.plain(kick.describe(1, v(1)))
 	dense.call()
@@ -295,8 +295,8 @@ func test_impact_reads() -> void:
 	var sums := []
 	for density in [false, true]:
 		v(1).trinket = null
-		v(1).learned.clear()
-		v(1).learned.append(slot(solar, 1))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(solar, 1)); v(1).sync_bar()
 		v(1).bar_place(solar, 0)
 		stage(lancin, {v(1): Vector2i(3, 3), v(3): Vector2i(4, 3)})
 		v(1).wisdom = 8
@@ -337,7 +337,7 @@ func test_density() -> void:
 	var thin := [missile.span(v(1)), b.requirement(v(1), missile, t, 2)[0], Battle.hit_chance(v(1), missile, t, b), weight.call()]
 	ok(thin[0] == plain[0] and thin[1] == plain[1] + 2 and thin[2] > plain[2] and thin[3] == plain[3] + 2, "Diluted: its attack + 2 (%s), its slot 2 harder to disable" % thin[2])
 	var stun := sk("stun")  # its save's DC: rank impact, and the shift (easier to overcome dense)
-	v(1).learned.append(slot(stun, 2))
+	v(1).learned.append(slot(stun, 2)); v(1).sync_bar()
 	v(1).trinket = emblem(&"rho_up", &"insignia", 1)  # f 0.5: rank 2 -> 3, checks - roundi(2.5) = 3
 	var dc: int = stun.behaviours[0].dc(b.cast_of(v(1), stun, t, 2, false))
 	ok(dc == Difficulty.dc(&"difficult", 3) - 3, "Density: Stun's DC at rank 3, less 3 (%d)" % dc)

@@ -44,7 +44,7 @@ func test_scatter() -> void:
 
 func test_hide_leaves_it() -> void:
 	stage(nemes, {v(3): Vector2i(4, 3), v(4): Vector2i(5, 3), v(1): Vector2i(9, 1)})
-	v(3).learned.append(slot(hide, 1))
+	v(3).learned.append(slot(hide, 1)); v(3).sync_bar()
 	v(3).refresh()
 	ok(b.cast(v(3), hide, v(3)) and not b.debris.is_empty(), "hiding leaves debris (%d)" % b.debris.size())
 	var c: Vector2i = b.debris.keys()[0]
@@ -56,7 +56,7 @@ func test_ai_follows_it() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	v(3).afflict(effect("concealment", 4), 9)
 	v(1).wisdom = 16  # look: 3 + rank 1
-	v(1).learned.append(slot(load("res://Skills/observe.tres"), 1))
+	v(1).learned.append(slot(load("res://Skills/observe.tres"), 1)); v(1).sync_bar()
 	v(1).refresh()
 	for c in [Vector2i(5, 0), Vector2i(6, 0), Vector2i(5, 1)]:
 		b.debris[c] = Battle.Debris.new("Disturbed foliage, twigs", v(3), 0)
@@ -115,7 +115,7 @@ func watcher(at := Vector2i(3, 3)) -> void:
 	stage(lancin, {v(1): at, v(3): Vector2i(9, 7)})
 	v(3).afflict(effect("concealment", 4), 9)
 	v(1).wisdom = 16
-	v(1).learned.append(slot(sk("observe"), 1))
+	v(1).learned.append(slot(sk("observe"), 1)); v(1).sync_bar()
 	v(1).refresh()
 	b.revealed[TRAP] = true
 	forget()
@@ -257,7 +257,7 @@ func test_ai_searches_by_clues() -> void:
 	v(3).afflict(effect("concealment", 4), 9)
 	v(1).facing = Vector2.RIGHT
 	v(1).wisdom = 16
-	v(1).learned.append(slot(sk("observe"), 1))
+	v(1).learned.append(slot(sk("observe"), 1)); v(1).sync_bar()
 	for i in 20:
 		if v(1).hp < v(1).max_hp:
 			break

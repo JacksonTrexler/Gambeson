@@ -14,12 +14,12 @@ var jam: Skill = load("res://Skills/jam.tres")
 # v(1) (Lancin, its turn) Jams v(3), sure to hit; v(4), beside v(3), has Gallantry, sure to pass.
 func scene(turtle := 1) -> void:
 	if turtle > 0:
-		v(1).learned.append(slot(snapping, turtle))
-	v(1).learned.append(slot(interject))
-	v(1).learned.append(slot(jam))
+		v(1).learned.append(slot(snapping, turtle)); v(1).sync_bar()
+	v(1).learned.append(slot(interject)); v(1).sync_bar()
+	v(1).learned.append(slot(jam)); v(1).sync_bar()
 	v(1).dexterity = 40
 	v(1).afflict(keen(), 9)
-	v(4).learned.append(slot(gallantry))
+	v(4).learned.append(slot(gallantry)); v(4).sync_bar()
 	v(4).afflict(keen(), 9)
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	for i in [1, 3, 4]:

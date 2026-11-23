@@ -8,7 +8,7 @@ var warcry: Skill = load("res://Skills/warcry.tres")
 
 
 func start(rank: int) -> void:
-	v(1).learned.append(slot(warcry, rank))
+	v(1).learned.append(slot(warcry, rank)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(1, 5), v(3): Vector2i(7, 3), v(4): Vector2i(7, 5)})
 	b.sight = false
 	v(1).refresh()
@@ -80,7 +80,7 @@ func test_a_foe_it_cannot_see_isnt_picked() -> void:
 
 
 func test_the_ai_lays_its_marks_before_it_advances() -> void:
-	v(3).learned.append(slot(warcry, 2))
+	v(3).learned.append(slot(warcry, 2)); v(3).sync_bar()
 	stage(nemes, {v(3): Vector2i(8, 3), v(1): Vector2i(1, 3)})
 	b.sight = false
 	v(3).refresh()

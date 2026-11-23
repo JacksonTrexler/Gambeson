@@ -98,7 +98,7 @@ func test_laid_to_rest() -> void:
 
 func test_soft_cap() -> void:
 	var c := v(1)
-	c.learned.append(slot(skeleton, 2))
+	c.learned.append(slot(skeleton, 2)); c.sync_bar()
 	roomy(c)
 	c.intelligence = 10  # mod 0: cap 2
 	c.ap[0].amount = 99.0
@@ -126,7 +126,7 @@ func test_grave_aura() -> void:
 	var checks := [0]
 	var count := func(_by: Unit, _of: Unit, _a: int, _b: int): checks[0] += 1
 	b.doubted.connect(count)
-	v(1).learned.append(slot(aura, 1))
+	v(1).learned.append(slot(aura, 1)); v(1).sync_bar()
 	v(1)._take_looks()
 	ok(v(1).stat(&"persona") > 0 and &"undead" in v(1).shows_tags, "persona undead")
 	ok(not b.doubt(s, v(1)) and checks[0] == 0, "an allied undead makes no check")

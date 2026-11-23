@@ -147,7 +147,7 @@ func test_portal() -> void:
 			ok(md.portal == at, "the portal forms where the 30th fell")
 	ok(md.kills == 30 and md.portal_turns == 3 and not md.opened and mb.phase != Battle.Phase.OVER, "it opens in 3 x difficulty turns; the fight goes on with no demons standing")
 	var exit: Skill = load("res://Skills/emergency_exit.tres")
-	mb.player.learned.append(slot(exit, 2))
+	mb.player.learned.append(slot(exit, 2)); mb.player.sync_bar()
 	load("res://Behaviours/emergency_exit.gd").open(mb, mb.player, exit, 2, 2)
 	ok(md.portal_turns == 1 and mb.pockets.is_empty(), "Emergency Exit II: the forming portal 2 turns sooner, no pocket")
 	md._on_turn(demons, mb.player.faction)

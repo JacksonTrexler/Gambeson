@@ -10,7 +10,7 @@ var pray: Skill = load("res://Skills/pray.tres")
 func prayer(u: Unit, god: StringName, r: int) -> void:
 	u.god = god
 	if not u.learned.any(func(x: Slot): return x.skill == pray):
-		u.learned.append(slot(pray, r))
+		u.learned.append(slot(pray, r)); u.sync_bar()
 	u.learned.filter(func(x: Slot): return x.skill == pray)[0].rank = r
 	u.refresh()
 

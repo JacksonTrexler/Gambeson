@@ -11,7 +11,7 @@ var footsore: Effect = load("res://Effects/footsore.tres")
 func start(effect_rank: int, meander_rank := 0) -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(9, 7)})
 	if meander_rank > 0:
-		v(1).learned.append(slot(meander, meander_rank))
+		v(1).learned.append(slot(meander, meander_rank)); v(1).sync_bar()
 	v(1).movement = 9
 	v(1).refresh()
 	v(1).afflict(footsore, 5, effect_rank)

@@ -86,7 +86,7 @@ func test_observe() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	var looks := looks_of(v(1))
 	v(1).wisdom = 16
-	v(1).learned.append(slot(observe, 2))
+	v(1).learned.append(slot(observe, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.area_reach(v(1), observe) == 5.0 and not b.cast_at(v(1), observe, Vector2i(7, 4)), "reach: wis mod + rank (5); 6 tiles off is too far")
 	ok(b.cast_at(v(1), observe, Vector2i(6, 4)) and looks.size() == 1 and looks[0][0] == TRAP
@@ -110,7 +110,7 @@ func test_observe_looks() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	var looks := looks_of(v(1))
 	v(1).wisdom = 16
-	v(1).learned.append(slot(observe, 2))
+	v(1).learned.append(slot(observe, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.cast_at(v(1), observe, Vector2i(6, 4)), "cast within reach")
 	ok(looks.any(func(l: Array): return l[0] == TRAP), "it looks at the trap, a tile from where it's cast: %s" % [looks])
@@ -152,7 +152,7 @@ func test_eyes_forward_replaces() -> void:
 func test_pray() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(2): Vector2i(2, 4), v(3): Vector2i(8, 1)})
 	ok((load("res://Roles/paladin.tres") as Role).god == &"eros" and pray in (load("res://Roles/paladin.tres") as Role).offered(), "Paladins pray to Eros")
-	v(1).learned.append(slot(pray, 2))
+	v(1).learned.append(slot(pray, 2)); v(1).sync_bar()
 	v(1).god = &"ramut"
 	v(1).refresh()
 	var grace := b.grace(lancin)
@@ -172,7 +172,7 @@ func test_ai_search() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	v(3).afflict(effect("concealment", 4), 9)
 	v(1).wisdom = 16
-	v(1).learned.append(slot(observe, 2))
+	v(1).learned.append(slot(observe, 2)); v(1).sync_bar()
 	v(1).refresh()
 	var log := AI.act(b, v(1))
 	ok(log.any(func(l: String): return "uses Observe" in l), "no foe in sight: it searches where the trap's hint is %s" % [log])

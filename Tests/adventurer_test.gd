@@ -84,7 +84,7 @@ func test_starter_spells_on_allies() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	roomy(u)
-	u.learned.append(slot(sola))
+	u.learned.append(slot(sola)); u.sync_bar()
 	u.refresh()
 	ok(sola.for_allies() and sola.for_foes() and not sola.hostile, "Sola works on allies and foes alike")
 	ok(b.cast(u, sola, v(1)), "cast on an ally")
@@ -106,7 +106,7 @@ func test_starter_spells_on_foes() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	roomy(u)
-	u.learned.append(slot(sola))
+	u.learned.append(slot(sola)); u.sync_bar()
 	v(3).max_hp = 200
 	v(3).heal(200)
 	var rolls := []
@@ -130,8 +130,8 @@ func test_defense_spells() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3)})
 	roomy(u)
-	u.learned.append(slot(terestera, 2))
-	u.learned.append(slot(hydera, 1))
+	u.learned.append(slot(terestera, 2)); u.sync_bar()
+	u.learned.append(slot(hydera, 1)); u.sync_bar()
 	u.refresh()
 	var plain := v(1).defense()
 	ok(b.cast(u, terestera, v(1)) and v(1).defense([&"pierce"]) == plain + 2 and v(1).defense() == plain,
@@ -146,8 +146,8 @@ func test_shadow_and_luck_spells() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3)})
 	roomy(u)
-	u.learned.append(slot(nadira))
-	u.learned.append(slot(astera, 2))
+	u.learned.append(slot(nadira)); u.sync_bar()
+	u.learned.append(slot(astera, 2)); u.sync_bar()
 	u.refresh()
 	var luck := v(1).luck
 	ok(b.cast(u, nadira, v(1)) and Perception.cover(b, v(1)) == 1, "Nadira: a level of dark concealment")
@@ -158,8 +158,8 @@ func test_shadow_and_luck_spells() -> void:
 func test_working_knowledge() -> void:
 	var u := shrike()
 	roomy(u)
-	u.learned.append(slot(hex))
-	v(1).learned.append(slot(hex))
+	u.learned.append(slot(hex)); u.sync_bar()
+	v(1).learned.append(slot(hex)); v(1).sync_bar()
 	ok(u.energy_tags() == [&"martial", &"magical", &"specialist"], "Field Experience, Working Knowledge, Everyman")
 	ok(u.funding(hex) == &"energy" and is_equal_approx(u.ap_cost(hex, &"energy"), 2.0), "Hex paid with Energy: half AP, as with Mana")
 	ok(is_equal_approx(v(1).ap_cost(hex, &"energy"), 4.0), "...where a villager's Energy is just Energy")
@@ -252,7 +252,7 @@ func test_mana_casting() -> void:
 	ok(u.rank(mana_skill) == 1 and mana_skill in wizard.options and u.store(mana) == 10 and u.opened(mana) == 1,
 			"a Wizard starts with Mana I and 10 mana")
 	roomy(u)
-	u.learned.append(slot(sola, 2))
+	u.learned.append(slot(sola, 2)); u.sync_bar()
 	ok(u.price(sola) == 4 and u.cost_from(sola, &"energy") == 4 and u.cost_from(sola, mana) == 2, "Sola II: 4 Energy, or 2 mana")
 	ok(u.funding(sola) == mana, "mana pays first")
 	stage(lancin, {u: Vector2i(4, 3), v(1): Vector2i(5, 3)})
@@ -272,9 +272,9 @@ func test_mana_casting() -> void:
 		root.branches.append(br)
 	u.role = Role.new()
 	u.role.roots.append(root)
-	u.learned.append(slot(deep, 1))
+	u.learned.append(slot(deep, 1)); u.sync_bar()
 	ok(u.tier(deep) == 2 and u.cost_from(deep, mana) == 2 and u.cost_from(sola, mana) == 2, "a tier 2 spell: full cost at Mana I")
-	u.learned.append(slot(mana_skill, 2))
+	u.learned.append(slot(mana_skill, 2)); u.sync_bar()
 	ok(u.opened(mana) == 2 and u.cost_from(deep, mana) == 1, "Mana II: half cost up to tier 2")
 	ok("Half cost paid with Mana, once the caster's Mana rank reaches its tier" in sola.describe() and "Half AP paid with Mana" in hex.describe(),
 			"described (%s)" % sola.describe())
@@ -283,9 +283,9 @@ func test_mana_casting() -> void:
 	var s := roomy(shrike())
 	s.reserves[mana] = 10
 	s.set_store(mana, 10)
-	s.learned.append(slot(sola))
+	s.learned.append(slot(sola)); s.sync_bar()
 	ok(s.cost_from(sola, mana) == 2 and s.cost_from(sola, &"energy") == 2, "an Adventurer, without Mana: 2 either way")
-	s.learned.append(slot(mana_skill))
+	s.learned.append(slot(mana_skill)); s.sync_bar()
 	ok(s.cost_from(sola, mana) == 1 and s.cost_from(sola, &"energy") == 1, "with it, Working Knowledge passes the saving to Energy")
 	s.free()
 

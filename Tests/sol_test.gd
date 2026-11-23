@@ -12,7 +12,7 @@ var sn: Reserve = load("res://Reserves/sweet_nothings.tres")
 func caster(n: String, r := 1, at := Vector2i(4, 4)) -> Unit:
 	stage(lancin, {v(1): at, v(2): at + Vector2i(1, 0), v(3): at + Vector2i(3, 0), v(4): at + Vector2i(0, 3)})
 	v(1).wisdom = 18
-	v(1).learned.append(slot(sk(n), r))
+	v(1).learned.append(slot(sk(n), r)); v(1).sync_bar()
 	v(1).refresh()
 	return v(1)
 
@@ -133,7 +133,7 @@ func test_flamecharm() -> void:
 func test_cindering() -> void:
 	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(5, 4)})
 	v(1).wisdom = 40
-	v(1).learned.append(slot(sk("cindering"), 2))
+	v(1).learned.append(slot(sk("cindering"), 2)); v(1).sync_bar()
 	v(1).refresh()
 	for i in 10:
 		v(1).refresh()

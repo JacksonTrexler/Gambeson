@@ -8,7 +8,7 @@ var act: Skill = load("res://Skills/vanishing_act.tres")
 
 
 func test_vanishing_act() -> void:
-	v(1).learned.append(slot(act, 2))
+	v(1).learned.append(slot(act, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3)})
 	v(1).charisma = 60  # its act's roll is past seeing through
 	var gone := []

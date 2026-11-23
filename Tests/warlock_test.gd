@@ -15,7 +15,7 @@ var warlock: Role = load("res://Roles/warlock.tres")
 
 func sweeten(u: Unit, cha := 14) -> void:
 	u.charisma = cha
-	u.learned.append(slot(sweet))
+	u.learned.append(slot(sweet)); u.sync_bar()
 	u.set_store(sn, u.pools().get(sn, 0))
 	u.refresh()
 
@@ -42,7 +42,7 @@ func test_sweet_nothings() -> void:
 	v(3).charisma = 10
 	ok(v(3).pools()[sn] == 0, "cha mod +0: none")
 	v(3).charisma = 14
-	v(3).learned.append(slot(brainfog))
+	v(3).learned.append(slot(brainfog)); v(3).sync_bar()
 	ok(v(3).funding(brainfog) == sn and v(3).cost_from(brainfog, sn) == 1, "a Warlock skill's whole cost (3) for one Sweet Nothing")
 	ok(v(3).funding(hex) == &"energy", "only Warlock skills")
 	var energy := v(3).energy
@@ -50,12 +50,12 @@ func test_sweet_nothings() -> void:
 	var cheap := Skill.new()
 	cheap.tags = [&"warlock"]
 	cheap.cost = 1
-	v(3).learned.append(slot(cheap))
+	v(3).learned.append(slot(cheap)); v(3).sync_bar()
 	ok(v(3).funding(cheap) == &"energy", "a cost of 1 saves nothing: Energy pays")
 	var needy := Skill.new()
 	needy.tags = [&"warlock"]
 	needy.needs = sn
-	v(3).learned.append(slot(needy))
+	v(3).learned.append(slot(needy)); v(3).sync_bar()
 	ok(v(3).funding(needy) == sn and v(3).cost_from(needy, sn) == 1, "a skill that needs one: a Sweet Nothing, even at no cost")
 	v(3).set_store(sn, 0)
 	ok(v(3).funding(needy) == null, "none left: it can't be used")
@@ -72,7 +72,7 @@ func test_dialysis() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(3, 1)})
 	sweeten(v(3), 18)  # 4
 	roomy(v(3))
-	v(3).learned.append(slot(dialysis))
+	v(3).learned.append(slot(dialysis)); v(3).sync_bar()
 	v(3).set_store(sn, 0)
 	v(1).afflict(effect("concealment", 3), 9)
 	b.suspect(v(3), v(1))
@@ -92,7 +92,7 @@ func test_dialysis() -> void:
 
 func test_wauaw() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1), v(4): Vector2i(5, 2)})
-	v(3).learned.append(slot(wauaw))
+	v(3).learned.append(slot(wauaw)); v(3).sync_bar()
 	v(3).refresh()
 	ok(b.cast(v(3), wauaw, v(1)), "on a foe, no roll")
 	var seen := []
@@ -109,7 +109,7 @@ func test_wauaw() -> void:
 func test_toggle() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(4, 1)})
 	sweeten(v(3))
-	v(3).learned.append(slot(wauaw))
+	v(3).learned.append(slot(wauaw)); v(3).sync_bar()
 	ok(sweet.toggle and v(3).is_on(sweet), "Sweet Nothings: a toggle, on to start")
 	ok(v(3).funding(wauaw) == sn, "on: a Sweet Nothing pays")
 	v(3).toggle(sweet)
@@ -119,7 +119,7 @@ func test_toggle() -> void:
 	dear.cost = 1
 	dear.tags = [&"warlock"]
 	dear.needs = sn
-	v(3).learned.append(slot(dear))
+	v(3).learned.append(slot(dear)); v(3).sync_bar()
 	ok(v(3).funding(dear) == null, "a skill that needs one can't be paid for")
 	v(3).toggle(sweet)
 	ok(v(3).funding(dear) == sn, "on again: it can")

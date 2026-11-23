@@ -94,7 +94,7 @@ func test_passives() -> void:
 				break
 		var before := _readings(u, s.effects)
 		var had := s.tags.filter(func(t: StringName): return u.has_tag(t))
-		u.learned.append(slot(s, 2))
+		u.learned.append(slot(s, 2)); u.sync_bar()
 		var r := u.rank(s)
 		ok(r > 0, "%s: learned at rank 2" % s.name)
 		weighed += _weigh(u, s.effects, before, func(_e): return r, func(_e): return 1.0, s.name)
@@ -108,7 +108,7 @@ func test_passives() -> void:
 			u.bar_clear(u.hotbar.find(s))
 			ok(not u.equipped(s) and _readings(u, s.effects) == before, "%s: unequipped, inert" % s.name)
 			inert += 1
-		u.learned.pop_back()
+		u.learned.pop_back(); u.sync_bar()
 		swept += 1
 	ok(weighed >= 60, "the passive sweep weighed %d stats" % weighed)
 	ok(inert >= 60, "the passive sweep unequipped %d" % inert)
@@ -122,8 +122,8 @@ func test_passives() -> void:
 func _pose(s: Skill, learn := true) -> Variant:
 	var u := v(1)
 	if learn:
-		u.learned.clear()
-		u.learned.append(slot(s, 2))
+		u.learned.clear(); u.sync_bar()
+		u.learned.append(slot(s, 2)); u.sync_bar()
 	var foe := (s.hostile or s.either) and not s.dual
 	var on: Variant = u if (s.auto or s.on_self(u)) else (Vector2i(5, 3) if s.on_tile() else (v(3) if foe else v(2)))
 	var placed := {u: Vector2i(4, 3), v(4): Vector2i(8, 5)}
@@ -232,7 +232,7 @@ func test_item_skills() -> void:
 			continue
 		for s in it.skills:
 			var on: Variant = _pose(s, false)
-			v(1).learned.clear()
+			v(1).learned.clear(); v(1).sync_bar()
 			v(1).unequip(it.slot)
 			ok(v(1).equip(it) == null and (s in v(1).passives if s.passive else s in v(1).actives), "wearing %s lends %s" % [it.name, s.name])
 			ok((v(1).slot_cost(s) == 0 and s not in v(1).hotbar) if it.link(s) == &"free" else v(1).slot_cost(s) > 0, "%s: lent %s, %s" % [s.name, it.link(s), "no slot, off the bar (?214)" if it.link(s) == &"free" else "for a slot"])

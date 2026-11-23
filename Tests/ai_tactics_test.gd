@@ -26,7 +26,7 @@ func score(u: Unit, s: Skill, t: Unit) -> float:
 
 
 func test_ambush_counts() -> void:
-	v(1).learned.append(slot(gank))
+	v(1).learned.append(slot(gank)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(6, 3)})
 	v(1).refresh()
 	soak(v(3), 300)
@@ -48,7 +48,7 @@ func test_spike_defense_counts() -> void:
 
 
 func test_chance_picks_the_foe() -> void:
-	v(1).learned.append(slot(spike))
+	v(1).learned.append(slot(spike)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(4, 4)})
 	v(1).refresh()
 	for x in [v(3), v(4)]:
@@ -71,7 +71,7 @@ func test_sutemi_toll() -> void:
 
 
 func test_refunds() -> void:
-	v(1).learned.append(slot(poach))
+	v(1).learned.append(slot(poach)); v(1).sync_bar()
 	duel(slam_jam)
 	v(1).refresh()
 	soak(v(3), 300)
@@ -88,7 +88,7 @@ func test_refunds() -> void:
 
 
 func kicker() -> Unit:
-	v(1).learned.append(slot(kick, 2))
+	v(1).learned.append(slot(kick, 2)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(1).refresh()
@@ -123,8 +123,8 @@ func test_kick_in_the_forecast() -> void:
 
 
 func test_rests_for_a_better_shot() -> void:
-	v(1).learned.append(slot(focus, 1))
-	v(1).learned.append(slot(missile))
+	v(1).learned.append(slot(focus, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(missile)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(5, 3), v(3): Vector2i(7, 3)})
 	v(1).refresh()
 	v(3).afflict(effect("defense", 40), 5)  # a poor shot: only a natural 20
@@ -146,9 +146,9 @@ func test_rests_for_a_better_shot() -> void:
 
 
 func test_resuscitate_before_heal() -> void:
-	v(1).learned.append(slot(heal, 2))  # listed first: it used to win the tie
-	v(1).learned.append(slot(resuscitate, 1))
-	v(2).learned.append(slot(load("res://Skills/tenacity.tres"), 3))
+	v(1).learned.append(slot(heal, 2)); v(1).sync_bar()  # listed first: it used to win the tie
+	v(1).learned.append(slot(resuscitate, 1)); v(1).sync_bar()
+	v(2).learned.append(slot(load("res://Skills/tenacity.tres"), 3)); v(2).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	soak(v(2), 100)
@@ -164,7 +164,7 @@ func test_resuscitate_before_heal() -> void:
 
 # v(3), Nemes, Downed under Grudge with its melee owed, the last foe v(1) has.
 func grudged(near: Vector2i) -> Unit:
-	v(3).learned.append(slot(grudge, 2))
+	v(3).learned.append(slot(grudge, 2)); v(3).sync_bar()
 	stage(lancin, {v(1): near, v(3): Vector2i(1, 1)})
 	v(3).refresh()
 	v(1).refresh()
@@ -243,8 +243,8 @@ func test_retreat_leaves_an_allys_tile() -> void:
 
 func test_grudge_heals_itself() -> void:
 	roomy(v(3))
-	v(3).learned.append(slot(grudge, 2))
-	v(3).learned.append(slot(heal, 2))
+	v(3).learned.append(slot(grudge, 2)); v(3).sync_bar()
+	v(3).learned.append(slot(heal, 2)); v(3).sync_bar()
 	stage(lancin, {v(1): Vector2i(5, 3), v(3): Vector2i(4, 3)})
 	v(3).refresh()
 	v(3).energy = v(3).max_energy
@@ -274,7 +274,7 @@ func test_defense_from_read() -> void:
 # docs/plans/ai-prices.md. What a blow's behaviours add that damage doesn't: Poach's cost back, its regain on
 # a felling blow, Slam Jam's interrupt at its contest's odds, a trap's blast and a drive's real distance.
 func test_prices_the_rest() -> void:
-	v(1).learned.append(slot(poach))
+	v(1).learned.append(slot(poach)); v(1).sync_bar()
 	duel(slam_jam, 2)
 	v(1).refresh()
 	soak(v(3), 300)
@@ -319,7 +319,7 @@ func test_kick_spill_and_drive() -> void:
 # docs/plans/ai-walks.md. Lining up a shove: it walks to the tile its Kick tells most from (a foe's own side behind it,
 # so the slam lands on them), by Battle.foresee() from each tile; with nothing to gain, or it would cost its own side, it stays.
 func test_lines_up_a_shove() -> void:
-	v(1).learned.append(slot(kick, 2))
+	v(1).learned.append(slot(kick, 2)); v(1).sync_bar()
 	roomy(v(1))
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(5, 4), v(4): Vector2i(5, 5)})
@@ -343,7 +343,7 @@ func test_lines_up_a_shove() -> void:
 # docs/plans/ai-findings.md. The line-up's threshold is one tile of shove (Battle.PUSH x AI.RIDER), the least a drive can
 # differ by: a tile that tells exactly that much more is worth the walk, one that tells no more isn't.
 func test_line_up_gain_threshold() -> void:
-	v(1).learned.append(slot(kick, 2))
+	v(1).learned.append(slot(kick, 2)); v(1).sync_bar()
 	roomy(v(1))
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(6, 3), v(3): Vector2i(6, 4), v(2): Vector2i(0, 0), v(4): Vector2i(0, 1)})
@@ -369,7 +369,7 @@ func test_line_up_gain_threshold() -> void:
 # (Battle.course() through foresee()), so with the blow read it stops a tile short; and it prices the way there by
 # route(), so it won't back onto a trap it knows of when another tile is as far.
 func test_retreat_weighs_shoves_and_price() -> void:
-	v(3).learned.append(slot(kick, 2))
+	v(3).learned.append(slot(kick, 2)); v(3).sync_bar()
 	stage(lancin, {v(1): Vector2i(6, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
 	sharp(v(1))
@@ -432,7 +432,7 @@ func test_starve_worth() -> void:
 # less, though never nothing (it is left for last, not left alone).
 func test_final_act_is_priced() -> void:
 	var final_act: Skill = load("res://Skills/final_act.tres")
-	v(3).learned.append(slot(final_act))
+	v(3).learned.append(slot(final_act)); v(3).sync_bar()
 	duel(strike)
 	v(1).refresh()
 	v(3).refresh()
@@ -495,7 +495,7 @@ func test_wear_weighs_heals_and_supports() -> void:
 	var mega: Skill = load("res://Skills/megaheal.tres")
 	var twin: Skill = load("res://Skills/stonegift.tres")
 	for s in [heal, mega]:
-		v(1).learned.append(slot(s, 2))
+		v(1).learned.append(slot(s, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	Exhaustion.on = true
 	var rested := func() -> void:
@@ -522,7 +522,7 @@ func test_wear_weighs_heals_and_supports() -> void:
 	ok(healed.call() != null, "both worn out: a worn heal is still better than none")
 	var u := v(2)  # the supports are another's: a unit holds four skills at a time
 	for s in [intervention, twin]:
-		u.learned.append(slot(s, 2))
+		u.learned.append(slot(s, 2)); u.sync_bar()
 	var gave := func() -> String:  # the support it gives an ally with nothing on
 		u.refresh()
 		u.max_energy = 200
@@ -548,7 +548,7 @@ func test_wear_weighs_heals_and_supports() -> void:
 func test_forced_moves_are_priced() -> void:
 	var s: Skill = hex.duplicate()
 	s.rolls = false
-	v(1).learned.append(slot(s))
+	v(1).learned.append(slot(s)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3), v(2): Vector2i(1, 8)})
 	v(1).refresh()
 	soak(v(3), 300)
@@ -564,7 +564,7 @@ func test_forced_moves_are_priced() -> void:
 	b.move(v(2), Vector2i(1, 8))
 	var buff: Skill = load("res://Skills/intervention.tres").duplicate()
 	buff.effects = [effect("fear", 1.0)] as Array[Effect]
-	v(1).learned.append(slot(buff))
+	v(1).learned.append(slot(buff)); v(1).sync_bar()
 	var log: Array[String] = []
 	AI._support(b, v(1), AI.reads_from({v(2): b.read(v(1), v(2))}), log)
 	ok(log.is_empty(), "and a support skill carrying fear isn't given to an ally (%s)" % [log])
@@ -578,7 +578,7 @@ func test_forced_moves_are_priced() -> void:
 # (_threat(): its skills, else its stats, else BLOW), less for each cc it already bears, none from one stopped.
 func test_prices_a_cc() -> void:
 	var stun := sk("stun")
-	v(1).learned.append(slot(stun, 2))
+	v(1).learned.append(slot(stun, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	soak(v(1), 500)
 	soak(v(3), 300)
@@ -611,7 +611,7 @@ func test_prices_a_cc() -> void:
 # it closes on a target from the side out of a Stunner's reach (_approach()) and backs off to a tile out of it (_retreat()).
 func test_dreads_a_cc() -> void:
 	var stun := sk("stun")
-	v(4).learned.append(slot(stun, 2))
+	v(4).learned.append(slot(stun, 2)); v(4).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 6), v(3): Vector2i(7, 3), v(4): Vector2i(0, 3)})
 	soak(v(1), 500)
 	soak(v(3), 500)
@@ -663,7 +663,7 @@ func test_stretch_holds_what_a_read_asks() -> void:
 	stage(lancin, {v(1): Vector2i(1, 4), v(3): Vector2i(8, 1)})
 	var u := roomy(v(1))
 	var bracing: Skill = load("res://Skills/agility_bracing.tres")
-	u.learned.append(slot(bracing))
+	u.learned.append(slot(bracing)); u.sync_bar()
 	u._arrange()
 	var kit := u.kit
 	var defense := u.defense()
@@ -690,11 +690,11 @@ func test_stretch_holds_what_a_read_asks() -> void:
 func test_cast_cost_answers_as_before() -> void:
 	var gal: Skill = sk("gallantry")
 	var interject: Skill = sk("interject")
-	v(1).learned.append(slot(gal))
-	v(2).learned.append(slot(interject))
-	v(3).learned.append(slot(sk("self_evaluation")))
-	v(4).learned.append(slot(sk("agility_bracing")))
-	v(4).learned.append(slot(sk("self_evaluation")))
+	v(1).learned.append(slot(gal)); v(1).sync_bar()
+	v(2).learned.append(slot(interject)); v(2).sync_bar()
+	v(3).learned.append(slot(sk("self_evaluation"))); v(3).sync_bar()
+	v(4).learned.append(slot(sk("agility_bracing"))); v(4).sync_bar()
+	v(4).learned.append(slot(sk("self_evaluation"))); v(4).sync_bar()
 	for u: Unit in [v(1), v(2), v(3), v(4)]:
 		roomy(u, 4)
 	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3), v(3): Vector2i(6, 3), v(4): Vector2i(7, 3)})
@@ -766,10 +766,10 @@ func test_warm_read_answers_as_before() -> void:
 	badge.tags = [&"badge"] as Array[StringName]
 	badge.emblem = &"rho_up"
 	badge.effects = [effect("brood", 5)] as Array[Effect]
-	v(1).learned.append(slot(sk("gallantry")))
+	v(1).learned.append(slot(sk("gallantry"))); v(1).sync_bar()
 	v(2).trinket = badge
 	roomy(v(2), 4)
-	v(2).learned.append(slot(sk("interject")))
+	v(2).learned.append(slot(sk("interject"))); v(2).sync_bar()
 	v(3).tags.append(&"undead")
 	v(3).afflict(load("res://Effects/disturbed.tres"), 5)
 	v(2).afflict(load("res://Effects/disturbed.tres"), 5)  # disturbed but living: not restless
@@ -851,7 +851,7 @@ func test_approach_weighs_opportunist() -> void:
 	ok(not beside.is_empty(), "(setup) tiles in the walk lie in her reach")
 	var blind := AI._retreat(b, v(1), from)
 	ok(blind in beside and AI._retreat(b, v(1), from, 0, wide) not in beside, "backing off, it does not end where she strikes: %s, not %s" % [AI._retreat(b, v(1), from, 0, wide), blind])
-	v(1).learned.append(slot(kick, 2))  # test_lines_up_a_shove's scene: the slam tile (5, 3) lies beside her at (5, 2)
+	v(1).learned.append(slot(kick, 2)); v(1).sync_bar()  # test_lines_up_a_shove's scene: the slam tile (5, 3) lies beside her at (5, 2)
 	roomy(v(1))
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(5, 4), v(4): Vector2i(5, 5), siren: Vector2i(5, 2)})

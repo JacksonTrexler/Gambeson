@@ -12,7 +12,7 @@ func test_unspent() -> void:
 	var left := v(3).ap_left()
 	b.end_turn()
 	ok(is_equal_approx(v(3).unspent, left), "its unspent AP recorded as its turn ends (%s)" % v(3).unspent)
-	v(1).learned.append(slot(spike, 3))
+	v(1).learned.append(slot(spike, 3)); v(1).sync_bar()
 	var c := b.cast_of(v(1), spike, v(3), 3, true)
 	ok(Battle.guard_of(c) == floori(left), "it adds them to its Defense")
 	var p := Battle.hit_chance(v(1), spike, v(3), b)
@@ -21,7 +21,7 @@ func test_unspent() -> void:
 
 
 func test_damage() -> void:
-	v(1).learned.append(slot(spike, 3))
+	v(1).learned.append(slot(spike, 3)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

@@ -13,7 +13,7 @@ var intervention: Skill = load("res://Skills/intervention.tres")
 
 
 func ready(r := 2) -> void:
-	v(3).learned.append(slot(borrowed, r))
+	v(3).learned.append(slot(borrowed, r)); v(3).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(1, 1), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
 	v(3).refresh()
 	soak(v(3), 100)
@@ -50,7 +50,7 @@ func test_defer() -> void:
 func test_downed() -> void:
 	ready(1)
 	roomy(v(3))
-	v(3).learned.append(slot(tenacity, 2))
+	v(3).learned.append(slot(tenacity, 2)); v(3).sync_bar()
 	v(3).refresh()
 	v(3).damage(999)
 	ok(v(3).deferred == 1 and v(3).dbno == null, "Borrowed Time before Downed")

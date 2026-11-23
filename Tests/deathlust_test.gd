@@ -10,7 +10,7 @@ var deathlust: Skill = load("res://Skills/deathlust.tres")
 
 # v(1) holds Deathlust at rank r, with 2 uses of Strike counted against it, stood at (4, 3).
 func lusty(r: int, placed := {}) -> float:
-	v(1).learned.append(slot(deathlust, r))
+	v(1).learned.append(slot(deathlust, r)); v(1).sync_bar()
 	var p := {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)}
 	p.merge(placed)
 	stage(lancin, p)
@@ -43,8 +43,8 @@ func test_deaths_in_range() -> void:
 	b.neutralize(v(1), &"killed")
 	ok(is_equal_approx(uses(v(1)), 1.125), "nor its own death")
 	for r in [3, 4]:
-		v(1).learned.clear()
-		v(1).learned.append(slot(deathlust, r))
+		v(1).learned.clear(); v(1).sync_bar()
+		v(1).learned.append(slot(deathlust, r)); v(1).sync_bar()
 		b.neutralize(v(4), &"killed")
 	ok(is_equal_approx(uses(v(1)), 1.125 * pow(0.75, 4)), "rank 3 reaches 3 tiles, not 4; rank 4 does, and eases 68%% (%s)" % uses(v(1)))
 	v(1).exhaustion.uses[sk("hex")] = 0.2
@@ -98,7 +98,7 @@ func test_ai_weighs_kill_discount() -> void:
 	soak(v(3), maxi(dmg, 1))
 	reads = {v(3): b.read(v(1), v(3))}
 	ok(AI._wear(v(1), strike, b, v(3), reads[v(3)]) == 0.0, "one that kills: no wear with Deathlust")
-	v(1).learned.clear()
+	v(1).learned.clear(); v(1).sync_bar()
 	v(1).refresh()
 	ok(AI._wear(v(1), strike, b, v(3), reads[v(3)]) > 0.0, "without it: the wear stands")
 
@@ -109,7 +109,7 @@ func test_ai_weighs_kill_discount() -> void:
 func test_ai_prices_relief() -> void:
 	lusty(1, {v(4): Vector2i(8, 3)})
 	var hex := sk("hex")
-	v(1).learned.append(slot(hex))
+	v(1).learned.append(slot(hex)); v(1).sync_bar()
 	v(1).refresh()
 	v(1).exhaustion.uses[strike] = 3.0
 	v(1).exhaustion.uses[hex] = 3.0
@@ -127,6 +127,6 @@ func test_ai_prices_relief() -> void:
 	v(3).cell = Vector2i(8, 3)
 	v(4).cell = Vector2i(5, 3)
 	soak(v(4), maxi(dmg, 1))
-	v(1).learned.clear()
+	v(1).learned.clear(); v(1).sync_bar()
 	v(1).refresh()
 	ok(AI._relief(b, v(1), strike, v(4), b.read(v(1), v(4))) == 0.0, "without the passive: nothing")

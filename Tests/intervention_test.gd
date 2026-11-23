@@ -14,8 +14,8 @@ var death: Skill = load("res://Skills/death.tres")
 
 
 func bless(r := 3) -> void:
-	v(1).learned.append(slot(intervention, r))
-	v(2).learned.append(slot(tenacity, 3))
+	v(1).learned.append(slot(intervention, r)); v(1).sync_bar()
+	v(2).learned.append(slot(tenacity, 3)); v(2).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(6, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	soak(v(2), 100)

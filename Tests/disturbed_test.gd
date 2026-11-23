@@ -12,7 +12,7 @@ var disturb: GDScript = load("res://Behaviours/disturb.gd")
 # v(1) casts at rank r; v(3), a leader (v(4) follows it), and v(4), not one, stand beside it; both with wisdom
 # mod `m` (score 10 + 2m).
 func caster(r: int, m: int) -> void:
-	v(1).learned.append(slot(disturbance, r))
+	v(1).learned.append(slot(disturbance, r)); v(1).sync_bar()
 	roomy(v(1))
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(4, 4), v(2): Vector2i(1, 5)})
 	v(4).follows = v(3)
@@ -48,7 +48,7 @@ func test_duration() -> void:
 
 # The Nemes' v(3) disturbs the Lancin's v(2) (a foe to it), beside v(1), the Lancin leader; then it's the Lancin's turn.
 func foe_disturbs() -> void:
-	v(3).learned.append(slot(disturbance, 1))
+	v(3).learned.append(slot(disturbance, 1)); v(3).sync_bar()
 	roomy(v(3))
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(6, 3), v(4): Vector2i(9, 0)})
 	v(2).wisdom = -30

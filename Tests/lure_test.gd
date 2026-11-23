@@ -135,7 +135,7 @@ func test_holds_on() -> void:
 	siren().refresh()
 	var at := siren().cell
 	ok(not AI._luring(b, siren(), AI.reads_from({v(1): b.read(siren(), v(1)), v(2): b.read(siren(), v(2))})) and AI._rooted(b, siren()), "unmasked, and holding v(1): rooted")
-	siren().learned.assign(siren().learned.filter(func(x: Slot): return x.skill.name != "Rake"))  # nothing to strike v(1) with
+	siren().learned.assign(siren().learned.filter(func(x: Slot): return x.skill.name != "Rake")); siren().sync_bar()  # nothing to strike v(1) with
 	AI.act(b, siren())
 	ok(siren().cell == at and drown.effects[0] in v(1).timed, "it doesn't go after the foe far off: it keeps its hold")
 	b._let_go(v(1), drown)
@@ -219,7 +219,7 @@ func test_stall_lifts() -> void:
 
 func test_personify() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2)})
-	v(1).learned.append(slot(personify, 1))
+	v(1).learned.append(slot(personify, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var ap := v(1).ap_left()
 	ok(b.personify(v(1), personify, {stance = "Friendly"}) and v(1).ap_left() == ap - 2.0, "costs 2 AP")
@@ -254,7 +254,7 @@ func test_personify() -> void:
 
 func test_persona_panel() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2)})
-	v(1).learned.append(slot(personify, 3))
+	v(1).learned.append(slot(personify, 3)); v(1).sync_bar()
 	v(1).refresh()
 	var p := PersonaPanel.new()
 	tree.root.add_child(p)

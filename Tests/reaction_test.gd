@@ -26,14 +26,14 @@ func echo(u: Unit, e: Echo) -> Skill:
 	s.passive = true
 	s.tags = [&"reaction"] as Array[StringName]
 	s.behaviours = [e] as Array[Behaviour]
-	u.learned.append(slot(s))
+	u.learned.append(slot(s)); u.sync_bar()
 	return s
 
 
 # v(3) (Nemes) Jams v(1), sure to hit; v(2) beside v(1), v(4) further off.
 func scene() -> void:
 	roomy(v(3))
-	v(3).learned.append(slot(jam))
+	v(3).learned.append(slot(jam)); v(3).sync_bar()
 	v(3).dexterity = 40
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3), v(4): Vector2i(8, 3)})
 	for i in [1, 2, 3, 4]:
@@ -123,7 +123,7 @@ func test_keyed() -> void:
 func test_interrupt() -> void:
 	scene()
 	b.directed = func(_u: Unit): return true  # a person's: nothing picks for it but the test
-	v(1).learned.append(slot(jam))
+	v(1).learned.append(slot(jam)); v(1).sync_bar()
 	v(1).dexterity = 40
 	v(1).refresh()
 	var ap := v(1).ap_left()
@@ -156,7 +156,7 @@ func test_interrupt_queued() -> void:
 func test_ai_interrupt() -> void:
 	scene()
 	b.directed = func(_u: Unit): return true  # a person's: nothing picks for it but the test
-	v(1).learned.append(slot(jam))
+	v(1).learned.append(slot(jam)); v(1).sync_bar()
 	v(1).dexterity = 40
 	b.grant_interrupt(v(1))
 	var log := AI.interrupt(b, v(1))
@@ -171,7 +171,7 @@ func test_ai_interrupt() -> void:
 # a headless simulation and the real game alike. The directed one (the player's) waits for its person.
 func test_ai_interrupts() -> void:
 	scene()
-	v(1).learned.append(slot(jam))
+	v(1).learned.append(slot(jam)); v(1).sync_bar()
 	v(1).dexterity = 40
 	var seen := []
 	b.interrupt_ended.connect(func(u: Unit): seen.append(u))
@@ -196,8 +196,8 @@ func test_area_moments() -> void:
 	wild.cost = 0
 	stage(nemes, {v(3): Vector2i(1, 3), v(1): Vector2i(3, 3), v(2): Vector2i(3, 4), v(4): Vector2i(2, 3)})  # v(4) an ally, in the cone's way
 	roomy(v(3))
-	v(3).learned.append(slot(solar))
-	v(3).learned.append(slot(wild))
+	v(3).learned.append(slot(solar)); v(3).sync_bar()
+	v(3).learned.append(slot(wild)); v(3).sync_bar()
 	v(3).wisdom = 40  # Solar's reach is its wis mod
 	v(3).refresh()
 	for i in [1, 2, 3, 4]:
@@ -227,9 +227,9 @@ func test_area_interject() -> void:
 	solar.cost = 0
 	var interject: Skill = load("res://Skills/interject.tres")
 	stage(nemes, {v(3): Vector2i(1, 3), v(1): Vector2i(3, 3), v(2): Vector2i(3, 4), v(4): Vector2i(8, 8)})
-	v(3).learned.append(slot(solar))
+	v(3).learned.append(slot(solar)); v(3).sync_bar()
 	v(3).refresh()
-	v(2).learned.append(slot(interject, 5))
+	v(2).learned.append(slot(interject, 5)); v(2).sync_bar()
 	v(2).dexterity = 90
 	v(2).refresh()
 	for i in [1, 2, 3, 4]:
@@ -288,7 +288,7 @@ func test_opportunist() -> void:
 	b.travel(v(2), Vector2i(5, 2))
 	ok(Battle.next_to(v(2).cell, siren.cell) and used.is_empty() and seen.size() == 1, "an ally's walk beside it is nothing to it: no interrupt (%s)" % [v(2).cell])
 	siren.faction = nemes
-	siren.learned.insert(0, slot(sk("heal")))
+	siren.learned.insert(0, slot(sk("heal"))); siren.sync_bar()
 	roomy(siren)
 	siren.refresh()
 	b.move(v(2), Vector2i(9, 3))

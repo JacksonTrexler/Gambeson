@@ -10,7 +10,7 @@ var brainfog: Skill = load("res://Skills/brainfog.tres")
 
 func caster(r := 1) -> void:
 	v(3).charisma = 20  # mod 5: range 5 + rank
-	v(3).learned.append(slot(brainfog, r))
+	v(3).learned.append(slot(brainfog, r)); v(3).sync_bar()
 	v(3).refresh()
 
 
@@ -38,7 +38,7 @@ func test_order() -> void:
 	var p1 := pillar("P1", 1)
 	var p2 := pillar("P2", 2)
 	var p3 := pillar("P3", 4)
-	v(1).learned.append_array([slot(p1, 1), slot(p2, 3), slot(p3, 5)])
+	v(1).learned.append_array([slot(p1, 1), slot(p2, 3), slot(p3, 5)]); v(1).sync_bar()
 	var order := v(1).disable_order()
 	ok(order.size() == 3 and order[0] == [p1, p2, p3], "pillar skills first, as one slot")
 	ok(v(1).slot_weight(order[0]) == 3 and v(1).slot_weight([strike]) == 1, "they weigh their median rank (1, 3, 5: 3)")
@@ -70,7 +70,7 @@ func test_pillars() -> void:
 	v(1).wisdom = 1
 	var p := [pillar("P1", 1), pillar("P2", 1), pillar("P3", 1)]
 	for s: Skill in p:
-		v(1).learned.append(slot(s))
+		v(1).learned.append(slot(s)); v(1).sync_bar()
 	var said := []
 	b.contested.connect(func(_c: Unit, _t: Unit, total: int, against: int): said.append([total, against]))
 	ok(fog(v(1)) and v(1).disabled.size() == 4 and favour in v(1).disabled and strike not in v(1).disabled,

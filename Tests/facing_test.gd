@@ -108,7 +108,7 @@ func test_effects_read_the_tag() -> void:
 
 func test_shields_up() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3), v(4): Vector2i(2, 3)})
-	v(1).learned.append(slot(shields_up, 2))
+	v(1).learned.append(slot(shields_up, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.cast_at(v(1), shields_up, Vector2i(6, 3)), "Shields Up! toward the east")
 	ok(v(1).guard and v(1).facing.is_equal_approx(Vector2(1, 0)), "it sets the facing")
@@ -124,8 +124,8 @@ func test_shields_up() -> void:
 
 
 func test_interjector_stays() -> void:
-	v(2).learned.append(slot(interject, 1))
-	v(3).learned.append(slot(jam))
+	v(2).learned.append(slot(interject, 1)); v(2).sync_bar()
+	v(3).learned.append(slot(jam)); v(3).sync_bar()
 	v(3).dexterity = 40
 	v(3).strength = 40
 	v(2).afflict(load("res://Tests/interject_test.gd").keen(), 9)

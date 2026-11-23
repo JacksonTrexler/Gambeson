@@ -15,7 +15,7 @@ func smiter(god: StringName, r := 1) -> Unit:
 	stage(lancin, {u: Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(6, 3), v(1): Vector2i(3, 3)})
 	u.god = god
 	u.charisma = 40
-	u.learned.append(slot(smite, r))
+	u.learned.append(slot(smite, r)); u.sync_bar()
 	u.refresh()
 	soak(v(3), 300)
 	v(3).armor = null
@@ -25,8 +25,8 @@ func smiter(god: StringName, r := 1) -> Unit:
 func test_tier() -> void:
 	var u := b.starter({faction = lancin, role = paladin, name = "Pip"})
 	ok(smite.min_tier == 3 and u.missing(smite).begins_with("Learn 2 skills first"), u.missing(smite))
-	u.learned.append(slot(load("res://Skills/favour.tres")))
-	u.learned.append(slot(load("res://Skills/pray.tres")))
+	u.learned.append(slot(load("res://Skills/favour.tres"))); u.sync_bar()
+	u.learned.append(slot(load("res://Skills/pray.tres"))); u.sync_bar()
 	ok(u.missing(smite) == "", "two learned: open")
 	u.free()
 
@@ -99,7 +99,7 @@ func test_vetruvis() -> void:
 
 func test_level_up() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2)})
-	v(1).learned.append(slot(level_up, 2))
+	v(1).learned.append(slot(level_up, 2)); v(1).sync_bar()
 	v(1).wisdom = 20
 	v(1).refresh()
 	var lv := v(2).lv()

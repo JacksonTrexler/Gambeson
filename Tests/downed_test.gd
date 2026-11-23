@@ -12,7 +12,7 @@ var first_aid: Skill = load("res://Skills/first_aid.tres")
 
 
 func give(u: Unit, s: Skill, r := 1) -> void:
-	u.learned.append(slot(s, r))
+	u.learned.append(slot(s, r)); u.sync_bar()
 
 
 # What Downed has told of since: [unit, how] each.
@@ -267,7 +267,7 @@ func test_hud() -> void:
 	await tree.process_frame
 	var text: String = h.log_box.get_parsed_text()
 	ok("Villager2 is saved" in text and "XP for saving" in text and not h._info(v(2)).chips.any(func(c): return c[0].begins_with("Downed")), "saved, with the XP for it: %s" % text)
-	v(2).learned.clear()
+	v(2).learned.clear(); v(2).sync_bar()
 	give(v(2), grudge, 2)
 	v(2).hit(999.0, [], v(3))
 	v(2).dbno.fresh = false

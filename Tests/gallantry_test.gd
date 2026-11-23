@@ -10,9 +10,9 @@ var jam: Skill = load("res://Skills/jam.tres")
 
 
 func scene() -> void:
-	v(2).learned.append(slot(gallantry))
+	v(2).learned.append(slot(gallantry)); v(2).sync_bar()
 	v(2).afflict(keen(), 9)
-	v(3).learned.append(slot(jam))
+	v(3).learned.append(slot(jam)); v(3).sync_bar()
 	v(3).dexterity = 40
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): Vector2i(4, 4), v(3): Vector2i(5, 3)})
 	for i in [1, 2, 3]:
@@ -34,7 +34,7 @@ func test_becomes_the_target() -> void:
 
 func test_locked() -> void:
 	scene()
-	v(1).learned.append(slot(interject, 4))
+	v(1).learned.append(slot(interject, 4)); v(1).sync_bar()
 	v(1).afflict(keen(), 9)
 	b.cast(v(3), jam, v(1))
 	ok(v(1).hp == 300 and v(2).hp < 300, "v(1)'s Interject can't take it back")
@@ -51,8 +51,8 @@ func test_not_beside() -> void:
 # Behaviour.foils()): of two otherwise alike foes it strikes the one with no Gallantry Paladin beside it; one
 # it can't read (no recon of skills) it can't weigh, and a Paladin out of reach is nothing to it.
 func test_ai_weighs_it() -> void:
-	v(1).learned.append(slot(jam))
-	v(4).learned.append(slot(gallantry))
+	v(1).learned.append(slot(jam)); v(1).sync_bar()
+	v(4).learned.append(slot(gallantry)); v(4).sync_bar()
 	v(4).afflict(keen(), 9)
 	v(2).faction = nemes
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(3, 3), v(4): Vector2i(6, 4)})

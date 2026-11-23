@@ -25,7 +25,7 @@ func test_path() -> void:
 func test_meditate() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(3, 3)})
-	u.learned.append(slot(meditate, 2))
+	u.learned.append(slot(meditate, 2)); u.sync_bar()
 	u.refresh()
 	var move := func() -> float: return u.ap.filter(func(p: AP): return p.only == &"move").reduce(func(t, p): return t + p.amount, 0.0)
 	var before: float = move.call()
@@ -46,8 +46,8 @@ func test_meditate() -> void:
 func test_self_reflection_first() -> void:
 	var u := shrike()
 	stage(lancin, {u: Vector2i(3, 3)})
-	u.learned.append(slot(selfref, 1))
-	u.learned.append(slot(meditate, 3))
+	u.learned.append(slot(selfref, 1)); u.sync_bar()
+	u.learned.append(slot(meditate, 3)); u.sync_bar()
 	u.refresh()
 	b.cast(u, selfref, u)
 	ok(b.cast(u, meditate, u) and u.respec_room == 1, "Self-reflection I first: Meditate III shifts no further than the 1 level it knew itself")

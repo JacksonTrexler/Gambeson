@@ -48,12 +48,12 @@ func test_wary() -> void:
 
 func test_manifest() -> void:
 	var u := v(1)
-	u.learned = [slot(manifest)]
+	u.learned = [slot(manifest)]; u.sync_bar()
 	u.charisma = 25
 	ok(u.luck == 2, "cha 25 -> +2")
 	u.charisma = 8
 	ok(u.luck == 0, "cha 8 -> +0")
-	u.learned = [slot(manifest), slot(favour)]
+	u.learned = [slot(manifest), slot(favour)]; u.sync_bar()
 	u.charisma = 19
 	ok(u.luck == 2, "stacks with Favour")
 

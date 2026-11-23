@@ -12,9 +12,9 @@ var jam: Skill = load("res://Skills/jam.tres")
 # v(3) (Nemes) hits v(1), sure to (str and dex 40); v(2), beside v(1), interjects at rank r, sure to pass
 # its check (+60 on reaction checks alone: an effect tagged reaction).
 func scene(r := 1, at := Vector2i(4, 4)) -> void:
-	v(2).learned.append(slot(interject, r))
+	v(2).learned.append(slot(interject, r)); v(2).sync_bar()
 	v(2).afflict(keen(), 9)
-	v(3).learned.append(slot(jam))
+	v(3).learned.append(slot(jam)); v(3).sync_bar()
 	v(3).dexterity = 40
 	v(3).strength = 40
 	stage(nemes, {v(1): Vector2i(4, 3), v(2): at, v(3): Vector2i(5, 3)})

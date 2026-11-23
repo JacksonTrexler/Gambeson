@@ -15,7 +15,7 @@ func al() -> Unit:
 func drones() -> Command:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 3), al(): Vector2i(2, 2), v(3): Vector2i(8, 2)})
 	v(1).charisma = 10  # one ally a turn, one order each
-	v(2).learned.append(slot(drone, 2))
+	v(2).learned.append(slot(drone, 2)); v(2).sync_bar()
 	v(2).wisdom = 18
 	for u in [v(1), v(2), al()]:
 		u.refresh()

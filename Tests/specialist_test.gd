@@ -39,7 +39,7 @@ func test_tree() -> void:
 
 func test_rank_costs() -> void:
 	var u := shrike()
-	u.learned.append(slot(clever))
+	u.learned.append(slot(clever)); u.sync_bar()
 	u.skill_points = 30
 	ok(u.raise_cost(clever) == 4 and u.raise(clever) and u.skill_points == 26, "Clever Disguise II: 4 points")
 	ok(u.raise_cost(clever) == 8 and u.raise(clever) and u.raise_cost(clever) == 16, "then 8, then 16")
@@ -50,13 +50,13 @@ func test_rank_costs() -> void:
 
 func test_move_plus_one() -> void:
 	var was := v(1).stat(&"movement")
-	v(1).learned.append(slot(move_plus_one))
+	v(1).learned.append(slot(move_plus_one)); v(1).sync_bar()
 	ok(v(1).stat(&"movement") == was + 1, "+1 movement (%d)" % v(1).stat(&"movement"))
 
 
 func test_meander() -> void:
 	stage(lancin, {v(1): Vector2i(1, 1), v(2): Vector2i(1, 6), v(3): Vector2i(9, 7)})
-	v(1).learned.append(slot(meander, 2))
+	v(1).learned.append(slot(meander, 2)); v(1).sync_bar()
 	v(1).refresh()
 	v(2).refresh()
 	ok(v(1).meander() == 2 and v(1).still(2) and not v(1).still(3), "Meander II: 2 tiles a turn while standing still")
@@ -75,7 +75,7 @@ func test_meander_passes_by() -> void:
 	var poison := effect("poison", 0.1)
 	trap.afflicts = [poison]
 	stage(lancin, {v(1): Vector2i(4, 4), v(3): Vector2i(9, 0)})
-	v(1).learned.append(slot(meander, 1))
+	v(1).learned.append(slot(meander, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var sprung := []
 	b.sprung.connect(func(c: Vector2i, by: Unit): sprung.append([c, by]))
@@ -87,7 +87,7 @@ func test_meander_passes_by() -> void:
 	ok(b.travel(v(2), Vector2i(6, 4)).size() == 1 and sprung.size() == 1 and poison in v(2).timed, "without it: stops on the trap, springs it")
 	trap.afflicts = []
 	trap.dice = Vector2i(1, 6)
-	v(3).learned.append(slot(snare, 2))
+	v(3).learned.append(slot(snare, 2)); v(3).sync_bar()
 	var laid := b.lay(v(3), snare, Vector2i(7, 1))
 	ok(laid.terrain.level == 2, "a Snare II is level 2")
 	stage(lancin, {v(1): Vector2i(6, 1), v(3): Vector2i(9, 7)})
@@ -98,7 +98,7 @@ func test_meander_passes_by() -> void:
 
 func test_hide() -> void:
 	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
-	v(1).learned.append(slot(hide, 2))
+	v(1).learned.append(slot(hide, 2)); v(1).sync_bar()
 	v(1).refresh()
 	var looks := []
 	b.investigated.connect(func(by: Unit, _of: Unit, _s: Skill, total: int, against: int, close: bool): looks.append([by, total, against, close]))
@@ -125,8 +125,8 @@ func test_hide() -> void:
 
 func test_hide_meandering() -> void:
 	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
-	v(1).learned.append(slot(hide))
-	v(1).learned.append(slot(meander, 1))
+	v(1).learned.append(slot(hide)); v(1).sync_bar()
+	v(1).learned.append(slot(meander, 1)); v(1).sync_bar()
 	v(1).refresh()
 	b.cast(v(1), hide, v(1))
 	b.travel(v(1), Vector2i(2, 1))
@@ -138,7 +138,7 @@ func test_hide_meandering() -> void:
 func test_close_investigators() -> void:
 	stage(lancin, {v(1): Vector2i(2, 1), v(3): Vector2i(3, 1)})
 	v(3).wisdom = 18  # mod 4
-	v(1).learned.append(slot(hide, 2))
+	v(1).learned.append(slot(hide, 2)); v(1).sync_bar()
 	v(1).refresh()
 	var looks := []
 	b.investigated.connect(func(by: Unit, _of: Unit, _s: Skill, _t: int, _a: int, close: bool): looks.append(close))
@@ -148,7 +148,7 @@ func test_close_investigators() -> void:
 
 func test_clever_disguise() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(7, 3)})
-	v(1).learned.append(slot(clever, 2))
+	v(1).learned.append(slot(clever, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.cast(v(1), clever, v(1)), "disguised")
 	var a: Unit.Applied = v(1).timed[clever.effects[0]]
@@ -172,7 +172,7 @@ func test_clever_disguise() -> void:
 
 func test_one_roll() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(7, 3), v(4): Vector2i(7, 5)})
-	v(1).learned.append(slot(clever, 2))
+	v(1).learned.append(slot(clever, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.watchers(v(1)).size() == 2, "two enemies watching")
 	var against := []
@@ -188,9 +188,9 @@ func test_self_evaluation() -> void:
 	ok(adventurer.tier(evaluation) == 1 and adventurer.root_of(evaluation).tag == &"specialist", "tier 1, first on the Specialist root")
 	ok("Self-evaluation: sees the rolls of allies using active skills within 2 tiles, its own too" in evaluation.describe(2), "described (%s)" % evaluation.describe(2))
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(6, 3), v(3): Vector2i(9, 3)})
-	v(1).learned.append(slot(clever))
-	v(2).learned.append(slot(evaluation, 1))
-	v(3).learned.append(slot(evaluation, 9))
+	v(1).learned.append(slot(clever)); v(1).sync_bar()
+	v(2).learned.append(slot(evaluation, 1)); v(2).sync_bar()
+	v(3).learned.append(slot(evaluation, 9)); v(3).sync_bar()
 	v(1).refresh()
 	var seen := []
 	b.evaluated.connect(func(u: Unit, s: Skill, d20: int, total: int): seen.append([u, s, d20, total]))
@@ -206,8 +206,8 @@ func test_self_evaluation() -> void:
 			"the ally sees it: d20 %d, total %d" % [seen[0][2], seen[0][3]] if seen else "the ally sees it")
 	ok(a.evaluated, "and the disguise keeps it, seen")
 	stage(lancin, {v(1): Vector2i(5, 3), v(3): Vector2i(6, 3)})
-	v(1).learned.append(slot(evaluation))
-	v(1).learned.append(slot(strike))
+	v(1).learned.append(slot(evaluation)); v(1).sync_bar()
+	v(1).learned.append(slot(strike)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.evaluators(v(1)) == [v(1)], "on its own: it evaluates itself")
 	b.cast(v(1), strike, v(3))

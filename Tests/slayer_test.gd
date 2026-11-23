@@ -17,7 +17,7 @@ func test_neutralized() -> void:
 
 
 func test_aimed() -> void:
-	v(1).learned.append(slot(jam, 1))
+	v(1).learned.append(slot(jam, 1)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	v(1).refresh()
 	ok(b.aimed(v(1), v(3)) == 0, "nothing yet")
@@ -81,7 +81,7 @@ func test_unshaped() -> void:
 	b.drive(v(3), e, v(3).afflict(e, 2))
 	ok(v(3).form == &"" and e not in v(3).timed and got.size() == 1, "the effect stat does it and stays on nothing")
 	got.clear()
-	v(1).learned.append(slot(load("res://Skills/beastshape.tres"), 1))
+	v(1).learned.append(slot(load("res://Skills/beastshape.tres"), 1)); v(1).sync_bar()
 	v(1).refresh()
 	v(1).shape(&"rabbit", &"", 1, 3)
 	b.cast(v(1), load("res://Skills/beastshape.tres"), v(1))
@@ -92,7 +92,7 @@ func test_unshaped_poach() -> void:
 	var poach: Skill = (load("res://Skills/poach.tres") as Skill).duplicate()
 	poach.effects = poach.effects.duplicate()
 	poach.effects.append(effect("unshape", 1.0))
-	v(1).learned.append(slot(poach, 1))
+	v(1).learned.append(slot(poach, 1)); v(1).sync_bar()
 	v(1).dexterity = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

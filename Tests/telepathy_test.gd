@@ -13,7 +13,7 @@ func test_telepathy() -> void:
 	var c := Command.new(b, v(1))
 	v(1).charisma = 8  # -1
 	ok(c.slots(v(2)) == 0 and not c.in_range(v(2)), "without it: cha -1, move orders only, reach 1 - v(2) 2 tiles off is out of reach")
-	v(1).learned.append(slot(telepathy, 3))
+	v(1).learned.append(slot(telepathy, 3)); v(1).sync_bar()
 	ok(c.cha_for(v(2)) == 3 and c.slots(v(2)) == 3 and c.order_cap(v(2)) == 3 and c.in_range(v(2)), "Telepathy III: v(2) within 3 tiles is ordered as by cha +3 - slots 1-3, 3 orders, in reach")
 	ok(c.cha_for(al) == 3, "so is Alabaster, 3 tiles off, until one is picked")
 	ok(c.cha() == -1 and c.slots() == 0 and c.ally_cap() == 1, "the leader's own charisma, and the allies a turn, are unchanged")

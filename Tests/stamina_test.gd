@@ -21,7 +21,7 @@ func fund(u: Unit, s: Skill) -> String:
 
 # u learns Stamina at rank r, its reserve full.
 func fit(u: Unit, r := 1) -> Unit:
-	u.learned.append(slot(stamina, r))
+	u.learned.append(slot(stamina, r)); u.sync_bar()
 	u.set_store(pool, u.pools().get(pool, 0))
 	return u
 
@@ -37,7 +37,7 @@ func test_reserve() -> void:
 func test_pays() -> void:
 	for s in [crushing, waterstrike, solar]:
 		roomy(v(1))
-		v(1).learned.append(slot(s))
+		v(1).learned.append(slot(s)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	fit(v(1))
 	ok(fund(v(1), crushing) == "Stamina" and fund(v(1), strike) == "Stamina", "martial and general skills: Stamina, before Energy")

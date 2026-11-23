@@ -409,7 +409,7 @@ func test_command_colour() -> void:
 func test_skill_glow() -> void:
 	var icor := unit("Icor")
 	var aid: Skill = load("res://Skills/first_aid.tres")
-	v(1).learned.append(slot(aid))
+	v(1).learned.append(slot(aid)); v(1).sync_bar()
 	v(1).hotbar[1] = aid
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(1, 6), v(3): Vector2i(0, 3), v(4): Vector2i(4, 3), icor: Vector2i(9, 0)})
 	var h := await hud(v(1))
@@ -474,7 +474,7 @@ func test_skill_glow() -> void:
 func test_area_glow() -> void:
 	var solar: Skill = load("res://Skills/solar.tres")
 	v(1).wisdom = 40  # Solar's reach is its wis mod
-	v(1).learned.append(slot(solar))
+	v(1).learned.append(slot(solar)); v(1).sync_bar()
 	v(1).hotbar[1] = solar
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(4, 4), v(3): Vector2i(4, 3), v(4): Vector2i(2, 7)})
@@ -550,7 +550,7 @@ func test_command_glow_stand_in() -> void:
 	al.wisdom = 16
 	var h := await hud(v(1))
 	ok(h._into_command(al).dest == Vector2i(6, 3), "by charisma, the walk ends 1 tile off")
-	v(1).learned.append(slot(load("res://Skills/word_to_the_wise.tres"), 2))
+	v(1).learned.append(slot(load("res://Skills/word_to_the_wise.tres"), 2)); v(1).sync_bar()
 	ok(h.command.reach_for(al) == 4 and h._into_command(al).dest == Vector2i(3, 3),
 			"by wisdom (reach 4), it ends 3 tiles sooner")
 	h.free()
@@ -813,7 +813,7 @@ func test_skills_screen() -> void:
 
 func test_snare_ui() -> void:
 	var snare: Skill = load("res://Skills/snare.tres")
-	v(1).learned.append(slot(snare, 2))
+	v(1).learned.append(slot(snare, 2)); v(1).sync_bar()
 	v(1).hotbar[1] = snare
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 6)})
 	var h := await hud(v(1))
@@ -934,7 +934,7 @@ func test_check_odds() -> void:
 	var haluca: Skill = load("res://Skills/haluca.tres")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).charisma = 20
-	v(1).learned.append(slot(haluca, 1))
+	v(1).learned.append(slot(haluca, 1)); v(1).sync_bar()
 	v(1).refresh()
 	v(3).wisdom = 1
 	var h := await hud(v(1))
@@ -959,8 +959,8 @@ func test_forecast_bar_and_sight() -> void:
 	var down: Skill = load("res://Skills/level_down.tres")
 	var hide: Skill = load("res://Skills/hide.tres")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(down, 2))
-	v(1).learned.append(slot(hide, 1))
+	v(1).learned.append(slot(down, 2)); v(1).sync_bar()
+	v(1).learned.append(slot(hide, 1)); v(1).sync_bar()
 	v(1).charisma = 20
 	v(1).refresh()
 	var h := await hud(v(1))
@@ -1141,7 +1141,7 @@ func test_typed_slot_bar() -> void:
 
 func test_hide_ui() -> void:
 	var hide: Skill = load("res://Skills/hide.tres")
-	v(1).learned.append(slot(hide))
+	v(1).learned.append(slot(hide)); v(1).sync_bar()
 	v(1).hotbar[1] = hide
 	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
 	var h := await hud(v(1))
@@ -1160,7 +1160,7 @@ func test_hide_ui() -> void:
 
 func test_self_evaluation_ui() -> void:
 	var clever: Skill = load("res://Skills/clever_disguise.tres")
-	v(1).learned.append(slot(clever))
+	v(1).learned.append(slot(clever)); v(1).sync_bar()
 	v(1).hotbar[1] = clever
 	stage(lancin, {v(1): Vector2i(1, 1), v(3): Vector2i(8, 6)})
 	var h := await hud(v(1))
@@ -1171,7 +1171,7 @@ func test_self_evaluation_ui() -> void:
 	var icons := h.effect_icons(v(1))
 	ok(icons.size() == 1 and icons[0][0] == "CD" and icons[0][1] == HUD.FRIEND and icons[0][3] == "" and "Clever Disguise\nTrickery: +1 · 2 turns left" in icons[0][2],
 			"an icon for the disguise, with no roll on it (%s)" % [icons])
-	v(1).learned.append(slot(load("res://Skills/self_evaluation.tres")))
+	v(1).learned.append(slot(load("res://Skills/self_evaluation.tres"))); v(1).sync_bar()
 	v(1).refresh()
 	var floats := h.overlay.top.get_child_count()
 	h.use_slot(1)
@@ -1233,7 +1233,7 @@ func test_default_orders() -> void:
 	for i in ally.hotbar.size():
 		ally.hotbar[i] = null
 	if ally.rank(strike) == 0:
-		ally.learned.append(slot(strike))
+		ally.learned.append(slot(strike)); ally.sync_bar()
 	ally.hotbar[0] = strike
 	stage(lancin, {u: Vector2i(2, 2), ally: Vector2i(2, 3), icor: Vector2i(3, 3)})
 	var h := await hud(u)
@@ -1279,7 +1279,7 @@ func test_layer_pane() -> void:
 func test_hover_rows() -> void:
 	var al := unit("Alabaster")
 	var aid: Skill = load("res://Skills/first_aid.tres")
-	v(1).learned.append(slot(aid))
+	v(1).learned.append(slot(aid)); v(1).sync_bar()
 	v(1).hotbar[1] = aid
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(2, 3), al: Vector2i(6, 3), v(3): Vector2i(4, 5), v(4): Vector2i(9, 0)})
 	v(1).charisma = 14  # orders reach 2 tiles
@@ -1422,7 +1422,7 @@ func test_help_order_reads_restores() -> void:
 	u.charisma = 10
 	for i in u.hotbar.size():
 		u.hotbar[i] = null
-	u.learned.append(slot(heal, 1))
+	u.learned.append(slot(heal, 1)); u.sync_bar()
 	u.hotbar[0] = heal
 	stage(lancin, {v(1): Vector2i(2, 2), u: Vector2i(2, 3), v(3): Vector2i(8, 1)})
 	u.refresh()
@@ -1502,7 +1502,7 @@ func test_band_rows() -> void:
 		spans.append(load("res://Skills/strike.tres").duplicate())
 		spans[-1].name = "Span %d ??" % n
 		spans[-1].tags = spans[-1].tags + ([[&"", &"", &"rare", &"epic"][n]] as Array[StringName])
-		u.learned.append(slot(spans[-1]))
+		u.learned.append(slot(spans[-1])); u.sync_bar()
 	u.get_equipped()
 	for i in u.bar_size():
 		u.bar_clear(i)

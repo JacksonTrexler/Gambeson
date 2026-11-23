@@ -50,5 +50,5 @@ func test_live_reranking() -> void:
 	ok(u.base_rank(blow) == 5, "+2 for a while: the same 5 points buy V")
 	var plain := b.starter({faction = lancin, role = load("res://Roles/fighter.tres"), name = "Plain"})
 	b.get_node("Units").add_child(plain)
-	plain.learned.append(slot(blow, 3))
+	plain.learned.append(slot(blow, 3)); plain.sync_bar()
 	ok(plain.affinity(blow) == 0 and plain.base_rank(blow) == 3 and plain.raise_cost(blow) == 10, "without Affinity, nothing changes: rank III, IV for 10")

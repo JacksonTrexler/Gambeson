@@ -71,7 +71,7 @@ func test_stoic_holds() -> void:
 
 
 func test_helpful_tends() -> void:
-	v(3).learned.append(slot(renew, 1))
+	v(3).learned.append(slot(renew, 1)); v(3).sync_bar()
 	v(3).refresh()
 	stage(nemes, {v(1): Vector2i(1, 6), v(3): Vector2i(8, 2), v(4): Vector2i(8, 7)})
 	v(4).hp = 2
@@ -81,7 +81,7 @@ func test_helpful_tends() -> void:
 
 
 func test_aggressive_heals_last() -> void:
-	v(1).learned.append(slot(renew, 1))
+	v(1).learned.append(slot(renew, 1)); v(1).sync_bar()
 	v(1).strength = 40
 	v(1).refresh()
 	stage(lancin, {v(1): Vector2i(4, 4), v(2): Vector2i(4, 5), v(3): Vector2i(5, 4)})
@@ -192,7 +192,7 @@ func test_vindictive_grudge() -> void:
 func test_flirty_supports_fancied() -> void:
 	var buff: Skill = load("res://Skills/intervention.tres").duplicate()
 	buff.effects = [effect("mitigate", 0.2)] as Array[Effect]
-	v(3).learned.append(slot(buff))
+	v(3).learned.append(slot(buff)); v(3).sync_bar()
 	v(3).refresh()
 	v(2).faction = nemes
 	stage(nemes, {v(1): Vector2i(1, 8), v(2): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(6, 3)})
@@ -222,5 +222,5 @@ func test_flirty_supports_fancied() -> void:
 	v(3).timed.erase(recon)
 	v(3).bio = null
 	v(2).faction = lancin
-	v(3).learned.pop_back()
+	v(3).learned.pop_back(); v(3).sync_bar()
 	v(3).refresh()

@@ -41,7 +41,7 @@ func test_capstone_table() -> void:
 				for s in r.skills():
 					if s != cap and not s.stub and u.tier(s) < u.tier(cap):
 						roomy(u)
-						u.learned.append(slot(s))
+						u.learned.append(slot(s)); u.sync_bar()
 			ok(u.missing(cap) == "" and u.unlock(cap), "%s; learned midway up its root (%s, tier %d)" % [who, u.missing(cap), u.tier(cap)])
 			var guest: SkillTab
 			var probe: Skill
@@ -63,9 +63,9 @@ func test_acceptance() -> void:
 	ok(u.tier(acceptance) == 10 and acceptance.max_rank == 5, "Acceptance: tier 10")
 	ok(u.pick(u.role.choices[0], God.of(&"hogel").own), "Hogel its patron")
 	var before := u.affinity(humble)
-	u.learned.append(slot(acceptance, 5))
+	u.learned.append(slot(acceptance, 5)); u.sync_bar()
 	ok(u.affinity(humble) == before + 1, "Acceptance V: a stack on Hogel's tree")
-	u.learned.append(slot(bargaining, 5))
+	u.learned.append(slot(bargaining, 5)); u.sync_bar()
 	ok(u.affinity(humble) == before + 2, "with Bargaining: two stacks")
 	ok(acceptance.describe(2) != "", "it says what it does: %s" % acceptance.describe(2))
 
@@ -80,7 +80,7 @@ func test_bargaining() -> void:
 	ok(u.pick(patron, hogel) and u.pick_missing(flex, elmon) == "Learn Bargaining first", "Hogel its patron; Flex waits on Bargaining")
 	var humble := sk("humble")
 	var before := u.affinity(humble)
-	u.learned.append(slot(bargaining, 1))
+	u.learned.append(slot(bargaining, 1)); u.sync_bar()
 	ok(u.affinity(humble) == before + (1 if u.tier(humble) <= 1 else 0), "Bargaining I: a stack on Hogel's tier 1 skills")
 	u.learned[-1].rank = 5
 	ok(u.affinity(humble) == before + 1 and u.affinity(sk("analysis_dialysis")) == 0, "Bargaining V: Humble eased; Elmon's tree isn't open to it")
@@ -90,6 +90,6 @@ func test_bargaining() -> void:
 			"the other slot a pact with Elmon: his tree opens, no penalty, Bargaining's stack on it too (every patron tree it holds)")
 	ok(u.pick_missing(flex, hogel) == "Picked 2 of 2" and u.burned(hogel) == 1, "both slots used")
 	var w := make(warlock)
-	w.learned.append(slot(bargaining, 1))
+	w.learned.append(slot(bargaining, 1)); w.sync_bar()
 	ok(w.pick(patron, elmon) and w.pick(flex, elmon) and w.pick(flex, elmon) and w.burned(elmon) == 2, "both slots burned into Elmon: two stacks")
 	ok(bargaining.describe(2).contains("Patron"), "it says what it does: %s" % bargaining.describe(2))

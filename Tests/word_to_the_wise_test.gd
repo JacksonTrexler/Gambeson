@@ -12,7 +12,7 @@ func test_word_to_the_wise() -> void:
 	v(1).charisma = 8  # -1
 	v(1).wisdom = 18  # +4
 	v(2).wisdom = 10  # +0
-	v(1).learned.append(slot(word_to_the_wise, 2))
+	v(1).learned.append(slot(word_to_the_wise, 2)); v(1).sync_bar()
 	ok(c.cha_for(v(2)) == 2 and c.slots(v(2)) == 2, "wis +4 for cha -1, but the ally's wis +0 + rank II bounds it: +2")
 	v(2).wisdom = 16  # +3
 	ok(c.cha_for(v(2)) == 4, "a wiser ally (+3 + 2): the leader's whole wis +4")

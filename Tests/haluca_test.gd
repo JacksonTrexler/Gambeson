@@ -10,7 +10,7 @@ var haluca: Skill = load("res://Skills/haluca.tres")
 
 func caster() -> void:
 	v(3).charisma = 20  # mod 5: range 5 + rank, 5 + rank turns
-	v(3).learned.append(slot(haluca, 1))
+	v(3).learned.append(slot(haluca, 1)); v(3).sync_bar()
 	v(3).refresh()
 
 

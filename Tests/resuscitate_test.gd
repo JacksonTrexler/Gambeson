@@ -9,8 +9,8 @@ var tenacity: Skill = load("res://Skills/tenacity.tres")
 
 
 func test_resuscitate() -> void:
-	v(1).learned.append(slot(resuscitate, 2))
-	v(2).learned.append(slot(tenacity, 3))
+	v(1).learned.append(slot(resuscitate, 2)); v(1).sync_bar()
+	v(2).learned.append(slot(tenacity, 3)); v(2).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	soak(v(2), 100)
@@ -29,9 +29,9 @@ func test_resuscitate() -> void:
 
 
 func test_reach() -> void:
-	v(1).learned.append(slot(resuscitate, 1))
-	v(2).learned.append(slot(tenacity, 3))
-	v(3).learned.append(slot(tenacity, 3))
+	v(1).learned.append(slot(resuscitate, 1)); v(1).sync_bar()
+	v(2).learned.append(slot(tenacity, 3)); v(2).sync_bar()
+	v(3).learned.append(slot(tenacity, 3)); v(3).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(7, 3), v(3): Vector2i(4, 4)})
 	v(1).refresh()
 	v(2).damage(999)

@@ -65,7 +65,7 @@ func test_hud_signs() -> void:
 	roomy(v(1))
 	roomy(v(2))
 	for u in [v(1), v(2)]:
-		u.learned.append(slot(favour_, 1))
+		u.learned.append(slot(favour_, 1)); u.sync_bar()
 		u.refresh()
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5)})
 	var h := await hud(v(1))
@@ -130,7 +130,7 @@ func test_rounded_heals_and_log() -> void:
 	ok(heard.map(func(g): return [g.hp, g.rounded]) == [[5, 1], [4, -1]], "a potion's 15%% of 33 (4.95): lucky 5 (up), unlucky 4 (down): %s" % [heard])
 	heard.clear()
 	var aid := sk("first_aid")
-	v(2).learned.append(slot(aid, 1))
+	v(2).learned.append(slot(aid, 1)); v(2).sync_bar()
 	v(1).hp = 1
 	v(2).wisdom = 16  # +3, dexterity's mod odd or even: nudge to an odd sum so the split leaves a half
 	while int(aid.heal_raw(v(2)) * 2.0) % 2 == 0 and v(2).wisdom < 30:

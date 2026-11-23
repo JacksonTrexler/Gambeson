@@ -26,7 +26,7 @@ func test_move() -> void:
 
 
 func test_with_stamina() -> void:
-	v(1).learned.append(slot(move, 2))
+	v(1).learned.append(slot(move, 2)); v(1).sync_bar()
 	duel(stamina)
 	v(1).set_store(pool, v(1).pools()[pool])
 	var was := v(1).store(pool)
@@ -37,7 +37,7 @@ func test_with_stamina() -> void:
 
 
 func test_adventurer() -> void:
-	v(1).learned.append(slot(move, 1))
+	v(1).learned.append(slot(move, 1)); v(1).sync_bar()
 	duel(field_experience)
 	var before := v(1).move_left()
 	ok(not v(1).pools().has(pool) and b.cast(v(1), move, v(1)) and v(1).energy == 9, "no Stamina: Energy pays")
@@ -51,7 +51,7 @@ func test_adventurer() -> void:
 # docs/plans/ai-support-2.md. The AI casts Move when its foe is out of reach on foot but within what Move adds,
 # and weighs what the payment would give (Behaviour.strides(): doubled paid with Stamina) - and so strikes.
 func test_ai_stretches() -> void:
-	v(1).learned.append(slot(move, 1))
+	v(1).learned.append(slot(move, 1)); v(1).sync_bar()
 	var mv := int(v(1).stat(&"movement"))
 	var cell := Vector2i(1, 3)
 	stage(lancin, {v(1): cell, v(3): cell + Vector2i(mv + 3, 0)})  # reach 1.x: mv + 2 tiles to walk, 2 over

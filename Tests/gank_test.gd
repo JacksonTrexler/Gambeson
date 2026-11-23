@@ -7,7 +7,7 @@ var gank: Skill = load("res://Skills/gank.tres")
 
 
 func ganker(r := 1) -> void:
-	v(1).learned.append(slot(gank, r))
+	v(1).learned.append(slot(gank, r)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(1, 1)})
 	v(1).refresh()
@@ -21,8 +21,8 @@ func test_backed() -> void:
 	ok(b.cast(v(1), gank, v(3)), "an ally beside it: it can")
 	b.move(v(2), Vector2i(7, 3))
 	ok(not b.cast(v(1), gank, v(3)), "2 tiles off at rank I: too far")
-	v(1).learned.clear()
-	v(1).learned.append(slot(gank, 2))
+	v(1).learned.clear(); v(1).sync_bar()
+	v(1).learned.append(slot(gank, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(b.cast(v(1), gank, v(3)), "...in reach at rank II")
 
@@ -49,8 +49,8 @@ func test_who() -> void:
 
 func test_ai() -> void:
 	ganker()
-	v(1).learned.clear()
-	v(1).learned.append(slot(gank, 1))
+	v(1).learned.clear(); v(1).sync_bar()
+	v(1).learned.append(slot(gank, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var log: Array[String] = []
 	var reads := AI.reads_from({v(3): b.read(v(1), v(3))})

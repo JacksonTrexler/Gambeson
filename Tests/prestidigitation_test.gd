@@ -6,7 +6,7 @@ var presti: Skill = load("res://Skills/prestidigitation.tres")
 
 
 func test_prestidigitation() -> void:
-	v(1).learned.append(slot(presti, 2))
+	v(1).learned.append(slot(presti, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3)})
 	v(1).charisma = 14  # mod 2
 	var left := v(2).ap_for(&"move")

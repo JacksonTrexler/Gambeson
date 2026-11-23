@@ -36,21 +36,21 @@ func test_tree() -> void:
 
 func test_turtle_tactics() -> void:
 	v(1).armor = null
-	v(1).learned.append(slot(turtle, 3))
+	v(1).learned.append(slot(turtle, 3)); v(1).sync_bar()
 	ok(v(1).check_bonus(&"dexterity", &"defensive") == 6 and v(1).check_bonus(&"wisdom", &"defensive") == 6, "rank III: +6 to defensive checks, any stat, no armor needed")
 	ok(v(1).check_bonus(&"strength", &"offensive") == -3, "-3 to offensive ones")
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(3).armor = bulwark()
 	v(1).strength = 50
 	var with := Battle.hit_chance(v(1), strike, v(3))
-	v(1).learned.clear()
+	v(1).learned.clear(); v(1).sync_bar()
 	ok(with < Battle.hit_chance(v(1), strike, v(3)), "attack rolls are offensive: they take the penalty")
 	ok("Checks: +4 to defensive checks" in turtle.describe(2) and "Checks: -2 to offensive checks" in turtle.describe(2), turtle.describe(2))
 
 
 func test_shields_up() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(6, 3), v(4): Vector2i(2, 3)})
-	v(1).learned.append(slot(shields_up, 2))
+	v(1).learned.append(slot(shields_up, 2)); v(1).sync_bar()
 	v(1).refresh()
 	soak(v(1), 1000)
 	var plain := v(1).hit(100, [&"physical"] as Array[StringName], v(3))
@@ -71,7 +71,7 @@ func test_obstruct() -> void:
 	v(1).refresh()
 	v(1).ap[0].amount = 100.0  # enough to walk the whole way, beside it or not
 	var bare: float = b.walk(v(1), Vector2i(8, 2), true).costs.reduce(func(s, x): return s + x, 0.0)
-	v(3).learned.append(slot(obstruct, 2))
+	v(3).learned.append(slot(obstruct, 2)); v(3).sync_bar()
 	var extra := maxf(0.5 * b.pass_cost(v(1), v(3)), 0.5 * v(3).mod(&"constitution") / 10.0) * 1.5
 	ok(is_equal_approx(b.obstruction(v(1), Vector2i(4, 2)), extra), "beside it: the larger of half its size penalty and half its con mod / 10, +50%% at rank II (%s)" % b.obstruction(v(1), Vector2i(4, 2)))
 	ok(b.obstruction(v(1), Vector2i(2, 2)) == 0.0, "not beside it: nothing")
@@ -82,7 +82,7 @@ func test_obstruct() -> void:
 
 func test_interdict() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(interdict, 2))
+	v(1).learned.append(slot(interdict, 2)); v(1).sync_bar()
 	v(1).strength = 16  # str mod 3
 	v(1).energy = 10
 	v(1).refresh()
@@ -104,7 +104,7 @@ func test_interdict() -> void:
 
 func test_jugular_crits() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(jugular, 1))
+	v(1).learned.append(slot(jugular, 1)); v(1).sync_bar()
 	v(1).strength = 50  # str mod 20: hits whatever the worse d20
 	v(1).energy = 50
 	v(1).weapon = null
@@ -127,7 +127,7 @@ func test_jugular_recasts() -> void:
 	j.disadvantage = false  # a natural 20 1 in 20, to see it often
 	j.cost = 0
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(j, 1))
+	v(1).learned.append(slot(j, 1)); v(1).sync_bar()
 	soak(v(3), 1000000)
 	var rolls := []
 	b.attacked.connect(func(_c, _t, d20, _total, _def): rolls.append(d20))
@@ -139,7 +139,7 @@ func test_jugular_recasts() -> void:
 	# Tagged friction (Battle.loops()): every hit a critical (crit range 2+), its recasts past the first (rank I)
 	# roll at disadvantage, worse each time - so the chain is tamped down well before RECAST_LIMIT.
 	var keen: Skill = load("res://Skills/backstab.tres")
-	v(1).learned.append(slot(keen, 18))
+	v(1).learned.append(slot(keen, 18)); v(1).sync_bar()
 	var seen := {}  # use -> [two dice, ...] in order
 	b.attack_rolled.connect(func(_c, _t, r: Check.Roll): seen.get_or_add(r.use, []).append(r.other != 0))
 	for i in 20:
@@ -151,7 +151,7 @@ func test_jugular_recasts() -> void:
 
 func test_defend_order() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(7, 3), v(4): Vector2i(1, 6)})
-	v(1).learned.append(slot(shields_up, 1))
+	v(1).learned.append(slot(shields_up, 1)); v(1).sync_bar()
 	v(1).hotbar = [shields_up]
 	v(1).refresh()
 	ok(v(1).intent_skill(&"defensive") == shields_up, "Shields Up! is a defensive move")

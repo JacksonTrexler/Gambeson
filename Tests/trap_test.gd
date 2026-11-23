@@ -15,7 +15,7 @@ func al() -> Unit:
 
 
 func test_lay() -> void:
-	v(1).learned.append(slot(snare, 2))
+	v(1).learned.append(slot(snare, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(1, 3), al(): Vector2i(6, 6), v(3): Vector2i(8, 6)})
 	ok(b.cast_at(v(1), snare, AT), "a snare set within reach")
 	var t := b.terrain(AT)
@@ -29,7 +29,7 @@ func test_lay() -> void:
 
 
 func test_spring() -> void:
-	v(1).learned.append(slot(snare, 2))
+	v(1).learned.append(slot(snare, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
 	b.cast_at(v(1), snare, AT)
 	b.end_turn()
@@ -47,8 +47,8 @@ func test_stays_hidden() -> void:
 
 
 func test_hazard_expert() -> void:
-	v(1).learned.append(slot(snare, 1))
-	v(1).learned.append(slot(hazard))
+	v(1).learned.append(slot(snare, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(hazard)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(2): Vector2i(0, 3), al(): Vector2i(6, 6), v(3): Vector2i(8, 0)})
 	b.cast_at(v(1), snare, AT)
 	ok(b.read(v(2), AT).trap == true, "word carries twice as far: 2 tiles")

@@ -20,8 +20,8 @@ func unit(n: String) -> Unit:
 
 
 func test_target_gating() -> void:
-	v(1).learned.append(slot(resuscitate, 2))
-	v(2).learned.append(slot(tenacity, 3))
+	v(1).learned.append(slot(resuscitate, 2)); v(1).sync_bar()
+	v(2).learned.append(slot(tenacity, 3)); v(2).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	v(1).refresh()
 	var h := await hud(v(1))
@@ -36,7 +36,7 @@ func test_target_gating() -> void:
 
 
 func test_borrowed_chip() -> void:
-	v(3).learned.append(slot(borrowed, 2))
+	v(3).learned.append(slot(borrowed, 2)); v(3).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 6)})
 	v(3).refresh()
 	soak(v(3), 100)
@@ -68,7 +68,7 @@ func test_switch_marked() -> void:
 
 
 func test_downed_lies() -> void:
-	v(2).learned.append(slot(tenacity, 3))
+	v(2).learned.append(slot(tenacity, 3)); v(2).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(8, 6)})
 	var sat := func(u: Unit) -> float: return u.sprite.material.get_shader_parameter(&"saturation")
 	ok(v(2).sprite.rotation == 0.0 and sat.call(v(2)) == 1.0, "upright, full colour")
@@ -84,8 +84,8 @@ func test_downed_lies() -> void:
 func test_every_reserve() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var u := v(1)
-	u.learned.append(slot(stamina))
-	u.learned.append(slot(focus))
+	u.learned.append(slot(stamina)); u.sync_bar()
+	u.learned.append(slot(focus)); u.sync_bar()
 	u.reserves[sweet] = 4
 	u.energy = 0
 	u.set_store(stamina_pool, 3)
@@ -104,7 +104,7 @@ func test_every_reserve() -> void:
 	ok(h.overlay._bar_for(u, held[0]) == u.reserve_bar and h.overlay._bar_for(u, held[1]) == u.second_bar and h.overlay._bar_for(u, held[2]) == u.more_bars[0], "the forecast maps a drain to each reserve's bar, the third too")
 	ok(h.overlay._bar_for(u, &"ap") == null and h.overlay._bar_for(u, &"hp") == u.hp_bar, "AP has no bar: pips")
 	h.free()
-	u.learned.clear()
+	u.learned.clear(); u.sync_bar()
 	u.reserves.erase(sweet)
 	u.appear(null)
 	ok(not u.more_bars[0].visible, "gone with the reserve")

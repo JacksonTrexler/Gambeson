@@ -11,7 +11,7 @@ var clairvoyance: Skill = load("res://Skills/clairvoyance.tres")
 
 
 func learn(r := 1) -> void:
-	v(1).learned.append(slot(clairvoyance, r))
+	v(1).learned.append(slot(clairvoyance, r)); v(1).sync_bar()
 	v(1).refresh()
 
 
@@ -98,7 +98,7 @@ func test_channel_ends() -> void:
 func test_rule() -> void:
 	setup(Vector2i(5, 2), Vector2i(8, 6))
 	var meander: Skill = load("res://Skills/meander.tres")
-	v(1).learned.append(slot(meander, 1))
+	v(1).learned.append(slot(meander, 1)); v(1).sync_bar()
 	v(1).exhaustion.uses[clairvoyance] = 5.0
 	ok(b.cast(v(1), clairvoyance, v(1)) and not v(1).idle(), "cast: AP spent")
 	b.end_turn()

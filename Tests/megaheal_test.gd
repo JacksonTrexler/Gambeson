@@ -11,7 +11,7 @@ var eros: SkillRoot = load("res://Trees/eros.tres")
 
 # What s at rank r heals v(2), cast by v(1), over 80 seeds: [lowest, highest].
 func spread(s: Skill, r: int) -> Array:
-	v(1).learned.append(slot(s, r))
+	v(1).learned.append(slot(s, r)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3)})
 	v(2).constitution = 40  # no Burnout loss in the way
 	var lo := 9999
@@ -40,12 +40,12 @@ func test_dice() -> void:
 	for row: Array in [[heal, 3, 24, 10, "3d8"], [megaheal, 6, 48, 15, "3d8"]]:
 		var got := spread(row[0], 2)  # n d8 + wis mod + 2
 		ok(got[0] >= row[1] + m + 2 and got[1] <= row[2] + m + 2 and got[1] - got[0] >= row[3], "%s II: %dd8 + wis mod + 2 (%s)" % [row[0].name, row[1], got])
-		v(1).learned.pop_back()
+		v(1).learned.pop_back(); v(1).sync_bar()
 	ok(heal.describe(2).contains("3d8") and megaheal.describe(1).contains("3d8"), "%s, %s" % [heal.describe(2), megaheal.describe(1)])
 
 
 func test_burnout() -> void:
-	v(1).learned.append(slot(megaheal, 3))
+	v(1).learned.append(slot(megaheal, 3)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(5, 3)})
 	v(2).constitution = -20  # fails every check
 	v(2).max_hp = 300

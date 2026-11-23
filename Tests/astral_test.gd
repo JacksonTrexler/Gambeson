@@ -147,7 +147,7 @@ func test_smite_eros() -> void:
 	var pip := b.starter({faction = lancin, role = load("res://Roles/paladin.tres"), name = "Pip"})
 	b.get_node("Units").add_child(pip)
 	stage(lancin, {pip: Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	pip.learned.append(slot(smite))
+	pip.learned.append(slot(smite)); pip.sync_bar()
 	pip.refresh()
 	var tags := Battle.hit_tags(pip, smite)
 	ok(&"love" in tags and &"energy" not in tags, "a Paladin of Eros: Smite's damage is love (%s)" % [tags])

@@ -16,7 +16,7 @@ func test_string_theory() -> void:
 	u.intelligence = 16
 	var cha: Array[StringName] = [&"cha"]
 	ok(u.mod(&"charisma", cha) == -1, "without it, cha -1 on a cha-tagged skill")
-	u.learned.append(slot(string_theory, 5))
+	u.learned.append(slot(string_theory, 5)); u.sync_bar()
 	ok(u.mod(&"charisma", cha) == 3 and u.mod(&"charisma") == -1 and u.mod(&"charisma", [&"specialist"] as Array[StringName]) == -1, "rank V: its int mod (+3) on a cha-tagged skill, plain cha anywhere else")
 	u.charisma = 18
 	ok(u.mod(&"charisma", cha) == 4, "the higher of the two: cha 18 stays +4")
@@ -27,7 +27,7 @@ func test_conductor() -> void:
 	var c := Command.new(b, v(1))
 	v(1).charisma = 12  # +1
 	var plain := [c.ally_cap(), c.order_cap(), c.reach(), c.party_reach()]
-	v(1).learned.append(slot(conductor, 2))
+	v(1).learned.append(slot(conductor, 2)); v(1).sync_bar()
 	ok([c.ally_cap(), c.order_cap(), c.reach(), c.party_reach()] == plain, "not rested: its command is as it was")
 	v(1).rested_turns = 1
 	ok(c.ally_cap() == plain[0] + 2 and c.order_cap() == plain[1] + 2 and c.reach() == plain[2] + 2 and c.party_reach() == (plain[2] + 2) * 2.0, "rested last turn: + rank to allies, orders and reach (the party hears from twice as far)")
@@ -36,7 +36,7 @@ func test_conductor() -> void:
 
 func test_harmony() -> void:
 	var lead := v(1)
-	lead.learned.append(slot(harmony, 2))
+	lead.learned.append(slot(harmony, 2)); lead.sync_bar()
 	lead.charisma = 14  # reach 2
 	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 4), b.get_node("Units/Alabaster"): Vector2i(9, 3)})
 	var far: Unit = b.get_node("Units/Alabaster")
@@ -59,11 +59,11 @@ func test_harmony() -> void:
 
 func test_first_chair() -> void:
 	var lead := v(1)
-	lead.learned.append(slot(harmony, 3))
+	lead.learned.append(slot(harmony, 3)); lead.sync_bar()
 	lead.charisma = 14
 	var power := 80
 	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 2)})
-	v(2).learned.append(slot(strike, 1))
+	v(2).learned.append(slot(strike, 1)); v(2).sync_bar()
 	soak(v(3))
 	var seen: Array[int] = []
 	var note := func(c: Unit, _t: Unit, _d: int, _tot: int, _def: int): seen.append(b.impact_of(c))
@@ -84,8 +84,8 @@ func test_first_chair() -> void:
 	# ...and it lands: the same rolls with and without being first, in each place a use's impact is counted
 	var kick := sk("kick")
 	var aid := sk("first_aid")
-	v(2).learned.append(slot(kick, 1))
-	v(2).learned.append(slot(aid, 1))
+	v(2).learned.append(slot(kick, 1)); v(2).sync_bar()
+	v(2).learned.append(slot(aid, 1)); v(2).sync_bar()
 	for pair in [[strike, v(3)], [kick, v(3)]]:
 		var a := _blows(v(2), pair[0], pair[1], true)
 		var n := _blows(v(2), pair[0], pair[1], false)
@@ -106,12 +106,12 @@ func test_first_chair() -> void:
 # blow, once it is no longer first or not in range it doesn't, and a use under way reports what it really carries.
 func test_first_chair_forecast() -> void:
 	var lead := v(1)
-	lead.learned.append(slot(harmony, 3))
+	lead.learned.append(slot(harmony, 3)); lead.sync_bar()
 	lead.charisma = 14
 	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 2), b.get_node("Units/Alabaster"): Vector2i(9, 3)})
-	v(2).learned.append(slot(strike, 1))
+	v(2).learned.append(slot(strike, 1)); v(2).sync_bar()
 	var far: Unit = b.get_node("Units/Alabaster")
-	far.learned.append(slot(strike, 1))
+	far.learned.append(slot(strike, 1)); far.sync_bar()
 	var plain := Battle.damage_range(v(2), strike, v(3))  # (no battle: no passives to ask)
 	var first := Battle.damage_range(v(2), strike, v(3), b)
 	ok(first.lo == plain.lo + 3 and first.hi == plain.hi + 3 and first.avg == plain.avg + 3, "first to act, in range: + rank on the span (%s against %s)" % [first, plain])
@@ -126,7 +126,7 @@ func test_first_chair_forecast() -> void:
 
 func test_cadence_shown() -> void:
 	var lead := v(1)
-	lead.learned.append(slot(harmony, 2))
+	lead.learned.append(slot(harmony, 2)); lead.sync_bar()
 	lead.charisma = 14
 	stage(lancin, {lead: Vector2i(4, 3), v(2): Vector2i(5, 3), v(3): Vector2i(5, 4)})
 	var signs := []

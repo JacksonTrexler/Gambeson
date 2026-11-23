@@ -61,7 +61,7 @@ func test_overcome() -> void:
 func test_scepter() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(1, 1)})
 	v(3).charisma = 20
-	v(3).learned.append(slot(brainfog, 1))
+	v(3).learned.append(slot(brainfog, 1)); v(3).sync_bar()
 	roomy(v(3))
 	wear(v(3), scepter, 3)
 	ok(v(3).equipped(load("res://Skills/coyote_scepter.tres")), "the Scepter's skill is on")
@@ -79,7 +79,7 @@ func test_scepter() -> void:
 # buff is worth less than on one that is not (statuses read at recon 3), and less again for each disabling already held; Strike's price is unchanged.
 func test_ai_weighs_a_postponed_disable() -> void:
 	stage(nemes, {v(3): Vector2i(5, 1), v(1): Vector2i(1, 1)})
-	v(3).learned.append(slot(brainfog, 1))
+	v(3).learned.append(slot(brainfog, 1)); v(3).sync_bar()
 	roomy(v(3))
 	sharp(v(3))
 	v(3).refresh()

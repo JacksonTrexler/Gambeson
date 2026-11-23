@@ -8,7 +8,7 @@ var blunt_bh = preload("res://Behaviours/bludgeon.gd")
 
 
 func test_winded() -> void:
-	v(1).learned.append(slot(bludgeon, 2))
+	v(1).learned.append(slot(bludgeon, 2)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

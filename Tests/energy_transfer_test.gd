@@ -12,7 +12,7 @@ var powerful: Skill = load("res://Skills/powerful.tres")
 
 # v(1) transferring at rank r, sure to hit, at v(3) two tiles off with 30 Energy to take.
 func caster(r := 1) -> void:
-	v(1).learned.append(slot(transfer, r))
+	v(1).learned.append(slot(transfer, r)); v(1).sync_bar()
 	v(1).intelligence = 40
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(1).refresh()
@@ -70,7 +70,7 @@ func test_low_rank() -> void:
 
 func test_powerful() -> void:
 	caster()
-	v(1).learned.append(slot(powerful))
+	v(1).learned.append(slot(powerful)); v(1).sync_bar()
 	ok(v(1).powered(), "Powerful: its Energy is Power")
 	v(1).energy = 3
 	ok(b.cast(v(1), transfer, v(3)), "it lands")

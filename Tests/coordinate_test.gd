@@ -9,7 +9,7 @@ var coordinate: Skill = load("res://Skills/coordinate.tres")
 
 func link(r: int) -> void:
 	if not v(1).learned.any(func(x: Slot): return x.skill == coordinate):
-		v(1).learned.append(slot(coordinate, r))
+		v(1).learned.append(slot(coordinate, r)); v(1).sync_bar()
 	v(1).learned.filter(func(x: Slot): return x.skill == coordinate)[0].rank = r
 	v(1).refresh()
 	ok(b.cast(v(1), coordinate, v(1)), "linked at rank %d" % r)

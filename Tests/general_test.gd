@@ -65,7 +65,7 @@ func test_category_gate() -> void:
 	f.skill_points = 30
 	for s in ["wary"]:
 		f.unlock(sk(s))
-	f.learned.append_array([slot(sk("snare")), slot(sk("hide")), slot(sk("journeyman"), 3)])
+	f.learned.append_array([slot(sk("snare")), slot(sk("hide")), slot(sk("journeyman"), 3)]); f.sync_bar()
 	ok("Specialist" in names(f) and f.missing(sk("synergy")) == "" and f.missing(sk("striking_features")) != "", "a Fighter's Journeyman III: the Specialist tree, up to tier 2")
 	var c := unit_of("cleric")
 	c.skill_points = 5
@@ -124,11 +124,11 @@ func test_stat_adds_to_checks() -> void:
 	var pi := sk("physical_intelligence_check")
 	var mm := sk("muscle_memory")
 	var row := func(rank_pi: int, rank_mm: int) -> int:
-		u.learned.clear()
+		u.learned.clear(); u.sync_bar()
 		if rank_pi:
-			u.learned.append(slot(pi, rank_pi))
+			u.learned.append(slot(pi, rank_pi)); u.sync_bar()
 		if rank_mm:
-			u.learned.append(slot(mm, rank_mm))
+			u.learned.append(slot(mm, rank_mm)); u.sync_bar()
 		return u.check_bonus(&"strength", &"offensive")
 	ok(row.call(1, 0) == 1 and row.call(2, 0) == 2 and row.call(4, 0) == 4 and row.call(5, 0) == 4, "int +4 to str checks, up to rank: I +1, II +2, IV and V +4 (the mod)")
 	ok(row.call(0, 1) == 1 and row.call(0, 3) == 2, "wis +2: Muscle Memory I +1, III +2 (the mod)")
@@ -140,13 +140,13 @@ func test_stat_adds_to_checks() -> void:
 
 func test_exclusive() -> void:
 	var u := unit_of("adventurer")
-	u.learned.append(slot(sk("decisive_strike")))
+	u.learned.append(slot(sk("decisive_strike"))); u.sync_bar()
 	ok(u.missing(sk("brutal_strike")) == "Not with Decisive Strike" and u.missing(sk("elemental_strike")) == "Not with Decisive Strike", "one low-tier Strike upgrade")
 	ok(u.skill_name(sk("strike")) == "Decisive Strike", "Strike goes by its name")
 
 
 func test_foundation() -> void:
-	v(1).learned.append(slot(sk("generalist"), 4))
+	v(1).learned.append(slot(sk("generalist"), 4)); v(1).sync_bar()
 	ok(sk("generalist").pillar() and sk("generalist").foundation(), "a Foundation is a Pillar")
 	var order := v(1).disable_order()
 	ok(order.size() > 2 and order[2] == [sk("generalist")], "rank IV: two slots in from the right (%s)" % [order.map(func(g): return g.map(func(s: Skill): return s.name))])
@@ -157,7 +157,7 @@ func test_foundation() -> void:
 func strike_at(r: int) -> Array:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).strength = 30  # mod 10: nothing misses Defense 2
-	v(1).learned.append(slot(strike, r))
+	v(1).learned.append(slot(strike, r)); v(1).sync_bar()
 	v(3).max_hp = 500
 	v(3).hp = 500
 	var dealt := []
@@ -177,13 +177,13 @@ func test_chain() -> void:
 
 
 func test_strike_out() -> void:
-	v(1).learned.append(slot(sk("strike_out"), 3))
+	v(1).learned.append(slot(sk("strike_out"), 3)); v(1).sync_bar()
 	var got := strike_at(3)
 	ok(got[0].size() == 3 and (got[0][0] == got[0][2] or got[1].has(20)), "Strike Out: no penalty (%s)" % [got[0]])
 
 
 func test_brutal() -> void:
-	v(1).learned.append(slot(sk("brutal_strike"), 2))
+	v(1).learned.append(slot(sk("brutal_strike"), 2)); v(1).sync_bar()
 	v(1).weapon = load("res://Items/broadsword.tres")
 	var got := strike_at(3)
 	ok(got[1].size() == 1, "Brutal Strike: a single attack")
@@ -191,7 +191,7 @@ func test_brutal() -> void:
 
 
 func test_features() -> void:
-	v(1).learned.append(slot(sk("striking_features"), 1))
+	v(1).learned.append(slot(sk("striking_features"), 1)); v(1).sync_bar()
 	v(1).charisma = 16
 	var got := strike_at(2)
 	ok(got[0][0] == 11 + 1 or got[1][0] == 20, "Striking Features I: + cha mod, up to 1, on the first hit (%s)" % [got[0]])
@@ -204,7 +204,7 @@ func test_attack_stat() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var kick := sk("kick")
 	v(3).constitution = 30  # Defense 12: a bigger bonus shows in the odds
-	v(1).learned.append(slot(strike, 1))
+	v(1).learned.append(slot(strike, 1)); v(1).sync_bar()
 	for row in [["striking_features", &"charisma"], ["striking_intellect", &"intelligence"]]:
 		var u := v(1)
 		u.strength = 12
@@ -213,20 +213,20 @@ func test_attack_stat() -> void:
 		var kick0 := u.attack_mod(kick)
 		ok(u.attack_mod(strike) == 1 and u.attack_stat(strike) == &"strength", "%s unequipped: str (+1)" % row[0])
 		var slot_ := slot(sk(row[0]), 1)
-		u.learned.append(slot_)
+		u.learned.append(slot_); u.sync_bar()
 		u.refresh()
 		ok(u.attack_mod(strike) == 4 and u.attack_stat(strike) == row[1], "%s: %s mod (+4) beats str" % [row[0], row[1]])
 		ok(Battle.attack_odds(u, strike, v(3), b)[0] > odds0, "...and the forecast sees it")
 		ok(u.attack_mod(kick) == kick0, "...only for Strikes")
 		u.set(row[1], 8)
 		ok(u.attack_mod(strike) == 1, "%s lower than str: unchanged" % row[1])
-		u.learned.erase(slot_)
+		u.learned.erase(slot_); u.sync_bar()
 		u.refresh()
 		u.set(row[1], 10)
 
 
 func test_record() -> void:
-	v(1).learned.append(slot(sk("record_striker"), 1))
+	v(1).learned.append(slot(sk("record_striker"), 1)); v(1).sync_bar()
 	v(1).intelligence = 40
 	v(3).wisdom = 1
 	var first: Skill = v(3).hotbar[0]
@@ -236,20 +236,20 @@ func test_record() -> void:
 
 
 func test_strike_bang() -> void:
-	v(1).learned.append(slot(sk("strike_bang"), 2))
-	v(1).learned.append(slot(sk("strike_out"), 20))  # nothing stops the chain
+	v(1).learned.append(slot(sk("strike_bang"), 2)); v(1).sync_bar()
+	v(1).learned.append(slot(sk("strike_out"), 20)); v(1).sync_bar()  # nothing stops the chain
 	var got := strike_at(12)
 	ok(got[1].size() >= 12 + 13, "12 hits landed: it strikes again at once, with 1 more - and that use can too, up to 3 times (%d rolls)" % got[1].size())
 
 
 func test_perfect() -> void:
-	v(1).learned.append(slot(sk("strike_bang"), 1))
-	v(1).learned.append(slot(sk("strike_out"), 50))
+	v(1).learned.append(slot(sk("strike_bang"), 1)); v(1).sync_bar()
+	v(1).learned.append(slot(sk("strike_out"), 50)); v(1).sync_bar()
 	var perfect := []
 	b.perfect.connect(func(u: Unit): perfect.append(u))
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).strength = 10
-	v(1).learned.append(slot(strike, 12))
+	v(1).learned.append(slot(strike, 12)); v(1).sync_bar()
 	v(3).max_hp = 5000
 	v(3).hp = 5000
 	v(1).max_hp = 400
@@ -260,7 +260,7 @@ func test_perfect() -> void:
 
 
 func test_elemental() -> void:
-	v(1).learned.append(slot(sk("elemental_strike"), 2))
+	v(1).learned.append(slot(sk("elemental_strike"), 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
 	v(1).element = &"fire"
@@ -271,7 +271,7 @@ func test_elemental() -> void:
 	b.cast(v(1), strike, v(3))
 	ok(v(1).imbued == 1, "a use spent")
 	v(1).imbued = 0
-	v(1).learned.append(slot(sk("elemental_mastery")))
+	v(1).learned.append(slot(sk("elemental_mastery"))); v(1).sync_bar()
 	v(1).element = &""
 	v(1).god = &"luun"
 	ok(sk("elemental_mastery") in v(1).passives and v(1).stat(&"elemental") > 0.0 and v(1).skill_name(strike) == "Strike",

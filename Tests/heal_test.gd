@@ -12,7 +12,7 @@ var snare: Skill = load("res://Skills/snare.tres")
 
 
 func medic(u: Unit, s: Skill, r := 1) -> void:
-	u.learned.append(slot(s, r))
+	u.learned.append(slot(s, r)); u.sync_bar()
 	u.refresh()
 
 
@@ -95,7 +95,7 @@ func test_regen_clears() -> void:
 func test_snare_bleeds() -> void:
 	stage(nemes, {v(3): Vector2i(3, 2), v(1): Vector2i(1, 2), v(2): Vector2i(2, 3), v(4): Vector2i(8, 5)})
 	v(3).dexterity = 14
-	v(3).learned.append(slot(snare, 2))
+	v(3).learned.append(slot(snare, 2)); v(3).sync_bar()
 	v(3).refresh()
 	ok(b.cast_at(v(3), snare, Vector2i(2, 2)), "a snare, laid")
 	b.end_turn()

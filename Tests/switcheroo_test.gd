@@ -6,7 +6,7 @@ var swap: Skill = load("res://Skills/switcheroo.tres")
 
 
 func test_switcheroo() -> void:
-	v(1).learned.append(slot(swap, 2))
+	v(1).learned.append(slot(swap, 2)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), v(2): Vector2i(6, 3), v(3): Vector2i(5, 4)})
 	ok(b.cast(v(1), swap, v(2)) and v(1).cell == Vector2i(6, 3) and v(2).cell == Vector2i(4, 3)
 			and b.unit_at(Vector2i(6, 3)) == v(1) and b.unit_at(Vector2i(4, 3)) == v(2), "an ally: places traded")

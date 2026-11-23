@@ -8,7 +8,7 @@ var peel: Skill = load("res://Skills/peel.tres")
 
 
 func walker(r := 2) -> void:
-	v(1).learned.append(slot(peel, r))
+	v(1).learned.append(slot(peel, r)); v(1).sync_bar()
 	v(1).wisdom = 18  # + its wis mod: the ally's in range from the first step
 	v(1).movement = 9
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(1, 8), v(3): Vector2i(8, 3)})

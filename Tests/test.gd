@@ -120,7 +120,7 @@ static func untuned(id: String) -> Skill:
 # false an ally, v(2). Returns the target. The line most skill tests start with.
 func duel(s: Skill, r := 1, foe := true) -> Unit:
 	var t := v(3) if foe else v(2)
-	v(1).learned.append(slot(s, r))
+	v(1).learned.append(slot(s, r)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(4, 3), t: Vector2i(5, 3)})
 	return t
 

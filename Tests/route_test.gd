@@ -19,7 +19,7 @@ func emblem(word: StringName, scope: StringName, rank := 1) -> Item:
 
 
 func learn(u: Unit, s: Skill, r: int) -> void:
-	u.learned.append(slot(s, r))
+	u.learned.append(slot(s, r)); u.sync_bar()
 	u.bar_place(s, 0)  # a Sigil's skill: the leftmost it fits
 	u.refresh()
 
@@ -398,8 +398,8 @@ func test_reserve_text() -> void:
 	v(1).constitution = 14
 	v(2).constitution = 14
 	for s in [sweet, mana, tenacity]:
-		v(1).learned.append(slot(s, 2))
-	v(2).learned.append(slot(stamina, 2))
+		v(1).learned.append(slot(s, 2)); v(1).sync_bar()
+	v(2).learned.append(slot(stamina, 2)); v(2).sync_bar()
 	v(1).refresh()
 	v(2).refresh()
 	v(1).energy = v(1).max_energy

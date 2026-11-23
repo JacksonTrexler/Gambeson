@@ -15,12 +15,12 @@ var dagger: Item = load("res://Items/dagger.tres")
 # the slot it gives.
 func plated(s: Skill, r: int, worn: Item = null) -> Unit:
 	var u := v(1)
-	u.learned.clear()
+	u.learned.clear(); u.sync_bar()
 	u.plating.clear()
 	u.disabled.clear()
 	u.energy = u.max_energy
 	u.armor = gambeson
-	u.learned.append(slot(s, r))
+	u.learned.append(slot(s, r)); u.sync_bar()
 	roomy(u)
 	u.equip(worn if worn else bulwark(), Unit.plate_slot(s))
 	return u
@@ -56,14 +56,14 @@ func test_slots() -> void:
 	u.disabled.clear()
 	u.bar_clear(u.hotbar.find(scrap_plating))
 	ok(not u.equipped(scrap_plating) and u.defense() == 11, "off the bar: off")
-	u.learned.clear()
+	u.learned.clear(); u.sync_bar()
 	ok(u.plate_slots().is_empty() and u.defense() == 11 and u.get(&"plate_scrap_plating") != null, "unlearned: no slot, but it keeps what it held")
 	u = plated(power_armor, 2)
-	u.learned.append(slot(scrap_plating, 4))
+	u.learned.append(slot(scrap_plating, 4)); u.sync_bar()
 	u.equip(bulwark(), Unit.plate_slot(scrap_plating))
 	ok(u.plate_slots().size() == 2 and u.defense() == 11 + 20 + 4, "both skills: two slots, each by its own rule (%d)" % u.defense())
 	u = v(2)
-	u.learned.append(slot(scrap_plating, 3))
+	u.learned.append(slot(scrap_plating, 3)); u.sync_bar()
 	roomy(u)
 	u.equip(gambeson, Unit.plate_slot(scrap_plating))
 	ok(u.defense() == 3, "armor in the slot and none proper: it is armor, not unarmored (%d)" % u.defense())
@@ -94,7 +94,7 @@ func test_drag() -> void:
 	u.unequip(String(Unit.plate_slot(scrap_plating)))
 	ok(u.armor_drag(&"move") == 2.0 and weight - u.weight() == heavy.heft() and heavy.heft() > 0, "one: 2, and the second's weight gone")
 	u.equip(heavy, Unit.plate_slot(scrap_plating))
-	u.learned.clear()
+	u.learned.clear(); u.sync_bar()
 	ok(u.armor_drag(&"move") == 2.0, "no skill, no slot, no drag")
 	u = plated(power_armor, 1, heavy)
 	u.armor = null
@@ -163,11 +163,11 @@ func test_ai() -> void:
 	var power := v(4)  # (plated() dresses v(1) only)
 	var scrap := v(3)
 	for foe in [power, scrap]:
-		foe.learned.clear()
+		foe.learned.clear(); foe.sync_bar()
 		foe.plating.clear()
 		foe.armor = null
 		soak(foe)
-	power.learned.append(slot(power_armor, 3))
+	power.learned.append(slot(power_armor, 3)); power.sync_bar()
 	power.equip(bulwark(), Unit.plate_slot(power_armor))
 	scrap.armor = bulwark()
 	var me := v(1)
@@ -184,7 +184,7 @@ func test_ai() -> void:
 func test_ai_weighs_tolls() -> void:
 	villagers_only()
 	var u := plated(power_armor, 1)
-	u.learned.append(slot(scrap_plating, 4))
+	u.learned.append(slot(scrap_plating, 4)); u.sync_bar()
 	u.plating.clear()
 	var mid := bulwark()
 	mid.defense = 6

@@ -14,7 +14,7 @@ var metea: Skill = load("res://Skills/metea.tres")
 # v(1) stunning at rank r, sure to hit, at v(3) beside it: sturdy, but with con 1 (mod -5) it can't
 # make the check from rank III (DC 16).
 func stunner(r := 3) -> void:
-	v(1).learned.append(slot(stun, r))
+	v(1).learned.append(slot(stun, r)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(5, 4)})
 	v(1).refresh()

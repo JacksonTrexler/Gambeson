@@ -12,7 +12,7 @@ var shields_up: Skill = load("res://Skills/shields_up.tres")
 
 # v(1) jamming at rank r, sure to hit (dex 40), at v(3) beside it, sturdy, keeping up all it can.
 func jammer(r := 1) -> void:
-	v(1).learned.append(slot(jam, r))
+	v(1).learned.append(slot(jam, r)); v(1).sync_bar()
 	v(1).dexterity = 40
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

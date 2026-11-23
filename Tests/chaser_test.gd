@@ -20,11 +20,11 @@ func _kit(rank: int) -> Array[Skill]:
 		s.ap = 1.0
 		s.cost = 0
 		row.append(s)
-		v(1).learned.append(slot(s, 3))
+		v(1).learned.append(slot(s, 3)); v(1).sync_bar()
 	row[0].chain = false
 	row[1].chain = false
-	v(1).learned.append(slot(chaser, rank))
-	v(1).learned.append(slot(sk("backstab"), 18))
+	v(1).learned.append(slot(chaser, rank)); v(1).sync_bar()
+	v(1).learned.append(slot(sk("backstab"), 18)); v(1).sync_bar()
 	v(1).hotbar.assign([chaser, sk("backstab")] + row)  # passives among them don't count
 	v(1).strength = 30
 	v(1).weapon = null
@@ -75,7 +75,7 @@ func test_ai_picks_the_best_in_reach() -> void:
 # opens; the AI prices the rolls of a Strike's use from there (_use_ratio(): each later roll at more), a plain use at 1.
 func test_forecast_counts_friction() -> void:
 	var row := _kit(1)
-	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab") and x.skill != chaser)  # its crit range would make every roll a hit; its chases are priced by test_forecast_counts_crit_loops
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab") and x.skill != chaser); v(1).sync_bar()  # its crit range would make every roll a hit; its chases are priced by test_forecast_counts_crit_loops
 	v(1).refresh()
 	v(3).afflict(effect("defense", 16), 99)  # a roll that can miss
 	b.directed = func(u: Unit): return u == v(1)
@@ -105,10 +105,10 @@ func test_forecast_counts_crit_loops() -> void:
 	var ratio := func(s: Skill) -> float:
 		return AI._use_ratio(b, v(1), s, v(3), b.read(v(1), v(3)), Battle.damage_range(v(1), s, v(3), b))
 	var with_one: float = ratio.call(row[2])
-	v(1).learned.append(slot(chaser, 3))
+	v(1).learned.append(slot(chaser, 3)); v(1).sync_bar()
 	v(1).refresh()
 	var with_three: float = ratio.call(row[2])
-	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != chaser)
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != chaser); v(1).sync_bar()
 	v(1).refresh()
 	var none: float = ratio.call(row[2])
 	ok(with_one > none + 0.05 and with_three > with_one + 0.02, "Chaser counts its chase, and a chase more for each rank: x%.2f (none), x%.2f (I), x%.2f (III)" % [none, with_one, with_three])
@@ -117,7 +117,7 @@ func test_forecast_counts_crit_loops() -> void:
 	var k: Skill = j.duplicate()
 	k.recast_on_crit = false
 	for s in [j, k]:
-		v(1).learned.append(slot(s, 1))
+		v(1).learned.append(slot(s, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var recasts: float = ratio.call(j)
 	var once: float = ratio.call(k)
@@ -125,12 +125,12 @@ func test_forecast_counts_crit_loops() -> void:
 	ok(recasts > once + 0.05 and AI.score(v(1), j, read, b, v(3)) > AI.score(v(1), k, read, b, v(3)), "a skill that recasts on a crit counts its recasts: x%.2f against x%.2f" % [recasts, once])
 	var sure: Skill = k.duplicate()
 	sure.sure_crit = false
-	v(1).learned.append(slot(sure, 1))
+	v(1).learned.append(slot(sure, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var sure_score := AI.score(v(1), k, read, b, v(3))
 	var plain_score := AI.score(v(1), sure, read, b, v(3))
 	ok(sure_score > plain_score * 1.6 and sure_score < plain_score * 2.05, "a use whose hits all crit is priced at double the damage of its hits (not its glances): %.2f against %.2f" % [sure_score, plain_score])
-	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab"))
+	v(1).learned = v(1).learned.filter(func(x: Slot): return x.skill != sk("backstab")); v(1).sync_bar()
 	v(1).refresh()
 	ok(ratio.call(j) < recasts - 0.05, "with only a natural 20 to crit on, it counts far fewer (x%.2f)" % ratio.call(j))
 
@@ -144,7 +144,7 @@ func test_chain_friction_and_heavy_strike() -> void:
 	row[0].chain = true
 	row[0].tags = [&"physical", &"str", &"martial"] as Array[StringName]
 	var heavy: Skill = load("res://Skills/heavy_strike.tres")
-	v(1).learned.append(slot(heavy, 1))
+	v(1).learned.append(slot(heavy, 1)); v(1).sync_bar()
 	v(1).hotbar.push_front(heavy)
 	v(1).refresh()
 	b.rng.seed = 11

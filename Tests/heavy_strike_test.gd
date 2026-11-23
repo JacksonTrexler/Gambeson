@@ -14,8 +14,8 @@ func test_one_blow() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).strength = 30
 	v(1).weapon = null
-	v(1).learned.append(slot(heavy_strike, 1))
-	v(1).learned.append(slot(strike, 3))
+	v(1).learned.append(slot(heavy_strike, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(strike, 3)); v(1).sync_bar()
 	soak(v(3), 500)
 	var dealt := []
 	v(3).hp_changed.connect(func(was: int, now: int): dealt.append(was - now))
@@ -42,9 +42,9 @@ func test_strike_skills_only() -> void:
 	plain.tags = [&"physical", &"str", &"martial"] as Array[StringName]
 	v(1).strength = 30
 	v(1).weapon = null
-	v(1).learned.append(slot(heavy_strike, 1))
-	v(1).learned.append(slot(lone, 1))
-	v(1).learned.append(slot(plain, 1))
+	v(1).learned.append(slot(heavy_strike, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(lone, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(plain, 1)); v(1).sync_bar()
 	soak(v(3), 500)
 	var dealt := []
 	v(3).hp_changed.connect(func(was: int, now: int): dealt.append(was - now))
@@ -105,15 +105,15 @@ func test_forecast_pool() -> void:
 	v(1).strength = 30
 	v(1).weapon = null
 	roomy(v(1))
-	v(1).learned.append(slot(lone, 1))
-	v(1).learned.append(slot(plain, 1))
+	v(1).learned.append(slot(lone, 1)); v(1).sync_bar()
+	v(1).learned.append(slot(plain, 1)); v(1).sync_bar()
 	soak(v(3), 99999)
 	v(3).afflict(effect("defense", 18), 99)  # a roll that can miss
 	v(1).refresh()
 	var read := b.read(v(1), v(3))
 	var avg: float = Battle.damage_range(v(1), lone, v(3), b).avg
 	ok(AI._use_ratio(b, v(1), lone, v(3), read, {avg = avg}) == 1.0, "without Heavy Strike the reckoning is the plain one")
-	v(1).learned.append(slot(heavy_strike, 1))
+	v(1).learned.append(slot(heavy_strike, 1)); v(1).sync_bar()
 	v(1).refresh()
 	var ratio := AI._use_ratio(b, v(1), lone, v(3), read, {avg = avg})
 	var p := Battle.hit_chance(v(1), lone, v(3), b)

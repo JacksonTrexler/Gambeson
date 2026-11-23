@@ -44,7 +44,7 @@ func test_power() -> void:
 
 
 func test_cast() -> void:
-	v(1).learned.append(slot(transfer))
+	v(1).learned.append(slot(transfer)); v(1).sync_bar()
 	v(1).intelligence = 40
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	v(1).refresh()

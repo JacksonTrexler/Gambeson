@@ -70,7 +70,7 @@ func _mode(moving: bool, n: int, rounds: int, wis: int) -> void:
 		for i in RANGERS:
 			var u: Unit = f.add(f.lancin, ranger, Vector2i(2 + i % 3, 3 + i * (FIELD.y - 6) / (RANGERS - 1) if RANGERS > 1 else 3), "Ranger%d" % i)
 			u.wisdom = wis
-			u.learned.append(f.slot(observe, 1))
+			u.learned.append(f.slot(observe, 1)); u.sync_bar()
 			u.refresh()
 			seekers.append(u)
 		var hiders: Array[Unit] = []
@@ -81,7 +81,7 @@ func _mode(moving: bool, n: int, rounds: int, wis: int) -> void:
 				c = _hider_cell(f)
 			taken[c] = true
 			var h: Unit = f.add(f.nemes, load("res://Roles/rogue.tres"), c, "Hider%d" % i)
-			h.learned.append(f.slot(hide, 1))
+			h.learned.append(f.slot(hide, 1)); h.sync_bar()
 			h.refresh()
 			hiders.append(h)
 		for u: Unit in f.b.units.values():

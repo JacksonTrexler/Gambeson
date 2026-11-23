@@ -85,7 +85,7 @@ func add(f: Faction, role: Resource, c: Vector2i, nick: String, skills := 0) -> 
 			if have.size() < skills and br.after.is_empty() and br.needs == 0 and br.skill not in have and (br.skill.ap > 0.0 or br.skill.hostile):
 				have.append(br.skill)
 	for s in have:
-		u.learned.append(slot(s))
+		u.learned.append(slot(s)); u.sync_bar()
 	if not have.is_empty():
 		roomy(u, have.size())
 	u.refresh()

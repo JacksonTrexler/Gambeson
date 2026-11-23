@@ -14,7 +14,7 @@ const AT := Vector2i(4, 3)
 
 # v(1) kicking at rank r, sure to hit (str 40), at v(3) on `at`, sturdy enough to take it.
 func kicker(r := 2, at := AT) -> Unit:
-	v(1).learned.append(slot(kick, r))
+	v(1).learned.append(slot(kick, r)); v(1).sync_bar()
 	v(1).strength = 40
 	v(1).refresh()
 	stage(lancin, {v(1): FROM, v(3): at})

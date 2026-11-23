@@ -102,7 +102,7 @@ func test_tagged_defense() -> void:
 func test_mage_armor() -> void:
 	var u := icor()
 	ok(u.defense() == -1, "Icor unarmored: dex 10 (0) + con 8 (-1)")
-	u.learned.append(slot(mage_armor))
+	u.learned.append(slot(mage_armor)); u.sync_bar()
 	ok(u.defense() == 3, "Mage Armor: + int mod (18: +4)")
 	ok(u.toggle(mage_armor) and u.defense() == -1, "switched off")
 	ok(mage_armor in load("res://Roles/wizard.tres").options, "a Wizard option")

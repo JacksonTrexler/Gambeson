@@ -418,8 +418,8 @@ var _keys: Array = []  # the slot keys the hotbar was last arranged for (_slot_k
 var _bonus: Array = [0, {}]  # bonus_slots() as last worked out, with the hotbar's hash it was for; _arrange() drops it
 var _cover: Array = [0, {}]  # covered() as last worked out, with the hotbar's hash it was for
 var _bonus_busy := false  # bonus_slots() is being worked out: equipped() (asked by the modifiers it reads) doesn't ask it again
-var _seen: Dictionary[Skill, bool] = {}  # skills it has had since it was set up: one not among them is new, and auto-equips (_sync_new())
-var _seen_sig := -1  # _skill_sig() when _seen was last brought up to date (_sync_new(): cheap to check)
+var _seen: Dictionary[Skill, bool] = {}  # skills it has had since it was set up: one not among them is new, and auto-equips (sync_bar())
+var _seen_sig := -1  # _skill_sig() when _seen was last brought up to date (sync_bar(): cheap to check)
 static var auto_equip := true  # Settings: new skills, and skills for new slots, go on the bar by themselves (HUD sets it from Prefs)
 var hearts_used := 0  # hearts spent getting back up this battle
 var reviving := false  # down at 0 HP with a heart spent: it gets up as the turn ends (Battle._on_downed())
@@ -1032,7 +1032,6 @@ func granted_slots() -> Array[StringName]:
 func _grants() -> Array:
 	var out := []
 	if reading == 0 and not lends(&"slots"):
-		_touch_bar()
 		return out  # nothing it carries grants a slot (lends(): cheaper than finding its passives)
 	var modded := emblems()
 	var sources: Array = on_passives.map(func(x: Slot): return [x.skill.effects, mods(x.skill).irank(x.rank, &"rank_impact") if modded else x.rank, x.skill]) + items().map(func(it: Item): return [it.effects, it.ranked(), &"item"])
@@ -1277,13 +1276,12 @@ func fits(s: Skill, i: int) -> bool:
 
 # Whether s is equipped, so working: a trait (Skill.is_trait(): always, unless traits_suppressed()), or on its
 # hotbar in a slot a level curse hasn't sealed.
-# Asking brings in any skill it has newly got first (_sync_new()).
+# A pure read: a skill it has newly got is on the bar once whatever gave it calls sync_bar().
 func equipped(s: Skill) -> bool:
 	if s == null:
 		return false
 	if slot_cost(s) == 0:
 		return not traits_suppressed()
-	_sync_new()
 	var i := hotbar.find(s)
 	if i < 0:
 		return false
@@ -1342,10 +1340,9 @@ func _sealed_now(i: int) -> bool:
 	return i < _slots_at(level) and i >= _slots_at(maxi(level - _cursed_levels(), 1))
 
 
-# Its equipped skills, slot by slot (null where empty), brought up to date (_sync_new()): what a save keeps
-# and the HUD's bar shows. set_equipped() puts them back.
+# Its equipped skills, slot by slot (null where empty): what a save keeps and the HUD's bar shows. set_equipped() puts
+# them back.
 func get_equipped() -> Array[Skill]:
-	_sync_new()
 	return hotbar.duplicate()
 
 
@@ -1362,10 +1359,11 @@ func set_equipped(bar: Array) -> void:
 	_settle(was)
 
 
-# Notes skills it has got since it last looked (learned, lent, its role's), cheaply: only when what its
-# skill entries hold changed (_skill_sig()). New ones auto-equip (auto_equip); ones it no longer has come
-# off the bar. A unit still being set up waits for _fill_bar().
-func _sync_new() -> void:
+# The auto-equip hook: brings the bar up to date with the skills it has (learned, lent, its role's), cheaply: only when
+# what its skill entries hold changed (_skill_sig()). New ones auto-equip (auto_equip); ones it no longer has come off
+# the bar. Called by whatever changes its skills (unlock(), refit() for items, _fill_bar(), a test that hands one a
+# skill): never by a read, so stat() and equipped() change nothing. A unit still being set up waits for _fill_bar().
+func sync_bar() -> void:
 	if hotbar.is_empty():
 		return
 	var sig := _skill_sig()
@@ -1394,18 +1392,6 @@ func _sync_new() -> void:
 			equip_skill(sk)
 	if not gone.is_empty():
 		_settle(was)
-
-
-# What finding its passives (_on_passives()) sets off, for a reader that skips them as they can't matter (stat(), _grants():
-# nothing lends what it asks): their equipped() brings skills it has newly got onto the bar (_sync_new()), and the bar's
-# order follows when that happens (a unit setting up fills its bar there). Cheap: nothing new, nothing to do.
-func _touch_bar() -> void:
-	if hotbar.is_empty() or _skill_sig() == _seen_sig:
-		return
-	for x in slots:
-		if x.skill.passive and x.on and slot_cost(x.skill) > 0:
-			_sync_new()
-			return
 
 
 # What its skill entries hold, as one number: changes as a skill is learned, lent or dropped.
@@ -1852,7 +1838,7 @@ func unlock(s: Skill) -> bool:
 	learned.append(x)
 	skill_points -= 1
 	purchases.append([s, 1])
-	_sync_new()  # onto the bar where it goes (auto_equip)
+	sync_bar()  # onto the bar where it goes (auto_equip)
 	_arrange()
 	refit()  # a passive may change what's derived (Hardy)
 	return true
@@ -1900,8 +1886,21 @@ func raise(s: Skill) -> bool:
 # far as its slots go (actives first: NPCs and monsters carry extra_slots for the rest). Not a setting:
 # a unit comes ready, auto-equip or not.
 func _fill_bar() -> void:
+	begin_read()  # its effects and lends() found once for the fill, not per slot asked (w17); a bar change drops them (_held_fx(): _filling)
+	_filling = true
+	_fill()
+	_filling = false
+	end_read()
+
+
+var _filling := false  # in _fill_bar()'s read stretch, which changes its bar: what the stretch holds goes with the bar it was found for
+
+
+func _fill() -> void:
 	var fresh := hotbar.is_empty()
 	hotbar.resize(bar_size())
+	if slots.any(func(x: Slot): return x.skill.passive and x.on and slot_cost(x.skill) > 0):
+		sync_bar()  # a unit with a passive on fills in auto-equip order first (w17: the order the w14 read side effect gave)
 	_keys = _slot_keys()
 	for x in slots:
 		if slot_cost(x.skill) > 0:  # one that takes no slot is new when it does (a free lend now worn as its own: _sync_granted())
@@ -2024,7 +2023,6 @@ func stat(s: StringName, tags: Array[StringName] = [], viewer: Unit = null, of: 
 	elif s in CORE:
 		sum = get(s)
 	if reading == 0 and not lends(s):
-		_touch_bar()
 		return sum  # nothing it carries touches s (lends(): cheaper than gathering every effect to find none)
 	var factor := 1.0
 	for pair in _stat_fx(s, viewer) if reading > 0 else _effects(viewer):
@@ -2666,7 +2664,7 @@ func lent_by(s: Skill) -> String:
 
 
 # Its hotbar follows what its items lend (refit(), on every equip, unequip and enchantment): a skill newly lent
-# is new (_sync_new(): it auto-equips), one no longer lent comes off the bar and is announced (lost_skills: Battle
+# is new (sync_bar(): it auto-equips), one no longer lent comes off the bar and is announced (lost_skills: Battle
 # ends a channel on it) - lent again later, it's new again. Only the hotbar of a unit in the tree: one still
 # being set up fills itself (_fill_bar()).
 func _sync_granted() -> void:
@@ -2693,7 +2691,7 @@ func _sync_granted() -> void:
 		_seen_sig = -1  # what it lends, or what of it needs no slot, changed
 	_held = now
 	_freed = free
-	_sync_new()
+	sync_bar()
 	if not lost.is_empty():
 		lost_skills.emit(self, lost)
 
@@ -4074,13 +4072,15 @@ var _fx_epoch := -1
 var _fx_at: Variant
 var _fx_ground: Terrain
 var _fx_steady: Variant
+var _fx_bar := 0  # hotbar.hash() it was found for, checked only while _filling
 static var reading := 0
 static var _epoch := 0
 
 
 func _held_fx(viewer: Unit) -> Dictionary:
-	if _fx_epoch != _epoch or _fx_at != cell or _fx_ground != footing or _fx_steady != steadied:
+	if _fx_epoch != _epoch or _fx_at != cell or _fx_ground != footing or _fx_steady != steadied or (_filling and _fx_bar != hotbar.hash()):
 		_fx.clear()
+		_fx_bar = hotbar.hash()
 		_fx_epoch = _epoch
 		_fx_at = cell
 		_fx_ground = footing

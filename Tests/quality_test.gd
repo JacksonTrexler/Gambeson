@@ -52,7 +52,7 @@ func test_skill_tags() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2)})
 	var s := Skill.new()
 	s.name = "Capstone"
-	v(1).learned.append(slot(s, 2))
+	v(1).learned.append(slot(s, 2)); v(1).sync_bar()
 	v(1).refresh()
 	ok(v(1).rank(s) == 2, "plain: its learned rank")
 	s.tags.assign([&"enchanted"])

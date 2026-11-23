@@ -13,7 +13,7 @@ var demons: Faction = load("res://Factions/demons.tres")
 
 
 func wizard(s: Skill, r := 1) -> Unit:
-	v(1).learned.append(slot(s, r))
+	v(1).learned.append(slot(s, r)); v(1).sync_bar()
 	v(1).level = 4
 	v(1).energy = 99
 	v(1).refresh()
@@ -74,7 +74,7 @@ func test_rift_unchanneled() -> void:
 	var metea: Skill = load("res://Skills/metea.tres")
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 6)})
 	ok(b.cast_at(w, rift, Vector2i(2, 4)) and b.pockets[1].turns == -1, "a second, channeled")
-	w.learned.append(slot(metea, 1))
+	w.learned.append(slot(metea, 1)); w.sync_bar()
 	w.refresh()
 	w.energy = 99
 	ok(b.cast_at(w, metea, Vector2i(2, 6)) and w.channel.skill == metea and b.pockets[1].turns == 2, "channeling something else stops it: its count starts")
@@ -91,8 +91,8 @@ func test_rift_sight() -> void:
 	b.lay_mark(Vector2i(3, 3), b.earthwork(v(3), 9))
 	ok(not b.clear_line(Vector2i(2, 3), Vector2i(4, 3)) and b.clear_line(Vector2i(2, 3), Vector2i(2, 5)), "a wall between: no clear line")
 	ok(b.cast_at(w, rift, Vector2i(4, 3)), "Rift III opens over it")
-	v(1).learned.clear()
-	v(4).learned.append(slot(rift, 2))
+	v(1).learned.clear(); v(1).sync_bar()
+	v(4).learned.append(slot(rift, 2)); v(4).sync_bar()
 	v(4).refresh()
 	b.move(v(4), Vector2i(2, 5))
 	b.lay_mark(Vector2i(2, 6), b.earthwork(v(3), 9))

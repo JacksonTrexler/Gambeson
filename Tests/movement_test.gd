@@ -120,7 +120,7 @@ func test_moving_through() -> void:
 	ok(b.travel(v(1), Vector2i(2, 3)).back() == Vector2i(2, 3) and is_equal_approx(v(1).moved, 4.4), "walking through the ally costs 1 + 2.4, then 1")
 	v(1).dexterity = 40
 	ok(b.pass_cost(v(1), v(2)) == 0.0, "however nimble, never a boost without Relay")
-	v(1).learned.append(slot(load("res://Skills/relay.tres")))
+	v(1).learned.append(slot(load("res://Skills/relay.tres"))); v(1).sync_bar()
 	ok(is_equal_approx(b.pass_cost(v(1), v(2)), 3 * (1 - 1.5 - 0.1 - 0.1)), "with Relay it can go below 0")
 	stage(lancin, {v(1): Vector2i(0, 3), v(2): Vector2i(1, 3), v(3): Vector2i(8, 2)})
 	ok(b.travel(v(1), Vector2i(2, 3)).size() == 2 and v(1).moved < 0.0 and v(1).move_left() > v(1).stat(&"movement"),

@@ -14,7 +14,7 @@ func bolt(d: Displace) -> Skill:
 
 
 func caster_with(s: Skill, r := 1) -> Unit:
-	v(1).learned.append(slot(s, r))
+	v(1).learned.append(slot(s, r)); v(1).sync_bar()
 	v(1).refresh()
 	return v(1)
 

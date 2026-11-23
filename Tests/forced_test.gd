@@ -15,7 +15,7 @@ func carrying(e: Effect, turns := 1) -> Skill:
 	e.turns = turns
 	s.effects = [e] as Array[Effect]
 	s.behaviours = [] as Array[Behaviour]
-	v(1).learned.append(slot(s))
+	v(1).learned.append(slot(s)); v(1).sync_bar()
 	v(1).refresh()
 	return s
 
@@ -60,7 +60,7 @@ func test_the_three_effects() -> void:
 
 
 func holds(by: Unit, t: Unit) -> void:
-	by.learned.append(slot(hitch, 2))
+	by.learned.append(slot(hitch, 2)); by.sync_bar()
 	by.strength = 60
 	stage(lancin, {by: Vector2i(4, 3), t: Vector2i(5, 3)})
 	by.refresh()
@@ -125,7 +125,7 @@ func test_displace_carries_its_tags() -> void:
 	var s: Skill = hex.duplicate()
 	s.rolls = false
 	s.behaviours = [d] as Array[Behaviour]
-	v(1).learned.append(slot(s))
+	v(1).learned.append(slot(s)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(4, 3)})
 	soak(v(3))
 	b.cast(v(1), s, v(3))
@@ -196,7 +196,7 @@ func test_displace_foresees() -> void:
 	d.tiles = 3
 	var s: Skill = hex.duplicate()
 	s.behaviours = [d] as Array[Behaviour]
-	v(1).learned.append(slot(s))
+	v(1).learned.append(slot(s)); v(1).sync_bar()
 	for mode in [[false, false, Vector2i(5, 3)], [true, false, Vector2i(6, 3)], [false, true, Vector2i(7, 3)]]:
 		stage(lancin, {v(1): Vector2i(2, 3), v(3): mode[2]})
 		v(1).refresh()
@@ -213,13 +213,13 @@ func test_displace_foresees() -> void:
 func test_aura_and_coordinate_drive() -> void:
 	var s: Skill = load("res://Skills/flamecharm.tres").duplicate()
 	s.effects = [effect("shove", 2.0)] as Array[Effect]
-	v(1).learned.append(slot(s))
+	v(1).learned.append(slot(s)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
 	v(1).refresh()
 	ok(b.cast(v(1), s, v(1)) and v(2).cell == Vector2i(6, 3) and v(1).cell == Vector2i(3, 3), "an aura's shove drives its allies from the caster (%s)" % v(2).cell)
 	var c: Skill = load("res://Skills/coordinate.tres").duplicate()
 	c.effects = [effect("fear", 2.0)] as Array[Effect]
-	v(1).learned.append(slot(c))
+	v(1).learned.append(slot(c)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(3, 3), v(2): Vector2i(4, 3)})
 	v(1).refresh()
 	ok(b.cast(v(1), c, v(1)) and v(2).cell == Vector2i(6, 3), "and so does a link's fear (%s)" % v(2).cell)

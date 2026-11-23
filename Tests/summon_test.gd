@@ -9,7 +9,7 @@ var skeleton: Skill = load("res://Skills/skeleton.tres")
 
 func test_summon_per_rank() -> void:
 	var caster := v(1)
-	caster.learned.append(slot(skeleton, 2))
+	caster.learned.append(slot(skeleton, 2)); caster.sync_bar()
 	roomy(caster)
 	stage(lancin, {caster: Vector2i(4, 3), v(3): Vector2i(9, 3)})
 	var before := b.members(lancin).size()
@@ -26,7 +26,7 @@ func test_summon_per_rank() -> void:
 	raised[0].hp = 0
 	ok(got == [[raised[0], &"killed"]], "a skeleton dies like any unit: %s" % [got])
 	var wake: Skill = load("res://Skills/wake_and_rake.tres")
-	caster.learned.append(slot(wake, 3))
+	caster.learned.append(slot(wake, 3)); caster.sync_bar()
 	ok(wake.describe(3).contains("3"), "Wake and Rake says its rank: %s" % wake.describe(3))
 	caster.ap[0].amount = 99.0
 	ok(b.cast_at(caster, skeleton, Vector2i(6, 4)), "a second cast, with Wake and Rake III")
@@ -42,7 +42,7 @@ func test_summon_per_rank() -> void:
 # near itself toward the foe; not with no foe in sight, nor with its hand full.
 func test_ai_raises_host() -> void:
 	var caster := v(1)
-	caster.learned.append(slot(skeleton, 1))
+	caster.learned.append(slot(skeleton, 1)); caster.sync_bar()
 	roomy(caster)
 	caster.intelligence = 14  # soft cap 1 + 2: room for a cast's two
 	caster.ap[0].amount = 99.0

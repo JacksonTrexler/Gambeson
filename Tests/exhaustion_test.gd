@@ -41,7 +41,7 @@ func same(a: float, x: float) -> bool:
 
 func test_counts() -> void:
 	for s in [crushing, missile, hex, kick, sola, igna]:
-		v(1).learned.append(slot(s))
+		v(1).learned.append(slot(s)); v(1).sync_bar()
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	soak(v(3), 100)
 	var e := v(1).exhaustion
@@ -72,7 +72,7 @@ func test_counts() -> void:
 # paid in Mana half as harsh again; a single read (Burnout.penalty()) the rate multiplies by.
 func test_burnout() -> void:
 	for s in [sola, hex]:
-		v(1).learned.append(slot(s))
+		v(1).learned.append(slot(s)); v(1).sync_bar()
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var u := v(1)
 	ok(Burnout.of(sola) and not Burnout.of(hex) and same(Burnout.penalty(u, sola), 1.25) and same(Burnout.penalty(u, hex), 1.0), "Sola (int) burns out; Hex (wis) only exhausts")
@@ -119,7 +119,7 @@ func test_costs() -> void:
 
 
 func test_channel_is_one_use() -> void:
-	v(3).learned.append(slot(metea))
+	v(3).learned.append(slot(metea)); v(3).sync_bar()
 	worn(nemes, {v(3): Vector2i(8, 2), v(1): Vector2i(1, 7)})
 	var u := v(3)
 	var at := Vector2i(5, 2)
@@ -185,7 +185,7 @@ func test_resting() -> void:
 
 
 func test_strike_ranks() -> void:
-	v(1).learned.append(slot(strike, 3))
+	v(1).learned.append(slot(strike, 3)); v(1).sync_bar()
 	worn(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(2): Vector2i(4, 6), v(4): Vector2i(5, 6)})
 	for t in [v(3), v(4)]:
 		soak(t, 100)

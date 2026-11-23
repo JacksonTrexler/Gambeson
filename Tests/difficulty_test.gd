@@ -69,7 +69,7 @@ func test_wildfire() -> void:
 	var w := flat_fire()
 	var earthy := v(3)
 	stage(lancin, {v(1): Vector2i(1, 3), earthy: Vector2i(2, 3), v(2): Vector2i(3, 3), v(4): Vector2i(5, 3)})
-	v(1).learned.append(slot(w))
+	v(1).learned.append(slot(w)); v(1).sync_bar()
 	v(1).refresh()
 	for u in [v(2), earthy, v(4)]:
 		u.dexterity = -30  # can't dodge
@@ -86,7 +86,7 @@ func test_wildfire() -> void:
 func test_wildfire_dodged() -> void:
 	var w := flat_fire()
 	stage(lancin, {v(1): Vector2i(1, 3), v(2): Vector2i(3, 3)})
-	v(1).learned.append(slot(w))
+	v(1).learned.append(slot(w)); v(1).sync_bar()
 	v(1).refresh()
 	v(2).dexterity = 90  # mod 40: clears any DC here
 	var hp := v(2).hp

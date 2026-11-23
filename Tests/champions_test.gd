@@ -86,12 +86,12 @@ func test_mana_rules() -> void:
 	icor().set_store(mana, 12)
 	icor().energy = 0
 	var crushing: Skill = load("res://Skills/crushing_blow.tres")
-	icor().learned.append(slot(crushing))
+	icor().learned.append(slot(crushing)); icor().sync_bar()
 	ok(icor().funding(crushing) == null, "mana can't pay for non-magical skills")
-	icor().learned.pop_back()
-	icor().learned.append(slot(stonegift))
+	icor().learned.pop_back(); icor().sync_bar()
+	icor().learned.append(slot(stonegift)); icor().sync_bar()
 	ok(icor().funding(stonegift) == mana, "Stonegift, with no category tag, is magical by its tree (Montane): mana pays")
-	icor().learned.pop_back()
+	icor().learned.pop_back(); icor().sync_bar()
 
 
 func test_alabaster() -> void:

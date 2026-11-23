@@ -23,9 +23,9 @@ func lender(skills: Array[Skill], slot_name := "trinket", rank := 1) -> Item:
 
 
 func bare(u: Unit) -> Unit:  # no skills of its own, no gear
-	u._role_slots.clear()
-	u.innate.clear()
-	u.learned.clear()
+	u._role_slots.clear(); u.sync_bar()
+	u.innate.clear(); u.sync_bar()
+	u.learned.clear(); u.sync_bar()
 	u.trinket = null
 	u.weapon = null
 	u.armor = null
@@ -56,7 +56,7 @@ func test_no_ranking() -> void:
 	ok(not u.options().values().any(func(l: Array): return kick in l), "nor unlocked while it's worn")
 	u.unequip("trinket")
 	ok(u.rank(kick) == 0, "no rank left behind")
-	u.learned.append(slot(kick, 1))
+	u.learned.append(slot(kick, 1)); u.sync_bar()
 	u.equip(lender([kick], "trinket", 3))
 	ok(u.rank(kick) == 3 and u.own_rank(kick) == 1 and u.can_raise(kick), "learned as well: the higher rank wins, and its own rank is still raised")
 	u.raise(kick)
@@ -124,7 +124,7 @@ func test_urlo_prays_for_trinkets() -> void:
 	bare(v(1))
 	bare(v(2))
 	v(1).god = &"urlo"
-	v(1).learned.append(slot(pray, 2))
+	v(1).learned.append(slot(pray, 2)); v(1).sync_bar()
 	v(2).equip(boots)
 	v(1).refresh()
 	ok(b.cast(v(1), pray, v(1)) and v(2).trinket.enchant == 1 and v(2).rank(kick) == 2, "Pray: the ally's trinket, the skill it lends a rank higher")
@@ -193,7 +193,7 @@ func test_channel_and_toggle() -> void:
 	u.channel = rift
 	u.unequip("weapon")
 	ok(u.channel == null, "a channel on a skill that goes ends")
-	u.learned.append(slot(kick))
+	u.learned.append(slot(kick)); u.sync_bar()
 	u.equip(watch)
 	u.channel = Unit.Channel.new(kick, u.cell)
 	u.unequip("weapon")

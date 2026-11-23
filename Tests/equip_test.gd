@@ -13,13 +13,13 @@ var martial_slot: Skill = load("res://Skills/martial_slot.tres")
 func test_equip_unequip() -> void:
 	var u := v(1)
 	var before := u.stat(&"initiative")
-	u.learned.append(slot(wary))
+	u.learned.append(slot(wary)); u.sync_bar()
 	ok(u.get_equipped() == ([strike, null, wary, favour, null] as Array[Skill]), "a passive learned goes on from the bottom, above Favour (the last slot, a clover, holds none)")
 	ok(u.stat(&"initiative") > before and wary in u.passives, "equipped, it works")
 	u.bar_clear(2)
 	ok(not u.equipped(wary) and wary not in u.passives and is_equal_approx(u.stat(&"initiative"), before), "unequipped: learned still, but it does nothing")
 	ok(u.bar_place(wary, 1) and u.stat(&"initiative") > before, "equipped again, anywhere it fits")
-	u.learned.append(slot(hex))
+	u.learned.append(slot(hex)); u.sync_bar()
 	var i := u.get_equipped().find(hex)
 	ok(i == 2 and hex in u.actives, "an active goes on from the left")
 	u.bar_clear(i)
@@ -28,14 +28,14 @@ func test_equip_unequip() -> void:
 	echo.name = "Echo ??"
 	echo.passive = true
 	echo.behaviours = [Behaviour.new()] as Array[Behaviour]
-	u.learned.append(slot(echo))
+	u.learned.append(slot(echo)); u.sync_bar()
 	u.get_equipped()
 	ok(Battle.reactions_of(u).size() == 1 and u.hooks().size() == 1, "a passive's behaviours react and hook while equipped")
 	u.bar_clear(u.hotbar.find(echo))
 	ok(Battle.reactions_of(u).is_empty() and u.hooks().is_empty(), "and not once it's off")
 	roomy(u, 2)
 	var brutal: Skill = load("res://Skills/brutal_strike.tres")
-	u.learned.append(slot(brutal))
+	u.learned.append(slot(brutal)); u.sync_bar()
 	ok(u.skill_name(strike) == "Brutal Strike", "a Strike upgrade renames Strike while equipped")
 	u.bar_clear(u.hotbar.find(brutal))
 	ok(u.skill_name(strike) == "Strike", "and not once it's off the bar: it does nothing then, the name included")
@@ -49,7 +49,7 @@ func test_traits() -> void:
 	kin.name = "Kin ??"
 	kin.tags = [&"trait"] as Array[StringName]
 	var before := u.stat(&"initiative")
-	u.learned.append(slot(kin))
+	u.learned.append(slot(kin)); u.sync_bar()
 	ok(u.get_equipped() == bar and kin not in u.hotbar and u.traits() == ([kin] as Array[Skill]), "a trait takes no slot: the bar is as it was, and the unit lists it apart")
 	ok(u.equipped(kin) and kin in u.passives and u.stat(&"initiative") > before, "always equipped, and it works")
 	ok(not u.bar_place(kin, 1) and kin not in u.hotbar and u.free_slot() == room, "it can't be placed on the bar, and no slot is spent")
@@ -90,7 +90,7 @@ func test_skill_slot() -> void:
 	var plus: Skill = load("res://Skills/skill_slot.tres")
 	var u := v(1)
 	var bar := u.bar_size()
-	u.learned.append(slot(plus))
+	u.learned.append(slot(plus)); u.sync_bar()
 	u.get_equipped()
 	ok(u.bar_size() == bar + 1 and plus not in u.hotbar and plus in u.traits() and not plus.fits_bar(), "learned: a trait (no slot of its own) that adds one slot to the hotbar (%d -> %d)" % [bar, u.bar_size()])
 	ok(u.bar_size() == u.slot_count() + u.granted_slots().size() + (1 if u.lv() % 4 else 0) and u.slot_kind(u.slot_count()) == &"", "the size is one generic read: sure + granted + clover; the new slot is untyped")
@@ -127,7 +127,7 @@ func test_cram() -> void:
 	u.extra_slots += 3
 	u._arrange()
 	var grants := u.granted_slots().size()
-	u.learned.append(slot(cram, 2))
+	u.learned.append(slot(cram, 2)); u.sync_bar()
 	u.get_equipped()
 	var sure := u.slot_count()
 	var c := u.hotbar.find(cram)
@@ -138,18 +138,18 @@ func test_cram() -> void:
 	for i in u.slot_count():  # only bonus slots left free
 		if not u.hotbar[i] and not bonus.has(i):
 			u.hotbar[i] = Skill.new()
-	u.learned.append(slot(kick))
+	u.learned.append(slot(kick)); u.sync_bar()
 	u.get_equipped()
 	ok(u.hotbar.find(kick) >= u.slot_count() and not u.hotbar[c - 1], "auto-equip leaves a non-caster out of a bonus slot")
 	for i in u.slot_count():
 		if u.hotbar[i] and u.hotbar[i].resource_path == "":
 			u.hotbar[i] = null
 	ok(u.bar_place(strike, c - 1) and u.hotbar[c - 1] == strike and not u.equipped(strike) and strike not in u.actives and u.bonus_why(c - 1) != "", "a non-caster can be slotted there, but doesn't work")
-	u.learned.append(slot(sola))
+	u.learned.append(slot(sola)); u.sync_bar()
 	u.get_equipped()
 	ok(u.bar_place(sola, c - 1) and u.equipped(sola) and sola in u.actives, "a caster skill works there")
 	ok(is_equal_approx(u.slot_penalty(sola), 2.0) and is_equal_approx(Burnout.penalty(u, sola), 2.5) and is_equal_approx(Burnout.penalty(u, kick), 1.0), "its Burnout penalty x rank there (1.25 x 2); elsewhere untouched")
-	u.learned.append(slot(powerful))
+	u.learned.append(slot(powerful)); u.sync_bar()
 	u.get_equipped()
 	u.disabled[powerful] = 1  # any pillar skill on the bar, not only Cram (disable() takes them all together anyway)
 	ok(powerful in u.hotbar and not u.equipped(sola) and sola not in u.actives, "a disabled pillar skill disables every bonus slot")
@@ -172,7 +172,7 @@ func test_cram() -> void:
 func test_auto_equip() -> void:
 	var u := v(1)
 	Unit.auto_equip = false
-	u.learned.append(slot(hex))
+	u.learned.append(slot(hex)); u.sync_bar()
 	ok(hex not in u.hotbar and u.rank(hex) == 1 and hex not in u.actives, "auto-equip off: learned, not equipped")
 	u.extra_slots += 1
 	u._arrange()
@@ -208,12 +208,12 @@ func test_losing_slots() -> void:
 	u.lost_skills.connect(func(_u: Unit, s: Array[Skill]): lost.append_array(s))
 	var other: Skill = magic_slot.duplicate()  # a second Magic slot skill: each one's slot is its own
 	other.name = "Magic Slot ??"
-	u.learned.append(slot(magic_slot))
-	u.learned.append(slot(other))
-	u.learned.append(slot(martial_slot))
+	u.learned.append(slot(magic_slot)); u.sync_bar()
+	u.learned.append(slot(other)); u.sync_bar()
+	u.learned.append(slot(martial_slot)); u.sync_bar()
 	var kinds := u.slot_kinds()
 	ok(kinds.slice(6) == ([&"magical", &"magical", &"martial", &"clover"] as Array[StringName]), "three granting skills, three typed slots (%s)" % [kinds])
-	u.learned.append(slot(hex))
+	u.learned.append(slot(hex)); u.sync_bar()
 	ok(u.bar_place(hex, 7) and u.hotbar[7] == hex, "Hex in the second Magic slot")
 	u.bar_clear(u.hotbar.find(magic_slot))
 	ok(u.slot_kinds().slice(6) == ([&"magical", &"martial", &"clover"] as Array[StringName]) and u.hotbar[6] == hex, "the first Magic slot goes; the second keeps Hex")
@@ -255,7 +255,7 @@ func test_multi_slot() -> void:
 	var epic := fat("Epic", &"epic")
 	var small := fat("Small")
 	for s in [rare, epic, small, two]:
-		u.learned.append(slot(s))
+		u.learned.append(slot(s)); u.sync_bar()
 	u.get_equipped()  # they go on by themselves (auto-equip): the test arranges its own bar
 	for i in u.bar_size():
 		u.bar_clear(i)
@@ -348,7 +348,7 @@ func test_multi_slot() -> void:
 	w.unequip("trinket")
 	# typed and bonus slots (Cram): every slot of the run must carry the type
 	var cram: Skill = load("res://Skills/cram.tres")
-	w.learned.append(slot(cram, 2))
+	w.learned.append(slot(cram, 2)); w.sync_bar()
 	w.get_equipped()
 	var c := w.hotbar.find(cram)
 	var g := w.slot_count()
@@ -356,8 +356,8 @@ func test_multi_slot() -> void:
 	mage.tags = mage.tags + ([&"magical"] as Array[StringName])
 	var brute := fat("Brute", &"rare")
 	brute.tags = brute.tags + ([&"martial"] as Array[StringName])
-	w.learned.append(slot(mage))
-	w.learned.append(slot(brute))
+	w.learned.append(slot(mage)); w.sync_bar()
+	w.learned.append(slot(brute)); w.sync_bar()
 	w.get_equipped()
 	for i in w.slot_count():
 		if i != c and w.hotbar[i] and w.hotbar[i] != cram:

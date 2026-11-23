@@ -41,7 +41,7 @@ func test_tree() -> void:
 func test_powerful() -> void:
 	var u := sorcerer()
 	ok(not u.powered(), "a starter isn't powered yet")
-	u.learned.append(slot(sk("powerful")))
+	u.learned.append(slot(sk("powerful"))); u.sync_bar()
 	ok(u.powered(), "learning its root: its Energy is Power")
 	u.energy = 2
 	ok(u.grant_energy(3) == 3 and u.energy == 5, "what grants Energy grants it Power")

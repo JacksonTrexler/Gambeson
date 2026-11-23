@@ -7,7 +7,7 @@ var sutemi: Skill = load("res://Skills/sutemi.tres")
 
 
 func lunger(r := 2) -> void:
-	v(1).learned.append(slot(sutemi, r))
+	v(1).learned.append(slot(sutemi, r)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

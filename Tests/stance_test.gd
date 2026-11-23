@@ -75,7 +75,7 @@ func test_conspire() -> void:
 		ok((load(path) as Role).tier(conspire) == 4, "%s: Conspire, tier 4" % path.get_file())
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 2), v(3): Vector2i(8, 2)})
 	v(2).charisma = 12
-	v(2).learned.append(slot(conspire, 2))
+	v(2).learned.append(slot(conspire, 2)); v(2).sync_bar()
 	v(2).refresh()
 	ok(v(1).insightful() and b.read(v(1), v(2)).deceived, "allies within rank + cha mod tiles let it fool them, insightful or not")
 	ok(Perception.trickery(v(2), Read.new(), null, b) == Perception.trickery(v(2), Read.new()) + 1.0, "and each gives it rank - 1 trickery")

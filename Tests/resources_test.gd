@@ -38,7 +38,7 @@ func test_runs_on() -> void:
 	var u := icor()
 	ok(mana_skill.toggle and stamina.toggle and mana.replaces and stamina_pool.replaces, "Mana and Stamina: toggles standing in for Energy")
 	ok(u.is_on(mana_skill) and u.runs_on() == mana and u.energy == 0, "on as learned: a Wizard runs on Mana, no Energy of its own")
-	u.learned.append(slot(crushing))
+	u.learned.append(slot(crushing)); u.sync_bar()
 	ok(fund(u, crushing) == "" and fund(u, hex) == "Mana", "Mana pays for its spells only; a martial skill has nothing to pay it")
 	u.add_overcharge(3, 2)
 	ok(fund(u, crushing) == "energy", "Overcharge, with no Energy at all, pays for a martial skill")
@@ -49,7 +49,7 @@ func test_runs_on() -> void:
 	b.end_turn()
 	b.end_turn()
 	ok(u.energy == 4, "but its own Energy doesn't come back while it runs on Mana")
-	u.learned.pop_back()
+	u.learned.pop_back(); u.sync_bar()
 	ok(Unit.replacer(mana_skill) == mana and Unit.replacer(stamina) == stamina_pool and Unit.replacer(hex) == null, "replacer()")
 	ok("runs on Mana" in mana_skill.describe() and "channeled" in mana_skill.describe() and "10%" in mana_skill.describe(), mana_skill.describe())
 	ok("nothing pays for a magical skill" in stamina.describe(), stamina.describe())
@@ -57,21 +57,21 @@ func test_runs_on() -> void:
 
 func test_one_at_a_time() -> void:
 	var u := icor()
-	u.learned.append(slot(stamina))
+	u.learned.append(slot(stamina)); u.sync_bar()
 	u._one_replacer()
 	ok(u.is_on(mana_skill) and not u.is_on(stamina) and u.runs_on() == mana, "two learned: the first on the bar stays on, the other goes off")
-	u.learned.append(slot(crushing))
+	u.learned.append(slot(crushing)); u.sync_bar()
 	ok(not u.spends(stamina_pool) and fund(u, crushing) == "", "Stamina switched off pays nothing")
-	u.learned.pop_back()
-	u.learned.pop_back()
+	u.learned.pop_back(); u.sync_bar()
+	u.learned.pop_back(); u.sync_bar()
 
 
 func test_stamina_bars_spells() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
-	v(1).learned.append(slot(stamina))
-	v(1).learned.append(slot(focus))
-	v(1).learned.append(slot(hex))
-	v(1).learned.append(slot(crushing))
+	v(1).learned.append(slot(stamina)); v(1).sync_bar()
+	v(1).learned.append(slot(focus)); v(1).sync_bar()
+	v(1).learned.append(slot(hex)); v(1).sync_bar()
+	v(1).learned.append(slot(crushing)); v(1).sync_bar()
 	v(1).set_store(focus_pool, 5)
 	v(1).set_store(stamina_pool, 3)
 	ok(v(1).runs_on() == stamina_pool and v(1).energy > 0 and fund(v(1), hex) == "", "running on Stamina, nothing pays for a spell - not Focus, not the Energy it kept (learned mid-battle)")
@@ -171,8 +171,8 @@ func test_not_beside_a_channel() -> void:
 func test_two_bars() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var u := v(1)
-	u.learned.append(slot(stamina))
-	u.learned.append(slot(focus))
+	u.learned.append(slot(stamina)); u.sync_bar()
+	u.learned.append(slot(focus)); u.sync_bar()
 	u.energy = 0
 	u.set_store(stamina_pool, 3)
 	ok(u.held_reserves() == [stamina_pool, focus_pool], "on Stamina, holding Focus: Stamina first")
@@ -182,5 +182,5 @@ func test_two_bars() -> void:
 	ok(u.second_bar.position.y + u.second_bar.size.y == u.reserve_bar.position.y + u.reserve_bar.size.y + 2.0 or u.second_bar.position.y == u.reserve_bar.position.y + u.reserve_bar.size.y,
 			"stacked, 2px each, under the first")
 	ok(u.hp_bar.position.y + u.hp_bar.size.y == u.reserve_bar.position.y, "under HP")
-	u.learned.pop_back()
-	u.learned.pop_back()
+	u.learned.pop_back(); u.sync_bar()
+	u.learned.pop_back(); u.sync_bar()

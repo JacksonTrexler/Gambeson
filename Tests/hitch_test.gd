@@ -7,7 +7,7 @@ var hitch: Skill = load("res://Skills/hitch.tres")
 
 
 func test_tow() -> void:
-	v(1).learned.append(slot(hitch, 2))
+	v(1).learned.append(slot(hitch, 2)); v(1).sync_bar()
 	v(1).strength = 60
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()

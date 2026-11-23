@@ -23,8 +23,8 @@ func fund(u: Unit, s: Skill) -> String:
 
 # v(1) holding Focus at rank r (and Energy Missile), v(3) three tiles off.
 func focused(r := 1) -> void:
-	v(1).learned.append(slot(focus, r))
-	v(1).learned.append(slot(missile))
+	v(1).learned.append(slot(focus, r)); v(1).sync_bar()
+	v(1).learned.append(slot(missile)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
 
@@ -75,20 +75,20 @@ func test_not_busy_or_channeling() -> void:
 
 func test_pays() -> void:
 	roomy(v(1))
-	v(1).learned.append(slot(crushing))
+	v(1).learned.append(slot(crushing)); v(1).sync_bar()
 	focused()
 	v(1).set_store(pool, 2)
 	ok(fund(v(1), missile) == "Focus", "a ranged attack: Focus first")
 	ok(fund(v(1), crushing) == "energy", "a melee one (Crushing Blow): Energy, Focus kept")
 	v(1).energy = 0
 	ok(fund(v(1), crushing) == "Focus", "Energy gone: Focus stands in")
-	v(1).learned.append(slot(load("res://Skills/stamina.tres")))
+	v(1).learned.append(slot(load("res://Skills/stamina.tres"))); v(1).sync_bar()
 	v(1).set_store(stamina_pool, 5)
 	v(1).energy = 10
 	ok(fund(v(1), crushing) == "Stamina" and fund(v(1), missile) == "", "with Stamina too: Stamina for Crushing Blow; running on Stamina, nothing pays for a spell (Energy Missile), Focus neither")
-	v(1).learned.pop_back()
+	v(1).learned.pop_back(); v(1).sync_bar()
 	ok(fund(v(1), missile) == "Focus", "on Energy again: Focus for the shot")
-	v(1).learned.append(slot(load("res://Skills/stamina.tres")))
+	v(1).learned.append(slot(load("res://Skills/stamina.tres"))); v(1).sync_bar()
 
 
 # The roll's bonus over the d20 on v(1)'s next Energy Missile at v(3).
@@ -119,9 +119,9 @@ func test_accuracy() -> void:
 
 
 func test_jam_drains() -> void:
-	v(2).learned.append(slot(jam))
+	v(2).learned.append(slot(jam)); v(2).sync_bar()
 	v(2).dexterity = 40
-	v(3).learned.append(slot(focus, 3))
+	v(3).learned.append(slot(focus, 3)); v(3).sync_bar()
 	stage(lancin, {v(2): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	v(2).refresh()
 	soak(v(3), 300)

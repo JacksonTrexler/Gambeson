@@ -90,7 +90,7 @@ func pally(s: Skill, r := 1) -> Unit:
 	b.get_node("Units").add_child(u)
 	stage(lancin, {u: Vector2i(3, 3), v(1): Vector2i(4, 3), v(3): Vector2i(8, 5)})
 	u.charisma = 16
-	u.learned.append(slot(s, r))
+	u.learned.append(slot(s, r)); u.sync_bar()
 	u.energy = u.max_energy
 	u.refresh()
 	return u
@@ -128,7 +128,7 @@ func test_decay_reaches_behaviours() -> void:
 	stun.decays = 0.1
 	stun.radius = 3.0  # (reach for the distance)
 	var stunned: Effect = load("res://Effects/stunned.tres")
-	v(1).learned.append(slot(stun, 3))
+	v(1).learned.append(slot(stun, 3)); v(1).sync_bar()
 	v(1).strength = 40
 	stage(lancin, {v(1): Vector2i(1, 3), v(3): Vector2i(3, 3)})
 	v(1).refresh()
@@ -161,7 +161,7 @@ func test_send_off() -> void:
 
 func test_lovely_caster() -> void:
 	var u := pally(lovely, 2)
-	u.learned.append(slot(rejuvinate, 3))
+	u.learned.append(slot(rejuvinate, 3)); u.sync_bar()
 	u.refresh()
 	v(1).max_hp = 100
 	v(1).hp = 50
@@ -184,9 +184,9 @@ func test_impassioned_fighter() -> void:
 	v(3).armor = bulwark()
 	u.weapon = null
 	var with := Battle.hit_chance(u, strike, v(3))
-	u.learned.clear()
+	u.learned.clear(); u.sync_bar()
 	ok(with > Battle.hit_chance(u, strike, v(3)), "Strike's roll, beside its target")
-	u.learned.append(slot(impassioned, 3))
+	u.learned.append(slot(impassioned, 3)); u.sync_bar()
 	var totals := []
 	b.attacked.connect(func(_c, _t, d20, total, _def): totals.append(total - d20))
 	u.refresh()

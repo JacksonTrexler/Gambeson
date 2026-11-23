@@ -77,7 +77,7 @@ class Sim extends Test:
 
 	func observer(u: Unit) -> void:
 		u.wisdom = 16
-		u.learned.append(slot(sk("observe"), 1))
+		u.learned.append(slot(sk("observe"), 1)); u.sync_bar()
 		u.refresh()
 
 	# The first skill an act used (the name between "uses " and " on "), or "" for none.
@@ -163,7 +163,7 @@ func _hunt(n: int) -> void:
 			t.b.revealed[Vector2i(4, 4)] = true
 			t.forget_all()
 			var hide: Skill = load("res://Skills/hide.tres")
-			t.v(3).learned.append(t.slot(hide, 1))
+			t.v(3).learned.append(t.slot(hide, 1)); t.v(3).sync_bar()
 			t.v(3).refresh()
 			t.b.cast(t.v(3), hide, t.v(3))  # the debris it leaves
 			t.hiding(t.v(3))
@@ -292,7 +292,7 @@ func _kick(n: int) -> void:
 			var margins := {}
 			for d in [0, 1, 2, 3, 9]:
 				var t := await _fresh(1)
-				t.v(1).learned.append(t.slot(t.sk("kick"), rank))
+				t.v(1).learned.append(t.slot(t.sk("kick"), rank)); t.v(1).sync_bar()
 				t.v(1).strength = str
 				t.stage(t.lancin, {t.v(1): Vector2i(d + 1, 3), t.v(3): Vector2i(d, 3)} if d < 9 else {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3)})
 				t.v(1).refresh()
@@ -301,7 +301,7 @@ func _kick(n: int) -> void:
 				margins["edge%d" % d] = AI.score(t.v(1), t.sk("kick"), r, t.b, t.v(3)) - AI.score(t.v(1), t.strike, r, t.b, t.v(3))
 				_drop(t)
 			var t := await _fresh(1)  # and a friend of the kicker's behind the foe: the drive stops short, the slam hurts both
-			t.v(1).learned.append(t.slot(t.sk("kick"), rank))
+			t.v(1).learned.append(t.slot(t.sk("kick"), rank)); t.v(1).sync_bar()
 			t.v(1).strength = str
 			t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3), t.v(2): Vector2i(6, 3)})
 			t.v(1).refresh()
@@ -315,7 +315,7 @@ func _kick(n: int) -> void:
 	for seed in n:
 		for edge in [true, false]:
 			var t := await _fresh(seed)
-			t.v(1).learned.append(t.slot(t.sk("kick"), 2))
+			t.v(1).learned.append(t.slot(t.sk("kick"), 2)); t.v(1).sync_bar()
 			t.v(1).strength = 10
 			t.stage(t.lancin, {t.v(1): Vector2i(1, 3), t.v(3): Vector2i(0, 3)} if edge else {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3)})
 			t.v(1).refresh()
@@ -342,7 +342,7 @@ func _grudge(n: int) -> void:
 	var kills := 0
 	for seed in n:
 		var t := await _fresh(seed)
-		t.v(3).learned.append(t.slot(load("res://Skills/grudge.tres"), 2))
+		t.v(3).learned.append(t.slot(load("res://Skills/grudge.tres"), 2)); t.v(3).sync_bar()
 		var a := Vector2i(1 + t.rng.randi() % 3, 3 + t.rng.randi() % 3)
 		var c := Vector2i(4 + t.rng.randi() % 3, 1 + t.rng.randi() % 3)
 		t.v(1).strength = 20  # a blow worth giving up
@@ -382,8 +382,8 @@ func _rider(n: int) -> void:
 	for seed in n:
 		var t := await _fresh(seed)
 		t.v(1).strength = 12
-		t.v(1).learned.append(t.slot(t.sk("poach")))
-		t.v(1).learned.append(t.slot(t.sk("slam_jam"), 2))
+		t.v(1).learned.append(t.slot(t.sk("poach"))); t.v(1).sync_bar()
+		t.v(1).learned.append(t.slot(t.sk("slam_jam"), 2)); t.v(1).sync_bar()
 		t.roomy(t.v(1))
 		t.v(1).refresh()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(3, 4), t.v(3): Vector2i(5, 3), t.v(4): Vector2i(5, 4)})
@@ -434,7 +434,7 @@ func _cc_at(n: int, recon: int) -> void:
 		var t := await _fresh(seed)
 		t.v(1).strength = 12
 		t.v(1).afflict(t.effect("recon", recon), 99)
-		t.v(1).learned.append(t.slot(t.sk("stun"), 2))
+		t.v(1).learned.append(t.slot(t.sk("stun"), 2)); t.v(1).sync_bar()
 		t.roomy(t.v(1))
 		t.v(1).refresh()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(3, 4), t.v(3): Vector2i(5, 3), t.v(4): Vector2i(5, 4)})
@@ -485,7 +485,7 @@ func _dread(n: int) -> void:
 	for seed in n:
 		var t := await _fresh(seed)
 		t.v(1).afflict(t.effect("recon", 3), 99)
-		t.v(4).learned.append(t.slot(t.sk("stun"), 2))
+		t.v(4).learned.append(t.slot(t.sk("stun"), 2)); t.v(4).sync_bar()
 		t.roomy(t.v(1))
 		t.v(4).refresh()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 6), t.v(3): Vector2i(7, 3), t.v(4): Vector2i(0, 3)})
@@ -516,7 +516,7 @@ func _armor(n: int) -> void:
 		var unread := 0
 		for seed in n:
 			var t := await _fresh(seed)
-			t.v(1).learned.append(t.slot(t.hex))
+			t.v(1).learned.append(t.slot(t.hex)); t.v(1).sync_bar()
 			t.roomy(t.v(1))
 			t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3)})
 			if plated:
@@ -533,7 +533,7 @@ func _armor(n: int) -> void:
 			dmg += 300 - t.v(3).hp
 			_drop(t)
 		var t := await _fresh(1)
-		t.v(1).learned.append(t.slot(t.hex))
+		t.v(1).learned.append(t.slot(t.hex)); t.v(1).sync_bar()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3)})
 		if plated:
 			t.v(3).armor = t.bulwark()
@@ -564,7 +564,7 @@ func _plate(n: int) -> void:
 		for seed in n:
 			var t := await _fresh(seed)
 			t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3) if near else Vector2i(8, 6)})
-			t.v(1).learned.append(t.slot(t.sk("scrap_plating"), 3))
+			t.v(1).learned.append(t.slot(t.sk("scrap_plating"), 3)); t.v(1).sync_bar()
 			t.v(1).pack.append(t.bulwark())
 			t.roomy(t.v(1))
 			t.v(1).refresh()
@@ -586,12 +586,12 @@ func _plate(n: int) -> void:
 		var t := await _fresh(seed)
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3), t.v(4): Vector2i(3, 3)})
 		for foe: Unit in [t.v(3), t.v(4)]:
-			foe.learned.clear()
+			foe.learned.clear(); foe.sync_bar()
 			foe.armor = null
 			foe.plating.clear()
 			t.soak(foe, 300)
-		t.v(4).learned.append(t.slot(t.sk("power_armor"), 3))
-		t.v(3).learned.append(t.slot(t.sk("scrap_plating"), 5))
+		t.v(4).learned.append(t.slot(t.sk("power_armor"), 3)); t.v(4).sync_bar()
+		t.v(3).learned.append(t.slot(t.sk("scrap_plating"), 5)); t.v(3).sync_bar()
 		t.v(4).equip(t.bulwark(), Unit.plate_slot(t.sk("power_armor")))
 		t.v(3).armor = t.bulwark()
 		t.v(3).refresh()
@@ -617,7 +617,7 @@ func _worn(n: int) -> void:
 	var dmg := 0.0
 	for seed in n:
 		var t := await _fresh(seed)
-		t.v(1).learned.append(t.slot(t.hex))
+		t.v(1).learned.append(t.slot(t.hex)); t.v(1).sync_bar()
 		t.roomy(t.v(1))
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(5, 3)})
 		Exhaustion.on = true
@@ -650,7 +650,7 @@ func _hosts(n: int, foe_x: int, name: String) -> void:
 	var dmg := 0.0
 	for seed in n:
 		var t := await _fresh(seed)
-		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres")))
+		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres"))); t.v(1).sync_bar()
 		t.roomy(t.v(1))
 		t.v(1).intelligence = 14  # Summon's soft cap: rank I + 2 in hand (a villager's 8 holds none)
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(3): Vector2i(foe_x, 3)})
@@ -671,7 +671,7 @@ func _restless(n: int) -> void:
 	var left := 0
 	for seed in n:
 		var t := await _fresh(seed)
-		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres"), 3))
+		t.v(1).learned.append(t.slot(load("res://Skills/skeleton.tres"), 3)); t.v(1).sync_bar()
 		t.roomy(t.v(1))
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(4, 5), t.v(3): Vector2i(10, 3), t.v(4): Vector2i(10, 5)})
 		t.v(1).refresh()
@@ -698,7 +698,7 @@ func _hide(_n: int) -> void:
 	for w in [1, 20, 30, 33, 36, 40, 60]:
 		var t := await _fresh(1)
 		var inv: Skill = load("res://Skills/invisibility.tres")
-		t.v(1).learned.append(t.slot(inv, 1))
+		t.v(1).learned.append(t.slot(inv, 1)); t.v(1).sync_bar()
 		t.v(1).intelligence = 20
 		t.v(1).refresh()
 		t.stage(t.lancin, {t.v(1): Vector2i(4, 3), t.v(2): Vector2i(5, 3), t.v(3): Vector2i(6, 3)})

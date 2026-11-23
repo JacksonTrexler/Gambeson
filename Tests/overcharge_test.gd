@@ -41,7 +41,7 @@ func test_stacks() -> void:
 
 
 func test_spent_first() -> void:
-	v(1).learned.append(slot(transfer))
+	v(1).learned.append(slot(transfer)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(3, 3)})
 	v(1).refresh()
 	v(1).energy = 5
@@ -57,7 +57,7 @@ func test_spent_first() -> void:
 
 
 func test_not_focus() -> void:
-	v(1).learned.append(slot(focus, 3))
+	v(1).learned.append(slot(focus, 3)); v(1).sync_bar()
 	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(5, 3)})
 	v(1).refresh()
 	v(1).set_store(focus_pool, 1)

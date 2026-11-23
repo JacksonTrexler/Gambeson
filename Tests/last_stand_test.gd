@@ -14,8 +14,8 @@ var sweet: Skill = load("res://Skills/sweet_nothings.tres")
 func caster(s: Skill, r := 1) -> void:
 	v(3).charisma = 40  # mod 15: every roll beats a villager
 	roomy(v(3))
-	v(3).learned.append(slot(sweet))
-	v(3).learned.append(slot(s, r))
+	v(3).learned.append(slot(sweet)); v(3).sync_bar()
+	v(3).learned.append(slot(s, r)); v(3).sync_bar()
 	v(3).set_store(sn, v(3).pools()[sn])
 	v(3).refresh()
 
