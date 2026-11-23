@@ -108,6 +108,11 @@ Best guess: keep as built; frozen look and AI pathing are later cards.
 Ref: `docs/plans/w18-fog.md`, `Scripts/Overlay.gd` `fog_of_war`, `Scripts/Battle.gd` `sight_cells`.
 Answer: ____
 
+**F42. The AI and Power Siphon as built (wave 18 follow-ups; see ?310 to ?312).** The AI prices the siphon as turn-end HP on a live-circuit tile (through `Battle.hazard`, so the HUD forecast shows it too); the Power it gives is not weighed, generators do not recharge from it, and the price reads the true circuit.
+Best guess: keep as built; weighing the gain and the recharge are later cards.
+Ref: `Scripts/Battle.gd` `hazard`, `_owe_wound`, `docs/plans/w18-ai-siphon.md`.
+Answer: ____
+
 ---
 
 ## 3. Skills and classes (wave 18 G, H, I, J)
@@ -233,6 +238,11 @@ Answer: ____
 **Standing calls (HUD):** ?221 command readiness and the glow's size; ?222 do intel-only uses roll, tier 2 for "low"; ?224, ?225 passive signs, held rounding pieces, wrap rather than scale, merged "On <who>" lines; ?247 the Restless Dead chip not a rename, the boon a note, a screenshot; ?97 and ?100 a HUD showing more than the largest reserve; round and initiative lines using the arrow (`docs/todo/ui.md:8`); more resources (Rage, Hype, Clout, Gold) and shops; ?125 retuning colours (now with red, black, blue, purple from F27). Best guess: keep as built.
 Answer: ____
 
+**F43. HUD chips for the further tempers (wave 18 follow-ups; see ?313, ?314).** A starman's `Bio.also` tempers (Flippant, Vindictive, Power Hungry) show as chips on the leader's card only; a foe's card shows none, as it shows no behaviour chip today.
+Best guess: keep; a foe's tempers stay unshown until you want them read.
+Ref: `Scripts/HUD.gd` `_info`, `docs/plans/w18-hud-also.md`.
+Answer: ____
+
 ---
 
 ## 5. Tests and tooling (wave 18 C)
@@ -262,6 +272,11 @@ Best guess: both stay.
 Answer: ____
 
 **Standing calls (tooling):** ?258 the looser tests; ?239 expand typing (the 27 declarations, ?248) only for safety; ?251 and ?249 `test_icons` and the icon files; ?183 sims and budgets (see ?257 above). Best guess: keep.
+Answer: ____
+
+**F41. `skill.py` fix as built (wave 18 follow-ups; see ?307 to ?309).** `new` now writes `intensity` only with an explicit `--tier`, `check` fails a skill with a field `Skill.gd` does not declare (`check_declared`), and a stray `description` left `Skills/undead.tres`. Default-valued fields are not checked.
+Best guess: keep as built.
+Ref: `Util/skill.py`, `docs/plans/w18-skillpy.md`. This closes F36.
 Answer: ____
 
 ---

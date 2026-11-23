@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 307. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 315. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -27,6 +27,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 17. **Wave 18 batch 1 (?280 to ?287):** the trackpad sign and scale in the camera (?281); the Nexus reading of "pane * base power" and the live circuit (?283, ?284); flex: the prereq floors, the Scout numbers, Ranger's duplicate tab, the god-slot "Flex" name (?285, ?286); the rolling window for the bar cache (?287).
 18. **Wave 18 batch 2 (?288 to ?296):** the astral void rule and the Hop skill as an innate active (?288); Floaty's fractional movement (?289); Flippant, Vindictive, Power Hungry and `Bio.also` (?290); the grudge weight 5 against 10 and the 25% thresholds (?291); the Jester's inverted page costs and its stat lists (?292); the Jester's data-only skills, all `??` (?293); Jovia's page and prereqs (?294); `flex_kind` (?295); the `skill.py` `intensity` line (?296).
 19. **Wave 18 batch 3 (?297 to ?306):** the fog radius, shades and dim-only memory (?297); the AI left unchanged (?298); the `free` path flag (?299); the Monster paths, Undead ?? and Seaborn ?? (?300); the Monster class and playable (?301); where Thesis of Theseus sits, dark mage and dark cleric not placed (?302); its level, path-only design and the shared picker (?303); the AI pick and L + 1 Skeletons value (?304); its price (?305); `skill.py` reading the parent (?306).
+20. **Wave 18 follow-ups (?307 to ?314):** `skill.py` writing the intensity only with a tier, `check_declared`, the stray `description` (?307 to ?309); the AI pricing Power Siphon as turn-end HP, the Power gain and generator recharge skipped, the true circuit (?310 to ?312); the HUD chips for `Bio.also` on the leader only, read directly (?313, ?314).
 
 ## Built on judgement, open for review (newest last; append here)
 
@@ -156,6 +157,14 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 304 Theseus AI (2026-11-23): picks the fewest path on its side; values a level L Monster as L + 1 Skeletons. `docs/plans/w18-theseus.md`.
 - 305 Theseus price (2026-11-23): 4 AP, 3 cost at every rank; extends `summon_per_rank`. `docs/plans/w18-theseus.md`.
 - 306 `skill.py check` reads the behaviour's parent (2026-11-23): a tooling change. `docs/plans/w18-theseus.md`.
+- 307 `skill.py new` intensity (2026-11-23, answers ?296): written only with an explicit `--tier`; the field was derived, redundant. `docs/plans/w18-skillpy.md`.
+- 308 `skill.py check` undeclared fields (2026-11-23): `check_declared` fails a `.tres` field `Skill.gd` does not declare. `docs/plans/w18-skillpy.md`; names: check_declared.
+- 309 Stray `description` out of `Skills/undead.tres` (2026-11-23): found by `check_declared`. `docs/plans/w18-skillpy.md`.
+- 310 AI prices Power Siphon (2026-11-23, answers ?284): `Battle.hazard` owes the circuit's HP share at a walk's end via `_owe_wound`; no `AI.gd` branch; timing flat. `docs/plans/w18-ai-siphon.md`.
+- 311 Siphon Power gain not weighed, no generator recharge (2026-11-23): both skipped; cards in the queue. `docs/plans/w18-ai-siphon.md`.
+- 312 `circuit_ends` reads the true circuit for the AI (2026-11-23): plain on-screen status. `docs/plans/w18-ai-siphon.md`.
+- 313 HUD chips for `Bio.also` (2026-11-23, answers ?290): on the leader's card only; foes show no bio chips; MUTED, one per temper. `docs/plans/w18-hud-also.md`.
+- 314 The chip loop reads `bio.also` directly (2026-11-23): not `Unit.tempered()`. `docs/plans/w18-hud-also.md`.
 
 ## Files
 

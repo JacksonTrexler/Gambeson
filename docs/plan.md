@@ -251,6 +251,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Fog of war (?297, ?298) | `sight_test.gd` |
 | — | Monster class, free path (?299 to ?301) | `monster_test.gd` |
 | — | Thesis of Theseus, choice picker (?302 to ?306) | `thesis_of_theseus_test.gd` |
+| — | `skill.py` intensity and undeclared fields (?307 to ?309) | `Util/skill.py check` |
+| — | The AI prices Power Siphon (?310 to ?312) | `stars_test.gd` |
+| — | HUD chips for `Bio.also` (?313, ?314) | `hud_test.gd` |
 
 ## Questions to answer first
 
