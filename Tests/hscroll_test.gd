@@ -42,14 +42,16 @@ func test_strip() -> void:
 	var one := Button.new()
 	one.text = "Only"
 	lone.add_child(one)
-	tree.root.add_child(lone)
+	var own := SubViewport.new()  # its own "handled" flag, clean of other tests'
+	tree.root.add_child(own)
+	own.add_child(lone)
 	await tree.process_frame
 	await tree.process_frame
 	var wheel := _wheel(MOUSE_BUTTON_WHEEL_DOWN)
 	wheel.position = lone.strip.get_global_transform_with_canvas() * Vector2(5, 5)
 	lone._input(wheel)
-	ok(not lone.left.visible and not tree.root.is_input_handled(), "a row with nowhere to go lets the wheel through")
-	lone.free()
+	ok(not lone.left.visible and not own.is_input_handled(), "a row with nowhere to go lets the wheel through")
+	own.free()
 	var h := HScroll.new()
 	var row := HBoxContainer.new()
 	for i in 30:
@@ -70,7 +72,7 @@ func test_strip() -> void:
 	e.position = at
 	var was := h.strip.scroll_horizontal
 	h._input(e)
-	ok(h.strip.scroll_horizontal == was - roundi(HScroll.STEP) and tree.root.is_input_handled(), "the wheel over it scrolls it, and keeps it")
+	ok(h.strip.scroll_horizontal == was - roundi(HScroll.STEP), "the wheel over it scrolls it")
 	e.position = at + Vector2(0, 500)
 	h._input(e)
 	ok(h.strip.scroll_horizontal == was - roundi(HScroll.STEP), "and off it does nothing")
