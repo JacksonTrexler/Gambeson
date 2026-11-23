@@ -104,7 +104,7 @@ func show_tree(u: Unit, c: TreeChoice, t: SkillTab, can_spend: bool) -> void:
 	if c.name == Unit.INVERTED:  # an inverted page: a button per stat that could pay, the choice of which the player's
 		act.visible = false
 		state_label.text = "T0 · " + (u.buy_missing(t) if u.buy_missing(t) else "Pay %d base stat for good" % Unit.FLEX_PRICE)
-		for k in u.flex_payers(t):
+		for k in (u.flex_payers(t) if u.buy_missing(t) != "Picked" else []):
 			var b := Button.new()
 			var v := roundi(u.get(k))
 			b.text = "%s %d>%d" % [String(k).left(3).capitalize(), v, v - Unit.FLEX_PRICE]
