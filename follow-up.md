@@ -1,6 +1,6 @@
 # Follow-up worksheet (2026-11-23)
 
-Answer inline after each `Answer:` (a word is enough: "ok" takes the best guess; "skip" leaves it as built), then say **continue**. Where you leave one blank, the best guess is what gets built and recorded as a numbered call. Ids: `?NNN` is an existing question in `todo.md` (detail in `docs/todo/*.md`, `docs/plans/*.md`); `F1` to `F34` are new, from your 2026-11-23c answers (`docs/agents/answers-2026-11-23c.md`, wave 18). Already answered and left out: ?278 (clean up leaks), ?279 (camera, now wave 18), ?276's old form, delete the merged branches, the Nexus void and generators (now F-items), ?255, ?256, ?216, ?218, ?220, ?222, ?223, ?214. Everything still open in `todo.md` that nothing waits on is batched under "Standing calls" in each group: "ok" keeps it as built.
+Answer inline after each `Answer:` (a word is enough: "ok" takes the best guess; "skip" leaves it as built), then say **continue**. Where you leave one blank, the best guess is what gets built and recorded as a numbered call. Ids: `?NNN` is an existing question in `todo.md` (detail in `docs/todo/*.md`, `docs/plans/*.md`); `F1` to `F30` are new, from your 2026-11-23c answers (`docs/agents/answers-2026-11-23c.md`, wave 18). Already answered and left out: ?278 (clean up leaks), ?279 (camera, now wave 18), ?276's old form, delete the merged branches, the Nexus void and generators (now F-items), ?255, ?256, ?216, ?218, ?220, ?222, ?223, ?214. Everything still open in `todo.md` that nothing waits on is batched under "Standing calls" in each group: "ok" keeps it as built.
 
 Blocking order inside each group: first items hold up the most wave 18 cards (A hscroll, B camera, C leaks, D nexus, E starmen, F fog, G flex, H jester, I monster, J theseus).
 
@@ -38,7 +38,7 @@ Best guess: share the resources only; the envoy encounter stays as it is (its tu
 Ref: `Scenes/astral_envoy.tscn`, `Dungeons/astral_nexus.tres`.
 Answer: ____
 
-**?267 (rest). Power Star.** Win reward at 15% a rank, charge lost on save, starmen on the unaligned faction. Still right now that the starmen are Vindictive towards hostile astral creatures (F9)?
+**?267 (rest). Power Star.** Win reward at 15% a rank, charge lost on save, starmen on the unaligned faction. Still right now that the starmen are Vindictive towards hostile astral creatures (F8)?
 Best guess: keep; the Envoy and Princess stay on a hostile faction, starmen "unaligned" so Vindictive has someone to hunt; no loot change.
 Ref: `Dungeons/astral_nexus.tres`, `Items/power_star.tres`, `docs/plans/w16-nexus.md`.
 Answer: ____
@@ -134,7 +134,7 @@ Answer: ____
 
 **F18. Thesis of Theseus: which classes (blocks J).** "Wizards, warlocks, dark mages, dark clerics": there are no dark mage or dark cleric classes (no `dark` tree; `Roles/` has wizard, warlock, mage, cleric). Where does it go, and what is "rank level"?
 Best guess: a t6 skill (tags `dark`, `nature`) on the Wizard and Warlock trees only; "dark mage" and "dark cleric" read as a Mage or Cleric who took the Necromancy / death route (a tree not yet made, see ?240's death-cleric tree) so it waits; "rank level" = the summoned Monster's level equals the skill's rank; it uses the summon soft cap (?238).
-Ref: `Roles/wizard.tres`, `Roles/warlock.tres`, `Behaviours/warcry.gd` (a summon-by-rank example), `Skills/skeleton.tres`.
+Ref: `Roles/wizard.tres`, `Roles/warlock.tres`, `Skills/skeleton.tres`.
 Answer: ____
 
 **F19. Thesis of Theseus: the design step.** "Designing" a monster: just pick a path, or also choose its traits?
@@ -145,7 +145,7 @@ Answer: ____
 **Standing calls (skills):** ?185 more traits, whether `insignia` / `badge` reach a trait; ?186 tier placement of Backstab, Glancing, Heavy Strike and the natural-20 reading; ?189 Striking Intellect's placement and `attack_stat`; ?190 the 26 flat-rank profiles, 38 hand prices; ?191 the 22 concrete skills and Gallantry's check; ?192 to ?197 (cc audit edges, Chaser tier, Skill Slot +1 gating, exhaustion numbers, Wake and Rake); ?198 to ?201 (Cram, Defense adds, `postpone` / `overcome`); ?202 to ?204, ?206, ?208 (Journeyman tier 2 and max rank 5; the flex picker now rides F11); ?209 recoveries add Exhaustion uses; ?215 and ?216 roster, a fallen member; ?240 a death-cleric tree for Grave Aura (rides F18). Best guess: keep as built; ?209 no.
 Answer: ____
 
-**Design wanted (batch):** Divinity trees for Urlo, Drael, Vetruvis, Survival, Paladin leadership flex, burn tier cap (?122, ?81); Wizard and Mage real trees (?70); Martial and Specialist roots (?15); a Life tree (?121, ?122, ?124); Merchant tree for Drone (?119); Trade Skills and Grind (?2, ?11); more Rogue, Bard, Luun, Elmon, Hogel skills; the cut-off Demon / Warlock / Dark Magic skill; Inspire, Sundering, Silent Strike, Sunder (?13); Charm (?14); Commitment to the bit; Energize and Power Transfer. Best guess: nothing is built until you design it; the Suit system (F31) is the frame for the next trees.
+**Design wanted (batch):** Divinity trees for Urlo, Drael, Vetruvis, Survival, Paladin leadership flex, burn tier cap (?122, ?81); Wizard and Mage real trees (?70); Martial and Specialist roots (?15); a Life tree (?121, ?122, ?124); Merchant tree for Drone (?119); Trade Skills and Grind (?2, ?11); more Rogue, Bard, Luun, Elmon, Hogel skills; the cut-off Demon / Warlock / Dark Magic skill; Inspire, Sundering, Silent Strike, Sunder (?13); Charm (?14); Commitment to the bit; Energize and Power Transfer. Best guess: nothing is built until you design it; the Suit system (F27) is the frame for the next trees.
 Answer: ____
 
 **Smaller calls (batch):** Winded (?126), Burnout's burnt max (?121), `Unit.guard` on helpless (?127), 0-AP actions while tapped (?119), snapped forms (?140), a flank / rear rider skill (?142), unshaping skills (?126, ?153), Discipline's initiative half and the Pike (?80, ?82, ?120), clout and tempers (?91, ?93), Jam's Focus hit (?97, ?100). Best guess: leave as built.
@@ -185,7 +185,7 @@ Best guess: whole bar names (a long row scrolls via F20 if it must).
 Ref: `Scripts/HUD.gd`, `docs/plans/w9-band.md`.
 Answer: ____
 
-**Standing calls (HUD):** ?221 command readiness and the glow's size; ?222 do intel-only uses roll, tier 2 for "low"; ?224, ?225 passive signs, held rounding pieces, wrap rather than scale, merged "On <who>" lines; ?247 the Restless Dead chip not a rename, the boon a note, a screenshot; ?97 and ?100 a HUD showing more than the largest reserve; round and initiative lines using the arrow (`docs/todo/ui.md:8`); more resources (Rage, Hype, Clout, Gold) and shops; ?125 retuning colours (now with red, black, blue, purple from F31). Best guess: keep as built.
+**Standing calls (HUD):** ?221 command readiness and the glow's size; ?222 do intel-only uses roll, tier 2 for "low"; ?224, ?225 passive signs, held rounding pieces, wrap rather than scale, merged "On <who>" lines; ?247 the Restless Dead chip not a rename, the boon a note, a screenshot; ?97 and ?100 a HUD showing more than the largest reserve; round and initiative lines using the arrow (`docs/todo/ui.md:8`); more resources (Rage, Hype, Clout, Gold) and shops; ?125 retuning colours (now with red, black, blue, purple from F27). Best guess: keep as built.
 Answer: ____
 
 ---
@@ -233,7 +233,7 @@ Best guess: yes eventually, on skills and trees; not now.
 Answer: ____
 
 **F29. Names taken as given.** Scout, Jester, Jovia, Floaty, Hop, Jump, Flippant, Vindictive, Power Hungry, Power Siphon, Thesis of Theseus, Monster, starpower generator, astral void, startile, starpane. None carries `??`. Any collide with an existing name? (grep found no skill, tree or class called Scout, Jester, Jovia, Jump, Hop or Floaty; `Monster` is a tag word already used on units.)
-Best guess: no `??` on any; `Monster` the class, `monster` the tag, both kept.
+Best guess: no `??` on any.
 Answer: ____
 
 **F30. Pane and tile in the code.** You wrote "pane" and "tile"; the files are `startile` and `starpane`. Rename?
