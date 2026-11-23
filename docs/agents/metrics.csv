@@ -80,3 +80,8 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w13-invest,opus,medium,168324,84,1299579,landed
 2026-11-23,w13-aifast,opus,medium,186093,80,1969816,landed
 2026-11-23,w13-tests,sonnet,high,205437,91,1177856,landed
+2026-11-23,w14-museum,opus,medium,130809,69,1404487,landed
+2026-11-23,w14-stare,sonnet,high,273966,127,4606219,landed
+2026-11-23,w14-detective,sonnet,high,84929,40,678738,landed
+2026-11-23,w14-ambush,sonnet,medium,94995,37,499641,landed
+2026-11-23,w14-minor,sonnet,medium,58284,21,170868,landed
