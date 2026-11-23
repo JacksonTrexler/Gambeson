@@ -2,7 +2,7 @@ extends Test
 
 # Gamut's Tower (GamutsTower): a round hall of stone you walk, a floor for each area difficulty -
 # Gentle, Standard, Harsh, bottom up - with a staircase up and one down across a ring of portals. The
-# Infernal Meadows open, the rest sealed. Stepping onto an open portal opens its menu: how it's won,
+# Infernal Meadows and the Astral Nexus open, the rest sealed. Stepping onto an open portal opens its menu: how it's won,
 # its enemies, and what winning it brings at that floor (Dungeon).
 
 
@@ -61,3 +61,65 @@ func test_portal_menu() -> void:
 	Game.difficulty = 0.0
 	Game.dungeon = null
 	t.free()
+
+
+# The Astral Nexus (AstralNexus.gd) on the second portal: 3 full generators, startiles, starpanes and void
+# laid out round them; 4 to 6 hostile starmen, every one on lattice the party's landing reaches; the void
+# costs a step 99; and its reward, the Power Star.
+func test_nexus() -> void:
+	var t := tower()
+	var d: Dungeon = t.dungeon_at(t.PORTALS[1])
+	ok(d != null and d.name == "Astral Nexus" and d.rewards_at(0.5)[0].name == "Power Star", "the second portal: the Astral Nexus, rewarding a Power Star")
+	t.place(t.PORTALS[1] - Vector2i(1, 1))
+	t.step(Vector2i.DOWN)
+	t.step(Vector2i.RIGHT)
+	ok(t.menu != null and t.menu.find_child("Title", true, false).text.begins_with("Astral Nexus"), "stepping onto it opens its menu")
+	t.free()
+	Game.starter = {faction = lancin, role = load("res://Roles/fighter.tres"), name = "Brick"}
+	var n: Node = load("res://Scenes/astral_nexus.tscn").instantiate()
+	n.get_node("Battle/Nexus").seed = 3
+	n.get_node("Camera").free()  # it would look for a HUD, and find one left by another test
+	tree.root.add_child(n)
+	await tree.process_frame
+	var nb: Battle = n.get_node("Battle")
+	var nx: AstralNexus = nb.get_node("Nexus")
+	ok(nx.starmen.size() >= 4 and nx.starmen.size() <= 6 and nx.starmen.all(func(u: Unit): return not Faction.friends(u.faction, lancin)), "4 to 6 hostile starmen (%d)" % nx.starmen.size())
+	ok(nx.generators.size() == 3 and nx.generators.all(func(c: Vector2i): return nb.charge[c] == Battle.STAR_CAPACITY and nb.top_layer(c).terrain.name == "Starpower Generator"), "three full generators on the lattice")
+	ok(nx.startiles.size() > 20 and nx.panes.size() > 20 and nx.voids.size() > 20 and nx.startiles.all(func(c: Vector2i): return c in nb.starpower and c not in nx.generators), "startiles, starpanes and void")
+	var reach := {AstralNexus.START: true}
+	var queue: Array[Vector2i] = [AstralNexus.START]
+	while not queue.is_empty():
+		var at: Vector2i = queue.pop_front()
+		for dir in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			if at + dir not in reach and nb.on_map(at + dir) and nb.terrain(at + dir).name != "Astral Void":
+				reach[at + dir] = true
+				queue.append(at + dir)
+	ok(nx.starmen.all(func(u: Unit): return u.cell in reach) and nx.generators.all(func(c: Vector2i): return c in reach), "the party's landing reaches every starman and generator over the lattice")
+	ok(nb.step(nb.player, AstralNexus.START, nx.voids[0]) >= 99.0 and nb.star_source(nx.generators[0]) != null, "a step into the void costs 99; the lattice reaches its source")
+	n.free()
+
+
+# The Power Star: a powered wearer's overflowing Power fills it at rank x 15%, to their max Power, and
+# using it gives the lot back as Power; nobody else's overflow counts.
+func test_power_star() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3)})
+	var star: Item = load("res://Items/power_star.tres")
+	v(1).max_energy = 20
+	v(1).energy = 10
+	v(1).equip(star)
+	v(1).grant_energy(40)  # 10 fit, 30 overflow: a plain unit's is lost
+	ok(v(1).trinket.held == 0, "nobody but a powered wearer fills it")
+	v(1).afflict(effect("powered", 1.0), 99)
+	v(1).energy = 10
+	v(1).grant_energy(10 + 100)  # 100 over
+	ok(v(1).trinket.held >= 14 and v(1).trinket.held <= 16 and star.held == 0, "15%% of the overflow at rank 1 (%d of 100), the shared item untouched" % v(1).trinket.held)
+	v(1).grant_energy(1000)
+	ok(v(1).trinket.held == 20, "up to its max Power (%d)" % v(1).trinket.held)
+	v(1).energy = 0
+	ok(b.use_item(v(1), v(1).trinket) and v(1).energy == 20 and v(1).trinket.held == 0, "used: all of it back as Power, then spent")
+	ok(not b.use_item(v(1), v(1).trinket), "spent, there's nothing to use")
+	v(1).trinket = star.duplicate()
+	v(1).trinket.rank = 2
+	v(1).energy = 20
+	v(1).grant_energy(20)
+	ok(v(1).trinket.held >= 5 and v(1).trinket.held <= 7, "rank 2: 30%% of the overflow (%d of 20)" % v(1).trinket.held)

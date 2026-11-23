@@ -44,6 +44,8 @@ extends Resource
 @export var restore_mod := &""  # ...plus the user's mod in this (potions: constitution)...
 @export var restore_flat := 0  # ...plus this (Sweet Something: 1)
 @export var burning := false  # its wearer burns for 10% x rank of its max HP (fire) as its turns start, and again each time it uses a skill in the slots it grants (Burning Bag; Unit.burning_slots())
+@export var soaks := 0.0  # a powered wearer's overflow Power (what Unit.grant_energy() can't fit) fills it: this x rank of the overflow, held up to the wearer's max Energy; used from its slot it gives all it holds back as Power (Power Star)
+@export var held := 0  # the Power it holds now (soaks): a copy carries it (soaked(), emptied())
 @export var empty := false  # used: a potion is emptied rather than used up, and fills again as the battle ends (Battle.refill())
 @export var binding := false  # put on a unit against its will (Shackles: Skill.binds): it can't be taken off for free or swapped out; while Shackled it's locked, after that taking it off costs its rank in AP (Battle.unshackle())
 @export var picks := &""  # it can be lockpicked off: a dex check at this difficulty, at its rank (Shackles: approachable)
@@ -154,7 +156,22 @@ func restoring() -> String:
 # Copies of itself emptied (used) and filled again: a potion's own state, not every potion's.
 func emptied() -> Item:
 	var it: Item = duplicate()
-	it.empty = true
+	if soaks > 0.0:
+		it.held = 0  # a soaking item is spent, not emptied until the battle ends: it fills from overflow
+	else:
+		it.empty = true
+	return it
+
+
+# Whether it can be used from its slot: it restores something, isn't emptied, and (soaking) holds some.
+func usable() -> bool:
+	return restores != &"" and not empty and (soaks <= 0.0 or held > 0)
+
+
+# A copy holding n more Power, up to `cap` (Unit.grant_energy()).
+func soaked(n: int, cap: int) -> Item:
+	var it: Item = duplicate()
+	it.held = clampi(held + n, 0, cap)
 	return it
 
 

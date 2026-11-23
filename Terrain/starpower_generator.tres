@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Terrain" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Terrain.gd" id="1_terrain"]
+[ext_resource type="Texture2D" path="res://Tiles/starpower_generator.png" id="2_starpower_generator"]
+
+[resource]
+script = ExtResource("1_terrain")
+name = "Starpower Generator"
+look = ExtResource("2_starpower_generator")
+tags = Array[StringName]([&"star", &"generator"])
+source = true
+passes = true
