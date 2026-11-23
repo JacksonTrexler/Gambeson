@@ -111,7 +111,7 @@ const TERMS := {
 	&"honed": ["Honed", &"condition", "Material perfection: rank +1, and none of what enchanted does. Never both."],
 	&"bless": ["Bless", &"condition", "A divine buff: a Downed unit under it recovers HP each turn, executes against it go by its full HP, and checks that would tap or execute it get its rank. Intervention gives it."],
 	&"execute": ["Execute", &"check", "An instant death check, cut by how hurt its target is: HP left over max HP, over its rank. Whatever helps against such checks helps against every one of them."],
-	&"ambush": ["Ambush", &"check", "An attack made from concealment, or by one its target cannot see or place. Effects and skills tagged ambush count on it."],
+	&"ambush": ["Ambush", &"check", "The first attack roll out of concealment (by one its target cannot see or place) since its side's turn began - a miss spends it too; later rolls are not (unless Ambush Fusillade). Effects and skills keyed on ambush count on it."],
 	&"reaction": ["Reaction", &"check", "Done out of turn, in answer to a moment: an attack, a hit, a fall. Lost while Jammed or helpless; effects tagged reaction count on them."],
 	&"rear": ["Rear ??", &"check", "An attack from behind the target, by the cone test of the way it faces: it needs 1 less to hit. Effects and skills tagged rear count on it."],
 	&"flank": ["Flank ??", &"check", "An attack from the side of its target, by the cone test of the way it faces. Effects and skills tagged flank count on it."],

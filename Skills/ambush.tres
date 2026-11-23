@@ -1,19 +1,30 @@
 [gd_resource type="Resource" script_class="Skill" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
-[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
-[ext_resource type="Script" path="res://Behaviours/ambush.gd" id="b_ambush"]
+[ext_resource type="Script" path="res://Scripts/Requirement.gd" id="5_requirement"]
+[ext_resource type="Script" path="res://Scripts/Tier.gd" id="3_tier"]
 
-[sub_resource type="Resource" id="Behaviour_ambush"]
-script = ExtResource("b_ambush")
+[sub_resource type="Resource" id="Requirement_1"]
+script = ExtResource("5_requirement")
+test = &"ambush"
+share = 0.3
+edge = 1
+
+[sub_resource type="Resource" id="Tier_1"]
+script = ExtResource("3_tier")
+rank = 1
+dice = Vector2i(1, 10)
+stat = &"dexterity"
 
 [resource]
 script = ExtResource("1_skill")
 name = "Ambush"
 glyph = "Am"
-tags = Array[StringName]([&"dex", &"defensive"])
-ap = 2.0
-cost = 0
-radius = 6.0
-hostile = false
-behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_ambush")])
+tags = Array[StringName]([&"physical", &"dex", &"martial", &"offensive"])
+intensity = &"moderate"
+requires = SubResource("Requirement_1")
+tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])
+dice_per_rank = true
+weapon_tag = true
+costs = "flat rank"
+radius = 1.0

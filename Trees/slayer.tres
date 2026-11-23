@@ -18,6 +18,8 @@
 [ext_resource type="Resource" path="res://Skills/slam_jam.tres" id="s_slam_jam"]
 [ext_resource type="Resource" path="res://Skills/deathlust.tres" id="s_deathlust"]
 [ext_resource type="Resource" path="res://Skills/backstab.tres" id="s_backstab"]
+[ext_resource type="Resource" path="res://Skills/sally.tres" id="s_sally"]
+[ext_resource type="Resource" path="res://Skills/ambush_fusillade.tres" id="s_ambush_fusillade"]
 
 [sub_resource type="Resource" id="Branch_jugular"]
 script = ExtResource("branch")
@@ -32,6 +34,15 @@ after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
 script = ExtResource("branch")
 skill = ExtResource("s_gank")
 after = Array[ExtResource("skill")]([ExtResource("s_jugular")])
+
+[sub_resource type="Resource" id="Branch_sally"]
+script = ExtResource("branch")
+skill = ExtResource("s_sally")
+
+[sub_resource type="Resource" id="Branch_ambush_fusillade"]
+script = ExtResource("branch")
+skill = ExtResource("s_ambush_fusillade")
+after = Array[ExtResource("skill")]([ExtResource("s_sally")])
 
 [sub_resource type="Resource" id="Branch_spike"]
 script = ExtResource("branch")
@@ -91,4 +102,4 @@ skill = ExtResource("s_deathlust")
 script = ExtResource("root")
 name = "Slayer"
 tag = &"martial"
-branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_backstab"), SubResource("Branch_gank"), SubResource("Branch_spike"), SubResource("Branch_sutemi"), SubResource("Branch_poach"), SubResource("Branch_jam"), SubResource("Branch_slam_jam"), SubResource("Branch_peel"), SubResource("Branch_hitch"), SubResource("Branch_bludgeon"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_stamina"), SubResource("Branch_deathlust")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_jugular"), SubResource("Branch_backstab"), SubResource("Branch_gank"), SubResource("Branch_sally"), SubResource("Branch_ambush_fusillade"), SubResource("Branch_spike"), SubResource("Branch_sutemi"), SubResource("Branch_poach"), SubResource("Branch_jam"), SubResource("Branch_slam_jam"), SubResource("Branch_peel"), SubResource("Branch_hitch"), SubResource("Branch_bludgeon"), SubResource("Branch_sundering"), SubResource("Branch_silent_strike"), SubResource("Branch_stamina"), SubResource("Branch_deathlust")])

@@ -270,9 +270,7 @@ class Debris:
 # Entering costs those it triggers on `cost` more movement and `wade` times as much (stride()), and
 # hazard() counts what a known one would do to a walker. Who knows it's there: its side and those told
 # (`known`), everyone when its `concealment` is 0 (fire, Warcry's squares: plainly visible), else
-# whoever reads the tile well enough (Perception.tile(), like a trap). One that `halts` stops the walk of
-# whoever it triggers on, there (walk()), as a trap does. `skill`, the skill that laid it, if any: its
-# behaviours hear it go off (Behaviour.tripped(): Ambush strikes whoever walks in).
+# whoever reads the tile well enough (Perception.tile(), like a trap).
 class Mark:
 	var kind: StringName  # what it is (&"charge", &"routed", &"earthwork"): its name's key and look
 	var name := ""
@@ -289,8 +287,6 @@ class Mark:
 	var wade := 1.0
 	var concealment := 0
 	var known: Dictionary[Unit, bool] = {}
-	var halts := false
-	var skill: Skill
 	var tint := Color.WHITE  # how it's drawn (Overlay): its colour and whether it swells (1), shrinks (-1) or stays (0)
 	var swell := 0
 
@@ -319,7 +315,7 @@ class Mark:
 
 	# Whether it would hurt u to step onto it: it triggers on u, and costs it movement or puts a harmful effect on it.
 	func harms(u: Unit) -> bool:
-		return on == &"enter" and hits(u) and (cost > 0.0 or wade > 1.0 or halts or effects.any(func(e: Effect): return e.helps() < 0))
+		return on == &"enter" and hits(u) and (cost > 0.0 or wade > 1.0 or effects.any(func(e: Effect): return e.helps() < 0))
 
 
 # A tile on fire (Flamewall): whoever enters it, or ends its turn on it, takes 1d8 + its setter's wis
@@ -1448,6 +1444,8 @@ func roll_attack(caster: Unit, target: Unit, c: Check) -> Check.Roll:
 	var rub := caster.friction  # (what c was made with: attack_check())
 	var hit := resolve(c)
 	hit.friction = rub
+	if ambushes(caster, target):
+		caster.ambush_rolls += 1  # (a miss spends it too)
 	caster.rolls_made += 1
 	var v := use_of(caster)
 	hit.use = v.id if v else 0
@@ -1705,10 +1703,14 @@ func aimed(o: Unit, t: Unit) -> int:
 	return _aimed.get(o, {}).get(t, 0)
 
 
-# Whether caster's attack on target ambushes it: as it attacks, the target can't place it, or it's
-# concealed from the target or unseen (Read). An ambushing hit carries the ambush tag (hit_tags()), so
-# effects and rules tagged ambush count on it; Gank needs one.
+# Whether caster's attack on target ambushes it: its first attack roll out of concealment - as it attacks,
+# the target can't place it, or it's concealed from the target or unseen (Read) - and none made as one
+# since its side's turn began (Unit.ambush_rolls, counted by roll_attack()); then its next `fusillade`
+# rolls too (Ambush Fusillade), seen or not. An ambushing hit carries the ambush tag (hit_tags()), so
+# effects, contingencies and rules keyed on ambush count on it (Gank, Sally, Wary, Ambush's advantage).
 func ambushes(caster: Unit, target: Unit) -> bool:
+	if caster.ambush_rolls > 0:
+		return caster.ambush_rolls <= roundi(caster.stat(&"fusillade"))
 	var held: Variant = caster.held(target)  # asked for each skill it weighs on the same target, in a planning stretch: once, while neither has moved
 	if held != null and held[1] == caster.cell and held[2] == target.cell:
 		return held[0]
@@ -2867,10 +2869,11 @@ static func attack_odds(u: Unit, s: Skill, t: Unit, b: Battle = null, guess := -
 	return Check.outcomes(attack_check(u, s, bonus, defense, edge_of(s, c) + int(req[2]), tags, rub if rub >= 0 else (b.friction_ahead(u, ahead) if b else u.friction + ahead)))
 
 
-# What s deals in u's hands, before the target's Defense, mitigation and damage effects: {lo, hi, avg}
+# What s deals in u's hands, before the target's Defense and mitigation: {lo, hi, avg}
 # over all its hits; empty if it deals none. Read as cast() reads it - its tier, dice and hits at its
 # rank impact, its stat at its stat impact (u's modifiers: Unit.mods()), its weapon - and, given its
-# target and the battle, its contingency's + damage (requirement()). The HUD's forecast (HUD._hurt())
+# target and the battle, its contingency's + damage (requirement()) and u's damage effects on the blow's tags
+# (hit_tags(): Sally on an ambush). The HUD's forecast (HUD._hurt())
 # and the AI's score (AI.score()) both read it.
 static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) -> Dictionary:
 	var m := u.mods(s)
@@ -2887,8 +2890,9 @@ static func damage_range(u: Unit, s: Skill, t: Unit = null, b: Battle = null) ->
 		bonus += int(b.requirement(u, s, t, r)[1])
 	if b:
 		bonus += b.impact_ahead(u, s)  # First Chair and the like: every blow of the use carries it (impact_of())
-	var lo := maxi(tier.power + count + bonus, 1) * hits
-	var hi := maxi(tier.power + count * tier.dice.y + bonus, 1) * hits
+	var more := u.stat(&"damage", hit_tags(u, s, t, b)) if b and t else 0.0  # its damage effects on the blow's tags, as cast() multiplies (Sally on an ambush)
+	var lo := maxi(roundi(maxi(tier.power + count + bonus, 1) * (1.0 + more)), 1) * hits
+	var hi := maxi(roundi(maxi(tier.power + count * tier.dice.y + bonus, 1) * (1.0 + more)), 1) * hits
 	return {lo = lo, hi = hi, avg = (lo + hi) / 2.0}
 
 
@@ -3693,8 +3697,6 @@ func walk(u: Unit, dest: Vector2i, expected := false) -> Dictionary:
 		from = t
 		if t.is_trap() and not blocked.call(c) and not u.passes_by(t, path.size()):
 			break  # stepped on a trap
-		if c in marks and not blocked.call(c) and _marks_for(u, c, expected).any(func(m: Mark): return m.halts):
-			break  # walked into an ambush (Mark.halts)
 	while not path.is_empty() and blocked.call(path[-1]):  # units can be passed, not stood on
 		blocker = in_way.call(path[-1])
 		path.pop_back()
@@ -4014,9 +4016,6 @@ func _trigger(u: Unit, c: Vector2i, on: StringName) -> void:
 			if m.uses == 0:
 				_drop_mark(c, m)
 		marked.emit(c, u, m)
-		if m.skill:
-			for bh in m.skill.behaviours:
-				bh.tripped(self, m, u)  # (Ambush)
 
 
 # What walking the tiles `passed` costs u for what hurts it by the tile: each of its per_tile effects
@@ -5880,6 +5879,11 @@ func _chain(caster: Unit, skill: Skill, t: Unit, r: int, tags: Array[StringName]
 	for i in hits:
 		if not t.is_alive():
 			break
+		if &"ambush" in blow and not ambushes(caster, t):  # spent on an earlier blow (ambushes()): this one isn't
+			blow.erase(&"ambush")
+			if acts:
+				acts.tags.erase(&"ambush")
+			req = requirement(caster, skill, t, caster.rank(skill))
 		var penalty := 0 if i < steady else row
 		var bonus := caster.attack_mod(skill) + zeal + caster.check_bonus(caster.attack_stat(skill), &"offensive") + discipline_hit(caster) + int(req[0])
 		var defense := t.defense(blow) + guard_of(acts)
@@ -6150,7 +6154,7 @@ func requirement(caster: Unit, skill: Skill, target: Unit, r: int) -> Array:
 		return [shift, 0, 0, 0, 0.0]
 	var m := caster.mods(skill) if q.beneficial() else Modifiers.NONE
 	var allies := units.values().filter(func(o: Unit): return Faction.friends(o.faction, caster.faction))
-	if not q.met(caster, target, r, m.share(q.share), allies, roundi(caster.stat(&"concealment"))):
+	if not q.met(caster, target, r, m.share(q.share), allies, roundi(caster.stat(&"concealment")), target != null and target != caster and ambushes(caster, target)):
 		return [shift, 0, 0, 0, 0.0]
 	return [m.pay(q.hit) + shift, m.pay(q.damage), q.edge, m.pay(q.turns), q.strength * m.potency if q.strength > 0.0 else q.strength]
 

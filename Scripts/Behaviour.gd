@@ -350,19 +350,6 @@ func marks(_b: Battle, _u: Unit) -> bool:
 	return false
 
 
-# Lying in wait: what casting its skill on `cell` would catch, for the AI to weigh where foes walk (AI._waylay()):
-# {tiles: the cells it marks, skill: the blow a foe that walks onto one is struck by}, empty if it waits for nothing
-# (Ambush). Asked of every cell a foe may walk: pure.
-func waylays(_c: Cast, _cell: Vector2i) -> Dictionary:
-	return {}
-
-
-# A tile mark its skill laid (Battle.Mark.skill) went off on u (Battle._trigger(), after its effects went on):
-# what the skill does then (Ambush: its layer strikes u).
-func tripped(_b: Battle, _m: Battle.Mark, _u: Unit) -> void:
-	pass
-
-
 # A passive's: the AP a summoned unit `who` keeps on arriving, beyond what the summon gives (Behaviours/summon_per_rank.gd
 # asks every passive its summoner has); `rank` is the holder's rank in it. Pure (Wake and Rake: its rank, for a `summon` unit).
 func summon_ap(_holder: Unit, _rank: int, _who: Unit) -> int:

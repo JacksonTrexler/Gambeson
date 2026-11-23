@@ -1,68 +1,61 @@
 extends Test
 
-# Ambush (Behaviours/ambush.gd): hidden marks on up to rank tiles its weapon reaches; a foe walking onto
-# one stops there and is struck out of turn (Mark.halts, Behaviour.tripped()), unless the caster reads it
-# as no one to hit; each fires once; gone as its side's next turn ends. Walkers can't foresee one they
-# haven't seen through, and seeing through it is an inspect() like a trap's.
+# The ambush (Battle.ambushes(), the ambush hit tag): the first attack roll out of concealment since its
+# side's turn began (Unit.ambush_rolls, counted by Battle.roll_attack(), a miss too); later rolls aren't,
+# but for Ambush Fusillade's rank more (Effect stat fusillade). Ambush (Skills/ambush.tres): a blow with a
+# contingency test=ambush (Requirement): advantage as one. Sally: + 20% damage a rank on one. The AI's
+# forecast prices it (AI.score() reads hit_tags() and the contingency).
 
 var ambush: Skill = load("res://Skills/ambush.tres")
+var sally: Skill = load("res://Skills/sally.tres")
+var fusillade: Skill = load("res://Skills/ambush_fusillade.tres")
 
 
-func test_ambush() -> void:
-	v(3).learned.append(slot(ambush, 2))
-	stage(nemes, {v(3): Vector2i(4, 2), v(1): Vector2i(1, 3)})  # beside the path, not on it
-	v(3).strength = 60
-	v(3).dexterity = 60
-	soak(v(1))
-	ok(Behaviours_ambush().weapon(v(3)) == strike, "its weapon: its first attack")
-	ok(b.cast_at(v(3), ambush, Vector2i(4, 3)), "lies in wait")
-	var laid := b.marks.keys().filter(func(c: Vector2i): return b.has_mark(c, &"ambush"))
-	ok(laid.size() == 2 and Vector2i(4, 3) in laid, "rank 2: two tiles, nearest the one aimed at (%s)" % [laid])
+func setup(skills: Array) -> void:
+	for pair in skills:
+		v(1).learned.append(slot(pair[0], pair[1]))
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
+	v(1).dexterity = 14
+	v(1).refresh()
+	soak(v(3), 900)
+	v(1).afflict(effect("concealment", 9), 9)  # deep: still concealed after its blows erode it
+
+
+func edge(s: Skill) -> int:
+	return Battle.edge_of(s, b.cast_of(v(1), s, v(3), 1, true)) + int(b.requirement(v(1), s, v(3), 1)[2])
+
+
+func test_first_roll_only() -> void:
+	setup([[ambush, 1], [sally, 3]])
+	ok(b.ambushes(v(1), v(3)) and &"ambush" in Battle.hit_tags(v(1), ambush, v(3), b), "concealed, no roll yet: an ambush")
+	ok(edge(ambush) == 1, "Ambush: advantage as one")
+	ok(is_equal_approx(v(1).stat(&"damage", Battle.hit_tags(v(1), ambush, v(3), b)), 0.6) and v(1).stat(&"damage") == 0.0,
+			"Sally III: + 60% damage on an ambush, none otherwise")
+	var p := AI.score(v(1), ambush, b.read(v(1), v(3)), b, v(3))
+	b.cast(v(1), ambush, v(3))
+	ok(v(1).ambush_rolls == 1 and b.read(v(3), v(1)).concealed, "one roll spent it, still concealed")
+	ok(not b.ambushes(v(1), v(3)) and edge(ambush) == 0 and v(1).stat(&"damage", Battle.hit_tags(v(1), ambush, v(3), b)) == 0.0,
+			"the next blow is no ambush: no advantage, no Sally")
+	ok(AI.score(v(1), ambush, b.read(v(1), v(3)), b, v(3)) < p, "the AI prices the ambush, then its loss")
 	b.end_turn()
-	var seen: Array = b.walk(v(1), Vector2i(7, 3), true).path
-	ok(Vector2i(4, 3) in seen and seen.back() != Vector2i(4, 3),
-			"hidden: the walker doesn't see it coming")
-	var p := b.travel(v(1), Vector2i(7, 3))
-	ok(p.back() == Vector2i(4, 3) and v(1).hp < 999, "walks in: stopped there, and struck")
-	ok(not b.has_mark(Vector2i(4, 3), &"ambush") and laid.any(func(c: Vector2i): return b.has_mark(c, &"ambush")), "that tile's used up, the other waits")
 	b.end_turn()
-	b.end_turn()
-	ok(laid.all(func(c: Vector2i): return not b.has_mark(c, &"ambush")), "gone once its side's next turn ends")
+	ok(v(1).ambush_rolls == 0 and b.ambushes(v(1), v(3)), "its side's turn again, still hidden: a fresh one")
 
 
-func test_ambush_spares_friends() -> void:
-	v(3).learned.append(slot(ambush, 1))
-	stage(nemes, {v(3): Vector2i(4, 2), v(1): Vector2i(1, 3)})
-	ok(b.cast_at(v(3), ambush, Vector2i(4, 3)), "lies in wait")
-	b.end_turn()
-	v(1).wisdom = 60
-	ok(b.inspect(v(1), Vector2i(4, 3)) and b.walk(v(1), Vector2i(7, 3), true).path.back() == Vector2i(4, 3), "seen through, as a trap is: it knows it'd stop there")
-	v(1).afflict(effect("trickery", 9), 9)  # passes itself off as a friend
-	v(3).wisdom = 1
-	var hp := v(1).hp
-	ok(b.read(v(3), v(1)).attitude(v(3)) == &"ally", "the ambusher takes it for a friend")
-	ok(b.travel(v(1), Vector2i(7, 3)).back() == Vector2i(4, 3) and v(1).hp == hp, "stopped, but the caster holds its blow")
+func test_fusillade() -> void:
+	setup([[strike, 3], [fusillade, 1]])
+	v(3).afflict(effect("defense", -40), 9)  # its blows land: the chain runs all 3
+	b.cast(v(1), strike, v(3))
+	ok(v(1).ambush_rolls == 2, "Fusillade I: the first roll and one more ambush, the third doesn't (%d)" % v(1).ambush_rolls)
+	ok(not b.ambushes(v(1), v(3)), "spent")
+	v(1).learned.clear()
+	v(1).learned.append(slot(fusillade, 3))
+	v(1).refresh()
+	ok(b.ambushes(v(1), v(3)), "Fusillade III: two rolls in, the next still ambushes, seen or not")
 
 
-# The AI lies in wait where the foes will walk (AI._waylay(), Behaviour.waylays()): marks on tiles a foe's walk
-# toward it crosses, and waits there; a foe that wouldn't come within reach gets none.
-func test_ai_waylays() -> void:
-	v(3).learned.append(slot(ambush, 2))
-	stage(nemes, {v(3): Vector2i(4, 2), v(1): Vector2i(9, 4)})
-	v(3).dexterity = 60
-	v(3).strength = 60  # a blow worth the AP
-	var far := v(1).stat(&"movement")
-	print("DBG ", Behaviours_ambush().weapon(v(3)).name, " ", b.skill_range(v(3), Behaviours_ambush().weapon(v(3))), " ", v(3).actives.map(func(x): return x.name), v(3).move_left(), " ", v(1).faction.name, v(3).faction.name)
-	var log := AI.act(b, v(3))
-	var laid := b.marks.keys().filter(func(c: Vector2i): return b.has_mark(c, &"ambush"))
-	ok(Vector2i(5, 2) in laid and v(3).cell == Vector2i(4, 2),
-			"a foe coming: it lays marks on the tile it walks to and waits (%s) %s" % [laid, log])
-	for c in laid:
-		b.marks.erase(c)
-	stage(nemes, {v(3): Vector2i(0, 0), v(1): Vector2i(9, 7)})
-	AI.act(b, v(3))
-	ok(not b.marks.keys().any(func(c: Vector2i): return b.has_mark(c, &"ambush")), "a foe out of its walk's reach of it: none (%s)" % far)
-
-
-func Behaviours_ambush() -> GDScript:
-	return load("res://Behaviours/ambush.gd")
+func test_who() -> void:
+	var slayer: SkillRoot = load("res://Trees/slayer.tres")
+	ok(slayer.branches.any(func(x: Branch): return x.skill == sally) and slayer.branches.any(func(x: Branch): return x.skill == fusillade), "on the Slayer tree")
+	ok(sally in (load("res://Roles/rogue.tres") as Role).options, "the Rogue's to take")
+	ok([ambush, sally, fusillade].all(func(s: Skill): return not s.ai and s.stub == ""), "the user's, built")

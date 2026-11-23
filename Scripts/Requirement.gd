@@ -13,6 +13,7 @@ extends Resource
 const TESTS := {
 	&"hp_below": "below", &"hp_above": "above", &"energy_above": "above", &"energy_below": "below",
 	&"target_hp_below": "below", &"target_hp_above": "above", &"ally_within": "tiles", &"concealed": "flag",
+	&"ambush": "flag",
 }
 const SPAN := 12.0  # tiles a tile requirement's share is taken over, so lambda can work on it as a share
 
@@ -37,8 +38,9 @@ func beneficial() -> bool:
 
 
 # Whether it's met for caster on target at rank r, with permissive share p (Modifiers.share(share)).
-# `allies`: the caster's living allies (Battle passes them); `concealed`: the caster's concealment.
-func met(caster: Unit, target: Unit, r: int, p: float, allies: Array = [], concealed := 0) -> bool:
+# `allies`: the caster's living allies (Battle passes them); `concealed`: the caster's concealment; `ambush`:
+# whether its attack on target ambushes it (Battle.ambushes()).
+func met(caster: Unit, target: Unit, r: int, p: float, allies: Array = [], concealed := 0, ambush := false) -> bool:
 	match test:
 		&"hp_below":
 			return caster.hp <= p * caster.max_hp
@@ -58,6 +60,8 @@ func met(caster: Unit, target: Unit, r: int, p: float, allies: Array = [], conce
 			return allies.any(func(a: Unit): return a != caster and a.is_alive() and Command.tiles(a.cell, at) <= reach + 0.0001)
 		&"concealed":
 			return concealed > 0
+		&"ambush":
+			return ambush
 	return false
 
 
@@ -103,4 +107,6 @@ func said(r: int, p: float) -> String:
 			return "within %s tiles of an ally" % Skill.num(snappedf(tiles(p, r), 0.1))
 		&"concealed":
 			return "from concealment"
+		&"ambush":
+			return "as an %s" % Glossary.term(&"ambush")
 	return String(test)

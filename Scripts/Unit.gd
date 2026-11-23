@@ -388,6 +388,7 @@ var respec_room := 0  # how far each stat may shift now, a Meditation just done 
 var stowed: Item  # the trinket shackles bound on it took the place of: back on as they come off (Battle._bind())
 var timed: Dictionary[Effect, Applied] = {}  # effects others put on this unit
 var exposed := 0  # concealment levels lost to attacking or being hit (Battle.cast); back as its side's turn starts
+var ambush_rolls := 0  # attack rolls it made as ambushes since its side's turn began (Battle.ambushes(): the first out of concealment, + Ambush Fusillade's)
 var shown: Read  # how the player's side sees it (see appear()); null: as it is
 var rest := 0.0  # energy recovered towards the next whole point (recover())
 var alias := ""  # the name its persona goes by (rank 3), picked from its pools as it's set up: "Radiant Lady"
@@ -3475,6 +3476,7 @@ func refresh() -> void:
 	moved = 0.0
 	steps = 0
 	exposed = 0
+	ambush_rolls = 0
 	fury_acts = 0
 	overdriven = false
 	tally.clear()

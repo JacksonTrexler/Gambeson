@@ -480,7 +480,7 @@ def tier_section(i, spec, ext):
 # new skill's rank I tier rolls). The magnitude is Difficulty.magnitude(): the rung's place less one.
 INTENSITY = {w: (MAGNITUDES[max(LADDER_RUNGS.index(difficulty_word(w)) - 1, 0)], dice) for w, dice in
              {"low": "1d4", "moderate_low": "1d6", "moderate": "1d10", "high": "2d6", "extreme": "2d12"}.items()}
-REQUIRES = ("hp_below", "hp_above", "energy_above", "energy_below", "target_hp_below", "target_hp_above", "ally_within", "concealed")
+REQUIRES = ("hp_below", "hp_above", "energy_above", "energy_below", "target_hp_below", "target_hp_above", "ally_within", "concealed", "ambush")
 
 
 def terms_props(a, ext, subs, props):
