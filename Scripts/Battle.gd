@@ -3556,6 +3556,9 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
 		for k: StringName in w.bag:
 			u.tally[k] = u.tally.get(k, 0) + w.bag[k]
+		if sight:
+			for i in range(passed.size() - 1):  # ground it walked past joins explored too (the last cell: when it plans)
+				_mark_seen(u, passed[i])
 		var blind := obscured(passed[-1])  # what's under the leaves it walks onto, it can't see
 		move(u, passed[-1])
 		_tow(u, from, passed[-1])
@@ -3767,12 +3770,12 @@ func known_ground(u: Unit, c: Vector2i) -> Terrain:
 
 
 # u's sight from where it stands joins its side's explored ground (once per cell it plans from; one disc, not the side's).
-func _mark_seen(u: Unit) -> void:
-	_marked_at[u] = u.cell
+func _mark_seen(u: Unit, from := u.cell) -> void:
+	_marked_at[u] = from
 	var seen: Dictionary = explored.get_or_add(u.faction, {})
-	var at := Vector2(u.cell)
+	var at := Vector2(from)
 	var reach := perception_range(u)
-	for c in cells_near(u.cell, reach):
+	for c in cells_near(from, reach):
 		if Vector2(c).distance_to(at) <= reach + 0.0001:
 			seen[c] = true
 

@@ -95,6 +95,19 @@ func test_fog() -> void:
 
 
 # known_ground(): ground its side has seen is what it is; never-seen ground reads as plain (the unknown rule); sight off, no fog.
+func test_walk_marks_ground_passed() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 8), v(3): Vector2i(3, 8)})
+	b.sight = true
+	v(1).refresh()
+	v(1).wisdom = 2
+	var back := Vector2i(1, 2)
+	var w := b.travel(v(1), Vector2i(6, 2))
+	ok(w.size() >= 3 and v(1).cell != back, "it walked")
+	var seen: Dictionary = b.explored[v(1).faction]
+	ok(seen.has(w[0] + Vector2i(0, 1)) and seen.has(back + Vector2i(0, 1)), "ground beside a passed cell is explored without planning from it")
+	ok(not seen.has(Vector2i(3, 8)), "far ground stays unseen")
+
+
 func test_known_ground_follows_explored() -> void:
 	stage(nemes, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(3, 2)})
 	b.sight = true
