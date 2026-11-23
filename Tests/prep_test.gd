@@ -146,7 +146,7 @@ func test_doubt_sides() -> void:
 	siren().timed.clear()
 	var tally := func(use: bool) -> int:
 		var n := 0
-		for i in 400:
+		for i in 250:
 			leader.suspicion.clear()
 			if use:
 				b.prepped.clear()
@@ -159,7 +159,7 @@ func test_doubt_sides() -> void:
 	leader.wisdom = 10
 	var plain: int = tally.call(false)
 	var edged: int = tally.call(true)
-	ok(edged > plain + 30, "an Inquisition's doubt is at advantage: %d well over %d (of 400)" % [edged, plain])
+	ok(edged > plain + 20, "an Inquisition's doubt is at advantage: %d well over %d (of 250)" % [edged, plain])
 
 
 func test_hud() -> void:

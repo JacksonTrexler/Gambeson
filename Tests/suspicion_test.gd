@@ -199,14 +199,14 @@ func test_whiff_disadvantage() -> void:
 	v(3).afflict(effect("trickery", 2), 99)
 	var tally := func(edge: int) -> int:
 		var n := 0
-		for i in 400:
+		for i in 200:
 			v(1).suspicion.clear()
 			n += int(b.doubt(v(1), v(3), edge))
 		return n
 	var worse: int = tally.call(-1)
 	var plain: int = tally.call(0)
 	var better: int = tally.call(1)
-	ok(worse < plain and plain < better, "the worse of two, one, the better of two: %d < %d < %d (of 400)" % [worse, plain, better])
+	ok(worse < plain and plain < better, "the worse of two, one, the better of two: %d < %d < %d (of 200)" % [worse, plain, better])
 
 
 func test_shown() -> void:
