@@ -10,4 +10,5 @@ name = "Journeyman"
 kind = "General"
 category = &""
 grant = &"journeyman"
+flex_kind = &"specialist"
 roots = Array[ExtResource("2_root")]([ExtResource("r_journeyman")])

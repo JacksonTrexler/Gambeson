@@ -156,6 +156,54 @@ func test_flex_prereqs() -> void:
 	ok(not p.pick(p.flex_choice(), scout) and p.pick_missing(p.flex_choice(), scout) == "Needs Dexterity 10", "short of a floor, it can't take it up")
 
 
+
+# An inverted page (SkillRoot.inverted: a Jester's, Jovia's) sells a flex tree for FLEX_PRICE of a base stat its type
+# takes (Unit.FLEX_PAY), for good, never below FLEX_FLOOR; bought, its tab opens as a levelled one's does.
+func test_flex_by_stats() -> void:
+	var scout: SkillTab = load("res://Trees/general_scout.tres")
+	var journeyman: SkillTab = load("res://Trees/general_journeyman.tres")
+	var student: SkillTab = load("res://Trees/general_student.tres")
+	ok([scout, journeyman, student].map(func(t: SkillTab): return t.flex_type()) == [&"martial", &"specialist", &"magical"], "Scout martial, Journeyman specialist, Student caster")
+	for row in [[scout, &"wisdom", ""], [scout, &"intelligence", ""], [scout, &"charisma", ""], [scout, &"strength", "Strength doesn't pay for a martial tree"],
+			[journeyman, &"strength", ""], [journeyman, &"intelligence", ""], [journeyman, &"wisdom", "Wisdom doesn't pay for a specialist tree"],
+			[student, &"constitution", ""], [student, &"dexterity", ""], [student, &"charisma", "Charisma doesn't pay for a caster tree"]]:
+		var u := unit_of("jester")
+		ok(u.buy_missing(row[0], row[1]) == row[2], "%s with %s: \"%s\" (got \"%s\")" % [row[0].name, row[1], row[2], u.buy_missing(row[0], row[1])])
+	var j := unit_of("jester")
+	j.dexterity = 3  # jack: Scout's dex floor waived
+	var wis := j.wisdom
+	ok(j.level == 1 and j.flex_slots() == 0 and j.buy_flex(scout, &"wisdom"), "a level 1 Jester buys Scout with wisdom, no level needed, no prereqs")
+	ok(j.wisdom == wis - Unit.FLEX_PRICE and scout in j.general_trees() and j.flex_extra == 1 and j.flex_due() == 0, "wisdom spent for good; Scout's tab open")
+	ok(j.buy_missing(scout) == "Picked" and not j.buy_flex(scout, &"charisma"), "bought once")
+	var d := j.to_dict()
+	ok(d.flex_extra == 1 and "Flex Tree/Scout" in d.picked, "saved")
+	j.strength = Unit.FLEX_FLOOR
+	j.intelligence = Unit.FLEX_FLOOR + 1
+	ok(not j.buy_flex(journeyman, &"strength") and j.buy_missing(journeyman, &"strength") == "Strength can't go below %d" % Unit.FLEX_FLOOR and j.strength == Unit.FLEX_FLOOR, "a stat at the floor can't pay")
+	ok(j.buy_flex(journeyman, &"intelligence") and j.intelligence == Unit.FLEX_FLOOR, "one above it can, down to it")
+	j.constitution = Unit.FLEX_FLOOR
+	j.dexterity = Unit.FLEX_FLOOR
+	ok(j.buy_missing(student) == "Str/Dex/Con can't go below %d" % Unit.FLEX_FLOOR, "every stat that pays at the floor: no buying")
+	var f := unit_of("fighter")
+	ok(not f.inverted() and f.buy_missing(scout, &"wisdom") == "Needs an inverted page" and unit_of("jester").inverted(), "a page of the Jester's: no other class has one")
+
+
+# Jovia, a patron (God): her tree is the Jester's inverted page, so a Warlock who takes her up buys flex trees with
+# base stats too - prereqs still asked of it (no jack).
+func test_jovia() -> void:
+	var jovia := God.of(&"jovia")
+	var w := unit_of("warlock")
+	var scout: SkillTab = load("res://Trees/general_scout.tres")
+	var journeyman: SkillTab = load("res://Trees/general_journeyman.tres")
+	ok(jovia and jovia.patron and jovia.own.roots == (load("res://Roles/jester.tres") as Role).tabs[0].roots, "Jovia's tree is the Jester's Inverted page")
+	ok(not w.inverted() and not w.buy_flex(journeyman, &"intelligence"), "a Warlock without her: no page")
+	ok(w.pick(w.role.choices[0], jovia.own) and w.inverted(), "Jovia taken up: the page is open")
+	w.dexterity = 9
+	ok(w.buy_missing(scout, &"wisdom") == "Needs Dexterity 10", "Scout's floors asked of a Warlock")
+	var int0 := w.intelligence
+	ok(w.buy_flex(journeyman, &"intelligence") and w.intelligence == int0 - 1 and journeyman in w.general_trees(), "she sells it Journeyman, not on its class's flex list, for intelligence")
+
+
 # One hook, two skills: a check effect with per_mod adds that stat's mod to the checks it names, from 0 up to the rank
 # (Unit.check_bonus(): Journeyman's Physical Intelligence, int to str, and Muscle Memory, wis to str).
 func test_stat_adds_to_checks() -> void:

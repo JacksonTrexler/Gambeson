@@ -9,6 +9,7 @@ extends Resource
 @export var radial := false  # drawn as a wheel (the Adventurer's own: SkillWheel) rather than growing from the bottom (SkillGrid)
 @export var category := &""  # a general tree's (kind General): martial, specialist or magical (the Caster tree); empty: the base General tree (Unit.general_trees())
 @export var grant := &""  # a general tree only some units get (kind General): the key a class lists in Role.general, or a unit is granted at run time (Unit.grant_tree(): an adventure's reward) - Student, Journeyman. Empty: by its category. Its category still sets what its tiers need
+@export var flex_kind := &""  # a flex tree's type, if not its category: martial, specialist or magical (caster) - what an inverted page takes for it (Unit.FLEX_PAY; Journeyman: specialist)
 @export var needs: Dictionary[StringName, int] = {}  # a flex tree's prereqs: base-stat floors its picker must meet to take it up (Unit.flex_needs(): slackened for a generalist, none for a jack; Scout: dexterity 10, wisdom 11)
 @export var color := Color(0, 0, 0, 0)  # its colour, if set; else by what it is (tone())
 @export var center: Skill
@@ -52,6 +53,11 @@ func offers(s: Skill) -> bool:
 # class opens it (Role.general), or who has learned what opens it (Martialist, Thaumaturgist).
 func general() -> bool:
 	return kind == "General"
+
+
+# A flex tree's type (flex_kind, else its category): what an inverted page takes for it (Unit.buy_flex()).
+func flex_type() -> StringName:
+	return flex_kind if flex_kind else category
 
 
 # What opens it: its grant key, else its category (&"": the base General tree, everyone's).

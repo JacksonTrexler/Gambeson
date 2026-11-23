@@ -14,7 +14,6 @@ script = ExtResource("1_skill")
 name = "Juggle"
 ai = true
 tags = Array[StringName]([&"physical", &"pierce", &"dex", &"specialist"])
-intensity = &"faint"
 radius = 4.0
 roll_per_rank = 1
 tiers = Array[ExtResource("3_tier")]([SubResource("Tier_1")])

@@ -17,4 +17,5 @@ skill = ExtResource("s_pratfall")
 script = ExtResource("1_skillroot")
 name = "Inverted"
 tag = &"specialist"
+inverted = true
 branches = Array[ExtResource("2_branch")]([SubResource("Branch_fools_luck"), SubResource("Branch_pratfall")])

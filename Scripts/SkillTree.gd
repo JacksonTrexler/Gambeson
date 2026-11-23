@@ -43,6 +43,7 @@ func _ready() -> void:
 	grid.picked.connect(pick)
 	grid.chose.connect(choose)
 	detail.acted.connect(_act)
+	detail.paid.connect(_pay)
 	wheel.lifted.connect(_step_aside)
 	grid.lifted.connect(_step_aside)
 
@@ -244,6 +245,12 @@ func _show_pick() -> void:
 # Where s stands for this unit (SkillDetail.state()).
 func state(s: Skill) -> String:
 	return SkillDetail.state(unit, s)
+
+
+# A stat paid for the tree chosen on an inverted page (SkillDetail.paid).
+func _pay(stat: StringName) -> void:
+	if chosen and unit.buy_flex(chosen, stat):
+		fill(_title, can_spend)
 
 
 func _act() -> void:
