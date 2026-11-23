@@ -38,6 +38,20 @@ func test_rule() -> void:
 
 
 func test_strip() -> void:
+	var lone := HScroll.new()  # a row that fits: its wheel is left for the page behind it (VScroll)
+	var one := Button.new()
+	one.text = "Only"
+	lone.add_child(one)
+	var own := SubViewport.new()  # its own "handled" flag, clean of other tests'
+	tree.root.add_child(own)
+	own.add_child(lone)
+	await tree.process_frame
+	await tree.process_frame
+	var wheel := _wheel(MOUSE_BUTTON_WHEEL_DOWN)
+	wheel.position = lone.strip.get_global_transform_with_canvas() * Vector2(5, 5)
+	lone._input(wheel)
+	ok(not lone.left.visible and not own.is_input_handled(), "a row with nowhere to go lets the wheel through")
+	own.free()
 	var h := HScroll.new()
 	var row := HBoxContainer.new()
 	for i in 30:

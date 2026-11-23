@@ -277,12 +277,15 @@ func open_menu(d: Dungeon) -> void:
 	head.add_theme_font_size_override(&"font_size", 11)
 	head.add_theme_color_override(&"font_color", d.color.lightened(0.3))
 	col.add_child(head)
-	_para(col, d.blurb)
-	_para(col, d.goal_at(at), "Goal")
+	var body := VBoxContainer.new()  # the text scrolls where the screen is short; Enter stays in reach under it
+	var scroll := VScroll.wrap(body)
+	col.add_child(scroll)
+	_para(body, d.blurb)
+	_para(body, d.goal_at(at), "Goal")
 	var enemies := d.enemy_lines()
-	_para(col, "\n".join(enemies), "Enemies (up to your party x %s at once)" % Skill.num(at), "Enemies")
+	_para(body, "\n".join(enemies), "Enemies (up to your party x %s at once)" % Skill.num(at), "Enemies")
 	var rewards := d.rewards_at(at).map(func(it: Item): return it.name)
-	_para(col, ", ".join(rewards) if rewards else "Nothing at this floor", "Rewards for winning", "Rewards")
+	_para(body, ", ".join(rewards) if rewards else "Nothing at this floor", "Rewards for winning", "Rewards")
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var go := Button.new()
@@ -296,6 +299,7 @@ func open_menu(d: Dungeon) -> void:
 	back.pressed.connect(close_menu)
 	row.add_child(back)
 	col.add_child(row)
+	scroll.reserve = col.get_combined_minimum_size().y - scroll.get_combined_minimum_size().y + 16.0  # title, buttons, margins
 	menu = centre
 	_root.add_child(centre)
 	go.grab_focus.call_deferred()
