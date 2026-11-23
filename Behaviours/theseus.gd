@@ -26,24 +26,9 @@ func choices(_c: Cast) -> Array[String]:
 
 # The path it summons: the one chosen, else the one the caster's side holds fewest of (ties by c.battle.rng).
 func path(c: Cast) -> String:
-	var paths := Unit.monster_paths()
-	if c.chose in paths:
+	if c.chose in Unit.monster_paths():
 		return c.chose
-	var low := []
-	var least := INF
-	for p: String in paths:
-		var n := 0
-		for u: Unit in c.battle.members(c.caster.faction) if c.battle else ([] as Array[Unit]):
-			if (paths[p] as Array).any(func(s: Skill): return u.own_rank(s) > 0):
-				n += 1
-		if n < least:
-			least = n
-			low = []
-		if n == least:
-			low.append(p)
-	if low.is_empty():
-		return ""
-	return low[c.battle.rng.randi_range(0, low.size() - 1)] if c.battle and low.size() > 1 else low[0]
+	return Unit.fewest_path(c.battle.members(c.caster.faction) if c.battle else ([] as Array[Unit]), c.battle.rng if c.battle else null)
 
 
 func make(c: Cast, cell: Vector2i) -> Unit:

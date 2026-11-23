@@ -31,6 +31,7 @@ func path(u: Unit) -> TreeChoice:
 func test_paths() -> void:
 	for p in PATHS:
 		var u := Unit.monster(lancin, p, 3)
+		u.path_auto = false  # unspent, as a player's: test_ai covers the spending
 		b.get_node("Units").add_child(u)
 		roomy(u, 8)
 		ok(u.role.name == "Monster" and u.level == 3 and u.skill_points == 2, "%s: a level 3 Monster, 2 points to spend" % p)
@@ -66,3 +67,48 @@ func test_pick() -> void:
 	m.learned.append(x)
 	b.get_node("Units").add_child(m)
 	ok(path(m).key(path(m).tabs[0]) not in m.picked and held(m) == PATHS["Starmen"], "made with Floaty: Starmen pre-selected, Hop free (holds %s)" % [held(m)])
+
+
+# An NPC's (bio) or summoned Monster takes the path its side holds fewest of and spends level - 1 points on its traits,
+# cheapest first (Unit.take_path()); a player's Monster does neither. Rows: path pre-picked or "" , level.
+func test_ai() -> void:
+	var role: Role = load("res://Roles/monster.tres")
+	for row in [["Starmen", 1], ["Sirens", 5], ["Skeletons", 5], ["", 1], ["", 5]]:
+		var u: Unit = b.from_role(lancin, role, "npc")
+		u.bio = Bio.new()
+		u.level = row[1]
+		if row[0]:
+			u.picked.append(path(u).key(path(u).tabs.filter(func(t: SkillTab): return t.name == row[0])[0]))
+		b.get_node("Units").add_child(u)
+		roomy(u, 8)
+		var ts := path(u).tabs.filter(func(t: SkillTab): return u.picks(path(u)).has(t))
+		ok(ts.size() == 1 and (not row[0] or ts[0].name == row[0]), "%s L%d: one path taken (%s)" % [row[0], row[1], ts.map(func(t: SkillTab): return t.name)])
+		var tr := Unit.openers(ts[0])
+		var spent := 0
+		for s in tr:
+			spent += u.purchases.filter(func(p: Array): return p[0] == s).reduce(func(n: int, p: Array): return n + p[1], 0)
+		var floor_cost := tr.filter(func(s: Skill): return u.can_raise(s)).map(func(s: Skill): return u.raise_cost(s))
+		ok(spent + u.skill_points == row[1] - 1, "%s L%d: %d points, %d spent on traits, %d left" % [row[0], row[1], row[1] - 1, spent, u.skill_points])
+		ok(floor_cost.is_empty() or u.skill_points < floor_cost.min(), "%s L%d: none left that buys a rank" % [row[0], row[1]])
+		ok(row[1] == 1 or tr.any(func(s: Skill): return u.own_rank(s) > 1), "%s L%d: a trait ranked up" % [row[0], row[1]])
+	# fewest: two Starmen and a Siren on its side, so a third unpicked takes Skeletons
+	var side: Array[Unit] = []
+	for p in ["Starmen", "Starmen", "Sirens"]:
+		var m := Unit.monster(lancin, p, 1)
+		b.get_node("Units").add_child(m)
+		side.append(m)
+	ok(Unit.fewest_path(side) == "Skeletons", "fewest: Skeletons (the side has none)")
+	var npc: Unit = b.from_role(lancin, role, "npc")
+	npc.bio = Bio.new()
+	b.get_node("Units").add_child(npc)
+	ok(npc.picks(path(npc)).map(func(t: SkillTab): return t.name) == ["Skeletons"], "an unpicked NPC takes the path its side lacks")
+	# a player's Monster (no bio, not summoned): no pick, no spending
+	var pl: Unit = b.from_role(lancin, role, "pl")
+	pl.level = 5
+	pl.skill_points = 4
+	b.get_node("Units").add_child(pl)
+	ok(pl.picks(path(pl)).is_empty() and pl.skill_points == 4 and pl.free_due() == 1, "a player's Monster is left to pick and spend")
+	# summoned (Unit.monster): level 5 spends its 4 points
+	var sm := Unit.monster(lancin, "Starmen", 5)
+	b.get_node("Units").add_child(sm)
+	ok(sm.skill_points == 0 and sm.own_rank(sk("floaty")) == 2 and sm.own_rank(sk("hop")) == 2, "a summoned level 5 Monster spent its points (floaty %d, hop %d, %d left)" % [sm.own_rank(sk("floaty")), sm.own_rank(sk("hop")), sm.skill_points])

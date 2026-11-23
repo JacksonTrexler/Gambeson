@@ -173,6 +173,7 @@ class Applied:
 # slots (Skill.slots_taken()) is in its first slot alone; the slots after it are null here and covered() (a save keeps ids).
 @export var hotbar: Array[Skill] = []
 @export var lore: Array[Skill] = []  # accrued knowledge: skills it has come to know of and can unlock
+var path_auto := false  # a summoned Monster (monster()): take_path() spends its points as an NPC's
 @export var skill_points := 0  # one per level gained, spent unlocking skills (unlock())
 var last_hit_by: Unit  # who last struck it (hit()): whoever's blow kills it gets two shares of its XP (Battle._award())
 var harmed := 0  # HP it has lost this fight, from anything (damage(): cleared by Battle._listen()): what punishes a flippant unit (temper())
@@ -606,6 +607,7 @@ func _ready() -> void:
 	picked = picked.duplicate()  # a scene's pre-selection, its own
 	take_free()  # what a pre-selected free choice brings (a Monster's path), before its bar is filled
 	take_flex()  # an NPC's flex tree, as it is readied
+	take_path()  # an NPC's or summoned Monster's path and spent points
 	if role and not race:
 		race = role.race
 	if role and not look:
@@ -1527,6 +1529,7 @@ func level_up() -> void:
 	skill_points += 1
 	var was := max_hp
 	take_flex()
+	take_path()
 	refit()
 	if is_alive():
 		hp += maxi(max_hp - was, 0)  # what the level brings, it gets at once
@@ -1873,6 +1876,61 @@ static func openers(t: SkillTab) -> Array[Skill]:
 	return out
 
 
+# The Monster path the side (its units) holds fewest of: a unit counts for a path if it holds any of that path's
+# opening traits (a Siren, a Starman, a Monster of it); ties by rng's roll, else the first. "" if none.
+static func fewest_path(side: Array[Unit], rng: RandomNumberGenerator = null) -> String:
+	var paths := monster_paths()
+	var low := []
+	var least := INF
+	for p: String in paths:
+		var n := 0
+		for u in side:
+			if (paths[p] as Array).any(func(s: Skill): return u.own_rank(s) > 0):
+				n += 1
+		if n < least:
+			least = n
+			low = []
+		if n == least:
+			low.append(p)
+	if low.is_empty():
+		return ""
+	return low[rng.randi_range(0, low.size() - 1)] if rng and low.size() > 1 else low[0]
+
+
+# An NPC's (bio) or summoned (path_auto) Monster: takes the path its side holds fewest of if it has none
+# (its siblings in the tree; fewest_path()), then spends its level - 1 skill points raising that path's
+# traits, cheapest first, until none is affordable or all capped. A player's Monster picks and spends for itself.
+func take_path() -> bool:
+	if not (bio or path_auto) or not role:
+		return false
+	var did := false
+	for c in role.choices:
+		if not c or not c.free:
+			continue
+		if picks(c).is_empty() and pick_cap(c) > 0:
+			var mates: Array[Unit] = []
+			for n in get_parent().get_children() if get_parent() else []:
+				if n is Unit and n != self and n.faction == faction:
+					mates.append(n)
+			var name := fewest_path(mates)
+			for t in c.tabs:
+				if t and t.name == name and pick(c, t):
+					did = true
+		skill_points = maxi(skill_points, level - 1 - purchases.reduce(func(n: int, p: Array): return n + p[1], 0))
+		var traits: Array[Skill] = []
+		for t in picks(c):
+			traits.append_array(openers(t))
+		while true:
+			var best: Skill = null
+			for s in traits:
+				if can_raise(s) and raise_cost(s) <= skill_points and (not best or raise_cost(s) < raise_cost(best)):
+					best = s
+			if not best or not raise(best):
+				break
+			did = true
+	return did
+
+
 # Free choices it has yet to make (TreeChoice.free: a Monster's Path): picks owed, for the skills badge.
 func free_due() -> int:
 	var n := 0
@@ -1895,6 +1953,7 @@ static func monster(f: Faction, path: String, at := 1, nick := "") -> Unit:
 					var u := Battle.from_role(f, r, nick if nick else r.name)
 					u.level = clampi(at, 1, MAX_LEVEL)
 					u.skill_points = u.level - 1
+					u.path_auto = true
 					u.picked.append(c.key(t))
 					for k in r.outfit():  # in its class's kit (gambeson, dagger)
 						u.set(k, r.outfit()[k])
