@@ -236,12 +236,14 @@ Answer: ____
 Best guess: keep as built. An NPC or summoned Monster picks the path fewest on its side and spends its level - 1 points on that path's traits, cheapest first, so a Theseus Monster arrives with them spent (?303 said unspent). A player's Monster is left alone (card w18-monster-ai-player). Undead ?? is +1 pierce Defense a rank, a guess.
 Ref: `Unit.take_path`, `fewest_path`, `path_auto`, `Skills/undead.tres`, `docs/plans/w18-monster-ai.md`, `docs/plans/w18-undead-rank.md`.
 Answer: ____
+Answered 2026-11-23d: the user's "AI should pick skills when they have points to spend based on their bio, otherwise sticking to their class tree" generalises this: every NPC now spends through one `Unit.auto_spec()`, a Monster's default pool being its path traits as before (built, ?354, ?355).
 Answered 2026-11-23d: the +1 pierce Defense a rank guess is replaced by the user's rule (rank added to checks against instant death; dark or undead healing +rank * 5%); built, ?347, ?348.
 
 **F52. Auto-playing a player's Monster (wave 18 follow-ups; see ?320).** The card w18-monster-ai-player (a player-side Monster left on auto picking its path and spending its points) was not built: it takes the choice away from the player.
 Best guess: do not build.
 Ref: `Unit.take_path`, `path_auto`, `docs/plans/w18-monster-ai.md`.
 Answer: ____
+Answered 2026-11-23d: "Player auto AI doesn't spec on their behalf": a player's unit never auto-specs unless the player long-presses Spec Automatically or Hard is on (built, ?355, ?357); the best guess stands.
 
 ---
 
@@ -379,6 +381,7 @@ Answer: ____
 Best guess: keep; delete the 48 specks and default `--min-size` to 2 if they are clutter.
 Ref: `Util/sprites.py`, `docs/plans/w21-sprites.md`.
 Answer: ____
+Built 2026-11-23 (not an answer; your "update follow-up.md as needed"): the default `--min-size` is now 4 and the 104 specks under 4 px (48 one-pixel, 56 of 2 or 3) were deleted; survivors kept their names, so `-n` suffixes have gaps (?358, F67).
 
 **F55. Animation: pose to state mapping, frame rates, triggers (wave 21; see ?340 to ?343).** attacking = left then right, hit = left, investigating = right, waiting = the numbered cycle else neutral; rates 6, 6, 3 and 4 a second; attacking fires on any finished outermost cast, hit on damage over 0, investigating on `inspect` / `investigate`; frames in `Units/<Name>.tres` beside the sprite. No posed art exists yet, so none of it has been seen in play.
 Best guess: keep as built.
@@ -405,3 +408,68 @@ Best guess: keep as built.
 Ref: `Skills/undead.tres`, `Unit.heal`, `docs/plans/w21-undead.md`.
 Answer: ____
 
+
+**F60. Focus state and the pointer hold-off (wave 21; see ?349, ?350).** A left click or tap on a tile waits 0.2 s before it targets; a second click, a double tap or a right click in that time focuses the tile (the card and tile pane show it, white brackets), without changing the selected unit or the armed skill. No wait when the tile is already focused, when Ctrl, Meta, Shift or Alt is held, in preparation, or off the map; every tile waits, walks too.
+Best guess: keep as built (0.2 s, under your 0.25).
+Ref: `HUD.TARGET_HOLD`, `focus_cell`, `docs/plans/w21-focus.md`.
+Answer: ____
+
+**F61. Right click focuses before it disarms (wave 21; see ?351).** A right click on a tile not yet focused focuses it, also while aiming; only a right click on the focused tile or off the map cancels as before. So disarming a skill by right click now takes two clicks over the map. Esc is unchanged.
+Best guess: keep; if the extra click annoys, make the right click cancel while a skill is armed and focus only when none is.
+Ref: `HUD.right_click`, `docs/plans/w21-focus.md`.
+Answer: ____
+
+**F62. AI foresight: horizon, projection and margin (wave 21; see ?352).** A unit with wis mod above 0 looks wis mod turns ahead (cap 4) with a cheap projection (each located foe walks to it, then deals its read blow each turn), and misjudges by up to clamp(0.3 - 0.1 x int mod, 0.05, 0.6) + 0.3 x the share of foes whose blows it can only guess, from a deterministic local RNG. Energy is projected with no error. It runs on self-directed full turns only; villagers (wis under 12) never use it, and no cost was measurable.
+Best guess: keep as built; the 0.3 base, the guess share and the cap 4 are guesses.
+Ref: `AI.horizon`, `margin`, `_foresee`, `docs/plans/w21-foresight.md`.
+Answer: ____
+
+**F63. Foresight: pleas, orders, and Energy pleas that never fire (wave 21; see ?353).** A unit that a heal would keep alive longer heals itself, else pleads (`PLEA` 2.0 to a healer that reaches it); its skilled leader's plea adds `ORDER` 2.0 ("command healers"). No skill restores an ally's Energy, so an Energy plea can never be answered and none is raised; the answer code waits for the first such skill. No HUD sign (log lines only). The 30-a-side unit turn p95 is 258 ms at M3 x 4, over 200 before this branch too.
+Best guess: keep as built; design an ally-Energize skill when you want Energy pleas.
+Ref: `AI._aid`, `_answer`, `docs/plans/w21-foresight.md`.
+Answer: ____
+
+**F64. Autospec by bio: scoring and the pool (wave 21; see ?354, ?355).** Bio gains `prefers` (tags, postures, kinds) and `spec` (exploratory, training, remedial). A purchase scores 10 per preference met plus 5 for the mode (unlock, raise, or the thinnest bucket); class skills are always in the pool, other trees only when a preference matches; with neither, the class tree cheapest first. Every non-player NPC now spends at ready and each level-up (before, only Monsters). A player's unit with a bio never auto-specs by itself.
+Best guess: keep as built; the 10 and 5 weights are guesses.
+Ref: `Unit.auto_spec`, `Bio.prefers`, `docs/plans/w21-autospec.md`.
+Answer: ____
+
+**F65. Autospec refund under enforced auto (wave 21; see ?356).** Points spent while a unit is Disturbed or uncontrolled are refunded newest first at its side's next turn once control returns, and at battle end. A save written mid-fight while it is still Disturbed keeps the auto-spent skills (not fixed; card w21-autospec-save).
+Best guess: keep; the save card fixes the gap.
+Ref: `Unit.unspend`, `refund_auto`, `docs/plans/w21-autospec.md`.
+Answer: ____
+
+**F66. Hard toggle and Spec Automatically (wave 21; see ?357).** Hard (a settings check button) makes every unit, the player's too, auto-spec at level-up (not at battle start) and never refunds the player's. Spec Automatically is a button at the left of the skills footer, 500 ms long press, disabled at 0 points.
+Best guess: keep as built.
+Ref: `Unit.hard`, `HUD._on_auto_spec`, `docs/plans/w21-autospec.md`.
+Answer: ____
+
+**F67. Sprite specks removed, `--min-size` 4 (wave 21; see ?358).** The extractor now skips islands under 4 px and 104 specks (48 of 1 px, 56 of 2 to 3 px) were deleted from `Assets/sorted`; survivors keep their names, so `-n` suffixes have gaps in two sheets (astral, rough). Re-running would rename them.
+Best guess: keep; leave the gaps.
+Ref: `Util/sprites.py`, `docs/plans/w21-minsize.md`.
+Answer: ____
+
+**F68. Books: Read, consumed pass or fail (wave 21; see ?359, ?360).** Four common books (Applied Charizzmatics, Sensible Approaches, Life by the Gavel, Dungeoneer Delicacies) drop from the Meadows champion's table at weight 1. Read costs 1 AP and rolls a medium charisma and a medium intelligence check (flat DC 12), both always; the book is gone whether or not the reader passes; on a pass the player picks one tweak or none. Life by the Gavel offers two tweaks (you gave it no preference+). Books cannot be read between battles. The bio is now saved with the unit (an optional save key).
+Best guess: keep as built; say if a failed read should keep the book.
+Ref: `Battle.study`, `HUD._read`, `Item.blurb`, `docs/plans/w21-books.md`.
+Answer: ____
+
+**F69. Deity+ is a guess (wave 21; see ?362).** Bio gains `favours`, gods it holds dear. A godless unit with a favoured god can Pray to the first one; autospec leans toward the favoured god's domain tag (Eros love, Urlo energy, Ramut physical, Drael water). A class god is unchanged. `Bio.line` shows favours nowhere.
+Best guess: keep; say what a favoured deity should do.
+Ref: `Bio.favours`, `Unit.deity`, `docs/plans/w21-books.md`.
+Answer: ____
+
+**F70. Pragmatic: what do you mean? (wave 21; see ?364).** I mapped the temper `pragmatic` to the existing heal style (skip heals wasted on a nearly whole ally, weigh level). Your wider idea ("hate", aura blindness, "bad person is good") is NOT implemented; I had no definition. Does Pragmatic need more than the heal style, and what is the "bad person" rule?
+Best guess: leave as the heal style until you define it.
+Ref: `AI._heal`, `Bio.BEHAVIOURS`, `docs/plans/w21-books.md`.
+Answer: ____
+
+**F71. Compliant and Hungry as built (wave 21; see ?365, ?366).** Compliant: the aim of the leader it follows is worth ORDERED 4.0 (half for a foe within 2 tiles of an aimless leader); no leader, 0. Hungry: a skill tagged `siphon` or `drain` is worth + 0.5 x hit chance x min(average damage, what the target has); only in the strike pick. No lifesteal skill exists yet. No HUD sign for either.
+Best guess: keep as built.
+Ref: `AI._orders`, `_hungry`, `docs/plans/w21-books.md`.
+Answer: ____
+
+**F72. AI units never read books yet (wave 21; see ?363).** The AI's tweak pick (`Unit.fancy`) exists, but no AI turn uses an item, so only the player reads books. Card w21-books-ai is queued.
+Best guess: build the card: an AI unit with a readable book reads it on a calm turn.
+Ref: `Unit.fancy`, `Battle.study`, `docs/plans/w21-books.md`.
+Answer: ____

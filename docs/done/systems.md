@@ -366,3 +366,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Unit sprite poses become state animations** (`Util/anim.py`, `Unit.ANIMS`, `ANIM_PACE`, `animate`): plan `docs/plans/w21-anim.md`. `anim_test`. (?340 to ?343)
 - [x] **Objective panel top left, tile pane top right and fading** (`Battle.objectives`, `HUD.pane_cell`, `fade_step`, `Meadows.objective`): plan `docs/plans/w21-hudpanels.md`. `hud_test.test_corner_panels`. (?344 to ?346)
 - [x] **Undead rank: instant-death checks and dark or undead healing** (`Skills/undead.tres`, Effect stat `healed`, `Unit.heal` tags): plan `docs/plans/w21-undead.md`. `monster_test.test_undead_rank`. (?347, ?348)
+- [x] **Pointer hold-off and focus** (`HUD.focus_cell`, `press`, `tick_press`, `right_click`, `TARGET_HOLD`): plan `docs/plans/w21-focus.md`. `hud_test.test_focus`. (?349 to ?351)
+- [x] **AI foresight by the wis mod** (`AI.gd` Foresight section: `horizon`, `margin`, `_foresee`, plea and order): plan `docs/plans/w21-foresight.md`. `ai_tactics_test.test_foresight`. (?352, ?353)
+- [x] **Units spend skill points by bio** (`Bio.prefers`, `Bio.spec`, `Unit.auto_spec`, `unspend`, Hard, Spec Automatically): plan `docs/plans/w21-autospec.md`. `autospec_test`. (?354 to ?357)
+- [x] **Sprite extractor skips islands under 4 px** (`Util/sprites.py --min-size`): plan `docs/plans/w21-minsize.md`. `tooling_test.test_checks`. (?358)
+- [x] **Self-help books and three tempers** (`Item.blurb`, `temper`, `leans`, `favours`, `Battle.study`, `Bio.tweaked`, `Bio.favours`, `AI._orders`, `_hungry`): plan `docs/plans/w21-books.md`. `books_test`. (?359 to ?366)

@@ -270,6 +270,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Unit state animations (?340 to ?343) | `anim_test.gd` |
 | — | Objective panel and fading tile pane (?344 to ?346) | `hud_test.gd` |
 | — | Undead rank: instant death and healing (?347, ?348) | `monster_test.gd` |
+| — | Pointer hold-off, focus and right-click focus (?349 to ?351) | `hud_test.gd` |
+| — | AI foresight: heal, plea, command (?352, ?353) | `ai_tactics_test.gd` |
+| — | Autospec by bio, Spec Automatically, Hard (?354 to ?357) | `autospec_test.gd` |
+| — | Sprite extractor `--min-size` 4 (?358) | `tooling_test.gd` |
+| — | Self-help books, Read, tweaks, new tempers (?359 to ?366) | `books_test.gd` |
 
 ## Questions to answer first
 
