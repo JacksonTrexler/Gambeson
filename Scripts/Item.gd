@@ -55,6 +55,12 @@ extends Resource
 @export var emblem := &""  # a symbol (rho_up, rho_down, sigma_up, sigma_down, lambda_up, lambda_down) or a tag (fire, execute)
 @export var scope := &""  # sigil: the leftmost eligible skill on the hotbar; insignia: every skill; crest: actives; badge: passives
 
+@export_group("Book")  # a consumable with the `book` tag, read (Battle.read()): it can change who its reader is (Bio)
+@export_multiline var blurb := ""  # its subtitle, shown in its description
+@export var temper := &""  # a behaviour it can teach: one of Bio.BEHAVIOURS (behaviour+)
+@export var leans := &""  # a preference it can instil: a plain word of Bio.prefers, a skill tag, posture or kind (preference+)
+@export var favours := &""  # a god it can turn its reader toward: a God id (deity+)
+
 const ICONS := "res://Icons/Items/"  # <item file>.png each: icon()
 static var _icons := {}
 
@@ -85,7 +91,10 @@ func describe() -> String:
 		"trinket":
 			lines.append("Trinket" + plus)
 		"consumable":
-			lines.append("Used up")
+			lines.append("Read: a medium charisma check and a medium intelligence check; passing both, pick one change (%s). Used up either way" % ", ".join(
+					tweaks().map(func(t: Dictionary) -> String: return t.label)) if readable() else "Used up")
+	if blurb:
+		lines.append("\"%s\"" % blurb)
 	if rank_cost() != 1.0:
 		lines.append("%s: a rank takes %sx a common item's resources" % [rarity.capitalize(), Skill.num(rank_cost())])
 	if &"honed" in tags:
@@ -161,6 +170,20 @@ func emptied() -> Item:
 	else:
 		it.empty = true
 	return it
+
+
+# Whether it is read rather than drunk: a consumable book that teaches something.
+func readable() -> bool:
+	return slot == "consumable" and &"book" in tags and not tweaks().is_empty()
+
+
+# What reading it can change in its reader's bio, as [{kind, word, label}] (Bio.tweaked()): its temper, preference and god.
+func tweaks() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for t in [[&"behaviour", temper, "behaviour+ %s"], [&"prefers", leans, "preference+ %s"], [&"favours", favours, "deity+ %s"]]:
+		if t[1]:
+			out.append({kind = t[0], word = t[1], label = t[2] % String(t[1]).capitalize()})
+	return out
 
 
 # Whether it can be used from its slot: it restores something, isn't emptied, and (soaking) holds some.

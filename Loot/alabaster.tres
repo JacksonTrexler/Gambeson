@@ -12,8 +12,12 @@
 [ext_resource type="Resource" path="res://Items/fire_insignia.tres" id="10_fire_insignia"]
 [ext_resource type="Resource" path="res://Items/execute_sigil.tres" id="11_execute_sigil"]
 [ext_resource type="Resource" path="res://Items/hobnail_boots.tres" id="12_hobnail_boots"]
+[ext_resource type="Resource" path="res://Items/applied_charizzmatics.tres" id="13_applied_charizzmatics"]
+[ext_resource type="Resource" path="res://Items/sensible_approaches.tres" id="14_sensible_approaches"]
+[ext_resource type="Resource" path="res://Items/life_by_the_gavel.tres" id="15_life_by_the_gavel"]
+[ext_resource type="Resource" path="res://Items/dungeoneer_delicacies.tres" id="16_dungeoneer_delicacies"]
 
 [resource]
 script = ExtResource("1_loot")
-items = Array[ExtResource("2_item")]([ExtResource("3_heart"), ExtResource("4_density_sigil"), ExtResource("5_diluted_sigil"), ExtResource("6_concentrated_crest"), ExtResource("7_dispersed_crest"), ExtResource("8_restrictive_badge"), ExtResource("9_unrestrictive_insignia"), ExtResource("10_fire_insignia"), ExtResource("11_execute_sigil"), ExtResource("12_hobnail_boots")])
-weights = Array[float]([4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+items = Array[ExtResource("2_item")]([ExtResource("3_heart"), ExtResource("4_density_sigil"), ExtResource("5_diluted_sigil"), ExtResource("6_concentrated_crest"), ExtResource("7_dispersed_crest"), ExtResource("8_restrictive_badge"), ExtResource("9_unrestrictive_insignia"), ExtResource("10_fire_insignia"), ExtResource("11_execute_sigil"), ExtResource("12_hobnail_boots"), ExtResource("13_applied_charizzmatics"), ExtResource("14_sensible_approaches"), ExtResource("15_life_by_the_gavel"), ExtResource("16_dungeoneer_delicacies")])
+weights = Array[float]([4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])

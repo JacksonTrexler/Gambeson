@@ -963,6 +963,9 @@ func _on_unequipped(u: Unit, slot: String) -> void:
 
 
 func _on_used_up(u: Unit, it: Item) -> void:
+	if it.readable():
+		_read(u, it)
+		return
 	if _outfits(u) and (it in Game.stash or it == u.trinket) and battle.use_item(u, it):
 		Game.stash.erase(it)
 		_log("%s uses %s" % [_tag(u), it.name])
@@ -970,6 +973,35 @@ func _on_used_up(u: Unit, it: Item) -> void:
 		Save.save()
 		sheet.open(u, true)
 		_mark()
+
+
+# u reads a book from the stash (Battle.study()): used up whatever comes of its two checks; passing both, the player picks one change
+# for its unit (a small panel, _choose(); Cancel takes none).
+func _read(u: Unit, it: Item) -> void:
+	if not (_outfits(u) and it in Game.stash):
+		return
+	var r := battle.study(u, it)
+	if r.is_empty():
+		return
+	Game.stash.erase(it)
+	_log("%s reads %s: charisma %s, intelligence %s" % [_tag(u), it.name, "passes" if r.cha else "fails", "passes" if r.int else "fails"])
+	Save.save()
+	sheet.open(u, true)
+	_mark()
+	if not r.passed:
+		return
+	var picks := []
+	for t: Dictionary in r.tweaks:
+		if not Bio.holds(u.bio, t):
+			picks.append([t.label, func() -> void:
+				u.tweak(t)
+				_log("%s takes %s" % [_tag(u), t.label])
+				Save.save()
+				_mark()])
+	if picks.is_empty():
+		_log("%s learns nothing new" % _tag(u))
+	else:
+		_choose(it.name, picks)
 
 
 # The Guide (Settings) at a page - with a term, scrolled to it. Panels' "i"s (GuideLink) and terms

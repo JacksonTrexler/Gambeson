@@ -97,7 +97,7 @@ func open(u: Unit, editable: bool, r: Read = null) -> void:
 		l.size_flags_horizontal = SIZE_EXPAND_FILL
 		row.add_child(l)
 		if editable and it.slot == "consumable" and (not between or it.hearts > 0):
-			row.add_child(_button("Use" + _ap(it), func() -> void: used_up.emit(unit, it)))
+			row.add_child(_button(("Read" if it.readable() else "Use") + _ap(it), func() -> void: used_up.emit(unit, it)))
 		elif editable and u.can_wear(it):
 			row.add_child(_button("Equip" + _ap(it), func() -> void: equipped.emit(unit, it, "")))
 			for slot in u.plate_slots() if it.slot == "armor" else ([] as Array[StringName]):  # armor goes in a slot its skills give, too

@@ -17,6 +17,8 @@ slot: armor, weapon, trinket or consumable (Item.slot). rarity: how often it dro
   sigil, insignia, crest or badge (Modifiers.SCOPES); the scope goes on as a tag too, as on every emblem.
 --effect: an Effect on its wearer (tres.effect_props: "stat=... amount=... per_rank=true").
 --set: any other Item field, key=value (Item.gd's @export vars: heat=1, revives=0.5, restores=hp).
+  A book (consumable, tag `book`; read, not drunk: Battle.study()): --set temper=&"flirty" leans=&"love" favours=&"eros" blurb="..."
+  (Bio tweaks it offers; the tool's check holds them to Bio.BEHAVIOURS and Gods/).
 --loot: adds it to Loot/<table>.tres with this weight (default 1).
 An AI-made name gets " ??" (CLAUDE.md); a name the user gave goes in with --human. The icon is drawn by
 icon.py item <id> off the .tres (shape by slot and kind, trim by tag). .claude/skills/new-item has the process.
@@ -63,6 +65,12 @@ def known():
     for p in list(files("Scripts", ".gd")) + list(files("Behaviours", ".gd")):
         out.update(re.findall(r'&"(\w+)"', read(p)))
     return out
+
+
+def behaviours():
+    """Bio.BEHAVIOURS: the tempers a book may teach."""
+    m = re.search(r"const BEHAVIOURS[^=]*= \[(.*?)\]", read("Scripts/Bio.gd"))
+    return re.findall(r'&"(\w+)"', m.group(1)) if m else []
 
 
 def item_tres(a):
@@ -241,6 +249,13 @@ def problems():
                 out.append('%s: tag "%s" has no colour (python3 Util/mechanic.py color %s "#rrggbb")' % (p, t, t))
         if all(q in tags for q in QUALITIES):
             out.append("%s: enchanted and honed together - pick one (they exclude each other)" % p)
+        book = [pr.get(k, "") for k in ("temper", "leans", "favours")]
+        if any(book) and not (pr.get("slot") == "consumable" and "book" in tags):
+            out.append("%s: a book's tweaks (temper, leans, favours) need slot consumable and the book tag" % p)
+        if pr.get("temper") and pr["temper"] not in behaviours():
+            out.append('%s: temper "%s" isn\'t one of Bio.BEHAVIOURS (%s)' % (p, pr["temper"], ", ".join(behaviours())))
+        if pr.get("favours") and not exists("Gods/%s.tres" % pr["favours"]):
+            out.append('%s: favours "%s" is no god (Gods/<id>.tres)' % (p, pr["favours"]))
         em, sc = pr.get("emblem", ""), pr.get("scope", "")
         if bool(em) != bool(sc):
             out.append("%s: an emblem needs both emblem and scope" % p)

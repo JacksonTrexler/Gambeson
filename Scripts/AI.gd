@@ -56,6 +56,8 @@ const GRUDGES := 3
 const GRUDGED := 5.0  # how much more a vindictive unit wants a target its grudges name (Bio.grudges): under GRUDGES blows' worth, so a foe that keeps striking it ("otherwise aggressed") comes first
 const SMITTEN := 2.0  # what a soft skill (no damage, or love) is worth more on a foe a flirty unit fancies; a damaging one is worth half there (_smitten())
 const HUNGER := 4.0  # how much more a power hungry unit wants a target, at a full bar of what it would drain (_hunger()): less than a grudge's HUNT
+const ORDERED := 4.0  # how much more a compliant unit wants the target its leader is after (_orders()): under a grudge's HUNT, over a few tiles' walk; half for one it reckons the leader would want
+const GAIN := 0.5  # the share of its damage a hungry unit takes a draining skill to give back, in HP-worth (_hungry(): w20's siphon is 0.5 HP a Power too)
 const FEED := 0.25  # the share of its bar a target must hold for a power hungry unit to go and drain it (_richest())
 const BOLD: Array[StringName] = [&"brave", &"aggressive"]  # tempers that walk up to the aggressive regardless
 const LAST := 1000.0  # how much less a unit wants to go after a helpless, Downed foe: the standing come first
@@ -855,7 +857,7 @@ static func _forecast(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Diction
 
 
 static func _hunted(u: Unit, t: Unit, r: Read) -> float:
-	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r) + _hunger(u, t, r)
+	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r) + _hunger(u, t, r) + _orders(u, t)
 
 
 # A vindictive unit's grudge against t (read as r): GRUDGE per blow t has landed this fight on it or its side (Unit.wrongs:
@@ -869,6 +871,31 @@ static func _grudge(u: Unit, t: Unit, r: Read) -> float:
 		if Faction.friends(u.faction, f):
 			n += t.wrongs[f]
 	return GRUDGE * mini(n, GRUDGES) + (GRUDGED if u.bio and Bio.names(u.bio.grudges, r) else 0.0)
+
+
+# A compliant unit's want of t: ORDERED if t is whom its leader (Unit.follows) is after - its aim, what it last went for (meta `aim`, set by
+# _strike() and the leader's approach) while that stands - else, the leader having none, half of it for a foe at the leader's side (within 2
+# tiles: what it would want dealt with first). 0 for any other temper, or with no leader.
+static func _orders(u: Unit, t: Unit) -> float:
+	var l := u.follows
+	if not u.tempered(&"compliant") or l == null or not is_instance_valid(l) or not l.is_alive() or t == l:
+		return 0.0
+	var aim: Variant = l.get_meta(&"aim") if l.has_meta(&"aim") else null
+	if is_instance_valid(aim) and aim.is_alive():
+		return ORDERED if aim == t else 0.0
+	return ORDERED / 2.0 if Command.tiles(l.cell, t.cell) <= 2 else 0.0
+
+
+# v, the worth of s on t (read as r), as a hungry unit weighs it: a skill tagged drain or siphon gives back GAIN of what it takes, as
+# much as t has to take - HP, or for a siphon the Energy it reads (Read.energy) - at the chance it lands (_chance(): low Defense, more). Any other skill is v.
+static func _hungry(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, v: float) -> float:
+	if not u.tempered(&"hungry"):
+		return v
+	var tags := u.skill_tags(s)
+	if &"drain" not in tags and &"siphon" not in tags:
+		return v
+	var held: float = float(r.energy if r.energy != null else 0) if &"siphon" in tags else (maxf(r.hp, 1.0) if r.hp != null else GUESS_HP)
+	return v + GAIN * _chance(u, s, r, b, t) * minf(float(Battle.damage_range(u, s, t, b).get("avg", 0.0)), held)
 
 
 # A power hungry unit's appetite for t (read as r): HUNGER times the share of its bar t holds (_fill()). 0 for any other temper.
@@ -1085,6 +1112,7 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 				continue
 			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, t, r)
 			v = _smitten(u, s, r, v)
+			v = _hungry(b, u, s, r, t, v)
 			if v > 0.0:
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
@@ -1697,7 +1725,7 @@ static func want(b: Battle, u: Unit, s: Skill, t: Unit, r: Read) -> float:
 		return 0.0
 	var heal: int = _restores(b, u, s, t).get(&"hp", 0)
 	var v := share + asked
-	match u.tends if u.tends else (u.role.tends if u.role and u.role.tends else &"benevolent"):
+	match &"pragmatic" if u.tempered(&"pragmatic") else (u.tends if u.tends else (u.role.tends if u.role and u.role.tends else &"benevolent")):
 		&"pragmatic":
 			if wounds == 0 and lost != null and lost * 2 < heal:
 				return 0.0

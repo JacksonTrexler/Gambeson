@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Life by the Gavel"
+slot = "consumable"
+tags = Array[StringName]([&"book"])
+blurb = "The powerful people in your life wouldn't be where they are today if they didn't know better"
+temper = &"compliant"
+favours = &"ramut"

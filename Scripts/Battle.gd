@@ -3313,8 +3313,8 @@ func unshackle(u: Unit, how: StringName) -> bool:
 # or the one in u's trinket slot that restores something (a potion: Item.restores; restore()), which
 # empties it until the battle ends (Item.empty; refill()). False if it can't.
 func use_item(u: Unit, it: Item) -> bool:
-	if it == null or not outfitting(u) or not (it.slot == "consumable" or (it == u.trinket and it.usable())):
-		return false
+	if it == null or it.readable() or not outfitting(u) or not (it.slot == "consumable" or (it == u.trinket and it.usable())):
+		return false  # (a book is read: study())
 	if not u.pay(item_ap(it, u), &"equip"):
 		return false
 	u.hearts += it.hearts if it.slot == "consumable" else 0
@@ -3324,6 +3324,18 @@ func use_item(u: Unit, it: Item) -> bool:
 	if worn:
 		u.trinket = it.emptied()
 	return true
+
+
+# u reads a book (Item.readable()), paying its AP: a medium charisma check and a medium intelligence check, both rolled. Passing both, it
+# may take one change the book offers (Item.tweaks(), Unit.tweak(): the HUD asks the player, an AI unit takes Unit.fancy()); the book is
+# used up either way, the caller's to take from the stash. {} if it can't read it, else {passed, tweaks: the offer (none on a fail), cha, int: how each went}.
+func study(u: Unit, it: Item) -> Dictionary:
+	if it == null or not it.readable() or not outfitting(u) or not u.pay(item_ap(it, u), &"equip"):
+		return {}
+	var cha := check(u, &"charisma", null, Difficulty.dc(&"medium")).won
+	var mind := check(u, &"intelligence", null, Difficulty.dc(&"medium")).won
+	var passed := cha and mind
+	return {passed = passed, tweaks = it.tweaks() if passed else [], cha = cha, int = mind}
 
 
 # Emptied trinkets (potions) fill up again: as each battle ends, for everyone (and a starter's, as it's

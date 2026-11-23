@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Dungeoneer Delicacies"
+slot = "consumable"
+tags = Array[StringName]([&"book"])
+blurb = "CONSUMING HUMANOIDS IS UNADVISED BY ALL LEADING DUOS DELICATICIAN BODIES, AND IS A CRIME IN MOST-"
+temper = &"hungry"
+leans = &"con"
+favours = &"drael"

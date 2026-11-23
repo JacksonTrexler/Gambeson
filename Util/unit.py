@@ -12,7 +12,7 @@ placed in a battle.
   python3 Util/unit.py faction blinthe --name "Blinthe's Own" --color "#b07acc" [--allies lancin] [--human]
   python3 Util/unit.py check
 
-Bio (Scripts/Bio.gd): behaviour (timid, brave, aggressive, helpful, stoic, vindictive, flirty, flippant, power_hungry) drives its AI,
+Bio (Scripts/Bio.gd): behaviour (timid, brave, aggressive, helpful, stoic, vindictive, flirty, flippant, power_hungry, pragmatic, compliant, hungry) drives its AI,
 with more beside it (--also); grudges name whom a vindictive one hunts on sight (--grudges astral); appearance and
 adjectives are how it looks to whoever can't make out its class; properties (Properties/*.tres:
 mechanic.py property) are always on it; clout is its standing with sides. An AI-made name gets " ??"
@@ -25,7 +25,7 @@ import icon
 
 UNIT, BIO, SLOT, FACTION = "res://Scenes/unit.tscn", "res://Scripts/Bio.gd", "res://Scripts/Slot.gd", "res://Scripts/Faction.gd"
 SPECS = ("exploratory", "training", "remedial")  # Bio.SPECS: how it spends skill points (Unit.auto_spec())
-BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic", "vindictive", "flirty", "flippant", "power_hungry")
+BEHAVIOURS = ("timid", "brave", "aggressive", "helpful", "stoic", "vindictive", "flirty", "flippant", "power_hungry", "pragmatic", "compliant", "hungry")
 SHORT = {"str": "strength", "dex": "dexterity", "con": "constitution", "int": "intelligence", "wis": "wisdom", "cha": "charisma"}
 
 

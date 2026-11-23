@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+name = "Applied Charizzmatics"
+slot = "consumable"
+tags = Array[StringName]([&"book"])
+blurb = "Combat single identification techniques"
+temper = &"flirty"
+leans = &"love"
+favours = &"eros"

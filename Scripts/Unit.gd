@@ -1983,7 +1983,11 @@ func auto_spec() -> int:
 # its spec's leaning (Bio.spec). Its class's skills (Role.offered()) are always on offer; others (general trees,
 # species, knowledge) only where they meet a preference.
 func spec_options() -> Array:
-	var pre: Array[StringName] = bio.prefers if bio else ([] as Array[StringName])
+	var pre: Array[StringName] = bio.prefers.duplicate() if bio else ([] as Array[StringName])
+	for g in (bio.favours if bio else ([] as Array[StringName])):  # the gods it holds dear: their domains too
+		var dom := God.tag_of(g)
+		if dom and dom not in pre:
+			pre.append(dom)
 	var mode: StringName = bio.spec if bio else &""
 	var home := role.offered() if role else ([] as Array[Skill])
 	var thin := _thinnest() if mode == &"remedial" else ([] as Array[StringName])
@@ -2395,7 +2399,9 @@ func deity() -> StringName:
 	for d in devotions():
 		if d.god:
 			return d.god
-	return role.god if role else &""
+	if role and role.god:
+		return role.god
+	return bio.favours[0] if bio and not bio.favours.is_empty() else &""
 
 
 # Stacks of suspicion it has of t, a unit or a tile (Battle.suspect()).
@@ -2472,6 +2478,20 @@ func temper() -> StringName:
 	if bio and bio.behaviour:
 		return bio.behaviour
 	return &"timid" if behaviour == &"craven" else &""
+
+
+# Takes a book's tweak t ({kind, word}: Item.tweaks()) into its bio, as a copy of its own (Bio.tweaked(): a scene's bio is shared).
+func tweak(t: Dictionary) -> void:
+	bio = Bio.tweaked(bio, t)
+
+
+# The tweak of those a book offers (Item.tweaks()) that it takes on its own, an AI's reading: the first its bio doesn't hold yet,
+# a god it already serves excepted (no change). Empty: nothing it lacks.
+func fancy(offered: Array[Dictionary]) -> Dictionary:
+	for t: Dictionary in offered:
+		if not Bio.holds(bio, t) and not (t.kind == &"favours" and deity() == t.word):
+			return t
+	return {}
 
 
 # Whether it has temper t: its lead one (temper()) or one its bio adds (Bio.also: a Starman's vindictive, power hungry).
@@ -3625,7 +3645,7 @@ func to_dict() -> Dictionary:
 		purchases = purchases.map(func(p: Array): return [_skill_id(p[0]), p[1]]),
 		trees = trees_granted.map(func(k: StringName): return str(k)), picked = picked.duplicate(),
 		bar = get_equipped().map(func(s: Skill): return _skill_id(s) if s and s.resource_path.begins_with("res://Skills/") else ""),
-		outfit = worn, lapses = lapses_out(), flex_extra = flex_extra}
+		outfit = worn, lapses = lapses_out(), flex_extra = flex_extra, bio = bio.kept() if bio else {}}
 
 
 # Back from to_dict() onto a unit made from its class (Battle.from_role()), before it's in the tree. A missing key keeps
@@ -3652,6 +3672,9 @@ func from_dict(d: Dictionary) -> void:
 	for k in d.get("picked", []):
 		picked.append(str(k))
 	flex_extra = maxi(int(d.get("flex_extra", 0)), 0)
+	var kept := Bio.from_kept(d.get("bio"))  # what its books changed (Bio.tweaked())
+	if kept:
+		bio = kept
 	skill_points = maxi(level - 1 - purchases.reduce(func(n: int, p: Array): return n + p[1], 0), 0)
 	var worn: Variant = d.get("outfit", {})
 	for slot in (worn if worn is Dictionary else {}):
