@@ -41,7 +41,8 @@ func _ready() -> void:
 	col.add_child(count)
 	var grid := GridContainer.new()
 	grid.columns = 4  # a member's box and its Outfit button, two members to a row
-	col.add_child(grid)
+	var scroll := VScroll.wrap(grid)  # the roster grows with the classes: it scrolls where the screen is short
+	col.add_child(scroll)
 	var picked := Game.party_now()
 	for i in Game.roster.size():
 		var d: Dictionary = Game.roster[i]
@@ -64,6 +65,7 @@ func _ready() -> void:
 	done.text = "Done"
 	done.pressed.connect(_done)
 	col.add_child(done)
+	scroll.reserve = col.get_combined_minimum_size().y - scroll.get_combined_minimum_size().y + 16.0  # the rest of the screen's menu: title, count, Done, margins
 	shade = ColorRect.new()  # the stash screen's own backdrop: the sheet is see-through, and the party list is behind it
 	shade.color = Color(0, 0, 0, 0.97)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

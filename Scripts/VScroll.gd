@@ -9,7 +9,11 @@ extends ScrollContainer
 # The wheel, a trackpad pan and keyboard focus (follow_focus) scroll it; the bar shows only while it's needed.
 # Not HScroll's arrows and drag: a column has room for a bar, and the wheel is what a menu's reader reaches for.
 
-@export var reserve := 16.0  # px of the screen the menu around it keeps, so it ends just short of the edge
+@export var reserve := 16.0:  # px of the screen the menu around it keeps, so it ends just short of the edge
+	set(v):
+		reserve = v
+		if is_node_ready():
+			_fit()
 
 
 func _init() -> void:
