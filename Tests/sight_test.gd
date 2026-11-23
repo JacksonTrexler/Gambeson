@@ -82,6 +82,15 @@ func test_fog() -> void:
 	b.move(v(1), Vector2i(6, 2))
 	h._refresh()
 	ok(h.overlay.fog_at(Vector2i(8, 2)) == 0.0 and absf(h.overlay.fog_at(Vector2i(1, 2)) - Overlay.FOG_EXPLORED) < 0.01, "in sight now clear; seen once, dimmed")
+	var far := Vector2i(1, 2)
+	var old := b.map.get_cell_atlas_coords(far)
+	var src := b.map.get_cell_source_id(far)
+	b.map.set_cell(far, src, Vector2i(old.x + 1, old.y))  # changed out of sight
+	h._refresh()
+	ok(h.overlay.memory.get_cell_atlas_coords(far) == old and h.overlay.memory.get_cell_source_id(far) == src, "ground changed out of sight keeps the look last seen")
+	b.move(v(1), Vector2i(1, 2))
+	h._refresh()
+	ok(h.overlay.memory.get_cell_source_id(far) == -1, "seen again: the frozen look is dropped")
 	h.free()
 
 
