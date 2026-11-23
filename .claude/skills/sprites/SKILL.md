@@ -13,6 +13,6 @@ python3 Util/sprites.py check
 - File: `<hex>-<colour>.png` in `Assets/sorted/<sheet-stem>/`; hex is the alpha-weighted average RGB, colour the nearest of
   red orange yellow green cyan blue purple pink brown gray black white. A clash adds `-2`, `-3` (reading order).
 - The sheet is read only (decoded to RGBA in memory). Pillow decodes if present; else 8-bit PNGs only.
-- `--min-size N` skips islands under N pixels (default keeps all, 1-pixel sparkles included). Re-runs overwrite by name; stale files stay.
+- `--min-size N` skips islands under N pixels (default 4: islands under 4 pixels are skipped; `--min-size 1` keeps every speck). Re-runs overwrite by name; stale files stay.
 - Then `godot --headless --path . --import` and commit the PNGs with their `.png.import`. `check` (run by `Tests/tooling_test.gd`) cuts a
   synthetic sheet through both decoders and fails a name in Assets/sorted that is not `<hex>-<colour>.png` or lacks its import.
