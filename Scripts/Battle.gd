@@ -1149,8 +1149,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 		caster.striding = false
 		_tidy_debris()
 		used.emit(caster, skill, target, before - target.hp)
-		if target.hp < before and target.is_alive() and read(target, caster).deceived:
-			doubt(target, caster)
+		if target.hp < before:
+			_hurt_by(target, caster)
 		return true
 	var overage := 0  # what a roll beat Defense by (Irradiate)
 	var natural := false  # a natural 20 (Jugular recasts on one)
@@ -1295,8 +1295,8 @@ func _cast(caster: Unit, skill: Skill, target: Unit, spreading := false) -> bool
 	caster.striding = false
 	_tidy_debris()
 	used.emit(caster, skill, target, before - target.hp)
-	if foe and skill.hostile and target.hp < before and target.is_alive() and read(target, caster).deceived:
-		doubt(target, caster)
+	if foe and skill.hostile and target.hp < before:
+		_hurt_by(target, caster)
 	if foe and natural and skill.recast_on_crit and target.is_alive() and _recasts < RECAST_LIMIT:
 		_recasts += 1  # Jugular: a natural 20 goes again, free
 		loops(caster, skill, ri)  # (friction: its recasts past the first rank roll at disadvantage, worse each time)
@@ -2203,6 +2203,19 @@ func doubt(o: Unit, t: Unit, edge := 0) -> bool:
 		suspect(o, t)
 	doubted.emit(o, t, vs.mine.total, vs.theirs.total)
 	return vs.won
+
+
+# t was hurt by `by`, free of any action: what fools it, it looks harder at (doubt()); what it can't
+# make out - hidden, or not placed at all - it inspects where the blow came from (inspect(): on a pass, a
+# stack of suspicion of that tile and of `by`).
+func _hurt_by(t: Unit, by: Unit) -> void:
+	if not t.is_alive() or by == null or by == t:
+		return
+	var r := read(t, by)
+	if r.deceived:
+		doubt(t, by)
+	elif r.net < 0 and by.is_alive():
+		inspect(t, by.cell)
 
 
 # As its side's turn starts, u looks harder (doubt()) at each enemy it can place that fools it: the
@@ -4751,8 +4764,8 @@ func _grip(u: Unit) -> void:
 		var dice := Vector2i(s.drowns.x * (by.mods(s).irank(a.rank, &"rank_impact") if s.dice_per_rank else 1), s.drowns.y)  # a die count a rank, when it says so
 		u.hit(roll(dice) + by.mod(s.stat(), s.tags), s.tags, by)
 	gripped.emit(u, by, before - u.hp)
-	if u.is_alive() and u.hp < before and read(u, by).deceived:
-		doubt(u, by)
+	if u.hp < before:
+		_hurt_by(u, by)
 
 
 # A unit left c (moved, fell): a mist that shared the tile has it to itself now.

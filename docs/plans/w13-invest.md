@@ -20,3 +20,4 @@ Orig `Scripts/Investigation.gd` (dc/run/succeed/lead) is superseded on main by B
 Extend Tests/suspicion_test.gd: unseen hit check, Detective, Ambush. Mutation spot-checks listed below.
 
 ## Done
+- Step 1 (unseen hit): `Battle._hurt_by()` replaces 3 doubt sites (cast x2, _grip). Test `suspicion_test.test_unseen_hit`; mutation (elif false) fails it. Updated `stealth_test.test_attacker_exposed`: clears v(1)'s suspicion after the hit (its free look may now pass; rule under test is exposure). Full suite before: 10972 checks, 1 failed (that one) -> fixed.

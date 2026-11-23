@@ -22,6 +22,7 @@ func test_attacker_exposed() -> void:
 	stage(nemes, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(8, 5)})  # v(4) in plain sight: no stall, no Ire
 	v(3).afflict(effect("concealment", 2), 9)
 	ok(b.cast(v(3), strike, v(1)) and v(3).exposed == 1, "attacking from hiding gives it away")
+	v(1).suspicion.clear()  # what v(1)'s free look, if it hit, saw through (Battle._hurt_by(): suspicion_test)
 	b.end_turn()
 	ok(v(3).exposed == 1 and b.read(v(1), v(3)).net == -1, "through the other side's turn")
 	b.end_turn()
