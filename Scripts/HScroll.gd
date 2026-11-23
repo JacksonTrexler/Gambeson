@@ -11,7 +11,7 @@ const STEP := 48.0  # px per wheel notch
 const PAN := 8.0  # a trackpad pan's delta is a fraction of the strip's width: width / PAN per unit
 const DRAG_FROM := 4.0  # px of drag before it's a drag and not a click
 
-@export var max_width := 440.0  # the widest the strip asks its menu for; past that it scrolls
+@export var max_width := 420.0  # the widest the strip asks its menu for; past that it scrolls (the arrows and a page's bar still fit 480)
 
 var strip := ScrollContainer.new()
 var left := Button.new()
@@ -102,7 +102,7 @@ func _input(e: InputEvent) -> void:
 	elif not Rect2(Vector2.ZERO, strip.size).has_point(strip.make_input_local(e).position):
 		return
 	var px := amount(e, strip.size.x)
-	if px != 0.0:
+	if px != 0.0 and left.visible:  # a row with nowhere to go lets the wheel through to the page (VScroll) behind it
 		scroll_by(px)
 		get_viewport().set_input_as_handled()
 

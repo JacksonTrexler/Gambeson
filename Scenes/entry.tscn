@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://Scripts/Entry.gd" id="1_entry"]
 [ext_resource type="PackedScene" path="res://Scenes/UI/choice.tscn" id="2_choice"]
+[ext_resource type="Script" path="res://Scripts/VScroll.gd" id="3_vscroll"]
 [ext_resource type="Script" path="res://Scripts/Faction.gd" id="3_faction"]
 [ext_resource type="Resource" path="res://Factions/lancin.tres" id="4_lancin"]
 [ext_resource type="Resource" path="res://Factions/nemes.tres" id="5_nemes"]
@@ -46,47 +47,53 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.12, 0.13, 0.16, 1)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Scroll" type="ScrollContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("3_vscroll")
 
-[node name="Form" type="VBoxContainer" parent="Center"]
+[node name="Center" type="CenterContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Form" type="VBoxContainer" parent="Scroll/Center"]
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="Title" type="Label" parent="Center/Form"]
+[node name="Title" type="Label" parent="Scroll/Center/Form"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "Gambeson"
 horizontal_alignment = 1
 
-[node name="Side" parent="Center/Form" instance=ExtResource("2_choice")]
+[node name="Side" parent="Scroll/Center/Form" instance=ExtResource("2_choice")]
 unique_name_in_owner = true
 layout_mode = 2
 prompt = "Which side will you take?"
 
-[node name="Role" parent="Center/Form" instance=ExtResource("2_choice")]
+[node name="Role" parent="Scroll/Center/Form" instance=ExtResource("2_choice")]
 unique_name_in_owner = true
 layout_mode = 2
 prompt = "What is your starter's class?"
 
-[node name="Scenario" parent="Center/Form" instance=ExtResource("2_choice")]
+[node name="Scenario" parent="Scroll/Center/Form" instance=ExtResource("2_choice")]
 unique_name_in_owner = true
 layout_mode = 2
 prompt = "Where will you fight?"
 
-[node name="Name" type="LineEdit" parent="Center/Form"]
+[node name="Name" type="LineEdit" parent="Scroll/Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
 placeholder_text = "Shrike"
 alignment = 1
 max_length = 20
 
-[node name="Level" type="SpinBox" parent="Center/Form"]
+[node name="Level" type="SpinBox" parent="Scroll/Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "The level your starter begins at, with a skill point to spend for each level past the first"
@@ -97,26 +104,26 @@ rounded = true
 alignment = 1
 prefix = "Level"
 
-[node name="Play" type="Button" parent="Center/Form"]
+[node name="Play" type="Button" parent="Scroll/Center/Form"]
 unique_name_in_owner = true
 layout_mode = 2
 disabled = true
 text = "Play"
 
-[node name="Continue" type="Button" parent="Center/Form"]
+[node name="Continue" type="Button" parent="Scroll/Center/Form"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 text = "Continue"
 
-[node name="Party" type="Button" parent="Center/Form"]
+[node name="Party" type="Button" parent="Scroll/Center/Form"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 tooltip_text = "Who goes into battle with your starter"
 text = "Party"
 
-[node name="Delete" type="Button" parent="Center/Form"]
+[node name="Delete" type="Button" parent="Scroll/Center/Form"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
