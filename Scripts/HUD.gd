@@ -44,6 +44,7 @@ const PANE_FADED := 0.2  # the tile pane's opacity while the view scrolls
 const PANE_FADE_OUT := 6.0  # opacity a second it loses going faded (a glance, not a wait)
 const PANE_FADE_IN := 2.5  # ...and gains coming back
 const PANE_REST := 0.25  # seconds the view must sit still before the pane comes back
+const TARGET_HOLD := 0.2  # seconds a plain left click or tap waits before it targets, in case it's the first half of a focusing double click (press())
 const PANE_LIST := 34.0  # tallest the tile pane's effect list gets before it scrolls
 # The effect list's auto-scroll, when it's too long to show: fade in, hold at the top, scroll down
 # (slowest in the middle), hold at the bottom, fade out, and round again from the top.
@@ -76,6 +77,8 @@ var armed: Skill:  # the selected slot's skill (null: an empty slot, or nothing 
 		var u := selected
 		return _skill_in(u, slot) if u and hand(u) else null
 var hover := NOWHERE
+var focus_cell := NOWHERE  # a tile (and whoever's made out on it) held up for a look: the card and the tile pane show it, whoever's selected (focus())
+var _pending: Dictionary = {}  # a left click waiting out TARGET_HOLD: {cell, force, inspect, alt, wait} (press())
 var busy := false  # units are acting on their own; the player waits
 var _closing := false  # a side's turn has ended under its last walks, still showing (_act_alone())
 var plan := {}  # the hovered move, as the selected unit expects it (Battle.walk)
@@ -449,6 +452,7 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	_tick_clock(delta)
+	tick_press(delta)
 	_fit_bar()  # what wraps in the panel settles over a few frames (a hint, a name): cheap once it has
 	_hurry()
 	for l in _spinning:
@@ -500,15 +504,17 @@ func _unhandled_input(e: InputEvent) -> void:
 		if not e.pressed or e.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if _panel_open():
+			_pending.clear()
 			_close_panels()
 		elif e.button_index == MOUSE_BUTTON_LEFT:
-			click(_cell_at(e.position), e.ctrl_pressed or e.meta_pressed, e.shift_pressed, e.alt_pressed)
+			press(_cell_at(e.position), e.ctrl_pressed or e.meta_pressed, e.shift_pressed, e.alt_pressed, e.double_click)
 		else:
-			cancel()
+			right_click(_cell_at(e.position))
 		get_viewport().set_input_as_handled()
 		return
 	if not e.is_pressed() or e.is_echo():
 		return
+	_pending.clear()  # a key press settles it: the click that was waiting is dropped
 	if e.is_action_pressed(&"cancel"):
 		cancel()
 	elif e.is_action_pressed(&"spellbook"):
@@ -556,6 +562,7 @@ func _cell_at(p: Vector2) -> Vector2i:
 # A new unit starts on its first slot, or with keep_slot the one it last used.
 func select(u: Unit) -> void:
 	picked.clear()
+	focus_cell = NOWHERE
 	if u == null and command and command.leader.is_alive() and battle.phase == Battle.Phase.TURNS:
 		u = command.leader
 	var was := selected
@@ -572,7 +579,73 @@ func select(u: Unit) -> void:
 # A click on the map: does what intent() says it means. force (Ctrl): strike at the tile, whatever
 # seems to be there. inspect (Shift): select a foe rather than attack it. alt: a Rift cast unchanneled.
 func click(c: Vector2i, force := false, inspect := false, alt := false) -> void:
+	_pending.clear()
+	unfocus()
 	_run(intent(c, force, inspect, alt))
+
+
+# A left click or tap from the pointer: it targets after TARGET_HOLD, so a second click on the same tile
+# inside it (a double click or tap) focuses instead, and a right click does too (right_click()). At once
+# when the tile is already focused (the look is over: act), with a modifier held (a deliberate Ctrl, Shift
+# or Alt click), in preparation, off the map, or when the OS calls it a double click. A click on another
+# tile settles the one waiting first. Code and tests call click() and have no delay.
+func press(c: Vector2i, force := false, inspect := false, alt := false, double := false) -> void:
+	var waiting := _pending
+	_pending = {}
+	if double or (c != NOWHERE and waiting.get("cell") == c):
+		focus(c)
+		return
+	if not waiting.is_empty():
+		click(waiting.cell, waiting.force, waiting.inspect, waiting.alt)
+	if c == NOWHERE or c == focus_cell or force or inspect or alt or battle.phase == Battle.Phase.PREP or TARGET_HOLD <= 0.0:
+		click(c, force, inspect, alt)
+	else:
+		_pending = {cell = c, force = force, inspect = inspect, alt = alt, wait = TARGET_HOLD}
+
+
+# Time passing for a click in its hold-off: when it's up, it targets.
+func tick_press(delta: float) -> void:
+	if _pending.is_empty():
+		return
+	_pending.wait -= delta
+	if _pending.wait <= 0.0:
+		click(_pending.cell, _pending.force, _pending.inspect, _pending.alt)
+
+
+# A right click: on a tile that isn't focused yet, focus it (cancelling a click waiting to target it); on
+# the focused one, or off the map, step back (cancel()).
+func right_click(c: Vector2i) -> void:
+	_pending.clear()
+	if c != NOWHERE and c != focus_cell:
+		focus(c)
+	else:
+		cancel()
+
+
+# Hold a tile up for a look, without acting: the card shows whoever is made out there (the selected unit's
+# aim, skill and bar stay as they are, so the next click on it targets at once), the tile pane shows the
+# tile. Cleared by acting (click()), selecting, or stepping back (cancel()).
+func focus(c: Vector2i) -> void:
+	_pending.clear()
+	if c == NOWHERE or not battle.on_map(c):
+		return
+	focus_cell = c
+	hover_cell(c)
+	_mark()
+	_update_tip()
+
+
+func unfocus() -> void:
+	if focus_cell == NOWHERE:
+		return
+	focus_cell = NOWHERE
+	_mark()
+	_update_tip()
+
+
+# Whoever is made out on the focused tile.
+func focused_unit() -> Unit:
+	return unit_seen(focus_cell) if focus_cell != NOWHERE else null
 
 
 func hover_cell(c: Vector2i) -> void:
@@ -731,8 +804,11 @@ func switch(u: Unit, s: Skill) -> void:
 
 # Right click / Esc steps back once: a panel, then an aimed skill, then back to the player's own unit.
 func cancel() -> void:
+	_pending.clear()
 	if _panel_open():
 		_close_panels()
+	elif focus_cell != NOWHERE:
+		unfocus()
 	elif aiming() or picking():
 		disarm()
 	else:
@@ -2456,6 +2532,8 @@ func _suspicious(c: Vector2i, r: Read) -> bool:
 # The tile the pane shows: the hovered one; with the pointer off the map (over a panel), the last it showed;
 # before any, the selected unit's (else the leader's) - so the pane is always up, top right.
 func pane_cell() -> Vector2i:
+	if focus_cell != NOWHERE and battle.on_map(focus_cell):
+		return focus_cell
 	if hover != NOWHERE:
 		return hover
 	if _pane_cell != NOWHERE and battle.on_map(_pane_cell):
@@ -3251,6 +3329,9 @@ static func trims(u: Unit) -> Array:
 # The selected unit's card, with what the hovered plan would consume (spend) on its rows: a number
 # drains a segment off the row's bar; "?" (an effect it can't foresee) mutes the row and flashes a ?.
 func _card_info() -> Dictionary:
+	var held := focused_unit()
+	if held and held != selected:
+		return _info(held)
 	if not selected:
 		return {}
 	var info := _info(selected)

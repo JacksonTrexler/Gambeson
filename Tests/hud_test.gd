@@ -380,6 +380,63 @@ func test_ctrl_click() -> void:
 	h.free()
 
 
+# A pointer click: where the cell is on screen, through the HUD's own handler (_unhandled_input).
+func pointer(h: HUD, c: Vector2i, button := MOUSE_BUTTON_LEFT, mods := 0, double := false) -> void:
+	var e := InputEventMouseButton.new()
+	e.position = b.get_viewport().get_canvas_transform() * b.map.to_global(b.map.map_to_local(c))
+	e.button_index = button
+	e.pressed = true
+	e.double_click = double
+	e.shift_pressed = mods == KEY_SHIFT
+	h._unhandled_input(e)
+
+
+# Focusing: a plain left click targets after a short hold-off (HUD.TARGET_HOLD, a clock the test advances);
+# a second click on it inside the wait, a right click or the OS's double click focuses instead (the card and
+# tile pane show it, the aim stays); a focused tile targets at once; a key, another tile, a chord settle it.
+func test_focus() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3), v(4): Vector2i(9, 0)})
+	var h := await hud(v(1))
+	var foe := Vector2i(5, 3)
+	ok(HUD.TARGET_HOLD > 0.0 and HUD.TARGET_HOLD < 0.25, "the hold-off is short")
+	pointer(h, foe)
+	ok(v(3).hp == 10 and not h._pending.is_empty(), "a left click waits")
+	h.tick_press(HUD.TARGET_HOLD * 0.5)
+	ok(v(3).hp == 10, "...through half the hold-off")
+	h.tick_press(HUD.TARGET_HOLD * 0.6)
+	ok(v(3).hp == 8 and h._pending.is_empty() and h.focus_cell == HUD.NOWHERE, "...then targets (strikes)")
+	pointer(h, foe)
+	h.tick_press(0.1)
+	pointer(h, foe)
+	h.tick_press(1.0)
+	ok(v(3).hp == 8 and h.focus_cell == foe and h._pending.is_empty(), "a second click inside the wait focuses and never targets")
+	ok(h.selected == v(1) and h.armed == strike and h.pane_cell() == foe, "the selected unit and its skill stay; the tile pane shows the tile")
+	ok(h._card_info().get("name") == h._info(v(3)).get("name") and h._card_info().get("name") != h._info(v(1)).get("name"), "the card shows the foe")
+	pointer(h, foe)
+	ok(v(3).hp == 6 and h.focus_cell == HUD.NOWHERE and h._card_info().get("name") == h._info(v(1)).get("name"), "a focused tile targets with no delay; the card returns to the unit")
+	pointer(h, foe)
+	pointer(h, foe, MOUSE_BUTTON_RIGHT)
+	ok(v(3).hp == 6 and h.focus_cell == foe and h._pending.is_empty(), "a right click cancels the click waiting and focuses")
+	pointer(h, foe, MOUSE_BUTTON_RIGHT)
+	ok(h.focus_cell == HUD.NOWHERE and h.selected == v(1), "a right click on the focused tile steps back")
+	pointer(h, Vector2i(6, 6), MOUSE_BUTTON_RIGHT)
+	ok(h.focus_cell == Vector2i(6, 6) and h.pane_cell() == Vector2i(6, 6) and h._card_info().get("name") == h._info(v(1)).get("name"), "a right click on a bare tile focuses it: the tile pane")
+	h._unhandled_input(key(KEY_ESCAPE))
+	ok(h.focus_cell == HUD.NOWHERE, "Esc clears the focus first")
+	pointer(h, foe, MOUSE_BUTTON_LEFT, 0, true)
+	ok(h.focus_cell == foe and v(3).hp == 6, "the OS's double click focuses")
+	h.cancel()
+	pointer(h, foe)
+	pointer(h, Vector2i(6, 6))
+	ok(v(3).hp == 4 and h._pending.cell == Vector2i(6, 6), "a click on another tile settles the one waiting, and waits itself")
+	h._unhandled_input(key(KEY_1))
+	h.tick_press(1.0)
+	ok(v(1).cell == Vector2i(4, 3) and h._pending.is_empty(), "a key press drops the click waiting")
+	pointer(h, foe, MOUSE_BUTTON_LEFT, KEY_SHIFT)
+	ok(h._pending.is_empty() and h.selected == v(3), "a Shift click (inspect) needs no wait")
+	h.free()
+
+
 func test_click_attacks() -> void:
 	stage(lancin, {v(1): Vector2i(1, 3), v(3): Vector2i(4, 3), v(4): Vector2i(9, 0)})
 	var h := await hud(v(1))
