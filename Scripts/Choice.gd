@@ -1,7 +1,7 @@
 class_name Choice
 extends VBoxContainer
 
-# A prompt with one-of-many options (icon + text). `value` holds the pick; changed() announces it.
+# A prompt with one-of-many options (icon + text) in a row that scrolls rather than wraps (HScroll). `value` holds the pick; changed() announces it.
 signal changed(was: Variant, now: Variant)
 
 @export var prompt := "":
@@ -31,14 +31,20 @@ func add(text: String, icon: Texture2D = null, v: Variant = text) -> Button:
 			var was: Variant = value
 			value = v
 			changed.emit(was, v))
-	$Options.add_child(b)
+	%Options.add_child(b)
 	return b
 
 
 # Picks the option holding v, as if it were clicked. False if there's none.
 func pick(v: Variant) -> bool:
-	for b: Button in $Options.get_children():
+	for b: Button in %Options.get_children():
 		if b.has_meta(&"value") and b.get_meta(&"value") == v:
 			b.button_pressed = true
+			ensure_visible.call_deferred(b)  # after the row has laid out
 			return true
 	return false
+
+
+func ensure_visible(b: Button) -> void:
+	if is_instance_valid(b):
+		$Scroll.ensure_visible(b)
