@@ -38,7 +38,7 @@
 [ext_resource type="Script" path="res://Scripts/TreeChoice.gd" id="treechoice"]
 [ext_resource type="Resource" path="res://Skills/illusionist.tres" id="illusionist"]
 [ext_resource type="Resource" path="res://Skills/chaser.tres" id="s_chaser"]
-[ext_resource type="Resource" path="res://Skills/sally.tres" id="opt_sally"]
+[ext_resource type="Resource" path="res://Skills/sally.tres" id="s_sally"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -69,11 +69,16 @@ script = ExtResource("7_branch")
 skill = ExtResource("s_chaser")
 after = Array[ExtResource("5_skill")]([ExtResource("s_backstab")])
 
+[sub_resource type="Resource" id="Branch_sally"]
+script = ExtResource("7_branch")
+skill = ExtResource("s_sally")
+after = Array[ExtResource("5_skill")]([ExtResource("s_backstab")])
+
 [sub_resource type="Resource" id="Root_Blade"]
 script = ExtResource("6_root")
 name = "Blade"
 tag = &"martial"
-branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_stamina"), SubResource("Branch_jam"), SubResource("Branch_backstab"), SubResource("Branch_chaser")])
+branches = Array[ExtResource("7_branch")]([SubResource("Branch_wary"), SubResource("Branch_stamina"), SubResource("Branch_jam"), SubResource("Branch_backstab"), SubResource("Branch_chaser"), SubResource("Branch_sally")])
 
 [sub_resource type="Resource" id="Branch_meander"]
 script = ExtResource("7_branch")
@@ -167,7 +172,6 @@ look = ExtResource("2_sprite")
 race = ExtResource("3_race")
 innate = Array[ExtResource("4_slot")]([SubResource("Slot_strike"), SubResource("Slot_move_plus_one")])
 stats = Dictionary[StringName, int]({&"strength": 10, &"dexterity": 15, &"constitution": 10, &"intelligence": 11, &"wisdom": 12, &"charisma": 11})
-options = Array[ExtResource("5_skill")]([ExtResource("opt_sally")])
 roots = Array[ExtResource("6_root")]([SubResource("Root_Blade")])
 tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Freedom"), SubResource("Tab_trickster")])
 items = Array[ExtResource("i_item")]([ExtResource("i_gambeson"), ExtResource("i_dagger"), ExtResource("i_energy_potion")])

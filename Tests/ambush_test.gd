@@ -42,6 +42,16 @@ func test_first_roll_only() -> void:
 	ok(v(1).ambush_rolls == 0 and b.ambushes(v(1), v(3)), "its side's turn again, still hidden: a fresh one")
 
 
+# A chain's later blows (Strike) aren't ambushes: the tag comes off the use's cast after the first roll.
+func test_chain() -> void:
+	setup([[strike, 3]])
+	v(3).afflict(effect("defense", -40), 9)
+	var seen: Array[bool] = []
+	b.attack_rolled.connect(func(_u, _t, _r): seen.append(&"ambush" in b._resolving.back().tags))
+	b.cast(v(1), strike, v(3))
+	ok(seen == ([true, false, false] as Array[bool]), "first blow only (%s)" % [seen])
+
+
 func test_fusillade() -> void:
 	setup([[strike, 3], [fusillade, 1]])
 	v(3).afflict(effect("defense", -40), 9)  # its blows land: the chain runs all 3
@@ -57,5 +67,5 @@ func test_fusillade() -> void:
 func test_who() -> void:
 	var slayer: SkillRoot = load("res://Trees/slayer.tres")
 	ok(slayer.branches.any(func(x: Branch): return x.skill == sally) and slayer.branches.any(func(x: Branch): return x.skill == fusillade), "on the Slayer tree")
-	ok(sally in (load("res://Roles/rogue.tres") as Role).options, "the Rogue's to take")
+	ok((load("res://Roles/rogue.tres") as Role).trees()[0].offers(sally), "on the Rogue's own tree (Blade)")
 	ok([ambush, sally, fusillade].all(func(s: Skill): return not s.ai and s.stub == ""), "the user's, built")
