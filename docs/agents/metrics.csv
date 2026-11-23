@@ -96,3 +96,5 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w16-swarm,opus,medium,150808,51,1016405,landed
 2026-11-23,w17-equip,opus,medium,118781,63,1203428,landed
 2026-11-23,w17-reverse,sonnet,high,49862,22,700768,landed
+2026-11-23,w20-siphon-gain,sonnet,low,45950,14,155068,ok
+2026-11-23,w20-hud-foe-also,sonnet,low,44785,18,171032,ok
