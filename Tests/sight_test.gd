@@ -4,7 +4,8 @@ extends Test
 # its wisdom total in tiles, and makes out how they look within half that - the range shared across its
 # side (Battle.in_range()). Each side remembers where it last made out its foes (Battle.sightings) -
 # to begin with, where the others drew up in the open - and a unit with none in sight goes looking
-# there (AI._hunt()). The museum's other tests turn it off (Test.calm()).
+# there (AI._hunt()). The museum's other tests turn it off (Test.calm()). Past its side's sight a foe
+# can't be picked or struck, and the tiles there are the fog of war (Battle.sight_cells(), Overlay.fog_of_war()).
 
 
 func test_on_everywhere() -> void:
@@ -57,3 +58,28 @@ func test_hunt() -> void:
 	b.sight = true  # stage() calms, turning it off
 	AI.act(b, v(3))
 	ok(b.last_seen(nemes).get(v(1)) == Vector2i(5, 4), "made out again, if only where it is: remembered there")
+
+
+func test_fog() -> void:
+	stage(nemes, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(3, 2)})
+	b.sight = true  # stage() calms, turning it off
+	b.sightings.clear()
+	v(1).wisdom = 4
+	v(2).wisdom = 2
+	v(3).wisdom = 1
+	var hp := v(1).hp
+	AI.act(b, v(3))
+	ok(v(1).hp == hp and b.in_range(v(3), v(1)) == 0, "a foe 2 tiles off, past its wisdom total (1): not struck")
+	var seen := b.sight_cells(lancin)
+	ok(seen.has(Vector2i(5, 2)) and not seen.has(Vector2i(6, 2)) and not seen.has(Vector2i(5, 3)) and seen.has(Vector2i(1, 7)) and not seen.has(Vector2i(1, 8)),
+			"the side's sight: each member's full wisdom total, joined")
+	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(1, 5), v(3): Vector2i(8, 2)})
+	b.sight = true  # stage() calms, turning it off
+	var h := await hud(v(1))
+	h._refresh()
+	ok(not h.pickable(v(1), v(3)) and not h.view(v(3)).located(), "past its side's sight: not shown, not pickable")
+	ok(h.overlay.fog_at(Vector2i(1, 2)) == 0.0 and absf(h.overlay.fog_at(Vector2i(8, 2)) - Overlay.FOG_UNSEEN) < 0.01, "fog over what it has never seen")
+	b.move(v(1), Vector2i(6, 2))
+	h._refresh()
+	ok(h.overlay.fog_at(Vector2i(8, 2)) == 0.0 and absf(h.overlay.fog_at(Vector2i(1, 2)) - Overlay.FOG_EXPLORED) < 0.01, "in sight now clear; seen once, dimmed")
+	h.free()
