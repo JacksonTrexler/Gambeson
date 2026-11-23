@@ -92,3 +92,5 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w16-testaudit,sonnet,high,106770,16,1029760,landed
 2026-11-23,w16-ambush,opus,medium,135123,64,2298438,landed
 2026-11-23,w16-ire,sonnet,medium,60458,19,554839,landed
+2026-11-23,w16-tempers,opus,medium,140231,74,642057,landed
+2026-11-23,w16-swarm,opus,medium,150808,51,1016405,landed
