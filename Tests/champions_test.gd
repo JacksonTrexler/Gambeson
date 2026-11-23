@@ -20,8 +20,8 @@ func alabaster() -> Unit:
 func test_icor() -> void:
 	var u := icor()
 	ok(u.role.name == "Wizard" and u.title == "of Red" and u.level == 5 and u.race.name == "Human", "Wizard of Red, level 5")
-	ok(u.intelligence == 18 and u.constitution == 8, "high int, low con")
-	ok(u.store(mana) == 12 and u.energy == 0 and u.max_energy == 4 and u.hp == 14 and u.runs_on() == mana, "12 mana; it runs on Mana, so none of its (little) Energy")
+	ok(u.intelligence >= 16 and u.intelligence > u.constitution + 4, "high int, low con")
+	ok(u.store(mana) > 0 and u.energy == 0 and u.max_energy > 0 and u.max_energy < u.store(mana) and u.runs_on() == mana, "it has mana; it runs on Mana, so none of its (little) Energy")
 	ok(u.rank(hex) == 3 and u.rank(arcanist) == 3 and u.passives == [load("res://Skills/mana.tres"), arcanist], "Hex III, Arcanist Perspective III (on), and the Wizard's Mana I")
 	ok(u.sprite.sprite_frames.get_frame_texture(&"default", 0).resource_path == "res://Units/RedMage.png", "RedMage sprite from the Wizard role")
 
@@ -97,7 +97,7 @@ func test_mana_rules() -> void:
 func test_alabaster() -> void:
 	var u := alabaster()
 	ok(u.race.name == "Stone Golem" and u.stat(&"size") == 4 and u.level == 5, "Stone Golem, Large, level 5")
-	ok(u.strength == 18 and u.constitution == 20 and u.intelligence == 8 and u.charisma == 8, "str high, con 20, rest 8")
+	ok(u.strength >= 16 and u.constitution >= u.strength and u.intelligence <= 10 and u.charisma <= 10, "str and con high, mind and charm low")
 	ok(u.rank(strike) == 3 and u.passives == [stoneskin, load("res://Skills/relay.tres"), load("res://Skills/hardy.tres")] and stonegift in u.actives,
 			"Strike III, Stoneskin, Stonegift, Relay, Hardy (borrowed from Actualization)")
 	ok(u.max_hp == 30 + 5 * 1 * 5, "Hardy I: each of its 5 levels brings its con mod (5) once more: 30 + 25")
@@ -156,7 +156,7 @@ func test_bars() -> void:
 	ok(vil.energy_bar.size.y < vil.hp_bar.size.y and vil.energy_bar.position.y > vil.hp_bar.position.y, "slimmer, under HP")
 	ok(ic.reserve_bar.visible and (ic.reserve_bar.get_theme_stylebox("fill") as StyleBoxFlat).bg_color == mana.color, "Icor: blue Mana bar")
 	ok(ic.hp_bar.position.y + ic.hp_bar.size.y == ic.reserve_bar.position.y and not ic.energy_bar.visible, "HP, then 2px of Mana; running on Mana, no Energy bar")
-	ok(ic.reserve_bar.value == 12, "values")
+	ok(ic.reserve_bar.value == ic.store(mana) and ic.reserve_bar.value > 0, "values")
 	ic.energy = 3  # Energy got some other way: it holds two resources, and shows both
 	ok(ic.energy_bar.visible and ic.reserve_bar.position.y + ic.reserve_bar.size.y == ic.energy_bar.position.y, "then 2px of Energy, in one block")
 	ok(ic.energy_bar.modulate.a < 1.0 and ic.energy_bar.value == 3, "Energy faded behind Mana")

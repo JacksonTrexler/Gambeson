@@ -103,6 +103,23 @@ func test_craven() -> void:
 	v(4).afflict(effect("persona", 2), 9)
 	AI.act(b, v(3))
 	ok(v(3).cell != Vector2i(8, 2), "advertised (Persona II): it advances")
+	# the same wait for a bio's timid temper (a craven unit's temper), emboldened by an ally that looks like a Knight (its level guessed)
+	stage(nemes, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2), v(4): Vector2i(8, 3)})
+	var timid := Bio.new()
+	timid.behaviour = &"timid"
+	v(3).behaviour = &""
+	v(3).bio = timid
+	v(4).level = 1
+	v(4).timed.clear()
+	v(3).refresh()
+	AI.act(b, v(3))
+	ok(v(3).cell == Vector2i(8, 2), "timid by bio: no stronger ally near, it waits")
+	var knight := Bio.new()
+	knight.appearance = "Knight"
+	v(4).bio = knight
+	v(3).refresh()
+	AI.act(b, v(3))
+	ok(v(3).cell != Vector2i(8, 2), "an ally that looks like a Knight beside it: emboldened")
 
 
 func test_craven_flees() -> void:

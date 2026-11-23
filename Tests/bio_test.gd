@@ -70,18 +70,6 @@ func test_stoic_holds() -> void:
 	ok(v(3).cell != Vector2i(8, 2), "without a temper it closes in")
 
 
-func test_timid_waits() -> void:
-	stage(nemes, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2)})
-	v(3).bio = bio(&"timid")
-	AI.act(b, v(3))
-	ok(v(3).cell == Vector2i(8, 2), "timid: no stronger ally near, it waits")
-	stage(nemes, {v(1): Vector2i(1, 2), v(3): Vector2i(8, 2), v(4): Vector2i(8, 3)})
-	v(4).bio = bio(&"", "Knight")
-	v(3).refresh()
-	AI.act(b, v(3))
-	ok(v(3).cell != Vector2i(8, 2), "an ally that looks like a Knight beside it: emboldened (it can't read the level, so it guesses)")
-
-
 func test_helpful_tends() -> void:
 	v(3).learned.append(slot(renew, 1))
 	v(3).refresh()
