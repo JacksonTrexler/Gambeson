@@ -13,3 +13,11 @@ User: orange generators; startile grid, somewhat broken, round generators; starp
 2. starpower_generator: Terrain layer, source=true, passes=true, not brittle, tag star,generator; starts full (scene starpower dict 1.0). Inert beyond being a full source (x5 Power regen on its lattice). No self-recharge.
 3. Power Star: Item.soaks (share per rank of wearer's overflow Power kept, powered wearer only) + Item.held (Power stored, cap wearer max_energy); used from slot gives held as Power then held=0 (copy, as emptied()). Rank 1 = 15%.
 4. Drops with held 0.
+5. Layout in Scripts/AstralNexus.gd (seeded, like Meadows): 23x13, 3 generators, startile grid reach 4 on even offsets, 25% broken, gaps panes, 15% void; unreachable lattice voided. Battle.gd untouched for the lattice; generators filled via battle.ready.
+6. Hostile faction: Factions/unaligned.tres (starmen.tres is neutral = not in the fight); win = all starmen down. No escape portal.
+7. Power Star reward is the dungeon's win reward (all floors), not a starman drop (no loot table: Starman is shared with the Envoy). rarity rare, tags star,potion; held lives on a duplicated item (like emptied()), lost on save (items save by id).
+8. Item.soaks/held fields; Item.usable() replaces `restores and not empty` in Battle.use_item and CharacterSheet; restore() adds held. Tags void, generator coloured (mechanic.py color).
+9. Max base Power = unit.max_energy (burn lowers it).
+Questions: do generators recharge/drain? void falls/damage? starman loot? Power Star initial charge?
+## Built
+Tests: tower_test.test_nexus, test_power_star; mutations (soak x2, void enter 1) fail them. Suite 11043 checks, 0 failed (1040 tests).
