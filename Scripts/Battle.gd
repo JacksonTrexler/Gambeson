@@ -959,10 +959,11 @@ func _flip(g: Array) -> Array:
 # while (Unit.disable_order()). An automatic skill (Sing) is used on the caster and lands on the nearest units in range
 # (auto_targets()), paid once. A traitor told to turn a hostile skill on its real allies refuses, or
 # with a positive cha mod misses on purpose - and either way its leader looks harder at it.
-func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: Array[Unit] = []) -> bool:
+func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: Array[Unit] = [], chose := "") -> bool:
 	var depth := _resolving.size()
 	if _casting == 0:
 		_picked = picked
+		_chosen = chose
 	_casting += 1
 	_aims.append(target)
 	var opened := _begin_use(caster, skill)
@@ -975,6 +976,7 @@ func cast(caster: Unit, skill: Skill, target: Unit, spreading := false, picked: 
 	_casting -= 1
 	if _casting == 0:
 		_picked = []
+		_chosen = ""
 	_resolving.resize(depth)
 	_done_casting(caster, done)
 	return done

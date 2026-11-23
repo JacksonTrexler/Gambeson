@@ -390,6 +390,11 @@ func test_elemental() -> void:
 	v(1).refresh()
 	v(1).element = &"fire"
 	ok(b.cast(v(1), sk("elemental_strike"), v(1)) and v(1).imbued == 2 and v(1).skill_name(strike) == "Firestrike", "imbued: Firestrike for 2 uses")
+	v(1).imbued = 0
+	v(1).element = &""
+	v(1).refresh()
+	ok(b.choices_of(v(1), sk("elemental_strike")).has("Water") and b.cast(v(1), sk("elemental_strike"), v(1), false, [], "Water") and v(1).element == &"water" and v(1).imbued == 2, "a pick through the shared picker sets the element")
+	v(1).element = &"fire"
 	v(3).max_hp = 500
 	v(3).hp = 500
 	v(1).strength = 30
