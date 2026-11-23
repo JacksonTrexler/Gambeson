@@ -60,7 +60,7 @@ func test_fight_outcome() -> void:
 	var alive := all.filter(func(u: Unit): return u.is_alive())
 	ok(alive.size() > 0 and 2 * size - alive.size() >= size / 3, "blood is shed and someone is left (%d of %d standing after %d rounds)" % [alive.size(), 2 * size, rounds])
 	var idle := all.filter(func(u: Unit): return u not in acted and u.is_alive())
-	ok(idle.is_empty(), "no unit sits the fight out (%s)" % [idle.map(func(u: Unit): return u.name)])
+	ok(idle.is_empty() and [f.lancin, f.nemes].all(func(s: Faction): return all.filter(func(u: Unit): return u.faction == s and u in acted).size() >= size / 2), "no unit sits the fight out, and each side moved or struck (%s)" % [idle.map(func(u: Unit): return u.name)])
 	print("  outcome: %d standing, %d rounds, %d acted" % [alive.size(), rounds, acted.size()])
 	ok(f.b.phase == Battle.Phase.OVER or rounds < 12, "it is decided, not stalled (%d rounds)" % rounds)
 	f.close()
