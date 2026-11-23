@@ -2059,14 +2059,21 @@ func unspend() -> int:
 			waived.erase(s)
 			leaned.erase(s)
 		else:
-			var curved := affinity(s) != 0 and s.rank_cost == 0
-			x.points = maxi(points_in(s) - cost, 0)
-			x.rank = maxi(Unit.rank_for(x.points, 0, s.max_rank), 1) if curved else maxi(x.rank - 1, 1)
+			var low := _lowered(s, x.rank, points_in(s), cost)
+			x.rank = low[0]
+			x.points = low[1]
 		break
 	sync_bar()
 	_arrange()
 	refit()
 	return cost
+
+
+# [rank, points] of a skill at rank and points once a purchase of cost is taken back (unspend(), to_dict()).
+func _lowered(s: Skill, rank: int, points: int, cost: int) -> Array:
+	var pts := maxi(points - cost, 0)
+	var curved := affinity(s) != 0 and s.rank_cost == 0
+	return [maxi(Unit.rank_for(pts, 0, s.max_rank), 1) if curved else maxi(rank - 1, 1), pts]
 
 
 # The points auto_spec() spent for it while out of the player's hands (auto_spent), given back as the player has it
@@ -3632,7 +3639,25 @@ func lapses_in(d: Dictionary) -> void:
 # name), its level and XP, hearts, learned skills with their ranks and points, the purchases a level curse undoes,
 # trees opened and picked, its equipped bar, what it wears (Save.item_out()) and lapses_out(). Unspent skill points
 # aren't kept: they're its levels less what it has spent (from_dict()).
+# Skills bought for it out of the player's hands (auto_spent: Disturbed) are written as not bought, as refund_auto()
+# would leave it, so a save mid-fight doesn't keep them; the live unit is untouched.
 func to_dict() -> Dictionary:
+	var rows: Array = learned.filter(func(x: Slot): return x.skill).map(func(x: Slot): return {skill = _skill_id(x.skill), rank = x.rank, points = points_in(x.skill) if x.points < 0 else x.points, on = x.on})
+	var bought: Array = purchases.map(func(p: Array): return [_skill_id(p[0]), p[1]])
+	var gone: Array = []
+	for _i in mini(auto_spent, bought.size()):
+		var p: Array = bought.pop_back()
+		for i in rows.size():
+			if rows[i].skill != p[0]:
+				continue
+			if rows[i].rank <= 1:
+				rows.remove_at(i)
+				gone.append(p[0])
+			else:
+				var low := _lowered(_skill_by_id(p[0]), rows[i].rank, rows[i].points, p[1])
+				rows[i].rank = low[0]
+				rows[i].points = low[1]
+			break
 	var worn := {}
 	for slot in ["weapon", "armor", "trinket"] + Array(plating.keys()):
 		if get(slot):
@@ -3641,10 +3666,9 @@ func to_dict() -> Dictionary:
 				worn[str(slot)] = it
 	return {faction = faction.resource_path if faction else "", role = role.resource_path if role else "", name = nick,
 		level = level, xp = xp, hearts = hearts,
-		learned = learned.filter(func(x: Slot): return x.skill).map(func(x: Slot): return {skill = _skill_id(x.skill), rank = x.rank, points = x.points, on = x.on}),
-		purchases = purchases.map(func(p: Array): return [_skill_id(p[0]), p[1]]),
+		learned = rows, purchases = bought,
 		trees = trees_granted.map(func(k: StringName): return str(k)), picked = picked.duplicate(),
-		bar = get_equipped().map(func(s: Skill): return _skill_id(s) if s and s.resource_path.begins_with("res://Skills/") else ""),
+		bar = get_equipped().map(func(s: Skill): return _skill_id(s) if s and s.resource_path.begins_with("res://Skills/") and not _skill_id(s) in gone else ""),
 		outfit = worn, lapses = lapses_out(), flex_extra = flex_extra, bio = bio.kept() if bio else {}}
 
 

@@ -107,6 +107,15 @@ func test_refund() -> void:
 	b.turn = nemes
 	b.turn = lancin
 	ok(u.auto_spent == 2 and u.skill_points == 0, "still Disturbed as its turn comes: kept")
+	var d := u.to_dict()  # a save mid-fight: written as not bought
+	var back := Unit.new()
+	back.role = u.role
+	back.from_dict(d)
+	ok(d.learned.size() == ranks.size() and back.skill_points == u.level - 2 and back.purchases.size() == u.purchases.size() - 2
+		and back.learned.map(func(x: Slot): return [x.skill, x.rank]) == ranks.map(func(r: Array): return [r[0], r[1]]),
+		"saved while Disturbed: skills not spent, points back; the live unit keeps its %d" % u.auto_spent)
+	back.free()
+	ok(u.auto_spent == 2 and u.skill_points == 0, "the live unit is as it was")
 	u.timed.erase(dis)
 	b.turn = nemes
 	b.turn = lancin
