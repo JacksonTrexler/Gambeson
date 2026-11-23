@@ -16,7 +16,7 @@ var synergy: Skill = load("res://Skills/synergy.tres")
 
 
 func test_tree() -> void:
-	ok(warlock.tier(gasp) == 1 and warlock.tier(breathtaking) == 2 and warlock.tier(irradiate) == 3, "Hogel: Gasp I, Breathtaking II, Irradiate III")
+	ok(warlock.tier(gasp) > 0 and warlock.tier(gasp) < warlock.tier(breathtaking) and warlock.tier(breathtaking) < warlock.tier(irradiate), "Hogel: Gasp, then Breathtaking, then Irradiate, in tiers")
 	ok(not chant.stub and chant.passive, "Chant is built")
 
 

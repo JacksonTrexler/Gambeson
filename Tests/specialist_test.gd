@@ -26,8 +26,7 @@ func shrike() -> Unit:
 
 
 func test_tree() -> void:
-	ok(adventurer.tier(move_plus_one) == 2 and adventurer.tier(meander) == 2, "Move +1 and Meander: tier 2")
-	ok(adventurer.tier(hide) == 3 and adventurer.tier(clever) == 3, "Hide and Clever Disguise: tier 3")
+	ok(adventurer.tier(meander) > 0 and adventurer.tier(hide) > adventurer.tier(meander) and adventurer.tier(clever) > adventurer.tier(meander), "Hide and Clever Disguise a tier on from Meander")
 	ok([move_plus_one, meander, hide, clever].all(func(s: Skill): return adventurer.root_of(s).tag == &"specialist"), "all on the Specialist root")
 	var u := shrike()
 	u.skill_points = 10

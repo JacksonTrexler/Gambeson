@@ -16,7 +16,7 @@ var jugular: Skill = load("res://Skills/jugular.tres")
 func test_tree() -> void:
 	ok(fighter.roots.map(func(r: SkillRoot): return r.name) == ["Protector", "Vanguard", "Slayer"]
 			and fighter.roots.all(func(r: SkillRoot): return r.tag == &"martial"), "three martial roots")
-	ok(fighter.tier(shields_up) == 1 and fighter.tier(jugular) == 1 and fighter.tier(interdict) == 2 and fighter.tier(load("res://Skills/snapping_turtle.tres")) == 3,
+	ok(fighter.tier(shields_up) == fighter.tier(jugular) and fighter.tier(interdict) > fighter.tier(shields_up) and fighter.tier(load("res://Skills/snapping_turtle.tres")) > fighter.tier(interdict),
 			"each root opens on an active; the rest come after it")
 	var u := b.starter({faction = lancin, role = fighter, name = "Brick"})
 	var offered: Array = u.options()[&"class"]

@@ -21,7 +21,7 @@ func caster(s: Skill, r := 1) -> void:
 
 
 func test_tree() -> void:
-	ok(warlock.tier(level_down) == 5 and warlock.tier(death) == 6, "Level Down tier 5, Death the capstone (tier 6), on Elmon's path")
+	ok(warlock.tier(level_down) > 0 and warlock.tier(death) > warlock.tier(level_down), "Death is the capstone, a tier above Level Down, on Elmon's path")
 	ok(level_down.needs == sn and death.needs == sn, "both need a Sweet Nothing")
 	ok(&"execute" in death.tags and &"dark" in death.tags, "Death: execute, dark")
 

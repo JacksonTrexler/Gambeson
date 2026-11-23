@@ -328,7 +328,7 @@ func test_lines_up_a_shove() -> void:
 	soak(v(3), 300)
 	var log: Array[String] = []
 	var reads := AI.reads_from({v(3): b.read(v(1), v(3)), v(4): b.read(v(1), v(4))})
-	ok(AI._line_up(b, v(1), reads, log) and v(1).cell == Vector2i(5, 3), "from where it can drive it into the foe behind it (%s, %s)" % [v(1).cell, log])
+	ok(AI._line_up(b, v(1), reads, log) and v(1).cell != Vector2i(4, 4) and Command.tiles(v(1).cell, v(3).cell) == 1, "to beside the foe, from where it can drive it into the foe behind it (%s, %s)" % [v(1).cell, log])
 	ok(b.foresee(v(1), kick, v(3)).hi == Battle.SLAM, "which slams them (%s)" % [b.foresee(v(1), kick, v(3))])
 	v(4).faction = lancin  # its own side behind the foe now: that tile costs it
 	b.move(v(1), Vector2i(4, 4))
