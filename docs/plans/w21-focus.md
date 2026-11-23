@@ -19,4 +19,4 @@ Task (user): quick or right clicking / quick or double tapping a unit or tile fo
 - Scripts/HUD.gd (`TARGET_HOLD`, `focus_cell`, `_pending`, `press`, `tick_press`, `right_click`, `focus`, `unfocus`, `focused_unit`; edits in `_unhandled_input`, `click`, `select`, `cancel`, `pane_cell`, `_card_info`, `_process`), Scripts/Overlay.gd (brackets), Tests/hud_test.gd (`test_focus` + `pointer()` helper: events through `_unhandled_input`, hold-off advanced by `tick_press`; 16 checks).
 - No existing test changed (all use `click()`/keys).
 - Mutations (all caught): hold-off 0, focused tile still waits, second click not focusing, right click cancel-only, key not dropping pending, focus selecting the unit, pending not settled by another tile.
-- Suite: 11514 -> see report.
+- Suite: 11514 -> 11530 checks, 0 failed (1077 tests).
