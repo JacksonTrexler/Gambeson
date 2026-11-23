@@ -76,6 +76,8 @@ const DELAY := 0.5  # the share of a disable's worth left it when its target pos
 const STRUCK := 0.5  # what an HP of a blow a foe's reaction strikes it with on ending a walk beside it costs, in tiles of walking (_struck())
 const DREAD := 4.0  # what a cc certain to land costs a tile it would end a turn on, in tiles of walking (_approach(), _retreat(): _dread()); a guess
 const STRONG := 0.5  # per level it reads, how much a unit going for the strongest (or weakest) weighs it against distance
+const LINE_UP_MARGIN := 2.0  # tiles past its walk and a skill's reach a foe may stand for _line_up() to weigh it (ground can lengthen a reach)
+const APPROACH_FAR := 3.0  # tiles past its walk a foe must stand for _approach() to take the nearest free tile beside it, unpriced: where it ends this turn is short of it either way
 const HUNT_FAR := 2.0  # tiles past its walk a hunt's goal must lie for it to head straight there (_hunt()), not by the tile beside it (_approach())
 const DRILL_MARGIN := 2.0  # tiles past its walk and its longest reach a drilling follower still reads units within (_drill())
 
@@ -88,14 +90,23 @@ static func reads_from(d: Dictionary) -> Dictionary[Unit, Read]:
 	return out
 
 
-static func _reads(b: Battle, u: Unit) -> Dictionary[Unit, Read]:
+# `near` >= 0: an ally farther than that many tiles is not read (a foe, or any other unit, always is).
+static func _reads(b: Battle, u: Unit, near := -1.0) -> Dictionary[Unit, Read]:
 	var reads: Dictionary[Unit, Read] = {}
 	Unit.begin_read()  # all reads, nothing changed: each unit's effects are found once (Unit._effects())
 	for o: Unit in b.units.values():
-		if o != u:
+		if o != u and (near < 0.0 or not Faction.friends(u.faction, o.faction) or Command.tiles(u.cell, o.cell) <= near):
 			reads[o] = b.read(u, o)
 	Unit.end_read()
 	return reads
+
+
+# The farthest u's skills reach from where it stands (Battle.skill_reach()).
+static func _reach(b: Battle, u: Unit) -> float:
+	var reach := 0.0
+	for s: Skill in u.actives:
+		reach = maxf(reach, b.skill_reach(u, s))
+	return reach
 
 
 # Takes u's turn. `posture` restricts it to abilities that serve one aim, for a unit a commander could
@@ -118,7 +129,8 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 
 # The full, self-directed (or posture-restricted) turn: every phase, every preference.
 static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -> Array[String]:
-	var reads := _reads(b, u)
+	var plain := posture == &"" and u.behaviour == &"" and u.temper() == &"" and u.faction != null  # no nature or temper: allies beyond its reach are of no use to its phases (_waylay() finds its own)
+	var reads := _reads(b, u, _reach(b, u) + 1.0 if plain else -1.0)
 	_remember(b, u, reads)
 	if b.held_by(u):
 		_escape(b, u, log)
@@ -290,15 +302,7 @@ static func _far(b: Battle, u: Unit) -> bool:
 # or where the clues point (_search(), _scry(), _hunt()); a foe it comes to make out on the way is struck. No weighing
 # of temper, tending, summons, shoves, steadying, switching or starving: nothing there is in sight to weigh them on.
 static func _prowl(b: Battle, u: Unit, log: Array[String]) -> void:
-	Unit.begin_read()
-	var reach := 0.0
-	for s: Skill in u.actives:
-		reach = maxf(reach, b.skill_reach(u, s))
-	var reads: Dictionary[Unit, Read] = {}
-	for o: Unit in b.units.values():
-		if o != u and (not Faction.friends(u.faction, o.faction) or Command.tiles(u.cell, o.cell) <= reach + 1.0):
-			reads[o] = b.read(u, o)
-	Unit.end_read()
+	var reads := _reads(b, u, _reach(b, u) + 1.0)
 	_remember(b, u, reads)
 	_heal(b, u, reads, log)
 	_support(b, u, reads, log)
@@ -954,6 +958,14 @@ static func _line_up(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arr
 	for t: Unit in reads:
 		if t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located():
 			foes.append(t)
+	if foes.is_empty():
+		Unit.end_read()
+		return false
+	var longest := 0.0
+	for s: Skill in skills:
+		longest = maxf(longest, b.skill_reach(u, s))
+	var within := ceili(u.move_left()) + longest + LINE_UP_MARGIN
+	foes = foes.filter(func(t: Unit): return Command.tiles(u.cell, t.cell) <= within + 0.02 * t.stat(&"size"))  # a foe farther than its walk and a drive's reach (plus a margin for the ground) can't be driven from any tile it reaches
 	if foes.is_empty():
 		Unit.end_read()
 		return false
@@ -1629,8 +1641,17 @@ static func _leaning(u: Unit) -> int:
 # mustn't use up the battle's rng, so it's restored.
 static func _approach(b: Battle, u: Unit, t: Unit, reads: Dictionary[Unit, Read]) -> Vector2i:
 	var r: Read = reads[t]
-	var state := b.rng.state
 	var best: Vector2i = r.cell
+	if Command.tiles(u.cell, r.cell) > u.move_left() + APPROACH_FAR:  # out of its walk's reach: only the heading counts (the flanking, dread and blows of a tile it won't end on aren't weighed)
+		var nearest := INF
+		for dx: int in [-1, 0, 1]:
+			for dy: int in [-1, 0, 1]:
+				var c: Vector2i = r.cell + Vector2i(dx, dy)
+				if c != r.cell and c != u.cell and b.on_map(c) and not b.unit_at(c) and Vector2(u.cell).distance_squared_to(Vector2(c)) < nearest:
+					best = c
+					nearest = Vector2(u.cell).distance_squared_to(Vector2(c))
+		return best
+	var state := b.rng.state
 	var best_cost := INF
 	var stunners := _stunners(b, u, reads)  # the foes whose cc is likely to land on it where it ends
 	Unit.begin_read()  # planning only (route() asks the same of every neighbour): each unit's effects are found once
@@ -1879,9 +1900,9 @@ static func _waylay(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 	if skills.is_empty() or b.marks.values().any(func(st: Array): return st.any(func(m: Battle.Mark): return m.by == u)):
 		return false
 	var goals: Array[Vector2i] = [u.cell]
-	for o: Unit in reads:
-		if o != u and o.is_alive() and Faction.friends(o.faction, u.faction) and reads[o].located():
-			goals.append(reads[o].cell)
+	for o: Unit in b.units.values():  # (not `reads`: a plain turn reads no ally past its reach)
+		if o != u and o.is_alive() and Faction.friends(o.faction, u.faction) and (reads[o].located() if o in reads else true):
+			goals.append(o.cell if o not in reads else reads[o].cell)
 	var walks: Array = []  # [foe, the tiles it walks next turn]
 	for t: Unit in reads:
 		if not (t.is_alive() and not t.helpless() and _foe(u, reads[t]) and reads[t].located()):
@@ -1936,6 +1957,9 @@ static func _waylay(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 # gap with AP to spare for the blow, the cheapest AP of those that do. Straight-line tiles stand in for the
 # walk, as in starve_worth(). True if it did.
 static func _stretch(b: Battle, u: Unit, t: Unit, log: Array[String]) -> bool:
+	var stretches := u.actives.filter(func(x: Skill): return not x.hostile and x.self_only and u.can_afford(x))  # (asked first: most units have none, and the blows are a read apiece)
+	if stretches.is_empty():
+		return false
 	var blows := u.foe_actives(true).filter(func(x: Skill): return x.behaviours.all(func(bh: Behaviour): return bh.fits(b, u, t)))
 	if blows.is_empty() or _rooted(b, u):
 		return false
@@ -1948,7 +1972,7 @@ static func _stretch(b: Battle, u: Unit, t: Unit, log: Array[String]) -> bool:
 		return false  # it can walk into one's reach as it is
 	var best: Skill = null
 	var best_ap := INF
-	for s: Skill in u.actives.filter(func(x: Skill): return not x.hostile and x.self_only and u.can_afford(x)):
+	for s: Skill in stretches:
 		var c := b.cast_of(u, s, u, u.rank(s), false)
 		var n := 0
 		for bh in s.behaviours:
