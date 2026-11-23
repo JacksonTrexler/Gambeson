@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 334. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 349. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -30,6 +30,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 20. **Wave 18 follow-ups (?307 to ?314):** `skill.py` writing the intensity only with a tier, `check_declared`, the stray `description` (?307 to ?309); the AI pricing Power Siphon as turn-end HP, the Power gain and generator recharge skipped, the true circuit (?310 to ?312); the HUD chips for `Bio.also` on the leader only, read directly (?313, ?314).
 21. **Wave 18 follow-ups, second batch (?315 to ?326):** the AI's `known_ground` reading `explored`, filled lazily (?315, ?316); NPCs taking flex trees, the Jester paying with its lowest stat (?317, ?318); the fog freezing terrain only (?319); Monster paths and spent points, reversing ?303 (?320, ?321); Undead ?? as +1 pierce Defense a rank (?322); the one HUD picker and `Battle.cast`'s `chose` (?323, ?324); Floaty not stalling, a cornered Flippant holding (?325, ?326).
 22. **Wave 20 follow-ups (?327 to ?333):** the AI weighing the Power a siphon gives, 0.5 HP a Power, no negative bonus (?327, ?328); a foe starman's further tempers as chips (?329); ground walked past marked explored (?330); the fog freezing ground effects and hiding what is laid out of sight (?331 to ?333).
+23. **Wave 21 batch 1 (?334 to ?348):** the vertical scroll as a twin of HScroll and the menus it covers (?334 to ?336); `Util/sprites.py`'s per-sheet folders, 48 one-pixel specks kept, the 12-word palette and clash suffix (?337 to ?339); `Util/anim.py`, the pose-to-state mapping, triggers, pace multipliers and what `setup` writes (?340 to ?343); the objective panel and the always-up fading tile pane (?344 to ?346); the Undead rank rule replacing ?322 (?347, ?348).
 
 ## Built on judgement, open for review (newest last; append here)
 
@@ -174,7 +175,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 319 Fog freezes terrain only (2026-11-23, answers ?297): `Overlay.memory`; ground effects stay live, not timed. `docs/plans/w18-fog-frozen.md`; names: `memory`, `_freeze`.
 - 320 Monsters pick a path (2026-11-23, answers ?301): `take_path`, `fewest_path` lifted from Theseus; NPC or summoned only. `docs/plans/w18-monster-ai.md`; names: `take_path`, `fewest_path`, `path_auto`.
 - 321 Monsters spend their points (2026-11-23, REVERSES ?303): cheapest opener first; Theseus Monsters now spend theirs. `docs/plans/w18-monster-ai.md`.
-- 322 Undead ?? as +1 pierce Defense a rank (2026-11-23, answers ?300): a guess, the Skeleton had nothing to lift. `docs/plans/w18-undead-rank.md`.
+- 322 Undead ?? as +1 pierce Defense a rank (2026-11-23, answers ?300): a guess, the Skeleton had nothing to lift. SUPERSEDED by ?347, ?348. `docs/plans/w18-undead-rank.md`.
 - 323 One HUD picker for any non-tile skill with choices (2026-11-23, answers ?303): Elemental Strike migrated. `docs/plans/w18-picker-es.md`; names: `_pick_choice`.
 - 324 `Battle.cast` gains a `chose` argument (2026-11-23). `docs/plans/w18-picker-es.md`.
 - 325 Floaty does not stall a starman (2026-11-23, answers ?289): sim test, no `AI.gd` change. `docs/plans/w18-flip-test.md`.
@@ -186,6 +187,21 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 331 The fog freezes ground effects (2026-11-23, answers ?319): `Overlay._ghost` holds layers, trodden, marks; 83 us a move; no visual shot. `docs/plans/w20-fog-effects.md`; names: `_ghost`, `_sighted`.
 - 332 Layers and marks laid out of sight are hidden (2026-11-23): was a live leak; a fire lit in the dark stays unseen. `docs/plans/w20-fog-effects.md`.
 - 333 Lattice, debris and traps not frozen (2026-11-23). `docs/plans/w20-fog-effects.md`.
+- 334 VScroll, the vertical twin of HScroll (2026-11-23): new `Scripts/VScroll.gd` (a ScrollContainer, vertical only) rather than a generalised HScroll: HScroll's arrows, drag and sideways wheel are row things, a column has room for a bar and the wheel and pan are native. `docs/plans/w21-vscroll.md`.
+- 335 Which menus got the vertical scroll (2026-11-23): applied to the entry page (the whole Center. `docs/plans/w21-vscroll.md`.
+- 336 HScroll: `max_width` 420, an idle row passes the wheel (2026-11-23): `HScroll.max_width` 440 to 420 so the page's 8 px bar does not clip the form's 476 against 480. `docs/plans/w21-vscroll.md`.
+- 337 Util/sprites.py: where output goes and what counts as a sprite (2026-11-23): output in `Assets/sorted/<sheet-stem>/` (per sheet, so sheets stay traceable). `docs/plans/w21-sprites.md`.
+- 338 Sprite names: average colour hex, a small colour word, clash suffix (2026-11-23): average is alpha-weighted over alpha > 0 pixels, rounded, lowercase hex. `docs/plans/w21-sprites.md`.
+- 339 sprites.py decoders and its check (2026-11-23): Pillow if importable (any mode), else a plain zlib decoder (8-bit non-interlaced only, otherwise says it needs Pillow). `docs/plans/w21-sprites.md`.
+- 340 Animation: frames beside the sprite, pose to state mapping (2026-11-23): `Util/anim.py setup` writes a SpriteFrames `Units/<Name>.tres` beside the sprite, found by path from `look` at `_show_look()` (no scene or role field. `docs/plans/w21-anim.md`.
+- 341 Animation triggers (2026-11-23): attacking = `Battle._done_casting()` on a finished outermost cast (any skill, not only hostile). `docs/plans/w21-anim.md`.
+- 342 Animation pace: moods multiply (2026-11-23): `Unit.ANIM_PACE`, multiplied: wounded 0.6 (HP under half, or a status bearing `wound`), slowed 0.6 (a status lowering movement or initiative), hasted 1.5 (raising movement or initiative), frightened 1.5 (a `fear` status). `docs/plans/w21-anim.md`.
+- 343 anim.py: what `setup` writes and which names count (2026-11-23): `setup <targets|--all> [--dry-run]` takes Units/<Name>, Roles, Scenes or Formations ids (scene to role, formation to scenes). `docs/plans/w21-anim.md`.
+- 344 Objectives: a generic hook, the default "Foes left", `?` under fog (2026-11-23): `Battle.objectives: Array[Callable]` (side to text, `\n` splits lines), `objective_lines(f)`, signal `objective_changed`. `docs/plans/w21-hudpanels.md`.
+- 345 The objective panel: menus, placement, no fade (2026-11-23): hidden while `_panel_open()` (the same predicate as the tile pane and camera: the book, skills, settings, persona and sheet cover the whole map), and once the battle is OVER. `docs/plans/w21-hudpanels.md`.
+- 346 The tile pane: top right, always up, fades while the view moves (2026-11-23): `pane_cell()` is the hovered tile. `docs/plans/w21-hudpanels.md`.
+- 347 Undead: rank adds to checks against instant death (replaces ?322) (2026-11-23): supersedes ?322 (+1 pierce Defense a rank, a guess). `docs/plans/w21-undead.md`.
+- 348 Undead: healing tagged dark or undead is boosted 5% a rank (2026-11-23): new Effect stat `healed` (via `mechanic.py`), tags `[dark, undead]`, amount .05 per rank, read in `Unit.heal()` (new `tags` param, only when heard) as h * (1 + stat). `docs/plans/w21-undead.md`.
 
 ## Files
 

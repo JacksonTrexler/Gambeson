@@ -215,6 +215,7 @@ Answer: ____
 Best guess: keep as built; Undead ?? keeps its `??` and gets a per-rank effect on a later card.
 Ref: `docs/plans/w18-monster.md`, `Roles/monster.tres`, `Skills/undead.tres`, `Trees/monster_*.tres`.
 Answer: ____
+Answered 2026-11-23d: the Undead rank effect is now the user's rule: the rank is added to any check defending against instant death, and healing tagged `dark` or `undead` is boosted rank * 5% (built, ?347, ?348; `Undead ??` keeps its `??`).
 
 **F39. Thesis of Theseus: where it sits and who casts it (wave 18 J; see ?302).** Placed on the Wizard's Transgression root and on Elmon (the Warlock's patron tree), both at t6. Not placed: a dark mage (Mortis Arcalis holds 2 skills, no t6) and a dark cleric (no death-cleric tree, ?240).
 Best guess: keep; place it when those trees grow.
@@ -235,6 +236,7 @@ Answer: ____
 Best guess: keep as built. An NPC or summoned Monster picks the path fewest on its side and spends its level - 1 points on that path's traits, cheapest first, so a Theseus Monster arrives with them spent (?303 said unspent). A player's Monster is left alone (card w18-monster-ai-player). Undead ?? is +1 pierce Defense a rank, a guess.
 Ref: `Unit.take_path`, `fewest_path`, `path_auto`, `Skills/undead.tres`, `docs/plans/w18-monster-ai.md`, `docs/plans/w18-undead-rank.md`.
 Answer: ____
+Answered 2026-11-23d: the +1 pierce Defense a rank guess is replaced by the user's rule (rank added to checks against instant death; dark or undead healing +rank * 5%); built, ?347, ?348.
 
 **F52. Auto-playing a player's Monster (wave 18 follow-ups; see ?320).** The card w18-monster-ai-player (a player-side Monster left on auto picking its path and spending its points) was not built: it takes the choice away from the player.
 Best guess: do not build.
@@ -249,6 +251,7 @@ Answer: ____
 Best guess: a `HScroller` Control in `Scripts/` (one scene node you drop under any menu): wheel and shift-wheel, trackpad two-finger pan, click-drag, edge arrow buttons; first user is the class picker in `Scenes/entry.tscn`; the selected item scrolls into view with the arrow keys.
 Ref: `Scenes/entry.tscn`, `Scripts/HUD.gd` (band / bar rows are the other long lists).
 Answer: ____
+Answered 2026-11-23d: menus also scroll vertically as needed (the demo start screen did not fit in landscape): built as `VScroll`, a twin of the HScroll container (?334 to ?336).
 
 **F21. Camera: multitouch.** "Allow scrolling using multitouch." A trackpad two-finger pan, or touchscreen drag too?
 Best guess: both: `InputEventPanGesture` (macOS trackpad) and a one-finger drag on touch, speed follows the gesture's speed; the existing middle-drag and arrow keys stay.
@@ -360,3 +363,45 @@ Answer: ____
 Best guess: yes, a tooling card (w18-skillpy) stops it writing the field unless set.
 Ref: `Util/skill.py`, `docs/plans/w18-jester.md`.
 Answer: ____
+
+---
+
+## 7. Wave 21 batch 1 (from your 2026-11-23d answers, `docs/agents/answers-2026-11-23d.md`)
+
+Note: you suggested "a .py script for class authoring". `Util/role.py` already does that (`new`, `tree`, `tab`, `include`, `god`; skill `new-class`), so no new script was built. Say if you want something it lacks.
+
+**F53. Vertical scroll: a twin class, `reserve` 16, the menus covered (wave 21; see ?334 to ?336).** `VScroll` is a separate ScrollContainer, not a generalised HScroll; it asks for min(content, screen - 16), the screen never being under 270 tall. Applied to the entry page, Party grid, the whole skills screen and the portal menu body; the battle HUD's side panels, sheet, settings and spellbook fit and were left. No drag scroll, no scroll-to-Unlock. HScroll `max_width` 440 to 420, and an idle row passes the wheel.
+Best guess: keep as built.
+Ref: `Scripts/VScroll.gd`, `docs/plans/w21-vscroll.md`.
+Answer: ____
+
+**F54. Sprite extractor as built (wave 21; see ?337 to ?339).** One folder per sheet in `Assets/sorted/<sheet-stem>/`; alpha above 0 counts as sprite, so 48 one-pixel specks among the 718 PNGs (275, 147, 296) were kept (default `--min-size 1`; `--min-size 2` would cut them); colour word is the nearest of 12 by redmean, so light grays read pink or white; clashes `-2`, `-3`.
+Best guess: keep; delete the 48 specks and default `--min-size` to 2 if they are clutter.
+Ref: `Util/sprites.py`, `docs/plans/w21-sprites.md`.
+Answer: ____
+
+**F55. Animation: pose to state mapping, frame rates, triggers (wave 21; see ?340 to ?343).** attacking = left then right, hit = left, investigating = right, waiting = the numbered cycle else neutral; rates 6, 6, 3 and 4 a second; attacking fires on any finished outermost cast, hit on damage over 0, investigating on `inspect` / `investigate`; frames in `Units/<Name>.tres` beside the sprite. No posed art exists yet, so none of it has been seen in play.
+Best guess: keep as built.
+Ref: `Util/anim.py`, `Unit.ANIMS`, `docs/plans/w21-anim.md`.
+Answer: ____
+
+**F56. Animation pace multipliers (wave 21; see ?342).** Wounded (HP under half, or a `wound` status) and slowed (a status lowering movement or initiative) play at 0.6; hasted (raising either) and frightened (a `fear` status) at 1.5; all multiply. The numbers and the half-HP line are guesses.
+Best guess: keep as built.
+Ref: `Unit.ANIM_PACE`, `docs/plans/w21-anim.md`.
+Answer: ____
+
+**F57. Objective panel (wave 21; see ?344, ?345).** Top left of the visible map; "Foes left: N", or `?` ("? (3 seen)") with the fog on, dropped when a foe side is `lasting`; a map adds its own lines (Meadows: demons slain, the portal clock; its old tally label is gone). Hidden under menus and after victory; it does not fade.
+Best guess: keep as built.
+Ref: `Battle.objectives`, `HUD.objective_lines`, `docs/plans/w21-hudpanels.md`.
+Answer: ____
+
+**F58. Tile pane (wave 21; see ?346).** Always up at the map's top right; with the pointer off the map it keeps the last tile (before any, the selected unit's or leader's); it fades to 0.2 while the view moves and returns once still for 0.25 s. Speeds 6 and 2.5 a second are guesses.
+Best guess: keep as built.
+Ref: `HUD.pane_cell`, `fade_step`, `docs/plans/w21-hudpanels.md`.
+Answer: ____
+
+**F59. Undead rank rule as built (wave 21; see ?347, ?348).** The rank adds to every check against instant death through an `execute`-tagged defensive check effect (the shared last-stand and Death check); Luun's Smite execute is a HP threshold and is untouched. Healing tagged `dark` or `undead` is boosted rank * 5% by a new Effect stat `healed`; untagged heals (items, pulse, regen) are not; the boost lands before `being_healed` listeners.
+Best guess: keep as built.
+Ref: `Skills/undead.tres`, `Unit.heal`, `docs/plans/w21-undead.md`.
+Answer: ____
+

@@ -265,6 +265,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | A foe's further tempers as chips (?329) | `hud_test.gd` |
 | — | The AI marks ground walked past (?330) | `sight_test.gd` |
 | — | The fog freezes ground effects (?331 to ?333) | `sight_test.gd` |
+| — | Menus scroll vertically (?334 to ?336) | `vscroll_test.gd`, `hscroll_test.gd` |
+| — | Sprite sheet extractor (?337 to ?339) | `tooling_test.gd` |
+| — | Unit state animations (?340 to ?343) | `anim_test.gd` |
+| — | Objective panel and fading tile pane (?344 to ?346) | `hud_test.gd` |
+| — | Undead rank: instant death and healing (?347, ?348) | `monster_test.gd` |
 
 ## Questions to answer first
 
