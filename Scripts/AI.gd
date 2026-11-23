@@ -246,7 +246,7 @@ static func _drill(b: Battle, u: Unit, log: Array[String]) -> void:
 		reach = maxf(reach, b.skill_reach(u, s))
 	var reads: Dictionary[Unit, Read] = {}
 	for o: Unit in b.units.values():
-		if o != u and (o == l or Command.tiles(u.cell, o.cell) <= near + reach):
+		if o != u and (o == l or Command.tiles(u.cell, o.cell) <= (reach + 1.0 if Faction.friends(u.faction, o.faction) else near + reach)):  # an ally is only cared for within reach (_heal(), _support()), a foe within its walk too
 			reads[o] = b.read(u, o)
 	Unit.end_read()
 	_remember(b, u, reads)
@@ -282,19 +282,18 @@ static func _far(b: Battle, u: Unit) -> bool:
 	return far
 
 
-# A far turn (_far()): it reads the foes it can place (a vague shape: cheap) and the allies within its walk, its longest
-# reach and DRILL_MARGIN tiles (as _drill()), heals and supports as it would, and goes where its side last made a foe out
+# A far turn (_far()): it reads the foes it can place (a vague shape: cheap) and the allies within its longest
+# reach (as _drill()), heals and supports as it would, and goes where its side last made a foe out
 # or where the clues point (_search(), _scry(), _hunt()); a foe it comes to make out on the way is struck. No weighing
 # of temper, tending, summons, shoves, steadying, switching or starving: nothing there is in sight to weigh them on.
 static func _prowl(b: Battle, u: Unit, log: Array[String]) -> void:
-	var near := u.move_left() + DRILL_MARGIN
 	Unit.begin_read()
 	var reach := 0.0
 	for s: Skill in u.actives:
 		reach = maxf(reach, b.skill_reach(u, s))
 	var reads: Dictionary[Unit, Read] = {}
 	for o: Unit in b.units.values():
-		if o != u and (not Faction.friends(u.faction, o.faction) or Command.tiles(u.cell, o.cell) <= near + reach):
+		if o != u and (not Faction.friends(u.faction, o.faction) or Command.tiles(u.cell, o.cell) <= reach + 1.0):
 			reads[o] = b.read(u, o)
 	Unit.end_read()
 	_remember(b, u, reads)
