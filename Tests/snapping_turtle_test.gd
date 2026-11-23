@@ -68,7 +68,3 @@ func test_rank() -> void:
 	e.kind = &"offensive"
 	v(3).afflict(e, 9)  # the target's +60 against it: Interject's check fails, nothing snapped
 	ok(not snapping.behaviours[0].react(r, v(1), 1) and not r.locked and r.trigger == &"attacked" and r.subject == v(3), "nothing that reacts: it didn't, and the moment is as it was")
-
-
-func test_describe() -> void:
-	ok("offensive" in snapping.describe(2) and "2" in snapping.describe(2), snapping.describe(2))

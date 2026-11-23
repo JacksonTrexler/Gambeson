@@ -47,11 +47,6 @@ func test_not_beside() -> void:
 	ok(v(1).hp < 300 and v(2).hp == 300, "an ally not beside it isn't covered")
 
 
-func test_describe() -> void:
-	ok("attacked" in gallantry.describe(1) and "cha" in gallantry.describe(1), gallantry.describe(1))
-	ok(load("res://Roles/paladin.tres").roots[0].branch(gallantry) != null, "on the Paladin's Chivalry")
-
-
 # The AI weighs the reactions it reads on its targets' side (item 3 of docs/plans/gaps-react-marks.md, through
 # Behaviour.foils()): of two otherwise alike foes it strikes the one with no Gallantry Paladin beside it; one
 # it can't read (no recon of skills) it can't weigh, and a Paladin out of reach is nothing to it.

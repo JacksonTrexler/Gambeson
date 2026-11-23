@@ -1447,9 +1447,7 @@ func test_every_tab_draws_its_skills() -> void:
 		h.toggle_skills()
 		await tree.process_frame
 		for i in h.skills.tabs().size():
-			h.skills.tab = i
-			h._refresh()
-			await tree.process_frame
+			h.skills.show_tab(i)  # as a click on its tab does: just the skills screen redraws, not the whole HUD
 			var t: SkillTab = h.skills.tabs()[i]
 			var want: Array = [t.center] + t.core
 			for r: SkillRoot in t.roots:

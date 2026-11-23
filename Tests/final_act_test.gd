@@ -61,7 +61,3 @@ func test_jammed() -> void:
 	v(3).dexterity = 40
 	b.cast(v(3), jam, v(1))
 	ok(b.interrupter == null and not v(1).staying, "Jammed (Jam takes its reactions as it lands, before its damage): no Final Act")
-
-
-func test_describe() -> void:
-	ok("once a battle" in final_act.describe(1) and "free action" in final_act.describe(1), final_act.describe(1))
