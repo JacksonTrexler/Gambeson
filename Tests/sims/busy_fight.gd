@@ -24,7 +24,7 @@ const SLOWDOWN := 4.0  # target device = this machine's time x 4
 const TURN_BUDGET_MS := 200.0  # a unit's AI turn on the target before it shows: it plans in its own frame while the units before it walk and their numbers show (HUD._act_alone), and a 3-tile walk is 0.21 s (was 100 before a frame per unit; docs/plans/w13-aifast.md)
 const SIDE_BUDGET_MS := 1000.0  # a side's end_turn, a whole round of AI turns, or a side's stare (nothing showing) on the target, before it reads as a freeze
 const PARTY := 5
-const LEADER_CHA := 14  # mod +2: Command.cha_of > 0, a skilled leader (AI._calm())
+const LEADER_CHA := 14  # mod +2: high (Command.skilled()), a skilled leader (AI._calm())
 const SHOWN := 0.9  # s a used skill's number shows (Overlay.float_text)
 const STEP := 0.07  # s a tile of walking shows (Overlay.STEP_TIME)
 const TRANSITION := 1.0  # s a turn change shows (HUD.TRANSITION)

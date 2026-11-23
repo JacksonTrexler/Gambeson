@@ -50,7 +50,10 @@ const COMMANDER := 0.25  # how much most healers favour a commander
 const PARTY := 1.0  # how much a loyal healer favours its party
 const WOUND := 0.25  # how much a healer wants to clear a wound it can see
 const WARY := 10.0  # cost of ending a walk beside a unit it takes for aggressive
-const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts)
+const HUNT := 10.0  # how much more a unit wants a target from a side it hunts (Unit.hunts), or one a vindictive unit's grudges name (Bio.grudges)
+const GRUDGE := 2.0  # per blow a foe has landed on a vindictive unit or its side this fight (Unit.wrongs), up to GRUDGES: how much more it wants that foe (_grudge())
+const GRUDGES := 3
+const SMITTEN := 2.0  # what a soft skill (no damage, or love) is worth more on a foe a flirty unit fancies; a damaging one is worth half there (_smitten())
 const BOLD: Array[StringName] = [&"brave", &"aggressive"]  # tempers that walk up to the aggressive regardless
 const LAST := 1000.0  # how much less a unit wants to go after a helpless, Downed foe: the standing come first
 const FINISH := 0.5  # the most a blow at a helpless, Downed foe is worth: only when no standing foe is worth one
@@ -208,6 +211,7 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 			_rally(b, u, log)  # lay its marks first, then walk onto them
 			_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
 			u.set_meta(&"aim", target)
+			_notable(b, u, target, reads[target])
 			var p := b.travel(u, _approach(b, u, target, reads))
 			log.append("%s moves %s" % [u.name, p])
 			reads[target] = b.read(u, target)
@@ -229,13 +233,13 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 
 
 # A follower calm enough to drill (_drill()) rather than weigh its every preference: in the party (Unit.follows)
-# of a skilled leader on its own side (Command.cha_of() above 0: at +0 a leader can only tell it to move), one that
+# of a skilled leader on its own side (Command.skilled(): tagged leader, or high charisma), one that
 # is up, not Disturbed, and whose orders carry to it (Command.hears()), and that it makes out. Not calm, and so a
 # full turn: hurt since its last turn (calm_hp, act()), cc'd or held, Downed, Restless, struck last by its own side
 # or party (betrayed), channeling, or a creature of a special behaviour (Unit.behaviour: skittish, a Siren...).
 static func _calm(b: Battle, u: Unit) -> bool:
 	var l := u.follows
-	if l == null or l.faction != u.faction or not l.is_alive() or l.stopped() or Command.cha_of(l) <= 0 or not Command.hears(l, u):
+	if l == null or l.faction != u.faction or not l.is_alive() or l.stopped() or not Command.skilled(l) or not Command.hears(l, u):
 		return false
 	if u.hp < int(u.get_meta(&"calm_hp", u.max_hp)) or u.dbno != null or u.channel or u.behaviour != &"" or u.restless():
 		return false
@@ -712,8 +716,44 @@ static func _forecast(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Diction
 	return f
 
 
-static func _hunted(u: Unit, r: Read) -> float:
-	return HUNT if r.faction != null and r.faction in u.hunts else 0.0
+static func _hunted(u: Unit, t: Unit, r: Read) -> float:
+	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r)
+
+
+# A vindictive unit's grudge against t (read as r): GRUDGE per blow t has landed this fight on it or its side (Unit.wrongs:
+# word of a blow on its own travels), up to GRUDGES, and HUNT if its grudges name t (Bio.grudges, Bio.names()). 0 for any other temper.
+static func _grudge(u: Unit, t: Unit, r: Read) -> float:
+	if u.temper() != &"vindictive":
+		return 0.0
+	var n := 0
+	for f: Faction in t.wrongs:
+		if Faction.friends(u.faction, f):
+			n += t.wrongs[f]
+	return GRUDGE * mini(n, GRUDGES) + (HUNT if u.bio and Bio.names(u.bio.grudges, r) else 0.0)
+
+
+# Whether a flirty unit feels for the unit it reads as r: its fancies name it (Bio.fancies), or, naming none, its charisma as read
+# is high on the ladder (Difficulty.stat_at("high")), or, with no stats read, it looks it (a benevolent look: Beautiful, Radiant).
+static func _fancies(u: Unit, r: Read) -> bool:
+	if u.temper() != &"flirty" or r == null:
+		return false
+	if u.bio and not u.bio.fancies.is_empty():
+		return Bio.names(u.bio.fancies, r)
+	if r.stats.has(&"charisma"):
+		return r.stats[&"charisma"] >= Difficulty.stat_at(&"high")
+	return Bio.aura(r.looks) > 0
+
+
+# A soft skill: one that does no damage, or love.
+static func _soft(u: Unit, s: Skill) -> bool:
+	return s.tiers.is_empty() or &"love" in u.skill_tags(s)
+
+
+# v, the worth of s on a foe read as r, as a flirty unit that fancies it weighs it: a soft skill SMITTEN more, a damaging one half.
+static func _smitten(u: Unit, s: Skill, r: Read, v: float) -> float:
+	if not _fancies(u, r):
+		return v
+	return v + SMITTEN if _soft(u, s) else v * 0.5
 
 
 static func _hate(r: Read) -> float:
@@ -780,7 +820,8 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 				continue  # not one it can be used on (Gank: no ally near it; Sutemi: no way through)
 			if s.drags() and (b.drag_spot(u, s, t) == null or s.effects.any(func(e: Effect): return e in t.timed)):
 				continue
-			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, r)
+			var v := score(u, s, r, b, t) + FOCUS * u.focus_forecast(s) - (1.0 if s.hostile and not s.effects.is_empty() and s.effects[0] in r.effects else 0.0) + _hunted(u, t, r)
+			v = _smitten(u, s, r, v)
 			if v > 0.0:
 				v *= 1.0 - _foiled(b, u, s, t, reads)  # what its foes' reactions would likely take off it
 				v = maxf(v - _reprisal(b, u, s, t, reads), v * (1.0 - FOILED))  # and what they would cost it
@@ -799,9 +840,11 @@ static func _strike(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 	Unit.end_read()
 	if best.is_empty():
 		return false
+	var was: Read = reads[best[1]]
 	if not b.cast(u, best[0], best[1]):
 		return false
 	log.append("%s uses %s on %s -> %d" % [u.name, best[0].name, best[1].name, best[1].hp])
+	_notable(b, u, best[1], was, best[0])
 	u.set_meta(&"aim", best[1])  # what it went after: its followers' aim (_drill())
 	reads[best[1]] = b.read(u, best[1])
 	return true
@@ -1213,12 +1256,26 @@ static func _support(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arr
 	for i in order:
 		var s: Skill = gives[i]
 		var e: Effect = s.grants.effects[0] if s.grants else s.effects[0]
-		for t: Unit in reads.keys() + [u]:
+		var whom: Array = reads.keys() + [u]
+		if u.temper() == &"flirty":  # whom it fancies first
+			whom = whom.filter(func(o: Unit): return o != u and _fancies(u, reads[o])) + whom.filter(func(o: Unit): return o == u or not _fancies(u, reads[o]))
+		for t: Unit in whom:
 			var r: Read = b.read(u, u) if t == u else reads[t]
 			if t.is_alive() and (t == u or r.attitude(u) == &"ally") and e not in r.effects and s.behaviours.all(func(x: Behaviour): return x.fits(b, u, t)) \
 					and not (s.investigated and Battle.seen_odds(u, s, t, b.watchers(t), b) >= SEEN) and b.cast(u, s, t):
 				log.append("%s gives %s to %s" % [u.name, s.name, t.name])
+				if t != u:
+					_notable(b, u, t, r, s)
 				return
+
+
+# What its temper made of going after (or giving s to) t, read as r, signed the first time this fight (Battle.first_time()):
+# a vindictive unit's grudge ("Grudge"), a flirty unit's soft touch or support for one it fancies ("Smitten").
+static func _notable(b: Battle, u: Unit, t: Unit, r: Read, s: Skill = null) -> void:
+	if _grudge(u, t, r) > 0.0:
+		b.first_time(u, &"grudge")
+	elif s != null and _fancies(u, r) and (not s.hostile or _soft(u, s)):
+		b.first_time(u, &"smitten")
 
 
 # Still luring: no enemy has seen it for what it is.
@@ -1617,7 +1674,7 @@ static func _targeting(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 			continue
 		var guess: Variant = _level(u, reads[t])
 		var lv: float = guess if guess != null else 0.0
-		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, reads[t]) \
+		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, t, reads[t]) \
 				+ STRONG * lv * _leaning(u) - (LAST if t.dbno != null and t.stopped() else 0.0)
 		if v > best_score:
 			best = t

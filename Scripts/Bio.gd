@@ -5,7 +5,9 @@ extends Resource
 # has standing with. Scenes/<unit>.tscn carry one; Util/unit.py new writes it.
 #   behaviour   drives its AI (AI.act()): timid waits for a stronger ally and backs off the aggressive;
 #               brave charges the strongest; aggressive presses the weakest and heals last; helpful goes
-#               to the wounded to heal them; stoic does as little as it can - holds, striking what comes.
+#               to the wounded to heal them; stoic does as little as it can - holds, striking what comes;
+#               vindictive holds grudges - goes after whoever landed blows on it or its side this fight (Unit.wrongs),
+#               and whoever its grudges name; flirty aids, and only softly strikes, whom it fancies (AI._fancies()).
 #   appearance  what it looks like at a glance (Soldier, Knight, Caster): who can't make out its class
 #   adjectives  goes by this, with the adjectives before it ("Injured Soldier"), and guesses from them
 #               (Perception.looks(), AI._level()).
@@ -13,10 +15,11 @@ extends Resource
 #   clout       standing with a side: to that side's units its persona goes this much further (allies)
 #               or its trickery does (foes), and doubting it is that much harder (Battle.doubt()).
 
-const BEHAVIOURS: Array[StringName] = [&"timid", &"brave", &"aggressive", &"helpful", &"stoic"]
+const BEHAVIOURS: Array[StringName] = [&"timid", &"brave", &"aggressive", &"helpful", &"stoic", &"vindictive", &"flirty"]
 # A temper in a few words (the Guide's character page). Keyed by BEHAVIOURS; bio_test checks they match.
 const TEMPERS := {&"timid": "waits for a stronger ally, backs off", &"brave": "charges the strongest", &"aggressive": "presses the weakest",
-	&"helpful": "heals the wounded", &"stoic": "holds, strikes what comes"}
+	&"helpful": "heals the wounded", &"stoic": "holds, strikes what comes", &"vindictive": "goes after whoever hurt it or its own",
+	&"flirty": "aids, and only softly strikes, whom it fancies"}
 # How much stronger than itself an observer takes one of each appearance to be, in levels, when it
 # can't read the level (AI._level()). Unlisted: as strong as itself.
 const STANDING := {"knight": 2, "soldier": 1, "brute": 1, "beast": 1, "caster": 0, "scout": 0, "tradefolk": -1, "everyman": -1}
@@ -33,7 +36,23 @@ const ADJECTIVES := {
 @export var adjectives: Array[String] = []  # "Beautiful", "Horrific", "Injured", "Repulsive"
 @export var properties: Array[Property] = []  # Properties/*.tres: Aquatic, Energized, Radiant, Rotting
 @export var clout: Dictionary[Faction, int] = {}  # side -> standing with it
+@export var grudges: Array[String] = []  # whom a vindictive one goes after on sight: a name, class, race, identity tag or look ("Starman", "undead"; names())
+@export var fancies: Array[String] = []  # whom a flirty one feels for (names()); none: anyone of high charisma (AI._fancies())
 @export_multiline var text := ""  # a line or two about it, shown on its own sheet
+
+
+# Whether any of words names the unit read as r: a word of its name or looks, its class, its identity tags (race, role, unit tags).
+static func names(words: Array[String], r: Read) -> bool:
+	if words.is_empty() or r == null:
+		return false
+	var its := PackedStringArray()
+	for w in (r.name + " " + r.looks).to_lower().split(" ", false):
+		its.append(w)
+	for t in r.tags:
+		its.append(String(t).to_lower())
+	if r.role:
+		its.append(r.role.name.to_lower())
+	return words.any(func(w: String): return w.to_lower() in its)
 
 
 # Levels more (or less) than itself an observer guesses one looking like this to be ("Injured Knight": 1).
