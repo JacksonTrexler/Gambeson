@@ -606,11 +606,11 @@ func use_slot(i: int) -> void:
 			persona.open(u, s, Battle.persona_rank(u, s))
 	elif s.passive:
 		switch(u, s)
-	elif s.behaviour(&"imbue"):
+	elif not s.on_tile() and not battle.choices_of(u, s).is_empty():
 		if not u.can_afford(s):
 			_refuse(u, _short(u, s))
 		else:
-			_pick_element(u, s)
+			_pick_choice(u, s)
 	else:
 		_pick_slot(u, i)
 		if not u.can_afford(s):
@@ -1081,27 +1081,19 @@ func hand(u: Unit) -> bool:
 	return known(u) or command.ours(u)
 
 
-# Elemental Strike: a choice of its elements; the pick imbues u's Strikes (Behaviours/imbue.gd).
-func _pick_element(u: Unit, s: Skill) -> void:
-	var picks := []
-	for el in s.behaviour(&"imbue").elements:
-		picks.append([String(el).capitalize(), func() -> void:
-			u.element = el
-			if battle.cast(u, s, u):
-				_done(u)
-			else:
-				_say("%s doesn't take" % s.name)
-			_mark()])
-	_choose(s.name, picks)
-
-
-# A tile skill with choices (Behaviour.choices(): Thesis of Theseus's paths): the pick, then it aims.
+# A skill with choices (Behaviour.choices(): Theseus's paths, Elemental Strike's elements): the pick, then a tile
+# skill aims, any other casts on u at once.
 func _pick_choice(u: Unit, s: Skill) -> void:
 	var picks := []
 	for o in battle.choices_of(u, s):
 		picks.append([o, func() -> void:
 			chose = o
-			aim = true
+			if s.on_tile():
+				aim = true
+			elif battle.cast(u, s, u, false, [], o):
+				_done(u)
+			else:
+				_say("%s doesn't take" % s.name)
 			_replan()
 			_mark()])
 	_choose(s.name, picks)
