@@ -2,7 +2,7 @@
 
 Open questions to the user only. Decided rules: `requirements.md` (the short list) and `docs/done/rules.md` (with the numbers). What is built: `completed.md` and `docs/done/`. What a builder can do without you: `docs/queue.md`. Every call ever made (?57 to ?184) and the user's annotations on them: `docs/agents/todo-archive-2026-11-19.md`, each also in its `docs/todo/`, `docs/done/` or `docs/plans/` file. The user's answers, verbatim: `docs/agents/answers-*.md`.
 
-Questions are numbered across all the files; the next is 297. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
+Questions are numbered across all the files; the next is 307. A builder's call goes in as a numbered line under "Built on judgement" (what it is, the date, the user's words it answers, the files holding the detail, names to review). When you answer, say so on the line and move the rule to `requirements.md` and `docs/done/rules.md`. In progress: none (see `docs/queue.md`).
 
 Everything under "Open" is optional: where you say nothing, the call stays as built and no card in `docs/queue.md` waits on it. Ordered by how much an answer unblocks.
 
@@ -26,6 +26,7 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 16. **Wave 17 equip (?273 to ?277):** the bar fill-order quirk is kept, unifying would move Icor's bar (Mana before Hex) (?274, ?259); the bar-keyed cache drop while filling is defensive, keep or drop (?276); the suite gain is ~4%, not ~16%, and the refit / `_take_looks` setup cost is not pursued (?277); the 545-line mechanical test diff (?275).
 17. **Wave 18 batch 1 (?280 to ?287):** the trackpad sign and scale in the camera (?281); the Nexus reading of "pane * base power" and the live circuit (?283, ?284); flex: the prereq floors, the Scout numbers, Ranger's duplicate tab, the god-slot "Flex" name (?285, ?286); the rolling window for the bar cache (?287).
 18. **Wave 18 batch 2 (?288 to ?296):** the astral void rule and the Hop skill as an innate active (?288); Floaty's fractional movement (?289); Flippant, Vindictive, Power Hungry and `Bio.also` (?290); the grudge weight 5 against 10 and the 25% thresholds (?291); the Jester's inverted page costs and its stat lists (?292); the Jester's data-only skills, all `??` (?293); Jovia's page and prereqs (?294); `flex_kind` (?295); the `skill.py` `intensity` line (?296).
+19. **Wave 18 batch 3 (?297 to ?306):** the fog radius, shades and dim-only memory (?297); the AI left unchanged (?298); the `free` path flag (?299); the Monster paths, Undead ?? and Seaborn ?? (?300); the Monster class and playable (?301); where Thesis of Theseus sits, dark mage and dark cleric not placed (?302); its level, path-only design and the shared picker (?303); the AI pick and L + 1 Skeletons value (?304); its price (?305); `skill.py` reading the parent (?306).
 
 ## Built on judgement, open for review (newest last; append here)
 
@@ -145,6 +146,16 @@ Everything under "Open" is optional: where you say nothing, the call stays as bu
 - 294 Jovia (2026-11-23, your patron words): her tree is the Jester's Inverted root itself; same costs; warlock must meet prereqs; no `jest` tag, no suit. `docs/plans/w18-jester.md`; names: Jovia.
 - 295 `flex_kind` (2026-11-23): Scout martial, Journeyman specialist, Student caster; empty falls back to the tab's category. `docs/plans/w18-jester.md`.
 - 296 `skill.py` wrote `intensity = &"faint"` on Juggle (2026-11-23): removed by hand; cause untraced. **Yours or a tooling card (w18-skillpy).** `docs/plans/w18-jester.md`.
+- 297 Fog of war (2026-11-23, your fog words): radius = unit sight (wisdom total, full ring), union over the side; three shades (clear, explored 0.45, unseen 0.75); remembered = dim only; `Battle.explored`; one Sprite2D. `docs/plans/w18-fog.md`; names: fog, explored.
+- 298 AI needed no fog change (2026-11-23): already read-gated; `known_ground` does not use `explored`; no frozen look. `docs/plans/w18-fog.md`.
+- 299 `TreeChoice.free` (2026-11-23, your Monster words): picking learns the opening skills at rank I for nothing, idempotent; ranks past I cost points. `docs/plans/w18-monster.md`; names: free.
+- 300 Monster paths (2026-11-23, your three paths): Starmen Floaty + Hop; Sirens Alluring, Seaborn ??, Opportunist; Skeletons a new invented **Undead ??** (no per-rank effect). `docs/plans/w18-monster.md`; names: Undead ??.
+- 301 Monster class (2026-11-23): martial, stats 14/11/14/8/10/9, playable on the entry screen, path on the skills screen, `Unit.picked` exported, `Unit.monster()` helper. `docs/plans/w18-monster.md`.
+- 302 Thesis of Theseus placement (2026-11-23, your t6 words): Wizard's Transgression and Elmon at needs 5; dark mage (Mortis Arcalis too small) and dark cleric (no tree, ?240) not placed. `docs/plans/w18-theseus.md`.
+- 303 Theseus level, design, picker (2026-11-23): level = cast rank; path only; `Behaviour.choices` and `Cast.chose`, the HUD `_choose` panel; Elemental Strike not migrated. `docs/plans/w18-theseus.md`.
+- 304 Theseus AI (2026-11-23): picks the fewest path on its side; values a level L Monster as L + 1 Skeletons. `docs/plans/w18-theseus.md`.
+- 305 Theseus price (2026-11-23): 4 AP, 3 cost at every rank; extends `summon_per_rank`. `docs/plans/w18-theseus.md`.
+- 306 `skill.py check` reads the behaviour's parent (2026-11-23): a tooling change. `docs/plans/w18-theseus.md`.
 
 ## Files
 

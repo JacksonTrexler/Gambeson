@@ -248,6 +248,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Flex trees, Scout (?285, ?286) | `general_test.gd` |
 | — | Astral void, Hop, Floaty, starmen tempers (?288 to ?291) | `hop_test.gd`, `stars_test.gd` |
 | — | Jester, inverted page, Jovia (?292 to ?296) | `general_test.gd` |
+| — | Fog of war (?297, ?298) | `sight_test.gd` |
+| — | Monster class, free path (?299 to ?301) | `monster_test.gd` |
+| — | Thesis of Theseus, choice picker (?302 to ?306) | `thesis_of_theseus_test.gd` |
 
 ## Questions to answer first
 

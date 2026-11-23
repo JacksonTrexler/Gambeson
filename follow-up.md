@@ -103,6 +103,11 @@ Best guess: keep as built (no balancing now).
 Ref: `Scripts/Bio.gd`, `Scripts/AI.gd` `_feed`, `_richest`, `_skirt`.
 Answer: ____
 
+**F37. Fog of war as built (wave 18 F; see ?297, ?298).** The fog radius is the unit's sight (wisdom total, the full ring), union over your side; clear in sight, dimmed (0.45) where seen before, darker (0.75) never seen, terrain faintly visible; "remembered" is only the dim shade, not a frozen copy of the ground. The AI needed no change (already sight-gated), though it does not yet path by explored ground.
+Best guess: keep as built; frozen look and AI pathing are later cards.
+Ref: `docs/plans/w18-fog.md`, `Scripts/Overlay.gd` `fog_of_war`, `Scripts/Battle.gd` `sight_cells`.
+Answer: ____
+
 ---
 
 ## 3. Skills and classes (wave 18 G, H, I, J)
@@ -174,6 +179,21 @@ Answer: ____
 **F35. Jovia and `flex_kind` (wave 18 H; see ?294, ?295).** Jovia's tree is the Jester's Inverted root itself; the warlock pays the same stat costs and must meet each tree's prereq floors (checked before paying). Types: Scout martial, Journeyman specialist, Student caster. No `jest` tag, no suit yet.
 Best guess: keep as built.
 Ref: `Gods/jovia.tres`, `Trees/inverted.tres`, `Scripts/SkillTab.gd`.
+Answer: ____
+
+**F38. Monster paths and class as built (wave 18 I; see ?299 to ?301).** Playable and on the starting screen; the path is picked free on the skills screen at level 1 (a Monster may enter battle unpicked, no traits); Starmen = Floaty, Hop; Sirens = Alluring, Seaborn ??, Opportunist; Skeletons = a new invented trait Undead ?? (no effect per rank yet). Class stats str 14 dex 11 con 14 int 8 wis 10 cha 9, human, gambeson and dagger.
+Best guess: keep as built; Undead ?? keeps its `??` and gets a per-rank effect on a later card.
+Ref: `docs/plans/w18-monster.md`, `Roles/monster.tres`, `Skills/undead.tres`, `Trees/monster_*.tres`.
+Answer: ____
+
+**F39. Thesis of Theseus: where it sits and who casts it (wave 18 J; see ?302).** Placed on the Wizard's Transgression root and on Elmon (the Warlock's patron tree), both at t6. Not placed: a dark mage (Mortis Arcalis holds 2 skills, no t6) and a dark cleric (no death-cleric tree, ?240).
+Best guess: keep; place it when those trees grow.
+Ref: `docs/plans/w18-theseus.md`, `Roles/wizard.tres`, `Trees/elmon.tres`.
+Answer: ____
+
+**F40. Thesis of Theseus: level, design, price (wave 18 J; see ?303 to ?305).** The Monster's level is the cast's rank, one a cast; "design" is picking a path (its level - 1 skill points stay unspent); 4 AP and 3 cost at every rank; the AI picks the path fewest on its side and values a level L Monster as L + 1 Skeletons.
+Best guess: keep as built; trait-level design waits for your word.
+Ref: `docs/plans/w18-theseus.md`, `Behaviours/theseus.gd`.
 Answer: ____
 
 ---
