@@ -24,7 +24,7 @@ func test_theseus() -> void:
 		ok(b.cast_at(caster, theseus, Vector2i(6, 3), true, p), "cast, %s chosen" % p)
 		var m: Unit = monsters(caster)[-1]
 		ok(m.role.name == "Monster" and m.level == 3 and m.faction == lancin and m.picked.size() == 1 and "Path/%s" % p in m.picked
-				and (paths[p] as Array).all(func(s: Skill): return m.rank(s) == 1), "%s: a level 3 (rank) Monster on its side, its traits at I" % p)
+				and (paths[p] as Array).all(func(s: Skill): return m.rank(s) >= 1) and m.skill_points == 0, "%s: a level 3 (rank) Monster on its side, its traits held, its 2 points spent (take_path)" % p)
 		ok(m.ap_left() <= 3 + 2 + 0.001, "it keeps no more than rank + int mod AP (%s)" % m.ap_left())
 	caster.ap[0].amount = 99.0; caster.max_energy = 99; caster.energy = 99
 	ok(b.cast_at(caster, theseus, Vector2i(6, 4)), "cast with no path chosen")

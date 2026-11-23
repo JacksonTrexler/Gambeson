@@ -73,7 +73,7 @@ func test_pick() -> void:
 # cheapest first (Unit.take_path()); a player's Monster does neither. Rows: path pre-picked or "" , level.
 func test_ai() -> void:
 	var role: Role = load("res://Roles/monster.tres")
-	for row in [["Starmen", 1], ["Sirens", 5], ["Skeletons", 5], ["", 1], ["", 5]]:
+	for row in [["Starmen", 1], ["Sirens", 5], ["Skeletons", 5], ["Starmen", 8], ["", 1], ["", 5]]:
 		var u: Unit = b.from_role(lancin, role, "npc")
 		u.bio = Bio.new()
 		u.level = row[1]
@@ -91,6 +91,7 @@ func test_ai() -> void:
 		ok(spent + u.skill_points == row[1] - 1, "%s L%d: %d points, %d spent on traits, %d left" % [row[0], row[1], row[1] - 1, spent, u.skill_points])
 		ok(floor_cost.is_empty() or u.skill_points < floor_cost.min(), "%s L%d: none left that buys a rank" % [row[0], row[1]])
 		ok(row[1] == 1 or tr.any(func(s: Skill): return u.own_rank(s) > 1), "%s L%d: a trait ranked up" % [row[0], row[1]])
+		ok(row[1] < 8 or tr.all(func(s: Skill): return u.own_rank(s) == 2), "%s L%d: cheapest first, every trait to II before any to III" % [row[0], row[1]])
 	# fewest: two Starmen and a Siren on its side, so a third unpicked takes Skeletons
 	var side: Array[Unit] = []
 	for p in ["Starmen", "Starmen", "Sirens"]:
