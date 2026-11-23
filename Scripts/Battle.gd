@@ -4795,6 +4795,8 @@ func end_turn() -> void:
 			continue  # caught itself this turn: spared what the ground beneath does at turn's end
 		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
 			u.afflict(e, (e.turns if e.turns else u.footing.turns) + 1)  # + 1: the tick below takes this turn
+		for e in circuit_ends(u.cell):  # and what the live sources of its circuit put on (Power Siphon)
+			u.afflict(e, maxi(e.turns, 1) + 1)
 	for u in side:
 		if u.asleep() and side.any(func(o: Unit): return o != u and next_to(o.cell, u.cell)):
 			u.wake()
@@ -4802,6 +4804,7 @@ func end_turn() -> void:
 		u.tick()
 	UNDEAD.settle(self)  # a Disturbed that ran out lays its undead to rest
 	for u in members(turn):
+		_siphon(u)
 		_sap(u)
 		_synergize(u)
 	for u in members(turn):
@@ -5765,6 +5768,41 @@ func _starlight(u: Unit) -> void:
 		return
 	var k := maxi(u.rounded((u.mod(&"constitution") + u.mod(&"wisdom")) / 2.0), 1)
 	u.grant_energy(u.rounded(k * m) if u.powered() else u.rounded(k * (m - 1.0) * STAR_ENERGY))
+
+
+# The at_end of each live source joined to c through the lattice (star_source()'s walk), c itself aside
+# (its own ground already counts): a source with at_end and Power in it powers its whole circuit (a
+# starpower generator's Power Siphon reaches whoever ends a turn on its wires).
+func circuit_ends(c: Vector2i) -> Array[Effect]:
+	var out: Array[Effect] = []
+	if not on_lattice(c):
+		return out
+	var seen := {c: true}
+	var queue: Array[Vector2i] = [c]
+	while not queue.is_empty():
+		var at: Vector2i = queue.pop_front()
+		if at != c and charge.get(at, 0) > 0:
+			for l: Layer in layers.get(at, []):
+				if l.terrain.source:
+					for e in l.terrain.at_end:
+						if e not in out:
+							out.append(e)
+		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var n: Vector2i = at + d
+			if n not in seen and on_lattice(n):
+				seen[n] = true
+				queue.append(n)
+	return out
+
+
+# Power Siphon, as its side's turn ends: it loses its siphon share of max HP and gains that share of its
+# max Power (Energy, unless powered), each at least 1.
+func _siphon(u: Unit) -> void:
+	var k := u.stat(&"siphon")
+	if k <= 0.0 or not u.is_alive():
+		return
+	u.damage(maxi(roundi(k * u.max_hp), 1))
+	u.grant_energy(maxi(roundi(k * u.max_energy), 1))
 
 
 # How far a unit's sap reaches another: a tile side-on, +0.25 a size step past Medium of each, so

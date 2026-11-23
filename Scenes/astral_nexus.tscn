@@ -38,7 +38,7 @@ script = ExtResource("4_camera")
 
 [node name="Battle" type="Node2D" parent="."]
 script = ExtResource("1_battle")
-spawns = Dictionary[ExtResource("8_faction"), Vector2i]({ExtResource("6_lancin"): Vector2i(1, 6), ExtResource("7_nemes"): Vector2i(1, 6)})
+spawns = Dictionary[ExtResource("8_faction"), Vector2i]({ExtResource("6_lancin"): Vector2i(1, 8), ExtResource("7_nemes"): Vector2i(1, 8)})
 
 [node name="Map" type="TileMapLayer" parent="Battle"]
 tile_set = SubResource("TileSet_nexus")

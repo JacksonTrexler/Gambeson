@@ -58,6 +58,28 @@ func test_starlight() -> void:
 	ok(v(1).energy == v(1).rounded(2 * 4.0 * Battle.STAR_ENERGY), "plain Energy: a fifth of the boost (%d)" % v(1).energy)
 
 
+# Power Siphon: a live source with at_end (a starpower generator) puts it on whoever ends a turn anywhere
+# on its circuit (Battle.circuit_ends()); siphon takes its share of max HP and gives that share of max Power.
+func test_siphon() -> void:
+	lattice(0.0)
+	var gen: Terrain = load("res://Terrain/starpower_generator.tres")
+	b.lay_layer(Vector2i(6, 1), gen)
+	b.charge[Vector2i(6, 1)] = Battle.STAR_CAPACITY
+	stage(lancin, {v(1): Vector2i(3, 1), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})
+	var hp := v(1).hp
+	b.end_turn()
+	ok(v(1).stat(&"siphon") == 0.05 and v(1).hp == hp - 1 and v(2).stat(&"siphon") == 0.0 and v(2).hp == v(2).max_hp, "on the generator's wires: siphoned; off them: not")
+	b.panes.erase(Vector2i(5, 1))
+	b.end_turn()
+	b.end_turn()
+	ok(v(1).stat(&"siphon") == 0.0 and v(1).hp == hp - 1, "a broken pane cuts it off: no more")
+	v(2).max_energy = 40
+	v(2).energy = 0
+	v(2).afflict(gen.at_end[0], 2)
+	b._siphon(v(2))
+	ok(v(2).energy == 2 and v(2).hp == v(2).max_hp - 1, "5%% of max HP gone, 5%% of max Power gained (%d)" % v(2).energy)
+
+
 func test_shatter() -> void:
 	lattice(0.5)
 	stage(lancin, {v(1): Vector2i(3, 2)})
