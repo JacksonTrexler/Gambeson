@@ -44,7 +44,7 @@ func test_location_only() -> void:
 	ok(r.cell == Vector2i(5, 2) and r.silhouette(), "located, as a black shape")
 	ok(r.faction == null and r.name == "" and r.hp == null and r.tags.is_empty() and r.level == null, "no side, name, HP, traits")
 	ok(b.read(v(2), v(3)).cell == Vector2i(5, 2), "its ally knows where it is too")
-	ok(v(1).suspects(Vector2i(5, 2)) == 1 and v(2).suspects(Vector2i(5, 2)) == 0, "a stack of the caster's suspicion of its tile")
+	ok(v(1).suspects(Vector2i(5, 2)) == 1 and v(2).suspects(Vector2i(5, 2)) == 1, "a stack of the caster's suspicion of its tile, passed on by word to its ally (Battle.spread())")
 	ok("black shapes" in clairvoyance.describe(1) and "wisdom + 1 tiles" in clairvoyance.describe(1), clairvoyance.describe(1))
 
 

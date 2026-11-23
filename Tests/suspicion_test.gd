@@ -159,6 +159,38 @@ func test_detective() -> void:
 	ok(b.noticed.get(v(2), {}).is_empty(), "the told, Detectives too, learn nothing for themselves")
 
 
+# Detective also observes the unconcealed (Battle._observe(), in survey()): a foe it makes out but not fully, and plain ground at
+# net 0, gain its rank in recon, once looking around - until read fully. Others (no detective stat) learn nothing.
+func test_detective_observes() -> void:
+	stage(lancin, {v(1): Vector2i(1, 4), v(2): Vector2i(1, 3), v(3): Vector2i(3, 4)})
+	var open := Vector2i(2, 4)
+	var net := b.read(v(1), v(3)).net
+	v(3).afflict(effect("concealment", net - 1), 9)  # makes it out, but not fully
+	var was := b.read(v(1), v(3)).net
+	var ground := b.read(v(1), open).net
+	v(1).wisdom = 20
+	v(2).wisdom = 20
+	v(1).afflict(effect("detective", 1), 9)
+	b.survey(v(1), v(1).cell, 0)
+	b.survey(v(2), v(2).cell, 0)
+	ok(0 <= was and was < 3 and b.noticed[v(1)].get(v(3)) == 1 and b.read(v(1), v(3)).net == was + 1, "a foe not fully read: a rank of recon (net %d)" % was)
+	ok(ground != 0 or b.noticed[v(1)].get(open) == 1, "plain ground at net 0 likewise")
+	ok(not b.noticed.has(v(2)), "without the stat, nothing")
+
+
+# Word of suspicion also carries tiles (Battle.spread()): a tile a unit sees through - a hidden trap - its near allies are told of.
+func test_tile_word() -> void:
+	var trap := Vector2i(5, 4)
+	stage(lancin, {v(1): Vector2i(1, 4), v(2): Vector2i(1, 3), v(3): Vector2i(8, 1)})
+	v(1).wisdom = 60
+	var told := []
+	b.told.connect(func(by: Unit, to: Unit, of: Variant, got: bool): told.append([by, to, of, got]))
+	ok(b.inspect(v(1), trap) and v(1).suspects(trap) == 1 and v(2).suspects(trap) == 1, "it sees through the trap, and tells v(2)")
+	ok(told == [[v(1), v(2), trap, true]], "word of the tile: %s" % [told])
+	b.suspect(v(1), trap, 1, true)
+	ok(told.size() == 1, "told of it, not passed on")
+
+
 func test_traitor() -> void:
 	stage(lancin, {v(1): Vector2i(1, 2), v(2): Vector2i(2, 3), v(3): Vector2i(2, 2), v(4): Vector2i(8, 5)})
 	b.player = v(1)
