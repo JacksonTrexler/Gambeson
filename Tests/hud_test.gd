@@ -36,6 +36,27 @@ func test_select_and_move() -> void:
 	h.free()
 
 
+# A refused cast short of AP says what it needs against what's held: the price it really charges, Exhaustion's rise included.
+func test_short_says_ap() -> void:
+	stage(lancin, {v(1): Vector2i(4, 3)})
+	var h := await hud(v(1))
+	var u := v(1)
+	Exhaustion.on = true
+	var s: Skill = u.actives.filter(func(x: Skill): return Pricing.ap_for(u, x) > 0.0)[0]
+	var fresh := u.ap_cost(s, u.funding(s))
+	for i in 6:
+		u.exhaustion.used(s)
+	var worn := u.ap_cost(s, u.funding(s))
+	var held := u.ap_for(s.pays_with if s.pays_with else &"skill")
+	ok(worn > fresh, "exhaustion raised the price (%s > %s)" % [worn, fresh])
+	u.ap = [AP.new((fresh + worn) / 2.0, &"")]
+	held = u.ap_for(s.pays_with if s.pays_with else &"skill")
+	var why: String = h._short(u, s)
+	ok("needs %s" % snappedf(worn, 0.1) in why and "has %s" % snappedf(held, 0.1) in why, "it says the worn price against the pool: %s" % why)
+	Exhaustion.on = false
+	h.free()
+
+
 func test_keys_and_targets() -> void:
 	stage(lancin, {v(1): Vector2i(4, 3), v(3): Vector2i(5, 3)})
 	var h := await hud(v(1))

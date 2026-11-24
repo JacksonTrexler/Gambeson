@@ -180,6 +180,8 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 		_replenish(b, u, log)  # a HELP order to one that only restores its own Energy or reserve: it does that
 		return log
 	var rooted := _rooted(b, u)
+	if not rooted and _leave(b, u, log):  # already on a bridge about to break over void: off it before anything else
+		reads = _reads(b, u)
 	if posture == &"":  # phases for a self-directed turn only - an ATTACK order presses on regardless
 		if u.behaviour == &"skittish":
 			_keep_away(b, u, reads, log)
@@ -1145,6 +1147,34 @@ static func _emboldened(u: Unit, reads: Dictionary[Unit, Read]) -> bool:
 		if o.is_alive() and r.attitude(u) == &"ally" and lv != null and lv > u.lv() and Command.tiles(o.cell, u.cell) <= CRAVEN_REACH:
 			return true
 	return false
+
+
+# Standing on a tile that gives way (Battle.gives_way(): a lapsing bridge on its last round over void), it steps onto the nearest
+# tile it can reach that doesn't (what ending the walk there owes, Battle.hazard(), less than its HP, so any hazard avoidance
+# prices it); stays if there is none.
+static func _leave(b: Battle, u: Unit, log: Array[String]) -> bool:
+	if not b.gives_way(u.cell) or u.has_tag(&"floating") or u.has_tag(&"flight"):
+		return false
+	var best := u.cell
+	var best_owed := INF
+	var reach := ceili(u.move_left())
+	for dx: int in range(-reach, reach + 1):
+		for dy: int in range(-reach, reach + 1):
+			var c := u.cell + Vector2i(dx, dy)
+			if c == u.cell or not b.on_map(c):
+				continue
+			var path: Array = b.walk(u, c, true).path
+			if path.is_empty() or b.gives_way(path[-1]):
+				continue
+			var owed: float = b.hazard(u, path[-1], b.read(u, path[-1]), path.size(), true).get(&"hp", 0.0)
+			owed = owed * 100.0 + path.size()
+			if owed < best_owed:
+				best = path[-1]
+				best_owed = owed
+	if best == u.cell or b.travel(u, best).is_empty():
+		return false
+	log.append("%s steps off the failing bridge" % u.name)
+	return true
 
 
 # A craven unit backs away from units it takes for aggressive within CRAVEN_REACH tiles: to the

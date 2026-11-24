@@ -233,6 +233,37 @@ func test_ai_avoids_lapsing_bridge() -> void:
 	ok(not b.gives_way(edge) and b.hazard(w, edge, r, 1, true).get(&"hp", 0.0) < w.hp, "in the signal it isn't lapsing: no fall owed")
 
 
+# Already standing on a bridge on its last round, the AI steps off it onto what holds (AI._leave()); a floater, or a unit with nowhere to go, stays.
+func test_ai_leaves_lapsing_bridge() -> void:
+	var u := _caster("startile", 3)
+	var w := v(2)
+	var edge := Vector2i(6, 3)
+	b.paint(edge, void_t)
+	b.lay_star(edge, Battle.STARTILE, u, 0, 0.0, 2)
+	b.move(w, edge)
+	var log: Array[String] = []
+	ok(not AI._leave(b, w, log) and w.cell == edge, "a bridge with a round to spare: it stays")
+	b._repair_tiles()
+	ok(b.gives_way(edge), "one round left")
+	w.refresh()
+	ok(AI._leave(b, w, log) and w.cell != edge and not b.gives_way(w.cell) and not log.is_empty(), "on its last round it steps onto ground that holds (%s)" % w.cell)
+
+
+# A unit that fell with the glass it stood on (Battle._restack) has no teeter to log: nothing catches itself.
+func test_teeter_dead_unit_silent() -> void:
+	var w := v(2)
+	var c := Vector2i(5, 3)
+	b.move(w, c)
+	b.paint(c, void_t)
+	b.lay_layer(c, load("res://Terrain/glass.tres"))
+	w.refresh()
+	w.steps = 9
+	var seen := []
+	b.teetered.connect(func(_u, _t, _dc, k): seen.append(k))
+	b._teeter(w, false)
+	ok(not w.is_alive() and seen.is_empty(), "it fell through with the glass over void: no teeter logged (%s)" % [seen])
+
+
 # Powered Stardust is a startile in a few rounds: no gap to lay Power over (AI._span(), _dust_mends()); dark, or far from the signal, it is void.
 func test_ai_waits_for_stardust() -> void:
 	var u := _caster("startile", 3)

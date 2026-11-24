@@ -4577,6 +4577,8 @@ func _teeter(u: Unit, rested: bool) -> void:
 	var dc := u.inertia()  # how badly it screwed up: how far and how heavy it came
 	var roll := check(u, &"dexterity", null, dc, {role = &"defensive", edge = -1 if u.blind_on == u.cell else 0})
 	break_layer(u.cell, glass)
+	if not u.is_alive():  # it fell with the layer (_restack): nothing left to catch itself
+		return
 	teetered.emit(u, roll.mine.total, dc, roll.won)
 	if roll.won:
 		u.steadied = u.cell

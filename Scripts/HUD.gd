@@ -3966,7 +3966,12 @@ func _why_no_join(u: Unit) -> String:
 
 
 func _short(u: Unit, s: Skill) -> String:
-	return "Not enough %s for %s" % ["energy" if u.funding(s) == null else "AP", s.name]
+	var fund: Variant = u.funding(s)
+	if fund == null:
+		return "Not enough energy for %s" % s.name
+	var need := u.ap_cost(s, fund)  # what a cast would charge (Exhaustion's rise included), against the pool it draws on
+	var has := u.ap_for(s.pays_with if s.pays_with else &"skill")
+	return "Not enough AP for %s%s" % [s.name, " (needs %s, has %s)" % [snappedf(need, 0.1), snappedf(has, 0.1)] if need > has else ""]
 
 
 func _reads_as_ally(t: Unit) -> bool:
