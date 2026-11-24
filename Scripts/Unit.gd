@@ -95,6 +95,15 @@ class Channel:
 		at = c
 
 
+# A seal (Effect stat seal): points of a pool locked out of its usable max until `source` is gone (seal()).
+class Seal:
+	var pool: StringName  # pool_id(): &"energy", or a reserve's name lowercased (&"mana")
+	var points := 0  # locked as points...
+	var share := 0.0  # ...or as this share of the pool's max, whichever the effect said
+	var source: Variant  # what holds it: a Callable (true while it holds), an Object (a node or summon: valid, and alive if a Unit), or null (until the battle ends)
+	var debt := false  # it may drive the pool into debt (Starnest)
+
+
 # A timed effect on this unit: turns left, and the rank of the skill that applied it.
 class Applied:
 	var turns: int  # 0 with until_move: no limit
@@ -377,7 +386,7 @@ func fall() -> void:
 # The default energy every unit has; reserves (mana...) are extra.
 var energy := 0:
 	set(v):
-		v = clampi(v, 0, max_energy)
+		v = _level_to(&"energy", energy, v)
 		if v == energy:
 			return
 		var was := energy
@@ -397,7 +406,9 @@ var overcharge := 0:
 			timed.erase(OVERCHARGE)
 		overcharge_changed.emit(was, v)
 
-var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve
+var stores: Dictionary[Reserve, int] = {}  # current amount of each reserve (below 0: debt, see _level_to())
+var seals: Array[Seal] = []  # what is locked out of its pools (seal()); each lifts as its source is gone (locked())
+var gain_carry: Dictionary = {}  # pool_id() -> the fraction of a point a gain made in debt left over (_level_to())
 var ap: Array[AP] = []  # refilled at the start of each of this unit's faction turns
 var moved := 0.0  # movement spent this turn
 var steps := 0  # tiles walked this turn (still())
@@ -649,6 +660,8 @@ func _ready() -> void:
 	hp = max_hp
 	endurance = endurance_max()
 	_one_replacer()
+	seals.clear()
+	gain_carry.clear()
 	energy = 0 if runs_on() is Reserve else max_energy  # running on Mana or Stamina: no Energy of its own
 	var full := pools()
 	for r in full:
@@ -3135,7 +3148,7 @@ func powered() -> bool:
 func drain(raw: float, tags: Array[StringName], by: Unit, carry: float) -> int:
 	var net := luck - (by.luck if by else 0)
 	var taken := Luck.settle(raw * (1.0 - mitigation(tags)), net, false)
-	var off := mini(energy, taken)
+	var off := mini(maxi(energy, 0), taken)
 	energy -= off
 	var over := Luck.settle((taken - off) * carry, net, false)
 	damage(over)
@@ -3157,10 +3170,10 @@ func siphon(raw: float, tags: Array[StringName], by: Unit) -> int:
 		if left <= 0:
 			break
 		if fund is Reserve:
-			off = mini(store(fund), left)
+			off = mini(maxi(store(fund), 0), left)
 			set_store(fund, store(fund) - off)
 		else:
-			off = mini(energy, left)
+			off = mini(maxi(energy, 0), left)
 			energy -= off
 		got += off
 		left -= off
@@ -3190,7 +3203,7 @@ func grant_energy(n: int, heard := true) -> int:
 	energy += maxi(n, 0)
 	if heard:
 		note_recovery(&"energy", energy - was)
-	var over := maxi(n, 0) - (energy - was)  # what didn't fit: a powered wearer's soaking trinket keeps its share (Power Star)
+	var over := maxi(n, 0) - (energy - was) if was >= 0 else 0  # what didn't fit: a powered wearer's soaking trinket keeps its share (Power Star)
 	if over > 0 and trinket and trinket.soaks > 0.0 and powered():
 		trinket = trinket.soaked(rounded(over * trinket.soaks * trinket.ranked()), max_energy)
 	return energy - was
@@ -3307,12 +3320,150 @@ func gain(how: StringName, n: int) -> void:
 
 
 func set_store(r: Reserve, v: int) -> void:
-	v = clampi(v, 0, pools().get(r, 0))
 	var was := store(r)
+	v = _level_to(r, was, v)
 	if v == was:
 		return
 	stores[r] = v
 	reserve_changed.emit(r, was, v)
+
+
+# --- Negative Energy (docs/plans/w22-negative.md): one rule for Energy (Power) and every Reserve ---
+# A pool is &"energy" or a Reserve. It may sit below 0 (debt) only where something allows it: a debt effect
+# tagged with the pool (share of max it may owe: 1.0, down to -max) or a seal that bears the tag debt.
+# Debt is paid before anything counts: every gain (regen, rest, grants, kills) first fills it, at
+# efficiency 1 - 0.5 x (debt / max) (debt of all its max: half; half of it: 3/4).
+
+const DEBT_TAG := &"debt"
+
+
+static func pool_id(pool: Variant) -> StringName:
+	return &"energy" if pool is StringName else StringName((pool as Reserve).name.to_lower().replace(" ", "_"))
+
+
+# Its max before any seal: max_energy, or the reserve's (pools()).
+func raw_max(pool: Variant) -> int:
+	return max_energy if pool is StringName else pools().get(pool, 0)
+
+
+func level_of(pool: Variant) -> int:
+	return energy if pool is StringName else store(pool)
+
+
+var _exact := false  # set_exact() is under way: a setting, not a gain
+
+
+# Sets pool to v as a setting (a battle's start, a test's stage), not a gain: debt isn't paid at a loss.
+func set_exact(pool: Variant, v: int) -> void:
+	_exact = true
+	gain_carry.erase(pool_id(pool))
+	set_level(pool, v)
+	_exact = false
+
+
+func set_level(pool: Variant, v: int) -> void:
+	if pool is StringName:
+		energy = v
+	else:
+		set_store(pool, v)
+
+
+# Whether a seal's source still holds: a Callable's answer, an Object valid (a Unit also alive), null always.
+static func holds(source: Variant) -> bool:
+	match typeof(source):
+		TYPE_CALLABLE:
+			return source.is_valid() and source.call()
+		TYPE_OBJECT:
+			return is_instance_valid(source) and (not source is Unit or source.is_alive())
+	return true
+
+
+# What is locked out of pool now: the seals still held, as points or a share of its raw max.
+func locked(pool: Variant) -> int:
+	if seals.is_empty():
+		return 0
+	var id := pool_id(pool)
+	var most := raw_max(pool)
+	var n := 0
+	for x in seals:
+		if x.pool == id and holds(x.source):
+			n += x.points + ceili(x.share * most - 0.0001)
+	return mini(n, most)
+
+
+# What it can use of pool: its max less what is sealed.
+func usable_max(pool: Variant) -> int:
+	return maxi(raw_max(pool) - locked(pool), 0)
+
+
+# The lowest pool may fall: 0, or -(its raw max x the share of it something lets it owe).
+func debt_floor(pool: Variant) -> int:
+	var id := pool_id(pool)
+	var allow := stat(&"debt", [id] as Array[StringName]) if lends(&"debt") else 0.0
+	for x in seals:
+		if x.debt and x.pool == id and holds(x.source):
+			allow = maxf(allow, 1.0)
+	return -floori(raw_max(pool) * clampf(allow, 0.0, 1.0) + 0.0001)
+
+
+# What pool's level becomes when something sets it from `was` to `v`: kept between its floor and its
+# usable max, and a gain on a debt scaled by efficiency (a fraction carried to the next gain).
+func _level_to(pool: Variant, was: int, v: int) -> int:
+	if v > was and was < 0 and not _exact:
+		var id := pool_id(pool)
+		var eff := 1.0 - 0.5 * clampf(-was / float(maxi(raw_max(pool), 1)), 0.0, 1.0)
+		var gain := float(v - was)
+		var out := gain * eff  # filling the debt costs more than it pays...
+		if out >= -was:
+			out = -was + (gain - -was / eff)  # ...and what is left after it is whole
+			gain_carry.erase(id)
+		else:
+			out += gain_carry.get(id, 0.0)
+		var whole := floori(out + 0.0001)
+		if was + whole < 0:
+			gain_carry[id] = out - whole
+		else:
+			gain_carry.erase(id)
+		v = was + whole
+	var low := debt_floor(pool) if v < 0 else 0
+	var top := raw_max(pool) if seals.is_empty() else usable_max(pool)
+	return clampi(v, low, top)
+
+
+# Locks n points (or, share > 0, that share of its max) of pool out of its usable max until source is gone
+# (holds()). The points leave what it holds too: more than it holds, the rest is debt where debt allows
+# (a seal bearing the tag debt, or a debt effect) and lost where it doesn't. Seals stack. Returns the seal.
+func seal(pool: Variant, points: int, source: Variant = null, share := 0.0, debt := false) -> Seal:
+	var x := Seal.new()
+	x.pool = pool_id(pool)
+	x.points = points
+	x.share = share
+	x.source = source
+	x.debt = debt
+	prune_seals()
+	seals.append(x)
+	var took := points + ceili(share * raw_max(pool) - 0.0001)
+	set_level(pool, level_of(pool) - took)
+	_changed(pool)
+	return x
+
+
+# Drops the seals whose source is gone, telling the bars their pools' usable max grew.
+func prune_seals() -> void:
+	var gone: Array[StringName] = []
+	for x in seals.duplicate():
+		if not holds(x.source):
+			seals.erase(x)
+			gone.append(x.pool)
+	for id in gone:
+		_changed(&"energy" if id == &"energy" else pools().keys().filter(func(r: Reserve): return pool_id(r) == id).front())
+
+
+func _changed(pool: Variant) -> void:
+	if pool is StringName:
+		energy_changed.emit(energy, energy)
+	elif pool != null:
+		reserve_changed.emit(pool, store(pool), store(pool))
 
 
 # What s costs it, at its rank (starter spells: cost x rank; Pricing.cost_for()), before any savings (cost_from()): more
@@ -4120,7 +4271,7 @@ func recover() -> int:
 			rest += rate / 2.0
 		_:
 			return 0
-	if energy >= max_energy:
+	if energy >= usable_max(&"energy"):
 		rest = 0.0
 		return 0
 	var whole := floori(rest + 0.0001)
@@ -4134,8 +4285,8 @@ func recover() -> int:
 func full_resource() -> bool:
 	var on: Variant = runs_on()
 	if on is Reserve:
-		return store(on) >= pools().get(on, 0)
-	return energy >= max_energy
+		return store(on) >= usable_max(on)
+	return energy >= usable_max(&"energy")
 
 
 # Reserves that come back at turn's end, by activity `how`: one with_energy (Stamina, Mana) at Energy's
@@ -4149,7 +4300,7 @@ func _recover_reserves(how: StringName, rate: float) -> void:
 	for r in all:
 		if r.with_energy:
 			var bonus := r.rest_rank * giver_rank(r) * (1.0 if how == &"rest" else r.steady)
-			if not spends(r) or store(r) >= all[r] or (how == &"busy" and bonus <= 0.0):
+			if not spends(r) or store(r) >= usable_max(r) or (how == &"busy" and bonus <= 0.0):
 				reserve_rest[r] = 0.0
 				continue
 			var got: float = reserve_rest.get(r, 0.0) + {&"rest": rate, &"light": rate / 2.0}.get(how, 0.0) + bonus
@@ -4336,7 +4487,14 @@ func pay(n: float, use: StringName) -> bool:
 
 # Puts an effect on this unit for some of its faction's turns. Re-applying refreshes the timer
 # (keeping the higher rank) rather than stacking.
-func afflict(e: Effect, turns: int, at_rank := 1) -> Applied:
+func afflict(e: Effect, turns: int, at_rank := 1, source: Variant = null) -> Applied:
+	if e.stat == "seal":  # a lock on a pool, held by `source` (seal()): not a timed effect, so each seal stacks
+		var id: StringName = e.tags.filter(func(t): return t != DEBT_TAG).front() if e.tags.any(func(t): return t != DEBT_TAG) else &"energy"
+		var pool: Variant = &"energy" if id == &"energy" else pools().keys().filter(func(r: Reserve): return pool_id(r) == id).front()
+		if pool != null:
+			var n := e.amount * (at_rank if e.per_rank else 1)
+			seal(pool, 0 if e.op == "mul" else roundi(n), source, n if e.op == "mul" else 0.0, DEBT_TAG in e.tags)
+		return Applied.new(0, at_rank)
 	if e.stat == "regain":  # instant: AP back to the pool it's tagged with, and nothing stays on
 		regain(e.amount * (at_rank if e.per_rank else 1), {&"dex": &"move", &"wis": &"skill"}.get(e.tags[0] if not e.tags.is_empty() else &"", &""))
 		return Applied.new(0, at_rank)
@@ -4464,6 +4622,7 @@ func tick() -> void:
 			disabled_by.erase(s)
 			cursed.erase(s)
 			changed = true
+	prune_seals()
 	var oc: Applied = timed.get(OVERCHARGE)
 	if oc and oc.turns <= oc.total:  # Overcharge: what's left / turns left, rounded up - none on a turn that doesn't count
 		overcharge -= ceili(overcharge / float(maxi(oc.turns, 1)))
@@ -5075,20 +5234,31 @@ func _show_bars() -> void:
 		if second_bar.visible:
 			second_bar.max_value = maxi(pools()[held[1]], 1)
 			second_bar.value = r.stores.get(held[1], 0) if r else store(held[1])
+			_debt_back(second_bar, r.stores.get(held[1], 0) if r else store(held[1]))
 	for i in more_bars.size():
 		var more := more_bars[i]
 		more.visible = held.size() > i + 2 and seen
 		if more.visible:
 			more.max_value = maxi(pools()[held[i + 2]], 1)
 			more.value = r.stores.get(held[i + 2], 0) if r else store(held[i + 2])
+			_debt_back(more, r.stores.get(held[i + 2], 0) if r else store(held[i + 2]))
 	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
 	hp_bar.value = r.hp if r and r.hp != null else hp
 	energy_bar.max_value = maxi(max_energy, 1)
 	energy_bar.value = r.energy if r and r.energy != null else energy
+	_debt_back(energy_bar, r.energy if r and r.energy != null else energy)
 	if main:
 		reserve_bar.max_value = maxi(pools()[main], 1)
 		reserve_bar.value = r.stores.get(main, 0) if r else store(main)
+		_debt_back(reserve_bar, r.stores.get(main, 0) if r else store(main))
 	_stack()
+
+
+# A bar of a pool in debt (Negative Energy) is empty, with a red back (_colour_pools() restores the usual one as it
+# is shown again); the HUD's row says what is owed.
+func _debt_back(bar: ProgressBar, level: float) -> void:
+	if level < 0.0:
+		bar.add_theme_stylebox_override("background", _flat(Color(0.55, 0.05, 0.05, 0.75)))
 
 
 func _show_faction() -> void:
