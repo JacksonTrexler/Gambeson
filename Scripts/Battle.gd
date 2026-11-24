@@ -232,7 +232,8 @@ var swept: Dictionary[Faction, Dictionary] = {}  # side -> {tile: turns_begun wh
 var sightings: Dictionary[Faction, Dictionary] = {}  # side -> {foe: where it last made it out}: where its units go looking when none is in sight (AI._hunt())
 var _marked_at: Dictionary = {}  # unit -> the cell its sight last joined explored from (known_ground())
 var explored: Dictionary[Faction, Dictionary] = {}  # side -> {tile: true}: ground its sight has reached this battle (sight_cells(); the fog of war remembers it, Overlay)
-@export var conditions: Array[StringName] = []  # the area's conditions: fog halves perception distances
+@export var conditions: Array[StringName] = []  # the area's conditions: &"fog" is fog_rank 1 (older maps)
+@export_range(0, 5) var fog_rank := 0  # area-wide fog: sight is divided by 1 + rank for all (0 none); fog zones add theirs over the tiles they cover (fog_at())
 @export_range(0.5, 1.5, 0.5) var difficulty := 1.0  # the area's difficulty (Difficulty.area()): 0.5 gentle, 1 standard, 1.5 harsh - spawn caps, portals (the Meadows)
 var winner: Faction  # a side that won outright (escape()), whoever's still standing
 @export var area_tags: Array[StringName] = []  # what the whole battlefield is (indoors, city, forest, desert...): debris where its tiles say nothing
@@ -5166,11 +5167,20 @@ func escape(u: Unit) -> void:
 	phase = Phase.OVER
 
 
-# How far o perceives others in tiles: its wisdom total, halved in fog; -1 where sight isn't limited.
+# The fog rank at cell c: the strongest of the area's (fog_rank, or 1 for &"fog" in conditions) and any fog zone's level there.
+func fog_at(c: Vector2i) -> int:
+	var rank := maxi(fog_rank, 1 if &"fog" in conditions else 0)
+	for z in zones:
+		if z.kind == &"fog":
+			rank = maxi(rank, z.levels.get(c, 0))
+	return rank
+
+
+# How far o perceives others in tiles: its wisdom total over 1 + the fog rank where it stands; -1 where sight isn't limited.
 func perception_range(o: Unit) -> float:
 	if not sight:
 		return -1.0
-	return o.stat(&"wisdom") * (0.5 if &"fog" in conditions else 1.0)
+	return o.stat(&"wisdom") / (1.0 + fog_at(o.cell))
 
 
 # How far t is within o's side's sight, shared across the side: 2 within half some one of its range

@@ -85,6 +85,12 @@ func test_sight() -> void:
 	mb.conditions.append(&"fog")
 	mb.move(s, me.cell + Vector2i(7, 0))
 	ok(mb.perception_range(me) == 6.0 and mb.read(me, s).net <= -4, "fog halves it")
+	mb.fog_rank = 2
+	ok(mb.perception_range(me) == 4.0 and mb.fog_at(me.cell) == 2, "rank 2 fog: a third")
+	mb.fog_rank = 0
+	mb.zones.append(Battle.Zone.new(&"fog", {me.cell: 3} as Dictionary[Vector2i, int], 2, me.faction))
+	ok(mb.perception_range(me) == 3.0, "a rank 3 fog zone where it stands: a quarter (strongest rank wins over the area's 1)")
+	mb.zones.clear()
 	m.free()
 
 
