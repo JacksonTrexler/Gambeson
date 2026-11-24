@@ -184,3 +184,87 @@ func test_two_bars() -> void:
 	ok(u.hp_bar.position.y + u.hp_bar.size.y == u.reserve_bar.position.y, "under HP")
 	u.learned.pop_back(); u.sync_bar()
 	u.learned.pop_back(); u.sync_bar()
+
+
+# Negative Energy (docs/plans/w22-negative.md): one rule for Energy (Power) and every reserve. A pool goes below 0
+# only where a debt effect (tagged with it) allows, down to -max; every gain first fills the debt, at
+# efficiency 1 - half the debt's share of max (debt = max: 0.5; half: 0.75), a fraction carried to the next gain;
+# what is left past 0 comes whole.
+func test_debt_all_pools() -> void:
+	var u := v(1)
+	u.max_energy = 10
+	u.reserves[mana] = 10
+	u.reserves[stamina_pool] = 10
+	for pool: Variant in [&"energy", mana, stamina_pool]:
+		var id := Unit.pool_id(pool)
+		u.set_exact(pool, 3)
+		u.set_level(pool, -5)
+		ok(u.level_of(pool) == 0, "%s: no debt where nothing allows it" % id)
+		u.afflict(effect("debt", 1.0, [id] as Array[StringName]), 9)
+		u.set_level(pool, -5)
+		ok(u.level_of(pool) == -5 and u.debt_floor(pool) == -10, "%s: a debt effect lets it owe" % id)
+		u.set_level(pool, -99)
+		ok(u.level_of(pool) == -10, "%s: the floor is -max" % id)
+		u.set_exact(pool, -6)  # 60% in debt: 0.7
+		u.set_level(pool, u.level_of(pool) + 10)
+		ok(u.level_of(pool) == 1, "%s: 10 gained on 60%% debt (0.7): 8.6 of it fills the 6 owed, the rest whole: 1" % id)
+		u.set_exact(pool, -10)
+		for i in 2:
+			u.set_level(pool, u.level_of(pool) + 1)
+		ok(u.level_of(pool) == -9, "%s: debt = max, half a point a gain, the fraction carried: 2 gains, 1 point" % id)
+		u.set_exact(pool, -5)
+		u.set_level(pool, u.level_of(pool) + 4)
+		ok(u.level_of(pool) == -2, "%s: 50%% debt: 4 gained -> 3 (0.75)" % id)
+		u.set_exact(pool, -2)
+		u.set_level(pool, u.level_of(pool) + 20)
+		ok(u.level_of(pool) == 10, "%s: past the debt, whole, up to max" % id)
+		u.timed.clear()
+	u.afflict(effect("debt", 1.0, [&"energy"] as Array[StringName]), 9)
+	u.set_level(&"energy", -4)
+	u.set_level(mana, -4)
+	ok(u.level_of(&"energy") == -4 and u.level_of(mana) == 0, "a debt effect allows only the pool it names")
+	u.set_exact(&"energy", -10)
+	ok(u.grant_energy(4) == 2 and u.energy == -8, "every gain goes through it: Energy granted by an effect")
+
+
+# seal (Effect stat; Unit.seal()): locks points or a share of a pool's max out of its usable max, and out of what it
+# holds, until its source is gone - a Callable that answers false, a freed node, a dead unit. Seals stack; when one
+# lifts, the pool is not refilled. Past what it holds the rest is lost, or debt where the seal bears the tag debt.
+func test_seal() -> void:
+	var u := v(1)
+	u.max_energy = 10
+	u.reserves[mana] = 10
+	u.energy = 10
+	u.set_store(mana, 10)
+	var up := [true]
+	var tile := func(): return up[0]
+	var node := Node.new()
+	u.seal(&"energy", 2, tile)
+	u.seal(&"energy", 0, node, 0.2)
+	ok(u.locked(&"energy") == 4 and u.usable_max(&"energy") == 6 and u.energy == 6, "two seals stack: 2 points and 20% locked, out of the max and of what it holds")
+	u.energy += 20
+	ok(u.energy == 6 and u.max_energy == 10, "gains stop at the usable max")
+	ok(u.locked(mana) == 0 and u.store(mana) == 10, "another pool is not touched")
+	node.free()
+	ok(u.locked(&"energy") == 2 and u.usable_max(&"energy") == 8, "a freed source lifts its seal at once")
+	up[0] = false
+	u.prune_seals()
+	ok(u.seals.is_empty() and u.energy == 6 and u.energy_bar.max_value == 10, "a Callable that answers false lifts the other; the pool is not refilled")
+	var held := Unit.new()
+	held.hp = 0
+	u.seal(mana, 1, held)
+	ok(u.locked(mana) == 0 and u.store(mana) == 9, "a unit that is not alive holds nothing (the points it took are gone)")
+	held.free()
+	u.set_store(mana, 3)
+	var plain := u.seal(mana, 5, true)
+	ok(u.store(mana) == 0 and u.locked(mana) == 5 and plain.source == true, "locking more than it holds, without debt allowed: the rest is lost")
+	u.seals.clear()
+	u.set_store(mana, 3)
+	u.afflict(effect("seal", 5, [&"mana", &"debt"] as Array[StringName]), 0, 1, true)
+	ok(u.store(mana) == -2 and u.locked(mana) == 5 and u.debt_floor(mana) == -10, "a seal bearing the tag debt (Starnest): into debt")
+	u.seals.clear()
+	u.set_exact(mana, 10)
+	var half := effect("seal", 0.5, [&"mana"] as Array[StringName])
+	half.op = "mul"
+	u.afflict(half, 0, 1, true)
+	ok(u.locked(mana) == 5 and u.usable_max(mana) == 5 and u.store(mana) == 5 and u.timed.is_empty(), "a mul seal is a share of max, and nothing timed stays on it")
