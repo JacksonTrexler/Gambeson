@@ -51,11 +51,8 @@
 [ext_resource type="Resource" path="res://Skills/clairvoyance.tres" id="s_clairvoyance"]
 [ext_resource type="Resource" path="res://Skills/borrowed_time.tres" id="s_borrowed_time"]
 [ext_resource type="Resource" path="res://Skills/thesis_of_theseus.tres" id="s_thesis_of_theseus"]
-<<<<<<< HEAD
 [ext_resource type="Resource" path="res://Skills/mana_resonance.tres" id="s_mana_resonance"]
-=======
 [ext_resource type="Resource" path="res://Trees/starbuilding.tres" id="starbuilding"]
->>>>>>> w22-astral1
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
