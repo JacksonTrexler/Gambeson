@@ -132,3 +132,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-24,w22-cast-at,sonnet,high,128836,23,340000,landed
 2026-11-24,w22-reach-stars,sonnet,medium,87107,12,165000,landed
 2026-11-24,w22-lapse-leave,sonnet,medium,82465,33,228274,landed
+2026-11-24,w22-tree-open,sonnet,medium,53550,26,383508,landed
+2026-11-24,w22-chain-portals,sonnet,medium,65290,37,445474,landed
+2026-11-24,w22-bar-reshoot,sonnet,medium,51142,12,67764,landed
