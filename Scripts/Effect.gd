@@ -258,7 +258,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
 		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
 		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??", "attack_stat": "Attack stat ??",
-		"postpone": "Disablings postponed ??", "overcome": "To be overcome ??"}
+		"postpone": "Disablings postponed ??", "overcome": "To be overcome ??", "seal": "Seal", "debt": "Debt"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -342,7 +342,11 @@ func helps() -> int:
 func value(rank := 1) -> String:
 	var x := amount * (rank if per_rank else 1)
 	var text: String
-	if op == "mul":
+	if stat == "seal":
+		text = "%s locked out of its usable max%s until what holds it is gone" % [("%s%% of the max" % Skill.num(x * 100.0)) if op == "mul" else Skill.num(x), ", and may take it into debt" if &"debt" in tags else ""]
+	elif stat == "debt":
+		text = "may owe up to %s%% of its max below 0; debt is paid before gains count, at an efficiency of 1 less half the debt's share of max" % Skill.num(x * 100.0)
+	elif op == "mul":
 		text = "x" + Skill.num(x)
 	elif op == "scale":
 		text = "x" + Skill.num(1.0 + x)

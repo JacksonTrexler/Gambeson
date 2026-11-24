@@ -5234,20 +5234,31 @@ func _show_bars() -> void:
 		if second_bar.visible:
 			second_bar.max_value = maxi(pools()[held[1]], 1)
 			second_bar.value = r.stores.get(held[1], 0) if r else store(held[1])
+			_debt_back(second_bar, r.stores.get(held[1], 0) if r else store(held[1]))
 	for i in more_bars.size():
 		var more := more_bars[i]
 		more.visible = held.size() > i + 2 and seen
 		if more.visible:
 			more.max_value = maxi(pools()[held[i + 2]], 1)
 			more.value = r.stores.get(held[i + 2], 0) if r else store(held[i + 2])
+			_debt_back(more, r.stores.get(held[i + 2], 0) if r else store(held[i + 2]))
 	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
 	hp_bar.value = r.hp if r and r.hp != null else hp
 	energy_bar.max_value = maxi(max_energy, 1)
 	energy_bar.value = r.energy if r and r.energy != null else energy
+	_debt_back(energy_bar, r.energy if r and r.energy != null else energy)
 	if main:
 		reserve_bar.max_value = maxi(pools()[main], 1)
 		reserve_bar.value = r.stores.get(main, 0) if r else store(main)
+		_debt_back(reserve_bar, r.stores.get(main, 0) if r else store(main))
 	_stack()
+
+
+# A bar of a pool in debt (Negative Energy) is empty, with a red back (_colour_pools() restores the usual one as it
+# is shown again); the HUD's row says what is owed.
+func _debt_back(bar: ProgressBar, level: float) -> void:
+	if level < 0.0:
+		bar.add_theme_stylebox_override("background", _flat(Color(0.55, 0.05, 0.05, 0.75)))
 
 
 func _show_faction() -> void:
