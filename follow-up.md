@@ -44,35 +44,37 @@ Follow-ups built 2026-11-24: ?386 to ?389 (HUD polish, the repeated-cast refusal
 **F2. "Live circuit" for Power Siphon.** Which tiles count as live?
 Best guess: every startile connected to a generator by an unbroken run of startiles (4-neighbour; a cracked or missing startile cuts it); a generator's own tile is live; panes never are. A unit on a cut-off startile gets nothing.
 Ref: `Scripts/AstralNexus.gd:102 _connect()`; `Terrain/starpower_generator.tres`.
-Answer: ____
+Answer: **Yes unpowered starpanes / startiles do not confer energy transfer, 4-neighbour, but signal strength depends on rank of starpower generator / starpanel rank. a rank 1 powered tile confers power to tiles within 1 tile, rank 2 > two tiles etc.**
 
 **F3. Power Siphon's numbers.** "Draining 5% health on turn end to gain 5% power, from each unit standing on the live circuit." 5% of max or current HP? Allies and the foe both? Can it kill? What is "power" for a unit with no Power reserve (Energy share)?
 Best guess: 5% of max HP (at least 1), floor at 1 HP so it never kills; every unit on the circuit, either side; gains 5% of max Power if it has the reserve, else nothing (still drained: a trap, as built for pits). Runs in the owning side's turn-end, once per unit a turn.
 Ref: new hook beside `Terrain.gd` tile effects; `?267` says generators are inert today; Power reserve in `Scenes/starman.tscn`.
-Answer: ____
+Answer: **the generator gets 5% out of 100% (abstract). the units standing near a generator lose 5% of their max hp. Units standing on a star generator or starpanel *get* a small amount of energy, or a moderate amount of Power if they can regain power. Roll siphoning as medium con checks with tile rank as penalty**
 
 **F4. How much larger is "a little larger"?** Today 23 x 13 with 3 generators.
 Best guess: 31 x 17, 5 generators sprinkled (not in a line), `START` on the left edge; 4 to 6 starmen as now.
 Ref: `Scripts/AstralNexus.gd:9-11` (`WIDTH`, `HEIGHT`, `GENERATORS`), `Scenes/astral_nexus_play.tscn`.
-Answer: ____
+Answer: **2-3 generators, there should be plenty of pockets of empty space. also include a few bridges only composed of startiles, 2 wide, panel rank *2 in length connected to panels on either side. Scale generator ranks, panel ranks, map size, and number of starmen spawned with difficulty.
 
 **F5. Astral void is impassable, but a pit you can jump.** Does a unit that jumps onto a void tile fall, or only across it? Do flyers and floaters stay up on it? Do hostile NPCs with no Jump treat it as a wall for pathing?
 Best guess: a jump must land on non-void; "floating or flying" (a `float` / `flight` tag) ignore it; void is a wall in `AI` paths and the Path overlay (enter cost 99 today stays as the "impassable" for walkers, ?267).
 Ref: `Terrain/astral_void.tres`; grep found no `jump` code in `Scripts/Unit.gd` or `Battle.gd`, so Jump is new, build on the push / teleport movement.
-Answer: ____
+Answer: *units can't try to fall by default (ctrl click when targeting landing?)**
 
 **F6. Same tiles as the astral envoy encounter.** Reuse the envoy's tile resources (`Scenes/astral_envoy.tscn`) in the Nexus. Does the envoy fight pick up the generators and Power Siphon too, or only share art?
 Best guess: share the resources only; the envoy encounter stays as it is (its tuning is ?29).
 Ref: `Scenes/astral_envoy.tscn`, `Dungeons/astral_nexus.tres`.
-Answer: ____
+Answer: **they're the same tile resources yes. different ranks maybe / instances of course**
 
 **?267 (rest). Power Star.** Win reward at 15% a rank, charge lost on save, starmen on the unaligned faction. Still right now that the starmen are Vindictive towards hostile astral creatures (F8)?
 Best guess: keep; the Envoy and Princess stay on a hostile faction, starmen "unaligned" so Vindictive has someone to hunt; no loot change.
 Ref: `Dungeons/astral_nexus.tres`, `Items/power_star.tres`, `docs/plans/w16-nexus.md`.
-Answer: ____
+Answer: **the starmen are vindicitve primarily so they attack envoy princesses on sight in and out of the encounter. for starnests there's a very rare chance a neutral princess shows up alongside a signficiantly increased number of starmen.**
+
+**Princesses have vindictive against unallied astral creatures: they'll go out of their way to attack starmen and defectors, even if that means engaging on a neutral unit**
 
 **Standing calls (items):** ?118 item rank-up and the Habergeon sources; ?212 Send Off's ward on a foe sent away; ?213 `Unit.pack`, `POINT`, `DELAY`, Astral Princess loot (`Loot/astral_princess.tres`); ?228 free lends, Hollow Bones' flight and defense, the plain lend free for Broadsword, Hobnail Boots; ?249 are all item icons committed. Best guess: keep all as built, say so below.
-Answer: ____
+Answer: **keep for now**
 
 ---
 
@@ -81,32 +83,36 @@ Answer: ____
 **F7. Fog radius in tiles (blocks F).** "Units can only see others within full wis range; tiles outside are in the fog of war." Sight already exists: a unit's reading range is its wisdom total in tiles, shared by its side, with appearances only inside half of it. So is the fog the full range, per unit or per side, and is it the same number?
 Best guess: reuse the existing number (wisdom total, one tile per point, the full ring, not the half); the fog is the union over the player's side (any ally sees), drawn dimmed over unseen tiles, terrain remembered once seen, units there hidden; the AI uses the same `in_range`, so no new cost.
 Ref: `Scripts/Battle.gd:219` (`sight`), `:4973 in_range()`, `:4719 beyond_sight()`, `Scripts/Perception.gd:492 _range()`.
-Answer: ____
+Answer: **give the fog ranks. fog divides sight range for units inside by 1 + rank.**
 
 **F8. Vindictive (starmen) against the existing vindictive temper (blocks E).** The temper exists: `Bio.BEHAVIOURS` vindictive "goes after whoever hurt it or its own", grudges by name, class, race or tag (`Unit.wrongs`, `AI._grudge`). Your starmen Vindictive: "singlemindedly prioritize hostile astral creatures in combat if not otherwise aggressed". One rule or two?
 Best guess: one rule. A starman's Bio carries `behaviour = vindictive` with `grudges = ["astral"]` (a tag), so it starts with a standing grudge on any hostile unit tagged astral; being struck by anyone else adds that attacker's side (existing weights, 2 a blow, cap 3) and "otherwise aggressed" = the new grudge outweighs the standing one.
 Ref: `Scripts/Bio.gd:9,18,39`, `Scripts/AI.gd:846 _grudge()`, `Scripts/Unit.gd:170 wrongs`, `docs/plans/w16-tempers.md`.
-Answer: ____
+Answer: *details not super important at present, but yes a vindictive unit with a grudge has a preset list of tags used to direct aggro against units. vindictive units are still vindictive though, they'll prioritize whichever units engage with them as well.*
 
 **F9. Flippant: what is "a significant amount of damage"?** Skirts evasively or aimlessly until punished.
 Best guess: 25% of max HP lost in one fight (any source), then it switches to `aggressive` for the rest of the fight; aimless = a random walk to tiles out of foes' reach, cheap (no scoring), so the turn budget is untouched.
 Ref: `Scripts/Bio.gd:18`, a new branch in `Scripts/AI.gd` beside `_recover` / `_escape`.
-Answer: ____
+Answer: **we should have this added to the table in some way, but yeah about 15%-20% should be enough for evasive units to swap to an aggressive confrontation style**
 
 **F10. Power Hungry.** Moves beside the target with the most Power (else Energy, else other reserves) and transfers energy, also from neutrals. Does that count as a hostile act (neutrals turn hostile)? Which skill does it use?
 Best guess: not hostile (neutrals stay neutral), uses the existing Energy Transfer (`Skills/energy_transfer.tres`, `Behaviours/energy_transfer.gd`) as its only skill, "high" = largest share of its max, it won't drain below 25% of the target's.
 Ref: `Behaviours/energy_transfer.gd`, `Behaviours/energize.gd` (named, not defined), `Scripts/AI.gd` `_strike`.
-Answer: ____
+Answer: **this is "harassment" not hostile per se but certainly not friendly. Units that are either confident in their ability to succeed in combat against them (higher BST + wis, not deterred by int check on simulating), or unable to percieve the danger / hold their hand (low wis and/or low cha / inability to size up an opponent well and moderate their own behavior). Basically theft with these unit stealing energy: not often worth dying over**
 
 **?270. Ramut's Ire: does it need a cost? (still unanswered).** Built with none, on its holder, tier 2 after Pray.
 Best guess: no cost (it is a reaction to being wronged and "lands on its holder"); keep tier 2.
 Ref: `Skills/ramuts_ire.tres`, `Trees/ramut.tres:7-11`, `docs/plans/w16-ire.md`.
-Answer: ____
+Answer: **very cheap not free, easy to exhaust, extreme exhaust impact (can basically only be used once per turn)**
 
 **?257, ?243, ?260, ?266. The AI's time budgets.** Unit turn 200 ms, a side's end_turn 1000 ms on the target (M3 x 4); the 30-a-side stare p95 ~950 to 2050 ms with a ~5% margin. Acceptable, or keep cutting?
 Best guess: acceptable ("raise the budget provided players don't actually spend time waiting"); no more cuts unless a swarm gets slow. Optional micro-cuts stay unbuilt: `end_turn` stat reads, a path round a unit's own column (?266), Opportunist on `_recover` / `_escape` / `_hunt` (?263), `Battle._enter` (?265).
 Ref: `Tests/sims/busy_fight.gd:25-26`, `docs/plans/w13-aifast.md`.
-Answer: ____
+Answer: **that's fine frankly the turns are going sort of fast right now, good problem to have. like units should probably act and descisionmake as a group when possible: a group of soldiers or monster hunters would decide to path to and attack the same monster. in addition to the moves being made almost simultaniously they could attack in a quick sequence too in many cases: they're a unit after all. might be fun to allowed skilled leaders on allied sides / as a player coordinate group attacks: effects that only retain for a single assault could be shared among allies**
+
+**t3 specialist leadership tree skill: Assault: select rank + 1 allies, then select a target. Units will attempt to use movement and their leftmost attack skill on up to rank selected targets, attacking the target closest to them. Attack order is determined by selection order. If no valid tile is available, units occupying needed spaces may attempt a medium wisdom + dex hybrid check**
+
+**details of implementation are up to you for now**
 
 **?271, ?272. Tempers and herds, as built.** "Grudge" pop-up shares the Grudge skill's name; weight 2 a blow cap 3; flirty cut cha 14; `SIGN_HOLD` 0.3 s; "skilled leader" = tag `leader` or cha 14 (no unit has the tag, no Glossary entry); herd size 3, `COHESION` 3 tiles, herd members in a fight take full turns; no test for the soft strike.
 Best guess: keep; add a `leader` Glossary tag and one soft-strike test when next in the file.
