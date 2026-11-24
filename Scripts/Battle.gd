@@ -3572,6 +3572,8 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		return passed
 	var w := walk(u, dest)
 	passed = w.path
+	var costs: Array[float] = w.costs
+	var hop := _cross(u, passed, costs)  # a powered portal on the way: it comes out on its pair, the walk goes on from there
 	if w.squeezed > 0 and w.squeezed <= passed.size():  # a step only luck paid for, and it stood or passed there
 		passive(u, null, u.luck, &"luck")
 	if w.blocker and not read(u, w.blocker).located():  # it walked into something it couldn't place: that it's there, at least
@@ -3582,7 +3584,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		var sights := _sightings(u) if _may_hide(u, passed) else {}  # those watching it step into cover (_vanish())
 		var touched := range(passed.size()).filter(func(i: int): return not u.passes_by(terrain(passed[i]), i + 1))
 		var began := u.steps  # the tiles it had walked before this (_toll())
-		u.walked(passed.size(), w.costs.reduce(func(sum, x): return sum + x, 0.0))
+		u.walked(passed.size(), costs.reduce(func(sum, x): return sum + x, 0.0))
 		for k: StringName in w.bag:
 			u.tally[k] = u.tally.get(k, 0) + w.bag[k]
 		if sight:
@@ -3611,10 +3613,13 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		_tidy_debris()
 		_contact(u, passed)
 		traveled.emit(u, from, passed)
+		if not hop.is_empty():
+			ported.emit(u, hop[0], hop[1])
 		_through(u)
 		if terrain(u.cell).is_trap() and passed.size() - 1 in touched:
 			spring(u.cell, u)
-		_portal(u)  # a powered portal where the walk ends (Starway)
+		if hop.is_empty() or passed[-1] != hop[1]:
+			_portal(u)  # a powered portal where the walk ends (Starway)
 		if u.is_alive():
 			_first_look(u)
 			UNDEAD.settle(self, u)  # Restless Dead ?? seen walking, as a cast is
@@ -5747,11 +5752,39 @@ func pair_portals(a: Vector2i, b: Vector2i) -> void:
 	portals[b] = a
 
 
+# Where u stepping onto `from` would come out: its pair when powered and free, else `from`.
+func _exit_of(u: Unit, from: Vector2i) -> Vector2i:
+	if from not in portals or not u.is_alive() or unit_at(portals[from]) or not (signal_at(from) >= 0 or not has_star(from)):
+		return from
+	return portals[from]
+
+
+# A walk that passes a powered portal (not its last tile) comes out on the pair, and goes on if the next step is beside it;
+# otherwise it ends there. Edits the path and costs in place (the hop costs nothing); [entry, exit] if it hopped.
+func _cross(u: Unit, path: Array[Vector2i], costs: Array[float]) -> Array[Vector2i]:
+	for i in range(path.size() - 1):
+		var to := _exit_of(u, path[i])
+		if to == path[i]:
+			continue
+		var entered := path[i]
+		var rest := path.slice(i + 1)
+		var rest_costs := costs.slice(i + 1)
+		path.resize(i + 1)
+		costs.resize(i + 1)
+		path.append(to)
+		costs.append(0.0)
+		if maxi(absi(rest[0].x - to.x), absi(rest[0].y - to.y)) <= 1:
+			path.append_array(rest)
+			costs.append_array(rest_costs)
+		return [entered, to] as Array[Vector2i]
+	return [] as Array[Vector2i]
+
+
 func _portal(u: Unit) -> void:
 	var from := u.cell
-	if from not in portals or not u.is_alive() or unit_at(portals[from]) or not (signal_at(from) >= 0 or not has_star(from)):
+	var to := _exit_of(u, from)
+	if to == from:
 		return
-	var to := portals[from]
 	if move(u, to):
 		_arrive(u, to)
 		ported.emit(u, from, to)

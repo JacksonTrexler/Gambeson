@@ -106,6 +106,14 @@ func test_starway() -> void:
 	b.place(w, Vector2i(6, 3))
 	ok(w.cell == Vector2i(6, 3), "unpowered: it is only a tile")
 	b.charge[Vector2i(5, 5)] = Battle.STAR_CAPACITY
+	b.move(w, Vector2i(3, 3))
+	var seen: Array = []
+	b.ported.connect(func(_u, f, t): seen.append([f, t]))
+	b.travel(w, Vector2i(5, 3))
+	ok(w.cell == Vector2i(5, 3) and seen == [[Vector2i(4, 3), Vector2i(6, 3)]], "a walk through one hops at once and goes on from the pair if the next step is beside it (%s)" % w.cell)
+	b.move(w, Vector2i(4, 5))
+	b.travel(w, Vector2i(4, 1))
+	ok(w.cell == Vector2i(6, 3) and seen.size() == 2, "...else it ends on the pair, not hopping back (%s)" % w.cell)
 	b.move(w, Vector2i(8, 8))
 	b.expose(Vector2i(4, 3), [&"blunt"] as Array[StringName])
 	ok(b.portals.is_empty(), "break one end and the pair is gone")
