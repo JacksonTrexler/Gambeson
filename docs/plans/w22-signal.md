@@ -18,7 +18,16 @@ Goal (F1 answer): sources radiate signal; decays 1/tile, Manhattan (diagonal = 2
 9. Nexus: generator platform = startile diamond radius 2 (was a 1-2 cross + diagonal panes); Stardust on 30% of the rest of each generator's reach on floor; beside wires 40% startile walkway, 30% Stardust (regrows in 1 round: panes build walkways out).
 10. "signal" a Glossary term (mechanic.py tag, --human, kind ground).
 
-## Done
-(see As built)
+## As built
+- Terrain.power_rank, Terrain.regrows. starpower_generator power_rank 5, starpane 1. Terrain/stardust.tres + Tiles/stardust.png (speckle, PIL) via tile.py --human; cracked_startile.breaks_into = stardust.
+- Battle: radiate() static (generic {cell: power}), signal_sources(), _rank(), _field() cache ([_layer_ver, panes.hash(), charge.hash()]), signal_at(), signal_near(); circuit_ends() reads the field; _owe gate on_lattice dropped; _repair_tiles regrows branch + _repaired() helper.
+- AstralNexus: PLATFORM 2 diamond, REACH 5, DUST 0.3, WALK 0.4/0.3; `dust` list; _diamond(), _inside().
+- Glossary term signal (mechanic.py tag, --human, ground).
+- Tests: astral_test.test_signal (new: decay, diagonal 2, 20% steps, live wiring, dead circuit, crack->dust, hold unpowered, y-round regrowth). Mutations (Chebyshev, 10%/tile, goal 1, pane always live) each fail it. Updated: stars_test.test_siphon/test_siphon_priced (generator 20% charge, off cell (4,3): field reach), tower_test.test_nexus (+2 checks: flooring only in signal, generators signal 5 on a platform).
+- Perf (nexus seed 3): circuit_ends read 1.8 us (was 8.5 us BFS); field recompute 287 us, only on change (221 cells).
+- Suite 11635 -> 11647 checks, 0 failed (1087 tests). Visual: S/shot_w22-signal/m00000099.png (Stardust speckle, platforms, wires).
 
-## Next
+## Next / undone
+- Overlay draws no progress arc on regrowing Stardust (HUD text "Repairing n/y" shows); no HUD signal readout (HUD not mine).
+- Cracked startile mending still charge-based (_mender); could fold onto the field. star_source()/star_rate() still BFS per read.
+- No decay of unpowered star flooring; AI blind to regrowth. Skill-placed generator: lay a ranked layer, the field picks it up.
