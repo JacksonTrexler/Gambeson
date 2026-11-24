@@ -142,3 +142,14 @@ func test_ai_crosses_void() -> void:
 	b.lay_layer(Vector2i(6, 3), Battle.STARTILE)
 	b.lay_layer(Vector2i(3, 3), Battle.STARTILE)
 	ok(AI._span(b, bridger, Vector2i(9, 3), log) and b.terrain(Vector2i(5, 3)) == Battle.STARTILE, "or a Starbridge to the powered tile on the far side")
+
+
+# The tree is a tab on four casters. Tiers 1, 2, 2, 3 by what comes first (Role.tier: 1 + its prerequisites); the user's t6 Starway
+# is min_tier 6 (Unit.tier()), as the t7 and t9 after it will be (D2).
+func test_tree() -> void:
+	var ids := ["startile", "starbridge", "starpanel", "starpower_generator", "starway"]
+	for who in ["wizard", "mage", "sorcerer", "adventurer"]:
+		var role: Role = load("res://Roles/%s.tres" % who)
+		var u := b.from_role(lancin, role, "Tester")
+		var tiers := ids.map(func(id: String): return u.tier(sk(id)))
+		ok(tiers == [1, 2, 2, 3, 6] and role.trees().any(func(t: SkillTab): return t.title() == "Starbuilding ??" and ids.all(func(id: String): return t.offers(sk(id)))), "%s: Starbuilding tiers %s" % [who, tiers])

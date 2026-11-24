@@ -27,7 +27,6 @@ after = Array[ExtResource("skill")]([ExtResource("s_starpanel")])
 script = ExtResource("2_branch")
 skill = ExtResource("s_starway")
 after = Array[ExtResource("skill")]([ExtResource("s_starpower_generator"), ExtResource("s_starbridge")])
-needs = 1
 
 [sub_resource type="Resource" id="Branch_starbridge"]
 script = ExtResource("2_branch")

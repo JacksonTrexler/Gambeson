@@ -260,6 +260,7 @@ tabs = Array[ExtResource("10_tab")]([SubResource("Tab_College_Battle"), SubResou
 [sub_resource type="Resource" id="Tab_starbuilding"]
 script = ExtResource("10_tab")
 name = "Starbuilding ??"
+color = Color(0.25, 0.75, 0.66, 1)
 roots = Array[ExtResource("8_root")]([ExtResource("starbuilding")])
 
 [resource]

@@ -22,3 +22,4 @@ behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_star_plac
 max_rank = 5
 radius_mod = &"intelligence"
 no_density = "its reach is casting mod + rank: nothing else scales"
+min_tier = 6

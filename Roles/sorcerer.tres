@@ -21,6 +21,7 @@ skill = ExtResource("4_strike")
 [sub_resource type="Resource" id="Tab_starbuilding"]
 script = ExtResource("skilltab")
 name = "Starbuilding ??"
+color = Color(0.25, 0.75, 0.66, 1)
 roots = Array[ExtResource("7_skillroot")]([ExtResource("starbuilding")])
 
 [resource]
