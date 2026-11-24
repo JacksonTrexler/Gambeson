@@ -1397,7 +1397,7 @@ func why_not(u: Unit, s: Skill, target: Variant) -> String:
 # only its own turn; select, let_go, refuse.
 func intent(c: Vector2i, force := false, inspect := false, alt := false) -> Dictionary:
 	var me := selected
-	var it := {kind = &"none", cell = c, unit = me, skill = null, target = null, dest = me.cell if me else NOWHERE, walk = {}, ready = false, why = "", alt = alt}
+	var it := {kind = &"none", cell = c, unit = me, skill = null, target = null, dest = me.cell if me else NOWHERE, walk = {}, ready = false, why = "", alt = alt, fall = force}
 	if c == NOWHERE:
 		return it
 	if battle.phase == Battle.Phase.PREP:
@@ -1700,7 +1700,7 @@ func _run(it: Dictionary) -> void:
 			var why := why_not(u, s, target)
 			var took := false
 			if why == "" or not walked:
-				took = battle.cast_at(u, s, it.cell, not it.alt, chose) if s.on_tile() else (target != null and battle.cast(u, s, target, false, picked))
+				took = battle.cast_at(u, s, it.cell, not it.alt, chose, it.get("fall", false)) if s.on_tile() else (target != null and battle.cast(u, s, target, false, picked))
 			if took:
 				_done(u, walked)
 				return

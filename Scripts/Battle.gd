@@ -3075,12 +3075,12 @@ func _lose_cover(u: Unit) -> void:
 # Darkstone's zone, Flamewall, Solar and Wildfire's cones, Observe, Shields Up!, Well Up); trap skills (Snare) lay a trap there (lay());
 # channeled skills (Metea) begin channeling there, and once begun strike where they can (_detonate()).
 # A Rift is channeled unless `held` is false (Alt-click): then its count starts at once.
-func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true, chose := "") -> bool:
+func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true, chose := "", fall := false) -> bool:
 	if _casting == 0:
 		_chosen = chose
 	_casting += 1
 	var opened := _begin_use(caster, skill)
-	var done := _cast_at(caster, skill, c, held)
+	var done := _cast_at(caster, skill, c, held, fall)
 	if opened:
 		_end_use(opened)
 		if done:
@@ -3092,7 +3092,7 @@ func cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true, chose := "")
 	return done
 
 
-func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
+func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true, fall := false) -> bool:
 	if not _acting(caster) or skill not in caster.actives or not skill.on_tile() or not on_map(c):
 		return false
 	if (caster.stat(&"mist") > 0.0) != skill.mist_only:
@@ -3109,7 +3109,7 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 		return false
 	if skill.rifts and not can_rift(caster, skill, c):
 		return false
-	if not skill.behaviours.all(func(x: Behaviour): return not x or x.fits_at(self, caster, c)):
+	if not skill.behaviours.all(func(x: Behaviour): return not x or x.fits_at(self, caster, c, fall)):
 		return false  # not a tile it can be aimed at (a Jump onto void)
 	var at := unit_at(c)
 	if not caster.pay_for(skill, price_cut(caster, skill, [at] as Array[Unit])):
@@ -3127,6 +3127,8 @@ func _cast_at(caster: Unit, skill: Skill, c: Vector2i, held := true) -> bool:
 	else:
 		_land(cast_of(caster, skill, null, caster.rank(skill), skill.hostile), c)  # its behaviours' apply_at() (Flamewall, Solar, Observe...)
 	caster.striding = false
+	if fall and caster.is_alive() and not footing(caster, caster.cell):
+		caster.slay()  # it meant to land on void and did (Ctrl): it falls, as _restack() has it
 	used.emit(caster, skill, c, 0)
 	return true
 
@@ -4288,9 +4290,10 @@ func on_map(c: Vector2i) -> bool:
 
 
 # Whether u could stand on c, put down there (a jump's landing: Behaviours/jump.gd): on the map and not void, unless it
-# floats or flies (_cost()). Who stands there already is the caller's to ask.
-func footing(u: Unit, c: Vector2i) -> bool:
-	return on_map(c) and (&"void" not in terrain(c).tags or u.has_tag(&"floating") or u.has_tag(&"flight"))
+# floats or flies (_cost()). `fall` (the player's Ctrl-click on a landing): void will do, the unit means to fall. Who
+# stands there already is the caller's to ask. No unit lands on void otherwise (the AI never passes fall).
+func footing(u: Unit, c: Vector2i, fall := false) -> bool:
+	return on_map(c) and (fall or &"void" not in terrain(c).tags or u.has_tag(&"floating") or u.has_tag(&"flight"))
 
 
 # The tiles on the map within r + 0.5 of c: every tile within r by either measure (as the crow flies,

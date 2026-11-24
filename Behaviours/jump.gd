@@ -10,8 +10,8 @@ func tile_target() -> StringName:
 	return &"tile"
 
 
-func fits_at(b: Battle, caster: Unit, cell: Vector2i) -> bool:
-	return cell != caster.cell and not b.unit_at(cell) and b.footing(caster, cell)
+func fits_at(b: Battle, caster: Unit, cell: Vector2i, fall := false) -> bool:
+	return cell != caster.cell and not b.unit_at(cell) and b.footing(caster, cell, fall)
 
 
 func apply_at(c: Cast, cell: Vector2i) -> void:

@@ -31,6 +31,18 @@ func test_void_and_jump() -> void:
 	u.learned.pop_back(); u.learned.pop_back(); u.sync_bar(); u.refresh()
 
 
+func test_ctrl_lands_on_void() -> void:
+	stage(lancin, {v(1): Vector2i(2, 3), v(3): Vector2i(8, 8)})
+	var u := v(1)
+	var was := b.terrain(Vector2i(4, 3))
+	b.paint(Vector2i(4, 3), void_t)
+	u.learned.append(slot(hop)); u.sync_bar(); u.refresh()
+	ok(not b.footing(u, Vector2i(4, 3)) and b.footing(u, Vector2i(4, 3), true), "footing(): void only on purpose (fall)")
+	ok(not b.cast_at(u, hop, Vector2i(4, 3)) and u.is_alive(), "no fall flag: the jump is refused")
+	ok(b.cast_at(u, hop, Vector2i(4, 3), true, "", true) and not u.is_alive(), "Ctrl-landing on void: it jumps and falls")
+	b.paint(Vector2i(4, 3), was)
+
+
 func test_floaty_scales() -> void:
 	stage(lancin, {v(1): Vector2i(2, 3)})
 	var u := v(1)

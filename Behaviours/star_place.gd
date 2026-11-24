@@ -27,7 +27,7 @@ func tile_target() -> StringName:
 	return &"tile"
 
 
-func fits_at(b: Battle, caster: Unit, cell: Vector2i) -> bool:
+func fits_at(b: Battle, caster: Unit, cell: Vector2i, _fall := false) -> bool:
 	var s := _skill(caster)
 	if s == null or not caster.pays_power(s):
 		return false

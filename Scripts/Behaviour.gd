@@ -132,7 +132,7 @@ func missed(_c: Cast) -> void:
 
 # Whether a tile skill it's on may be aimed at `cell` by caster (Battle._cast_at(), before it's paid for): a Jump
 # lands only where its jumper can stand (Battle.footing()). Pure.
-func fits_at(_b: Battle, _caster: Unit, _cell: Vector2i) -> bool:
+func fits_at(_b: Battle, _caster: Unit, _cell: Vector2i, _fall := false) -> bool:
 	return true
 
 
