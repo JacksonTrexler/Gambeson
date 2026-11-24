@@ -75,8 +75,11 @@ func test_siphon() -> void:
 	var gen: Terrain = load("res://Terrain/starpower_generator.tres")
 	b.lay_layer(Vector2i(6, 1), gen)
 	b.charge[Vector2i(6, 1)] = 4  # 20%: a tile of reach of its own
-	stage(lancin, {v(1): Vector2i(3, 1), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})
+	stage(lancin, {v(1): Vector2i(3, 2), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})  # v(1) beside the wire, v(2) off it
 	var hp := v(1).hp
+	v(1).constitution = -100  # weathers nothing: a medium Constitution check, the rank (1 here) a penalty
+	v(2).constitution = -100
+	ok(Battle.odds(v(3), &"constitution", null, Difficulty.dc(&"medium"), {"penalty": 5, "tiles": 1}) < Battle.odds(v(3), &"constitution", null, Difficulty.dc(&"medium"), {"penalty": 1, "tiles": 1}), "a higher rank is harder to weather")
 	b.end_turn()
 	ok(v(1).stat(&"power_siphon") == 0.05 and v(1).hp == hp - 1 and v(2).stat(&"power_siphon") == 0.0 and v(2).hp == v(2).max_hp, "on the generator's wires: siphoned; off them: not")
 	b.panes.erase(Vector2i(5, 1))
@@ -88,6 +91,21 @@ func test_siphon() -> void:
 	v(2).afflict(gen.at_end[0], 2)
 	b._siphon(v(2))
 	ok(v(2).energy == 2 and v(2).hp == v(2).max_hp - 1, "5%% of max HP gone, 5%% of max Power gained (%d)" % v(2).energy)
+	v(2).energy = 0
+	b.move(v(2), Vector2i(6, 1))  # on the generator: fed, not drained
+	b._siphon(v(2))
+	ok(v(2).energy == 2 and v(2).hp == v(2).max_hp - 1, "on a source tile: Power gained, no HP lost (%d)" % v(2).energy)
+	b.move(v(2), Vector2i(2, 1))  # on a starpane: the same
+	v(2).energy = 0
+	b._siphon(v(2))
+	ok(v(2).energy == 2 and v(2).hp == v(2).max_hp - 1, "on a starpane: fed too, no HP lost")
+	ok(b.signal_rank(Vector2i(6, 2)) == 5 and b.signal_rank(Vector2i(6, 1)) == 0, "signal_rank: the feeding source's rank, none from itself")
+	b.lay_layer(Vector2i(5, 1), Battle.STARPANE)  # the circuit mended
+	v(1).constitution = 200  # a strong constitution weathers it
+	v(1).hp = v(1).max_hp
+	b.end_turn()
+	b.end_turn()
+	ok(v(1).stat(&"power_siphon") == 0.0 and v(1).hp == v(1).max_hp, "a medium Constitution check, rank as penalty: the hardy are spared")
 
 
 # The AI prices the siphon as it does other turn-end ground: where a walk ends on the live circuit it owes the HP share;

@@ -4996,8 +4996,10 @@ func end_turn() -> void:
 			continue  # caught itself this turn: spared what the ground beneath does at turn's end
 		for e in u.footing.at_end if u.footing else ([] as Array[Effect]):
 			u.afflict(e, (e.turns if e.turns else u.footing.turns) + 1)  # + 1: the tick below takes this turn
-		for e in circuit_ends(u.cell):  # and what the live sources of its circuit put on (Power Siphon)
-			u.afflict(e, maxi(e.turns, 1) + 1)
+		var ends := circuit_ends(u.cell)
+		if not ends.is_empty() and not check(u, &"constitution", null, Difficulty.dc(&"medium"), {"penalty": signal_rank(u.cell), "tiles": 1}).won:
+			for e in ends:  # and what the live sources of its circuit put on, unless it weathers it: a medium Constitution check, the source's rank a penalty (Power Siphon)
+				u.afflict(e, maxi(e.turns, 1) + 1)
 	for u in side:
 		if u.asleep() and side.any(func(o: Unit): return o != u and next_to(o.cell, u.cell)):
 			u.wake()
@@ -6081,6 +6083,15 @@ func circuit_ends(c: Vector2i) -> Array[Effect]:
 	return out
 
 
+# The highest rank among the sources feeding c's signal (c itself aside): the penalty on weathering their at_end.
+func signal_rank(c: Vector2i) -> int:
+	var r := 0
+	for g: Vector2i in _field().get(c, [0, 0, []])[2]:
+		if g != c:
+			r = maxi(r, _rank(g))
+	return r
+
+
 # --- Signal: astral power as a field (docs/plans/w22-signal.md)
 # Sources radiate signal (radiate()): a starpower generator its charge's worth (a tile per 20%, up to
 # its rank), a starpane its rank while its circuit is live. Star flooring needs it: Stardust regrows in
@@ -6183,8 +6194,14 @@ func _siphon(u: Unit) -> void:
 	var k := u.stat(&"power_siphon")
 	if k <= 0.0 or not u.is_alive():
 		return
-	u.damage(maxi(roundi(k * u.max_hp), 1))
+	if not _on_source(u.cell):  # on a source (generator, startile, starpane) it is fed, not drained
+		u.damage(maxi(roundi(k * u.max_hp), 1))
 	u.grant_energy(maxi(roundi(k * u.max_energy), 1))
+
+
+# Whether c holds a signal source or starwork (a generator, startile or starpane).
+func _on_source(c: Vector2i) -> bool:
+	return c in starpower or c in panes or _rank(c) > 0
 
 
 # How far a unit's sap reaches another: a tile side-on, +0.25 a size step past Medium of each, so

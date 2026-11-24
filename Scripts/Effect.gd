@@ -193,7 +193,8 @@ extends Resource
 # Ambush Fusillade)
 # power_siphon: as its side's turn ends, it loses this share of its max HP and gains this share of its
 # max Power (Energy if not powered), each at least 1 (Power Siphon: a starpower generator's
-# circuit; Battle._siphon())
+# circuit; Battle._siphon()). Standing on a source (generator, startile, starpane) it gains only; beside
+# one it is put on only by a failed medium Constitution check, the source's rank a penalty (end_turn())
 # healed: share more HP a heal tagged like its tags gives it, x rank (Undead: dark and undead
 # heals +5% a rank; Unit.heal())
 # seal: locks points of a pool out of its holder's usable max until its source is gone: its tag
