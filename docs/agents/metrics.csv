@@ -116,3 +116,5 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w21-autospec-save,sonnet,medium,43999,17,180587,landed
 2026-11-23,w21-books-ai,sonnet,medium,53540,17,205406,landed
 2026-11-23,w21-docslast,sonnet,low,41140,6,31384,landed
+2026-11-23,w22-signal,opus,medium,133685,47,733585,landed
+2026-11-23,w22-negative,sonnet,high,126182,53,568186,landed
