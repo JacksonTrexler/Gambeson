@@ -2687,8 +2687,9 @@ func _tile_notes(c: Vector2i, r: Read) -> Array:
 		out.append([d.kind + (": left by %s hiding" % _name(d.by) if d.faction == command.faction() else ": someone hid nearby?"),
 				MUTED if d.faction == command.faction() else GROUND[&"unsure"]])
 	if battle.on_lattice(c):
-		var what := "Starpower source, %d%% full" % roundi(100.0 * battle.charge[c] / Battle.STAR_CAPACITY) if c in battle.starpower \
-				else Glossary.term(&"starpane")
+		var what := Glossary.term(&"starpane")
+		if c in battle.starpower:  # an empty source isn't "0% full": it reads as the tile it is until it holds Power
+			what = "Starpower source, %d%% full" % roundi(100.0 * battle.charge[c] / Battle.STAR_CAPACITY) if battle.charge[c] > 0 else (r.name if r.name else "Startile")
 		var rate := "Power back x%s" % Skill.num(snappedf(battle.star_rate(c), 0.1)) if battle.star_source(c) != null else "linked to no source"
 		out.append(["%s: %s" % [what, rate], STARPOWER_TINT])
 	for m: Battle.Mark in r.marks:
@@ -2858,6 +2859,17 @@ func _tile_icon(c: Vector2i) -> Texture2D:
 		tex.atlas = src.texture
 		tex.region = src.get_tile_texture_region(key[1])
 		_icons[key] = tex
+	var art: Texture2D = battle.top_layer(c).terrain.look if battle.top_layer(c) else null
+	if art and _icons[key] is AtlasTexture:  # a layer with art of its own (Stardust) over the ground: the ground with it on, as the map draws it
+		var lk := [key, art]
+		if lk not in _icons:
+			var img: Image = _icons[key].get_image()
+			var top := art.get_image()
+			img.convert(Image.FORMAT_RGBA8)
+			top.convert(Image.FORMAT_RGBA8)
+			img.blend_rect(top, Rect2i(Vector2i.ZERO, top.get_size().min(img.get_size())), Vector2i.ZERO)
+			_icons[lk] = ImageTexture.create_from_image(img)
+		return _icons[lk]
 	return _icons[key]
 
 
