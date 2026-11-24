@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="Terrain" format=3]
 
 [ext_resource type="Script" path="res://Scripts/Terrain.gd" id="1_terrain"]
+[ext_resource type="Resource" path="res://Terrain/stardust.tres" id="2_dust"]
 
 [resource]
 script = ExtResource("1_terrain")
@@ -10,3 +11,4 @@ passes = true
 brittle = true
 unstable = true
 repairs_into = "res://Terrain/startile.tres"
+breaks_into = ExtResource("2_dust")

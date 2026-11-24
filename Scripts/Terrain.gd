@@ -50,6 +50,8 @@ extends Resource
 @export var source := false  # a star power source on the lattice (a startile: Battle.starpower)
 @export var pane := false  # a starpane: links the lattice side-on (Battle.panes)
 @export_file("*.tres") var repairs_into := ""  # mends into this near a power source, a turn a tile of distance (a cracked startile: a startile; Battle._repair_tiles()) - a path: the two refer to each other
+@export var regrows := false  # mends into repairs_into by signal instead (Battle.signal_at()): each round in signal a round's progress, done in as many as its distance from the nearest source; draws no charge (Stardust)
+@export var power_rank := 0  # a signal source (Battle.radiate()): radiates this many tiles at full, a tile per 20% of its charge; one holding no charge (a starpane) radiates its rank only on a live circuit (generator 5, starpane 1)
 
 
 func is_trap() -> bool:

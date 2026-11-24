@@ -58,13 +58,14 @@ func test_starlight() -> void:
 	ok(v(1).energy == v(1).rounded(2 * 4.0 * Battle.STAR_ENERGY), "plain Energy: a fifth of the boost (%d)" % v(1).energy)
 
 
-# Power Siphon: a live source with at_end (a starpower generator) puts it on whoever ends a turn anywhere
-# on its circuit (Battle.circuit_ends()); power_siphon takes its share of max HP and gives that share of max Power.
+# Power Siphon: a live source with at_end (a starpower generator) puts it on whoever ends a turn in its
+# signal - its own reach, or beside the powered wires of its circuit (Battle.circuit_ends()); power_siphon
+# takes its share of max HP and gives that share of max Power.
 func test_siphon() -> void:
 	lattice(0.0)
 	var gen: Terrain = load("res://Terrain/starpower_generator.tres")
 	b.lay_layer(Vector2i(6, 1), gen)
-	b.charge[Vector2i(6, 1)] = Battle.STAR_CAPACITY
+	b.charge[Vector2i(6, 1)] = 4  # 20%: a tile of reach of its own
 	stage(lancin, {v(1): Vector2i(3, 1), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})
 	var hp := v(1).hp
 	b.end_turn()
@@ -85,10 +86,10 @@ func test_siphon() -> void:
 func test_siphon_priced() -> void:
 	lattice(0.0)
 	b.lay_layer(Vector2i(6, 1), load("res://Terrain/starpower_generator.tres"))
-	b.charge[Vector2i(6, 1)] = Battle.STAR_CAPACITY
+	b.charge[Vector2i(6, 1)] = 4  # 20%: a tile of reach of its own
 	stage(lancin, {v(1): Vector2i(3, 2), v(2): Vector2i(3, 3), v(3): Vector2i(8, 4)})
 	var on := Vector2i(4, 1)
-	var off := Vector2i(4, 2)
+	var off := Vector2i(4, 3)  # two from the wire: out of its signal
 	var hp: float = b.hazard(v(1), on, b.read(v(1), on), 1, true).get(&"hp", 0.0)
 	ok(hp >= 1.0 and b.hazard(v(1), on, b.read(v(1), on), 1, false).is_empty() and b.hazard(v(1), off, b.read(v(1), off), 1, true).is_empty(), "ending on the circuit owes HP; passing over or ending off it owes none (%s)" % hp)
 	var p_on := {&"wary": true}

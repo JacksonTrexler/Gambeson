@@ -19,3 +19,4 @@ at_end = Array[ExtResource("3_effect")]([SubResource("Effect_at_end_1")])
 turns = 1
 source = true
 passes = true
+power_rank = 5

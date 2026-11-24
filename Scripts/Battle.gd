@@ -137,6 +137,9 @@ var fallen: Array[Unit] = []  # down with a heart spent, getting up as the turn 
 @export var starpower: Dictionary[Vector2i, float] = {}  # starpower sources on the lattice -> how full each starts (0 to 1)
 var panes: Dictionary[Vector2i, bool] = {}  # starpanes still whole: a bludgeoning skill used on one with no target breaks it (attempt())
 var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up to STAR_CAPACITY (Starsap fills them)
+var _signal := {}  # the signal field (_field()): cell -> [signal left, nearest reaching source's distance, live sources feeding it]
+var _signal_key: Array = []  # what it was worked out from: [_layer_ver, panes, charge] hashed
+var _layer_ver := 0  # bumped whenever a layer is laid, lost or changes (_register(), _unregister())
 
 @export var prep := false  # the battle opens in Phase.PREP (as one started from the entry screen does: Game.starter.prep)
 var studied: Dictionary[Faction, Dictionary] = {}  # what each side read better in preparation (prepare(), an intel use): unit or tile -> recon levels more it reads it at
@@ -3855,7 +3858,7 @@ func hazard(u: Unit, c: Vector2i, r: Read, nth := 0, ends := false, tolls := tru
 		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)  # (travel() puts them on at rank 1)
 	for e in r.at_end if ends else ([] as Array[Effect]):  # and to whoever ends its turn there (end_turn(): the tick takes that turn)
 		_owe_wound(out, u, e, maxi(e.turns if e.turns else t.turns, 1), 1, null)
-	if ends and on_lattice(c):  # and what the live circuit it would end on puts on it (Power Siphon)
+	if ends:  # and what the live sources whose signal reaches it put on it (Power Siphon)
 		for e in circuit_ends(c):
 			_owe_wound(out, u, e, 1, 1, null)
 	for m: Mark in r.marks:  # what the marks it knows of would put on it
@@ -4366,6 +4369,7 @@ func _restack(c: Vector2i) -> void:
 
 # Starpanes and startiles keep the lattice's books (panes, starpower) as they're laid and lost.
 func _register(c: Vector2i, t: Terrain) -> void:
+	_layer_ver += 1
 	if t.pane:
 		panes[c] = true
 	if t.source and c not in charge:
@@ -4374,6 +4378,7 @@ func _register(c: Vector2i, t: Terrain) -> void:
 
 
 func _unregister(c: Vector2i, t: Terrain) -> void:
+	_layer_ver += 1
 	if t.pane:
 		panes.erase(c)
 	if t.source:
@@ -4479,10 +4484,22 @@ func _teeter(u: Unit, rested: bool) -> void:
 # linked to a source whose fullness (in %) / REPAIR_SPAN reaches it in tiles, and draws REPAIR_COST of
 # a source's capacity from that source to begin ("Repairing X/Y": a round a tile of distance). Done, it
 # upgrades into what it repairs into (a startile, a source again, empty).
+# One that regrows (Stardust) draws on the signal instead: each round in signal it makes a round's
+# progress, done in as many as its distance from the nearest source (signal_near()); out of it, it holds.
 func _repair_tiles() -> void:
 	for c: Vector2i in layers.keys():
 		for l: Layer in layers[c]:
 			if l.terrain.repairs_into == "":
+				continue
+			if l.terrain.regrows:
+				var near := signal_near(c)
+				if near < 0:
+					continue
+				if l.repair_goal == 0:
+					l.repair_goal = maxi(near, 1)
+				l.repairing += 1
+				if l.repairing >= l.repair_goal:
+					_repaired(c, l)
 				continue
 			if l.repair_goal == 0:
 				var found := _mender(c)
@@ -4494,14 +4511,19 @@ func _repair_tiles() -> void:
 				continue
 			l.repairing += 1
 			if l.repairing >= l.repair_goal:
-				var into: Terrain = load(l.terrain.repairs_into)
-				l.terrain = into
-				l.repairing = 0
-				l.repair_goal = 0
-				l.source = null
-				_register(c, into)
-				_restack(c)
-				mended.emit(c, into)
+				_repaired(c, l)
+
+
+func _repaired(c: Vector2i, l: Layer) -> void:
+	var into: Terrain = load(l.terrain.repairs_into)
+	_unregister(c, l.terrain)
+	l.terrain = into
+	l.repairing = 0
+	l.repair_goal = 0
+	l.source = null
+	_register(c, into)
+	_restack(c)
+	mended.emit(c, into)
 
 
 # [the lattice tile c draws on, its source, the distance] for mending c; [] if none reaches.
@@ -5882,29 +5904,119 @@ func _starlight(u: Unit) -> void:
 	u.grant_energy(u.rounded(k * m) if u.powered() else u.rounded(k * (m - 1.0) * STAR_ENERGY))
 
 
-# The at_end of each live source joined to c through the lattice (star_source()'s walk), c itself aside
-# (its own ground already counts): a source with at_end and Power in it powers its whole circuit (a
-# starpower generator's Power Siphon reaches whoever ends a turn on its wires).
+# The at_end of each live source feeding c's signal (_field(): its own reach, or through the powered
+# wiring of its circuit), c itself aside (its own ground already counts): a starpower generator's Power
+# Siphon reaches whoever ends a turn on its platform or beside its wires.
 func circuit_ends(c: Vector2i) -> Array[Effect]:
 	var out: Array[Effect] = []
-	if not on_lattice(c):
+	var f: Array = _field().get(c, [])
+	if f.is_empty():
 		return out
-	var seen := {c: true}
-	var queue: Array[Vector2i] = [c]
-	while not queue.is_empty():
-		var at: Vector2i = queue.pop_front()
-		if at != c and charge.get(at, 0) > 0:
-			for l: Layer in layers.get(at, []):
-				if l.terrain.source:
-					for e in l.terrain.at_end:
-						if e not in out:
-							out.append(e)
-		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var n: Vector2i = at + d
-			if n not in seen and on_lattice(n):
-				seen[n] = true
-				queue.append(n)
+	for g: Vector2i in f[2]:
+		if g == c:
+			continue
+		for l: Layer in layers.get(g, []):
+			if l.terrain.source:
+				for e in l.terrain.at_end:
+					if e not in out:
+						out.append(e)
 	return out
+
+
+# --- Signal: astral power as a field (docs/plans/w22-signal.md)
+# Sources radiate signal (radiate()): a starpower generator its charge's worth (a tile per 20%, up to
+# its rank), a starpane its rank while its circuit is live. Star flooring needs it: Stardust regrows in
+# it (_repair_tiles()). Worked out again only when layers or charge change (_signal_key), never per read.
+
+# Signal from {cell: power} sources (any source: a generator, one a skill lays): each reaches `power`
+# tiles out, a tile less left each tile away, Manhattan (a diagonal step costs 2), through anything.
+# cell -> [signal left (power - distance, 0 at its edge), the nearest reaching source's distance, what
+# feeds it (feeds[source] of each source reaching it, merged)].
+static func radiate(sources: Dictionary, feeds := {}) -> Dictionary:
+	var out := {}
+	for s: Vector2i in sources:
+		var p: int = sources[s]
+		if p <= 0:
+			continue
+		var by: Array = feeds.get(s, [])
+		for dx in range(-p, p + 1):
+			var w := p - absi(dx)
+			for dy in range(-w, w + 1):
+				var c := s + Vector2i(dx, dy)
+				var d := absi(dx) + absi(dy)
+				var f: Array = out.get(c, [])
+				if f.is_empty():
+					out[c] = [p - d, d, by.duplicate()]
+					continue
+				f[0] = maxi(f[0], p - d)
+				f[1] = mini(f[1], d)
+				for g in by:
+					if g not in f[2]:
+						f[2].append(g)
+	return out
+
+
+# The board's sources: [{cell: power}, {cell: the live sources it carries}]. A layer with a power_rank
+# that holds charge radiates min(rank, a tile per 20% of it); one that holds none (a starpane) its rank
+# if its lattice circuit (side-on, on_lattice()) holds a ranked source with charge in it.
+func signal_sources() -> Array:
+	var comp := {}
+	var live: Array = []  # each circuit's live sources
+	for c: Vector2i in panes.keys() + starpower.keys():
+		if c in comp:
+			continue
+		var lv: Array = []
+		comp[c] = live.size()
+		live.append(lv)
+		var queue: Array[Vector2i] = [c]
+		while not queue.is_empty():
+			var at: Vector2i = queue.pop_back()
+			if charge.get(at, 0) > 0 and _rank(at) > 0:
+				lv.append(at)
+			for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var n: Vector2i = at + d
+				if n not in comp and on_lattice(n):
+					comp[n] = comp[c]
+					queue.append(n)
+	var power := {}
+	var feeds := {}
+	for c: Vector2i in layers:
+		var r := _rank(c)
+		if r <= 0:
+			continue
+		var lv: Array = live[comp[c]] if c in comp else []
+		var p := mini(r, floori(5.0 * charge[c] / STAR_CAPACITY)) if c in charge else (r if not lv.is_empty() else 0)
+		if p > 0:
+			power[c] = p
+			feeds[c] = lv
+	return [power, feeds]
+
+
+func _rank(c: Vector2i) -> int:
+	var r := 0
+	for l: Layer in layers.get(c, []):
+		r = maxi(r, l.terrain.power_rank)
+	return r
+
+
+func _field() -> Dictionary:
+	var key := [_layer_ver, panes.hash(), charge.hash()]
+	if key != _signal_key:
+		_signal_key = key
+		var s := signal_sources()
+		_signal = radiate(s[0], s[1])
+	return _signal
+
+
+# Signal left on c (0 at a source's edge); -1: none reaches it (unpowered).
+func signal_at(c: Vector2i) -> int:
+	return _field().get(c, [-1])[0]
+
+
+# How far c is from the nearest source whose signal reaches it; -1: none does.
+func signal_near(c: Vector2i) -> int:
+	var f: Array = _field().get(c, [])
+	return f[1] if not f.is_empty() else -1
 
 
 # Power Siphon, as its side's turn ends: it loses its power_siphon share of max HP and gains that share of its
