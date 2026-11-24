@@ -136,15 +136,20 @@ func test_startile() -> void:
 	b.expose(c, [&"blunt"] as Array[StringName], v(1))
 	var l: Battle.Layer = b.top_layer(c)
 	ok(l.terrain.name == "Cracked Startile" and l.terrain.unstable and c not in b.starpower, "broken, it's a cracked startile: glass, no longer a source")
+	var near := Vector2i(2, 2)  # nearer the full source: stronger signal (4 vs 1), mends faster
+	b.lay_layer(near, Battle.STARTILE)
+	b.expose(near, [&"blunt"] as Array[StringName], v(1))
+	var l2: Battle.Layer = b.top_layer(near)
 	b._repair_tiles()
-	ok(l.repair_goal == 2 and l.source == Vector2i(1, 1) and b.charge[Vector2i(1, 1)] == Battle.STAR_CAPACITY - 1,
-			"the nearest lattice tile is 2 away, within reach: mending begins, drawing 5% of a source's capacity from it")
-	b._repair_tiles()
-	ok(l.repairing == 1 and l.terrain.name == "Cracked Startile", "Repairing 1/2")
+	ok(b.signal_at(c) == 1 and b.signal_at(near) == 3 and l.repairing == 1 and l.repair_goal == Battle.SIGNAL_FULL and l2.repairing == 3 and b.charge[Vector2i(1, 1)] == Battle.STAR_CAPACITY,
+			"mending by signal: progress a round = the signal on it (%d vs %d), out of 5; nothing drawn from the source" % [l.repairing, l2.repairing])
 	var done := []
 	b.mended.connect(func(at, _t): done.append(at))
 	b._repair_tiles()
-	ok(l.terrain.name == "Startile" and c in b.starpower and done == [c], "2/2: it upgrades into a startile, a source again")
+	ok(l2.terrain.name == "Startile" and l.terrain.name == "Cracked Startile" and done == [near], "the stronger one upgrades into a startile, a source again, first")
+	for i in 3:
+		b._repair_tiles()
+	ok(l.terrain.name == "Startile" and c in b.starpower and done == [near, c], "5 rounds on a signal of 1: mended too")
 
 
 func test_repair_out_of_reach() -> void:

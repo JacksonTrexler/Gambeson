@@ -34,13 +34,15 @@ func lattice(full: float) -> void:
 
 func test_lattice() -> void:
 	lattice(0.0)
-	ok(b.star_source(Vector2i(5, 1)) == Vector2i(1, 1) and is_equal_approx(b.star_rate(Vector2i(5, 1)), 1.0), "a pane linked to an empty source: nothing")
+	ok(b.star_source(Vector2i(5, 1)) == null and is_equal_approx(b.star_rate(Vector2i(5, 1)), 1.0), "a pane linked to an empty source: a dead circuit, nothing")
 	b.charge[Vector2i(1, 1)] = 1
 	ok(b.star_rate(Vector2i(5, 1)) > 2.0 and b.star_rate(Vector2i(5, 1)) < 2.2, "a little Power in it: about x2")
 	b.charge[Vector2i(1, 1)] = Battle.STAR_CAPACITY
 	ok(is_equal_approx(b.star_rate(Vector2i(4, 1)), 5.0) and is_equal_approx(b.star_rate(Vector2i(7, 7)), 1.0), "full: x5; off the lattice: x1")
 	b.panes.erase(Vector2i(3, 1))
-	ok(b.star_source(Vector2i(5, 1)) == null and b.star_source(Vector2i(2, 1)) == Vector2i(1, 1), "a broken pane cuts the link")
+	ok(b.star_source(Vector2i(5, 1)) == Vector2i(1, 1), "a full source's signal (5 tiles) reaches past a broken pane")
+	b.charge[Vector2i(1, 1)] = 8  # 40%: signal 2
+	ok(b.star_source(Vector2i(5, 1)) == null and b.star_source(Vector2i(2, 1)) == Vector2i(1, 1) and b.star_rate(Vector2i(4, 1)) == 1.0, "a broken pane cuts the link where the signal doesn't reach")
 
 
 func test_starlight() -> void:
