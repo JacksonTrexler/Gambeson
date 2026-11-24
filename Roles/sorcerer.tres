@@ -11,10 +11,18 @@
 [ext_resource type="Resource" path="res://Items/staff.tres" id="9_staff"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="10_energy_potion"]
 [ext_resource type="Script" path="res://Scripts/Item.gd" id="11_item"]
+[ext_resource type="Script" path="res://Scripts/SkillTab.gd" id="skilltab"]
+[ext_resource type="Resource" path="res://Trees/starbuilding.tres" id="starbuilding"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("5_slot")
 skill = ExtResource("4_strike")
+
+[sub_resource type="Resource" id="Tab_starbuilding"]
+script = ExtResource("skilltab")
+name = "Starbuilding ??"
+color = Color(0.25, 0.75, 0.66, 1)
+roots = Array[ExtResource("7_skillroot")]([ExtResource("starbuilding")])
 
 [resource]
 script = ExtResource("1_role")
@@ -28,3 +36,4 @@ stats = Dictionary[StringName, int]({&"strength": 8, &"dexterity": 10, &"constit
 roots = Array[ExtResource("7_skillroot")]([ExtResource("6_stellar_soul")])
 items = Array[ExtResource("11_item")]([ExtResource("8_robe"), ExtResource("9_staff"), ExtResource("10_energy_potion")])
 general = Array[StringName]([&"magical"])
+tabs = Array[ExtResource("skilltab")]([SubResource("Tab_starbuilding")])

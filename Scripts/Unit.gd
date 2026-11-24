@@ -3146,6 +3146,27 @@ func powered() -> bool:
 	return stat(&"powered") > 0.0
 
 
+const POWER := &"power"  # the tag a Power skill carries, and the one a reserve built for them lists in Reserve.only (Starpower)
+
+
+# The pool its Power is: its Energy if it's powered (powered()), else a reserve that pays only power skills; null: it has none.
+func power_pool() -> Variant:
+	if powered():
+		return &"energy"
+	for r: Reserve in pools():
+		if POWER in r.only:
+			return r
+	return null
+
+
+# Whether s, used now, is paid in Power: it needs Power (Starbuilding) and funding() settles on that pool. A unit that can't
+# afford it, or would pay in Mana or plain Energy, doesn't.
+func pays_power(s: Skill) -> bool:
+	var pool: Variant = power_pool()
+	var fund: Variant = funding(s) if pool != null else null
+	return fund != null and typeof(fund) == typeof(pool) and fund == pool
+
+
 # Energy damage (Smite): what gets through mitigation (and luck, as hit()) drains its Energy first;
 # once that's gone, `carry` of the rest goes on to HP. Returns the HP taken.
 func drain(raw: float, tags: Array[StringName], by: Unit, carry: float) -> int:

@@ -229,6 +229,7 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 			_stretch(b, u, target, log)  # and the tiles that bring a blow in reach this turn
 			u.set_meta(&"aim", target)
 			_notable(b, u, target, reads[target])
+			_span(b, u, target.cell, log)  # void in its way, and Power to bridge it with (Startile, Starbridge)
 			var dest := _approach(b, u, target, reads)
 			_leap(b, u, dest, log)  # a jump first, if it has one that brings it nearer (Hop)
 			var p := b.travel(u, dest)
@@ -1004,6 +1005,48 @@ static func _leap(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> boo
 		return false
 	log.append("%s jumps to %s" % [u.name, best])
 	return true
+
+
+# The Starbuilding skills it can cross void with now: Startile (a tile) and Starbridge (a powered star tile to the next), paid in Power.
+static func _spans(u: Unit) -> Array[Skill]:
+	var out: Array[Skill] = []
+	if u.power_pool() == null or u.has_tag(&"floating") or u.has_tag(&"flight"):
+		return out
+	for s: Skill in u.actives:
+		if s.on_tile() and u.can_afford(s) and s.behaviours.any(func(x: Behaviour): return x.get(&"layer") == Battle.STARTILE and x.get(&"shape") in [&"point", &"bridge"]):
+			out.append(s)
+	return out
+
+
+# Lays what crosses the void on the line toward `goal`, if some lies within its reach: a Starbridge to the first powered star tile on
+# the far side, else Startiles on the void tiles in a row from the near edge (at most SPAN_TILES). Whether it cast anything. The rest of
+# Starbuilding (panels, generators, Starways) is for players.
+const SPAN_TILES := 3
+
+
+static func _span(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> bool:
+	var skills := _spans(u)
+	if skills.is_empty():
+		return false
+	var line := b.line(u.cell, goal, u.luck, u)
+	var first := line.find_custom(func(c: Vector2i): return b.on_map(c) and &"void" in b.terrain(c).tags)
+	if first < 0:
+		return false
+	var did := false
+	for s in skills:
+		if s.behaviours.any(func(x: Behaviour): return x.get(&"shape") == &"bridge"):
+			for c in line.slice(first):
+				if b.powered_star(c) and Command.tiles(u.cell, c) <= b.area_reach(u, s) + 0.0001 and b.cast_at(u, s, c):
+					log.append("%s bridges the void to %s" % [u.name, c])
+					return true
+	for s in skills:
+		if s.behaviours.any(func(x: Behaviour): return x.get(&"shape") == &"point"):
+			for c in line.slice(first, first + SPAN_TILES):
+				if not (b.on_map(c) and &"void" in b.terrain(c).tags) or Command.tiles(u.cell, c) > b.area_reach(u, s) + 0.0001 or not b.cast_at(u, s, c):
+					break
+				log.append("%s lays a startile over the void at %s" % [u.name, c])
+				did = true
+	return did
 
 
 # Flippant: skirts the field aimlessly, out of its foes' reach (their walk and a tile) - a tile picked at random among the few it

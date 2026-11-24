@@ -52,7 +52,11 @@
 [ext_resource type="Resource" path="res://Skills/focus.tres" id="s_focus"]
 [ext_resource type="Resource" path="res://Trees/illusion.tres" id="illusion"]
 [ext_resource type="Resource" path="res://Trees/mortis_arcalis.tres" id="mortis_arcalis"]
+<<<<<<< HEAD
 [ext_resource type="Resource" path="res://Skills/mana_resonance.tres" id="s_mana_resonance"]
+=======
+[ext_resource type="Resource" path="res://Trees/starbuilding.tres" id="starbuilding"]
+>>>>>>> w22-astral1
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -261,6 +265,12 @@ script = ExtResource("11_choice")
 name = "College"
 tabs = Array[ExtResource("10_tab")]([SubResource("Tab_College_Battle"), SubResource("Tab_College_Wards"), SubResource("Tab_College_Concord")])
 
+[sub_resource type="Resource" id="Tab_starbuilding"]
+script = ExtResource("10_tab")
+name = "Starbuilding ??"
+color = Color(0.25, 0.75, 0.66, 1)
+roots = Array[ExtResource("8_root")]([ExtResource("starbuilding")])
+
 [resource]
 script = ExtResource("1_script")
 noun = "Caster"
@@ -274,3 +284,4 @@ items = Array[ExtResource("i_item")]([ExtResource("i_robe"), ExtResource("i_staf
 general = Array[StringName]([&"magical", &"student"])
 roots = Array[ExtResource("8_root")]([SubResource("Root_Refinement"), SubResource("Root_Commitment")])
 choices = Array[ExtResource("11_choice")]([SubResource("Choice_School"), SubResource("Choice_College")])
+tabs = Array[ExtResource("10_tab")]([SubResource("Tab_starbuilding")])

@@ -134,18 +134,37 @@ func _pose(s: Skill, learn := true) -> Variant:
 	if not placed.has(v(3)):
 		placed[v(3)] = Vector2i(8, 2) if on is Vector2i else Vector2i(5, 3)
 	stage(lancin, placed)
+	for c: Vector2i in b.layers.keys():  # what a skill laid before is gone
+		for l: Battle.Layer in b.layers[c].duplicate():
+			b._lift(c, l, &"sweep")
 	for x: Unit in b.get_node("Units").get_children():
 		x.timed.clear()
+		x.seals.clear()
 		soak(x)
 	u.refresh()
 	u.energy = u.max_energy
 	u.endurance = 9  # a skill that gives Energy back mustn't burn the next one's pool away on a failed con check (RecoveryEndurance: a roll, so a skill added before it shifts who burns)
+	if s.tagged(&"power"):
+		_star_ground(s, u)
 	if s.mist_only:
 		u.afflict(effect("mist", 1.0), 9)  # (Coalescing: only a mist)
 	if on is Unit and on != u:
 		sure_save_fail(u, s, on)
 		u.set(s.stat(), 60)  # ...and its attack roll
 	return on
+
+
+# A skill that needs Power lays star tiles (Starbuilding): its caster powered, a full generator in reach, and what its shape
+# aims at - a startile for a bridge (with another across the gap) and a Starway (with the one the caster stands on).
+func _star_ground(s: Skill, u: Unit) -> void:
+	u.afflict(effect("powered", 1.0), 9)
+	u.energy = u.max_energy
+	b.lay_layer(Vector2i(4, 5), load("res://Terrain/starpower_generator.tres"))
+	b.charge[Vector2i(4, 5)] = Battle.STAR_CAPACITY
+	var shape: StringName = s.behaviours[0].shape
+	if shape in [&"bridge", &"pair"]:
+		for c in [Vector2i(5, 3), Vector2i(3, 3) if shape == &"bridge" else Vector2i(4, 3)]:
+			b.lay_layer(c, Battle.STARTILE)
 
 
 func _use(s: Skill, on: Variant) -> bool:

@@ -1201,7 +1201,7 @@ func test_adventurer_skills_screen() -> void:
 			"the Adventurer's own tab: a wheel")
 	ok(w.tab.roots.reduce(func(all: Array, r: SkillRoot): return all + r.skills(), [w.tab.center] + w.tab.core).all(func(s: Skill): return s in w.skills()) and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
-	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER", "GENERAL · JOURNEYMAN"],
+	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "CLASS · STARBUILDING ??", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER", "GENERAL · JOURNEYMAN"],
 			"its own tab, its species', then all three general trees and the base one, on the far right")
 	ok(h.skills.picked == load("res://Skills/skill_slot.tres") and h.skills.detail.title_label.text == "Skill Slot +1" and h.skills.detail.state_label.text == "T1",
 			"Skill Slot +1 shows first: the centre, the first it can learn")

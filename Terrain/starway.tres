@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Terrain" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Terrain.gd" id="1_terrain"]
+[ext_resource type="Texture2D" path="res://Tiles/starway.png" id="2_starway"]
+
+[resource]
+script = ExtResource("1_terrain")
+name = "Starway"
+look = ExtResource("2_starway")
+tags = Array[StringName]([&"star", &"portal"])
+passes = true
+brittle = true

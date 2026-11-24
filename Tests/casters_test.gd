@@ -15,6 +15,9 @@ func sk(n: String) -> Skill:
 	return load("res://Skills/%s.tres" % n)
 
 
+const STARBUILDING := "Starbuilding ??"  # every caster's tab for the Starbuilding tree (Roles/*.tres; Tab, no kind)
+
+
 func titles(tabs: Array) -> Array:
 	return tabs.map(func(t: SkillTab): return t.title())
 
@@ -36,7 +39,7 @@ func named(c: TreeChoice, n: String) -> SkillTab:
 
 func test_wizard_tree() -> void:
 	var every: Array = wizard.choices.reduce(func(all: Array, c: TreeChoice): return all + c.all(), [wizard.trees()[0]])
-	ok(titles(wizard.trees().filter(func(t: SkillTab): return t.kind != "World")) == titles(every), "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
+	ok(titles(wizard.trees().filter(func(t: SkillTab): return t.kind != "World" and t.name != STARBUILDING)) == titles(every), "its own tab, the World, then every tree it can pick: %s" % [titles(wizard.trees())])
 	ok(wizard.choices.all(func(c: TreeChoice): return c.tabs.is_empty() and not c.borrows.is_empty()), "no list of its own: each borrows a kind of tree")
 	ok(wizard.choices.all(func(c: TreeChoice): return c.by != null and c.affinity == (0 if c.name == "School" else -1)), "each opened by its study; guest trees at -1, a Mage's school at none")
 	ok(named(choice(wizard, "Domain"), "Luun").roots[0] == God.of(&"luun").own.roots[0]
@@ -58,7 +61,7 @@ func test_wizard_tree() -> void:
 func test_wizard_dabblings() -> void:
 	var u := starter(wizard)
 	var domain := choice(wizard, "Domain")
-	ok(titles(u.class_trees()) == ["Wizard", "World: Nature"], "nothing picked: its own tab and the World")
+	ok(titles(u.class_trees()) == ["Wizard", "World: Nature", STARBUILDING], "nothing picked: its own tab and the World")
 	ok(u.missing(sk("arcana")) == "Waits on open question 70 (todo.md)" and u.missing(sk("counterspell")).begins_with("Waits on Reactions"), "its stubs wait")
 	ok(u.missing(sk("igna")) == "" and u.unlock(sk("igna")) and u.affinity(sk("igna")) == 0, "Igna is its own: learnable, no guest Affinity")
 	ok(u.pick_missing(domain, named(domain, "Luun")) == "Learn Divinity first" and u.pick_cap(domain) == 0, "a domain waits on Divinity")
@@ -79,7 +82,7 @@ func test_wizard_dabblings() -> void:
 
 
 func test_mage_tree() -> void:
-	ok(mage.trees()[0].title() == "Mage" and mage.trees().slice(1).all(func(t: SkillTab): return t.kind in ["School", "College"]), "its own tab, then schools and colleges to pick: %s" % [titles(mage.trees())])
+	ok(mage.trees()[0].title() == "Mage" and mage.trees().slice(1).all(func(t: SkillTab): return t.kind in ["School", "College"] or t.name == STARBUILDING), "its own tab, then schools and colleges to pick: %s" % [titles(mage.trees())])
 	ok(mage.choices.all(func(c: TreeChoice): return c.picks == 1 and c.by == null and c.affinity == 0 and c.all().all(func(t: SkillTab): return t.kind == c.name)), "a school and a college, one each, no study needed, no penalty")
 	ok(mage.tier(sk("searing")) > mage.tier(sk("igna")) and mage.tier(sk("sunburst")) > mage.tier(sk("searing")) and mage.tier(sk("darkstone")) > mage.tier(sk("sola")),
 			"a school opens after its starter spells; Sunburst after both its paths (Igna, Searing, Sola, Radiant Lance)")
@@ -94,8 +97,8 @@ func test_mage_choice() -> void:
 	var u := starter(mage)
 	var school := choice(mage, "School")
 	var college := choice(mage, "College")
-	ok(titles(u.class_trees()) == ["Mage"], "nothing picked: its own tab alone")
+	ok(titles(u.class_trees()) == ["Mage", STARBUILDING], "nothing picked: its own tab and Starbuilding")
 	ok(u.unlock(sk("nadira")) and u.missing(sk("darkstone")) == "Pick School: Shadow first", "Darkstone waits for Shadow")
 	ok(u.pick(school, named(school, "Shadow")) and u.unlock(sk("darkstone")) and u.affinity(sk("darkstone")) == 0, "Shadow picked: Darkstone, at no Affinity penalty")
 	ok(u.pick_missing(school, named(school, "Stars")) == "Took up School: Shadow" and u.pick(college, named(college, "Wards")), "one school; a college as well")
-	ok(titles(u.class_trees()) == ["Mage", "School: Shadow", "College: Wards"] and u.taken("School").name == "Shadow", "%s" % [titles(u.class_trees())])
+	ok(titles(u.class_trees()) == ["Mage", STARBUILDING, "School: Shadow", "College: Wards"] and u.taken("School").name == "Shadow", "%s" % [titles(u.class_trees())])

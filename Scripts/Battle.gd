@@ -20,6 +20,7 @@ signal respecced(u: Unit, changes: Dictionary)
 signal bound(by: Unit, u: Unit, it: Item)  # a binding item (Shackles) put on u in place of its trinket (_bind())
 signal freed(u: Unit, how: StringName, total: int, dc: int, done: bool)  # u worked at its shackles: unlock, pick or pry (unshackle())
 signal mended(c: Vector2i, into: Terrain)  # a cracked startile finished repairing
+signal ported(u: Unit, from: Vector2i, to: Vector2i)  # a unit stepped on a powered portal (Starway) and came out at its pair
 signal contested(caster: Unit, target: Unit, total: int, against: int)  # a contest in place of one (Drown): won when total >= against
 signal investigated(by: Unit, of: Unit, skill: Skill, total: int, against: int, close: bool)  # investigate(): seen through when total >= against
 signal stalled(u: Unit, rank: int)  # u stalls the fight: Ramut's Ire builds on it, to this rank (_check_stall())
@@ -137,6 +138,7 @@ var fallen: Array[Unit] = []  # down with a heart spent, getting up as the turn 
 @export var starpower: Dictionary[Vector2i, float] = {}  # starpower sources on the lattice -> how full each starts (0 to 1)
 var panes: Dictionary[Vector2i, bool] = {}  # starpanes still whole: a bludgeoning skill used on one with no target breaks it (attempt())
 var charge: Dictionary[Vector2i, int] = {}  # Power in each starpower source, up to STAR_CAPACITY (Starsap fills them)
+var portals: Dictionary[Vector2i, Vector2i] = {}  # portal tiles (tag portal: a Starway) -> the one each is paired with, both ways (pair_portals())
 var _signal := {}  # the signal field (_field()): cell -> [signal left, nearest reaching source's distance, live sources feeding it]
 var _signal_key: Array = []  # what it was worked out from: [_layer_ver, panes, charge] hashed
 var _layer_ver := 0  # bumped whenever a layer is laid, lost or changes (_register(), _unregister())
@@ -399,6 +401,10 @@ class Layer:
 	var repairing := 0  # rounds of mending done
 	var repair_goal := 0  # rounds it takes - its distance from the source it draws on; 0: not begun
 	var source: Variant = null  # that source's cell
+	var lapse := 0  # rounds it lasts unpowered (a startile its skill laid: rank); 0: it lasts (_repair_tiles())
+	var dark := 0  # rounds it has gone unpowered in a row
+	var brittle := false  # breaks to blunt damage even where its terrain doesn't (a generator its skill laid)
+	var power := 0  # a signal source's rank where its skill sets one (a generator it laid: the skill's rank); 0: its terrain's power_rank
 
 	func _init(t: Terrain, through: bool) -> void:
 		terrain = t
@@ -3608,6 +3614,7 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		_through(u)
 		if terrain(u.cell).is_trap() and passed.size() - 1 in touched:
 			spring(u.cell, u)
+		_portal(u)  # a powered portal where the walk ends (Starway)
 		if u.is_alive():
 			_first_look(u)
 			UNDEAD.settle(self, u)  # Restless Dead ?? seen walking, as a cast is
@@ -4307,6 +4314,33 @@ func lay_layer(c: Vector2i, t: Terrain, through := t.passes) -> Layer:
 	return l
 
 
+# A star tile an astral skill lays at c for `by` (Starbuilding: Behaviours/star_place.gd): an overlay over ground, on its
+# own over void (it bridges it). It seals `points` + `share` of max of `by`'s Power until this layer is destroyed (broken,
+# cracked or lifted: Unit.seal(), its source the layer still being what was laid); `lapse` rounds unpowered it breaks
+# (_repair_tiles()); `power` is its rank as a signal source and charges it to match (a generator: a fifth of capacity a rank).
+func lay_star(c: Vector2i, t: Terrain, by: Unit, points := 0, share := 0.0, lapse := 0, power := 0) -> Layer:
+	var l := lay_layer(c, t, t.passes and &"void" not in ground_of(c).tags)
+	l.lapse = lapse
+	l.brittle = true
+	if power > 0 and t.power_rank > 0:
+		l.power = power
+		charge[c] = mini(ceili(float(STAR_CAPACITY) * power / 5.0), STAR_CAPACITY)
+	var pool: Variant = by.power_pool()
+	if pool != null and (points > 0 or share > 0.0):
+		by.seal(pool, points, func() -> bool: return l in layers.get(c, []) and l.terrain == t, share)
+	return l
+
+
+# Whether c holds star flooring or wiring (a layer tagged star).
+func has_star(c: Vector2i) -> bool:
+	return layers.get(c, []).any(func(l: Layer): return &"star" in l.terrain.tags)
+
+
+# Whether c is a star tile the signal reaches: what Starbridge joins and a Starway needs.
+func powered_star(c: Vector2i) -> bool:
+	return has_star(c) and signal_at(c) >= 0
+
+
 func top_layer(c: Vector2i) -> Layer:
 	var st: Array = layers.get(c, [])
 	return st[0] if not st.is_empty() else null
@@ -4384,6 +4418,9 @@ func _unregister(c: Vector2i, t: Terrain) -> void:
 	if t.source:
 		starpower.erase(c)
 		charge.erase(c)
+	if &"portal" in t.tags and c in portals:
+		portals.erase(portals[c])  # the pair is gone with either end
+		portals.erase(c)
 
 
 # A brittle layer breaks into what it leaves (a startile: a cracked startile), or is gone.
@@ -4418,7 +4455,7 @@ func expose(c: Vector2i, tags: Array[StringName], by: Unit = null) -> bool:
 	var changed := false
 	for l in reached(c):
 		var t := l.terrain
-		if t.brittle and &"blunt" in hit:
+		if (t.brittle or l.brittle) and &"blunt" in hit:
 			break_layer(c, l, by)
 		elif t.flammable and &"fire" in hit:
 			_lift(c, l, &"fire")
@@ -4484,11 +4521,18 @@ func _teeter(u: Unit, rested: bool) -> void:
 # linked to a source whose fullness (in %) / REPAIR_SPAN reaches it in tiles, and draws REPAIR_COST of
 # a source's capacity from that source to begin ("Repairing X/Y": a round a tile of distance). Done, it
 # upgrades into what it repairs into (a startile, a source again, empty).
+# A layer with a lapse (a startile its skill laid) counts the rounds it lies outside the signal and breaks at its lapse.
 # One that regrows (Stardust) draws on the signal instead: each round in signal it makes a round's
 # progress, done in as many as its distance from the nearest source (signal_near()); out of it, it holds.
 func _repair_tiles() -> void:
 	for c: Vector2i in layers.keys():
-		for l: Layer in layers[c]:
+		for l: Layer in layers[c].duplicate():
+			if l.lapse > 0:
+				l.dark = 0 if signal_at(c) >= 0 else l.dark + 1
+				if l.dark >= l.lapse:  # unpowered too long: it breaks as blunt damage would (a startile cracks, a crack goes to Stardust)
+					l.lapse = 0
+					break_layer(c, l)
+					continue
 			if l.terrain.repairs_into == "":
 				continue
 			if l.terrain.regrows:
@@ -5679,13 +5723,37 @@ func send(t: Unit, from: Unit, n: int) -> bool:
 func place(u: Unit, c: Vector2i) -> bool:
 	if not move(u, c):
 		return false
+	_arrive(u, c)
+	_portal(u)
+	return true
+
+
+# What a unit put on c without walking meets there.
+func _arrive(u: Unit, c: Vector2i) -> void:
 	if terrain(c).is_trap():
 		spring(c, u)
 	if c in marks and u.is_alive():
 		_trigger(u, c, &"enter")
 	if u.is_alive():
 		_first_look(u)
-	return true
+
+
+# Portal tiles (tag portal: a Starway) come in pairs. Stepping onto one that is powered (a star tile the signal reaches),
+# a unit comes out on its pair, if that's free: a teleport (place() without the chain: no second hop), where it stood or
+# where a walk ends. Not a walk's passing tiles.
+func pair_portals(a: Vector2i, b: Vector2i) -> void:
+	portals[a] = b
+	portals[b] = a
+
+
+func _portal(u: Unit) -> void:
+	var from := u.cell
+	if from not in portals or not u.is_alive() or unit_at(portals[from]) or not (signal_at(from) >= 0 or not has_star(from)):
+		return
+	var to := portals[from]
+	if move(u, to):
+		_arrive(u, to)
+		ported.emit(u, from, to)
 
 
 # A heal: its wounds of rank `power` or less cleared (an effect's wound flag), then hp back, plus
@@ -5996,7 +6064,7 @@ func signal_sources() -> Array:
 func _rank(c: Vector2i) -> int:
 	var r := 0
 	for l: Layer in layers.get(c, []):
-		r = maxi(r, l.terrain.power_rank)
+		r = maxi(r, l.power if l.power > 0 and l.terrain.power_rank > 0 else l.terrain.power_rank)
 	return r
 
 

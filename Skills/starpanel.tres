@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/star_place.gd" id="b_star_place"]
+
+[ext_resource type="Resource" path="res://Terrain/starpane.tres" id="9_terrain"]
+
+[sub_resource type="Resource" id="Behaviour_star_place"]
+script = ExtResource("b_star_place")
+layer = ExtResource("9_terrain")
+shape = &"line"
+
+[resource]
+script = ExtResource("1_skill")
+name = "Starpanel"
+glyph = "Sp"
+tags = Array[StringName]([&"astral", &"power", &"int"])
+costs = "low cost, moderate ap"
+radius_per_rank = 1.0
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_star_place")])
+max_rank = 5
+radius_mod = &"intelligence"
+no_density = "its length is its reach (casting mod + rank): nothing else scales"
