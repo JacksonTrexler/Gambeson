@@ -11,7 +11,32 @@ Blocking order inside each group: first items hold up the most wave 18 cards (A 
 **F1. Pane and tile: which is which, and what does "x" and "base power" count?** Your rule: `pane * base power, tile * x, (Gen), tile * x, pane * base power`, rows and columns alike, diagonals panes, "the generators should basically be in a wired circuit". Two readings: (a) a run of that many cells; (b) a weight. Your 2026-11-23b spec had startiles forming the grid round each generator and starpanes filling the gaps, which puts tiles beside the Gen (the wire) and panes outside, and that matches the rule as written.
 Best guess: as written. Along a row or column from a Gen: `x` startiles, then panes up to the next Gen's tiles; `x` = 2, "pane * base power" = a run of 2 panes (base power = a constant, not a unit's reserve); diagonals always panes. Record the reading in `docs/plans/w18-nexus.md`.
 Ref: `Scripts/AstralNexus.gd:9-14,53-70` (now `REACH` 4 square, `BROKEN` 0.25, `VOIDED` 0.15, startile on every even offset); tiles `Terrain/startile.tres`, `starpane.tres`, `cracked_startile.tres`, `starpower_generator.tres` (`passes`, `source`).
-Answer: ____
+Answer: **x is radiating power from sources. signal decays by "1" each discrete tile away (diagonals count for two, one horizontal, one vertical). These signals interact with powered effect tiles, as well as with starpanes and startiles to create latticies / surfaces in the astral. every 20% power produces 1 tile of signal traveling along generators and wiring, which is needed for star flooring to exist, build out, and maintain itself.
+If I recall: Starpanels carry power current and emit signal, generators collect and distribute power to nearby tiles and units, and Startiles are somewhat fragile but otherwise reliable flooring that self-regenerate when powered.
+New tile type: Stardust: linger after startiles are broken. If powered they'll eventually regenerate into a startile. It takes y turns, with y being the signal distance from the nearest power source.
+
+give generators in nexus / starnests rank 5, and starpanels rank 1: starpanels create and maintain walkways with generator power. generators have larger platforms they exist on.
+
+Wizard, astral mage t3: Starpower: Mana is Power: now called Starpower. It regenerates like Power and can be used like Power **only for power exclusive skills**: cannot be used as energy. +Rank Starpower. `Starpower` is greenish teal
+Wizard, mage: Mana Resonance: Unit energy is now mana. Abilities that use energy consume AP instead. Exhaustion penalty, base + base* (1/rank)
+*icon is blue star with yellow circle behind*
+
+Astral skills for Wizards, Mages, Sorcerers, adventurers.
+these require Power
+t1: Startile: place a startile within rank range. Seals 1 power until tile is destroyed. It lasts for rank rounds unpowered.
+t2: Starbridge: Connect two powered tiles with rank columns of Startile. Each tile seals 1 power.
+t2: Starpanel: Place starpanels in a line, up to casting mod + rank tiles away. They each seal 1 power until destroyed.
+t3: Starpower Geneerator: Startile but it's a starpower generator. It shares rank with skill. Seals 1 + 10% * rank power until destroyed.
+t6: Starway: On a percieved Startile, create a pair of Starway tiles. When powered they have entrance effect: relocate unit to paired tile. Has mod stat total + rank range.
+
+
+t7 Manifest Starchitecture. Cheap. Unit may configure and utilize Starchitect hotbar to create. `pillar`. Dismissing and returning to regular hotbar is free. Divide cost of first rank casts cost by rank, aside from power `seal` effects.
+
+t9 Starnest: Creates rank generators, linked horizontally or vertically by starpanes, which support new startiles layered on top of existing tiles. (Use procedural generation rules for starnest setpieces). Seals 20% * rank power. can go negative as reserve debt.
+
+`Negative Energy`: some skills and effects allow for negative energy gain past 0. In these circumstances the debt must be paid before new energy can be gained. There is a % energy gain penalty based on the overage (-100% of energy means 0.5 efficiency gains, -50% means 0.75 efficiency etc.)
+
+
 
 **F2. "Live circuit" for Power Siphon.** Which tiles count as live?
 Best guess: every startile connected to a generator by an unbroken run of startiles (4-neighbour; a cracked or missing startile cuts it); a generator's own tile is live; panes never are. A unit on a cut-off startile gets nothing.
