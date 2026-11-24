@@ -63,9 +63,9 @@ func test_portal_menu() -> void:
 	t.free()
 
 
-# The Astral Nexus (AstralNexus.gd) on the second portal: 4 to 6 full generators wired into one circuit
+# The Astral Nexus (AstralNexus.gd) on the second portal: 2 to 3 full generators (ranked by difficulty) wired into one circuit
 # of startiles and starpanes (all in bounds, every lattice cell joined side-on to a generator), the same
-# for a seed; stone floor and void round it; 4 to 6 hostile starmen, every one on lattice the party's
+# for a seed; stone floor and void round it; difficulty-scaled hostile starmen (more, and rarely a neutral princess, in a rare nest), every one on lattice the party's
 # landing reaches; the void costs a step 99; and its reward, the Power Star.
 func test_nexus() -> void:
 	var t := tower()
@@ -79,21 +79,23 @@ func test_nexus() -> void:
 	Game.starter = {faction = lancin, role = load("res://Roles/fighter.tres"), name = "Brick"}
 	var n: Node = load("res://Scenes/astral_nexus.tscn").instantiate()
 	n.get_node("Battle/Nexus").seed = 3
+	n.get_node("Battle/Nexus").rare = 0.0
 	n.get_node("Camera").free()  # it would look for a HUD, and find one left by another test
 	tree.root.add_child(n)
 	await tree.process_frame
 	var nb: Battle = n.get_node("Battle")
 	var nx: AstralNexus = nb.get_node("Nexus")
-	ok(nx.starmen.size() >= 4 and nx.starmen.size() <= 6 and nx.starmen.all(func(u: Unit): return not Faction.friends(u.faction, lancin)), "4 to 6 hostile starmen (%d)" % nx.starmen.size())
-	ok(nx.generators.size() >= 4 and nx.generators.size() <= 6 and nx.generators.all(func(c: Vector2i): return nb.charge[c] == Battle.STAR_CAPACITY and nb.top_layer(c).terrain.name == "Starpower Generator"), "4 to 6 full generators (%d)" % nx.generators.size())
+	ok(nx.starmen.size() >= 3 and nx.starmen.size() <= 5 and nx.princess == null and nx.starmen.all(func(u: Unit): return not Faction.friends(u.faction, lancin)), "3 to 5 hostile starmen at difficulty 1 (%d)" % nx.starmen.size())
+	ok(nx.generators.size() >= 2 and nx.generators.size() <= 3 and nx.generators.all(func(c: Vector2i): return nb.charge[c] == Battle.STAR_CAPACITY * nx.gen_rank / 5 and nb.top_layer(c).terrain.name == "Starpower Generator"), "2 to 3 full generators (%d)" % nx.generators.size())
+	ok(nx.width == 33 and nx.height == 21 and nx.gen_rank == 4 and nx.pane_rank == 2 and nx.bridges.size() % 2 == 0 and nx.bridges.all(func(c: Vector2i): return nb.top_layer(c).terrain.name == "Startile"), "difficulty 1: a 33 x 21 map, rank 4 generators, rank 2 starpanes, bridges of startiles only (%d tiles)" % nx.bridges.size())
 	var lattice: Array[Vector2i] = nx.generators + nx.startiles + nx.panes
-	ok(lattice.all(func(c: Vector2i): return c.x >= 0 and c.y >= 0 and c.x < AstralNexus.WIDTH and c.y < AstralNexus.HEIGHT and nb.on_lattice(c)), "the circuit in bounds, all lattice")
+	ok(lattice.all(func(c: Vector2i): return c.x >= 0 and c.y >= 0 and c.x < nx.width and c.y < nx.height and nb.on_lattice(c)), "the circuit in bounds, all lattice")
 	ok(lattice.all(func(c: Vector2i): return nb.star_source(c) != null and not nb.circuit_ends(c).is_empty() or c in nx.generators), "one live circuit: every tile joined to a generator")
 	ok(nx.dust.size() > 5 and (nx.startiles + nx.dust).all(func(c: Vector2i): return nb.signal_at(c) >= 0 and nb.top_layer(c).terrain.name in ["Startile", "Stardust"]), "star flooring (%d startiles, %d Stardust) only where signal reaches" % [nx.startiles.size(), nx.dust.size()])
-	ok(nx.generators.all(func(g: Vector2i): return nb.signal_at(g) == AstralNexus.REACH and nb.top_layer(g + Vector2i(1, 1)).terrain.name == "Startile"), "rank 5 generators, full: 5 tiles of signal, on a platform")
-	ok(nx.floor_cells.size() > 20 and nx.voids.size() > 20 and nx.floor_cells.all(func(c: Vector2i): return not nb.on_lattice(c)), "stone floor and void off it")
-	var reach := {AstralNexus.START: true}
-	var queue: Array[Vector2i] = [AstralNexus.START]
+	ok(nx.generators.all(func(g: Vector2i): return nb.signal_at(g) == nx.gen_rank and nb.top_layer(g + Vector2i(1, 1)).terrain.name == "Startile"), "rank 4 generators, full: 4 tiles of signal, on a platform")
+	ok(nx.floor_cells.size() > 20 and nx.voids.size() > nx.width * nx.height / 2 and nx.floor_cells.all(func(c: Vector2i): return not nb.on_lattice(c)), "stone floor and void off it")
+	var reach := {nx.start: true}
+	var queue: Array[Vector2i] = [nx.start]
 	while not queue.is_empty():
 		var at: Vector2i = queue.pop_front()
 		for dir in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
@@ -101,18 +103,45 @@ func test_nexus() -> void:
 				reach[at + dir] = true
 				queue.append(at + dir)
 	ok(nx.starmen.all(func(u: Unit): return u.cell in reach) and nx.generators.all(func(c: Vector2i): return c in reach), "the party's landing reaches every starman and generator over the lattice")
-	ok(nb.step(nb.player, AstralNexus.START, nx.voids[0]) >= 99.0 and nb.star_source(nx.generators[0]) != null, "a step into the void costs 99; the lattice reaches its source")
+	ok(nb.step(nb.player, nx.start, nx.voids[0]) >= 99.0 and nb.star_source(nx.generators[0]) != null, "a step into the void costs 99; the lattice reaches its source")
 	var again := AstralNexus.new()
 	again.seed = 3
 	again.map = TileMapLayer.new()
 	again.battle = Battle.new()
 	again.rng.seed = 3
 	again._lay()
+	var rich := AstralNexus.new()  # the scaling: difficulty 1.5 against 0.5
+	rich.map = TileMapLayer.new()
+	rich.battle = Battle.new()
+	rich.battle.difficulty = 1.5
+	rich.rng.seed = 3
+	rich._lay()
+	var poor := AstralNexus.new()
+	poor.map = TileMapLayer.new()
+	poor.battle = Battle.new()
+	poor.battle.difficulty = 0.5
+	poor.rng.seed = 3
+	poor._lay()
+	ok(rich.width > poor.width and rich.gen_rank == 5 and poor.gen_rank == 3 and rich.pane_rank == 3 and poor.pane_rank == 1, "difficulty scales the map (%d vs %d) and the ranks" % [rich.width, poor.width])
+	for x in [rich, poor]:
+		x.map.free()
+		x.battle.free()
+		x.free()
 	ok(again.generators == nx.generators and again.panes == nx.panes, "the same seed, the same circuit")
 	again.map.free()
 	again.battle.free()
 	again.free()
 	n.free()
+	var rare: Node = load("res://Scenes/astral_nexus.tscn").instantiate()  # a rare nest: the neutral princess and a larger horde
+	rare.get_node("Battle/Nexus").seed = 3
+	rare.get_node("Battle/Nexus").rare = 1.0
+	rare.get_node("Camera").free()
+	tree.root.add_child(rare)
+	await tree.process_frame
+	var rx: AstralNexus = rare.get_node("Battle/Nexus")
+	ok(rx.princess != null and rx.princess.faction.neutral, "a rare nest: a neutral Astral Princess")
+	ok(rx.starmen.size() >= 5 and not Faction.friends(rx.princess.faction, rx.starmen[0].faction), "...among a larger horde (%d), not their friend" % rx.starmen.size())
+	rare.free()
 
 
 # The Power Star: a powered wearer's overflowing Power fills it at rank x 15%, to their max Power, and
