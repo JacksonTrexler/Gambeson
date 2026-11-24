@@ -784,9 +784,16 @@ func preview() -> Array[Unit]:
 	return battle.defaults_of(selected, armed) if picking() and picked.is_empty() else none
 
 
-# The foes a pick could be: those the unit makes out (Battle.read() locates them), as the behaviour will.
+# The units a pick could be: those the unit makes out (Battle.read() locates them), as the behaviour will -
+# foes, and allies where the armed skill's picks include them (Behaviour.allies(): Assault).
 func pickable(u: Unit, t: Unit) -> bool:
-	return t != null and t != u and t.is_alive() and foe(t) and battle.read(u, t).located()
+	var mates := _ally_picks(u)
+	return t != null and t != u and t.is_alive() and battle.read(u, t).located() and (picks_of(u, armed) > mates if foe(t) else mates > 0)
+
+
+# How many of the armed skill's picks are allies (Battle.allies_of()).
+func _ally_picks(u: Unit) -> int:
+	return battle.allies_of(u, armed) if armed and picks_of(u, armed) > 0 else 0
 
 
 # Steps back from aiming (the selected slot stays).
@@ -1711,10 +1718,12 @@ func _run(it: Dictionary) -> void:
 
 # A click on a foe while picking: in or out of the picks, no more than the skill takes.
 func _toggle_pick(u: Unit, t: Unit) -> void:
+	var mates := _ally_picks(u)
+	var room := mates if not foe(t) else picks_of(u, armed) - mates  # allies and foes each up to their share
 	if t in picked:
 		picked.erase(t)
-	elif picked.size() >= picks_of(u, armed):
-		_say("%s takes no more than %d" % [armed.name, picks_of(u, armed)])
+	elif picked.filter(func(x: Unit) -> bool: return foe(x) == foe(t)).size() >= room:
+		_say("%s takes no more than %d %s" % [armed.name, room, "all%s" % ("y" if room == 1 else "ies") if not foe(t) else "foe" + ("" if room == 1 else "s")] if mates > 0 else "%s takes no more than %d" % [armed.name, room])
 		return
 	else:
 		picked.append(t)
@@ -3141,8 +3150,8 @@ func _hint() -> String:
 	var u := selected
 	if picking() and _orders(u):
 		var n := picks_of(u, armed)
-		return "%s: %s (click foes, its key again casts)" % [armed.name,
-				"%d of %d picked" % [picked.size(), n] if not picked.is_empty() else "the nearest %d" % n]
+		return "%s: %s (click %s, its key again casts)" % [armed.name,
+				"%d of %d picked" % [picked.size(), n] if not picked.is_empty() else "the nearest %d" % n, "allies, then foes" if _ally_picks(u) > 0 else "foes"]
 	if not u or not hand(u) or _orders(u):
 		return ""
 	if u.asleep():

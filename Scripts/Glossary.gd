@@ -149,6 +149,7 @@ const TERMS := {
 	&"signal": ["Signal", &"ground", "Astral power as a field: sources (generators, live starpanes) radiate it, a tile less each tile away (a diagonal counts two). Star flooring needs it; Stardust regrows in it."],
 	&"power": ["Power", &"target", "Exclusive to Power: only Power pays for it (a powered unit's Energy, or a reserve acting as Power: Starpower), never ordinary Energy."],
 	&"exhausting": ["Exhausting ??", &"condition", "Each use wears its user out as four: the next costs far more, so it can be used about once a turn."],
+	&"assault": ["Assault", &"target", "Lasts one Assault: a status bearing it that one participant gains is shared with every participant, and it ends with the Assault."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

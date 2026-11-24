@@ -131,6 +131,7 @@ const COLOR := {
 	&"portal": Color("#7fd4e8"),
 	&"debt": Color("#c0504d"),
 	&"exhausting": Color("#c47a3a"),
+	&"assault": Color("#c8503c"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

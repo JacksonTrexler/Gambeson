@@ -1098,6 +1098,42 @@ func test_groups() -> void:
 			and " uses Strike on Villager1" in log[3] and v(1).hp < hp, "assault: each in order walks up and uses its leftmost attack (%s)" % [log])
 
 
+# Assault (Behaviours/assault.gd; docs/plans/w24-assault.md): rank + 1 picked allies, in pick order (more are dropped),
+# each walk and use their leftmost attack; with no free tile beside the foe, an ally there steps aside on a medium
+# wis + dex hybrid check (the mean, not the better); a status bearing `assault` is shared by them all and ends with it.
+func test_assault() -> void:
+	var assault: Skill = load("res://Skills/assault.tres")
+	var h := herd_of(nemes, 5)  # h[0] leads; h[1], h[2] join; h[3] is one too many; h[4] blocks, not picked
+	for u in h:
+		u.movement = 10
+	stage(nemes, {h[0]: Vector2i(6, 6), h[1]: Vector2i(3, 3), h[2]: Vector2i(0, 2), h[3]: Vector2i(5, 6), h[4]: Vector2i(1, 3), v(1): Vector2i(0, 3), v(2): Vector2i(0, 4)})
+	v(1).max_hp = 300
+	v(1).hp = 300
+	h[0].learned.append(slot(assault, 1)); h[0].sync_bar()
+	h[4].wisdom = 30
+	h[4].dexterity = 30
+	ok(Battle.odds(h[4], [&"wisdom", &"strength"], null, 12, {"hybrid": true}) < Battle.odds(h[4], [&"wisdom", &"strength"], null, 12), "a hybrid check rolls the mean of the mods, not the better")
+	var mark := Effect.new()
+	mark.stat = "damage"
+	mark.amount = 0.0
+	mark.bears = [&"assault"]
+	h[2].afflict(mark, 3)
+	var order: Array[Unit] = []
+	var heard := func(by: Unit, s: Skill, _at: Variant, _dealt: int) -> void:
+		if s != assault:
+			order.append(by)
+	b.used.connect(heard)
+	var cast := b.cast(h[0], assault, h[0], false, [h[2], h[1], h[3], v(1)] as Array[Unit])
+	b.used.disconnect(heard)
+	ok(cast and order == ([h[2], h[1]] as Array[Unit]), "the first rank + 1 picked allies attack, in the order picked; the next sits out (%s)" % [order])
+	ok(h[1].cell == Vector2i(1, 3) and Command.tiles(h[4].cell, Vector2i(1, 3)) == 1, "no free tile its blow reaches from: the ally there stepped aside, and it took its place (%s, %s)" % [h[1].cell, h[4].cell])
+	ok(mark not in h[2].timed and mark not in h[1].timed, "a status bearing assault ends with it")
+	var shared: Dictionary[Effect, bool] = {}
+	h[2].afflict(mark, 3)
+	AI._share(b, [h[1], h[2]] as Array[Unit], shared)
+	ok(mark in h[1].timed and mark not in h[3].timed, "shared with every participant, no one else")
+
+
 # Battle.ranks (Scripts/Ranks.gd): each side's units by HP (kept as it changes), physical and magical Defense (taken each side turn),
 # lowest first - the same order a scan of every unit gives, after hits, heals, a fall and a Defense change.
 func test_ranks_match_a_scan() -> void:

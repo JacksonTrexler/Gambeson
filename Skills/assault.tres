@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Skill" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="1_skill"]
+[ext_resource type="Script" path="res://Scripts/Behaviour.gd" id="4_behaviour"]
+[ext_resource type="Script" path="res://Behaviours/assault.gd" id="b_assault"]
+
+[sub_resource type="Resource" id="Behaviour_assault"]
+script = ExtResource("b_assault")
+
+[resource]
+script = ExtResource("1_skill")
+name = "Assault"
+glyph = "As"
+tags = Array[StringName]([&"specialist", &"offensive"])
+impact = &"impactful"
+costs = "low cost"
+no_density = "its rank widens who joins and how many foes, not how hard any blow lands: the allies' own attacks do that"
+behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_assault")])
+hostile = false
+self_only = true
+rolls = false

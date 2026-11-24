@@ -500,9 +500,12 @@ static func in_groups(units: Array[Unit]) -> Array[Unit]:
 # An assault (the seam for a coordinated attack, the Assault skill): each of `units` in order moves into reach of, and
 # uses its leftmost attack (_leftmost(): first on its hotbar, else of its actives, that attacks()) on, the `per` nearest
 # living `targets` it can reach, one after another, no weighing. A unit with no attack, or none it can afford, sits it out.
-# Returns the log.
+# No free tile beside its target: an ally there may step aside (_make_way()). A status bearing `assault` that one of them
+# gains is shared with them all (_share()), and comes off them all as it ends. Returns the log.
 static func assault(b: Battle, units: Array[Unit], targets: Array[Unit], per := 1) -> Array[String]:
 	var log: Array[String] = []
+	var shared: Dictionary[Effect, bool] = {}
+	_share(b, units, shared)
 	for u: Unit in units:
 		if not u.is_alive() or u.stopped():
 			continue
@@ -513,12 +516,85 @@ static func assault(b: Battle, units: Array[Unit], targets: Array[Unit], per := 
 		left.sort_custom(func(x: Unit, y: Unit): return Command.tiles(u.cell, x.cell) < Command.tiles(u.cell, y.cell))
 		var first: Unit = left[0]
 		if not b.in_reach(u, s, first) and not _rooted(b, u):
-			log.append("%s moves %s" % [u.name, b.travel(u, _approach(b, u, first, reads_from({first: b.read(u, first)})))])
+			var to := _make_way(b, u, s, first, log)
+			if to == first.cell:  # room enough, or none made
+				to = _approach(b, u, first, reads_from({first: b.read(u, first)}))
+			log.append("%s moves %s" % [u.name, b.travel(u, to)])
 		for t: Unit in left.slice(0, per):
 			if t.is_alive() and b.in_reach(u, s, t) and b.can_afford(u, s, t) and b.cast(u, s, t):
 				log.append("%s uses %s on %s -> %d" % [u.name, s.name, t.name, t.hp])
 				u.set_meta(&"aim", t)
+		_share(b, units, shared)
+	for p: Unit in units:
+		for e: Effect in shared:
+			p.timed.erase(e)
 	return log
+
+
+# No free tile beside t that u's blow s reaches t from (a melee blow: within s's range of t): each ally of u's on one of them
+# (nearest u first) that can act may step aside - a medium hybrid wisdom + dexterity check (Battle.check, hybrid: the mean of
+# the two) - onto a free tile beside itself, one still beside t if it can, put there without paying movement. Returns the
+# tile it freed, or t's own (room enough, a blow reaching farther than beside, or none stepped aside).
+static func _make_way(b: Battle, u: Unit, s: Skill, t: Unit, log: Array[String]) -> Vector2i:
+	var span := b.skill_range(u, s, t)
+	if span > 1.5:
+		return t.cell  # it reaches from farther off: it finds its own tile
+	var in_way: Array[Unit] = []
+	for c: Vector2i in _around(b, t.cell):
+		if Vector2(c).distance_to(Vector2(t.cell)) > span + 0.0001:
+			continue
+		var o := b.unit_at(c)
+		if o == null or o == u:
+			return t.cell  # a free tile (or its own): room enough
+		if o != t and o.is_alive() and not o.stopped() and Faction.friends(o.faction, u.faction):
+			in_way.append(o)
+	in_way.sort_custom(func(x: Unit, y: Unit): return Command.tiles(u.cell, x.cell) < Command.tiles(u.cell, y.cell))
+	for o: Unit in in_way:
+		var aside := _aside(b, o, t)
+		if aside == o.cell:
+			continue
+		var was := o.cell
+		var won := b.check(o, [&"wisdom", &"dexterity"], null, Difficulty.dc(&"medium"), {"hybrid": true}).won
+		log.append("%s %s for %s" % [o.name, "steps aside" if won else "fails to step aside", u.name])
+		if won and b.place(o, aside):
+			return was
+	return t.cell
+
+
+# A free tile beside o it could stand on, one still beside t first, else o's own.
+static func _aside(b: Battle, o: Unit, t: Unit) -> Vector2i:
+	var best := o.cell
+	var score := INF
+	for c: Vector2i in _around(b, o.cell):
+		if not b.unit_at(c) and b.footing(o, c):
+			var v := float(Command.tiles(c, t.cell) > 1) * 10.0 + Vector2(c).distance_to(Vector2(o.cell))
+			if v < score:
+				best = c
+				score = v
+	return best
+
+
+# The tiles on the map touching c (diagonals too).
+static func _around(b: Battle, c: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for dx: int in [-1, 0, 1]:
+		for dy: int in [-1, 0, 1]:
+			if (dx or dy) and b.on_map(c + Vector2i(dx, dy)):
+				out.append(c + Vector2i(dx, dy))
+	return out
+
+
+# Statuses bearing `assault` on any of `units` not shared yet are put on the others, as they stand (turns, rank).
+static func _share(_b: Battle, units: Array[Unit], shared: Dictionary[Effect, bool]) -> void:
+	for p: Unit in units:
+		for e: Effect in p.afflicted(&"assault"):
+			if e in shared:
+				continue
+			shared[e] = true
+			var a: Unit.Applied = p.timed[e]
+			for q: Unit in units:
+				if q != p and q.is_alive():
+					q.afflict(e, a.turns, a.rank)
 
 
 static func _leftmost(u: Unit) -> Skill:

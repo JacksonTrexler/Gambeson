@@ -125,6 +125,13 @@ func test_the_hud_toggles_picks() -> void:
 	h.click(Vector2i(7, 3))
 	h.click(v(1).cell)
 	ok(v(1) in h.command.ordered and b.marks.keys() == [Vector2i(2, 3)] and h.picked.is_empty(), "a click on itself casts it toward the picked foe, and clears the picks")
+	v(1).refresh()
+	v(1).learned.append(slot(load("res://Skills/assault.tres"), 1)); v(1).sync_bar()
+	v(1).hotbar[2] = load("res://Skills/assault.tres")
+	h._unhandled_input(key_of(KEY_3))
+	for c in [Vector2i(0, 0), Vector2i(7, 3), Vector2i(1, 7)]:
+		h.click(c)
+	ok(h.picked == Array([v(2), v(3)], TYPE_OBJECT, "Node", null) and "allies, then foes" in h._hint(), "picks that include allies (Assault: 2 allies, 1 foe) take allies too, each up to its share (%s)" % [h.picked])
 	h.free()
 
 

@@ -81,6 +81,13 @@ func picks(_c: Cast) -> int:
 	return 0
 
 
+# How many of its picks() are allies, the rest foes (Assault: rank + 1 allies, rank foes). The HUD takes a
+# click on an ally it can see while fewer are picked, on a foe while fewer of the rest; Cast.picked keeps
+# the order they were picked in. 0: foes only. Pure.
+func allies(_c: Cast) -> int:
+	return 0
+
+
 # The options its caster chooses one of as it casts (Thesis of Theseus: a path), by label: the HUD asks before it
 # aims (HUD._choose()) and Battle.cast_at() carries the pick into Cast.chose; with none chosen (the AI, a quick
 # cast) the behaviour chooses for itself. Empty: nothing to choose. Pure.

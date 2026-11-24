@@ -788,6 +788,7 @@ func beats(a: Check, b: Check, a_wins_ties := true) -> Check.Contest:
 #   cut           the share of b's total that counts (an execute: Battle.executed())
 #   kind          the Check.Kind both sides roll as (Contest; a Save)
 #   ties          false: b wins ties (a grip's holder, a wall of fire)
+#   hybrid        an Array `stat` counts as the mean of a's mods in them, not the best (Assault's step aside: wis + dex)
 # A stat &"" is that side's bonus alone (a last stand); an Array of stats, the better of them (Hitch).
 # `against` a number (b may be null): a total rolled earlier, which doesn't roll again - a look at the roll
 # a hider made (investigate()), a fall against a last stand (_borrowed()), Level Down's bar. Its
@@ -824,7 +825,7 @@ static func sides(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) ->
 	var theirs_tags: Array[StringName] = []
 	theirs_tags.assign(o.get("their_tags", tags))
 	var k: Check.Kind = o.get("kind", Check.Kind.CONTEST)
-	var mine := _side_mod(a, stat, kind, tags) + int(o.get("bonus", 0)) - int(o.get("penalty", 0)) * int(o.get("tiles", 0))
+	var mine := _side_mod(a, stat, kind, tags, o.get("hybrid", false)) + int(o.get("bonus", 0)) - int(o.get("penalty", 0)) * int(o.get("tiles", 0))
 	var mine_side := Check.side(mine, k).edge(int(o.get("edge", 0)))
 	var cut := float(o.get("cut", 1.0))
 	if against is int:
@@ -833,8 +834,10 @@ static func sides(a: Unit, stat: Variant, b: Unit, against: Variant, o := {}) ->
 	return [mine_side, Check.side(theirs, k).edge(int(o.get("their_edge", 0))).cut(cut)]
 
 
-# u's check mod in stat as kind; the better of several stats; none for &"".
-static func _side_mod(u: Unit, stat: Variant, kind: StringName, tags: Array[StringName]) -> int:
+# u's check mod in stat as kind; the better of several stats (hybrid: their mean, luck rounding); none for &"".
+static func _side_mod(u: Unit, stat: Variant, kind: StringName, tags: Array[StringName], hybrid := false) -> int:
+	if stat is Array and hybrid and not stat.is_empty():
+		return u.rounded(stat.reduce(func(sum: int, s: StringName) -> int: return sum + u.check_mod(s, kind, tags), 0) / float(stat.size()))
 	if stat is Array:
 		var best := -999
 		for s: StringName in stat:
@@ -1422,6 +1425,15 @@ func picks_of(caster: Unit, skill: Skill) -> int:
 	var n := 0
 	for bh in skill.behaviours:
 		n += bh.picks(c)
+	return n
+
+
+# How many of those picks are allies (its behaviours' allies(): Assault), for the HUD.
+func allies_of(caster: Unit, skill: Skill) -> int:
+	var c := cast_of(caster, skill, caster, caster.rank(skill), false)
+	var n := 0
+	for bh in skill.behaviours:
+		n += bh.allies(c)
 	return n
 
 
