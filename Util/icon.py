@@ -3,6 +3,7 @@
 
   python3 Util/icon.py skill kick [--text Kk]      # Icons/Skills/kick.png: its mark (Skill.mark()) in pixel letters
   python3 Util/icon.py skills                      # every skill still missing one
+  python3 Util/icon.py star starpower --color "#26b89a" [--behind "#f2c93b"]  # Icons/Skills/<id>.png: a coloured five-point star, a disc behind it
   python3 Util/icon.py tile sand --color "#d8c48a" [--text Sa]   # Tiles/sand.png: 32x32 ground, flat colour
   python3 Util/icon.py unit Blinthe --color "#b07acc" [--text B]  # Units/Blinthe.png: a 20x25 figure
   python3 Util/icon.py item dagger                # Icons/Items/dagger.png: 32x32 drawn off Items/dagger.tres (slot, weapon's damage tag, trim)
@@ -140,6 +141,34 @@ def skill_icon(sid, text=None, dry=False):
     px = blank(32, 32)
     letters(px, text[:2], 3 if len(text) == 1 else 2, (255, 255, 255, 255), (0, 0, 0, 150))
     save("%s/%s.png" % (SKILL_ICONS, sid), 32, 32, px, dry)
+
+
+def star_icon(sid, color, behind=None, dry=False):
+    """A coloured star (a skill icon in colour, so the skills screen's tint reads weakly), with a disc behind it."""
+    import math
+    star = [(15.5 + (14 if i % 2 == 0 else 6) * math.sin(i * math.pi / 5), 16.5 - (14 if i % 2 == 0 else 6) * math.cos(i * math.pi / 5)) for i in range(10)]
+
+    def inside(x, y):  # even-odd fill of the star's ten corners
+        hit = False
+        for (x0, y0), (x1, y1) in zip(star, star[1:] + star[:1]):
+            if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+                hit = not hit
+        return hit
+    px = blank(32, 32)
+    ink, back = colour(color), colour(behind) if behind else None
+    for y in range(32):
+        for x in range(32):
+            if back and (x - 15.5) ** 2 + (y - 15.5) ** 2 <= 15.5 ** 2:
+                px[y][x] = back
+            if inside(x + 0.5, y + 0.5):
+                px[y][x] = ink
+    # a dark edge round the star keeps it apart from its disc
+    out = [row[:] for row in px]
+    for y in range(32):
+        for x in range(32):
+            if px[y][x] != ink and any(0 <= x + dx < 32 and 0 <= y + dy < 32 and px[y + dy][x + dx] == ink for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                out[y][x] = (24, 28, 44, 255)
+    save("%s/%s.png" % (SKILL_ICONS, sid), 32, 32, out, dry)
 
 
 def missing_skill_icons():
@@ -402,6 +431,10 @@ def main():
     s.add_argument("id")
     s.add_argument("--text", help="up to 2 characters (default: its mark)")
     sub.add_parser("skills", help="every skill missing an icon")
+    st = sub.add_parser("star", help="Icons/Skills/<id>.png: a coloured star")
+    st.add_argument("id")
+    st.add_argument("--color", required=True, help='the star: "#rrggbb"')
+    st.add_argument("--behind", help='a disc behind it: "#rrggbb"')
     for kind in ("tile", "unit"):
         k = sub.add_parser(kind, help="Tiles/<id>.png" if kind == "tile" else "Units/<Name>.png")
         k.add_argument("id")
@@ -423,6 +456,8 @@ def main():
     a = ap.parse_args()
     if a.cmd == "skill":
         skill_icon(a.id, a.text, a.dry_run)
+    elif a.cmd == "star":
+        star_icon(a.id, a.color, a.behind, a.dry_run)
     elif a.cmd == "skills":
         for sid in missing_skill_icons():
             skill_icon(sid, None, a.dry_run)

@@ -615,7 +615,7 @@ var banner: Node2D  # its trinket's trim (Item.trim()) as a little banner over i
 
 func _init() -> void:
 	exhaustion.ease = func() -> float: return 1.0 + maxf(stat(&"stamina"), 0.0)  # Stamina: its counts / (rank + 1)
-	exhaustion.penalty = func(s: Skill) -> float: return Burnout.penalty(self, s)  # Burnout: int skills wear harder
+	exhaustion.penalty = func(s: Skill) -> float: return Burnout.penalty(self, s) * wear_penalty()  # Burnout: int skills wear harder
 
 
 func _ready() -> void:
@@ -986,8 +986,11 @@ static func replacer(s: Skill) -> Reserve:
 func runs_on() -> Variant:
 	for x in on_passives:
 		var r := replacer(x.skill)
-		if r:
+		if r and view(r).replaces:
 			return r
+	var as_reserve := view(&"energy")  # Mana Resonance: its Energy is Mana
+	if as_reserve and as_reserve in pools():
+		return as_reserve
 	return &"energy"
 
 
@@ -3209,6 +3212,15 @@ func grant_energy(n: int, heard := true) -> int:
 	return energy - was
 
 
+# n points into every reserve that acts as Power (view().powered: Starpower), up to its max: the star lattice's (Battle._starlight()).
+func grant_power(n: int) -> void:
+	for r in pools():
+		if view(r).powered:
+			var was := store(r)
+			set_store(r, was + maxi(n, 0))
+			note_recovery(r, store(r) - was)
+
+
 # Something gave back n of pool (&"hp", &"energy" - Overcharge counts - or a Reserve) by means other than
 # regen: told to whoever listens (recovered: Battle's RecoveryEndurance). heal() and grant_energy() call it; a new
 # way to restore something calls it too, and burnout reaches it without knowing.
@@ -3287,12 +3299,46 @@ func pools() -> Dictionary[Reserve, int]:
 			var m := mods(x.skill)  # its modifiers: the mod is stat impact, the rank rank impact
 			out[r] = out.get(r, 0) + maxi((m.stat(mod(x.skill.reserve_mod), &"stat_impact") if x.skill.reserve_mod else 1) + r.base, 0) * m.irank(x.rank, &"rank_impact")
 	for r in out:
-		out[r] = maxi(out[r] - int(burnt.get(r, 0)), 0)  # Recovery Endurance's loss
+		var more := int(stat(&"pool_max", [pool_id(r)] as Array[StringName])) if lends(&"pool_max") else 0
+		out[r] = maxi(out[r] + more - int(burnt.get(r, 0)), 0)  # Starpower's rank; Recovery Endurance's loss
 	return out
 
 
 func store(r: Reserve) -> int:
 	return stores.get(r, 0)
+
+
+# The reserve whose rules, name and colour `pool` (&"energy" or a Reserve) follows now (docs/plans/w22-starpower.md):
+# the Reserves/ file an acts_as effect tagged [its id, that reserve's id] names (Starpower: its Mana acts as Starpower,
+# a Power; Mana Resonance: its Energy acts as Mana), else the pool's own reserve (null for plain Energy).
+# Anything reading what a reserve is - what it pays for, how it comes back, its name - asks here, not the Reserve.
+func view(pool: Variant) -> Reserve:
+	var own: Reserve = pool if pool is Reserve else null
+	if not lends(&"acts_as"):
+		return own
+	var id := pool_id(pool)
+	for pair in _effects():
+		var e: Effect = pair[0]
+		if e.stat == "acts_as" and e.tags.size() > 1 and e.tags[0] == id:
+			return load("res://Reserves/%s.tres" % e.tags[1]) as Reserve
+	return own
+
+
+# AP a point that a cost paid from pool is, instead (Effect cost_ap: Mana Resonance's Energy); 0: paid in itself.
+func cost_ap(pool: Variant) -> float:
+	return maxf(stat(&"cost_ap", [pool_id(pool)] as Array[StringName]), 0.0) if lends(&"cost_ap") else 0.0
+
+
+# What exhaustion's wear on a skill is multiplied by for its holder's passives (Effect wear: Mana Resonance, x(1 + 1 / rank)).
+func wear_penalty() -> float:
+	if not lends(&"wear"):
+		return 1.0
+	var out := 1.0
+	for pair in _effects():
+		var e: Effect = pair[0]
+		if e.stat == "wear":
+			out *= 1.0 + e.amount / maxf(pair[1], 1.0) * pair[2]
+	return out
 
 
 # Whether it spends from r now: unless the passive that gives it, or stands in for Energy with it
@@ -3301,7 +3347,7 @@ func spends(r: Reserve) -> bool:
 	for x in slots:
 		if x.skill.reserve == r and x.skill.passive and (not x.on or x.skill in disabled or not equipped(x.skill)):
 			return false
-		if replacer(x.skill) == r and (not x.on or x.skill in disabled or not equipped(x.skill)):
+		if replacer(x.skill) == r and view(r).replaces and (not x.on or x.skill in disabled or not equipped(x.skill)):
 			return false  # Mana switched off: mana it holds pays for nothing
 	return true
 
@@ -3480,6 +3526,8 @@ func price(s: Skill, fund: Variant = null) -> int:
 func cost_from(s: Skill, fund: Variant, cut := 0.0) -> int:
 	if fund is Reserve and fund.whole > 0:
 		return fund.whole if price(s) > 0 or s.needs == fund else 0
+	if cost_ap(fund) > 0.0:
+		return 0  # paid in AP instead (ap_cost())
 	var factor := 1.0
 	for r in s.cost_with:
 		if pays_as(s, fund, r) and opened(r) >= tier(s):
@@ -3976,7 +4024,7 @@ func funding(s: Skill, cut := 0.0) -> Variant:
 
 
 func _funding(s: Skill, buffered: bool, cut: float) -> Variant:
-	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and (r.only.is_empty() or r.only.any(func(t): return s.tagged(t))))
+	var allowed := pools().keys().filter(func(r: Reserve): return spends(r) and pays_view(s, view(r)))
 	if s.needs and s.needs in pools():  # a unit without that reserve at all (a Cleric's Level Down) pays as usual
 		return s.needs if s.needs in allowed and covers(s.needs, cost_from(s, s.needs, cut), buffered) else null
 	var pref := Pricing.reserve_of(s)  # its cost profile prefers a reserve ("high mana"): that first
@@ -3991,15 +4039,25 @@ func _funding(s: Skill, buffered: bool, cut: float) -> Variant:
 	for r: Reserve in allowed:
 		if (s.ap_with.has(r) or cost_from(s, r) < price(s)) and covers(r, cost_from(s, r, cut), buffered):
 			return r
+	var dedicated := false
 	for r: Reserve in allowed:
-		if not r.only.is_empty() and r.whole == 0 and covers(r, cost_from(s, r, cut), buffered):
-			return r
-	if covers(&"energy", cost_from(s, &"energy", cut), buffered):
+		if not view(r).only.is_empty() and r.whole == 0:
+			dedicated = true
+			if covers(r, cost_from(s, r, cut), buffered):
+				return r
+	# Energy: not for a Power skill unless it is Power; paid in AP (cost_ap) only where no reserve is for the skill
+	if covers(&"energy", cost_from(s, &"energy", cut), buffered) and (powered() or not s.tagged(&"power")) \
+			and not (dedicated and cost_ap(&"energy") > 0.0):
 		return &"energy"
 	for r: Reserve in allowed:
 		if covers(r, cost_from(s, r, cut), buffered):
 			return r  # Focus, for anything but a ranged attack: only once Energy can't
 	return null
+
+
+# Whether the reserve v (a view()) may pay for s: its tags suit it (Reserve.only), and a Power skill (tagged power) takes only Power.
+func pays_view(s: Skill, v: Reserve) -> bool:
+	return (v.only.is_empty() or v.only.any(func(t): return s.tagged(t))) and (v.powered or not s.tagged(&"power"))
 
 
 # A ranged attack: one that rolls to hit a foe, reaching past the tiles beside it (Focus pays first for
@@ -4054,7 +4112,8 @@ func ap_cost(s: Skill, fund: Variant, cut := 0.0) -> float:
 	for r in s.ap_with:
 		if pays_as(s, fund, r):
 			factor = minf(factor, s.ap_with[r])
-	return Pricing.ap_for(self, s) * factor * exhaustion.rate(s) * (1.0 - cut)  # priced, or hand-set under its modifiers
+	var extra := Pricing.cost_for(self, s) * cost_ap(fund)  # what its cost comes to in AP, where this pool's costs are AP (Mana Resonance)
+	return (Pricing.ap_for(self, s) * factor + extra) * exhaustion.rate(s) * (1.0 - cut)  # priced, or hand-set under its modifiers
 
 
 # Its actives it would aim at a foe itself (not a tile, nor used at once on whoever's nearest), those it
@@ -4298,8 +4357,9 @@ func full_resource() -> bool:
 func _recover_reserves(how: StringName, rate: float) -> void:
 	var all := pools()
 	for r in all:
-		if r.with_energy:
-			var bonus := r.rest_rank * giver_rank(r) * (1.0 if how == &"rest" else r.steady)
+		var v := view(r)
+		if v.with_energy:
+			var bonus := v.rest_rank * giver_rank(r) * (1.0 if how == &"rest" else v.steady)
 			if not spends(r) or store(r) >= usable_max(r) or (how == &"busy" and bonus <= 0.0):
 				reserve_rest[r] = 0.0
 				continue
@@ -4307,8 +4367,8 @@ func _recover_reserves(how: StringName, rate: float) -> void:
 			var whole := floori(got + 0.0001)
 			reserve_rest[r] = got - whole
 			set_store(r, store(r) + whole)
-		if r.builds > 0.0 and how == &"rest":
-			set_store(r, store(r) + ceili(r.builds * all[r] - 0.0001))
+		if v.builds > 0.0 and how == &"rest":
+			set_store(r, store(r) + ceili(v.builds * all[r] - 0.0001))
 
 
 # The highest rank of its passives giving or opening reserve r (Stamina's rank, Mana's), 0 if none.
@@ -5061,14 +5121,14 @@ func _colour_pools() -> void:
 	energy_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	energy_bar.modulate.a = 0.45 if main else 1.0
 	if main:
-		reserve_bar.add_theme_stylebox_override("fill", _flat(main.color))
+		reserve_bar.add_theme_stylebox_override("fill", _flat(view(main).color))
 		reserve_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	if held.size() > 1:  # a second reserve it holds (a Ranger's Focus beside its Stamina): a bar of its own
 		if not second_bar:
 			second_bar = reserve_bar.duplicate()
 			second_bar.name = &"SecondReserveBar"
 			reserve_bar.add_sibling(second_bar)
-		second_bar.add_theme_stylebox_override("fill", _flat(held[1].color))
+		second_bar.add_theme_stylebox_override("fill", _flat(view(held[1]).color))
 		second_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 	for i in range(2, held.size()):  # and one more sliver for each further reserve
 		if more_bars.size() < i - 1:
@@ -5076,7 +5136,7 @@ func _colour_pools() -> void:
 			bar.name = "ReserveBar%d" % (i + 1)
 			reserve_bar.add_sibling(bar)
 			more_bars.append(bar)
-		more_bars[i - 2].add_theme_stylebox_override("fill", _flat(held[i].color))
+		more_bars[i - 2].add_theme_stylebox_override("fill", _flat(view(held[i]).color))
 		more_bars[i - 2].add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.5)))
 
 

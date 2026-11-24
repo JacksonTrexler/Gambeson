@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Reserve" format=3]
+
+[ext_resource type="Script" path="res://Scripts/Reserve.gd" id="1_script"]
+
+
+[resource]
+script = ExtResource("1_script")
+name = "Starpower"
+color = Color(0.15, 0.72, 0.6, 1)
+only = Array[StringName]([&"power"])
+powered = true

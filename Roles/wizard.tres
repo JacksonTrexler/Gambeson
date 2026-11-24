@@ -51,6 +51,7 @@
 [ext_resource type="Resource" path="res://Skills/clairvoyance.tres" id="s_clairvoyance"]
 [ext_resource type="Resource" path="res://Skills/borrowed_time.tres" id="s_borrowed_time"]
 [ext_resource type="Resource" path="res://Skills/thesis_of_theseus.tres" id="s_thesis_of_theseus"]
+[ext_resource type="Resource" path="res://Skills/mana_resonance.tres" id="s_mana_resonance"]
 
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
@@ -101,11 +102,15 @@ needs = 3
 script = ExtResource("9_branch")
 skill = ExtResource("s_clairvoyance")
 
+[sub_resource type="Resource" id="Branch_mana_resonance"]
+script = ExtResource("9_branch")
+skill = ExtResource("s_mana_resonance")
+
 [sub_resource type="Resource" id="Root_Arcane"]
 script = ExtResource("8_root")
 name = "Arcane"
 tag = &"magical"
-branches = Array[ExtResource("9_branch")]([SubResource("Branch_arcana"), SubResource("Branch_dispel"), SubResource("Branch_blink"), SubResource("Branch_borrowed_time"), SubResource("Branch_spellweave"), SubResource("Branch_counterspell"), SubResource("Branch_emergency_exit"), SubResource("Branch_clairvoyance"), SubResource("Branch_magic_slot")])
+branches = Array[ExtResource("9_branch")]([SubResource("Branch_arcana"), SubResource("Branch_dispel"), SubResource("Branch_blink"), SubResource("Branch_borrowed_time"), SubResource("Branch_spellweave"), SubResource("Branch_counterspell"), SubResource("Branch_emergency_exit"), SubResource("Branch_clairvoyance"), SubResource("Branch_magic_slot"), SubResource("Branch_mana_resonance")])
 
 [sub_resource type="Resource" id="Branch_overchannel"]
 script = ExtResource("9_branch")

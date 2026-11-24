@@ -147,6 +147,7 @@ const TERMS := {
 	&"jump": ["Jump", &"target", "A leap through the air to a tile in range, over whatever lies between: it must land where its jumper can stand (not void, unless it floats or flies). Floaty lengthens jumps."],
 	&"void": ["Void", &"target", "Nothing underfoot: walkers can't enter it (it costs more movement than any turn holds), but a jump carries over it, never onto it. Floating and flying units cross it as firm ground."],
 	&"signal": ["Signal", &"ground", "Astral power as a field: sources (generators, live starpanes) radiate it, a tile less each tile away (a diagonal counts two). Star flooring needs it; Stardust regrows in it."],
+	&"power": ["Power", &"target", "Exclusive to Power: only Power pays for it (a powered unit's Energy, or a reserve acting as Power: Starpower), never ordinary Energy."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

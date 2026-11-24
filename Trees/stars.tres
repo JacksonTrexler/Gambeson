@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://Skills/astera.tres" id="s_astera"]
 [ext_resource type="Resource" path="res://Skills/constellation.tres" id="s_constellation"]
 [ext_resource type="Resource" path="res://Skills/starfall.tres" id="s_starfall"]
+[ext_resource type="Resource" path="res://Skills/starpower.tres" id="s_starpower"]
 
 [sub_resource type="Resource" id="Branch_fortune"]
 script = ExtResource("branch")
@@ -23,8 +24,13 @@ script = ExtResource("branch")
 skill = ExtResource("s_starfall")
 after = Array[ExtResource("skill")]([ExtResource("s_fortune"), ExtResource("s_constellation")])
 
+[sub_resource type="Resource" id="Branch_starpower"]
+script = ExtResource("branch")
+skill = ExtResource("s_starpower")
+after = Array[ExtResource("skill")]([ExtResource("s_starfall")])
+
 [resource]
 script = ExtResource("root")
 name = "Stars"
 tag = &"magical"
-branches = Array[ExtResource("branch")]([SubResource("Branch_fortune"), SubResource("Branch_constellation"), SubResource("Branch_starfall")])
+branches = Array[ExtResource("branch")]([SubResource("Branch_fortune"), SubResource("Branch_constellation"), SubResource("Branch_starfall"), SubResource("Branch_starpower")])

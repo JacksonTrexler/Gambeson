@@ -203,6 +203,15 @@ extends Resource
 # debt: tagged with a pool (energy, mana...): the share of its max that pool may be owed below 0,
 # 1.0 down to -max (Negative Energy; Unit.debt_floor()). Debt is paid before gains count, and they
 # come at 1 - half the debt's share of max
+# acts_as: tags [pool, reserve]: its pool (energy or a reserve id) follows another reserve's
+# rules, name and colour (Mana Resonance: energy as mana; Starpower: mana as starpower, a
+# Reserves/ file; Unit.view())
+# pool_max: added to the max of the pool its tags name (a reserve id; Unit.pools(): Starpower
+# +rank)
+# cost_ap: a cost paid from the pool its tags name (energy or a reserve id) is AP instead, this
+# many AP a point (Mana Resonance; Unit.cost_from(), ap_cost())
+# wear: exhaustion's wear on its skills is x(1 + this / the skill's rank) (Mana Resonance;
+# Unit.wear_penalty())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -213,7 +222,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon", "healed", "seal", "debt") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon", "healed", "seal", "debt", "acts_as", "pool_max", "cost_ap", "wear") var stat := "luck"
 # mul: multiplies the stat after everything is added; scale: multiplies it by 1 + amount (x rank with per_rank:
 # Floaty's jumps, x(rank + 1)); divide: divides it by 1 + amount (x rank: Floaty's movement, /(rank + 1))
 @export_enum("add", "mul", "scale", "divide") var op := "add"
@@ -258,7 +267,8 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"mindless": "Mindless Fury actions", "drone": "Drone", "hale": "Hale ??", "defer": "Borrowed Time",
 		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
 		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??", "attack_stat": "Attack stat ??",
-		"postpone": "Disablings postponed ??", "overcome": "To be overcome ??", "seal": "Seal", "debt": "Debt"}
+		"postpone": "Disablings postponed ??", "overcome": "To be overcome ??", "seal": "Seal", "debt": "Debt",
+		"acts_as": "Acts as ??", "pool_max": "Max ??", "cost_ap": "Paid in AP ??", "wear": "Wear ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -346,6 +356,14 @@ func value(rank := 1) -> String:
 		text = "%s locked out of its usable max%s until what holds it is gone" % [("%s%% of the max" % Skill.num(x * 100.0)) if op == "mul" else Skill.num(x), ", and may take it into debt" if &"debt" in tags else ""]
 	elif stat == "debt":
 		text = "may owe up to %s%% of its max below 0; debt is paid before gains count, at an efficiency of 1 less half the debt's share of max" % Skill.num(x * 100.0)
+	elif stat == "acts_as" and tags.size() > 1:
+		text = "its %s acts as %s%s" % [tags[0], tags[1], " (Power: it never comes back on its own, only on the star lattice, and pays only Power skills)" if tags[1] == &"starpower" else ""]
+	elif stat == "pool_max":
+		text = "+%s max %s" % [Skill.num(x), ", ".join(tags)]
+	elif stat == "cost_ap":
+		text = "a cost paid in %s is %s AP a point instead" % [", ".join(tags), Skill.num(x)]
+	elif stat == "wear":
+		text = "exhaustion wears it x(1 + %s / rank) as much" % Skill.num(amount)
 	elif op == "mul":
 		text = "x" + Skill.num(x)
 	elif op == "scale":

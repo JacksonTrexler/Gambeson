@@ -268,3 +268,63 @@ func test_seal() -> void:
 	half.op = "mul"
 	u.afflict(half, 0, 1, true)
 	ok(u.locked(mana) == 5 and u.usable_max(mana) == 5 and u.store(mana) == 5 and u.timed.is_empty(), "a mul seal is a share of max, and nothing timed stays on it")
+
+
+# A pool that follows another reserve's rules (Effect acts_as; Unit.view(); docs/plans/w22-starpower.md).
+# Starpower: Mana acts as Starpower, a Power - its rank more max, no coming back on its own, never Energy, and it
+# alone (with Power) pays a skill tagged power. Mana Resonance: Energy acts as Mana (a unit runs on it), its costs
+# are AP (0.5 a point), and exhaustion wears it x(1 + 1 / rank).
+func test_pool_conversion() -> void:
+	var starpower: Skill = load("res://Skills/starpower.tres")
+	var star_pool: Reserve = load("res://Reserves/starpower.tres")
+	var resonance: Skill = load("res://Skills/mana_resonance.tres")
+	var power_skill: Skill = hex.duplicate()
+	power_skill.tags = [&"magical", &"power"]
+	var u := icor()
+	u.learned.append(slot(starpower, 2)); u.sync_bar()
+	ok(u.view(mana) == star_pool and u.view(&"energy") == null and star_pool.name == "Starpower" and star_pool.color.g > star_pool.color.r, "Mana acts as Starpower, greenish teal; Energy as itself")
+	ok(u.pools()[mana] == 12 + 2 and u.runs_on() == &"energy" and not u.view(mana).replaces, "its rank more max; never Energy: it runs on Energy again")
+	u.energy = 0
+	u.set_store(mana, 5)
+	ok(u.funding(hex) == null and u.funding(power_skill) == mana, "pays only a power skill (hex: nothing pays)")
+	u.energy = 20
+	u.set_store(mana, 0)
+	ok(u.funding(hex) == &"energy" and u.funding(power_skill) == null, "Energy pays hex, but not a power skill")
+	u.afflict(effect("powered", 1.0), 9)
+	u.set_store(mana, 5)
+	ok(u.funding(power_skill) == mana and u.energy > 0, "Starpower first; Energy pays it once Energy is Power")
+	u.set_store(mana, 0)
+	ok(u.funding(power_skill) == &"energy", "and Power Energy pays when the Starpower is spent")
+	u.timed.clear()
+	stage(nemes, {u: Vector2i(7, 3), v(1): Vector2i(3, 3)})
+	u.reserve_rest.clear()
+	b.end_turn()
+	b.end_turn()
+	ok(u.store(mana) == 0, "a rested turn brings none back on its own")
+	u.grant_power(3)
+	ok(u.store(mana) == 3, "grant_power(): what the star lattice gives")
+	u.learned.pop_back(); u.sync_bar()
+	ok(u.view(mana) == mana and u.runs_on() == mana and u.funding(power_skill) == null, "without it: plain Mana again, which pays no power skill")
+	# Mana Resonance, on a Wizard that has Energy
+	var w := v(1)
+	w.reserves[mana] = 10
+	w.energy = 0
+	w.set_store(mana, 10)
+	var crush := crushing
+	var ap0 := w.ap_cost(crush, &"energy")
+	var cost0 := w.cost_from(crush, &"energy")
+	ok(w.runs_on() == &"energy" and cost0 > 0, "before: a martial skill costs Energy")
+	w.learned.append(slot(resonance, 2)); w.sync_bar()
+	ok(w.runs_on() == mana and w.view(&"energy") == mana, "Energy acts as Mana: it runs on it")
+	ok(w.funding(crush) == &"energy" and w.cost_from(crush, &"energy") == 0 and is_equal_approx(w.ap_cost(crush, &"energy"), ap0 + cost0 * 0.5), "a martial skill's Energy cost is AP instead: +0.5 a point (%s -> %s)" % [ap0, w.ap_cost(crush, &"energy")])
+	ok(w.funding(hex) == mana, "a spell: Mana")
+	w.set_store(mana, 0)
+	ok(w.funding(hex) == null, "no Mana: no AP fallback for a spell")
+	ok(is_equal_approx(w.wear_penalty(), 1.5) and is_equal_approx(w.exhaustion.penalty.call(crush), 1.5) and is_equal_approx(w.exhaustion.penalty.call(load("res://Skills/astera.tres")), 1.25 * 1.5), "exhaustion's wear x1.5 at rank 2 (base + base / rank)")
+	w.learned.pop_back(); w.learned.append(slot(resonance, 1)); w.sync_bar()
+	ok(is_equal_approx(w.wear_penalty(), 2.0), "x2 at rank I")
+	# both: Starpower holds the Mana, so Energy-as-Mana is Starpower: only power skills have a pool; the rest is AP
+	w.learned.append(slot(starpower, 1)); w.sync_bar()
+	w.set_store(mana, 4)
+	ok(w.funding(power_skill) == mana and w.funding(hex) == &"energy" and w.cost_from(hex, &"energy") == 0, "both: power skills from Starpower; any other, AP only")
+	w.learned.pop_back(); w.learned.pop_back(); w.sync_bar()

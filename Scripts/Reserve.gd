@@ -19,3 +19,4 @@ extends Resource
 @export var rest_rank := 1.0  # with_energy: the resting bonus, x the rank of the passive giving or opening it (Stamina: 2)
 @export var burns := 1.0  # Burnout: exhaustion's wear on an int skill's cost paid from it, multiplied by this too (Mana: 1.5; Burnout.on_cost())
 @export var steady := 0.0  # with_energy: the share of that resting bonus it gets on a turn its holder doesn't rest (Mana: 0.5)
+@export var powered := false  # acts as Power: never comes back on its own (a view: Unit.view()), only on the star lattice (Battle._starlight()); and it alone pays a skill tagged power (Starpower)

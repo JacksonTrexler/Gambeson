@@ -2196,7 +2196,7 @@ static func _switch(b: Battle, u: Unit, reads: Dictionary[Unit, Read], log: Arra
 # Whether a unit running on pool (a Reserve, or &"energy") could pay for s with what it holds in it now
 # (Reserve.only, Reserve.bars, Unit.cost_from()).
 static func _pays(u: Unit, pool: Variant, s: Skill) -> bool:
-	if pool is Reserve and (not (pool.only.is_empty() or pool.only.any(func(t): return s.tagged(t))) \
+	if pool is Reserve and (not u.pays_view(s, u.view(pool)) \
 			or (pool.bars.any(func(t): return s.tagged(t)) and u.price(s) > 0)):
 		return false
 	return u.covers(pool, u.cost_from(s, pool))
@@ -2437,7 +2437,7 @@ static func _cheapest(b: Battle, u: Unit, pool: Variant) -> int:
 	for s: Skill in u.actives:
 		if u.price(s) <= 0 or not (s.for_foes() or _mends(b, u, s)):
 			continue
-		if pool is Reserve and (not (pool.only.is_empty() or pool.only.any(func(t): return s.tagged(t))) or pool.bars.any(func(t): return s.tagged(t))):
+		if pool is Reserve and (not u.pays_view(s, u.view(pool)) or pool.bars.any(func(t): return s.tagged(t))):
 			continue
 		var c := u.cost_from(s, pool)
 		if c > 0 and (least == 0 or c < least):

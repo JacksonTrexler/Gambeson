@@ -5902,6 +5902,7 @@ func _starlight(u: Unit) -> void:
 		return
 	var k := maxi(u.rounded((u.mod(&"constitution") + u.mod(&"wisdom")) / 2.0), 1)
 	u.grant_energy(u.rounded(k * m) if u.powered() else u.rounded(k * (m - 1.0) * STAR_ENERGY))
+	u.grant_power(u.rounded(k * m))  # a reserve acting as Power (Starpower) comes back by the same boost
 
 
 # The at_end of each live source feeding c's signal (_field(): its own reach, or through the powered

@@ -124,6 +124,7 @@ const COLOR := {
 	&"floating": Color("#cfe4fa"),
 	&"jump": Color("#e0c890"),
 	&"signal": Color("#ffe48a"),
+	&"power": Color("#f2a93b"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 

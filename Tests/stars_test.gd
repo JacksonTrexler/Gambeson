@@ -56,6 +56,13 @@ func test_starlight() -> void:
 	v(1).constitution = 14
 	b._starlight(v(1))
 	ok(v(1).energy == v(1).rounded(2 * 4.0 * Battle.STAR_ENERGY), "plain Energy: a fifth of the boost (%d)" % v(1).energy)
+	var mana: Reserve = load("res://Reserves/mana.tres")
+	v(1).reserves[mana] = 10  # a reserve acting as Power (Starpower) comes back by the whole boost; plain Mana, not at all
+	b._starlight(v(1))
+	ok(v(1).store(mana) == 0, "plain Mana: nothing")
+	v(1).afflict(load("res://Skills/starpower.tres").effects[0], 9)
+	b._starlight(v(1))
+	ok(v(1).store(mana) == v(1).rounded(2 * 5.0), "Starpower: x5 the resting rate (%d)" % v(1).store(mana))
 
 
 # Power Siphon: a live source with at_end (a starpower generator) puts it on whoever ends a turn in its
