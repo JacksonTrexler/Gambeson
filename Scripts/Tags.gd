@@ -125,6 +125,8 @@ const COLOR := {
 	&"jump": Color("#e0c890"),
 	&"signal": Color("#ffe48a"),
 	&"power": Color("#f2a93b"),
+	&"mana": Color("#4080f2"),
+	&"starpower": Color("#26b89a"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
