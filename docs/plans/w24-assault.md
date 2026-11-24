@@ -17,10 +17,8 @@ Goal: t3 Specialist skill "Assault" (user's name, --human): pick rank+1 allies i
 - Hybrid check: `hybrid = true` option on Battle.check/sides: an Array of stats counts as their mean (Unit.rounded: luck rounds), not the best.
 - Sharing: tag `assault` (Glossary, kind target, human: user's word). After each participant acts, any status bearing `assault` on a participant that isn't on the others is put on each (same turns, rank). At the assault's end those statuses come off every participant. No content bears it yet (latent seam, like Tags meant for later skills).
 - AI doesn't cast Assault (no worth hook); the AI's own group turn (6a) already acts in step.
-</content>
-</invoke>
-<invoke name="Bash">
-<parameter name="command">W=/private/tmp/claude-501/-Users-jtrex-projects-Gambeson/7fee0a29-8427-4247-aa04-0dd589cd5d04/scratchpad/wt-w24-assault; cd $W; grep -n "AI\.\|AI\b" Behaviours/*.gd | head -3; grep -n "specialist\|offensive" Scripts/Glossary.gd | head -5; cat Skills/strategist.tres | sed -n 1,30p
+
+
 ## As built
 - Skills/assault.tres: specialist, offensive; self_only, hostile false, rolls false; cost "low cost" (4 AP, 1 Energy at I-III); impactful; no_density set; glyph As; Trees/general_specialist.tres tier 3 after Tactician.
 - Behaviours/assault.gd: picks 2 x range_rank + 1, allies range_rank + 1; allies_of / foes_of (picked in order, else nearest); apply -> AI.assault(b, allies, foes, range_rank); terms rank_range; describe / describe_as.
