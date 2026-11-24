@@ -673,6 +673,10 @@ func spec(u: Unit = null, rank := 1) -> Array:
 		var how := [["", "Passive"], ["", "Toggle" if toggle else ("Trait" if is_trait() else "Always on")]]
 		if hybrid:  # its active part costs AP (Personify: adjusting its persona)
 			how.append(["AP", num(Pricing.ap_at(u, self, rank) if u else ap)])
+		elif toggle and (ap > 0.0 or cost > 0):  # switching it on is paid, off is free (Unit.toggle(): Manifest Starchitecture)
+			how.append(["AP on", num(Pricing.ap_at(u, self, rank) if u else ap)])
+			if cost:
+				how.append(["cost on", str(u.price(self) if u else cost)])
 		return how
 	var out := [["", Glossary.term(target())]]
 	if not self_only or prays:  # a prayer to Drael lands on a unit in range

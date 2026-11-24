@@ -95,6 +95,8 @@ func test_passives() -> void:
 		var before := _readings(u, s.effects)
 		var had := s.tags.filter(func(t: StringName): return u.has_tag(t))
 		u.learned.append(slot(s, 2)); u.sync_bar()
+		if Unit.alt_tag(s) != &"":
+			u.learned.back().on = true  # a second bar's switch starts off (paid to come up: starbuilding_test): weighed on
 		var r := u.rank(s)
 		ok(r > 0, "%s: learned at rank 2" % s.name)
 		weighed += _weigh(u, s.effects, before, func(_e): return r, func(_e): return 1.0, s.name)
