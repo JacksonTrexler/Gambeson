@@ -1020,8 +1020,11 @@ static func _spans(u: Unit) -> Array[Skill]:
 
 # Lays what crosses the void on the line toward `goal`, if some lies within its reach: a Starbridge to the first powered star tile on
 # the far side, else Startiles on the void tiles in a row from the near edge (at most SPAN_TILES). Whether it cast anything. The rest of
-# Starbuilding (panels, generators, Starways) is for players.
+# Starbuilding (panels, generators, Starways) is for players. Powered Stardust (signal reaches it) is a startile in a few rounds
+# (Battle.regrow_left()): within DUST_WAIT of them it isn't a gap to spend Power on, it waits for it. A Starway's hop is a route's
+# (Battle._route()), not a span.
 const SPAN_TILES := 3
+const DUST_WAIT := 3  # rounds it will wait for Stardust to mend rather than lay a startile over it
 
 
 static func _span(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> bool:
@@ -1029,8 +1032,9 @@ static func _span(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> boo
 	if skills.is_empty():
 		return false
 	var line := b.line(u.cell, goal, u.luck, u)
+	var gap := func(c: Vector2i) -> bool: return b.on_map(c) and &"void" in b.terrain(c).tags and not _dust_mends(b, c)
 	var first := line.find_custom(func(c: Vector2i): return b.on_map(c) and &"void" in b.terrain(c).tags)
-	if first < 0:
+	if first < 0 or _dust_mends(b, line[first]):  # none, or the first closes itself: it waits at the edge
 		return false
 	var did := false
 	for s in skills:
@@ -1042,11 +1046,17 @@ static func _span(b: Battle, u: Unit, goal: Vector2i, log: Array[String]) -> boo
 	for s in skills:
 		if s.behaviours.any(func(x: Behaviour): return x.get(&"shape") == &"point"):
 			for c in line.slice(first, first + SPAN_TILES):
-				if not (b.on_map(c) and &"void" in b.terrain(c).tags) or Command.tiles(u.cell, c) > b.area_reach(u, s) + 0.0001 or not b.cast_at(u, s, c):
+				if not gap.call(c) or Command.tiles(u.cell, c) > b.area_reach(u, s) + 0.0001 or not b.cast_at(u, s, c):
 					break
 				log.append("%s lays a startile over the void at %s" % [u.name, c])
 				did = true
 	return did
+
+
+# Whether the void at c is Stardust that mends itself soon (powered, a startile in at most DUST_WAIT rounds): a gap that closes unaided.
+static func _dust_mends(b: Battle, c: Vector2i) -> bool:
+	var left := b.regrow_left(c)
+	return left > 0 and left <= DUST_WAIT
 
 
 # Flippant: skirts the field aimlessly, out of its foes' reach (their walk and a tile) - a tile picked at random among the few it

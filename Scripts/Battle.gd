@@ -3877,6 +3877,8 @@ func hazard(u: Unit, c: Vector2i, r: Read, nth := 0, ends := false, tolls := tru
 				_owe_wound(out, u, e, maxi(e.turns if e.turns else m.effect_turns, 1), m.rank, m.by if is_instance_valid(m.by) else null)
 	if c in flames:
 		_owe(out, &"hp", maxf(4.5 + flames[c].bonus, 1.0))
+	if ends and r.net >= 0 and not u.has_tag(&"floating") and not u.has_tag(&"flight") and gives_way(c):  # a bridge on its last unpowered round: it ends its walk on what is about to break over void
+		_owe(out, &"hp", float(u.hp))
 	return out
 
 
@@ -3960,7 +3962,10 @@ func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null)
 			break
 	for i in ln.size():
 		danger += dread_of.call(ln[i], i + 1) if on_map(ln[i]) else 0.0
-	var searching := (danger > 0.0 or pulled) and ln.size() >= 2 and not blind
+	var lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
+	var hi := Vector2i(maxi(u.cell.x, dest.x), maxi(u.cell.y, dest.y)) + Vector2i(STEER_MARGIN, STEER_MARGIN)
+	var hops := _hops(u, lo, hi) if not blind and not portals.is_empty() else {}  # powered portals it knows of near the walk: entry -> exit, a free step
+	var searching := (danger > 0.0 or pulled or not hops.is_empty()) and ln.size() >= 2 and not blind
 	if not searching and price == null:
 		return ln
 	var grounds := {}
@@ -3982,12 +3987,11 @@ func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null)
 		price.cost = bound
 	if not searching:
 		return ln
-	var lo := Vector2i(mini(u.cell.x, dest.x), mini(u.cell.y, dest.y)) - Vector2i(STEER_MARGIN, STEER_MARGIN)
-	var hi := Vector2i(maxi(u.cell.x, dest.x), maxi(u.cell.y, dest.y)) + Vector2i(STEER_MARGIN, STEER_MARGIN)
 	var best := {u.cell: 0.0}
 	var came := {}
 	var bags := {u.cell: {}}
 	var depth := {u.cell: 0}  # tiles walked to reach each
+	var hopped := {}  # the cells reached by a portal's hop
 	var open: Array[Vector2i] = [u.cell]
 	var done := {}
 	while not open.is_empty():
@@ -4001,6 +4005,15 @@ func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null)
 		if at in done:
 			continue
 		done[at] = true
+		if at in hops and hops[at] not in done and best[at] < best.get(hops[at], INF) - 0.000001:  # a powered portal: its pair is a free step on (travel()'s _cross())
+			var out_at: Vector2i = hops[at]
+			best[out_at] = best[at]
+			came[out_at] = at
+			bags[out_at] = bags[at].duplicate()
+			depth[out_at] = depth[at]
+			hopped[out_at] = true
+			if out_at not in open:
+				open.append(out_at)
 		for dx in [-1, 0, 1]:
 			for dy in [-1, 0, 1]:
 				var c := at + Vector2i(dx, dy)
@@ -4022,8 +4035,22 @@ func _route(u: Unit, dest: Vector2i, ln: Array[Vector2i], price: Variant = null)
 	var out: Array[Vector2i] = []
 	var step := dest
 	while step != u.cell:
-		out.push_front(step)
+		if step not in hopped:  # a hop's far end isn't walked: the entry's step carries it over (_cross()), or ends the walk on it (_portal())
+			out.push_front(step)
 		step = came[step]
+	return out
+
+
+# The powered Starways u knows of within the walk's box [lo, hi]: entry -> where stepping on it comes out (_exit_of()), for the
+# portals whose pair lies in the box too. Known: it makes the ground out as a portal (known_ground(): unseen ground counts as plain).
+func _hops(u: Unit, lo: Vector2i, hi: Vector2i) -> Dictionary:
+	var out := {}
+	for c: Vector2i in portals:
+		if c.x < lo.x or c.y < lo.y or c.x > hi.x or c.y > hi.y:
+			continue
+		var to := _exit_of(u, c)
+		if to != c and to.x >= lo.x and to.y >= lo.y and to.x <= hi.x and to.y <= hi.y and &"portal" in known_ground(u, c).tags:
+			out[c] = to
 	return out
 
 
@@ -4347,6 +4374,33 @@ func has_star(c: Vector2i) -> bool:
 # Whether c is a star tile the signal reaches: what Starbridge joins and a Starway needs.
 func powered_star(c: Vector2i) -> bool:
 	return has_star(c) and signal_at(c) >= 0
+
+
+# Rounds of dark a startile at c has left before it lapses and breaks (_repair_tiles()); -1: none does (nothing lapsing there,
+# or the signal reaches it: it would start over).
+func lapse_left(c: Vector2i) -> int:
+	if signal_at(c) >= 0:
+		return -1
+	var left := -1
+	for l: Layer in layers.get(c, []):
+		if l.lapse > 0:
+			left = l.lapse - l.dark if left < 0 else mini(left, l.lapse - l.dark)
+	return left
+
+
+# Whether c's footing is about to give way over void: a lapsing star tile on its last round of dark, nothing but void beneath it.
+func gives_way(c: Vector2i) -> bool:
+	return lapse_left(c) in [0, 1] and &"void" in ground_of(c).tags
+
+
+# Rounds before the Stardust at c is a startile again (signal reaching it); -1: none regrows there, or no signal does.
+func regrow_left(c: Vector2i) -> int:
+	if signal_near(c) < 0:
+		return -1
+	for l: Layer in layers.get(c, []):
+		if l.terrain.regrows and l.terrain.repairs_into != "":
+			return maxi((l.repair_goal if l.repair_goal > 0 else maxi(signal_near(c), 1)) - l.repairing, 1)
+	return -1
 
 
 func top_layer(c: Vector2i) -> Layer:

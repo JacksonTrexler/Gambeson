@@ -182,6 +182,78 @@ func test_ai_crosses_void() -> void:
 	ok(AI._span(b, bridger, Vector2i(9, 3), log) and b.terrain(Vector2i(5, 3)) == Battle.STARTILE, "or a Starbridge to the powered tile on the far side")
 
 
+# The AI reads star terrain (docs/plans/w22-ai-stars.md). A powered Starway pair is a free step in a route's price and in the walk
+# (Battle._route(), _hops()); dark, it is only a tile.
+func test_ai_hops_starway() -> void:
+	var w := v(2)
+	w.afflict(effect("foresight", 2), 9)  # one with none walks the straight line (route())
+	b.move(w, Vector2i(2, 3))
+	for y in range(0, 12):
+		for x in [5, 6]:
+			b.paint(Vector2i(x, y), void_t)
+	for c in [Vector2i(4, 3), Vector2i(8, 3)]:
+		b.lay_layer(c, Battle.STARTILE)
+		b.lay_layer(c, load("res://Terrain/starway.tres"))
+	_gen(Vector2i(3, 4))
+	b.pair_portals(Vector2i(4, 3), Vector2i(8, 3))
+	var goal := Vector2i(9, 3)
+	var price := {}
+	b.route(w, goal, b.line(w.cell, goal, w.luck, w), price)
+	ok(price.cost < 10.0, "a powered Starway pair is a free step: the far side of the void costs %.1f" % price.cost)
+	var path: Array = b.walk(w, goal, true).path
+	ok(path == [Vector2i(3, 3), Vector2i(4, 3), goal], "...the walk goes in by one end and on from the other (%s)" % [path])
+	b.travel(w, goal)
+	ok(w.cell == goal, "...it stands on the far side (%s)" % w.cell)
+	b.move(w, Vector2i(2, 3))
+	b.charge[Vector2i(3, 4)] = 0
+	b.route(w, goal, b.line(w.cell, goal, w.luck, w), price)
+	ok(price.cost >= 90.0, "dark, it is only a tile: the void costs what it does (%.1f)" % price.cost)
+
+
+# A startile on its last round of dark over void is a fall to end a walk on (Battle.hazard(), gives_way()): the AI closes on a foe
+# from a tile that holds.
+func test_ai_avoids_lapsing_bridge() -> void:
+	var u := _caster("startile", 3)
+	var w := v(2)
+	var foe := v(3)
+	b.move(w, Vector2i(3, 3))
+	b.move(foe, Vector2i(7, 3))
+	var edge := Vector2i(6, 3)
+	b.paint(edge, void_t)
+	b.lay_star(edge, Battle.STARTILE, u, 0, 0.0, 2)
+	var reads := AI.reads_from({foe: b.read(w, foe)})
+	ok(AI._approach(b, w, foe, reads) == edge, "firm, the tile beside its foe on the straight line is where it heads")
+	b._repair_tiles()
+	var r := b.read(w, edge)
+	ok(b.lapse_left(edge) == 1 and b.gives_way(edge), "a lapse of 2, one round dark: one round left, over void")
+	ok(b.hazard(w, edge, r, 1, true).get(&"hp", 0.0) == float(w.hp) and b.hazard(w, edge, r, 1, false).is_empty(), "ending a walk there owes a fall; walking over it owes nothing")
+	var near := AI._approach(b, w, foe, reads)
+	ok(near != edge and Command.tiles(near, foe.cell) == 1, "it closes from a tile that holds instead (%s)" % near)
+	_gen(Vector2i(6, 5))
+	ok(not b.gives_way(edge) and b.hazard(w, edge, r, 1, true).get(&"hp", 0.0) < w.hp, "in the signal it isn't lapsing: no fall owed")
+
+
+# Powered Stardust is a startile in a few rounds: no gap to lay Power over (AI._span(), _dust_mends()); dark, or far from the signal, it is void.
+func test_ai_waits_for_stardust() -> void:
+	var u := _caster("startile", 3)
+	b.move(u, Vector2i(3, 3))
+	var dust: Terrain = load("res://Terrain/stardust.tres")
+	for c in [Vector2i(5, 3), Vector2i(6, 3)]:
+		b.paint(c, void_t)
+	b.lay_layer(Vector2i(5, 3), dust)
+	var log: Array[String] = []
+	ok(AI._span(b, u, Vector2i(9, 3), log) and b.top_layer(Vector2i(5, 3)).terrain == Battle.STARTILE, "dark Stardust is a gap like any void: it lays over it")
+	b.layers[Vector2i(5, 3)].clear()
+	b.layers[Vector2i(6, 3)].clear()
+	b.lay_layer(Vector2i(5, 3), dust)
+	_gen(Vector2i(4, 4))  # signal 2 tiles off: a startile in 2 rounds
+	ok(b.regrow_left(Vector2i(5, 3)) == 2, "powered, the dust has rounds left to mend (%d)" % b.regrow_left(Vector2i(5, 3)))
+	ok(not AI._span(b, u, Vector2i(9, 3), log) and b.top_layer(Vector2i(5, 3)).terrain == dust and not b.has_star(Vector2i(6, 3)), "it waits for it, laying nothing")
+	b.top_layer(Vector2i(5, 3)).repairing = 0
+	b.top_layer(Vector2i(5, 3)).repair_goal = AI.DUST_WAIT + 1
+	ok(AI._span(b, u, Vector2i(9, 3), log), "a mend farther off than DUST_WAIT is not waited for")
+
+
 # The tree is a tab on four casters. Tiers 1, 2, 2, 3 by what comes first (Role.tier: 1 + its prerequisites); the user's t6 Starway
 # is min_tier 6 (Unit.tier()), as the t7 Manifest Starchitecture and t9 Starnest after it are (D2).
 func test_tree() -> void:
