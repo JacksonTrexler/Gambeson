@@ -282,6 +282,10 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Starpower and Mana Resonance (?373, ?374) | `resources_test.gd`, `stars_test.gd` |
 | — | Starbuilding tree, Starway (?375, ?376) | `starbuilding_test.gd` |
 | — | Starchitect bar, Starnest (?377, ?378) | `starbuilding_test.gd` |
+| — | HUD signal readout, Stardust arc, locked marker (?379) | `hud_test.gd` |
+| — | Mending by the signal field, mid-walk Starway (?380, ?381) | `stack_test.gd`, `stars_test.gd`, `starbuilding_test.gd` |
+| — | Bridge fall, AI reads star terrain (?382, ?383) | `starbuilding_test.gd` |
+| — | Second-bar fixes, screenshot pass, skills grid fix (?384, ?385) | `starbuilding_test.gd`, `hud_test.gd` |
 
 ## Questions to answer first
 

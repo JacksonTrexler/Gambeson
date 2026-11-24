@@ -36,6 +36,7 @@ t9 Starnest: Creates rank generators, linked horizontally or vertically by starp
 
 `Negative Energy`: some skills and effects allow for negative energy gain past 0. In these circumstances the debt must be paid before new energy can be gained. There is a % energy gain penalty based on the overage (-100% of energy means 0.5 efficiency gains, -50% means 0.75 efficiency etc.)
 Answered 2026-11-24: built in wave 22 as ?369 to ?378 (signal field and Stardust, Negative Energy and seal, Starpower and Mana Resonance, the Starbuilding tree, Manifest Starchitecture and Starnest); calls in F76+.
+Follow-ups built 2026-11-24: ?379 to ?385 (HUD signal, Stardust arc, locked marker, mid-walk Starway, bridge fall, AI star terrain, mending from the field, bar fixes, screenshots in the scratchpad).
 
 
 
@@ -573,4 +574,49 @@ Answer: ____
 **F87. Debt: floor, efficiency and what pays (wave 22; see ?371, ?372).** Floor is -max where allowed (a `debt` effect or a seal bearing `debt`); gain efficiency 1 - 0.5 x debt/max read at the start of a gain, debt filled first, the part past 0 whole; fractions carry. A skill cannot pay a cost with a pool at or below 0 (only seals and effects take it negative). Your "-100% of energy means 0.5" is the same line.
 Best guess: keep.
 Ref: `Unit._level_to`, `docs/plans/w22-negative.md`.
+Answer: ____
+
+**F88. A unit on a breaking bridge dies: `slay()`, not fall damage (wave 22; see ?382).** As built a unit with no footing after a layer change (a bridge broken to Stardust over void) falls as at 0 HP: Downed, death, Final Act reactions. No existing pit rule existed. Flyers and floaters stay up. You might want damage, or placement on the nearest ground.
+Best guess: keep the kill; offer fall damage if you want survivors.
+Ref: `Battle._restack`, `docs/plans/w22-bridge-break.md` call 1.
+Answer: ____
+
+**F89. A cracked startile still bears a unit (wave 22; see ?382).** A startile breaks to a cracked startile (still solid, the unit teeters) and only the next break leaves Stardust and void. So a bridge gives one warning step before a fall.
+Best guess: keep.
+Ref: `Battle.break_layer`, `docs/plans/w22-bridge-break.md` call 3.
+Answer: ____
+
+**F90. Mending rate and the dropped repair cost (wave 22; see ?380).** A cracked startile mends a round by the signal on it (0 at a source's edge, 5 on the source) toward 5, so a full source mends in 1 round and the edge never. The old 5% charge to begin repairs is dropped: mending is free. Charge now has no sink there.
+Best guess: keep free; if you want a price, a small charge draw per mend.
+Ref: `Battle._repair_tiles`, `docs/plans/w22-starfield.md` calls 1, 2.
+Answer: ____
+
+**F91. A charged Envoy startile radiates signal and feeds panes (wave 22; see ?380).** So Envoy flooring has a source to mend from, a charged `starpower` startile radiates 1 tile per 20% charge (to 5). Side effects: it also feeds panes, regrows Stardust near it and powers lapsing startiles beside it.
+Best guess: keep.
+Ref: `Battle._rank`, `docs/plans/w22-starfield.md` call 3.
+Answer: ____
+
+**F92. The AI's lapsing-bridge hazard and Stardust wait (wave 22; see ?383).** Ending a walk on a bridge with 1 round or less before it gives way is priced at the unit's whole HP (the AI never ends there; the HUD forecast shows it); powered Stardust mending within `DUST_WAIT` 3 rounds counts as no gap, so the AI waits at the edge. A unit already standing on one is not moved off.
+Best guess: keep 3 rounds and full HP; make the AI leave a lapsing tile next.
+Ref: `Battle.hazard`, `AI.DUST_WAIT`, `docs/plans/w22-ai-stars.md` calls 3, 4.
+Answer: ____
+
+**F93. Starway hops: first portal only, no chaining, cost 0 (wave 22; see ?381, ?383).** A walk crossing a powered Starway hops at once to its pair at no move cost, and only the first portal on a walk fires (no chain). The walk continues from the pair only if its next tile is beside it, else it ends there. The AI's route has the same hop edge.
+Best guess: keep.
+Ref: `Battle._cross`, `_exit_of`, `docs/plans/w22-starway-walk.md`.
+Answer: ____
+
+**F94. Second bar and the auto-equip rule (wave 22; see ?384).** Disabling Manifest (Brainfog) drops the Starchitect bar and it returns when the disabling ends. A newly learned skill the bar takes (a power skill) goes on it; any other goes to the regular layout and is left unequipped if that is full.
+Best guess: keep.
+Ref: `Unit.want_bar`, `Unit._auto_put`, `docs/plans/w22-bar-fixes.md`.
+Answer: ____
+
+**F95. The "LK" locked row shows on the leader's card only (wave 22; see ?379).** Seals on other units are unread, so only the leader's info row lists "LK locked N" per sealed pool; the map bar's hatched segment shows for any unit with a seal.
+Best guess: keep.
+Ref: `Unit._lock_mark`, `docs/plans/w22-hud-signal.md` call 4.
+Answer: ____
+
+**F96. Skills grid tabs keep 176 px (wave 22; see ?385).** w21's VScroll collapsed `TreeScroll` to 0 px so every grid tab but the Adventurer wheel was blank (found by the screenshots). Fixed with min height 176, the wheel's; the detail and foot now sit below the fold (scroll).
+Best guess: keep the fix; say if the screen should be restructured.
+Ref: `hud_test.test_adventurer_skills_screen`, `docs/plans/w22-shots.md`.
 Answer: ____
