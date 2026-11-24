@@ -1199,6 +1199,12 @@ func test_adventurer_skills_screen() -> void:
 	var w: SkillWheel = h.get_node("%Wheel")
 	ok(w.is_visible_in_tree() and not h.get_node("%TreeScroll").visible and h.skills.detail.visible,
 			"the Adventurer's own tab: a wheel")
+	h.skills.show_tab(2)  # a grid tab: its scroll keeps a height of its own (the VScroll'd column gave it none: blank tree)
+	await tree.process_frame
+	await tree.process_frame
+	ok(h.get_node("%TreeScroll").visible and h.get_node("%TreeScroll").size.y >= 170.0, "a grid tab shows its tree (%s)" % h.get_node("%TreeScroll").size)
+	h.skills.show_tab(0)
+	await tree.process_frame
 	ok(w.tab.roots.reduce(func(all: Array, r: SkillRoot): return all + r.skills(), [w.tab.center] + w.tab.core).all(func(s: Skill): return s in w.skills()) and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
 			"every skill on it (%d), Skill Slot +1 at the centre; Strike is the General tree's" % w.skills().size())
 	ok(h.get_node("%WheelTabs").get_children().map(func(x: Button): return x.text) == ["CLASS · ADVENTURER", "PATH · ACTUALIZATION", "CLASS · STARBUILDING ??", "SPECIES · HUMAN", "GENERAL", "GENERAL · MARTIAL", "GENERAL · SPECIALIST", "GENERAL · CASTER", "GENERAL · JOURNEYMAN"],
