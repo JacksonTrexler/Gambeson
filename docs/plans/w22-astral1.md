@@ -38,3 +38,8 @@ Manifest: `--prereq starway --set min_tier=7`; Starnest: `--prereq manifest_star
 - Battle: Layer.lapse/dark/power/brittle, `lay_star`, `has_star`, `powered_star`, `portals`/`pair_portals`/`_portal`/`_arrive`, `ported` signal, lapse in `_repair_tiles`, `_rank` reads Layer.power, `_unregister` drops pairs. Unit: `power_pool`, `pays_power`, `POWER`. AI: `_spans`, `_span`.
 - Roles: a Starbuilding tab on wizard, mage, sorcerer, adventurer.
 - Tests: new `Tests/starbuilding_test.gd` (4 tests: place/seal/lapse/gate, shapes, starway, AI void); `Tests/sweep_test.gd` stages Power skills (`_star_ground`) and clears layers/seals between poses.
+- Mutations (starbuilding_test fails each): seal source always true (3 fail), lapse off (2), portal ignores signal (1), portal pair kept on break (2), Power gate removed (2: Stamina-paid cast).
+- Suite 11679 (1089 tests) -> 11746 checks, 0 failed (1094 tests). Launch log clean.
+
+## Undone
+- No visual capture (new tab + flat placeholder tile art only). Starway is invisible to the AI's routes. Generator seal also needs Starsap etc. to charge past the initial rank/5. Walking over a Starway mid-walk does not teleport. Units on a bridge tile that breaks stay on void (no fall rule). Starpower reserve (`only` = power) not yet there: the gate is ready for it (w22-starpower). Sorcerer casting stat (cha) not used.
