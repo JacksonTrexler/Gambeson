@@ -30,12 +30,12 @@ extends Resource
 
 const BEHAVIOURS: Array[StringName] = [&"timid", &"brave", &"aggressive", &"helpful", &"stoic", &"vindictive", &"flirty", &"flippant", &"power_hungry", &"pragmatic", &"compliant", &"hungry"]
 const SPECS: Array[StringName] = [&"exploratory", &"training", &"remedial"]  # how it spends skill points (spec; Unit.auto_spec())
-const FLIPPANT := 0.25  # the share of its max HP a flippant unit loses in a fight before it turns aggressive (Unit.temper())
+const FLIPPANT := 0.18  # the share of its max HP a flippant unit loses in a fight before it turns aggressive (Unit.temper())
 # A temper in a few words (the Guide's character page). Keyed by BEHAVIOURS; bio_test checks they match.
 const TEMPERS := {&"timid": "waits for a stronger ally, backs off", &"brave": "charges the strongest", &"aggressive": "presses the weakest",
 	&"helpful": "heals the wounded", &"stoic": "holds, strikes what comes", &"vindictive": "goes after whoever hurt it or its own",
-	&"flirty": "aids, and only softly strikes, whom it fancies", &"flippant": "skirts the field aimlessly until hurt, then presses",
-	&"power_hungry": "drains whoever holds the most Power", &"pragmatic": "heals by cost, where it counts",
+	&"flirty": "aids, and only softly strikes, whom it fancies", &"flippant": "skirts the field aimlessly until it has lost 18% of its HP, then presses",
+	&"power_hungry": "drains whoever holds the most Power, if confident or oblivious", &"pragmatic": "heals by cost, where it counts",
 	&"compliant": "goes for whom its leader goes for", &"hungry": "feeds on what its blows give back"}
 # How much stronger than itself an observer takes one of each appearance to be, in levels, when it
 # can't read the level (AI._level()). Unlisted: as strong as itself.

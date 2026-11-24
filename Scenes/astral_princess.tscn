@@ -15,6 +15,14 @@
 [ext_resource type="PackedScene" path="res://Scenes/probe.tscn" id="13_probe"]
 [ext_resource type="Resource" path="res://Races/human.tres" id="14_human"]
 [ext_resource type="Resource" path="res://Skills/strike.tres" id="15_strike"]
+[ext_resource type="Script" path="res://Scripts/Bio.gd" id="16_bio"]
+[ext_resource type="Resource" path="res://Factions/astral.tres" id="17_faction"]
+
+[sub_resource type="Resource" id="Bio_princess"]
+script = ExtResource("16_bio")
+behaviour = &"vindictive"
+appearance = "Knight"
+grudges = Array[String](["astral", "starman"])
 
 [sub_resource type="Resource" id="Slot_powerful"]
 script = ExtResource("9_slot")
@@ -59,6 +67,8 @@ god = &"urlo"
 intention = "Purge evil: evil resides in the living"
 strategy = Array[StringName]([&"closest", &"strongest"])
 level = 18
+faction = ExtResource("17_faction")
+bio = SubResource("Bio_princess")
 innate = Array[ExtResource("9_slot")]([SubResource("Slot_strike")])
 learned = Array[ExtResource("9_slot")]([SubResource("Slot_powerful"), SubResource("Slot_pi"), SubResource("Slot_metea"), SubResource("Slot_smite"), SubResource("Slot_persona")])
 max_hp = 60

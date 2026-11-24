@@ -14,3 +14,6 @@ script = ExtResource("1_script")
 name = "Ramut's Ire"
 glyph = "RI"
 effects = Array[ExtResource("2_effect")]([SubResource("Effect_ire")])
+ap = 1.0
+cost = 1
+tags = Array[StringName]([&"exhausting"])

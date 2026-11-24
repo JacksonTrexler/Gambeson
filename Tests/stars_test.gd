@@ -197,6 +197,12 @@ func test_hunts() -> void:
 	v(1).wrongs[starmen] = 3  # the villager has struck it thrice: it is otherwise aggressed
 	ok(AI._best_target(s, reads) == v(1), "struck often enough, it turns on its attacker")
 	v(1).wrongs.clear()
+	# The Princess is vindictive against astral units not of her side: a Starman, though a villager is nearer; not an ally of hers
+	var pr := AI.reads_from({v(1): b.read(p, v(1)), s: b.read(p, s)})
+	ok(p.tempered(&"vindictive") and AI._grudge(p, s, pr[s]) == AI.GRUDGED and AI._grudge(p, v(1), pr[v(1)]) == 0.0, "the Princess holds a grudge on the Starman, none on the villager")
+	s.faction = stellar
+	ok(AI._grudge(p, s, b.read(p, s)) == 0.0, "...none on an astral unit of her own side")
+	s.faction = starmen
 
 
 func test_revert_and_reform() -> void:
@@ -262,6 +268,7 @@ func test_flippant() -> void:
 	var was := Command.tiles(s.cell, v(1).cell)
 	AI.act(b, s)
 	ok(s.temper() == &"flippant" and v(1).hp == hp and Command.tiles(s.cell, v(1).cell) > was, "it skirts off, striking nothing (%s, %d tiles)" % [s.cell, Command.tiles(s.cell, v(1).cell)])
+	ok(is_equal_approx(Bio.FLIPPANT, 0.18), "turns on at 18% of its max HP lost")
 	s.damage(ceili(s.max_hp * Bio.FLIPPANT) - 1)
 	ok(s.temper() == &"flippant", "a scratch doesn't punish it")
 	s.damage(1)
@@ -286,6 +293,16 @@ func test_power_hungry() -> void:
 	s.refresh()
 	AI.act(b, s)
 	ok(Command.tiles(s.cell, v(2).cell) <= 1 and v(2).energy < e2 and v(1).energy == 1, "beside the neutral with the full bar, draining it (%s, %d -> %d)" % [s.cell, e2, v(2).energy])
+	v(2).faction = others
+	for k in Unit.CORE.slice(0, 6):
+		v(2).set(k, 30)  # far above it: it can't be confident, and has the wits not to try
+	v(2).energy = v(2).max_energy
+	s.energy = 10
+	var reads := AI.reads_from({v(2): b.read(s, v(2))})
+	s.charisma = 14  # a Starman's low charisma is oblivious enough on its own
+	ok(AI._richest(s, reads) == null and AI._hunger(s, v(2), reads[v(2)]) == 0.0, "a neutral far stronger than it is left alone (harassment, not worth dying over)")
+	s.wisdom = 1  # no sizing anyone up: it goes at them regardless (low wisdom or charisma)
+	ok(AI._richest(s, reads) == v(2), "oblivious (low wisdom), it drains it anyway")
 	v(2).faction = lancin
 
 

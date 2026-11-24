@@ -23,6 +23,7 @@ const IN_KIND := 2  # uses of skills of one broad kind before the next of them b
 const ANY := 3  # uses of any skills before the next bites: the 4th different skill in a turn
 const MILD := 0.1  # of a skill's AP and cost more a unit of pressure, below the bite (rounded away on a cost: raise())
 const STEP := 0.5  # of a skill's AP and cost more a unit of pressure, from the bite on
+const EXHAUSTING := 4.0  # uses one use of a skill tagged exhausting counts as (Ramut's Ire)
 const RECOVERY := 1.0  # uses of each skill it gets over as each of its side's turns ends
 
 static var on := true  # off: nothing wears anyone out (staged tests: Test.calm())
@@ -77,13 +78,14 @@ static func raise(cost: float, rate: float) -> int:
 	return ceili(cost - 0.0001) + roundi(cost * (rate - 1.0))
 
 
-# One use of s, as it's paid for: what it added to the count (0 with exhaustion off).
+# One use of s, as it's paid for: what it added to the count (1, or EXHAUSTING for a skill tagged exhausting; 0 with exhaustion off).
 func used(s: Skill) -> float:
 	if not on:
 		return 0.0
 	begun[s] = rate(s)
-	uses[s] = uses.get(s, 0.0) + 1.0
-	return 1.0
+	var n := EXHAUSTING if &"exhausting" in s.tags else 1.0
+	uses[s] = uses.get(s, 0.0) + n
+	return n
 
 
 # Takes n uses off the count of s, or of every skill: it gets over them (recover(), Deathlust).

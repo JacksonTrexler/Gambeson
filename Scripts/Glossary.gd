@@ -148,6 +148,7 @@ const TERMS := {
 	&"void": ["Void", &"target", "Nothing underfoot: walkers can't enter it (it costs more movement than any turn holds), but a jump carries over it, never onto it. Floating and flying units cross it as firm ground."],
 	&"signal": ["Signal", &"ground", "Astral power as a field: sources (generators, live starpanes) radiate it, a tile less each tile away (a diagonal counts two). Star flooring needs it; Stardust regrows in it."],
 	&"power": ["Power", &"target", "Exclusive to Power: only Power pays for it (a powered unit's Energy, or a reserve acting as Power: Starpower), never ordinary Energy."],
+	&"exhausting": ["Exhausting ??", &"condition", "Each use wears its user out as four: the next costs far more, so it can be used about once a turn."],
 }
 
 # Terms registered while the game runs (a mod's, a test's throwaway tag): id -> [name, kind, definition],

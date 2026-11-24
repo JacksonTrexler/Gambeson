@@ -891,7 +891,7 @@ static func _grudge(u: Unit, t: Unit, r: Read) -> float:
 	for f: Faction in t.wrongs:
 		if Faction.friends(u.faction, f):
 			n += t.wrongs[f]
-	return GRUDGE * mini(n, GRUDGES) + (GRUDGED if u.bio and Bio.names(u.bio.grudges, r) else 0.0)
+	return GRUDGE * mini(n, GRUDGES) + (GRUDGED if u.bio and not Faction.friends(u.faction, t.faction) and Bio.names(u.bio.grudges, r) else 0.0)
 
 
 # A compliant unit's want of t: ORDERED if t is whom its leader (Unit.follows) is after - its aim, what it last went for (meta `aim`, set by
@@ -921,7 +921,27 @@ static func _hungry(b: Battle, u: Unit, s: Skill, r: Read, t: Unit, v: float) ->
 
 # A power hungry unit's appetite for t (read as r): HUNGER times the share of its bar t holds (_fill()). 0 for any other temper.
 static func _hunger(u: Unit, t: Unit, r: Read) -> float:
-	return HUNGER * _fill(t, r)[1] if u.tempered(&"power_hungry") else 0.0
+	return HUNGER * _fill(t, r)[1] if u.tempered(&"power_hungry") and _dares(u, r) else 0.0
+
+
+# Whether a power hungry unit dares steal from the unit it reads as r - harassment, not worth dying over: it is confident (its BST +
+# wisdom over the target's as read, by more than its int's error, margin(): a clever unit simulates the fight well, a dull one is
+# deterred by what it can't judge), or oblivious (wisdom or charisma mod below 0: no sizing up, no holding back). Nothing read of
+# the target's stats, a level guess scales its own total (_level()); no idea at all: not confident.
+static func _dares(u: Unit, r: Read) -> bool:
+	if u.mod(&"wisdom") < 0 or u.mod(&"charisma") < 0:
+		return true
+	var theirs := 0.0
+	if r.stats.has(&"strength") and r.stats.has(&"wisdom"):
+		for k: StringName in Unit.CORE.slice(0, 6):
+			theirs += float(r.stats.get(k, 10))
+		theirs += float(r.stats[&"wisdom"])
+	else:
+		var lv: Variant = _level(u, r)
+		if lv == null:
+			return false
+		theirs = (u.bst() + u.wisdom) * float(lv) / maxf(float(u.lv()), 1.0)
+	return u.bst() + u.wisdom > theirs * (1.0 + margin(u))
 
 
 # What a power hungry unit sees in t (read as r): [rank, share] - rank 2 for Power (Unit.powered()), 1 for Energy, 0 for
@@ -935,7 +955,7 @@ static func _fill(t: Unit, r: Read) -> Array:
 
 
 # The unit a power hungry one would drain: of those it makes out that aren't its own side (foes and neutrals alike), the one with the
-# most Power, else Energy, else reserves (_fill()), holding at least FEED of its bar. null: none.
+# most Power, else Energy, else reserves (_fill()), holding at least FEED of its bar, and that it dares (_dares()). null: none.
 static func _richest(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 	var best: Unit = null
 	var best_fill := [-1, 0.0]
@@ -944,7 +964,7 @@ static func _richest(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 		if o == u or not o.is_alive() or not r.located() or Faction.friends(u.faction, o.faction) or r.attitude(u) == &"ignore":
 			continue
 		var f := _fill(o, r)
-		if f[0] >= 0 and f[1] >= FEED and (f[0] > best_fill[0] or (f[0] == best_fill[0] and f[1] > best_fill[1])):
+		if f[0] >= 0 and f[1] >= FEED and _dares(u, r) and (f[0] > best_fill[0] or (f[0] == best_fill[0] and f[1] > best_fill[1])):
 			best = o
 			best_fill = f
 	return best
