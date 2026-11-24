@@ -119,8 +119,7 @@ const POCKETS := Vector2i(1000, 0)  # where pockets lie: on the map, out of reac
 const RIFT_FORMATION := "res://Formations/undine_and_sirens.tres"  # what comes out of a Rift's domain
 var pockets: Array[Pocket] = []
 var demons: Faction = load("res://Factions/demons.tres")
-const REPAIR_COST := 0.05  # of a source's capacity, drawn to begin mending a cracked startile
-const REPAIR_SPAN := 20.0  # a source reaches (how full it is, in %) / this tiles to mend from: 5 when full
+const SIGNAL_FULL := 5  # a source's full signal in tiles (a generator's rank; a startile holding charge, unranked, radiates up to it); a cracked startile mends this much progress, at a rate of the signal on it a round
 const SICKNESS: Effect = preload("res://Effects/resurrection_sickness.tres")
 const REFORMING: Effect = preload("res://Effects/reforming.tres")
 const ASPHYXIA: Effect = preload("res://Effects/asphyxia.tres")
@@ -399,8 +398,7 @@ class Layer:
 	var turns := 0  # its setter's side's turns left before it drains away (a Flood); 0: it lasts
 	var faction: Faction  # whose turns count it down
 	var repairing := 0  # rounds of mending done
-	var repair_goal := 0  # rounds it takes - its distance from the source it draws on; 0: not begun
-	var source: Variant = null  # that source's cell
+	var repair_goal := 0  # progress it takes (a cracked startile: SIGNAL_FULL; Stardust: rounds, its distance from the nearest source); 0: not begun
 	var lapse := 0  # rounds it lasts unpowered (a startile its skill laid: rank); 0: it lasts (_repair_tiles())
 	var dark := 0  # rounds it has gone unpowered in a row
 	var brittle := false  # breaks to blunt damage even where its terrain doesn't (a generator its skill laid)
@@ -4446,7 +4444,6 @@ func break_layer(c: Vector2i, l: Layer, by: Unit = null) -> void:
 		l.terrain = was.breaks_into
 		l.repairing = 0
 		l.repair_goal = 0
-		l.source = null
 		if l.terrain.regrows:
 			l.passes = true  # dust bears nothing: over void, the void shows (the unit on it falls: _restack())
 		_register(c, l.terrain)
@@ -4534,12 +4531,12 @@ func _teeter(u: Unit, rested: bool) -> void:
 		_drop(u)
 
 
-# Cracked startiles mend, a round at a time. One not yet begun looks for the lattice: a pane or tile
-# linked to a source whose fullness (in %) / REPAIR_SPAN reaches it in tiles, and draws REPAIR_COST of
-# a source's capacity from that source to begin ("Repairing X/Y": a round a tile of distance). Done, it
-# upgrades into what it repairs into (a startile, a source again, empty).
+# Cracked startiles mend, a round at a time, by the signal on them (signal_at(): w22-starfield): each round a
+# cracked startile makes progress equal to its signal (0 at a source's edge, SIGNAL_FULL on the source: one
+# round), done at SIGNAL_FULL ("Repairing X/5"); in no signal it holds. Done, it upgrades into what it repairs
+# into (a startile, a source again, empty).
 # A layer with a lapse (a startile its skill laid) counts the rounds it lies outside the signal and breaks at its lapse.
-# One that regrows (Stardust) draws on the signal instead: each round in signal it makes a round's
+# One that regrows (Stardust) draws on the signal differently: each round in signal it makes a round's
 # progress, done in as many as its distance from the nearest source (signal_near()); out of it, it holds.
 func _repair_tiles() -> void:
 	for c: Vector2i in layers.keys():
@@ -4559,18 +4556,12 @@ func _repair_tiles() -> void:
 				if l.repair_goal == 0:
 					l.repair_goal = maxi(near, 1)
 				l.repairing += 1
-				if l.repairing >= l.repair_goal:
-					_repaired(c, l)
-				continue
-			if l.repair_goal == 0:
-				var found := _mender(c)
-				if found.is_empty():
+			else:
+				var sig := signal_at(c)
+				if sig <= 0:
 					continue
-				charge[found[1]] -= ceili(REPAIR_COST * STAR_CAPACITY)
-				l.source = found[1]
-				l.repair_goal = maxi(found[2], 1)
-				continue
-			l.repairing += 1
+				l.repair_goal = SIGNAL_FULL
+				l.repairing += sig
 			if l.repairing >= l.repair_goal:
 				_repaired(c, l)
 
@@ -4581,27 +4572,10 @@ func _repaired(c: Vector2i, l: Layer) -> void:
 	l.terrain = into
 	l.repairing = 0
 	l.repair_goal = 0
-	l.source = null
 	l.passes = _overlays(c, into)  # mended over void it bridges it again
 	_register(c, into)
 	_restack(c)
 	mended.emit(c, into)
-
-
-# [the lattice tile c draws on, its source, the distance] for mending c; [] if none reaches.
-func _mender(c: Vector2i) -> Array:
-	var best: Array = []
-	var cost := ceili(REPAIR_COST * STAR_CAPACITY)
-	for at in panes.keys() + starpower.keys():
-		if at == c:
-			continue
-		var src: Variant = star_source(at)
-		if src == null or charge[src] < cost:
-			continue
-		var d := Command.tiles(c, at)
-		if d <= 100.0 * charge[src] / STAR_CAPACITY / REPAIR_SPAN and (best.is_empty() or d < best[2]):
-			best = [at, src, d]
-	return best
 
 
 # --- Turns
@@ -5980,23 +5954,15 @@ func on_lattice(c: Vector2i) -> bool:
 	return c in panes or c in starpower
 
 
-# The starpower source c draws on: itself, or the fullest source joined to it through whole starpanes,
-# side-on. Null if it's off the lattice or linked to none.
+# The starpower source c draws on: the fullest of the live sources feeding the signal on a lattice tile c (the
+# cached field, _field(): its own, or the circuit's). Null if it's off the lattice or fed by none (empty sources are dead).
 func star_source(c: Vector2i) -> Variant:
 	if not on_lattice(c):
 		return null
-	var seen := {c: true}
-	var queue: Array[Vector2i] = [c]
 	var best: Variant = null
-	while not queue.is_empty():
-		var at: Vector2i = queue.pop_front()
-		if at in starpower and (best == null or charge[at] > charge[best]):
-			best = at
-		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var n: Vector2i = at + d
-			if n not in seen and on_lattice(n):
-				seen[n] = true
-				queue.append(n)
+	for g: Vector2i in _field().get(c, [0, 0, []])[2]:
+		if best == null or charge[g] > charge[best]:
+			best = g
 	return best
 
 
@@ -6101,7 +6067,7 @@ func signal_sources() -> Array:
 		if r <= 0:
 			continue
 		var lv: Array = live[comp[c]] if c in comp else []
-		var p := mini(r, floori(5.0 * charge[c] / STAR_CAPACITY)) if c in charge else (r if not lv.is_empty() else 0)
+		var p := mini(r, floori(float(SIGNAL_FULL) * charge[c] / STAR_CAPACITY)) if c in charge else (r if not lv.is_empty() else 0)
 		if p > 0:
 			power[c] = p
 			feeds[c] = lv
@@ -6112,7 +6078,7 @@ func _rank(c: Vector2i) -> int:
 	var r := 0
 	for l: Layer in layers.get(c, []):
 		r = maxi(r, l.power if l.power > 0 and l.terrain.power_rank > 0 else l.terrain.power_rank)
-	return r
+	return r if r > 0 or c not in starpower else SIGNAL_FULL  # an unranked source holding charge (a startile) radiates up to full
 
 
 func _field() -> Dictionary:
