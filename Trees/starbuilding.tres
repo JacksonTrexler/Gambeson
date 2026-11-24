@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="SkillRoot" format=3]
+
+[ext_resource type="Script" path="res://Scripts/SkillRoot.gd" id="1_skillroot"]
+[ext_resource type="Script" path="res://Scripts/Branch.gd" id="2_branch"]
+[ext_resource type="Resource" path="res://Skills/startile.tres" id="s_startile"]
+[ext_resource type="Script" path="res://Scripts/Skill.gd" id="skill"]
+[ext_resource type="Resource" path="res://Skills/starbridge.tres" id="s_starbridge"]
+[ext_resource type="Resource" path="res://Skills/starpanel.tres" id="s_starpanel"]
+[ext_resource type="Resource" path="res://Skills/starpower_generator.tres" id="s_starpower_generator"]
+[ext_resource type="Resource" path="res://Skills/starway.tres" id="s_starway"]
+
+[sub_resource type="Resource" id="Branch_startile"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_startile")
+
+[sub_resource type="Resource" id="Branch_starpanel"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_starpanel")
+after = Array[ExtResource("skill")]([ExtResource("s_startile")])
+
+[sub_resource type="Resource" id="Branch_starpower_generator"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_starpower_generator")
+after = Array[ExtResource("skill")]([ExtResource("s_starpanel")])
+
+[sub_resource type="Resource" id="Branch_starway"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_starway")
+after = Array[ExtResource("skill")]([ExtResource("s_starpower_generator"), ExtResource("s_starbridge")])
+needs = 1
+
+[sub_resource type="Resource" id="Branch_starbridge"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_starbridge")
+after = Array[ExtResource("skill")]([ExtResource("s_startile")])
+
+[resource]
+script = ExtResource("1_skillroot")
+name = "Starbuilding ??"
+tag = &"specialist"
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_startile"), SubResource("Branch_starpanel"), SubResource("Branch_starpower_generator"), SubResource("Branch_starway"), SubResource("Branch_starbridge")])

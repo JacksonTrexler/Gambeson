@@ -54,6 +54,7 @@
 [ext_resource type="Resource" path="res://Items/gambeson.tres" id="i_gambeson"]
 [ext_resource type="Resource" path="res://Items/dagger.tres" id="i_dagger"]
 [ext_resource type="Resource" path="res://Items/energy_potion.tres" id="i_energy_potion"]
+[ext_resource type="Resource" path="res://Trees/starbuilding.tres" id="starbuilding"]
 [sub_resource type="Resource" id="Slot_strike"]
 script = ExtResource("4_slot")
 skill = ExtResource("s_strike")
@@ -244,6 +245,11 @@ name = "Actualization"
 kind = "Path"
 roots = Array[ExtResource("6_root")]([SubResource("Root_Actualization")])
 
+[sub_resource type="Resource" id="Tab_starbuilding"]
+script = ExtResource("8_tab")
+name = "Starbuilding ??"
+roots = Array[ExtResource("6_root")]([ExtResource("starbuilding")])
+
 [resource]
 script = ExtResource("1_script")
 tends = &"loyal"
@@ -261,4 +267,4 @@ general = Array[StringName]([&"martial", &"specialist", &"magical", &"journeyman
 tags = Array[StringName]([&"jack"])
 flex_every = 3
 radial = true
-tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Actualization")])
+tabs = Array[ExtResource("8_tab")]([SubResource("Tab_Actualization"), SubResource("Tab_starbuilding")])
