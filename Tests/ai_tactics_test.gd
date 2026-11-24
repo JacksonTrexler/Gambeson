@@ -1063,6 +1063,41 @@ func test_herds() -> void:
 	ok(" herds " not in " ".join(AI.act(b, h[1])), "hurt: a full turn, not the herd's")
 
 
+# Groups (AI._group_aim(), _grouped(); docs/plans/w24-group.md): like units of a side in a fight share one target a side turn,
+# decided once by the first to act from the group's mean distance - so a member nearer another foe still goes for the group's -
+# a timid one acts alone, a lone unit has no group; HUD's order puts kin back to back; AI.assault() is the Assault seam.
+func test_groups() -> void:
+	var h := herd_of(nemes, 5)
+	for u in h:
+		u.movement = 6
+	stage(nemes, {h[0]: Vector2i(8, 1), h[1]: Vector2i(8, 4), h[2]: Vector2i(8, 5), h[3]: Vector2i(8, 6), h[4]: Vector2i(8, 7), v(1): Vector2i(6, 0), v(2): Vector2i(5, 6)})
+	for t in [v(1), v(2)]:
+		t.max_hp = 300
+		t.hp = 300
+	ok(AI._best_target(h[0], AI._reads(b, h[0])) == v(1), "alone, the top member would go for the foe nearest it")
+	var logs := []
+	for m in h:
+		logs.append(" ".join(AI.act(b, m)))
+	var all := " | ".join(logs)
+	ok(all.count(" on Villager2 ") >= 2 and " on Villager1 " not in all, "the group strikes its target, never the other (%s)" % all)
+	ok(Command.tiles(h[0].cell, v(2).cell) < Command.tiles(h[0].cell, v(1).cell), "the top member walked for the group's target, not its own nearest (%s)" % h[0].cell)
+	ok(h.all(func(m: Unit): return m.get_meta(&"group_aim") == v(2)), "one aim for the group")
+	ok(is_same(b.get_meta(&"groups").aims.values()[0], v(2)) and b.get_meta(&"groups").aims.size() == 1, "decided once for the group")
+	h[0].bio = Bio.new()
+	h[0].bio.behaviour = &"timid"
+	ok(AI._group_aim(b, h[0], AI._reads(b, h[0])) == null, "a timid member acts alone")
+	h[0].bio = null
+	ok(AI._group_aim(b, v(3), AI._reads(b, v(3))) == null, "one of its kind: no group")
+	var mixed: Array[Unit] = [h[0], v(3), h[1], v(4), h[2]]
+	ok(AI.in_groups(mixed) == ([h[0], h[1], h[2], v(3), v(4)] as Array[Unit]), "kin act back to back, in the order they came")
+	var a := herd_of(nemes, 2)  # fresh: a whole turn's walk and AP each
+	stage(nemes, {a[0]: Vector2i(4, 1), a[1]: Vector2i(6, 3), v(1): Vector2i(6, 1)})
+	var hp := v(1).hp
+	var log := AI.assault(b, [a[1], a[0]] as Array[Unit], [v(1)] as Array[Unit])
+	ok(log.size() == 4 and log[0].begins_with(a[1].name + " moves") and " uses Strike on Villager1" in log[1] and log[2].begins_with(a[0].name + " moves") \
+			and " uses Strike on Villager1" in log[3] and v(1).hp < hp, "assault: each in order walks up and uses its leftmost attack (%s)" % [log])
+
+
 # Battle.ranks (Scripts/Ranks.gd): each side's units by HP (kept as it changes), physical and magical Defense (taken each side turn),
 # lowest first - the same order a scan of every unit gives, after hits, heals, a fall and a Defense change.
 func test_ranks_match_a_scan() -> void:

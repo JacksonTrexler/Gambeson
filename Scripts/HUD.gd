@@ -1931,7 +1931,8 @@ func _move(u: Unit, c: Vector2i) -> void:
 
 # Units acting on their own (AI), one at a time so it can be followed; then f's turn ends.
 func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
-	units = Command.cognizant_first(units)  # the Disturbed last
+	units = Command.cognizant_first(AI.in_groups(units))  # kin back to back (a group acts in quick sequence), the Disturbed last
+	var last: Unit = null
 	var ended := false
 	busy = true
 	aim = false
@@ -1946,13 +1947,14 @@ func _act_alone(f: Faction, units: Array[Unit], wait := 0.0) -> void:
 			break
 		if not u.is_alive():
 			continue
-		if pace > 0.0 and not together:
+		if pace > 0.0 and not together and not AI.kin(last, u):  # kin follow on without a pause: one group's moves and blows in quick sequence
 			await _wait(pace)
 			if not is_inside_tree():
 				return
 		if not together:
 			select(u if unit_seen(u.cell) == u else null)
 		var signs := _signs
+		last = u
 		AI.act(battle, u)
 		_mark()
 		if pace > 0.0 and _signs > signs:  # an interesting turn: what it showed gets a moment

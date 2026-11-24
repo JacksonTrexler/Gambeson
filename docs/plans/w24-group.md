@@ -9,7 +9,7 @@ Goal: like units of a side share one target a side turn and act back to back; a 
 
 ## Calls
 - Group = _kind() (the herd's notion, cheapest), GROUP = 2 alive "in step" members. In step: no behaviour (Siren, skittish...), not Restless, Downed or posing, temper not timid / flippant (those act alone). A brave/aggressive/compliant/etc member stays in the group (it still weighs its own temper on top).
-- Target decided once per group per side turn by its first member to take a full turn: _targeting() (existing scoring) from that member's reads, with distance the mean over the members' cells (the group's want, not one unit's). Re-decided once if it falls. A herd plan already made this turn with a living target is taken as is (herd walks and fight agree).
+- Target decided once per group per side turn by its first member to take a full turn: _targeting() (existing scoring) from that member's reads, with distance the mean over the members' cells (the group's want, not one unit's). Re-decided once if it falls. Not the herd plan's pick (lowest Defense near the centre): tried, dropped - for 3+ it would always win and the walk-scoring path would only serve pairs; one notion.
 - Pull, not force: GROUPED 4.0 (as ORDERED) added in _hunted() to the group target, so a likely kill (KILL 5) or a foe only in reach still wins: "when possible".
 - Only self-directed full turns (_full(), posture ""): drill, herd, prowl, ordered postures unchanged; the meta is cleared at each act() so it never lingers.
 - Quick sequence: HUD orders a side's units so kin act back to back (AI.in_groups(), stable, before cognizant_first) and skips the `pace` wait between kin (not-together mode); sign holds kept (they show something).

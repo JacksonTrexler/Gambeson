@@ -89,6 +89,9 @@ const APPROACH_FAR := 3.0  # tiles past its walk a foe must stand for _approach(
 const HUNT_FAR := 2.0  # tiles past its walk a hunt's goal must lie for it to head straight there (_hunt()), not by the tile beside it (_approach())
 const DRILL_MARGIN := 2.0  # tiles past its walk and its longest reach a drilling follower still reads units within (_drill())
 const HERD := 3  # like units (_kind()) a side must field, alive, to move as a herd on one plan a side turn (_herd_plan())
+const GROUP := 2  # like units (_kind()) a side must field, alive and in step (_in_step()), to share one target a side turn (_group_aim())
+const GROUPED := 4.0  # how much more a group member wants its group's target (_grouped()): as ORDERED, under a likely kill (KILL)
+const ALONE: Array[StringName] = [&"timid", &"flippant"]  # tempers that act alone, out of any group
 const COHESION := 3.0  # tiles a herd member may get ahead of its herd's centre toward the goal before it waits for the rest (_herd())
 
 
@@ -128,6 +131,7 @@ static func act(b: Battle, u: Unit, posture := &"") -> Array[String]:
 	if not u.is_alive() or u.stopped():
 		return log
 	var herd := {}
+	u.remove_meta(&"group_aim")  # set afresh by a full turn's group (_group_aim()), never left over
 	if posture == &"" and _calm(b, u):
 		_drill(b, u, log)
 	elif posture == &"" and _herded(b, u, herd):
@@ -145,6 +149,10 @@ static func _full(b: Battle, u: Unit, posture: StringName, log: Array[String]) -
 	var plain := posture == &"" and u.behaviour == &"" and u.temper() == &"" and u.faction != null  # no nature or temper: allies beyond its reach are of no use to its phases
 	var reads := _reads(b, u, _reach(b, u) + 1.0 if plain else -1.0)
 	_remember(b, u, reads)
+	if posture == &"":
+		var aim := _group_aim(b, u, reads)
+		if aim:
+			u.set_meta(&"group_aim", aim)  # its group's pick: _hunted() pulls its walk and its blows to it
 	if b.held_by(u):
 		_escape(b, u, log)
 	if u.dbno:  # Downed and fighting on (Grudge): what's left of it goes into blows
@@ -437,6 +445,91 @@ static func _herd(b: Battle, u: Unit, plan: Dictionary, log: Array[String]) -> v
 		return
 	if not _rooted(b, u) and Command.tiles(u.cell, goal) > 1:
 		log.append("%s herds %s" % [u.name, b.travel(u, _beside(b, u, goal))])
+
+
+# A group (_kind(), as a herd) shares a target in a fight: a unit in step with its kind, of no nature (Unit.behaviour),
+# temper that acts alone (ALONE: timid, flippant), not Restless, Downed or posing.
+static func _in_step(b: Battle, u: Unit) -> bool:
+	return u.is_alive() and u.behaviour == &"" and u.temper() not in ALONE and u.dbno == null and not u.restless() and not b.posing(u)
+
+
+# u's group's target this side turn: decided once per group (GROUP or more in step, _in_step()) by the first of it to take a
+# full turn, from its reads (_targeting(), the walk choice's scoring) with distance the mean over the members' cells - what the
+# group wants most, not what u does. Re-decided once it falls. null alone, out of step, or with no foe it makes out.
+static func _group_aim(b: Battle, u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
+	if not _in_step(b, u):
+		return null
+	var cache: Dictionary = b.get_meta(&"groups") if b.has_meta(&"groups") else {}
+	if cache.get(&"turn", -1) != b.turns_begun or cache.get(&"side") != u.faction:
+		var kinds := {}
+		for m: Unit in b.members(u.faction):
+			if _in_step(b, m):
+				kinds.get_or_add(_kind(m), []).append(m)
+		cache = {&"turn": b.turns_begun, &"side": u.faction, &"kinds": kinds, &"aims": {}}
+		b.set_meta(&"groups", cache)
+	var k := _kind(u)
+	var members: Array = cache.kinds.get(k, [])
+	if members.size() < GROUP or u not in members:
+		return null
+	var aim: Variant = cache.aims.get(k)
+	if is_instance_valid(aim) and aim.is_alive():
+		return aim
+	Unit.begin_read()
+	aim = _targeting(u, reads, members.filter(func(m: Unit): return m.is_alive()).map(func(m: Unit): return m.cell))
+	Unit.end_read()
+	cache.aims[k] = aim
+	return aim
+
+
+# Whether a and o are kin: one group's, or one herd's (_kind()).
+static func kin(a: Unit, o: Unit) -> bool:
+	return a != null and o != null and _kind(a) == _kind(o)
+
+
+# units in the order they came, each kind's together where its first stood (HUD._act_alone(): a group acts back to back).
+static func in_groups(units: Array[Unit]) -> Array[Unit]:
+	var kinds := {}
+	for u: Unit in units:
+		kinds.get_or_add(_kind(u), []).append(u)
+	var out: Array[Unit] = []
+	for k in kinds:
+		out.assign(out + kinds[k])
+	return out
+
+
+# An assault (the seam for a coordinated attack, the Assault skill): each of `units` in order moves into reach of, and
+# uses its leftmost attack (_leftmost(): first on its hotbar, else of its actives, that attacks()) on, the `per` nearest
+# living `targets` it can reach, one after another, no weighing. A unit with no attack, or none it can afford, sits it out.
+# Returns the log.
+static func assault(b: Battle, units: Array[Unit], targets: Array[Unit], per := 1) -> Array[String]:
+	var log: Array[String] = []
+	for u: Unit in units:
+		if not u.is_alive() or u.stopped():
+			continue
+		var s := _leftmost(u)
+		var left := targets.filter(func(t: Unit): return t.is_alive())
+		if s == null or left.is_empty():
+			continue
+		left.sort_custom(func(x: Unit, y: Unit): return Command.tiles(u.cell, x.cell) < Command.tiles(u.cell, y.cell))
+		var first: Unit = left[0]
+		if not b.in_reach(u, s, first) and not _rooted(b, u):
+			log.append("%s moves %s" % [u.name, b.travel(u, _approach(b, u, first, reads_from({first: b.read(u, first)})))])
+		for t: Unit in left.slice(0, per):
+			if t.is_alive() and b.in_reach(u, s, t) and b.can_afford(u, s, t) and b.cast(u, s, t):
+				log.append("%s uses %s on %s -> %d" % [u.name, s.name, t.name, t.hp])
+				u.set_meta(&"aim", t)
+	return log
+
+
+static func _leftmost(u: Unit) -> Skill:
+	var actives := u.actives
+	for s: Skill in u.hotbar:
+		if s and s in actives and s.attacks():
+			return s
+	for s: Skill in actives:
+		if s.attacks():
+			return s
+	return null
 
 
 # A far turn (_far()): it reads the foes it can place (a vague shape: cheap) and the allies within its longest
@@ -878,7 +971,12 @@ static func _forecast(b: Battle, u: Unit, s: Skill, t: Unit, r: Read, d: Diction
 
 
 static func _hunted(u: Unit, t: Unit, r: Read) -> float:
-	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r) + _hunger(u, t, r) + _orders(u, t)
+	return (HUNT if r.faction != null and r.faction in u.hunts else 0.0) + _grudge(u, t, r) + _hunger(u, t, r) + _orders(u, t) + _grouped(u, t)
+
+
+# A group member's want of t: GROUPED if t is its group's target this side turn (_group_aim(), meta group_aim), else 0.
+static func _grouped(u: Unit, t: Unit) -> float:
+	return GROUPED if u.has_meta(&"group_aim") and is_same(u.get_meta(&"group_aim"), t) else 0.0
 
 
 # A vindictive unit's grudge against t (read as r): GRUDGE per blow t has landed this fight on it or its side (Unit.wrongs:
@@ -2079,7 +2177,8 @@ static func _best_target(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 	return out
 
 
-static func _targeting(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
+# `from`: the cells whose mean distance counts (a group's members: _group_aim()), else u's own.
+static func _targeting(u: Unit, reads: Dictionary[Unit, Read], from: Array = []) -> Unit:
 	var best: Unit = null
 	var best_score := -INF
 	for t: Unit in reads:
@@ -2087,7 +2186,13 @@ static func _targeting(u: Unit, reads: Dictionary[Unit, Read]) -> Unit:
 			continue
 		var guess: Variant = _level(u, reads[t])
 		var lv: float = guess if guess != null else 0.0
-		var v: float = -Vector2(u.cell).distance_to(Vector2(reads[t].cell)) - _hate(reads[t]) + _hunted(u, t, reads[t]) \
+		var far := Vector2(u.cell).distance_to(Vector2(reads[t].cell))
+		if not from.is_empty():
+			far = 0.0
+			for c: Vector2i in from:
+				far += Vector2(c).distance_to(Vector2(reads[t].cell))
+			far /= from.size()
+		var v: float = -far - _hate(reads[t]) + _hunted(u, t, reads[t]) \
 				+ STRONG * lv * _leaning(u) - (LAST if t.dbno != null and t.stopped() else 0.0)
 		if v > best_score:
 			best = t
