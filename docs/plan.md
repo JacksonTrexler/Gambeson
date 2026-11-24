@@ -287,6 +287,9 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Bridge fall, AI reads star terrain (?382, ?383) | `starbuilding_test.gd` |
 | — | Second-bar fixes, screenshot pass, skills grid fix (?384, ?385) | `starbuilding_test.gd`, `hud_test.gd` |
 | — | Skills grid opens at the highest learned tier, chained Starways, bar re-shot (?390 to ?392) | `hud_test.gd`, `starbuilding_test.gd` |
+| — | Ctrl to land on void, the siphon Con check (?393, ?394) | `hop_test.gd`, `stars_test.gd` |
+| — | Nexus layout and rare Starnest, fog ranks (?395, ?396) | `tower_test.gd`, `meadows_test.gd` |
+| — | Tempers (flippant, Power Hungry, Ire, Princess), group AI, Assault (?397 to ?399) | `stars_test.gd`, `exhaustion_test.gd`, `ai_tactics_test.gd`, `warcry_test.gd` |
 | — | HUD polish, Exhaustion explains the cast refusal (?386, ?387) | `hud_test.gd` |
 | — | Reach across a Starway, AI leaves a lapsing bridge (?388, ?389) | `starbuilding_test.gd`, `hud_test.gd` |
 
