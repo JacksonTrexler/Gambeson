@@ -143,7 +143,7 @@ func _scroll_to_bottom() -> void:
 	for i in 2:
 		await get_tree().process_frame
 	var most := int(scroll.get_v_scroll_bar().max_value)
-	scroll.scroll_vertical = clampi(ceili(grid.floor_y() - scroll.size.y), 0, most)
+	scroll.scroll_vertical = clampi(ceili(grid.floor_y() + SkillGrid.BAR - scroll.size.y), 0, most)  # the h-bar covers the view's bottom BAR
 
 
 # A tab per part of its trees, like a browser's: each in its tree's colour (general trees by category),

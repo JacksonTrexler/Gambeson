@@ -11,3 +11,8 @@ Goal: 5 HUD fixes from w22-shots. Files: HUD.gd, SkillSlot.gd, SkillGrid.gd, Uti
 - test_adventurer_skills_screen: grid keeps BAR under T1.
 - Mutations (each fails its check): "% full" always; blend off; name_font -> 7; BAR removed.
 - Wizard on entry: role.py check (was failing without entry).
+## As built / seen (S/shot_w23-hud/, driver S/driver_w23.gd)
+- name_font floor lowered to 4 (5 still cut "Starpower Generator"); frame: full name, tiny, in the 5-slot bar.
+- SkillTree._scroll_to_bottom opens BAR lower so T1 clears the bar; frame tab/m00000329: T1 row clear of the bar. T9 Starnest still above the fold at open (trees open at the floor; 176px viewport < 9 tiers): not changed, scrolls.
+- Entry lists Wizard (14th role, scrolls right). Startile pane: "Startile: Power back x5", no "% full". Stardust pane swatch: grass with yellow/white/grey flecks (the map's art).
+- Bar-swap frames not re-shot (unchanged code).

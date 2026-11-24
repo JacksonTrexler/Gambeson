@@ -354,9 +354,9 @@ func slot_at(y: float) -> int:
 	return index + clampi(floori(y / (ROW + SlotColumns.GAP)), 0, n - 1)
 
 
-# The font size a name of width w (at 7) takes in room: 7, shrunk (down to 5) to fit rather than cut ("Starpower Generator").
+# The font size a name of width w (at 7) takes in room: 7, shrunk (down to 4) to fit rather than cut ("Starpower Generator").
 static func name_font(w: float, room: float) -> int:
-	return 7 if w <= room else clampi(floori(7.0 * room / w), 5, 7)
+	return 7 if w <= room else clampi(floori(7.0 * room / w), 4, 7)
 
 
 # The width its content wants (a column of slots is this wide, or the names are cut): the key, icon, whole name, numeral, a

@@ -1436,8 +1436,8 @@ func test_layer_pane() -> void:
 	var plain := h._tile_icon(dust)
 	b.lay_layer(dust, load("res://Terrain/stardust.tres"))
 	ok(h._tile_icon(dust).get_image().get_data() != plain.get_image().get_data(), "a Stardust tile's swatch is the ground with the stardust on it")
-	ok(SkillSlot.name_font(40.0, 40.0) == 7 and SkillSlot.name_font(80.0, 40.0) == 5 and SkillSlot.name_font(50.0, 40.0) == 5 and SkillSlot.name_font(45.0, 40.0) == 6,
-			"a name too wide for its slot shrinks (to 5 at most), not cut")
+	ok(SkillSlot.name_font(40.0, 40.0) == 7 and SkillSlot.name_font(80.0, 40.0) == 4 and SkillSlot.name_font(50.0, 40.0) == 5 and SkillSlot.name_font(45.0, 40.0) == 6,
+			"a name too wide for its slot shrinks (to 4 at most), not cut")
 	h.free()
 
 
