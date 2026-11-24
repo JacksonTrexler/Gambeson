@@ -21,3 +21,4 @@ radius_per_rank = 1.0
 behaviours = Array[ExtResource("4_behaviour")]([SubResource("Behaviour_star_place")])
 max_rank = 5
 radius_mod = &"intelligence"
+no_density = "its reach is casting mod + rank: nothing else scales"
