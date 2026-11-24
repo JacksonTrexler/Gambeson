@@ -3160,7 +3160,8 @@ func power_pool() -> Variant:
 # afford it, or would pay in Mana or plain Energy, doesn't.
 func pays_power(s: Skill) -> bool:
 	var pool: Variant = power_pool()
-	return pool != null and funding(s) == pool
+	var fund: Variant = funding(s) if pool != null else null
+	return fund != null and typeof(fund) == typeof(pool) and fund == pool
 
 
 # Energy damage (Smite): what gets through mitigation (and luck, as hit()) drains its Energy first;

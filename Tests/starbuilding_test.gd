@@ -37,6 +37,11 @@ func test_place_seals_and_lapses() -> void:
 	u.afflict(effect("powered", 1.0), 9)
 	u.energy = u.max_energy
 	var most := u.max_energy
+	var stamina: Reserve = load("res://Reserves/stamina.tres")
+	u.reserves[stamina] = 10
+	u.set_exact(stamina, 10)
+	ok(u.funding(sk("startile")) == stamina and not _cast(u, "startile", Vector2i(5, 3)), "powered but it would pay in Stamina: Power skills are paid in Power only")
+	u.reserves.erase(stamina)
 	ok(not _cast(u, "startile", Vector2i(7, 3)), "out of range: Startile reaches its rank (2) tiles")
 	ok(_cast(u, "startile", Vector2i(5, 3)) and b.top_layer(Vector2i(5, 3)).terrain == Battle.STARTILE, "powered: it lays a startile")
 	ok(u.locked(&"energy") == 1 and u.usable_max(&"energy") == most - 1, "...sealing 1 Power (usable max %d of %d)" % [u.usable_max(&"energy"), most])
@@ -106,3 +111,34 @@ func test_starway() -> void:
 	ok(b.portals.is_empty(), "break one end and the pair is gone")
 	b.place(w, Vector2i(6, 3))
 	ok(w.cell == Vector2i(6, 3), "...the other end is just a tile")
+
+
+# The AI crosses void with Power: Startiles over the gap toward its foe, a Starbridge to a powered tile past it; Starpanel, Starway and
+# the generator are the player's (AI._span()).
+func test_ai_crosses_void() -> void:
+	var u := _caster("startile", 3)
+	b.move(u, Vector2i(2, 3))
+	b.move(v(3), Vector2i(9, 3))
+	for x in range(4, 7):
+		b.paint(Vector2i(x, 3), void_t)
+	var ground := b.terrain(Vector2i(8, 3))
+	var log: Array[String] = []
+	ok(AI._span(b, u, Vector2i(9, 3), log), "powered, it lays startiles over the void ahead of it (%s)" % [log])
+	ok(b.terrain(Vector2i(4, 3)) == Battle.STARTILE and u.locked(&"energy") >= 1, "...one a tile, each sealing Power")
+	b.layers.clear()
+	for x in range(4, 7):
+		b.paint(Vector2i(x, 3), void_t)
+	u.afflict(effect("powered", 0.0), 0)
+	var plain := _caster("startile", 3, false)
+	b.move(plain, Vector2i(2, 3))
+	ok(not AI._span(b, plain, Vector2i(9, 3), log) and b.terrain(Vector2i(4, 3)) == void_t, "with no Power it stays on its side")
+	var panel := _caster("starpanel", 3)
+	b.move(panel, Vector2i(2, 3))
+	ok(not AI._span(b, panel, Vector2i(9, 3), log), "a Starpanel isn't the AI's to cast")
+	var bridger := _caster("starbridge", 3)
+	b.move(bridger, Vector2i(3, 3))
+	_gen(Vector2i(6, 5))
+	b.paint(Vector2i(6, 3), ground)
+	b.lay_layer(Vector2i(6, 3), Battle.STARTILE)
+	b.lay_layer(Vector2i(3, 3), Battle.STARTILE)
+	ok(AI._span(b, bridger, Vector2i(9, 3), log) and b.terrain(Vector2i(5, 3)) == Battle.STARTILE, "or a Starbridge to the powered tile on the far side")
