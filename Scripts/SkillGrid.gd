@@ -88,13 +88,14 @@ func row_y(t: int) -> float:
 	return PAD + _head + (_top - t) * (BOX.y + GAP.y)
 
 
-# The bottom edge of its lowest tier that holds a skill: what the skills screen opens scrolled to (a tree
-# whose low tiers are empty - the Specialist tree's T0 and T1 - opens on its first filled one, not on blanks).
-func floor_y() -> float:
-	var low := _top
+# The bottom edge of the highest tier row holding a skill the unit has learned, or -1 if it has none: the
+# skills screen opens a tree there (at the top when -1), so a high tier like Starnest's T9 isn't above the fold.
+func open_y() -> float:
+	var high := -1
 	for s in skills():
-		low = mini(low, _tier(s))
-	return row_y(low) + BOX.y + PAD
+		if state_of(s) == &"learned":
+			high = maxi(high, _tier(s))
+	return -1.0 if high < 0 else row_y(high) + BOX.y + PAD
 
 
 func _tier(s: Skill) -> int:
