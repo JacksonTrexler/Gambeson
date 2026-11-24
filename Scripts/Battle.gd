@@ -5258,7 +5258,8 @@ func rounds_since(since: int) -> int:
 # The tiles foe t could have reached from `from` on `budget` movement, as viewer o can reckon it:
 # ground o makes out (known_ground(); the rest plain), every step priced by stride() as t's walk would be
 # paid (its movement effects, Peel), no one standing in its way, within `budget` tiles as the crow flies
-# (walk() goes in lines). Includes `from`.
+# (walk() goes in lines). A powered Starway o knows of (as _hops()) is a free hop to its pair, and the crow-line
+# starts again there with what is left. Includes `from`.
 func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vector2i]:
 	var best := {from: 0.0}
 	var bags := {from: {}}
@@ -5269,6 +5270,7 @@ func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vect
 		return grounds[c]
 	var open: Array[Vector2i] = [from]
 	var done := {}
+	var landings: Array[Vector2i] = []  # pairs of the Starways it could take: the crow-line restarts from each
 	while not open.is_empty():
 		var at: Vector2i = open[0]
 		for c in open:
@@ -5278,6 +5280,12 @@ func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vect
 		if at in done:
 			continue
 		done[at] = true
+		var to := _exit_of(t, at)
+		if to != at and &"portal" in known_ground(o, at).tags and best[at] < best.get(to, INF) - 0.000001:
+			best[to] = best[at]
+			bags[to] = bags[at]
+			landings.append(to)
+			open.append(to)
 		for dx in [-1, 0, 1]:
 			for dy in [-1, 0, 1]:
 				var c := at + Vector2i(dx, dy)
@@ -5292,7 +5300,10 @@ func reckon_reach(o: Unit, t: Unit, from: Vector2i, budget: float) -> Array[Vect
 						open.append(c)
 	var out: Array[Vector2i] = []
 	for c: Vector2i in best:
-		if Vector2(c).distance_to(Vector2(from)) <= budget + 0.0001:  # a walk goes in a line: ceil(distance) tiles, not a diagonal's two
+		var near := Vector2(c).distance_to(Vector2(from)) <= budget + 0.0001  # a walk goes in a line: ceil(distance) tiles, not a diagonal's two
+		for l in landings:
+			near = near or Vector2(c).distance_to(Vector2(l)) <= budget - best[l] + 0.0001
+		if near:
 			out.append(c)
 	return out
 

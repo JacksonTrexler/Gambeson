@@ -266,7 +266,8 @@ func _draw() -> void:
 		var side := h - 4.0
 		Skill.draw_icon(self, tex, Rect2(15, top + 2, side, side), Color(0.92, 0.93, 0.96, dim), 1.0, dim, icon_look(), off_by.mark().left(1) if off_by and off > 0 else "")
 		left += side + 1.0
-	draw_string(font, Vector2(left, mid + 0.5), label if label else skill.name, HORIZONTAL_ALIGNMENT_LEFT, right - left, 7,
+	var shown := label if label else skill.name
+	draw_string(font, Vector2(left, mid + 0.5), shown, HORIZONTAL_ALIGNMENT_LEFT, right - left, name_font(font.get_string_size(shown, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x, right - left),
 			Color(0.92, 0.93, 0.96).lerp(MUTED_TEXT, hush) * Color(1, 1, 1, dim))
 	if exhausted > 0.0001:
 		_pips()
@@ -351,6 +352,11 @@ func rows() -> int:
 func slot_at(y: float) -> int:
 	var n := rows()
 	return index + clampi(floori(y / (ROW + SlotColumns.GAP)), 0, n - 1)
+
+
+# The font size a name of width w (at 7) takes in room: 7, shrunk (down to 4) to fit rather than cut ("Starpower Generator").
+static func name_font(w: float, room: float) -> int:
+	return 7 if w <= room else clampi(floori(7.0 * room / w), 4, 7)
 
 
 # The width its content wants (a column of slots is this wide, or the names are cut): the key, icon, whole name, numeral, a

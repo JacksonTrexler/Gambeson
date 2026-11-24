@@ -37,7 +37,7 @@ FOCUS = {  # stats, general trees, the tag of its own tree's root
     "caster": ({"strength": 8, "dexterity": 10, "constitution": 10, "intelligence": 15, "wisdom": 12, "charisma": 10}, ["magical"], "magical"),
     "specialist": ({"strength": 9, "dexterity": 14, "constitution": 10, "intelligence": 11, "wisdom": 11, "charisma": 12}, ["specialist"], "specialist"),
 }
-NPC_ONLY = {"wizard", "mage"}  # classes off the starting screen on purpose (Icor's; the Mage's schools); role.py new --no-entry adds to it by hand
+NPC_ONLY = {"mage"}  # classes off the starting screen on purpose (the Mage's schools); role.py new --no-entry adds to it by hand
 GODS = tuple(sorted(f[:-5] for f in os.listdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Gods")) if f.endswith(".tres")))  # Gods/<id>.tres
 
 

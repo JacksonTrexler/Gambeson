@@ -22,6 +22,7 @@ const GAP := Vector2(5.0, 8.0)  # between boxes, across and up
 const LEFT := 16.0  # the tier labels' gutter
 const BASE := 12.0  # the root names under the bottom row
 const PAD := 4.0
+const BAR := 9.0  # the scroll box's horizontal bar, laid over the bottom edge: the T1 row sits above it
 const HEAD := 10.0  # a choice's box reaches this far above its row, for its heading
 const CORE := SkillWheel.CORE
 const GOLD := SkillWheel.GOLD
@@ -173,7 +174,7 @@ func _layout() -> void:
 		var tone: Color = offered[0].tone() if not offered.is_empty() else CORE
 		_choice_boxes.append([Rect2(Vector2(x, row_y(row) - HEAD), Vector2(maxf(inner, heading_w) + 6.0, BOX.y + 13.0)), heading, tone, c.by])
 		x += maxf(inner, heading_w) + 6.0 + GAP.x * 2.0
-	custom_minimum_size = Vector2(x + PAD, row_y(0) + BOX.y + BASE + PAD)
+	custom_minimum_size = Vector2(x + PAD, row_y(0) + BOX.y + BASE + PAD + BAR)
 	set_process(_entries.keys().any(func(t: SkillTab): return burn_entry(t) and unit.burned(t) > 0))  # a burned tree quivers
 
 

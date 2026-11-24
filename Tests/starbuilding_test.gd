@@ -208,6 +208,11 @@ func test_ai_hops_starway() -> void:
 	b.charge[Vector2i(3, 4)] = 0
 	b.route(w, goal, b.line(w.cell, goal, w.luck, w), price)
 	ok(price.cost >= 90.0, "dark, it is only a tile: the void costs what it does (%.1f)" % price.cost)
+	# a foe's reach reading crosses it too (reckon_reach())
+	var far := Vector2i(9, 3)
+	ok(far not in b.reckon_reach(w, v(3), Vector2i(3, 3), 3.0), "dark, a foe by it can't have got across")
+	b.charge[Vector2i(3, 4)] = Battle.STAR_CAPACITY
+	ok(far in b.reckon_reach(w, v(3), Vector2i(3, 3), 3.0), "powered, it is read as come out at the pair and on with what was left")
 
 
 # A startile on its last round of dark over void is a fall to end a walk on (Battle.hazard(), gives_way()): the AI closes on a foe

@@ -1224,6 +1224,7 @@ func test_adventurer_skills_screen() -> void:
 	await tree.process_frame
 	await tree.process_frame
 	ok(h.get_node("%TreeScroll").visible and h.get_node("%TreeScroll").size.y >= 170.0, "a grid tab shows its tree (%s)" % h.get_node("%TreeScroll").size)
+	ok(h.skills.grid.custom_minimum_size.y - h.skills.grid.row_y(0) - SkillGrid.BOX.y >= SkillGrid.BASE + SkillGrid.PAD + SkillGrid.BAR, "the grid keeps room under its T1 row for the scroll bar")
 	h.skills.show_tab(0)
 	await tree.process_frame
 	ok(w.tab.roots.reduce(func(all: Array, r: SkillRoot): return all + r.skills(), [w.tab.center] + w.tab.core).all(func(s: Skill): return s in w.skills()) and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
@@ -1447,6 +1448,17 @@ func test_layer_pane() -> void:
 	h.hover_cell(Vector2i(6, 3))
 	lines = h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
 	ok(lines.has("Repairing: 1/3") and lines[0].begins_with("Cracked Startile: Lets through, Brittle, Unstable"), "a cracked startile mending (%s)" % [lines])
+	var src := Vector2i(7, 3)
+	b.lay_star(src, Battle.STARTILE, v(1), 1)
+	h.hover_cell(src)
+	var notes: Array = h.get_node("%TileNotes").get_children().map(func(l): return l.get_parsed_text())
+	ok(notes.size() == 1 and not "% full" in notes[0], "an uncharged source isn't '0%% full' (%s)" % [notes])
+	var dust := Vector2i(8, 3)
+	var plain := h._tile_icon(dust)
+	b.lay_layer(dust, load("res://Terrain/stardust.tres"))
+	ok(h._tile_icon(dust).get_image().get_data() != plain.get_image().get_data(), "a Stardust tile's swatch is the ground with the stardust on it")
+	ok(SkillSlot.name_font(40.0, 40.0) == 7 and SkillSlot.name_font(80.0, 40.0) == 4 and SkillSlot.name_font(50.0, 40.0) == 5 and SkillSlot.name_font(45.0, 40.0) == 6,
+			"a name too wide for its slot shrinks (to 4 at most), not cut")
 	h.free()
 
 
