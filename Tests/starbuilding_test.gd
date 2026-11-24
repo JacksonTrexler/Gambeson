@@ -40,7 +40,7 @@ func test_place_seals_and_lapses() -> void:
 	var stamina: Reserve = load("res://Reserves/stamina.tres")
 	u.reserves[stamina] = 10
 	u.set_exact(stamina, 10)
-	ok(u.funding(sk("startile")) == stamina and not _cast(u, "startile", Vector2i(5, 3)), "powered but it would pay in Stamina: Power skills are paid in Power only")
+	ok(u.funding(sk("startile")) is StringName and u.funding(sk("startile")) == &"energy" and u.pays_power(sk("startile")), "powered with Stamina to spare: Stamina never takes a Power skill, Power (Energy) pays it")
 	u.reserves.erase(stamina)
 	ok(not _cast(u, "startile", Vector2i(7, 3)), "out of range: Startile reaches its rank (2) tiles")
 	ok(_cast(u, "startile", Vector2i(5, 3)) and b.top_layer(Vector2i(5, 3)).terrain == Battle.STARTILE, "powered: it lays a startile")
