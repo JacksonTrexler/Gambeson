@@ -145,11 +145,80 @@ func test_ai_crosses_void() -> void:
 
 
 # The tree is a tab on four casters. Tiers 1, 2, 2, 3 by what comes first (Role.tier: 1 + its prerequisites); the user's t6 Starway
-# is min_tier 6 (Unit.tier()), as the t7 and t9 after it will be (D2).
+# is min_tier 6 (Unit.tier()), as the t7 Manifest Starchitecture and t9 Starnest after it are (D2).
 func test_tree() -> void:
-	var ids := ["startile", "starbridge", "starpanel", "starpower_generator", "starway"]
+	var ids := ["startile", "starbridge", "starpanel", "starpower_generator", "starway", "manifest_starchitecture", "starnest"]
 	for who in ["wizard", "mage", "sorcerer", "adventurer"]:
 		var role: Role = load("res://Roles/%s.tres" % who)
 		var u := b.from_role(lancin, role, "Tester")
 		var tiers := ids.map(func(id: String): return u.tier(sk(id)))
-		ok(tiers == [1, 2, 2, 3, 6] and role.trees().any(func(t: SkillTab): return t.title() == "Starbuilding ??" and ids.all(func(id: String): return t.offers(sk(id)))), "%s: Starbuilding tiers %s" % [who, tiers])
+		ok(tiers == [1, 2, 2, 3, 6, 7, 9] and role.trees().any(func(t: SkillTab): return t.title() == "Starbuilding ??" and ids.all(func(id: String): return t.offers(sk(id)))), "%s: Starbuilding tiers %s" % [who, tiers])
+
+
+# Manifest Starchitecture (docs/plans/w22-astral2.md): a toggle pillar with an alt_bar effect (Unit.show_bar()). Switched on (paid:
+# cheap), the bar's slots but its pillars and always-on passives become a second bar of power skills, set up by hand and kept;
+# switched off (free) the regular bar comes back as it was. While on, power skills cost / its rank (cost_div; Unit.price()), but
+# what they seal stays whole.
+func test_starchitect_bar() -> void:
+	var u := _caster("manifest_starchitecture", 2)
+	var m := sk("manifest_starchitecture")
+	var plain := sk("strike")
+	for id in ["startile", "starpanel"]:
+		u.learned.append(slot(sk(id), 2))
+	u.learned.append(slot(plain, 1))
+	u.sync_bar()
+	u.hotbar.fill(null)
+	u.auto_fill()
+	var regular := u.get_equipped()
+	ok(plain in regular and m in regular and m.pillar(), "the regular bar: Strike, and Manifest pinned as a pillar")
+	var base := Pricing.cost_for(u, sk("startile"))
+	ok(u.price(sk("startile")) == base, "off: Startile costs its own %d" % base)
+	u.refresh()
+	var ap := u.ap_for(&"skill")
+	var en := u.energy
+	var fee := u.price(m)
+	ok(fee > 0 and u.toggle(m) and u.is_on(m) and u.energy == en - fee and u.ap_for(&"skill") < ap, "switching it on is paid (%d Power, %s AP)" % [en - u.energy, ap - u.ap_for(&"skill")])
+	ok(sk("startile") in u.hotbar and sk("starpanel") in u.hotbar and m in u.hotbar and plain not in u.hotbar and not u.equipped(plain), "the Starchitect bar: its power skills, Manifest still pinned, Strike off (%s)" % [u.hotbar])
+	ok(u.get_equipped() == regular, "a save keeps the regular bar")
+	var spare := u.free_slot()
+	ok(spare >= 0 and not u.bar_place(plain, spare), "only power skills go on it")
+	ok(u.bar_place(sk("starpanel"), 0) and u.hotbar[0] == sk("starpanel"), "it is set up by hand like the regular bar")
+	ok(u.price(sk("startile")) == floori(base / 2.0), "on at rank 2: a power skill costs / 2 (%d)" % u.price(sk("startile")))
+	en = u.energy
+	ok(_cast(u, "startile", Vector2i(5, 3)) and u.locked(&"energy") == 1 and u.energy == en - floori(base / 2.0) - 1, "its seal stays whole: 1 Power locked (%d -> %d)" % [en, u.energy])
+	ap = u.ap_for(&"skill")
+	en = u.energy
+	ok(u.toggle(m) and not u.is_on(m) and u.energy == en and u.ap_for(&"skill") == ap, "switching it off is free")
+	ok(u.hotbar == regular and u.equipped(plain) and u.price(sk("startile")) == base, "the regular bar is back as it was, at full cost")
+	u.refresh()
+	u.energy = u.max_energy
+	u.toggle(m)
+	ok(u.hotbar[0] == sk("starpanel"), "switched on again, the Starchitect bar is as it was left")
+
+
+# Starnest: rank generators (power 5, full) from the cell, each a straight row or column of starpanes from the one it grew from,
+# star flooring laid over the ground by the Nexus's rules (AstralNexus.layout()); one seal of 20% x rank of max Power that
+# bears debt, so it may take the pool below 0, while plain spending can't.
+func test_starnest() -> void:
+	var u := _caster("starnest", 2)
+	u.set_exact(&"energy", 1)
+	var c := Vector2i(2, 3)  # the test map is 10 x 8: the other generator has room only to the right
+	ok(_cast(u, "starnest", c), "cast with 1 Power, just its cost")
+	var gens: Array = b.layers.keys().filter(func(at: Vector2i): return b.top_layer(at).terrain == gen_t)
+	ok(gens.size() == 2 and c in gens and b.signal_at(c) == 5, "rank 2: two full generators, the first on the cell (%s)" % [gens])
+	var g: Vector2i = gens[0] if gens[1] == c else gens[1]
+	var d := g - c
+	ok((d.x == 0 or d.y == 0) and absi(d.x + d.y) == AstralNexus.SPACING, "...%d apart in a row or a column (%s)" % [AstralNexus.SPACING, d])
+	var linked := true
+	for k in range(1, AstralNexus.SPACING):
+		linked = linked and b.has_star(c + d.sign() * k)
+	ok(linked and b.panes.has(c + d.sign() * 3), "linked: star tiles all the way, a starpane between the platforms")
+	ok(b.top_layer(c + Vector2i(0, 1)).terrain == Battle.STARTILE or b.top_layer(c - Vector2i(0, 1)).terrain == Battle.STARTILE, "a startile platform laid over the ground about each")
+	var sealed := ceili(0.4 * u.max_energy - 0.0001)
+	ok(u.locked(&"energy") == sealed and u.energy == -sealed, "seals 40%% of max Power and the empty pool goes into debt (%d)" % u.energy)
+	u.refresh()
+	ok(not u.can_afford(sk("starnest")) and u.funding(sk("starnest")) == null, "in debt, nothing pays for a skill: plain spending can't go below 0")
+	for at: Vector2i in b.layers.keys():
+		for l: Battle.Layer in b.layers[at].duplicate():
+			b._lift(at, l, &"test")
+	ok(u.locked(&"energy") == 0, "all of it gone: the seal lifts")

@@ -660,6 +660,9 @@ func _ready() -> void:
 	hp = max_hp
 	endurance = endurance_max()
 	_one_replacer()
+	for x in slots:
+		if alt_tag(x.skill) != &"":
+			x.on = false  # every battle starts on the regular bar
 	seals.clear()
 	gain_carry.clear()
 	energy = 0 if runs_on() is Reserve else max_energy  # running on Mana or Stamina: no Energy of its own
@@ -959,9 +962,8 @@ func toggle(s: Skill) -> bool:
 				if not x.on and not s.hybrid and (Pricing.ap_for(self, s) > 0.0 or price(s) > 0) and not pay_for(s):
 					return false
 				x.on = not x.on
-				var alt := s.effects.filter(func(e: Effect): return e.stat == "alt_bar" and not e.tags.is_empty())
-				if not alt.is_empty():
-					show_bar(alt[0].tags[0] if x.on else &"")
+				if alt_tag(s) != &"":
+					show_bar(alt_tag(s) if x.on else &"")
 				return true
 			if channel and channel.switch != null and channel.skill == s:
 				channel = null
@@ -1409,6 +1411,14 @@ var bars: Dictionary = {}  # bar key (&"": the regular bar; else the alt_bar tag
 var bar_key := &""  # the bar it shows now
 
 
+# The tag of the second bar s brings up (its alt_bar effect's), or &"".
+static func alt_tag(s: Skill) -> StringName:
+	for e in s.effects if s else ([] as Array[Effect]):
+		if e.stat == "alt_bar" and not e.tags.is_empty():
+			return e.tags[0]
+	return &""
+
+
 # Whether s stays put whichever bar is up: a pillar, or an always-on passive.
 static func _bar_fixed(s: Skill) -> bool:
 	return s != null and (s.pillar() or (s.passive and not s.toggle))
@@ -1474,6 +1484,8 @@ func sync_bar() -> void:
 		if x.skill not in _seen and slot_cost(x.skill) > 0:
 			_seen[x.skill] = true
 			fresh.append(x.skill)
+			if alt_tag(x.skill) != &"":
+				x.on = false  # a second bar's switch starts off: it is paid to come up (toggle())
 	var gone: Array[Skill] = []
 	for sk in _seen.keys():
 		if sk not in have:
