@@ -1909,10 +1909,16 @@ Not done (w22 follow-ups):
 - [x] **`_teeter` may log "catches itself" for a dead unit** (?382; built ?389).
 - [x] **Hotbar names clip** ("Mana Reson", "Starpower G"; the 5-slot width) (?385; built ?386).
 - [x] **Skills grid horizontal scrollbar overlaps the T1 row** (?385; built ?386)
-- [ ] **Starnest (T9) is above the fold when the skills grid opens** (?386): trees open scrolled to the floor and the 176 px viewport is shorter than 9 tiers; open scrolled to the top or the last unlocked tier, or give it more height..
+- [x] **Starnest (T9) is above the fold when the skills grid opens** (?386; built ?390): trees open scrolled to the floor and the 176 px viewport is shorter than 9 tiers; open scrolled to the top or the last unlocked tier, or give it more height..
 - [x] **Startile hover says "Starpower source, 0% full"** on a plain startile (?385; built ?386).
 - [x] **Investigate: repeated `cast_at` of Startile failed after the first cast in the shots driver** (?385; explained ?387: Exhaustion, not a bug).
 - [x] **Wizard is not on the entry screen** (Adventurer only) (?385; built ?386).
 - [ ] **A sink for charge, now mending is free** (?380).
-- [ ] **Chained Starways** (?388): `reckon_reach` and the AI route take one hop of a portal, not a chain of them.
-- [ ] **Bar-swap frames not re-shot** (?386): the Starchitect swap code is unchanged since ?385's frames.
+- [x] **Chained Starways** (?388; built ?391): `reckon_reach` and the AI route take one hop of a portal, not a chain of them.
+- [x] **Bar-swap frames not re-shot** (?386; re-shot ?392): the Starchitect swap code is unchanged since ?385's frames.
+
+Follow-ups (2026-11-24, ?390 to ?392; suite 11890 checks, 0 failed, 1105 tests). Plans `docs/plans/w22-tree-open.md`, `w22-chain-portals.md`, `w22-bar-reshoot.md`.
+
+390. **Skills grid opens at the highest learned tier (w22-tree-open) - built on judgement, open for review (2026-11-24).** Closes the ?386 item. Your words: "open at the highest unlocked tier, or at the top if none are unlocked". Plan: `docs/plans/w22-tree-open.md`. Calls: "unlocked" = learned (item-lent ranks count); the learned row's bottom sits at the bottom of the view, above `SkillGrid.BAR`, so the next tiers up show; none learned opens at the top. `SkillGrid.open_y()` (-1 = none) and `SkillTree._scroll_to_open()` replace `floor_y` and `_scroll_to_bottom`; TreeScroll stays 176 px (F101). Test `hud_test.test_adventurer_skills_screen` (top when none; learned: the formula; 1 mutation caught). Files: `Scripts/SkillGrid.gd`, `Scripts/SkillTree.gd`.
+391. **Chained Starways walked whole (w22-chain-portals) - built on judgement, open for review (2026-11-24).** Closes the ?388 item. Plan: `docs/plans/w22-chain-portals.md`. Found: `reckon_reach` and `_route` already chained (a landing is a settled tile, `_exit_of` re-read each); the gap was `travel()`'s `Battle._cross`, one hop only (no `ported` for the 2nd, exit tile skipped). `_cross` now loops, scanning the rest of the path after each exit, and returns flat [entry, exit, ...] pairs; `travel` emits `ported` once per hop and the ends-on-exit check reads `hop[-1]`. Cost model unchanged (hop free, walking costs) (F102). Test `starbuilding_test.test_ai_hops_starway` +3 checks (route price, travel and `ported` across two, reach across two; 1 mutation caught). Files: `Scripts/Battle.gd`.
+392. **Starchitect bar re-shot with the 4 px name font (w22-bar-reshoot) - checked, no code change (2026-11-24).** Closes the ?386 item. Plan: `docs/plans/w22-bar-reshoot.md`. Frames (3 x, 1440x810) of the regular bar, Manifest on and off in the scratchpad (`shot_w23-bar/`). No clipping: Starpower Generator at 4 px fits whole, small but legible; the other names stay 7 px; off returns the regular bar. Mana Resonance and Manifest Starchitecture are not on that bar, so unchecked. Optional (under 5%): wrap Generator to two lines if 4 px feels small (listed in `follow-up.md`, not queued). Files: none.

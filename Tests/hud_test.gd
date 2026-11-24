@@ -1225,6 +1225,8 @@ func test_adventurer_skills_screen() -> void:
 	await tree.process_frame
 	ok(h.get_node("%TreeScroll").visible and h.get_node("%TreeScroll").size.y >= 170.0, "a grid tab shows its tree (%s)" % h.get_node("%TreeScroll").size)
 	ok(h.skills.grid.custom_minimum_size.y - h.skills.grid.row_y(0) - SkillGrid.BOX.y >= SkillGrid.BASE + SkillGrid.PAD + SkillGrid.BAR, "the grid keeps room under its T1 row for the scroll bar")
+	var sc: ScrollContainer = h.get_node("%TreeScroll")
+	ok(sc.scroll_vertical == 0 and h.skills.grid.open_y() < 0.0, "nothing learned on it: opens at the top (%d)" % sc.scroll_vertical)
 	h.skills.show_tab(0)
 	await tree.process_frame
 	ok(w.tab.roots.reduce(func(all: Array, r: SkillRoot): return all + r.skills(), [w.tab.center] + w.tab.core).all(func(s: Skill): return s in w.skills()) and w.spot(load("res://Skills/skill_slot.tres")).is_equal_approx(w.size / 2.0),
@@ -1269,6 +1271,17 @@ func test_adventurer_skills_screen() -> void:
 			"how each is drawn")
 	h._refresh()
 	ok(h.skills.picked == stub, "the pick survives a refresh")
+	h.skills.show_tab(2)
+	await tree.process_frame
+	var first: Skill = h.skills.grid.skills().filter(func(s: Skill): return h.skills.grid.state_of(s) == &"open").front()
+	u.skill_points = 9
+	ok(u.unlock(first), "learned %s" % first.name)
+	h.skills.show_tab(0)
+	h.skills.show_tab(2)
+	await tree.process_frame
+	await tree.process_frame
+	ok(h.skills.grid.open_y() > 0.0 and sc.scroll_vertical == clampi(ceili(h.skills.grid.open_y() + SkillGrid.BAR - sc.size.y), 0, int(sc.get_v_scroll_bar().max_value)),
+			"a learned skill: opens with its tier row at the bottom of the view (%d)" % sc.scroll_vertical)
 	h.free()
 
 

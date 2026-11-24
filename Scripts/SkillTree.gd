@@ -124,7 +124,7 @@ func fill(title: String, spend: bool) -> void:
 		wheel.show_unit(unit, can_spend and n > 0, picked, t)
 	else:
 		grid.show_unit(unit, can_spend and n > 0, picked, t)
-		_scroll_to_bottom()
+		_scroll_to_open()
 	if not chosen and (not picked or picked not in view().skills()):
 		picked = _first_pick()
 		wheel.selected = picked
@@ -136,14 +136,15 @@ func fill(title: String, spend: bool) -> void:
 	level_button.disabled = unit.level >= Unit.MAX_LEVEL
 
 
-# Trees grow from the bottom: open on the lowest tier that holds a skill (SkillGrid.floor_y()), at the
-# bottom of the view, once the scroll box has taken the tree's new height (its bar's range settles a
-# frame or two later).
-func _scroll_to_bottom() -> void:
+# A tree opens on its highest learned tier (SkillGrid.open_y()) at the bottom of the view, or at the top
+# (its highest tier) if nothing on it is learned; once the scroll box has taken the tree's new height (its
+# bar's range settles a frame or two later).
+func _scroll_to_open() -> void:
 	for i in 2:
 		await get_tree().process_frame
 	var most := int(scroll.get_v_scroll_bar().max_value)
-	scroll.scroll_vertical = clampi(ceili(grid.floor_y() + SkillGrid.BAR - scroll.size.y), 0, most)  # the h-bar covers the view's bottom BAR
+	var y := grid.open_y()
+	scroll.scroll_vertical = 0 if y < 0.0 else clampi(ceili(y + SkillGrid.BAR - scroll.size.y), 0, most)  # the h-bar covers the view's bottom BAR
 
 
 # A tab per part of its trees, like a browser's: each in its tree's colour (general trees by category),

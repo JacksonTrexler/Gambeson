@@ -213,6 +213,26 @@ func test_ai_hops_starway() -> void:
 	ok(far not in b.reckon_reach(w, v(3), Vector2i(3, 3), 3.0), "dark, a foe by it can't have got across")
 	b.charge[Vector2i(3, 4)] = Battle.STAR_CAPACITY
 	ok(far in b.reckon_reach(w, v(3), Vector2i(3, 3), 3.0), "powered, it is read as come out at the pair and on with what was left")
+	# a second Starway whose entry is walked to from the first's exit: chained hops (_route(), travel(), reckon_reach())
+	for y in range(0, 12):
+		b.paint(Vector2i(10, y), void_t)
+		b.paint(Vector2i(11, y), b.terrain(Vector2i(8, 2)))  # painting past the edge widens the map
+	for c in [Vector2i(9, 3), Vector2i(11, 3)]:
+		b.lay_layer(c, Battle.STARTILE)
+		b.lay_layer(c, load("res://Terrain/starway.tres"))
+	b.pair_portals(Vector2i(9, 3), Vector2i(11, 3))
+	_gen(Vector2i(11, 6))
+	var goal2 := Vector2i(11, 4)
+	b.move(w, Vector2i(2, 3))
+	w.refresh()  # a fresh turn: its movement back
+	b.route(w, goal2, b.line(w.cell, goal2, w.luck, w), price)
+	ok(price.cost < 10.0, "two Starways in a row are two free steps: both voids cost %.1f" % price.cost)
+	var ported: Array[Vector2i] = []
+	b.ported.connect(func(_u, a: Vector2i, c: Vector2i): ported.append_array([a, c]))
+	b.travel(w, goal2)
+	ok(w.cell == goal2 and ported == [Vector2i(4, 3), Vector2i(8, 3), Vector2i(9, 3), Vector2i(11, 3)], "...the walk goes in by each and comes out of each, one hop at a time (%s, %s)" % [w.cell, ported])
+	b.move(w, Vector2i(2, 3))  # off the first exit: a hop onto an occupied tile is none
+	ok(goal2 in b.reckon_reach(w, v(3), Vector2i(3, 3), 6.0) and Vector2i(11, 3) in b.reckon_reach(w, v(3), Vector2i(3, 3), 6.0), "a foe's reach chains them too")
 
 
 # A startile on its last round of dark over void is a fall to end a walk on (Battle.hazard(), gives_way()): the AI closes on a foe
