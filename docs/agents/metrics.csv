@@ -124,3 +124,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-24,w22-bar-fixes,sonnet,medium,58689,31,1167867,landed
 2026-11-24,w22-starway-walk,sonnet,medium,46165,18,175276,landed
 2026-11-24,w22-bridge-break,sonnet,high,76128,32,1176860,landed
+2026-11-24,w22-hud-signal,sonnet,medium,70124,27,225419,landed
+2026-11-24,w22-starfield,sonnet,medium,72583,29,720115,landed
+2026-11-24,w22-ai-stars,sonnet,high,144089,60,759511,landed
