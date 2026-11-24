@@ -127,3 +127,4 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-24,w22-hud-signal,sonnet,medium,70124,27,225419,landed
 2026-11-24,w22-starfield,sonnet,medium,72583,29,720115,landed
 2026-11-24,w22-ai-stars,sonnet,high,144089,60,759511,landed
+2026-11-24,w22-shots,sonnet,medium,176706,124,949139,landed
