@@ -5421,6 +5421,7 @@ func _show_bars() -> void:
 			second_bar.max_value = maxi(pools()[held[1]], 1)
 			second_bar.value = r.stores.get(held[1], 0) if r else store(held[1])
 			_debt_back(second_bar, r.stores.get(held[1], 0) if r else store(held[1]))
+			_lock_mark(second_bar, held[1])
 	for i in more_bars.size():
 		var more := more_bars[i]
 		more.visible = held.size() > i + 2 and seen
@@ -5428,15 +5429,18 @@ func _show_bars() -> void:
 			more.max_value = maxi(pools()[held[i + 2]], 1)
 			more.value = r.stores.get(held[i + 2], 0) if r else store(held[i + 2])
 			_debt_back(more, r.stores.get(held[i + 2], 0) if r else store(held[i + 2]))
+			_lock_mark(more, held[i + 2])
 	hp_bar.max_value = r.max_hp if r and r.hp != null else max_hp
 	hp_bar.value = r.hp if r and r.hp != null else hp
 	energy_bar.max_value = maxi(max_energy, 1)
 	energy_bar.value = r.energy if r and r.energy != null else energy
 	_debt_back(energy_bar, r.energy if r and r.energy != null else energy)
+	_lock_mark(energy_bar, &"energy")
 	if main:
 		reserve_bar.max_value = maxi(pools()[main], 1)
 		reserve_bar.value = r.stores.get(main, 0) if r else store(main)
 		_debt_back(reserve_bar, r.stores.get(main, 0) if r else store(main))
+		_lock_mark(reserve_bar, main)
 	_stack()
 
 
@@ -5445,6 +5449,26 @@ func _show_bars() -> void:
 func _debt_back(bar: ProgressBar, level: float) -> void:
 	if level < 0.0:
 		bar.add_theme_stylebox_override("background", _flat(Color(0.55, 0.05, 0.05, 0.75)))
+
+
+# A sealed pool (Unit.locked) marks the locked end of its bar: meta `lock` is that share of the bar, drawn
+# dim and hatched over the bar's right end (_draw_lock()).
+func _lock_mark(bar: ProgressBar, pool: Variant) -> void:
+	bar.set_meta(&"lock", locked(pool) / float(maxi(raw_max(pool), 1)))
+	var cb := _draw_lock.bind(bar)
+	if not bar.draw.is_connected(cb):
+		bar.draw.connect(cb)
+	bar.queue_redraw()
+
+
+func _draw_lock(bar: ProgressBar) -> void:
+	var w := bar.size.x * float(bar.get_meta(&"lock", 0.0))
+	if w <= 0.0:
+		return
+	var r := Rect2(bar.size.x - w, 0, w, bar.size.y)
+	bar.draw_rect(r, Color(0, 0, 0, 0.7))
+	for x in range(int(r.position.x), int(bar.size.x), 3):  # hatched
+		bar.draw_line(Vector2(x, r.size.y), Vector2(x + 1, 0), Color(1, 1, 1, 0.3), 1.0)
 
 
 func _show_faction() -> void:

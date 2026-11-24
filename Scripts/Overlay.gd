@@ -549,6 +549,8 @@ func _stack(c: Vector2i, st: Array, trodden: bool) -> void:
 			draw_texture_rect(t.look, _rect(c, 0), false)
 		if t.pane or t.source:
 			continue
+		if t.regrows and l.repair_goal > 0:  # Stardust regrowing: rounds done of its signal distance
+			draw_arc(_center(c), 5.0, -PI / 2, -PI / 2 + TAU * float(l.repairing) / l.repair_goal, 24, Color(STARPOWER, 0.9), 1.5)
 		if t.unstable:
 			_glass(c, l)
 		elif t.obscures:

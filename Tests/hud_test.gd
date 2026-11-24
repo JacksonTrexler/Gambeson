@@ -1423,6 +1423,31 @@ func test_layer_pane() -> void:
 	h.free()
 
 
+# Signal on the hovered tile (shown on star flooring or where it reaches), and a sealed pool's locked end: a row on
+# the info card and a share of its bar.
+func test_signal_and_lock() -> void:
+	stage(lancin, {v(1): Vector2i(1, 2)})
+	var g := Vector2i(6, 6)
+	b.lay_layer(g, load("res://Terrain/starpower_generator.tres"))
+	b.charge[g] = Battle.STAR_CAPACITY
+	var h := await hud(v(1))
+	var read := func(c: Vector2i) -> Array:
+		h.hover_cell(c)
+		return h.get_node("%TileLines").get_children().map(func(l): return l.get_parsed_text())
+	ok(read.call(Vector2i(8, 6)).has("Signal: 3"), "in signal: its strength (%s)" % [read.call(Vector2i(8, 6))])
+	ok(not read.call(Vector2i(1, 1)).any(func(x: String): return x.begins_with("Signal")), "out of reach: no line")
+	var c := Vector2i(6, 3)
+	b.lay_layer(c, Battle.STARTILE)
+	b.charge.erase(g)
+	ok(not read.call(c).any(func(x: String): return x.begins_with("Signal")), "a star tile with no signal reaching it: none (signal -1)")
+	v(1).seal(&"energy", 4)
+	h._refresh()
+	var rows: Array = h._info(v(1)).rows.filter(func(x: Array): return x[0] == "LK")
+	ok(rows.size() == 1 and rows[0][1] == "locked 4", "the info row says what is locked (%s)" % [rows])
+	ok(is_equal_approx(v(1).energy_bar.get_meta(&"lock"), 4.0 / v(1).max_energy), "the bar marks that share of its end")
+	h.free()
+
+
 # The hover table: a tile walks, a foe is attacked with the first attack from the selected slot
 # (wrapping), an ally out of order range plans the leader's walk into range, a support skill selected
 # walks up to an ally and uses it, and clicking yourself rests (only that unit's turn) or keeps a channel.

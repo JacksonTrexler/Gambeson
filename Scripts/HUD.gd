@@ -2620,6 +2620,9 @@ func _show_pane() -> void:
 # named by its term.
 func _tile_effects(c: Vector2i, r: Read) -> Array:
 	var out := _layer_lines(c, r)
+	var sig := battle.signal_at(c)  # astral power on it (Battle.signal_at); shown where it is, or on star flooring
+	if sig > 0 or (sig >= 0 and battle.reached(c).any(func(l: Battle.Layer): return &"star" in l.terrain.tags)):
+		out.append(["%s: %d" % [Glossary.term(&"signal"), sig], STARPOWER_TINT])
 	if r.worth != null and r.worth != 0:
 		out.append(["Beneficial" if r.worth > 0 else "Detrimental", FRIEND if r.worth > 0 else FOE])
 	if r.trap == true:
@@ -3256,6 +3259,9 @@ func _info(u: Unit) -> Dictionary:
 			rows.append([u.view(r).short(), u.store(r), u.pools()[r], u.view(r).color])
 		if u.holds_energy(u.energy):
 			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
+		for pool in ([&"energy"] + u.held_reserves()):  # what a seal holds out of use (Unit.locked)
+			if u.locked(pool) > 0:
+				rows.append(["LK", "locked %d" % u.locked(pool), null, FOE])
 		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
 			rows.append(["OC", "+%d" % u.overcharge, null, Unit.OVERCHARGE_COLOR])
 		rows.append(["RE", "%d/%d" % [u.endurance, u.endurance_max()], null, FOE if u.endurance <= 0 else MUTED])  # Recovery Endurance
