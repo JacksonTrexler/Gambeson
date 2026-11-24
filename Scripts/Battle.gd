@@ -3611,12 +3611,12 @@ func travel(u: Unit, dest: Vector2i) -> Array[Vector2i]:
 		_tidy_debris()
 		_contact(u, passed)
 		traveled.emit(u, from, passed)
-		if not hop.is_empty():
-			ported.emit(u, hop[0], hop[1])
+		for k in range(0, hop.size(), 2):
+			ported.emit(u, hop[k], hop[k + 1])
 		_through(u)
 		if terrain(u.cell).is_trap() and passed.size() - 1 in touched:
 			spring(u.cell, u)
-		if hop.is_empty() or passed[-1] != hop[1]:
+		if hop.is_empty() or passed[-1] != hop[-1]:
 			_portal(u)  # a powered portal where the walk ends (Starway)
 		if u.is_alive():
 			_first_look(u)
@@ -5813,12 +5813,16 @@ func _exit_of(u: Unit, from: Vector2i) -> Vector2i:
 	return portals[from]
 
 
-# A walk that passes a powered portal (not its last tile) comes out on the pair, and goes on if the next step is beside it;
-# otherwise it ends there. Edits the path and costs in place (the hop costs nothing); [entry, exit] if it hopped.
+# A walk that passes a powered portal (not its last tile) comes out on the pair, and goes on if the next step is beside it
+# (and through a second Starway there, and so on); otherwise it ends there. Edits the path and costs in place (a hop costs
+# nothing); [entry, exit, entry, exit...] for the hops it made.
 func _cross(u: Unit, path: Array[Vector2i], costs: Array[float]) -> Array[Vector2i]:
-	for i in range(path.size() - 1):
+	var hops: Array[Vector2i] = []
+	var i := 0
+	while i < path.size() - 1:
 		var to := _exit_of(u, path[i])
 		if to == path[i]:
+			i += 1
 			continue
 		var entered := path[i]
 		var rest := path.slice(i + 1)
@@ -5827,11 +5831,13 @@ func _cross(u: Unit, path: Array[Vector2i], costs: Array[float]) -> Array[Vector
 		costs.resize(i + 1)
 		path.append(to)
 		costs.append(0.0)
-		if maxi(absi(rest[0].x - to.x), absi(rest[0].y - to.y)) <= 1:
-			path.append_array(rest)
-			costs.append_array(rest_costs)
-		return [entered, to] as Array[Vector2i]
-	return [] as Array[Vector2i]
+		hops.append_array([entered, to] as Array[Vector2i])
+		if maxi(absi(rest[0].x - to.x), absi(rest[0].y - to.y)) > 1:
+			break
+		path.append_array(rest)
+		costs.append_array(rest_costs)
+		i += 2  # on from the tile after the exit (stepping back onto the exit's own portal isn't a hop)
+	return hops
 
 
 func _portal(u: Unit) -> void:
