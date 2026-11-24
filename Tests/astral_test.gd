@@ -3,7 +3,8 @@ extends Test
 # The Astral Envoy and its Princess: Power (Powerful: Energy that never comes back on its own), energy
 # damage (Smite: Energy first, then a share on to HP), a channeled spell (Metea: cast, then strike
 # within a tile a turn of where it was cast), persona descriptors (intention, strategy) that insight
-# reads and the AI follows, and the scenario itself played through by the AI.
+# reads and the AI follows, and the scenario itself played through by the AI. And astral power as a
+# field (Battle.radiate(): signal from generators and wiring, Stardust regrowing in it).
 
 var princess: PackedScene = load("res://Scenes/astral_princess.tscn")
 var smite: Skill = load("res://Skills/smite.tres")
@@ -159,3 +160,43 @@ func test_smite_eros() -> void:
 		if v(3).hp < 200:
 			break
 	ok(v(3).hp < 200 and v(3).energy == 5, "it hurts HP straight away: no Energy drained")
+
+
+# Signal (Battle.radiate(), signal_sources(), docs/plans/w22-signal.md): a source reaches its power in
+# tiles, a tile less each tile away, Manhattan (a diagonal step costs 2); a generator's power is a tile per
+# 20% of its charge, up to its rank (5); a starpane radiates its rank (1) while its circuit is live. A
+# startile cracks, then breaks to Stardust; Stardust in signal regrows into a startile in as many rounds
+# as its distance from the nearest source, and holds out of it.
+func test_signal() -> void:
+	var f := Battle.radiate({Vector2i(5, 5): 3})
+	ok(f[Vector2i(5, 5)][0] == 3 and f[Vector2i(6, 5)][0] == 2 and f[Vector2i(8, 5)][0] == 0 and Vector2i(9, 5) not in f, "decays a tile at a time: 3, 2, .. 0 at 3 tiles, none past")
+	ok(f[Vector2i(6, 6)][0] == 1 and f[Vector2i(6, 6)][1] == 2 and f[Vector2i(7, 6)][0] == 0 and Vector2i(8, 6) not in f, "a diagonal counts for two")
+	var gen: Terrain = load("res://Terrain/starpower_generator.tres")
+	var g := Vector2i(1, 1)
+	b.lay_layer(g, gen)
+	var steps := []
+	for k in [0, 3, 4, 12, Battle.STAR_CAPACITY]:
+		b.charge[g] = k
+		steps.append(b.signal_at(g))
+	ok(steps == [-1, -1, 1, 3, 5], "every 20%% of its charge a tile of signal, rank 5 full (%s)" % [steps])
+	b.charge[g] = 4
+	for x in range(2, 7):
+		b.lay_layer(Vector2i(x, 1), Battle.STARPANE)
+	ok(b.signal_near(Vector2i(6, 2)) == 1 and b.signal_at(Vector2i(5, 3)) == -1, "its wires carry its power: each pane a tile of signal beside it")
+	b.charge[g] = 0
+	ok(b.signal_at(Vector2i(6, 2)) == -1, "an empty generator: a dead circuit, no signal")
+	var c := Vector2i(3, 4)
+	b.lay_layer(c, Battle.STARTILE)
+	b.expose(c, [&"blunt"] as Array[StringName])
+	b.expose(c, [&"blunt"] as Array[StringName])
+	var l: Battle.Layer = b.top_layer(c)
+	ok(l.terrain.name == "Stardust", "a startile cracks, then breaks to Stardust (%s)" % l.terrain.name)
+	b._repair_tiles()
+	ok(l.repairing == 0 and l.repair_goal == 0, "unpowered: it holds")
+	b.charge[g] = Battle.STAR_CAPACITY
+	ok(b.signal_near(c) == 5, "the generator, full, reaches it 5 tiles off")
+	for i in 4:
+		b._repair_tiles()
+	ok(l.terrain.name == "Stardust" and l.repairing == 4 and l.repair_goal == 5, "regrowing: 4 of 5 rounds")
+	b._repair_tiles()
+	ok(l.terrain.name == "Startile" and c in b.starpower, "5 rounds, 5 tiles from its source: a startile again")

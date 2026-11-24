@@ -89,6 +89,8 @@ func test_nexus() -> void:
 	var lattice: Array[Vector2i] = nx.generators + nx.startiles + nx.panes
 	ok(lattice.all(func(c: Vector2i): return c.x >= 0 and c.y >= 0 and c.x < AstralNexus.WIDTH and c.y < AstralNexus.HEIGHT and nb.on_lattice(c)), "the circuit in bounds, all lattice")
 	ok(lattice.all(func(c: Vector2i): return nb.star_source(c) != null and not nb.circuit_ends(c).is_empty() or c in nx.generators), "one live circuit: every tile joined to a generator")
+	ok(nx.dust.size() > 5 and (nx.startiles + nx.dust).all(func(c: Vector2i): return nb.signal_at(c) >= 0 and nb.top_layer(c).terrain.name in ["Startile", "Stardust"]), "star flooring (%d startiles, %d Stardust) only where signal reaches" % [nx.startiles.size(), nx.dust.size()])
+	ok(nx.generators.all(func(g: Vector2i): return nb.signal_at(g) == AstralNexus.REACH and nb.top_layer(g + Vector2i(1, 1)).terrain.name == "Startile"), "rank 5 generators, full: 5 tiles of signal, on a platform")
 	ok(nx.floor_cells.size() > 20 and nx.voids.size() > 20 and nx.floor_cells.all(func(c: Vector2i): return not nb.on_lattice(c)), "stone floor and void off it")
 	var reach := {AstralNexus.START: true}
 	var queue: Array[Vector2i] = [AstralNexus.START]
