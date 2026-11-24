@@ -949,12 +949,19 @@ func is_on(s: Skill) -> bool:
 # One that stands in for Energy (Mana, Stamina: replacer()) doesn't switch at once: it begins a channel
 # (Channel.switch) from what it runs on now to what it would run on after, completing as the channel
 # ends (_switched()); toggled again while switching, it completes now. False while it holds another
-# channel.
+# channel. A toggle with a price (AP or cost: Manifest Starchitecture; not a hybrid, Persona pays its own) is paid switching on
+# (pay_for()), never off;
+# one with an alt_bar effect brings up or puts away that second hotbar (show_bar()).
 func toggle(s: Skill) -> bool:
 	for x in slots:
 		if x.skill == s and s.passive and s.toggle:
 			if replacer(s) == null:
+				if not x.on and not s.hybrid and (Pricing.ap_for(self, s) > 0.0 or price(s) > 0) and not pay_for(s):
+					return false
 				x.on = not x.on
+				var alt := s.effects.filter(func(e: Effect): return e.stat == "alt_bar" and not e.tags.is_empty())
+				if not alt.is_empty():
+					show_bar(alt[0].tags[0] if x.on else &"")
 				return true
 			if channel and channel.switch != null and channel.skill == s:
 				channel = null
@@ -1384,9 +1391,56 @@ func _sealed_now(i: int) -> bool:
 
 
 # Its equipped skills, slot by slot (null where empty): what a save keeps and the HUD's bar shows. set_equipped() puts
-# them back.
+# them back. On a second bar (show_bar()), the regular one it will come back to.
 func get_equipped() -> Array[Skill]:
+	if bar_key != &"" and bars.has(&""):
+		var out: Array[Skill] = []
+		out.assign(bars[&""])
+		return out
 	return hotbar.duplicate()
+
+
+# --- Second hotbars (alt_bar effects: Manifest Starchitecture's Starchitect bar)
+# A toggle with an alt_bar effect tagged t swaps its active slots for a second bar of skills tagged t: pillars and always-on
+# passives stay where they are (the build it stands on), every other slot is the second bar's. Each bar keeps its own
+# layout (bars, by tag; &"" the regular one): set up by hand as the regular bar is (bar_place() lets only t skills on), filled
+# the first time with its learned t skills. Switching back is free and restores the regular bar as it was.
+var bars: Dictionary = {}  # bar key (&"": the regular bar; else the alt_bar tag) -> its slots as last left (Array[Skill])
+var bar_key := &""  # the bar it shows now
+
+
+# Whether s stays put whichever bar is up: a pillar, or an always-on passive.
+static func _bar_fixed(s: Skill) -> bool:
+	return s != null and (s.pillar() or (s.passive and not s.toggle))
+
+
+# Brings up the bar keyed `key` (&"": the regular one), keeping the one it leaves for next time.
+func show_bar(key: StringName) -> void:
+	if key == bar_key:
+		return
+	bars[bar_key] = hotbar.duplicate()
+	for i in hotbar.size():
+		if hotbar[i] and not _bar_fixed(hotbar[i]):
+			hotbar[i] = null
+	bar_key = key
+	if bars.has(key):
+		var saved: Array = bars[key]
+		for i in mini(saved.size(), hotbar.size()):
+			var sk: Skill = saved[i]
+			if sk and not _bar_fixed(sk) and sk not in hotbar and base_rank(sk) > 0 and _room(sk, i):
+				hotbar[i] = sk
+	else:
+		for x in slots:
+			if x.rank > 0 and slot_cost(x.skill) > 0 and not _bar_fixed(x.skill) and x.skill not in hotbar and key in Tags.expand(x.skill.tags):
+				var i := free_slot(x.skill)
+				if i >= 0:
+					hotbar[i] = x.skill
+	_arrange()
+
+
+# Whether s may go on the bar it shows now: anything on the regular bar; on a second bar, its fixed skills and skills of its tag.
+func bar_takes(s: Skill) -> bool:
+	return bar_key == &"" or _bar_fixed(s) or bar_key in Tags.expand(s.tags)
 
 
 # Equips these skills, slot by slot, as far as it can (bar_place(): what it knows, where it fits);
@@ -1505,7 +1559,7 @@ func rounded(x: float) -> int:
 # them, else it comes off. Whatever drops off the bar by it, or with the slots it took
 # (a slot-granting skill moved out), is announced (lost_skills).
 func bar_place(s: Skill, i: int) -> bool:
-	if i < 0 or i >= hotbar.size() or not s or slot_cost(s) == 0 or base_rank(s) == 0 or not _run_ok(s, i):
+	if i < 0 or i >= hotbar.size() or not s or slot_cost(s) == 0 or base_rank(s) == 0 or not _run_ok(s, i) or not bar_takes(s):
 		return false
 	var c := s.slots_taken()
 	if range(i, i + c).any(func(j: int): return hotbar[j] and hotbar[j].pillar()) or (s.pillar() and (s in hotbar or not slot_free(i) or i >= slot_count())):
@@ -3536,8 +3590,15 @@ func _changed(pool: Variant) -> void:
 # What s costs it, at its rank (starter spells: cost x rank; Pricing.cost_for()), before any savings (cost_from()): more
 # the more it has used it lately (Exhaustion.rate(); Exhaustion.raise() rounds it), and more again paid from a fund
 # that burns (Burnout.on_cost(): an int skill paid in Mana).
+# A cost_div effect (Manifest Starchitecture) divides it first, rounded down (a 1-point cost at /2 is free); what a skill
+# seals is no part of its price.
 func price(s: Skill, fund: Variant = null) -> int:
-	return Exhaustion.raise(Pricing.cost_for(self, s), exhaustion.rate(s, Burnout.on_cost(s, fund)))  # priced, or hand-set under its modifiers
+	var c := Pricing.cost_for(self, s)
+	if lends(&"cost_div"):
+		var div := skill_stat(&"cost_div", s)
+		if div > 1.0:
+			c = floori(c / div + 0.0001)
+	return Exhaustion.raise(c, exhaustion.rate(s, Burnout.on_cost(s, fund)))  # priced, or hand-set under its modifiers
 
 
 # What s costs it paid from fund: a reserve that pays whole costs takes its few points for any cost
@@ -4571,7 +4632,7 @@ func pay(n: float, use: StringName) -> bool:
 func afflict(e: Effect, turns: int, at_rank := 1, source: Variant = null) -> Applied:
 	if e.stat == "seal":  # a lock on a pool, held by `source` (seal()): not a timed effect, so each seal stacks
 		var id: StringName = e.tags.filter(func(t): return t != DEBT_TAG).front() if e.tags.any(func(t): return t != DEBT_TAG) else &"energy"
-		var pool: Variant = &"energy" if id == &"energy" else pools().keys().filter(func(r: Reserve): return pool_id(r) == id).front()
+		var pool: Variant = &"energy" if id == &"energy" else (power_pool() if id == POWER else pools().keys().filter(func(r: Reserve): return pool_id(r) == id).front())  # power: whichever pool its Power is (power_pool())
 		if pool != null:
 			var n := e.amount * (at_rank if e.per_rank else 1)
 			seal(pool, 0 if e.op == "mul" else roundi(n), source, n if e.op == "mul" else 0.0, DEBT_TAG in e.tags)

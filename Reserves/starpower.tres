@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1_script")
 name = "Starpower"
+abbr = "SP"
 color = Color(0.15, 0.72, 0.6, 1)
 only = Array[StringName]([&"power"])
 powered = true

@@ -72,35 +72,10 @@ func _lay() -> void:
 	startiles.append(START)
 	for g in generators:
 		lattice[g] = true
-	for g in generators:  # its platform
-		for c in _diamond(g, PLATFORM):
-			_put(c, startiles, lattice)
-	for e in _wires():
-		var a: Vector2i = e[0]
-		var b: Vector2i = e[1]
-		var bend := Vector2i(b.x, a.y) if rng.randf() < 0.5 else Vector2i(a.x, b.y)
-		for leg in [[a, bend], [bend, b]]:
-			var at: Vector2i = leg[0]
-			while true:
-				_put(at, panes, lattice)
-				if at == leg[1]:
-					break
-				at += (leg[1] - at).sign()
+	dust.assign(layout(generators, _wires(), rng, _inside, lattice, startiles, panes))
 	var dusty := {}
-	for p in panes:  # the walkway beside the wires: in their signal
-		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var c: Vector2i = p + d
-			if _inside(c) and c not in lattice and c not in dusty:
-				var r := rng.randf()
-				if r < WALK.x:
-					_put(c, startiles, lattice)
-				elif r < WALK.x + WALK.y:
-					dusty[c] = true
-	for g in generators:  # Stardust over the rest of its reach
-		for c in _diamond(g, REACH):
-			if _inside(c) and c not in lattice and c not in dusty and rng.randf() < DUST:
-				dusty[c] = true
-	dust.assign(dusty.keys())
+	for c in dust:
+		dusty[c] = true
 	for x in WIDTH:
 		for y in HEIGHT:
 			var c := Vector2i(x, y)
@@ -134,6 +109,44 @@ func _lay() -> void:
 	battle.stacked.assign([gaps, tiles, gens, dusted])
 
 
+# The Nexus's star flooring rules (docs/plans/w22-signal.md), for anything building a nest of generators (the Nexus; Starnest,
+# Behaviours/star_place.gd): round each of `gens` a startile platform (PLATFORM out), along each of `wires` (pairs of cells) a
+# starpane run (an L, bent at random; straight where they line up), beside the panes a walkway (WALK: startile, Stardust), and
+# Stardust over DUST of the rest of each generator's REACH. Cells taken (`lattice`, which gets the new ones) are skipped;
+# `inside` says which cells exist. Appends to `startiles` and `panes`; returns the Stardust cells.
+static func layout(gens: Array[Vector2i], wires: Array, rng: RandomNumberGenerator, inside: Callable, lattice: Dictionary, startiles: Array[Vector2i], panes: Array[Vector2i]) -> Array[Vector2i]:
+	for g in gens:  # its platform
+		for c in diamond(g, PLATFORM, inside):
+			_put_on(c, startiles, lattice)
+	for e in wires:
+		var a: Vector2i = e[0]
+		var b: Vector2i = e[1]
+		var bend := Vector2i(b.x, a.y) if rng.randf() < 0.5 else Vector2i(a.x, b.y)
+		for leg in [[a, bend], [bend, b]]:
+			var at: Vector2i = leg[0]
+			while true:
+				_put_on(at, panes, lattice)
+				if at == leg[1]:
+					break
+				at += (leg[1] - at).sign()
+	var dusty := {}
+	for p in panes:  # the walkway beside the wires: in their signal
+		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var c: Vector2i = p + d
+			if inside.call(c) and c not in lattice and c not in dusty:
+				var r := rng.randf()
+				if r < WALK.x:
+					_put_on(c, startiles, lattice)
+				elif r < WALK.x + WALK.y:
+					dusty[c] = true
+	for g in gens:  # Stardust over the rest of its reach
+		for c in diamond(g, REACH, inside):
+			if c not in lattice and c not in dusty and rng.randf() < DUST:
+				dusty[c] = true
+	var out: Array[Vector2i] = []
+	out.assign(dusty.keys())
+	return out
+
 # Generators sprinkled at random, SPACING apart (and from the landing), EDGE in from the sides.
 func _sprinkle() -> void:
 	var n := rng.randi_range(GENS.x, GENS.y)
@@ -146,7 +159,7 @@ func _sprinkle() -> void:
 
 
 # c onto the lattice as `list`'s tile, unless it's on already (a generator, an arm, a crossing wire).
-func _put(c: Vector2i, list: Array[Vector2i], lattice: Dictionary) -> void:
+static func _put_on(c: Vector2i, list: Array[Vector2i], lattice: Dictionary) -> void:
 	if c not in lattice:
 		lattice[c] = true
 		list.append(c)
@@ -179,12 +192,12 @@ func _wires() -> Array:
 	return out
 
 
-# The cells within r of c, Manhattan, in bounds.
-func _diamond(c: Vector2i, r: int) -> Array[Vector2i]:
+# The cells within r of c, Manhattan, that `inside` takes.
+static func diamond(c: Vector2i, r: int, inside: Callable) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	for dx in range(-r, r + 1):
 		for dy in range(-(r - absi(dx)), r - absi(dx) + 1):
-			if _inside(c + Vector2i(dx, dy)):
+			if inside.call(c + Vector2i(dx, dy)):
 				out.append(c + Vector2i(dx, dy))
 	return out
 

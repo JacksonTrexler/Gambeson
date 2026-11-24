@@ -8,6 +8,8 @@
 [ext_resource type="Resource" path="res://Skills/starpanel.tres" id="s_starpanel"]
 [ext_resource type="Resource" path="res://Skills/starpower_generator.tres" id="s_starpower_generator"]
 [ext_resource type="Resource" path="res://Skills/starway.tres" id="s_starway"]
+[ext_resource type="Resource" path="res://Skills/manifest_starchitecture.tres" id="s_manifest_starchitecture"]
+[ext_resource type="Resource" path="res://Skills/starnest.tres" id="s_starnest"]
 
 [sub_resource type="Resource" id="Branch_startile"]
 script = ExtResource("2_branch")
@@ -28,6 +30,16 @@ script = ExtResource("2_branch")
 skill = ExtResource("s_starway")
 after = Array[ExtResource("skill")]([ExtResource("s_starpower_generator"), ExtResource("s_starbridge")])
 
+[sub_resource type="Resource" id="Branch_manifest_starchitecture"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_manifest_starchitecture")
+after = Array[ExtResource("skill")]([ExtResource("s_starway")])
+
+[sub_resource type="Resource" id="Branch_starnest"]
+script = ExtResource("2_branch")
+skill = ExtResource("s_starnest")
+after = Array[ExtResource("skill")]([ExtResource("s_manifest_starchitecture")])
+
 [sub_resource type="Resource" id="Branch_starbridge"]
 script = ExtResource("2_branch")
 skill = ExtResource("s_starbridge")
@@ -37,4 +49,4 @@ after = Array[ExtResource("skill")]([ExtResource("s_startile")])
 script = ExtResource("1_skillroot")
 name = "Starbuilding ??"
 tag = &"specialist"
-branches = Array[ExtResource("2_branch")]([SubResource("Branch_startile"), SubResource("Branch_starpanel"), SubResource("Branch_starpower_generator"), SubResource("Branch_starway"), SubResource("Branch_starbridge")])
+branches = Array[ExtResource("2_branch")]([SubResource("Branch_startile"), SubResource("Branch_starpanel"), SubResource("Branch_starpower_generator"), SubResource("Branch_starway"), SubResource("Branch_manifest_starchitecture"), SubResource("Branch_starnest"), SubResource("Branch_starbridge")])

@@ -5,6 +5,7 @@ extends Resource
 # (only) is spent before Energy on the skills it can pay for (Unit.funding()).
 @export var name := ""
 @export var color := Color.WHITE
+@export var abbr := ""  # its two-letter label on the HUD rows; empty: the first two letters of its name (Starpower: SP, as Stamina is ST)
 @export var only: Array[StringName] = []  # skill tags and kinds it can pay for (Skill.tagged(): mana magical; stamina martial, specialist, general); empty: any
 @export var whole := 0  # pays a skill's whole cost, whatever it is, with this many points (Sweet Nothings: 1); 0: point for point
 @export var on_kill := 0  # points back each time its holder slays a foe (Sweet Nothings: 1)
@@ -20,3 +21,8 @@ extends Resource
 @export var burns := 1.0  # Burnout: exhaustion's wear on an int skill's cost paid from it, multiplied by this too (Mana: 1.5; Burnout.on_cost())
 @export var steady := 0.0  # with_energy: the share of that resting bonus it gets on a turn its holder doesn't rest (Mana: 0.5)
 @export var powered := false  # acts as Power: never comes back on its own (a view: Unit.view()), only on the star lattice (Battle._starlight()); and it alone pays a skill tagged power (Starpower)
+
+
+# Its HUD label: abbr, else its name's first two letters, upper case.
+func short() -> String:
+	return abbr if abbr else name.left(2).to_upper()

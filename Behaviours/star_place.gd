@@ -6,6 +6,10 @@ extends Behaviour
 #   line    from the caster toward the cell, every tile of it (Starpanel)
 #   bridge  between the powered star tile aimed at and the nearest one beyond the gap toward the caster, rank tiles wide (Starbridge)
 #   pair    the cell and the startile its caster stands on, paired portals (Starway)
+#   nest    rank generators from the cell, SPACING apart, each wired to the one it grew from by a straight starpane run, star flooring
+#           laid over whatever is there by the Nexus's rules (AstralNexus.layout(): platforms, walkways, Stardust) (Starnest)
+# `seal`, a seal Effect (tags [power, debt]: whichever pool is its Power, into debt), is put on the caster once a cast, held while
+# any tile it laid that cast holds (Starnest: 20% x rank of max Power).
 # Startiles it lays last rank rounds out of the signal (`lapses`).
 
 const SPAN := 12  # how far a bridge looks for its other end
@@ -16,6 +20,7 @@ const SIDES: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vect
 @export var points := 1  # Power each tile seals...
 @export var share := 0.0  # ...plus this share of the pool's max, per rank (Generator: 10%)
 @export var lapses := false  # the tiles last rank rounds unpowered
+@export var seal: Effect  # put on the caster once a cast, at the cast's rank, held by what it laid (Starnest)
 
 
 func tile_target() -> StringName:
@@ -36,13 +41,23 @@ func apply_at(c: Cast, cell: Vector2i) -> void:
 	var u := c.caster
 	var pool: Variant = u.power_pool()
 	var laid: Array[Vector2i] = []
-	for at in _plan(b, u, cell, c.impact_rank()):
-		if u.usable_max(pool) < _need(u, pool, c.impact_rank()):
-			break  # no Power left to seal
-		b.lay_star(at, layer, u, points, share * c.impact_rank(), c.impact_rank() if lapses else 0, c.impact_rank() if _ranked() else 0)
-		laid.append(at)
+	var held: Array = []  # [cell, layer, terrain] it laid: what holds its cast's seal
+	var r := c.impact_rank()
+	if shape == &"nest":
+		var nest := _nest(b, cell, r)
+		for t: Terrain in nest:
+			for at: Vector2i in nest[t]:
+				held.append([at, b.lay_star(at, t, u, 0, 0.0, r if lapses and t == Battle.STARTILE else 0, 5 if t.power_rank > 1 and t.source else 0), t])
+	else:
+		for at in _plan(b, u, cell, r):
+			if u.usable_max(pool) < _need(u, pool, r):
+				break  # no Power left to seal
+			held.append([at, b.lay_star(at, layer, u, points, share * r, r if lapses else 0, r if _ranked() else 0), layer])
+			laid.append(at)
 	if shape == &"pair" and laid.size() == 2:
 		b.pair_portals(laid[0], laid[1])
+	if seal and not held.is_empty():
+		u.afflict(seal, 0, r, func() -> bool: return held.any(func(h: Array): return h[1] in b.layers.get(h[0], []) and h[1].terrain == h[2]))
 
 
 # The tiles it would lay on `cell` at rank r (a bridge's width, a pair's ends): none if it can't.
@@ -67,6 +82,11 @@ func _plan(b: Battle, u: Unit, cell: Vector2i, r: int) -> Array[Vector2i]:
 			for k in range(1, n):
 				for w in range(-half, maxi(r, 1) - half):
 					out.append(cell + along * k + across * w)
+		&"nest":
+			var nest := _nest(b, cell, r)
+			for t in nest:
+				out.append_array(nest[t])
+			return out
 		&"pair":
 			var here := u.cell
 			if cell == here or not _startile(b, cell) or not _startile(b, here) or b.portals.has(cell) or b.portals.has(here):
@@ -77,6 +97,36 @@ func _plan(b: Battle, u: Unit, cell: Vector2i, r: int) -> Array[Vector2i]:
 		_:
 			out.append(cell)
 	return out.filter(func(at: Vector2i): return b.on_map(at) and not b.layers.get(at, []).any(func(l: Battle.Layer): return l.terrain == layer))
+
+
+# A Starnest at `cell`, rank r: {terrain: cells} - r generators (`layer`; the first on the cell), each grown SPACING from one
+# laid before in a random straight line and wired to it, the Nexus's flooring round them (AstralNexus.layout()). Cells off
+# the map or holding star tiles already are left as they are. Seeded by the cell and rank: what it shows is what it lays.
+func _nest(b: Battle, cell: Vector2i, r: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([cell, r])
+	var free := func(at: Vector2i) -> bool: return b.on_map(at) and not b.has_star(at)
+	var gens: Array[Vector2i] = []
+	var wires := []
+	if free.call(cell):
+		gens.append(cell)
+	for k in 40:
+		if gens.size() >= maxi(r, 1) or gens.is_empty():
+			break
+		var from := gens[rng.randi() % gens.size()]
+		var at := from + SIDES[rng.randi() % SIDES.size()] * AstralNexus.SPACING
+		if free.call(at) and gens.all(func(g: Vector2i): return maxi(absi(g.x - at.x), absi(g.y - at.y)) >= AstralNexus.SPACING):
+			gens.append(at)
+			wires.append([from, at])
+	if gens.is_empty():
+		return {}
+	var lattice := {}
+	for g in gens:
+		lattice[g] = true
+	var tiles: Array[Vector2i] = []
+	var panes: Array[Vector2i] = []
+	var dust := AstralNexus.layout(gens, wires, rng, free, lattice, tiles, panes)
+	return {layer: gens, Battle.STARTILE: tiles, Battle.STARPANE: panes, AstralNexus.STARDUST: dust}
 
 
 # A source whose power is its skill's rank (a generator): not a pane, which carries its own.
@@ -133,7 +183,7 @@ func footprint(c: Cast, cell: Vector2i) -> Array[Vector2i]:
 
 # It lasts and seals by its tiles; its rank is rank impact (a bridge's width, rounds unpowered), its reach the skill's.
 func terms(t: SkillTerms) -> void:
-	if lapses or shape == &"bridge" or _ranked():
+	if lapses or shape in [&"bridge", &"nest"] or _ranked():
 		t.add(&"rank_impact", "star tiles")
 	if t.impact == &"":
 		t.impact = &"tame"
@@ -151,7 +201,10 @@ func _say(r: int) -> String:
 	var tile := layer.name.to_lower() + "s" if layer else "star tiles"
 	var seals := "Each seals %d Power" % points if share == 0.0 else "Each seals %d + %d%% Power" % [points, roundi(share * r * 100.0)]
 	var rounds := " Lasts {t:%d rounds} outside the %s." % [r, Glossary.term(&"signal", "signal")] if lapses else ""
+	var sealed := " Seals %s of max Power, into debt if it must, while any of it stands." % ("%d%%" % roundi(seal.amount * r * 100.0) if seal.op == "mul" else str(roundi(seal.amount * r))) if seal else ""
 	match shape:
+		&"nest":
+			return "Builds a Starnest on a tile in range: {r:%d} full generators, %d tiles apart, wired in straight rows or columns by starpanes, with star flooring laid over what is there (platforms, walkways, Stardust).%s" % [r, AstralNexus.SPACING, sealed]
 		&"line":
 			return "Lays %s from the caster toward a tile, all along it. %s until it is destroyed" % [tile, seals]
 		&"bridge":

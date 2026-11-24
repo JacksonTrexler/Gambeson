@@ -161,7 +161,7 @@ func _star_ground(s: Skill, u: Unit) -> void:
 	u.energy = u.max_energy
 	b.lay_layer(Vector2i(4, 5), load("res://Terrain/starpower_generator.tres"))
 	b.charge[Vector2i(4, 5)] = Battle.STAR_CAPACITY
-	var shape: StringName = s.behaviours[0].shape
+	var shape: Variant = s.behaviours[0].get(&"shape") if not s.behaviours.is_empty() else null
 	if shape in [&"bridge", &"pair"]:
 		for c in [Vector2i(5, 3), Vector2i(3, 3) if shape == &"bridge" else Vector2i(4, 3)]:
 			b.lay_layer(c, Battle.STARTILE)

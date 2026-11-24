@@ -212,6 +212,12 @@ extends Resource
 # many AP a point (Mana Resonance; Unit.cost_from(), ap_cost())
 # wear: exhaustion's wear on its skills is x(1 + this / the skill's rank) (Mana Resonance;
 # Unit.wear_penalty())
+# alt_bar: tagged with a skill tag: while it counts (its toggle on), its holder's hotbar is a
+# second bar for that tag - its pillars and always-on passives stay, the rest holds only skills
+# bearing the tag, set up as it likes and kept between switches (Manifest Starchitecture: power;
+# Unit.show_bar())
+# cost_div: a skill attribute: the cost (not AP, not a seal) of skills of its tags is divided by
+# this, when above 1 (Manifest Starchitecture: its rank, on power skills; Unit.price())
 @export_enum("luck", "mitigate", "initiative", "reach", "movement", "move_cost", "size",
 		"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
 		"recon", "concealment", "trickery", "nullify", "trap_power", "persona",
@@ -222,7 +228,7 @@ extends Resource
 		"check", "base_ap", "guard", "obstruct", "lovely", "impassioned", "regen_hp", "mist",
 		"chant", "breathless", "asphyxia", "irradiate", "humble", "flamecharmed", "cinders", "brace", "move_ap", "skill_ap",
 		"decisive", "single", "brutal", "steady", "featured", "recording", "restrike", "elemental", "hardy", "shackled", "affinity", "abandon", "self_known",
-		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon", "healed", "seal", "debt", "acts_as", "pool_max", "cost_ap", "wear") var stat := "luck"
+		"discipline", "natural_talent", "strategy", "tactics", "command_mod", "stamina", "jammed", "focus", "overcharge", "helpless", "mindless", "drone", "hale", "defer", "tow", "winded", "foresight", "per_tile", "regain", "shove", "fear", "entrance", "unshape", "crit_range", "glancing", "opening_rolls", "no_traits", "attack_stat", "bonus_slots", "postpone", "overcome", "prep_use", "disturbed", "betrayal", "detective", "fusillade", "power_siphon", "healed", "seal", "debt", "acts_as", "pool_max", "cost_ap", "wear", "alt_bar", "cost_div") var stat := "luck"
 # mul: multiplies the stat after everything is added; scale: multiplies it by 1 + amount (x rank with per_rank:
 # Floaty's jumps, x(rank + 1)); divide: divides it by 1 + amount (x rank: Floaty's movement, /(rank + 1))
 @export_enum("add", "mul", "scale", "divide") var op := "add"
@@ -268,7 +274,7 @@ const TITLES := {"mitigate": "Damage taken", "move_cost": "Move cost", "trap_pow
 		"per_tile": "Damage per tile walked", "regain": "Regain ??", "fear": "Fear", "shove": "Shove", "entrance": "Entrance", "unshape": "Unshape ??",
 		"crit_range": "Crit range ??", "glancing": "Glancing ??", "opening_rolls": "Opening attacks ??", "no_traits": "Traits suppressed ??", "attack_stat": "Attack stat ??",
 		"postpone": "Disablings postponed ??", "overcome": "To be overcome ??", "seal": "Seal", "debt": "Debt",
-		"acts_as": "Acts as ??", "pool_max": "Max ??", "cost_ap": "Paid in AP ??", "wear": "Wear ??"}
+		"acts_as": "Acts as ??", "pool_max": "Max ??", "cost_ap": "Paid in AP ??", "wear": "Wear ??", "alt_bar": "Second hotbar ??", "cost_div": "Cost divided ??"}
 static var _MOD := RegEx.create_from_string("\\b(str|dex|con|int|wis|cha) mod\\b")
 static var _NUM := RegEx.create_from_string("[+-]?\\d+(\\.\\d+)?%?")
 const ENDLESS := 999.0  # a command bonus this big has no limit (Quartz Ring)
@@ -362,6 +368,10 @@ func value(rank := 1) -> String:
 		text = "+%s max %s" % [Skill.num(x), ", ".join(tags)]
 	elif stat == "cost_ap":
 		text = "a cost paid in %s is %s AP a point instead" % [", ".join(tags), Skill.num(x)]
+	elif stat == "alt_bar":
+		text = "its hotbar becomes a second bar of %s skills, set up as it likes (pillars and always-on passives stay); switching back is free" % ", ".join(tags)
+	elif stat == "cost_div":
+		text = "%s skills cost /%s (not their AP, nor what they seal)" % [", ".join(tags), Skill.num(x)]
 	elif stat == "wear":
 		text = "exhaustion wears it x(1 + %s / rank) as much" % Skill.num(amount)
 	elif op == "mul":

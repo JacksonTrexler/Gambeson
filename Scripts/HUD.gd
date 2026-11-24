@@ -3223,7 +3223,7 @@ func _clear(box: Container) -> void:
 # What Recovery Endurance's rule has taken off its maxes for good (Unit.burnt): "Burnt -3 HP", one chip a pool.
 func _burnt_chips(u: Unit, chips: Array) -> void:
 	for pool in u.burnt:
-		var what: String = pool.name.left(2).to_upper() if pool is Reserve else ("HP" if pool == &"hp" else ("PW" if u.powered() else "EN"))
+		var what: String = pool.short() if pool is Reserve else ("HP" if pool == &"hp" else ("PW" if u.powered() else "EN"))
 		chips.append(["Burnt -%d %s" % [u.burnt[pool], what], FOE])
 
 
@@ -3253,7 +3253,7 @@ func _info(u: Unit) -> Dictionary:
 		_burnt_chips(u, chips)
 		var rows := [["HP", u.hp, u.max_hp, Unit.HP_COLOR]]
 		for r in u.held_reserves():  # what it runs on first, then a second it holds (Focus)
-			rows.append([u.view(r).name.left(2).to_upper(), u.store(r), u.pools()[r], u.view(r).color])
+			rows.append([u.view(r).short(), u.store(r), u.pools()[r], u.view(r).color])
 		if u.holds_energy(u.energy):
 			rows.append(["PW" if u.powered() else "EN", u.energy, u.max_energy, Unit.POWER_COLOR if u.powered() else Unit.ENERGY_COLOR])
 		if u.overcharge > 0:  # Overcharge: the buffer spent before them, while it lasts
@@ -3393,7 +3393,7 @@ func _card_info() -> Dictionary:
 		var key: Variant = keys.get(r[0])
 		if key == null:
 			for res in selected.held_reserves():
-				if selected.view(res).name.left(2).to_upper() == r[0]:
+				if selected.view(res).short() == r[0]:
 					key = res
 		if key == null or r[2] == null:
 			continue

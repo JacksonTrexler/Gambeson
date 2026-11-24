@@ -129,6 +129,7 @@ const COLOR := {
 	&"starpower": Color("#26b89a"),
 
 	&"portal": Color("#7fd4e8"),
+	&"debt": Color("#c0504d"),
 }
 const NEUTRAL := Color("#c9ccd4")  # a word with no colour, nor a parent with one
 
