@@ -121,3 +121,6 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-23,w22-starpower,sonnet,high,215819,82,972657,landed
 2026-11-23,w22-astral1,sonnet,high,272445,118,1155830,landed
 2026-11-24,w22-astral2,opus,medium,174814,88,869302,landed
+2026-11-24,w22-bar-fixes,sonnet,medium,58689,31,1167867,landed
+2026-11-24,w22-starway-walk,sonnet,medium,46165,18,175276,landed
+2026-11-24,w22-bridge-break,sonnet,high,76128,32,1176860,landed
