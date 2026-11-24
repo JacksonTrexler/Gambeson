@@ -641,3 +641,15 @@ Answer: ____
 Best guess: keep; offer strike-then-leave if you want bolder foes.
 Ref: `AI._leave`, `docs/plans/w22-lapse-leave.md`.
 Answer: ____
+
+**F101. The skills grid opens at the highest learned tier (wave 22; see ?390).** Your words: "open at the highest unlocked tier, or at the top if none are unlocked". Read "unlocked" as learned, item-lent ranks counted; the learned row's bottom sits at the bottom of the view (above the scrollbar) so the tiers above it show; none learned opens at the top. You may mean "tier you could learn next" (unlocked by prerequisites), which would open one row higher.
+Best guess: keep.
+Ref: `SkillGrid.open_y`, `SkillTree._scroll_to_open`, `docs/plans/w22-tree-open.md`.
+Answer: ____
+
+**F102. A Starway chain emits `ported` once per hop (wave 22; see ?391).** Reach and the AI route already followed chains; the walk now does too: each entry/exit pair gives one `ported` event, hops free, walking costs as before.
+Best guess: keep.
+Ref: `Battle._cross`, `docs/plans/w22-chain-portals.md`.
+Answer: ____
+
+Optional (each under about 5% value; not queued): wrap "Starpower Generator" onto two lines on the hotbar if the 4 px name feels small (?392, `docs/plans/w22-bar-reshoot.md`).

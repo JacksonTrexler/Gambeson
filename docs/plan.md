@@ -286,6 +286,7 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Mending by the signal field, mid-walk Starway (?380, ?381) | `stack_test.gd`, `stars_test.gd`, `starbuilding_test.gd` |
 | — | Bridge fall, AI reads star terrain (?382, ?383) | `starbuilding_test.gd` |
 | — | Second-bar fixes, screenshot pass, skills grid fix (?384, ?385) | `starbuilding_test.gd`, `hud_test.gd` |
+| — | Skills grid opens at the highest learned tier, chained Starways, bar re-shot (?390 to ?392) | `hud_test.gd`, `starbuilding_test.gd` |
 | — | HUD polish, Exhaustion explains the cast refusal (?386, ?387) | `hud_test.gd` |
 | — | Reach across a Starway, AI leaves a lapsing bridge (?388, ?389) | `starbuilding_test.gd`, `hud_test.gd` |
 
