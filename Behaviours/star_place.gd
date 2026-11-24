@@ -27,19 +27,19 @@ func fits_at(b: Battle, caster: Unit, cell: Vector2i) -> bool:
 	if s == null or not caster.pays_power(s):
 		return false
 	var pool: Variant = caster.power_pool()
-	return not _plan(b, caster, cell, caster.rank(s)).is_empty() and caster.usable_max(pool) >= _need(caster, pool, caster.rank(s))
+	var ri := caster.mods(s).irank(caster.rank(s), &"rank_impact")
+	return not _plan(b, caster, cell, ri).is_empty() and caster.usable_max(pool) >= _need(caster, pool, ri)
 
 
 func apply_at(c: Cast, cell: Vector2i) -> void:
 	var b := c.battle
 	var u := c.caster
 	var pool: Variant = u.power_pool()
-	var rank := c.rank
 	var laid: Array[Vector2i] = []
 	for at in _plan(b, u, cell, c.impact_rank()):
-		if u.usable_max(pool) < _need(u, pool, c.rank):
+		if u.usable_max(pool) < _need(u, pool, c.impact_rank()):
 			break  # no Power left to seal
-		b.lay_star(at, layer, u, points, share * c.rank, c.impact_rank() if lapses else 0, rank if layer.power_rank > 0 else 0)
+		b.lay_star(at, layer, u, points, share * c.impact_rank(), c.impact_rank() if lapses else 0, c.impact_rank() if _ranked() else 0)
 		laid.append(at)
 	if shape == &"pair" and laid.size() == 2:
 		b.pair_portals(laid[0], laid[1])
@@ -77,6 +77,11 @@ func _plan(b: Battle, u: Unit, cell: Vector2i, r: int) -> Array[Vector2i]:
 		_:
 			out.append(cell)
 	return out.filter(func(at: Vector2i): return b.on_map(at) and not b.layers.get(at, []).any(func(l: Battle.Layer): return l.terrain == layer))
+
+
+# A source whose power is its skill's rank (a generator): not a pane, which carries its own.
+func _ranked() -> bool:
+	return layer != null and layer.source and layer.power_rank > 0
 
 
 func _startile(b: Battle, c: Vector2i) -> bool:
@@ -128,29 +133,31 @@ func footprint(c: Cast, cell: Vector2i) -> Array[Vector2i]:
 
 # It lasts and seals by its tiles; its rank is rank impact (a bridge's width, rounds unpowered), its reach the skill's.
 func terms(t: SkillTerms) -> void:
-	t.add(&"rank_impact", "star tiles")
+	if lapses or shape == &"bridge" or _ranked():
+		t.add(&"rank_impact", "star tiles")
 	if t.impact == &"":
 		t.impact = &"tame"
 
 
 func describe(rank: int) -> String:
-	return _say(rank, rank)
+	return _say(rank)
 
 
 func describe_as(c: Cast) -> String:
-	return _say(c.impact_rank(), c.rank)
+	return _say(c.impact_rank())
 
 
-func _say(wide: int, rank: int) -> String:
+func _say(r: int) -> String:
 	var tile := layer.name.to_lower() + "s" if layer else "star tiles"
-	var seals := "Each seals %d Power" % points if share == 0.0 else "Each seals %d + %d%% Power" % [points, roundi(share * rank * 100.0)]
-	var rounds := " Lasts {t:%d rounds} outside the %s" % [wide, Glossary.term(&"signal", "signal")] if lapses else ""
+	var seals := "Each seals %d Power" % points if share == 0.0 else "Each seals %d + %d%% Power" % [points, roundi(share * r * 100.0)]
+	var rounds := " Lasts {t:%d rounds} outside the %s." % [r, Glossary.term(&"signal", "signal")] if lapses else ""
 	match shape:
 		&"line":
-			return "Lays %s from the caster toward a tile, all along it. %s until it is destroyed.%s" % [tile, seals, rounds]
+			return "Lays %s from the caster toward a tile, all along it. %s until it is destroyed" % [tile, seals]
 		&"bridge":
-			return "On a powered star tile, bridges the gap to the next one toward the caster with %s, {r:%d} tiles wide. %s until it is destroyed.%s" % [tile, wide, seals, rounds]
+			return "On a powered star tile, bridges the gap to the next one toward the caster with %s, {r:%d} tiles wide. %s until it is destroyed.%s" % [tile, r, seals, rounds]
 		&"pair":
 			return "On a star tile it can see, lays a pair of %s with the startile it stands on: stepping on one that is powered comes out on the other. They break as star flooring does" % tile
 		_:
-			return "Lays %s on a tile in range. %s until it is destroyed.%s" % [tile, seals, rounds]
+			var power := " Radiates {r:%d} tiles of %s." % [r, Glossary.term(&"signal", "signal")] if _ranked() else ""
+			return "Lays a %s on a tile in range.%s %s until it is destroyed.%s" % [tile.trim_suffix("s"), power, seals, rounds]
