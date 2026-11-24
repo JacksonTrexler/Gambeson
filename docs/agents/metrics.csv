@@ -128,3 +128,7 @@ date,branch,model,effort,subagent_tokens,tool_uses,duration_ms,result
 2026-11-24,w22-starfield,sonnet,medium,72583,29,720115,landed
 2026-11-24,w22-ai-stars,sonnet,high,144089,60,759511,landed
 2026-11-24,w22-shots,sonnet,medium,176706,124,949139,landed
+2026-11-24,w22-hud-polish,sonnet,medium,99690,68,631958,landed
+2026-11-24,w22-cast-at,sonnet,high,128836,23,340000,landed
+2026-11-24,w22-reach-stars,sonnet,medium,87107,12,165000,landed
+2026-11-24,w22-lapse-leave,sonnet,medium,82465,33,228274,landed
