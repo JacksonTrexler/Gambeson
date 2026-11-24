@@ -277,6 +277,11 @@ Answers to ?4, ?7, ?9, ?17, ?22, then ?23 to ?44 unblocked these. They're in `do
 | — | Self-help books, Read, tweaks, new tempers (?359 to ?366) | `books_test.gd` |
 | — | Mid-fight autospec save (?367) | `autospec_test.gd` |
 | — | AI units read books (?368) | `books_test.gd` |
+| — | Astral signal field, Stardust, Nexus platforms (?369, ?370) | `astral_test.gd`, `stars_test.gd`, `tower_test.gd` |
+| — | Negative Energy and seal (?371, ?372) | `resources_test.gd` |
+| — | Starpower and Mana Resonance (?373, ?374) | `resources_test.gd`, `stars_test.gd` |
+| — | Starbuilding tree, Starway (?375, ?376) | `starbuilding_test.gd` |
+| — | Starchitect bar, Starnest (?377, ?378) | `starbuilding_test.gd` |
 
 ## Questions to answer first
 

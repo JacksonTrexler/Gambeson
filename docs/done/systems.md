@@ -373,3 +373,8 @@ Plan and calls: `docs/plans/skill-modifiers.md`. `modifiers_test` (10 tests). (?
 - [x] **Self-help books and three tempers** (`Item.blurb`, `temper`, `leans`, `favours`, `Battle.study`, `Bio.tweaked`, `Bio.favours`, `AI._orders`, `_hungry`): plan `docs/plans/w21-books.md`. `books_test`. (?359 to ?366)
 - [x] **Mid-fight save keeps Disturbed auto-spent skills** (`Unit.to_dict`, `_lowered`): plan `docs/plans/w21-autospec-save.md`. `autospec_test.test_refund`. (?367)
 - [x] **AI units read books on calm turns** (`AI._study`): plan `docs/plans/w21-books-ai.md`. `books_test.test_ai_reads`. (?368)
+- [x] **Astral signal field and Stardust** (`Terrain.power_rank`, `regrows`, `Battle.radiate`, `signal_at`, `Terrain/stardust.tres`, Nexus platforms and walkways): plan `docs/plans/w22-signal.md`. `astral_test.test_signal`. (?369, ?370)
+- [x] **Negative Energy and `seal`** (`Unit._level_to`, `seal`, `holds`, Effect `seal`, `debt`): plan `docs/plans/w22-negative.md`. `resources_test.test_debt_all_pools`, `test_seal`. (?371, ?372)
+- [x] **Starpower and Mana Resonance** (`acts_as`, `pool_max`, `cost_ap`, `wear`, tag `power`, `Reserves/starpower.tres`): plan `docs/plans/w22-starpower.md`. `resources_test.test_pool_conversion`, `stars_test.test_starlight`. (?373, ?374)
+- [x] **The Starbuilding tree** (Startile, Starbridge, Starpanel, Starpower Generator, Starway; `Behaviours/star_place.gd`, `Battle.lay_star`, `min_tier`): plan `docs/plans/w22-astral1.md`. `starbuilding_test`. (?375, ?376)
+- [x] **Manifest Starchitecture and Starnest** (`alt_bar`, `cost_div`, `Unit.show_bar`, nest shape, `AstralNexus.layout`): plan `docs/plans/w22-astral2.md`. `starbuilding_test.test_starchitect_bar`, `test_starnest`. (?377, ?378)

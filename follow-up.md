@@ -35,6 +35,7 @@ t7 Manifest Starchitecture. Cheap. Unit may configure and utilize Starchitect ho
 t9 Starnest: Creates rank generators, linked horizontally or vertically by starpanes, which support new startiles layered on top of existing tiles. (Use procedural generation rules for starnest setpieces). Seals 20% * rank power. can go negative as reserve debt.
 
 `Negative Energy`: some skills and effects allow for negative energy gain past 0. In these circumstances the debt must be paid before new energy can be gained. There is a % energy gain penalty based on the overage (-100% of energy means 0.5 efficiency gains, -50% means 0.75 efficiency etc.)
+Answered 2026-11-24: built in wave 22 as ?369 to ?378 (signal field and Stardust, Negative Energy and seal, Starpower and Mana Resonance, the Starbuilding tree, Manifest Starchitecture and Starnest); calls in F76+.
 
 
 
@@ -512,4 +513,64 @@ Answer: ____
 **F75. AI pack is not saved (wave 21; see ?368).** A book an NPC carries is lost on a save and load, since `pack` is not written for AI units.
 Best guess: save `pack` for NPCs once a scene gives them books.
 Ref: `Unit.to_dict`, `docs/plans/w21-books-ai.md`.
+Answer: ____
+
+**F76. Manifest Starchitecture: what "first rank casts" means (wave 22; see ?377).** As built, while Manifest is on every power skill's Energy/Power price is divided by Manifest's rank (rounded down, so rank 2+ makes the Starbuilding casts free; seals stay whole). Your "first rank casts" might mean only rank-I casts of a skill are divided.
+Best guess: divide by Manifest's rank for all power skills (as built); reread to rank-1 casts only if you meant that.
+Ref: `Effect cost_div`, `Unit.price()`, `docs/plans/w22-astral2.md` call 6.
+Answer: ____
+
+**F77. Mana Resonance: 0.5 AP per Mana point, forced (wave 22; see ?374).** "Abilities that use energy consume AP instead" is built as 0.5 AP per Energy point (the effect's amount is the knob); the Mana toggle is moot (Energy always acts as Mana); a spell with its Mana short is not paid in AP.
+Best guess: keep 0.5 AP a point.
+Ref: `Effect cost_ap`, `Unit.runs_on`, `docs/plans/w22-starpower.md`.
+Answer: ____
+
+**F78. Unpowered star flooring does not decay (wave 22; see ?369).** Your rule says signal is needed for star flooring to "exist, build out, and maintain itself". Built: flooring needs signal to be laid and to regrow, but an existing unpowered startile stays (decaying them would wreck the Envoy, which has no generators). Only skill-placed startiles lapse unpowered.
+Best guess: keep: no decay of the Nexus or Envoy flooring.
+Ref: `Battle._repair_tiles`, `docs/plans/w22-signal.md` call 8.
+Answer: ____
+
+**F79. Panes give 1 tile of signal, only with a charged generator in the circuit (wave 22; see ?370).** A starpane (rank 1) radiates only when powered: on a lattice component (side-on) holding a ranked source with charge > 0. Wiring carries power, not strength: each powered pane re-emits 1 (the walkway), generators their own reach (the platform).
+Best guess: as built.
+Ref: `Battle._field`, `radiate`, `docs/plans/w22-signal.md` call 2.
+Answer: ____
+
+**F80. Starpower: "regenerates like Power" and "astral mage" (wave 22; see ?373).** Built: Starpower has no own regen and comes back only by the star lattice (the x2 to x5 boost) and by restoring that reserve, not by Energy grants. "Astral mage" is read as the Mage's school `Trees/stars.tres` (not the Druid's `Trees/astral.tres`), placed after Starfall as t3. "+Rank Starpower" is +1 max a rank. Mana Resonance sits on both the Mage and Wizard.
+Best guess: keep as built.
+Ref: `Unit.grant_power`, `Trees/stars.tres`, `docs/plans/w22-starpower.md`.
+Answer: ____
+
+**F81. The Power-skill gate and the power tag colour (wave 22; see ?373, ?375).** Tag `power` marks skills only Power can pay: a powered unit's Energy or Starpower. Plain Mana, Stamina and unpowered Energy never pay it, so Stamina never pays and no skill outside Starbuilding carries it yet. Colours: `power` keeps its orange (#f2a93b); `starpower` is teal (#26b89a, your "greenish teal"); the teal first tried for `power` is dropped.
+Best guess: keep as built.
+Ref: `Unit.pays_power`, `Tags.gd`, `docs/plans/w22-astral1.md` calls 3, 13.
+Answer: ____
+
+**F82. Starway: min_tier 6, no seal, teleport timing (wave 22; see ?376).** Starway sits at t6 through a new `min_tier` (needing Generator and Starbridge alone would be t5). No seal or lapse (you gave none). "Powered" = the entered tile in signal; the unit relocates only when a walk ends on it (or `place`), not on passing through it mid-walk; the partner must be free; arrival is not chained; the range is the casting mod + rank. The AI is blind to Starways.
+Best guess: keep; later make a mid-walk Starway teleport.
+Ref: `Battle._portal`, `docs/plans/w22-astral1.md` calls 10, 18.
+Answer: ____
+
+**F83. Skill costs are guessed (wave 22; see ?375, ?376, ?378).** You gave none. Startile, Starbridge, Starpanel and Generator: 2 AP and 1 Energy; Starway 3 AP and 1; Starnest 3 AP and 1 Power; Manifest 1 AP and 1 to switch on (off is free). The seals are the real price. A skill-laid generator starts charged at rank/5 and lapses if never fed.
+Best guess: keep.
+Ref: `Skills/startile.tres` and siblings, `docs/plans/w22-astral1.md` call 20.
+Answer: ____
+
+**F84. Starnest: 6-tile spacing and its seal (wave 22; see ?378).** Generators grow 6 tiles apart (`AstralNexus.SPACING`) from a random earlier one in a cardinal direction, linked by starpanes; rank 5 rarely fits all five on a small map (fewer are laid). The seal is one per cast: 20% x rank of max Power, with debt, lifted when any tile it laid is gone.
+Best guess: keep 6; try 4 if small maps stay bare.
+Ref: `Behaviours/star_place.gd` shape nest, `docs/plans/w22-astral2.md` calls 7, 9.
+Answer: ____
+
+**F85. The icon reading for Mana Resonance (wave 22; see ?374).** "Blue star with yellow circle behind" is a blue star in front of a yellow disc (`Util/icon.py star`). Coloured, not white-on-clear, so the skills screen's tint reads weakly. Starpower's icon is a plain teal star. Manifest and Starnest have glyph placeholders.
+Best guess: as built; no screenshot was taken yet.
+Ref: `Skills/mana_resonance.tres`, `docs/plans/w22-starpower.md`.
+Answer: ____
+
+**F86. New names marked ?? (wave 22; see ?375, ?377, ?373).** The tree "Starbuilding ??" (you wrote only "Astral skills"); Effect stats "Acts as ??", "Max ??", "Paid in AP ??", "Wear ??", "Second hotbar ??". Your names went in as given: Starpower, Mana Resonance, Startile, Starbridge, Starpanel, Starpower Generator, Starway, Manifest Starchitecture, Starnest, Stardust, signal, seal.
+Best guess: name the tree and stats, or keep the ?? names.
+Ref: `Trees/starbuilding.tres`, `Scripts/Effect.gd`.
+Answer: ____
+
+**F87. Debt: floor, efficiency and what pays (wave 22; see ?371, ?372).** Floor is -max where allowed (a `debt` effect or a seal bearing `debt`); gain efficiency 1 - 0.5 x debt/max read at the start of a gain, debt filled first, the part past 0 whole; fractions carry. A skill cannot pay a cost with a pool at or below 0 (only seals and effects take it negative). Your "-100% of energy means 0.5" is the same line.
+Best guess: keep.
+Ref: `Unit._level_to`, `docs/plans/w22-negative.md`.
 Answer: ____
