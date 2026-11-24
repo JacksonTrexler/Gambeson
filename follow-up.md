@@ -37,6 +37,7 @@ t9 Starnest: Creates rank generators, linked horizontally or vertically by starp
 `Negative Energy`: some skills and effects allow for negative energy gain past 0. In these circumstances the debt must be paid before new energy can be gained. There is a % energy gain penalty based on the overage (-100% of energy means 0.5 efficiency gains, -50% means 0.75 efficiency etc.)
 Answered 2026-11-24: built in wave 22 as ?369 to ?378 (signal field and Stardust, Negative Energy and seal, Starpower and Mana Resonance, the Starbuilding tree, Manifest Starchitecture and Starnest); calls in F76+.
 Follow-ups built 2026-11-24: ?379 to ?385 (HUD signal, Stardust arc, locked marker, mid-walk Starway, bridge fall, AI star terrain, mending from the field, bar fixes, screenshots in the scratchpad).
+Follow-ups built 2026-11-24: ?386 to ?389 (HUD polish, the repeated-cast refusal explained as Exhaustion, reach across a Starway, the AI leaving a lapsing bridge).
 
 
 
@@ -619,4 +620,24 @@ Answer: ____
 **F96. Skills grid tabs keep 176 px (wave 22; see ?385).** w21's VScroll collapsed `TreeScroll` to 0 px so every grid tab but the Adventurer wheel was blank (found by the screenshots). Fixed with min height 176, the wheel's; the detail and foot now sit below the fold (scroll).
 Best guess: keep the fix; say if the screen should be restructured.
 Ref: `hud_test.test_adventurer_skills_screen`, `docs/plans/w22-shots.md`.
+Answer: ____
+
+**F97. Hotbar names shrink to 4 px (wave 22; see ?386).** The 5-slot bar clipped "Mana Reson" and "Starpower G"; the name font now shrinks from 7 to 4 px so the whole name shows (5 px still cut "Starpower Generator"). Tiny but complete. Alternatives: wrap onto two lines, or shorter display names.
+Best guess: keep.
+Ref: `SkillSlot.name_font`, `docs/plans/w22-hud-polish.md` call 1.
+Answer: ____
+
+**F98. Wizard is on the entry screen (wave 22; see ?386).** `role.py`'s `NPC_ONLY` no longer lists wizard (the Icor still uses the role), so it is the 14th playable role, scrolling right. You may want it NPC-only again.
+Best guess: keep it playable.
+Ref: `Util/role.py`, `Scenes/entry.tscn`, `docs/plans/w22-hud-polish.md` call 4.
+Answer: ____
+
+**F99. A repeat Startile cast is refused by Exhaustion, as designed (wave 22; see ?387).** Each use of a skill in a battle adds 0.5 x pressure to its AP and cost, so Startile's second cast costs 6.5 AP against a 4-AP pool and `Unit.pay` fails. Not a bug, no change; tests turn Exhaustion off (`Test.calm()`). The HUD now says "Not enough AP for X (needs N, has M)" (?389). You might want cheap, low-AP builders like Startile to be exempt or to cost less.
+Best guess: keep.
+Ref: `Scripts/Exhaustion.gd`, `docs/plans/w22-cast-at.md`.
+Answer: ____
+
+**F100. The AI always steps off a lapsing bridge before it strikes (wave 22; see ?389).** `AI._leave` runs first: from a `gives_way` tile it walks to the nearest safe tile (least HP owed by `hazard`, then fewest steps), even where it could have struck from the bridge. It picks the nearest safe tile, not the best tactical one. Player units are untouched.
+Best guess: keep; offer strike-then-leave if you want bolder foes.
+Ref: `AI._leave`, `docs/plans/w22-lapse-leave.md`.
 Answer: ____
