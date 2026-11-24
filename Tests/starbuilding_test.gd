@@ -90,6 +90,36 @@ func test_shapes() -> void:
 	ok(b._cost(walker, b.terrain(Vector2i(4, 3)), b.terrain(Vector2i(5, 3))) < 99.0, "a walker can cross it")
 
 
+# A bridge tile that lapses or breaks down to Stardust over void leaves void under whoever stands on it (Battle.break_layer() and
+# _restack(): the one "ground under a unit changed" hook): a walker falls (slay(): as at 0 HP), a floater stays up, and with ground
+# beneath it stays standing. Mended, the dust bridges again.
+func test_bridge_breaks() -> void:
+	var u := _caster("startile", 1, false)
+	var floater := v(2)
+	b.units.erase(Vector2i(1, 8))
+	b.move(floater, Vector2i(5, 4))
+	floater.learned.append(slot(sk("floaty"))); floater.sync_bar(); floater.refresh()
+	var ground := v(3)
+	b.move(ground, Vector2i(5, 5))
+	var over := [Vector2i(4, 3), Vector2i(5, 4)]
+	for c in over:
+		b.paint(c, void_t)
+	for c in over + [Vector2i(5, 5)]:
+		b.lay_star(c, Battle.STARTILE, u, 0, 0.0, 1)
+	b.move(u, Vector2i(4, 3))
+	b._repair_tiles()  # unpowered a round: every lapse of 1 breaks, startile to cracked startile
+	ok(u.is_alive() and b.terrain(Vector2i(4, 3)).name == "Cracked Startile", "a cracked bridge still bears")
+	for c in over + [Vector2i(5, 5)]:
+		b.expose(c, [&"blunt"] as Array[StringName])  # cracked to Stardust
+	ok(not u.is_alive() and u.hp == 0 and &"void" in b.terrain(Vector2i(4, 3)).tags, "Stardust over void: the walker falls")
+	ok(floater.has_tag(&"floating") and floater.is_alive(), "a floater stays up on the void")
+	ok(ground.is_alive() and &"void" not in b.terrain(Vector2i(5, 5)).tags, "dust over ground: it stays standing")
+	_gen(Vector2i(4, 5))  # a signal for the dust to regrow in
+	b.top_layer(Vector2i(4, 3)).repairing = 99
+	b._repair_tiles()
+	ok(b.terrain(Vector2i(4, 3)) == Battle.STARTILE and &"void" not in b.terrain(Vector2i(4, 3)).tags, "mended over void, it bridges again")
+
+
 func test_starway() -> void:
 	var u := _caster("starway", 3)
 	_gen(Vector2i(5, 5))

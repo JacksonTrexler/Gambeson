@@ -4324,7 +4324,7 @@ func lay_layer(c: Vector2i, t: Terrain, through := t.passes) -> Layer:
 # cracked or lifted: Unit.seal(), its source the layer still being what was laid); `lapse` rounds unpowered it breaks
 # (_repair_tiles()); `power` is its rank as a signal source and charges it to match (a generator: a fifth of capacity a rank).
 func lay_star(c: Vector2i, t: Terrain, by: Unit, points := 0, share := 0.0, lapse := 0, power := 0) -> Layer:
-	var l := lay_layer(c, t, t.passes and &"void" not in ground_of(c).tags)
+	var l := lay_layer(c, t, _overlays(c, t))
 	l.lapse = lapse
 	l.brittle = true
 	if power > 0 and t.power_rank > 0:
@@ -4334,6 +4334,11 @@ func lay_star(c: Vector2i, t: Terrain, by: Unit, points := 0, share := 0.0, laps
 	if pool != null and (points > 0 or share > 0.0):
 		by.seal(pool, points, func() -> bool: return l in layers.get(c, []) and l.terrain == t, share)
 	return l
+
+
+# Whether t laid at c is an overlay on what's there: not over void, which a star tile bridges on its own.
+func _overlays(c: Vector2i, t: Terrain) -> bool:
+	return t.passes and &"void" not in ground_of(c).tags
 
 
 # Whether c holds star flooring or wiring (a layer tagged star).
@@ -4398,12 +4403,16 @@ func _compose(c: Vector2i) -> Terrain:
 	return v
 
 
+# The tile c's layers changed: its view is made again, and whoever stands on it takes the new ground (the one "tile under a
+# unit changed" hook: breaking, lifting, laying, mending); standing on void without floating or flying, it falls.
 func _restack(c: Vector2i) -> void:
 	_views.erase(c)
 	var u := unit_at(c)
 	if u:
 		u.footing = terrain(c)
 		u.ground = u.footing.tags
+		if u.is_alive() and not footing(u, c):  # the ground under it became void (a bridge broke or lapsed): it falls as if at 0 HP
+			u.slay()
 
 
 # Starpanes and startiles keep the lattice's books (panes, starpower) as they're laid and lost.
@@ -4428,7 +4437,8 @@ func _unregister(c: Vector2i, t: Terrain) -> void:
 		portals.erase(c)
 
 
-# A brittle layer breaks into what it leaves (a startile: a cracked startile), or is gone.
+# A brittle layer breaks into what it leaves (a startile: a cracked startile, then Stardust), or is gone. What's then under
+# a unit on it is settled by _restack().
 func break_layer(c: Vector2i, l: Layer, by: Unit = null) -> void:
 	var was := l.terrain
 	_unregister(c, was)
@@ -4437,6 +4447,8 @@ func break_layer(c: Vector2i, l: Layer, by: Unit = null) -> void:
 		l.repairing = 0
 		l.repair_goal = 0
 		l.source = null
+		if l.terrain.regrows:
+			l.passes = true  # dust bears nothing: over void, the void shows (the unit on it falls: _restack())
 		_register(c, l.terrain)
 	else:
 		layers[c].erase(l)
@@ -4570,6 +4582,7 @@ func _repaired(c: Vector2i, l: Layer) -> void:
 	l.repairing = 0
 	l.repair_goal = 0
 	l.source = null
+	l.passes = _overlays(c, into)  # mended over void it bridges it again
 	_register(c, into)
 	_restack(c)
 	mended.emit(c, into)
