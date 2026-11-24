@@ -962,8 +962,7 @@ func toggle(s: Skill) -> bool:
 				if not x.on and not s.hybrid and (Pricing.ap_for(self, s) > 0.0 or price(s) > 0) and not pay_for(s):
 					return false
 				x.on = not x.on
-				if alt_tag(s) != &"":
-					show_bar(alt_tag(s) if x.on else &"")
+				sync_alt_bar()
 				return true
 			if channel and channel.switch != null and channel.skill == s:
 				channel = null
@@ -1419,6 +1418,21 @@ static func alt_tag(s: Skill) -> StringName:
 	return &""
 
 
+# The bar that should be up: the tag of a second-bar toggle that is on and not disabled, else &"" (the regular bar).
+# The one place that decides it (sync_alt_bar()).
+func want_bar() -> StringName:
+	for x in slots:
+		if x.on and x.skill not in disabled and alt_tag(x.skill) != &"":
+			return alt_tag(x.skill)
+	return &""
+
+
+# Brings up the bar want_bar() says: after a toggle, a disabling, or one ending.
+func sync_alt_bar() -> void:
+	if not hotbar.is_empty():
+		show_bar(want_bar())
+
+
 # Whether s stays put whichever bar is up: a pillar, or an always-on passive.
 static func _bar_fixed(s: Skill) -> bool:
 	return s != null and (s.pillar() or (s.passive and not s.toggle))
@@ -1518,12 +1532,30 @@ func _skill_sig() -> int:
 func equip_skill(s: Skill) -> bool:
 	if s == null or slot_cost(s) == 0 or s in hotbar or base_rank(s) == 0:
 		return s != null and (slot_cost(s) == 0 or s in hotbar)
-	var i := _auto_slot(s)
-	if i < 0:
+	if not _auto_put(s):
 		return false
-	hotbar[i] = s
 	_arrange()  # it may grant slots
 	return true
+
+
+# Puts s where _auto_slot() says: on the bar shown, or, if a second bar is up and doesn't take s, on the regular bar
+# it will come back to (its saved layout, laid over the hotbar for the moment: pillars and fixed skills are on both).
+func _auto_put(s: Skill) -> bool:
+	if bar_takes(s):
+		var i := _auto_slot(s)
+		if i >= 0:
+			hotbar[i] = s
+		return i >= 0
+	if s in bars[&""]:
+		return true
+	var shown := hotbar
+	hotbar = bars[&""].duplicate()
+	var j := _auto_slot(s)
+	if j >= 0:
+		hotbar[j] = s
+	bars[&""] = hotbar
+	hotbar = shown
+	return j >= 0
 
 
 # Where s goes by itself: a pillar in the last free sure slot; an always-on passive in the last free sure
@@ -1552,9 +1584,7 @@ func auto_fill() -> void:
 	picks.append_array(slots.filter(func(x: Slot): return slot_cost(x.skill) > 0 and x.skill.passive))
 	for x in picks:
 		if x.skill not in hotbar and base_rank(x.skill) > 0:
-			var i := _auto_slot(x.skill)
-			if i >= 0:
-				hotbar[i] = x.skill
+			_auto_put(x.skill)
 
 
 # x rounded down, or up while the unit is lucky (level / 2 for a Gambeson, level / 4 for slots).
@@ -4682,6 +4712,7 @@ func disable(s: Skill, turns: int, curse := false, by: Unit = null, src: Skill =
 			disabled_by[x] = src
 		if d.curse:
 			cursed[x] = true
+	sync_alt_bar()
 
 
 # It holds disablings off for now (the postpone stat: Coyote Charm): they and its curse debuffs wait.
@@ -4797,6 +4828,7 @@ func tick() -> void:
 		overcharge = 0
 	changed = changed or not postponed.is_empty()
 	release()
+	sync_alt_bar()
 	if changed:
 		_arrange()  # a level effect may have ended
 		refit()  # or Asphyxia fallen a stack

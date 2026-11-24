@@ -4715,6 +4715,7 @@ func lives_left(f: Faction) -> int:
 func _on_downed(u: Unit) -> void:
 	u.timed.clear()
 	u.disabled.clear()
+	u.sync_alt_bar()
 	u.disabled_by.clear()
 	u.postponed.clear()
 	end_channel(u)

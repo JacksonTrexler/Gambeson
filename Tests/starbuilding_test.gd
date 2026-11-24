@@ -194,6 +194,20 @@ func test_starchitect_bar() -> void:
 	u.energy = u.max_energy
 	u.toggle(m)
 	ok(u.hotbar[0] == sk("starpanel"), "switched on again, the Starchitect bar is as it was left")
+	# Brainfog: a disabled Manifest drops the second bar; the regular one returns, and comes back up when it ends
+	u.disable(m, 1)
+	ok(u.bar_key == &"" and u.equipped(plain), "disabled, the Starchitect bar drops and the regular bar returns")
+	u.disabled.clear()
+	u.sync_alt_bar()
+	ok(u.bar_key == &"power", "no longer disabled, the toggle is still on: the bar is back up")
+	# a skill learned (auto-equipped) while it is up goes to the regular bar unless it is a power skill
+	var late := sk("blink")
+	u.bars[&""][u.bars[&""].find(plain)] = null  # room on the regular bar
+	u.learned.append(slot(late, 1))
+	u.sync_bar()
+	ok(late not in u.hotbar and late in u.bars[&""], "a plain skill learned with the bar up lands on the regular bar (%s)" % [u.hotbar])
+	u.toggle(m)
+	ok(late in u.hotbar, "...and is there when the regular bar returns")
 
 
 # Starnest: rank generators (power 5, full) from the cell, each a straight row or column of starpanes from the one it grew from,
